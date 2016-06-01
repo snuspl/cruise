@@ -67,6 +67,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
+import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
@@ -187,6 +188,11 @@ public final class AsyncDolphinDriver {
    * Bookkeeping of context id of workers deleted by EM's Delete.
    */
   private final Set<String> deletedWorkerContextIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+  /**
+   * Bookkeeping of context id of servers deleted by EM's Delete.
+   */
+  private final Set<String> deletedServerContextIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
    * Configuration that should be passed to each {@link AsyncWorkerTask}.
@@ -568,21 +574,75 @@ public final class AsyncDolphinDriver {
     }
   }
 
+  /**
+   * Handler for FailedContext.
+   * It treats failed context as a same way of handling closed context by {@link ClosedContextHandler}.
+   */
   final class FailedContextHandler implements EventHandler<FailedContext> {
     @Override
     public void onNext(final FailedContext failedContext) {
       LOG.log(Level.INFO, "FailedContext: {0}", failedContext);
+      final String contextId = failedContext.getId();
+
+      final boolean closeParent = handleFinishedContext(contextId);
+
+      // close its parent context to assure job to be shutdown anyway
+      if (closeParent) {
+        final Optional<ActiveContext> parentContext = failedContext.getParentContext();
+        if (parentContext.isPresent()) {
+          LOG.log(Level.WARNING, "Close a context {0} , which is a parent of the failed context: {1}",
+              new Object[]{parentContext, failedContext});
+          parentContext.get().close();
+        }
+      }
     }
   }
 
+  /**
+   * Handler for ClosedContext.
+   * The contexts should be one of following:
+   *  1) contexts closed in job shutdown phase started by {@link #checkShutdown()}
+   *  2) contexts closed by EM's Delete procedure
+   *
+   * For a context out of upper cases that happens in job shutdown phase,
+   * this handler closes a parent of the context, if exist,
+   * to prevent job from holding unnecessary resources.
+   * It is also for the job to be shut down in unexpected cases.
+   */
   final class ClosedContextHandler implements EventHandler<ClosedContext> {
     @Override
     public void onNext(final ClosedContext closedContext) {
       LOG.log(Level.INFO, "ClosedContext: {0}", closedContext);
       final String contextId = closedContext.getId();
 
-      if (workerContexts.containsKey(contextId)) {
-        workerContexts.remove(contextId);
+      final boolean closeParent = handleFinishedContext(contextId);
+
+      // close its parent context to assure job to be shutdown anyway
+      if (closeParent) {
+        final ActiveContext parentContext = closedContext.getParentContext();
+        if (parentContext != null) {
+          LOG.log(Level.WARNING, "Close a context {0} , which is a parent of the closed context: {1}",
+              new Object[]{parentContext, closedContext});
+          parentContext.close();
+        }
+      }
+    }
+  }
+
+  /**
+   * Handles contexts failed or closed.
+   * If a context is one of contexts under tracking, it handles the context properly.
+   * @param contextId an identifier of the context
+   * @return true if the parent of the context needs to be shut down
+   */
+  private boolean handleFinishedContext(final String contextId) {
+    boolean needToCloseParent = false;
+
+    // shutdown remaining contexts
+    if (workerContexts.containsKey(contextId)) {
+      workerContexts.remove(contextId);
+
+      if (isJobFinished.get()) {
         if (workerContexts.isEmpty()) { // all worker contexts are closed
           if (closingServerContexts.compareAndSet(false, true)) {
             LOG.info("Start closing server contexts");
@@ -590,12 +650,17 @@ public final class AsyncDolphinDriver {
               serverContext.close();
             }
           } else {
-            LOG.log(Level.WARNING, "Errors in tracking worker context: {0}", closedContext);
+            LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of servers", contextId);
           }
         }
-      } else if (serverContexts.containsKey(contextId)) {
-        serverContexts.remove(contextId);
-        if (serverContexts.isEmpty()) {
+      } else {
+        LOG.log(Level.WARNING, "Worker context {0} is closed when the job is not in shutdown phase", contextId);
+      }
+    } else if (serverContexts.containsKey(contextId)) {
+      serverContexts.remove(contextId);
+
+      if (isJobFinished.get()) {
+        if (serverContexts.isEmpty()) { // all server contexts are closed
           if (closingRootContexts.compareAndSet(false, true)) {
             LOG.info("Start closing root contexts");
             for (final ActiveContext rootWorkerContext : rootWorkerContexts.values()) {
@@ -605,15 +670,24 @@ public final class AsyncDolphinDriver {
               rootServerContext.close();
             }
           } else {
-            LOG.log(Level.WARNING, "Errors in tracking server context: {0}", closedContext);
+            LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of root contexts", contextId);
           }
         }
-      } else if (rootServerContexts.containsKey(contextId) || rootWorkerContexts.containsKey(contextId)) {
-        LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
       } else {
-        LOG.log(Level.WARNING, "Untracked context: {0}", closedContext);
+        LOG.log(Level.WARNING, "Server context {0} is closed when the job is not in shutdown phase", contextId);
       }
+    } else if (rootServerContexts.remove(contextId) != null || rootWorkerContexts.remove(contextId) != null) {
+      // for tracking contexts
+      LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
+    } else if (deletedWorkerContextIds.remove(contextId) || deletedServerContextIds.remove(contextId)) {
+      LOG.log(Level.INFO, "The context {0} is closed by EM's Delete.", contextId);
+      needToCloseParent = true;
+    } else {
+      LOG.log(Level.WARNING, "Untracked context: {0}", contextId);
+      needToCloseParent = true;
     }
+
+    return needToCloseParent;
   }
 
   final class FailedTaskHandler implements EventHandler<FailedTask> {
@@ -621,8 +695,18 @@ public final class AsyncDolphinDriver {
     public void onNext(final FailedTask failedTask) {
       LOG.log(Level.INFO, "FailedTask: {0}", failedTask);
 
+      // Close the context promptly when the task is complete by EM's Delete to make it reusable for EM's Add
+      // On the contrary, do not close the context, because these evaluators still have valid data
+      // which can be accessed by other running evaluators
+      if (failedTask.getActiveContext().isPresent()) {
+        final ActiveContext context = failedTask.getActiveContext().get();
+        if (deletedWorkerContextIds.contains(context.getId())) {
+          context.close(); // we can reuse this evaluator by submitting new context
+        }
+      }
+
       contextIdToWorkerTasks.remove(failedTask.getActiveContext().get().getId());
-      checkShutdown();
+      checkShutdown(); // we may resubmit task in future
     }
   }
 
@@ -631,11 +715,11 @@ public final class AsyncDolphinDriver {
     public void onNext(final CompletedTask completedTask) {
       LOG.log(Level.INFO, "CompletedTask: {0}", completedTask);
 
-      // Close the resource promptly when the task is complete by EM's Delete to make it reusable for EM's Add
-      // On the contrary, do not reuse evaluators that completely finish their work for EM's Add
-      // It is because these evaluators still have valid data, which can be accessed by other running evaluators
-      if (deletedWorkerContextIds.remove(completedTask.getActiveContext().getId())) {
-        final ActiveContext context = completedTask.getActiveContext();
+      // Close the context promptly when the task is complete by EM's Delete to make it reusable for EM's Add
+      // On the contrary, do not close the context, because these evaluators still have valid data
+      // which can be accessed by other running evaluators
+      final ActiveContext context = completedTask.getActiveContext();
+      if (deletedWorkerContextIds.contains(context.getId())) {
         context.close(); // we can reuse this evaluator by submitting new context
       }
 
@@ -655,7 +739,7 @@ public final class AsyncDolphinDriver {
    * Second and third steps are done in ClosedContextHandler, triggered by resulting events of the first step.
    */
   private synchronized void checkShutdown() {
-    if (contextIdToWorkerTasks.isEmpty()) {
+    if (!contextIdToWorkerTasks.isEmpty()) {
       return;
     }
 
@@ -708,6 +792,8 @@ public final class AsyncDolphinDriver {
             "Trying to remove active context {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
+        deletedServerContextIds.add(activeContextId);
+
         activeContext.close();
         LOG.log(Level.FINE, "Server has been deleted successfully. Remaining Servers: {0}", serverContexts.size());
         isSuccess = true;
@@ -724,7 +810,7 @@ public final class AsyncDolphinDriver {
   final class WorkerRemover implements EMDeleteExecutor {
     @Override
     public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
-      final ActiveContext activeContext = workerContexts.get(activeContextId);
+      final ActiveContext activeContext = workerContexts.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
         LOG.log(Level.WARNING,
