@@ -165,29 +165,29 @@ public final class AsyncDolphinDriver {
   private final AtomicInteger serverContextIndexCounter = new AtomicInteger(0);
 
   /**
-   * Bookkeeping the activeContext objects of the root context of the server-side evaluators.
+   * Bookkeeping the ActiveContext objects of the root context of the server-side evaluators.
    */
-  private final ConcurrentMap<String, ActiveContext> rootWorkerContexts = new ConcurrentHashMap<>();
+  private final Map<String, ActiveContext> rootWorkerContexts = new ConcurrentHashMap<>();
 
   /**
-   * Bookkeeping the activeContext objects of the root context of the worker-side evaluators.
+   * Bookkeeping the ActiveContext objects of the root context of the worker-side evaluators.
    */
-  private final ConcurrentMap<String, ActiveContext> rootServerContexts = new ConcurrentHashMap<>();
+  private final Map<String, ActiveContext> rootServerContexts = new ConcurrentHashMap<>();
 
   /**
-   * Bookkeeping the activeContext objects of the context housing the parameter server.
+   * Bookkeeping the ActiveContext objects of the context housing the parameter server.
    */
-  private final ConcurrentMap<String, ActiveContext> serverContexts = new ConcurrentHashMap<>();
+  private final Map<String, ActiveContext> serverContexts = new ConcurrentHashMap<>();
 
   /**
-   * Bookkeeping the activeContext objects of the context that the worker task is running on.
+   * Bookkeeping the ActiveContext objects of the context that the worker task is running on.
    */
-  private final ConcurrentMap<String, ActiveContext> workerContexts = new ConcurrentHashMap<>();
+  private final Map<String, ActiveContext> workerContexts = new ConcurrentHashMap<>();
 
   /**
-   * Bookkeeping the running task of workers.
+   * Bookkeeping the RunningTask objects of the running task of workers.
    */
-  private final ConcurrentMap<String, RunningTask> contextIdToRunningWorkerTasks = new ConcurrentHashMap<>();
+  private final Map<String, RunningTask> contextIdToWorkerTasks = new ConcurrentHashMap<>();
 
   /**
    * Bookkeeping of context id of workers deleted by EM's Delete.
@@ -407,7 +407,7 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);
-        rootServerContexts.putIfAbsent(activeContext.getId(), activeContext);
+        rootServerContexts.put(activeContext.getId(), activeContext);
 
         final int serverIndex = Integer.parseInt(
             activeContext.getId().substring(dataLoadingService.getComputeContextIdPrefix().length()));
@@ -451,7 +451,7 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
-        serverContexts.putIfAbsent(activeContext.getId(), activeContext);
+        serverContexts.put(activeContext.getId(), activeContext);
       }
     };
   }
@@ -464,7 +464,7 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
-        rootWorkerContexts.putIfAbsent(activeContext.getId(), activeContext);
+        rootWorkerContexts.put(activeContext.getId(), activeContext);
 
         final int workerIndex = workerContextIndexCounter.getAndIncrement();
 
@@ -520,7 +520,7 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
-        workerContexts.putIfAbsent(activeContext.getId(), activeContext);
+        workerContexts.put(activeContext.getId(), activeContext);
 
         final int workerIndex = Integer.parseInt(activeContext.getId().substring(WORKER_CONTEXT.length() + 1));
         final Configuration taskConf = TaskConfiguration.CONF
@@ -556,7 +556,7 @@ public final class AsyncDolphinDriver {
     @Override
     public void onNext(final RunningTask runningTask) {
       LOG.log(Level.INFO, "RunningTask: {0}", runningTask);
-      contextIdToRunningWorkerTasks.putIfAbsent(runningTask.getActiveContext().getId(), runningTask);
+      contextIdToWorkerTasks.put(runningTask.getActiveContext().getId(), runningTask);
     }
   }
 
@@ -625,8 +625,8 @@ public final class AsyncDolphinDriver {
     public void onNext(final FailedTask failedTask) {
       LOG.log(Level.INFO, "FailedTask: {0}", failedTask);
 
-      contextIdToRunningWorkerTasks.remove(failedTask.getActiveContext().get().getId());
-      if (contextIdToRunningWorkerTasks.isEmpty()) {
+      contextIdToWorkerTasks.remove(failedTask.getActiveContext().get().getId());
+      if (contextIdToWorkerTasks.isEmpty()) {
         shutdown();
       }
     }
@@ -646,8 +646,8 @@ public final class AsyncDolphinDriver {
 
       // Currently we do not reuse evaluators that completely finish their work for EM's Add
       // It is because these evaluators still have valid data, which can be accessed by other running evaluators
-      contextIdToRunningWorkerTasks.remove(completedTask.getActiveContext().getId());
-      if (contextIdToRunningWorkerTasks.isEmpty()) {
+      contextIdToWorkerTasks.remove(completedTask.getActiveContext().getId());
+      if (contextIdToWorkerTasks.isEmpty()) {
         shutdown();
       }
     }
@@ -728,7 +728,7 @@ public final class AsyncDolphinDriver {
       } else {
         deletedWorkerContextIds.add(activeContextId);
 
-        final RunningTask runningTask = contextIdToRunningWorkerTasks.remove(activeContextId);
+        final RunningTask runningTask = contextIdToWorkerTasks.remove(activeContextId);
         runningTask.close();
 
         // context will be closed in ClosedTaskHandler
