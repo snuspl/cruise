@@ -22,6 +22,7 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
+import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
@@ -64,7 +65,12 @@ public final class PartitionedWorkerMsgSender<K, P> {
   }
 
   private void send(final String destId, final AvroParameterServerMsg msg) {
-    final Connection<AvroParameterServerMsg> conn = psNetworkSetup.getConnectionFactory()
+    final ConnectionFactory<AvroParameterServerMsg> connFactory = psNetworkSetup.getConnectionFactory();
+    if (connFactory == null) {
+      throw new RuntimeException("ConnectionFactory has not been registered or has been removed");
+    }
+
+    final Connection<AvroParameterServerMsg> conn = connFactory
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();

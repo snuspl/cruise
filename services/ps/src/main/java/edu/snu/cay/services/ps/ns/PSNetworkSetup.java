@@ -37,7 +37,7 @@ public final class PSNetworkSetup {
   private final Identifier connectionFactoryIdentifier;
   private final ParameterServerMsgCodec parameterServerMsgCodec;
   private final EventHandler<Message<AvroParameterServerMsg>> handler;
-  private ConnectionFactory<AvroParameterServerMsg> connectionFactory;
+  private volatile ConnectionFactory<AvroParameterServerMsg> connectionFactory;
 
   @Inject
   private PSNetworkSetup(
@@ -59,19 +59,17 @@ public final class PSNetworkSetup {
   }
 
   public void unregisterConnectionFactory() {
+    connectionFactory = null;
     networkConnectionService.unregisterConnectionFactory(connectionFactoryIdentifier);
   }
 
   public ConnectionFactory<AvroParameterServerMsg> getConnectionFactory() {
-    if (connectionFactory == null) {
-      throw new RuntimeException("A connection factory has not been registered yet.");
-    }
     return connectionFactory;
   }
 
   public Identifier getMyId() {
     if (connectionFactory == null) {
-      throw new RuntimeException("A connection factory has not been registered yet.");
+      return null;
     }
     return connectionFactory.getLocalEndPointId();
   }
