@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.ps;
 
-import edu.snu.cay.services.ps.ParameterServerParameters.*;
-import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
+import edu.snu.cay.services.ps.PSParameters.*;
+import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -26,42 +26,42 @@ import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.util.Builder;
 
-public final class ParameterServerConfigurationBuilder implements Builder<Configuration> {
+public final class PSConfigurationBuilder implements Builder<Configuration> {
 
   private static final ConfigurationSerializer CONFIGURATION_SERIALIZER = new AvroConfigurationSerializer();
 
-  private Class<? extends ParameterServerManager> managerClass;
+  private Class<? extends PSManager> managerClass;
   private Class<? extends ParameterUpdater> updaterClass;
   private Class<? extends Codec> keyCodecClass = SerializableCodec.class;
   private Class<? extends Codec> preValueCodecClass = SerializableCodec.class;
   private Class<? extends Codec> valueCodecClass = SerializableCodec.class;
 
-  public static ParameterServerConfigurationBuilder newBuilder() {
-    return new ParameterServerConfigurationBuilder();
+  public static PSConfigurationBuilder newBuilder() {
+    return new PSConfigurationBuilder();
   }
 
-  public ParameterServerConfigurationBuilder setManagerClass(
-      final Class<? extends ParameterServerManager> managerClass) {
+  public PSConfigurationBuilder setManagerClass(
+      final Class<? extends PSManager> managerClass) {
     this.managerClass = managerClass;
     return this;
   }
 
-  public ParameterServerConfigurationBuilder setUpdaterClass(final Class<? extends ParameterUpdater> updaterClass) {
+  public PSConfigurationBuilder setUpdaterClass(final Class<? extends ParameterUpdater> updaterClass) {
     this.updaterClass = updaterClass;
     return this;
   }
 
-  public ParameterServerConfigurationBuilder setKeyCodecClass(final Class<? extends Codec> keyCodecClass) {
+  public PSConfigurationBuilder setKeyCodecClass(final Class<? extends Codec> keyCodecClass) {
     this.keyCodecClass = keyCodecClass;
     return this;
   }
 
-  public ParameterServerConfigurationBuilder setPreValueCodecClass(final Class<? extends Codec> preValueCodecClass) {
+  public PSConfigurationBuilder setPreValueCodecClass(final Class<? extends Codec> preValueCodecClass) {
     this.preValueCodecClass = preValueCodecClass;
     return this;
   }
 
-  public ParameterServerConfigurationBuilder setValueCodecClass(final Class<? extends Codec> valueCodecClass) {
+  public PSConfigurationBuilder setValueCodecClass(final Class<? extends Codec> valueCodecClass) {
     this.valueCodecClass = valueCodecClass;
     return this;
   }
@@ -76,7 +76,7 @@ public final class ParameterServerConfigurationBuilder implements Builder<Config
     }
 
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(ParameterServerManager.class, managerClass)
+        .bindImplementation(PSManager.class, managerClass)
         .bindNamedParameter(SerializedUpdaterConfiguration.class,
             CONFIGURATION_SERIALIZER.toString(
                 Tang.Factory.getTang().newConfigurationBuilder()

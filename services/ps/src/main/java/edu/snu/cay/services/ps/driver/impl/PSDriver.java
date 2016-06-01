@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.services.ps.ParameterServerParameters.SerializedCodecConfiguration;
-import edu.snu.cay.services.ps.ParameterServerParameters.SerializedUpdaterConfiguration;
-import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
+import edu.snu.cay.services.ps.PSParameters.SerializedCodecConfiguration;
+import edu.snu.cay.services.ps.PSParameters.SerializedUpdaterConfiguration;
+import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.ns.NetworkContextRegister;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.worker.impl.WorkerSideMsgHandler;
@@ -44,14 +44,14 @@ import java.io.IOException;
  * Should be injected into the user's Driver class.
  * Provides methods for getting context and service configurations.
  */
-// TODO #478: Change the confusing name of ParameterServerDriver
+// TODO #478: Change the confusing name of PSDriver
 @DriverSide
-public final class ParameterServerDriver {
+public final class PSDriver {
 
   /**
    * Manager object that represents the Parameter Server configuration to be used.
    */
-  private final ParameterServerManager psManager;
+  private final PSManager psManager;
 
   /**
    * Configuration for key/preValue/value {@link org.apache.reef.wake.remote.Codec}s.
@@ -74,12 +74,12 @@ public final class ParameterServerDriver {
   private final LocalAddressProvider localAddressProvider;
 
   @Inject
-  private ParameterServerDriver(final ParameterServerManager psManager,
-                                final ConfigurationSerializer configurationSerializer,
-                                @Parameter(SerializedCodecConfiguration.class) final String serializedCodecConf,
-                                @Parameter(SerializedUpdaterConfiguration.class) final String serializedUpdaterConf,
-                                final NameServer nameServer,
-                                final LocalAddressProvider localAddressProvider) throws IOException, BindException {
+  private PSDriver(final PSManager psManager,
+                   final ConfigurationSerializer configurationSerializer,
+                   @Parameter(SerializedCodecConfiguration.class) final String serializedCodecConf,
+                   @Parameter(SerializedUpdaterConfiguration.class) final String serializedUpdaterConf,
+                   final NameServer nameServer,
+                   final LocalAddressProvider localAddressProvider) throws IOException, BindException {
     this.psManager = psManager;
     this.codecConfiguration = configurationSerializer.fromString(serializedCodecConf);
     this.updaterConfiguration = configurationSerializer.fromString(serializedUpdaterConf);

@@ -17,7 +17,7 @@ package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.avro.RoutingTableUpdateMsg;
 import edu.snu.cay.services.ps.avro.Type;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -104,7 +104,7 @@ public final class EMRoutingTableManager {
   /**
    * Broadcasts update in routing tables of EM in PS servers to all active PS workers.
    */
-  private synchronized void broadcastMsg(final AvroParameterServerMsg updateMsg) {
+  private synchronized void broadcastMsg(final AvroPSMsg updateMsg) {
     for (final String workerId : activeWorkerIds) {
       sender.get().send(workerId, updateMsg);
     }
@@ -129,8 +129,8 @@ public final class EMRoutingTableManager {
           .setBlockIds(blockIds)
           .build();
 
-      final AvroParameterServerMsg updateMsg =
-          AvroParameterServerMsg.newBuilder()
+      final AvroPSMsg updateMsg =
+          AvroPSMsg.newBuilder()
               .setType(Type.RoutingTableUpdateMsg)
               .setRoutingTableUpdateMsg(routingTableUpdateMsg)
               .build();

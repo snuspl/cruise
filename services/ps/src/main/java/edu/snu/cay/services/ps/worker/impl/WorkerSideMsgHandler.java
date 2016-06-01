@@ -17,8 +17,8 @@ package edu.snu.cay.services.ps.worker.impl;
 
 import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
-import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
-import edu.snu.cay.services.ps.ParameterServerParameters.ValueCodecName;
+import edu.snu.cay.services.ps.PSParameters.KeyCodecName;
+import edu.snu.cay.services.ps.PSParameters.ValueCodecName;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
 import edu.snu.cay.utils.SingleMessageExtractor;
@@ -36,7 +36,7 @@ import java.util.logging.Logger;
  * Worker-side Parameter Server message handler.
  */
 @EvaluatorSide
-public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message<AvroParameterServerMsg>> {
+public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message<AvroPSMsg>> {
   private static final Logger LOG = Logger.getLogger(WorkerSideMsgHandler.class.getName());
 
   /**
@@ -72,10 +72,10 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
    * Throws an exception if messages of an unexpected type arrive.
    */
   @Override 
-  public void onNext(final Message<AvroParameterServerMsg> msg) {
+  public void onNext(final Message<AvroPSMsg> msg) {
     LOG.entering(WorkerSideMsgHandler.class.getSimpleName(), "onNext");
 
-    final AvroParameterServerMsg innerMsg = SingleMessageExtractor.extract(msg);
+    final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
     case ReplyMsg:
       onReplyMsg(innerMsg.getReplyMsg());

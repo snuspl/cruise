@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.server;
 
-import edu.snu.cay.services.ps.ParameterServerParameters;
+import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.resolver.SingleNodeServerResolver;
 import edu.snu.cay.services.ps.common.resolver.ServerId;
@@ -59,9 +59,9 @@ public final class StaticParameterServerTest {
         .bindImplementation(ServerResolver.class, SingleNodeServerResolver.class)
         .bindNamedParameter(ServerId.class, SERVER_ID_PREFIX + 0)
         .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + 0)
-        .bindNamedParameter(ParameterServerParameters.KeyCodecName.class, IntegerCodec.class)
-        .bindNamedParameter(ParameterServerParameters.ValueCodecName.class, IntegerCodec.class)
-        .bindNamedParameter(ParameterServerParameters.PreValueCodecName.class, IntegerCodec.class)
+        .bindNamedParameter(PSParameters.KeyCodecName.class, IntegerCodec.class)
+        .bindNamedParameter(PSParameters.ValueCodecName.class, IntegerCodec.class)
+        .bindNamedParameter(PSParameters.PreValueCodecName.class, IntegerCodec.class)
         .bindNamedParameter(NumPartitions.class, "4")
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);

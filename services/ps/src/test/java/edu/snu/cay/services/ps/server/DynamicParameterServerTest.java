@@ -23,7 +23,7 @@ import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.cay.services.ps.ParameterServerParameters;
+import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.resolver.ServerId;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
@@ -72,9 +72,9 @@ public final class DynamicParameterServerTest {
         .bind(ServerSideReplySender.class, MockServerSideReplySender.class)
         .bindNamedParameter(ServerId.class, SERVER_ID_PREFIX + 0)
         .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + 0)
-        .bindNamedParameter(ParameterServerParameters.KeyCodecName.class, IntegerCodec.class)
-        .bindNamedParameter(ParameterServerParameters.ValueCodecName.class, IntegerCodec.class)
-        .bindNamedParameter(ParameterServerParameters.PreValueCodecName.class, IntegerCodec.class)
+        .bindNamedParameter(PSParameters.KeyCodecName.class, IntegerCodec.class)
+        .bindNamedParameter(PSParameters.ValueCodecName.class, IntegerCodec.class)
+        .bindNamedParameter(PSParameters.PreValueCodecName.class, IntegerCodec.class)
         .bindNamedParameter(NumPartitions.class, "4")
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindImplementation(BlockResolver.class, HashBlockResolver.class)

@@ -19,7 +19,7 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-public final class ParameterServerParameters {
+public final class PSParameters {
 
   @NamedParameter(doc = "codec class for encoding and decoding key objects")
   public final class KeyCodecName implements Name<Codec> {

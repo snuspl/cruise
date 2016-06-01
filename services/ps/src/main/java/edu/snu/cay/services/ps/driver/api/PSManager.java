@@ -22,10 +22,10 @@ import org.apache.reef.tang.Configuration;
  * Driver-side manager for the Parameter Server.
  * Service configuration and PS-related evaluator management is done by this class.
  * Although public, the methods should not be called by the user directly because
- * {@code ParameterServerDriver} calls them internally.
+ * {@code PSDriver} calls them internally.
  */
 @DriverSide
-public interface ParameterServerManager {
+public interface PSManager {
 
   /**
    * @return service configuration for an Evaluator that uses a {@code ParameterWorker}

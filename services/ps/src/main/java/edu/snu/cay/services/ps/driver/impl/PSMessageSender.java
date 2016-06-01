@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -43,8 +43,8 @@ final class PSMessageSender {
     this.identifierFactory = identifierFactory;
   }
 
-  void send(final String destId, final AvroParameterServerMsg msg) {
-    final Connection<AvroParameterServerMsg> conn = psNetworkSetup.get().getConnectionFactory()
+  void send(final String destId, final AvroPSMsg msg) {
+    final Connection<AvroPSMsg> conn = psNetworkSetup.get().getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();

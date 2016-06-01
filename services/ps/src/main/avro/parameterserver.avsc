@@ -118,7 +118,7 @@
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
-  "name": "AvroParameterServerMsg",
+  "name": "AvroPSMsg",
   "fields":
   [
     {"name": "type",

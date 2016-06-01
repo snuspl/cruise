@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.ps.server.impl;
 
-import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
-import edu.snu.cay.services.ps.ParameterServerParameters.PreValueCodecName;
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.PSParameters.KeyCodecName;
+import edu.snu.cay.services.ps.PSParameters.PreValueCodecName;
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.avro.PullMsg;
 import edu.snu.cay.services.ps.avro.PushMsg;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
@@ -41,7 +41,7 @@ import java.util.logging.Logger;
  * This would trade-off less computation on the server for more computation on the client and more communication cost.
  */
 @EvaluatorSide
-public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message<AvroParameterServerMsg>> {
+public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message<AvroPSMsg>> {
   private static final Logger LOG = Logger.getLogger(ServerSideMsgHandler.class.getName());
 
   /**
@@ -73,10 +73,10 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
    * Throws an exception if messages of an unexpected type arrive.
    */
   @Override
-  public void onNext(final Message<AvroParameterServerMsg> msg) {
+  public void onNext(final Message<AvroPSMsg> msg) {
     LOG.entering(ServerSideMsgHandler.class.getSimpleName(), "onNext");
 
-    final AvroParameterServerMsg innerMsg = SingleMessageExtractor.extract(msg);
+    final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
     case PushMsg:
       onPushMsg(innerMsg.getPushMsg());

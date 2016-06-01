@@ -18,7 +18,7 @@ package edu.snu.cay.services.ps.worker.impl;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
+import edu.snu.cay.services.ps.PSParameters.KeyCodecName;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.*;

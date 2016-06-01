@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.ps.server.impl;
 
-import edu.snu.cay.services.ps.ParameterServerParameters;
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.PSParameters;
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.avro.ReplyMsg;
 import edu.snu.cay.services.ps.avro.Type;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
@@ -62,8 +62,8 @@ public final class ServerSideReplySenderImpl<K, V> implements ServerSideReplySen
   private ServerSideReplySenderImpl(
       final InjectionFuture<PSNetworkSetup> psNetworkSetup,
       final IdentifierFactory identifierFactory,
-      @Parameter(ParameterServerParameters.KeyCodecName.class) final Codec<K> keyCodec,
-      @Parameter(ParameterServerParameters.ValueCodecName.class) final Codec<V> valueCodec) {
+      @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
+      @Parameter(PSParameters.ValueCodecName.class) final Codec<V> valueCodec) {
 
     this.psNetworkSetup = psNetworkSetup;
     this.identifierFactory = identifierFactory;
@@ -71,8 +71,8 @@ public final class ServerSideReplySenderImpl<K, V> implements ServerSideReplySen
     this.valueCodec = valueCodec;
   }
 
-  private void send(final String destId, final AvroParameterServerMsg msg) {
-    final Connection<AvroParameterServerMsg> conn = psNetworkSetup.get().getConnectionFactory()
+  private void send(final String destId, final AvroPSMsg msg) {
+    final Connection<AvroPSMsg> conn = psNetworkSetup.get().getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();
@@ -93,7 +93,7 @@ public final class ServerSideReplySenderImpl<K, V> implements ServerSideReplySen
         .build();
 
     send(destId,
-        AvroParameterServerMsg.newBuilder()
+        AvroPSMsg.newBuilder()
             .setType(Type.ReplyMsg)
             .setReplyMsg(replyMsg)
             .build());

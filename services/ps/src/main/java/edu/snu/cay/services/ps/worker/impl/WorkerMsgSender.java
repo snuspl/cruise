@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.services.ps.ParameterServerParameters.PreValueCodecName;
+import edu.snu.cay.services.ps.PSParameters.PreValueCodecName;
 import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -64,8 +64,8 @@ public class WorkerMsgSender<K, P> {
     this.driverIdentifier = driverIdentifier;
   }
 
-  private void send(final String destId, final AvroParameterServerMsg msg) {
-    final Connection<AvroParameterServerMsg> conn = psNetworkSetup.getConnectionFactory()
+  private void send(final String destId, final AvroPSMsg msg) {
+    final Connection<AvroPSMsg> conn = psNetworkSetup.getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();
@@ -88,7 +88,7 @@ public class WorkerMsgSender<K, P> {
         .build();
 
     send(destId,
-        AvroParameterServerMsg.newBuilder()
+        AvroPSMsg.newBuilder()
             .setType(Type.PushMsg)
             .setPushMsg(pushMsg)
             .build());
@@ -106,7 +106,7 @@ public class WorkerMsgSender<K, P> {
         .build();
 
     send(destId,
-        AvroParameterServerMsg.newBuilder()
+        AvroPSMsg.newBuilder()
             .setType(Type.PullMsg)
             .setPullMsg(pullMsg)
             .build());
@@ -123,7 +123,7 @@ public class WorkerMsgSender<K, P> {
     final WorkerRegisterMsg workerRegisterMsg = WorkerRegisterMsg.newBuilder()
         .build();
     send(driverIdentifier,
-        AvroParameterServerMsg.newBuilder()
+        AvroPSMsg.newBuilder()
             .setType(Type.WorkerRegisterMsg)
             .setWorkerRegisterMsg(workerRegisterMsg)
             .build());
@@ -137,7 +137,7 @@ public class WorkerMsgSender<K, P> {
     final WorkerDeregisterMsg workerDeregisterMsg = WorkerDeregisterMsg.newBuilder()
         .build();
     send(driverIdentifier,
-        AvroParameterServerMsg.newBuilder()
+        AvroPSMsg.newBuilder()
             .setType(Type.WorkerDeregisterMsg)
             .setWorkerDeregisterMsg(workerDeregisterMsg)
             .build());

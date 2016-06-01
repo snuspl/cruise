@@ -38,7 +38,7 @@ import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
-import edu.snu.cay.services.ps.driver.impl.ParameterServerDriver;
+import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
@@ -138,7 +138,7 @@ public final class AsyncDolphinDriver {
   /**
    * Accessor for parameter server service.
    */
-  private final ParameterServerDriver psDriver;
+  private final PSDriver psDriver;
 
   /**
    * Counter for incrementally indexing contexts of workers.
@@ -328,7 +328,7 @@ public final class AsyncDolphinDriver {
       serverInjector.bindVolatileParameter(RangeSupport.class, Boolean.FALSE);
       this.serverEMWrapper = serverInjector.getInstance(EMWrapper.class);
       this.emRoutingTableManager = serverInjector.getInstance(EMRoutingTableManager.class);
-      this.psDriver = serverInjector.getInstance(ParameterServerDriver.class);
+      this.psDriver = serverInjector.getInstance(PSDriver.class);
       this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
 
       final Injector optimizerInjector = injector.forkInjector();

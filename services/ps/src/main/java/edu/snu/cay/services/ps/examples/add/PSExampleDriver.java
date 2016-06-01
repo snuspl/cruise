@@ -17,7 +17,7 @@ package edu.snu.cay.services.ps.examples.add;
 
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.Constants;
-import edu.snu.cay.services.ps.driver.impl.ParameterServerDriver;
+import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.examples.add.parameters.NumKeys;
 import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
@@ -63,7 +63,7 @@ public final class PSExampleDriver {
   private static final String UPDATER_TASK_PREFIX = "Updater-Task-";
   private static final String VALIDATOR_TASK_ID = "Validator-Task";
 
-  private final ParameterServerDriver psDriver;
+  private final PSDriver psDriver;
   private final EvaluatorManager evaluatorManager;
 
   private final int numServers;
@@ -89,7 +89,7 @@ public final class PSExampleDriver {
    *                                  This makes accounting of updates across Workers much simpler.
    */
   @Inject
-  private PSExampleDriver(final ParameterServerDriver psDriver,
+  private PSExampleDriver(final PSDriver psDriver,
                           final EvaluatorManager evaluatorManager,
                           @Parameter(NumServers.class) final int numServers,
                           @Parameter(NumWorkers.class) final int numWorkers,

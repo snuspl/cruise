@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.ps.examples.add;
 
-import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
-import edu.snu.cay.services.ps.driver.impl.fixed.StaticParameterServerManager;
+import edu.snu.cay.services.ps.PSConfigurationBuilder;
+import edu.snu.cay.services.ps.driver.impl.fixed.StaticPSManager;
 import edu.snu.cay.services.ps.examples.add.parameters.*;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
@@ -125,8 +125,8 @@ public final class PSExampleREEF {
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .build();
 
-    final Configuration psConf = new ParameterServerConfigurationBuilder()
-        .setManagerClass(StaticParameterServerManager.class)
+    final Configuration psConf = new PSConfigurationBuilder()
+        .setManagerClass(StaticPSManager.class)
         .setUpdaterClass(AddUpdater.class)
         .setKeyCodecClass(IntegerCodec.class)
         .setPreValueCodecClass(IntegerCodec.class)

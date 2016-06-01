@@ -15,29 +15,29 @@
  */
 package edu.snu.cay.services.ps.ns;
 
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
 /**
- * Codec for {@link AvroParameterServerMsg}s.
+ * Codec for {@link AvroPSMsg}s.
  * Simply uses {@link AvroUtils} to encode and decode messages.
  */
-public final class ParameterServerMsgCodec implements Codec<AvroParameterServerMsg> {
+public final class PSMsgCodec implements Codec<AvroPSMsg> {
 
   @Inject
-  private ParameterServerMsgCodec() {
+  private PSMsgCodec() {
   }
 
   @Override
-  public byte[] encode(final AvroParameterServerMsg msg) {
-    return AvroUtils.toBytes(msg, AvroParameterServerMsg.class);
+  public byte[] encode(final AvroPSMsg msg) {
+    return AvroUtils.toBytes(msg, AvroPSMsg.class);
   }
 
   @Override
-  public AvroParameterServerMsg decode(final byte[] data) {
-    return AvroUtils.fromBytes(data, AvroParameterServerMsg.class);
+  public AvroPSMsg decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, AvroPSMsg.class);
   }
 }
