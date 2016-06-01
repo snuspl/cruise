@@ -39,7 +39,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A Partitioned Parameter Server.
+ * An implementation of Parameter Server, whose partitions are fixed at their initial servers.
  * Receives push and pull operations from (e.g., from the network) and immediately queues them.
  * The processing loop in each thread applies these operations in order; for pull operations
  * this results in a send call via {@link ServerSideReplySender}.

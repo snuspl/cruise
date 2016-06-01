@@ -23,7 +23,7 @@ import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.impl.fixed.StaticParameterServer;
-import edu.snu.cay.services.ps.server.impl.PartitionedServerSideMsgHandler;
+import edu.snu.cay.services.ps.server.impl.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.impl.ServerSideReplySenderImpl;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
@@ -47,11 +47,11 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 
 /**
- * Manager class for a Partitioned Parameter Server, that supports atomic,
- * in-order processing of push and pull operations, running on a single Evaluator.
+ * Driver-side manager class for the Static Parameter Server.
  * Partitions are based on the hash of the key.
  * Several servers threads are spawned (for each server) to handle disjoint sets of partitions.
  * Each server thread has its own queue and kvStore.
+ * Moreover, the partition distribution across servers does not change at all.
  *
  * This manager does NOT handle server or worker faults.
  */
@@ -121,7 +121,7 @@ public final class StaticParameterServerManager implements ParameterServerManage
         .bindImplementation(ParameterServer.class, StaticParameterServer.class)
         .bindImplementation(ServerSideReplySender.class, ServerSideReplySenderImpl.class)
         .bindNamedParameter(EndpointId.class, contextId)
-        .bindNamedParameter(PSMessageHandler.class, PartitionedServerSideMsgHandler.class)
+        .bindNamedParameter(PSMessageHandler.class, ServerSideMsgHandler.class)
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))

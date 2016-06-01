@@ -18,6 +18,6 @@ package edu.snu.cay.services.ps.common.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Whether to use dynamic partitioned PS", short_name = "dynamic", default_value = "false")
+@NamedParameter(doc = "Whether to use dynamic PS", short_name = "dynamic", default_value = "false")
 public final class Dynamic implements Name<Boolean> {
 }

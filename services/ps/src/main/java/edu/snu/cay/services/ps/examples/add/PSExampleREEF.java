@@ -97,7 +97,7 @@ public final class PSExampleREEF {
     final Configuration driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES,
             EnvironmentUtils.getClassLocation(PSExampleDriver.class))
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "PartitionedPSExample")
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "PSExampleREEF")
         .set(DriverConfiguration.ON_DRIVER_STARTED,
             PSExampleDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED,

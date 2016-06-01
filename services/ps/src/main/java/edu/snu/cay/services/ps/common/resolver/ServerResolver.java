@@ -50,8 +50,9 @@ public interface ServerResolver {
 
   /**
    * Initialize its local routing table.
-   * Note that this method is used only in the dynamic partitioned ParameterServer.
+   * Note that this method is used only in the dynamic ParameterServer.
    */
+  // TODO #553: Methods that are used by only one implementation should not be included in the interface.
   void initRoutingTable(EMRoutingTable routingTable);
 
   /**

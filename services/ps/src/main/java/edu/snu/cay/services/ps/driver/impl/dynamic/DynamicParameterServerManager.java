@@ -26,7 +26,7 @@ import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
-import edu.snu.cay.services.ps.server.impl.PartitionedServerSideMsgHandler;
+import edu.snu.cay.services.ps.server.impl.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.impl.ServerSideReplySenderImpl;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
@@ -52,11 +52,12 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 
 /**
- * Manager class for a Dynamic Partitioned Parameter Server, that supports atomic,
- * in-order processing of push and pull operations, running on a single Evaluator.
- * Partitions are logically determined by the Elastic Memory, where each partition consists of
+ * Driver-side manager class for the Dynamic Parameter Server.
+ * Partitions are logically determined by Elastic Memory, where each partition consists of
  * disjoint sets of blocks.
  * Each server spawns multiple threads each of which has its individual queue to handle operations.
+ * Moreover, the partition distribution across servers may change -
+ * this is managed by {@link DynamicServerResolver}.
  *
  * This manager does NOT handle server or worker faults.
  */
@@ -130,7 +131,7 @@ public final class DynamicParameterServerManager implements ParameterServerManag
             .bindImplementation(ParameterServer.class, DynamicParameterServer.class)
             .bindImplementation(ServerSideReplySender.class, ServerSideReplySenderImpl.class)
             .bindNamedParameter(EndpointId.class, contextId)
-            .bindNamedParameter(PSMessageHandler.class, PartitionedServerSideMsgHandler.class)
+            .bindNamedParameter(PSMessageHandler.class, ServerSideMsgHandler.class)
             .bindImplementation(ServerResolver.class, DynamicServerResolver.class)
             .bindNamedParameter(NumServers.class, Integer.toString(numServers))
             .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))

@@ -37,17 +37,17 @@ import java.util.logging.Logger;
 public final class ContextStopHandler implements EventHandler<ContextStop> {
   private static final Logger LOG = Logger.getLogger(ContextStopHandler.class.getName());
 
-  private ParameterWorkerImpl partitionedParameterWorker;
+  private ParameterWorkerImpl parameterWorker;
 
   @Inject
-  private ContextStopHandler(final ParameterWorkerImpl partitionedParameterWorker) {
-    this.partitionedParameterWorker = partitionedParameterWorker;
+  private ContextStopHandler(final ParameterWorkerImpl parameterWorker) {
+    this.parameterWorker = parameterWorker;
   }
 
   @Override
   public void onNext(final ContextStop contextStop) {
     LOG.log(Level.INFO, "Calling close. Will wait for close.");
-    partitionedParameterWorker.close();
+    parameterWorker.close();
     LOG.log(Level.INFO, "Worker closed.");
   }
 }

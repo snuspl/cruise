@@ -29,7 +29,7 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * Provides the routing table information used in Dynamic Partitioned ParameterServer.
+ * Provides the routing table information used in Dynamic ParameterServer.
  * It receives the latest routing table from EM Driver. In addition, it keeps the mapping between
  * EM's MemoryStore ID and the PS's NCS endpoint id for PSWorkers can send requests to the appropriate servers.
  */

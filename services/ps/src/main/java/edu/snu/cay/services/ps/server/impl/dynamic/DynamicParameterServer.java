@@ -35,7 +35,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * An implementation of Partitioned Parameter Server, where partitions are dynamically moving in and out.
+ * An implementation of Parameter Server, whose partitions can dynamically move in and out.
  * The parameters are stored in MemoryStore, in most cases the local MemoryStore in the same Evaluator.
  * If {@link edu.snu.cay.services.ps.common.resolver.DynamicServerResolver} has not reflected the
  * up-to-date result of data migration, then PS will receive the requests for the block which has moved out to

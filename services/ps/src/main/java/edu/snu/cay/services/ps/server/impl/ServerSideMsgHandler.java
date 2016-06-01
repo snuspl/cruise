@@ -41,11 +41,11 @@ import java.util.logging.Logger;
  * This would trade-off less computation on the server for more computation on the client and more communication cost.
  */
 @EvaluatorSide
-public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHandler<Message<AvroParameterServerMsg>> {
-  private static final Logger LOG = Logger.getLogger(PartitionedServerSideMsgHandler.class.getName());
+public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message<AvroParameterServerMsg>> {
+  private static final Logger LOG = Logger.getLogger(ServerSideMsgHandler.class.getName());
 
   /**
-   * The Partitioned Parameter Server.
+   * The Parameter Server object.
    */
   private final ParameterServer<K, P, V> parameterServer;
 
@@ -60,9 +60,9 @@ public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHand
   private final Codec<P> preValueCodec;
 
   @Inject
-  private PartitionedServerSideMsgHandler(final ParameterServer<K, P, V> parameterServer,
-                                          @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                                          @Parameter(PreValueCodecName.class) final Codec<P> preValueCodec) {
+  private ServerSideMsgHandler(final ParameterServer<K, P, V> parameterServer,
+                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
+                               @Parameter(PreValueCodecName.class) final Codec<P> preValueCodec) {
     this.parameterServer = parameterServer;
     this.keyCodec = keyCodec;
     this.preValueCodec = preValueCodec;
@@ -74,7 +74,7 @@ public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHand
    */
   @Override
   public void onNext(final Message<AvroParameterServerMsg> msg) {
-    LOG.entering(PartitionedServerSideMsgHandler.class.getSimpleName(), "onNext");
+    LOG.entering(ServerSideMsgHandler.class.getSimpleName(), "onNext");
 
     final AvroParameterServerMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
@@ -90,7 +90,7 @@ public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHand
       throw new RuntimeException("Unexpected message type: " + innerMsg.getType().toString());
     }
 
-    LOG.exiting(PartitionedServerSideMsgHandler.class.getSimpleName(), "onNext");
+    LOG.exiting(ServerSideMsgHandler.class.getSimpleName(), "onNext");
   }
 
   private void onPushMsg(final PushMsg pushMsg) {

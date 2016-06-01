@@ -43,7 +43,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A Partitioned Parameter Server worker that interacts with the Partitioned single-node server.
+ * A Parameter Server worker that interacts with servers.
  * A single instance of this class can be used by more than one thread safely, if and only if
  * the Codec classes are thread-safe.
  *

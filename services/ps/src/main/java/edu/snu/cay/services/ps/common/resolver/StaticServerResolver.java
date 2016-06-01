@@ -94,11 +94,11 @@ public final class StaticServerResolver implements ServerResolver {
 
   @Override
   public void initRoutingTable(final EMRoutingTable routingTable) {
-    throw new UnsupportedOperationException("This method is used only in the dynamic partitioned PS");
+    throw new UnsupportedOperationException("This method is used only in the dynamic PS");
   }
 
   @Override
   public void updateRoutingTable(final EMRoutingTableUpdate routingTableUpdate) {
-    throw new UnsupportedOperationException("This method is used only in the dynamic partitioned PS");
+    throw new UnsupportedOperationException("This method is used only in the dynamic PS");
   }
 }
