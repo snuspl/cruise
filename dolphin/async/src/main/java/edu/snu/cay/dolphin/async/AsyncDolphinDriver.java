@@ -88,16 +88,10 @@ import java.util.logging.Logger;
 @Unit
 public final class AsyncDolphinDriver {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinDriver.class.getName());
-  private static final String WORKER_CONTEXT = "WorkerContext";
-  private static final String SERVER_CONTEXT = "ServerContext";
+  private static final String WORKER_CONTEXT_ID = "WorkerContext";
+  private static final String SERVER_CONTEXT_ID = "ServerContext";
   private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
   private static final String SERVER_EM_IDENTIFIER = "ServerEM";
-
-  /**
-   * Interval between trials to shutdown contexts to make sure
-   * no optimization plan is executing.
-   */
-  private static final long SHUTDOWN_TRIAL_INTERVAL_MS = 3000;
 
   /**
    * Flag indicating whether all workers have finished their work or not.
@@ -107,12 +101,12 @@ public final class AsyncDolphinDriver {
   private final AtomicBoolean isJobFinished = new AtomicBoolean(false);
 
   /**
-   * Flag indicating a phase of job shutdown closing servers contexts, after all worker contexts are closed.
+   * Flag indicating a phase of job checkShutdown closing servers contexts, after all worker contexts are closed.
    */
   private final AtomicBoolean closingServerContexts = new AtomicBoolean(false);
 
   /**
-   * Flag indicating a final phase of job shutdown closing root contexts of server and worker.
+   * Flag indicating a final phase of job checkShutdown closing root contexts of server and worker.
    */
   private final AtomicBoolean closingRootContexts = new AtomicBoolean(false);
 
@@ -411,7 +405,7 @@ public final class AsyncDolphinDriver {
 
         final int serverIndex = Integer.parseInt(
             activeContext.getId().substring(dataLoadingService.getComputeContextIdPrefix().length()));
-        final String contextId = SERVER_CONTEXT + "-" + serverIndex;
+        final String contextId = SERVER_CONTEXT_ID + "-" + serverIndex;
         final Configuration contextConf = Configurations.merge(
             ContextConfiguration.CONF
                 .set(ContextConfiguration.IDENTIFIER, contextId)
@@ -468,7 +462,7 @@ public final class AsyncDolphinDriver {
 
         final int workerIndex = workerContextIndexCounter.getAndIncrement();
 
-        final String contextId = WORKER_CONTEXT + "-" + workerIndex;
+        final String contextId = WORKER_CONTEXT_ID + "-" + workerIndex;
         final Configuration contextConf = Configurations.merge(
             ContextConfiguration.CONF
                 .set(ContextConfiguration.IDENTIFIER, contextId)
@@ -522,7 +516,7 @@ public final class AsyncDolphinDriver {
         LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
         workerContexts.put(activeContext.getId(), activeContext);
 
-        final int workerIndex = Integer.parseInt(activeContext.getId().substring(WORKER_CONTEXT.length() + 1));
+        final int workerIndex = Integer.parseInt(activeContext.getId().substring(WORKER_CONTEXT_ID.length() + 1));
         final Configuration taskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex)
             .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
@@ -614,6 +608,8 @@ public final class AsyncDolphinDriver {
             LOG.log(Level.WARNING, "Errors in tracking server context: {0}", closedContext);
           }
         }
+      } if (rootServerContexts.containsKey(contextId) || rootWorkerContexts.containsKey(contextId)) {
+        LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
       } else {
         LOG.log(Level.WARNING, "Untracked context: {0}", closedContext);
       }
@@ -626,9 +622,7 @@ public final class AsyncDolphinDriver {
       LOG.log(Level.INFO, "FailedTask: {0}", failedTask);
 
       contextIdToWorkerTasks.remove(failedTask.getActiveContext().get().getId());
-      if (contextIdToWorkerTasks.isEmpty()) {
-        shutdown();
-      }
+      checkShutdown();
     }
   }
 
@@ -637,34 +631,45 @@ public final class AsyncDolphinDriver {
     public void onNext(final CompletedTask completedTask) {
       LOG.log(Level.INFO, "CompletedTask: {0}", completedTask);
 
-      // I'm not sure whether tasks closed by closing context generate this event or not
+      // Close the resource promptly when the task is complete by EM's Delete to make it reusable for EM's Add
+      // On the contrary, do not reuse evaluators that completely finish their work for EM's Add
+      // It is because these evaluators still have valid data, which can be accessed by other running evaluators
       if (deletedWorkerContextIds.remove(completedTask.getActiveContext().getId())) {
-        // Close the resource promptly when the task is complete by EM's Delete to make it reusable for EM's Add
         final ActiveContext context = completedTask.getActiveContext();
-        context.close(); // we can reuse this evaluator by submitting context with EM service
+        context.close(); // we can reuse this evaluator by submitting new context
       }
 
-      // Currently we do not reuse evaluators that completely finish their work for EM's Add
-      // It is because these evaluators still have valid data, which can be accessed by other running evaluators
       contextIdToWorkerTasks.remove(completedTask.getActiveContext().getId());
-      if (contextIdToWorkerTasks.isEmpty()) {
-        shutdown();
-      }
+      checkShutdown();
     }
   }
 
   /**
-   * Shutdown job, when all worker tasks are finished.
-   * Close the worker contexts first and then server contexts,
-   * since worker-server communication is driven by worker.
-   * After completely closing PS contexts, close the root contexts (DataLoading).
+   * Start job shutdown, if all worker tasks are finished.
+   * To shutdown job completely, following steps have to be done in sequence after completing previous step.
+   *  1) Close the worker contexts first, since worker-server communication is driven by worker
+   *  2) Close the server contexts
+   *  3) Close the root contexts of both server and worker
+   *
+   * First step is done by this method.
+   * Second and third steps are done in ClosedContextHandler, triggered by resulting events of the first step.
    */
-  private void shutdown() {
-    LOG.log(Level.INFO, "shutdown");
+  private synchronized void checkShutdown() {
+    if (contextIdToWorkerTasks.isEmpty()) {
+      return;
+    }
 
     if (isJobFinished.compareAndSet(false, true)) {
+      LOG.log(Level.INFO, "Time to shut down the job");
       // FINISH JOB: close all worker contexts
       Executors.newSingleThreadExecutor().submit(new Runnable() {
+
+        /**
+         * Interval between trials to shutdown contexts to make sure
+         * no optimization plan is executing.
+         */
+        private static final long SHUTDOWN_TRIAL_INTERVAL_MS = 3000;
+
         @Override
         public void run() {
           while (optimizationOrchestrator.isPlanExecuting()) {
@@ -685,7 +690,7 @@ public final class AsyncDolphinDriver {
         }
       });
     } else {
-      LOG.log(Level.WARNING, "Job is already being shutdown. Driver fails to correctly track worker tasks.");
+      LOG.log(Level.WARNING, "The Job is already being shutdown. Driver fails to correctly track worker tasks.");
     }
   }
 
@@ -728,7 +733,7 @@ public final class AsyncDolphinDriver {
       } else {
         deletedWorkerContextIds.add(activeContextId);
 
-        final RunningTask runningTask = contextIdToWorkerTasks.remove(activeContextId);
+        final RunningTask runningTask = contextIdToWorkerTasks.get(activeContextId);
         runningTask.close();
 
         // context will be closed in ClosedTaskHandler
