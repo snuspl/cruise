@@ -160,6 +160,11 @@ public final class AsyncDolphinDriver {
   private final AtomicInteger serverContextIndexCounter = new AtomicInteger(0);
 
   /**
+   * Bookkeeping the AllocatedEvaluator objects of the evaluators allocated for the job.
+   */
+  private final Map<String, AllocatedEvaluator> allocatedEvaluators = new ConcurrentHashMap<>();
+
+  /**
    * Bookkeeping the ActiveContext objects of the root context of the server-side evaluators.
    */
   private final Map<String, ActiveContext> rootWorkerContexts = new ConcurrentHashMap<>();
@@ -376,6 +381,8 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
         LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
+        allocatedEvaluators.put(allocatedEvaluator.getId(), allocatedEvaluator);
+
         final int serverIndex = serverContextIndexCounter.getAndIncrement();
         final Configuration idConfiguration = ContextConfiguration.CONF
             .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + serverIndex)
@@ -392,6 +399,8 @@ public final class AsyncDolphinDriver {
     return new EventHandler<AllocatedEvaluator>() {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+        allocatedEvaluators.put(allocatedEvaluator.getId(), allocatedEvaluator);
+
         LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
         allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
             dataLoadingService.getServiceConfiguration(allocatedEvaluator));
@@ -737,6 +746,7 @@ public final class AsyncDolphinDriver {
    *
    * First step is done by this method.
    * Second and third steps are done in ClosedContextHandler, triggered by resulting events of the first step.
+   * If a previous step is not completed within time bound, it progresses to the next step.
    */
   private synchronized void checkShutdown() {
     if (!contextIdToWorkerTasks.isEmpty()) {
@@ -745,7 +755,8 @@ public final class AsyncDolphinDriver {
 
     if (isJobFinished.compareAndSet(false, true)) {
       LOG.log(Level.INFO, "Time to shut down the job");
-      // FINISH JOB: close all worker contexts
+
+      // start shutdown thread
       Executors.newSingleThreadExecutor().submit(new Runnable() {
 
         /**
@@ -753,6 +764,7 @@ public final class AsyncDolphinDriver {
          * no optimization plan is executing.
          */
         private static final long SHUTDOWN_TRIAL_INTERVAL_MS = 3000;
+        private static final long CONTEXT_CLOSE_GRACE_PERIOD_MS = 10000;
 
         @Override
         public void run() {
@@ -770,6 +782,57 @@ public final class AsyncDolphinDriver {
           // the servers may lose some updates.
           for (final ActiveContext workerContext : workerContexts.values()) {
             workerContext.close();
+          }
+
+          // wait for worker contexts to be closed
+          try {
+            Thread.sleep(CONTEXT_CLOSE_GRACE_PERIOD_MS);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+            LOG.log(Level.FINEST, "Interrupted while waiting for close of worker contexts", e);
+          }
+
+          if (closingServerContexts.compareAndSet(false, true)) {
+            LOG.log(Level.WARNING, "Some workers do not respond to close messages within time." +
+                " Start closing server contexts.");
+
+            // ignore remaining worker contexts and close server contexts
+            for (final ActiveContext serverContext : serverContexts.values()) {
+              serverContext.close();
+            }
+          }
+
+          try {
+            Thread.sleep(CONTEXT_CLOSE_GRACE_PERIOD_MS);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+            LOG.log(Level.FINEST, "Interrupted while waiting for close of server contexts", e);
+          }
+
+          if (closingRootContexts.compareAndSet(false, true)) {
+            LOG.log(Level.WARNING, "Some servers do not respond to close messages within time." +
+                " Start closing root contexts.");
+
+            // ignore remaining server contexts and close root contexts
+            for (final ActiveContext rootWorkerContext : rootWorkerContexts.values()) {
+              rootWorkerContext.close();
+            }
+            for (final ActiveContext rootServerContext : rootServerContexts.values()) {
+              rootServerContext.close();
+            }
+          }
+
+          try {
+            Thread.sleep(CONTEXT_CLOSE_GRACE_PERIOD_MS);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+            LOG.log(Level.FINEST, "Interrupted while waiting for close of root contexts", e);
+          }
+
+          LOG.log(Level.INFO, "Some root contexts do not respond to close message. Close evaluators directly.");
+          // If I am still alive, then kill evaluators directly via AllocatedEvaluator.close(), which uses RM
+          for (final AllocatedEvaluator allocatedEvaluator : allocatedEvaluators.values()) {
+            allocatedEvaluator.close();
           }
         }
       });
