@@ -25,8 +25,6 @@ import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.ps.ParameterServerParameters;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
-import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
-import edu.snu.cay.services.ps.common.partitioned.resolver.SingleNodeServerResolver;
 import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
 import edu.snu.cay.services.ps.ns.EndpointId;
@@ -72,7 +70,6 @@ public final class DynamicPartitionedParameterServerTest {
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bind(PartitionedServerSideReplySender.class, MockPartitionedServerSideReplySender.class)
-        .bindImplementation(ServerResolver.class, SingleNodeServerResolver.class)
         .bindNamedParameter(ServerId.class, SERVER_ID_PREFIX + 0)
         .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + 0)
         .bindNamedParameter(ParameterServerParameters.KeyCodecName.class, IntegerCodec.class)
