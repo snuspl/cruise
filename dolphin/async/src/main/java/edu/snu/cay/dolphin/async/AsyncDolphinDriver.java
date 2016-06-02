@@ -247,7 +247,7 @@ public final class AsyncDolphinDriver {
   private final EMWrapper serverEMWrapper;
 
   /**
-   * To establish connections between the Driver and PS Workers.
+   * To establish connections between the Driver and workers/servers.
    */
   private final PSNetworkSetup psNetworkSetup;
 
