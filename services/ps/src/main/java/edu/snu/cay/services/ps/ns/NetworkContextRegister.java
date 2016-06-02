@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.ps.ns;
 
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.tang.annotations.Unit;
@@ -34,12 +36,15 @@ public final class NetworkContextRegister {
   private static final Logger LOG = Logger.getLogger(NetworkContextRegister.class.getName());
 
   private final PSNetworkSetup psNetworkSetup;
+  private final ParameterWorker parameterWorker;
   private final IdentifierFactory identifierFactory;
 
   @Inject
   private NetworkContextRegister(final PSNetworkSetup psNetworkSetup,
+                                 final PartitionedParameterWorker parameterWorker,
                                  final IdentifierFactory identifierFactory) {
     this.psNetworkSetup = psNetworkSetup;
+    this.parameterWorker = parameterWorker;
     this.identifierFactory = identifierFactory;
   }
 
@@ -51,9 +56,22 @@ public final class NetworkContextRegister {
     }
   }
 
+  /**
+   * ContextStop handler for PS service.
+   * It guarantees PS service to be closed after fully sending out all queued operations.
+   * With this guarantee, the context can be shutdown, minimizing message loss.
+   *
+   * However, we are still observing some lost messages when
+   * contexts are immediately closed after the task completes.
+   * It appears messages buffered in NCS are not being flushed before context close,
+   * but this has to be investigated further.
+   */
   public final class UnregisterContextHandler implements EventHandler<ContextStop> {
+    private static final long TIMEOUT_MS = 10000;
+
     @Override
     public void onNext(final ContextStop contextStop) {
+      parameterWorker.close(TIMEOUT_MS);
       psNetworkSetup.unregisterConnectionFactory();
     }
   }

@@ -17,6 +17,7 @@ package edu.snu.cay.services.ps.worker.concurrent;
 
 import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -121,6 +122,16 @@ public final class ConcurrentParameterWorker<K, P, V> implements ParameterWorker
   @Override
   public List<V> pull(final List<K> keys) {
     throw new RuntimeException("Not Implemented");
+  }
+
+  @Override
+  public void close() {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public boolean close(final long timeoutMs) {
+    throw new NotImplementedException();
   }
 
   /**

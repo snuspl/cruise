@@ -88,8 +88,6 @@ public final class StaticPartitionedParameterServerManager implements ParameterS
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, PartitionedParameterWorker.class)
-            .set(ServiceConfiguration.ON_TASK_STOP, ShutdownHandlers.TaskStopHandler.class)
-            .set(ServiceConfiguration.ON_CONTEXT_STOP, ShutdownHandlers.ContextStopHandler.class)
             .build())
         .bindImplementation(ParameterWorker.class, PartitionedParameterWorker.class)
         .bindImplementation(AsyncWorkerHandler.class, PartitionedWorkerHandler.class)

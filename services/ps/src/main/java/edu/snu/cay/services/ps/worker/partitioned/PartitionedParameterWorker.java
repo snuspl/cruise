@@ -34,14 +34,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -234,6 +227,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   /**
    * Close the worker, after waiting for queued messages to be sent.
    */
+  @Override
   public void close() {
     // Close all threads
     for (int i = 0; i < numThreads; i++) {
@@ -246,12 +240,20 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   }
 
   /**
-   * Wait for queued messages to be sent.
+   * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
+   * for queued messages to be sent.
    */
-  public void waitPendingOps() {
-    for (int i = 0; i < numThreads; i++) {
-      threads[i].waitPendingOps();
+  @Override
+  public boolean close(final long timeoutMs) {
+    final Future result = Executors.newSingleThreadExecutor().submit((Runnable) this::close);
+
+    try {
+      result.get(timeoutMs, TimeUnit.MILLISECONDS);
+    } catch (final InterruptedException | ExecutionException | TimeoutException e) {
+      return false;
     }
+
+    return true;
   }
 
   /**
@@ -317,7 +319,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
    * Wrapped values for use within each partition's cache.
    * Wrapping allows the partition to replace the value on a local update,
    * without updating the write time of the cache entry.
-  */
+   */
   private static class Wrapped<V> {
     private V value;
 
@@ -443,9 +445,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     private final int drainSize; // Max number of operations to drain per iteration.
 
     private volatile boolean close = false;
-    private final AtomicBoolean shutdown = new AtomicBoolean(false);
-    private final AtomicBoolean flushing = new AtomicBoolean(false);
-    private volatile boolean flip = false; // a flip bit for controlling flushing state
+    private AtomicBoolean shutdown = new AtomicBoolean(false);
 
     public WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
                         final ServerResolver serverResolver,
@@ -494,7 +494,6 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
       kvCache.invalidateAll();
     }
 
-
     /**
      * @return number of pending operations in the queue.
      */
@@ -512,11 +511,6 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     @Override
     public void run() {
       while (!close || !queue.isEmpty()) {
-        // notify that all the queued operations are flushed
-        if (flushing.get() || queue.isEmpty()) {
-          flushed();
-        }
-
         // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -538,41 +532,12 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
         }
         localOps.clear();
       }
+
       shutdown();
     }
 
     /**
-     * Notify threads waiting in {@link #waitPendingOps()}.
-     */
-    private void flushed() {
-      if (flushing.compareAndSet(true, false)) {
-        flip = !flip;
-        synchronized (flushing) {
-          flushing.notifyAll();
-        }
-      }
-    }
-
-    /**
-     * Wait for threads to process all pending operations.
-     */
-    public void waitPendingOps() {
-      final boolean token = flip;
-      flushing.set(true);
-      while (token == flip) {
-        try {
-          synchronized (flushing) {
-            flushing.wait();
-          }
-        } catch (InterruptedException e) {
-          LOG.log(Level.WARNING, "InterruptedException while waiting for queued operations to complete", e);
-        }
-      }
-    }
-
-    /**
      * Close the run thread.
-     * To prevent message loss, call {@link #waitPendingOps()} beforehand.
      */
     public void close() {
       close = true;
