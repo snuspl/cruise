@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.avro.IdMapping;
 import edu.snu.cay.services.ps.avro.Type;
 import edu.snu.cay.services.ps.avro.WorkerRegisterReplyMsg;
@@ -34,11 +34,12 @@ import java.util.Set;
 /**
  * Receives the messages from ParameterServers and ParameterWorkers.
  * Currently used to exchange the routing table between
- * {@link edu.snu.cay.services.ps.server.partitioned.DynamicPartitionedParameterServer} and
- * {@link edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver}.
+ * {@link edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer} and
+ * {@link edu.snu.cay.services.ps.common.resolver.DynamicServerResolver}.
  */
+// TODO #553: Should be instantiated only when dynamic PS is used.
 @DriverSide
-public final class DriverSideMsgHandler implements EventHandler<Message<AvroParameterServerMsg>> {
+public final class DriverSideMsgHandler implements EventHandler<Message<AvroPSMsg>> {
   private final EMRoutingTableManager routingTableManager;
   private final InjectionFuture<PSMessageSender> sender;
 
@@ -50,10 +51,10 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPara
   }
 
   @Override
-  public void onNext(final Message<AvroParameterServerMsg> avroParameterServerMsgMessage) {
+  public void onNext(final Message<AvroPSMsg> avroParameterServerMsgMessage) {
     final String srcId = avroParameterServerMsgMessage.getSrcId().toString();
 
-    final AvroParameterServerMsg msg = SingleMessageExtractor.extract(avroParameterServerMsgMessage);
+    final AvroPSMsg msg = SingleMessageExtractor.extract(avroParameterServerMsgMessage);
     switch (msg.getType()) {
     case WorkerRegisterMsg:
       onWorkerRegisterMsg(srcId);
@@ -89,8 +90,8 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPara
         .setNumTotalBlocks(numTotalBlocks)
         .build();
 
-    final AvroParameterServerMsg responseMsg =
-        AvroParameterServerMsg.newBuilder()
+    final AvroPSMsg responseMsg =
+        AvroPSMsg.newBuilder()
             .setType(Type.WorkerRegisterReplyMsg)
             .setWorkerRegisterReplyMsg(workerRegisterReplyMsg)
             .build();
