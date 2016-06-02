@@ -37,8 +37,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
 
@@ -46,10 +44,19 @@ import static org.junit.Assert.*;
  * Test that the MigrationManager handles the states and sends messages correctly.
  */
 public class MigrationManagerTest {
-  private static final Logger LOG = Logger.getLogger(MigrationManagerTest.class.getName());
-  // the number of intial evals should be larger than 3 for simulating all roles: sender, receiver, and the other
-  // so as to test the broadcast of the result of migration in testBroadcastwithInitialEvals().
+
+  /**
+   * The number of intial evals should be larger than 3 for simulating all roles: sender, receiver, and the other
+   * so as to test the broadcast of the result of migration in {@link #testBroadcastWithAdditionalEvals()}.
+   */
   private static final int NUM_INIT_EVALS = 3;
+
+  /**
+   * Waiting interval for wating broadcast and update notification of migration result.
+   * It is required for detecting whether migration manager performs broadcast/update more than it should do,
+   * by waiting enough amount of time. We determine this with the number of intervals taken by normal operations.
+   */
+  private static final int WAIT_INTERVAL_MS = 100;
 
   private BlockManager blockManager;
   private MigrationManager migrationManager;
@@ -146,13 +153,15 @@ public class MigrationManagerTest {
     runRandomMove(executor, operationIdCounter, numMoves, numActiveEvals, finishedCallback);
     assertTrue("Move does not finish within time", movedLatch.await(20000, TimeUnit.MILLISECONDS));
 
+    int loop = 0;
     final int numBroadcasts = numOtherEvals * (numMoves - finishedCallback.getNumFailedMoves());
     while (messageSender.getBroadcastCount() < numBroadcasts) {
-      Thread.sleep(1000);
+      loop++;
+      Thread.sleep(WAIT_INTERVAL_MS);
     }
 
     // confirm the number of broadcast stops at numBroadcasts
-    Thread.sleep(2000);
+    Thread.sleep(WAIT_INTERVAL_MS * (loop + 1)); // +1 to make it sure
     assertEquals("There're more broadcasts above expectation", numBroadcasts, messageSender.getBroadcastCount());
   }
 
@@ -183,13 +192,15 @@ public class MigrationManagerTest {
     runRandomMove(executor, operationIdCounter, numMoves, numActiveEvals, finishedCallback);
     assertTrue("Move does not finish within time", movedLatch.await(20000, TimeUnit.MILLISECONDS));
 
+    int loop = 0;
     final int numBroadcasts = numOtherEvals * (numMoves - finishedCallback.getNumFailedMoves());
     while (messageSender.getBroadcastCount() < numBroadcasts) {
-      Thread.sleep(1000);
+      loop++;
+      Thread.sleep(WAIT_INTERVAL_MS);
     }
 
     // confirm the number of broadcast stops at numBroadcasts
-    Thread.sleep(2000);
+    Thread.sleep(WAIT_INTERVAL_MS * (loop + 1)); // +1 to make it sure
     assertEquals("There're more broadcasts above expectation", numBroadcasts, messageSender.getBroadcastCount());
   }
 
@@ -216,14 +227,16 @@ public class MigrationManagerTest {
     runRandomMove(executor, operationIdCounter, numMoves, NUM_INIT_EVALS, finishedCallback);
     assertTrue("Move does not finish within time", movedLatch.await(10000, TimeUnit.MILLISECONDS));
 
+    int loop = 0;
     final int numUpdatesInFirstMoves = numMoves - finishedCallback.getNumFailedMoves();
     while (updateCallback0.getUpdateCount() < numUpdatesInFirstMoves ||
         updateCallback1.getUpdateCount() < numUpdatesInFirstMoves) {
-      Thread.sleep(1000);
+      loop++;
+      Thread.sleep(WAIT_INTERVAL_MS);
     }
 
     // confirm the number of broadcast stops at numUpdatesInFirstMoves
-    Thread.sleep(2000);
+    Thread.sleep(WAIT_INTERVAL_MS * (loop + 1)); // +1 to make it sure
     assertEquals("There're more updates above expectation",
         numUpdatesInFirstMoves, updateCallback0.getUpdateCount());
     assertEquals("There're more updates above expectation",
@@ -241,17 +254,15 @@ public class MigrationManagerTest {
     runRandomMove(executor, operationIdCounter, numMoves, NUM_INIT_EVALS, finishedCallback);
     assertTrue("Move does not finish within time", movedLatch.await(10000, TimeUnit.MILLISECONDS));
 
-    int loop = 0;
-
+    loop = 0;
     final int numUpdatesInSecondMoves = numMoves - finishedCallback.getNumFailedMoves();
     while (updateCallback0.getUpdateCount() < numUpdatesInFirstMoves + numUpdatesInSecondMoves) {
       loop++;
-      Thread.sleep(1000);
+      Thread.sleep(WAIT_INTERVAL_MS);
     }
-    LOG.log(Level.INFO, "loop: {0}", loop);
 
     // confirm the number of broadcast stops at numBroadcasts
-    Thread.sleep(2000);
+    Thread.sleep(WAIT_INTERVAL_MS * (loop + 1)); // +1 to make it sure
     assertEquals("There're more updates above expectation",
         numUpdatesInFirstMoves + numUpdatesInSecondMoves, updateCallback0.getUpdateCount());
     assertEquals("There're more updates above expectation",
