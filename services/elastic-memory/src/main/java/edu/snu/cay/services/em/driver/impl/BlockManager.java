@@ -183,7 +183,8 @@ public final class BlockManager {
         new Object[]{blockId, oldOwnerId, newOwnerId});
 
     if (!movingBlocks.contains(blockId)) {
-      throw new RuntimeException("The block " + blockId + " + is not locked for move");
+      throw new RuntimeException("The block " + blockId +
+          " has not been chosen for migration or has already been released");
     }
 
     if (!storeIdToBlockIds.containsKey(oldOwnerId)) {

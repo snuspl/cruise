@@ -127,14 +127,14 @@ public class MigrationManagerTest {
     final int numBlocksIn0 = numInitBlocksIn0 + numMovedBlocksFrom1To0 - numMovedBlocksFrom0To1;
     final int numBlocksIn1 = numInitBlocksIn1 + numMovedBlocksFrom0To1 - numMovedBlocksFrom1To0;
 
-    assertEquals("The number of blocks are different from expectation",
+    assertEquals("The number of blocks is different from expectation",
         numBlocksIn0, blockManager.getNumBlocks(EVAL_PREFIX + 0));
-    assertEquals("The number of blocks are different from expectation",
+    assertEquals("The number of blocks is different from expectation",
         numBlocksIn1, blockManager.getNumBlocks(EVAL_PREFIX + 1));
   }
 
   /**
-   * Test broadcasts of the result of migration are done well, when there're only initial evaluators.
+   * Test broadcasts of the result of migration are done well, when there are only initial evaluators.
    */
   @Test(timeout = 20000)
   public void testBroadcastwithInitialEvals() throws InterruptedException {
@@ -162,12 +162,12 @@ public class MigrationManagerTest {
 
     // confirm the number of broadcast stops at numBroadcasts
     Thread.sleep(WAIT_INTERVAL_MS * (loop + 1)); // +1 to make it sure
-    assertEquals("There're more broadcasts above expectation", numBroadcasts, messageSender.getBroadcastCount());
+    assertEquals("There are more broadcasts above expectation", numBroadcasts, messageSender.getBroadcastCount());
   }
 
   /**
    * Test broadcasts of the result of migration are done well,
-   * when there're additional evaluators besides initial ones.
+   * when there are additional evaluators besides initial ones.
    */
   @Test(timeout = 20000)
   public void testBroadcastWithAdditionalEvals() throws InterruptedException {
@@ -201,7 +201,7 @@ public class MigrationManagerTest {
 
     // confirm the number of broadcast stops at numBroadcasts
     Thread.sleep(WAIT_INTERVAL_MS * (loop + 1)); // +1 to make it sure
-    assertEquals("There're more broadcasts above expectation", numBroadcasts, messageSender.getBroadcastCount());
+    assertEquals("There are more broadcasts above expectation", numBroadcasts, messageSender.getBroadcastCount());
   }
 
   @Test(timeout = 20000)
@@ -237,9 +237,9 @@ public class MigrationManagerTest {
 
     // confirm the number of broadcast stops at numUpdatesInFirstMoves
     Thread.sleep(WAIT_INTERVAL_MS * (loop + 1)); // +1 to make it sure
-    assertEquals("There're more updates above expectation",
+    assertEquals("There are more updates above expectation",
         numUpdatesInFirstMoves, updateCallback0.getUpdateCount());
-    assertEquals("There're more updates above expectation",
+    assertEquals("There are more updates above expectation",
         numUpdatesInFirstMoves, updateCallback1.getUpdateCount());
 
     // 2. Second moves with only one client, after deregistering the other client
@@ -263,9 +263,9 @@ public class MigrationManagerTest {
 
     // confirm the number of broadcast stops at numBroadcasts
     Thread.sleep(WAIT_INTERVAL_MS * (loop + 1)); // +1 to make it sure
-    assertEquals("There're more updates above expectation",
+    assertEquals("There are more updates above expectation",
         numUpdatesInFirstMoves + numUpdatesInSecondMoves, updateCallback0.getUpdateCount());
-    assertEquals("There're more updates above expectation",
+    assertEquals("There are more updates above expectation",
         numUpdatesInFirstMoves, updateCallback1.getUpdateCount()); // client1 should not receive second updates
   }
 
@@ -495,7 +495,7 @@ public class MigrationManagerTest {
     public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final String dataType,
                                  final int blockId, final int oldOwnerId, final int newOwnerId,
                                  @Nullable final TraceInfo parentTraceInfo) {
-      // invoke a handler logic of response for OwnerShipMsg
+      // invoke a handler logic of response for OwnershipMsg
       migrationManager.markBlockAsMoved(operationId, blockId);
     }
 
