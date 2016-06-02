@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Implementations for driver-side Parameter Server classes in {@link edu.snu.cay.services.ps.driver.api}.
+ * Parameter Server classes that are instantiated at the driver.
  */
 package edu.snu.cay.services.ps.driver.impl;

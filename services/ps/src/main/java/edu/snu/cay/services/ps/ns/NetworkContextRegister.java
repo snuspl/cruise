@@ -16,7 +16,7 @@
 package edu.snu.cay.services.ps.ns;
 
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
+import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.tang.annotations.Unit;
@@ -41,7 +41,7 @@ public final class NetworkContextRegister {
 
   @Inject
   private NetworkContextRegister(final PSNetworkSetup psNetworkSetup,
-                                 final PartitionedParameterWorker parameterWorker,
+                                 final ParameterWorkerImpl parameterWorker,
                                  final IdentifierFactory identifierFactory) {
     this.psNetworkSetup = psNetworkSetup;
     this.parameterWorker = parameterWorker;

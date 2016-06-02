@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.ns;
 
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.Message;
@@ -35,26 +35,27 @@ public final class PSNetworkSetup {
 
   private final NetworkConnectionService networkConnectionService;
   private final Identifier connectionFactoryIdentifier;
-  private final ParameterServerMsgCodec parameterServerMsgCodec;
-  private final EventHandler<Message<AvroParameterServerMsg>> handler;
-  private volatile ConnectionFactory<AvroParameterServerMsg> connectionFactory;
+
+  private final PSMsgCodec psMsgCodec;
+  private final EventHandler<Message<AvroPSMsg>> handler;
+  private volatile ConnectionFactory<AvroPSMsg> connectionFactory;
 
   @Inject
   private PSNetworkSetup(
       final NetworkConnectionService networkConnectionService,
       final IdentifierFactory identifierFactory,
-      final ParameterServerMsgCodec parameterServerMsgCodec,
-      @Parameter(PSMessageHandler.class) final EventHandler<Message<AvroParameterServerMsg>> handler)
+      final PSMsgCodec psMsgCodec,
+      @Parameter(PSMessageHandler.class) final EventHandler<Message<AvroPSMsg>> handler)
       throws NetworkException {
     this.networkConnectionService = networkConnectionService;
     this.connectionFactoryIdentifier = identifierFactory.getNewInstance(PARAMETER_SERVER_IDENTIFIER);
-    this.parameterServerMsgCodec = parameterServerMsgCodec;
+    this.psMsgCodec = psMsgCodec;
     this.handler = handler;
   }
 
-  public ConnectionFactory<AvroParameterServerMsg> registerConnectionFactory(final Identifier localEndPointId) {
+  public ConnectionFactory<AvroPSMsg> registerConnectionFactory(final Identifier localEndPointId) {
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryIdentifier,
-        parameterServerMsgCodec, handler, null, localEndPointId);
+        psMsgCodec, handler, null, localEndPointId);
     return connectionFactory;
   }
 
@@ -63,7 +64,7 @@ public final class PSNetworkSetup {
     networkConnectionService.unregisterConnectionFactory(connectionFactoryIdentifier);
   }
 
-  public ConnectionFactory<AvroParameterServerMsg> getConnectionFactory() {
+  public ConnectionFactory<AvroPSMsg> getConnectionFactory() {
     return connectionFactory;
   }
 
