@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -26,10 +26,11 @@ import org.apache.reef.wake.IdentifierFactory;
 import javax.inject.Inject;
 
 /**
- * Sends messages from the Driver to Parameter Workers.
- * Only used in the DynamicPartitionedParameterServer implementation
+ * Sends messages from the Driver to ParameterWorkers.
+ * Only used in the DynamicParameterServer implementation
  * to send the routing information acquired from Elastic Memory.
  */
+// TODO #553: Should be instantiated only when DynamicParameterServer is used.
 @DriverSide
 final class PSMessageSender {
   private final InjectionFuture<PSNetworkSetup> psNetworkSetup;
@@ -42,8 +43,8 @@ final class PSMessageSender {
     this.identifierFactory = identifierFactory;
   }
 
-  void send(final String destId, final AvroParameterServerMsg msg) {
-    final Connection<AvroParameterServerMsg> conn = psNetworkSetup.get().getConnectionFactory()
+  void send(final String destId, final AvroPSMsg msg) {
+    final Connection<AvroPSMsg> conn = psNetworkSetup.get().getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();

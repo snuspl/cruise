@@ -41,7 +41,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <reef.version>0.15.0-SNAPSHOT</reef.version>
+    <reef.version>0.16.0-SNAPSHOT</reef.version>
     <hadoop.version>2.6.0</hadoop.version>
     <htrace.version>3.0.4</htrace.version>
     <mahout.version>0.9</mahout.version>
@@ -63,8 +63,8 @@
   </prerequisites>
 
   <modules>
-    <module>dolphin</module>
-    <module>dolphin-async</module>
+    <module>dolphin/bsp</module>
+    <module>dolphin/async</module>
     <module>services/elastic-memory</module>
     <module>services/evaluator-manager</module>
     <module>services/shuffle</module>

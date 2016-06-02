@@ -20,7 +20,7 @@ import edu.snu.cay.services.ps.examples.add.parameters.StartKey;
 import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
+import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
@@ -68,9 +68,9 @@ public final class ValidatorTask implements Task {
     while (numRetries > 0) {
       numRetries--;
 
-      if (worker instanceof PartitionedParameterWorker) {
+      if (worker instanceof ParameterWorkerImpl) {
         LOG.log(Level.INFO, "Invalidating cache before key validation.");
-        ((PartitionedParameterWorker) worker).invalidateAll();
+        ((ParameterWorkerImpl) worker).invalidateAll();
       }
       try {
         if (validate(expectedResult)) {

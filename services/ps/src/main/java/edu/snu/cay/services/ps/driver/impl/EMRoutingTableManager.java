@@ -17,7 +17,7 @@ package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.avro.RoutingTableUpdateMsg;
 import edu.snu.cay.services.ps.avro.Type;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -29,10 +29,11 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * Provides the routing table information used in Dynamic Partitioned ParameterServer.
+ * Provides the routing table information used in Dynamic ParameterServer.
  * It receives the latest routing table from EM Driver. In addition, it keeps the mapping between
  * EM's MemoryStore ID and the PS's NCS endpoint id for PSWorkers can send requests to the appropriate servers.
  */
+// TODO #553: Should be instantiated only when dynamic PS is used.
 @Private
 @DriverSide
 public final class EMRoutingTableManager {
@@ -73,7 +74,7 @@ public final class EMRoutingTableManager {
 
   /**
    * Registers an worker, {@code workerId} to be notified about updates in the routing table.
-   * It also returns the PS server-side EM's routing table to pass it to an initiating PS worker.
+   * It also returns the PS server-side EM's routing table to pass it to an initiating ParameterWorker.
    * @param workerId an worker id
    * @return The server-side EM's routing table
    */
@@ -89,7 +90,7 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * Deregisters an worker, {@code workerId} when the worker stops working.
+   * Deregisters a worker, {@code workerId} when the worker stops working.
    * After invoking this method, the worker will not be notified with the further update of the routing table.
    * @param workerId an worker id
    */
@@ -101,9 +102,9 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * Broadcasts update in routing tables of EM in PS servers to all active PS workers.
+   * Broadcasts update in routing tables of EM in Parameter Servers to all active Parameter Workers.
    */
-  private synchronized void broadcastMsg(final AvroParameterServerMsg updateMsg) {
+  private synchronized void broadcastMsg(final AvroPSMsg updateMsg) {
     for (final String workerId : activeWorkerIds) {
       sender.get().send(workerId, updateMsg);
     }
@@ -111,7 +112,7 @@ public final class EMRoutingTableManager {
 
   /**
    * A handler of EMRoutingTableUpdate.
-   * It broadcasts the update info to all active PS workers.
+   * It broadcasts the update info to all active ParameterWorkers.
    */
   private final class EMRoutingTableUpdateHandler implements EventHandler<EMRoutingTableUpdate> {
     @Override
@@ -128,8 +129,8 @@ public final class EMRoutingTableManager {
           .setBlockIds(blockIds)
           .build();
 
-      final AvroParameterServerMsg updateMsg =
-          AvroParameterServerMsg.newBuilder()
+      final AvroPSMsg updateMsg =
+          AvroPSMsg.newBuilder()
               .setType(Type.RoutingTableUpdateMsg)
               .setRoutingTableUpdateMsg(routingTableUpdateMsg)
               .build();

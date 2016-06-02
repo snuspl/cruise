@@ -30,7 +30,7 @@ public final class EvaluatorParametersImpl implements EvaluatorParameters {
   private final Map<String, Double> metrics;
 
   public EvaluatorParametersImpl(final String id,
-                                 final DataInfo dataInfo,
+                                 final Collection<DataInfo> dataInfos,
                                  final Map<String, Double> metrics) {
     this.id = id;
     this.dataInfos = dataInfos;
