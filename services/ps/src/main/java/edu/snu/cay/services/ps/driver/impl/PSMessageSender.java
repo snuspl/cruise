@@ -26,11 +26,11 @@ import org.apache.reef.wake.IdentifierFactory;
 import javax.inject.Inject;
 
 /**
- * Sends messages from the Driver to Parameter Workers.
+ * Sends messages from the Driver to ParameterWorkers.
  * Only used in the DynamicParameterServer implementation
  * to send the routing information acquired from Elastic Memory.
  */
-// TODO #553: Should be instantiated only when dynamic PS is used.
+// TODO #553: Should be instantiated only when DynamicParameterServer is used.
 @DriverSide
 final class PSMessageSender {
   private final InjectionFuture<PSNetworkSetup> psNetworkSetup;

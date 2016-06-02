@@ -48,8 +48,8 @@
 },
 
 /**
- * This message is sent from PS Worker to the PS Driver to register itself.
- * Only Dynamic Partitioned PS uses this message to retrieve the routing table determined by the EM.
+ * This message is sent from ParameterWorker to the PS Driver to register itself.
+ * Only DynamicParameterServer uses this message to retrieve the routing table determined by the EM.
  */
 {
   "namespace": "edu.snu.cay.services.ps.avro",
@@ -74,7 +74,7 @@
 
 /**
  * This message is sent from the PS Driver to answer requests
- * from PS Workers for the routing table.
+ * from ParameterWorkers for the routing table.
  */
 {
   "namespace": "edu.snu.cay.services.ps.avro",
@@ -88,7 +88,7 @@
 },
 
 /**
- * This message is sent from the PS driver to PS workers
+ * This message is sent from the PS driver to ParameterWorkers
  * to update their own routing tables for resolving PS servers.
  */
 {
@@ -105,8 +105,8 @@
 },
 
 /**
- * This message is sent from PS Worker to the PS Driver to deregister itself.
- * Only Dynamic Partitioned PS uses this message.
+ * This message is sent from ParameterWorker to the PS Driver to deregister itself.
+ * Only DynamicParameterServer uses this message.
  */
 {
   "namespace": "edu.snu.cay.services.ps.avro",

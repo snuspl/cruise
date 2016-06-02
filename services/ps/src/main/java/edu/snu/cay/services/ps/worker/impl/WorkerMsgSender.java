@@ -117,7 +117,7 @@ public class WorkerMsgSender<K, P> {
    * to resolve PS server when performing push/pull operations.
    * At first, the worker will receive the whole routing table and
    * will be kept being updated with the further changes in the routing table by driver.
-   * This method is valid only for Dynamic PS.
+   * This method is valid only for DynamicParameterServer.
    */
   public void sendWorkerRegisterMsg() {
     final WorkerRegisterMsg workerRegisterMsg = WorkerRegisterMsg.newBuilder()
@@ -131,7 +131,7 @@ public class WorkerMsgSender<K, P> {
 
   /**
    * Sends a msg to deregister itself, then driver stops feeding updates in the routing table.
-   * This method is valid only for Dynamic PS.
+   * This method is valid only for DynamicParameterServer.
    */
   public void sendWorkerDeregisterMsg() {
     final WorkerDeregisterMsg workerDeregisterMsg = WorkerDeregisterMsg.newBuilder()

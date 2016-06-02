@@ -101,7 +101,7 @@ public final class PSDriver {
    */
   public static Configuration getDriverConfiguration() {
     // TODO #551: Move such static configuration methods to other classes.
-    // Note that this configuration is actually only for DynamicPS and not StaticPS - check package
+    // Note that this configuration is actually only for DynamicParameterServer and not StaticParameterServer.
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(PSMessageHandler.class, DriverSideMsgHandler.class)
         .build();

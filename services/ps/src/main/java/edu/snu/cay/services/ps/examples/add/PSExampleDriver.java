@@ -170,7 +170,7 @@ public final class PSExampleDriver {
   }
 
   /**
-   * Submit a Context and Service for the PS Worker, and run an UpdaterTask on top of that.
+   * Submit a Context and Service for the ParameterWorker, and run an UpdaterTask on top of that.
    */
   private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForWorker() {
     return new EventHandler<AllocatedEvaluator>() {
