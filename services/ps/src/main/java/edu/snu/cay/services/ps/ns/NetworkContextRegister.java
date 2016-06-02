@@ -71,7 +71,13 @@ public final class NetworkContextRegister {
 
     @Override
     public void onNext(final ContextStop contextStop) {
-      parameterWorker.close(TIMEOUT_MS);
+      LOG.log(Level.INFO, "Wait {0} milliseconds for the PS service to be closed", TIMEOUT_MS);
+      if (parameterWorker.close(TIMEOUT_MS)) {
+        LOG.info("Succeed to close PS worker cleanly");
+      } else {
+        LOG.info("Fail to close PS worker cleanly");
+      }
+
       psNetworkSetup.unregisterConnectionFactory();
     }
   }

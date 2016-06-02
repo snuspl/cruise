@@ -59,6 +59,7 @@ public interface ParameterWorker<K, P, V> {
   /**
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
    * for queued messages to be sent.
+   * @return true if worker is closed completely without remaining messages
    */
   boolean close(long timeoutMs);
 }
