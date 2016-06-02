@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Parameter Server classes that are instantiated at the driver.
+ * Driver-side implementations for Parameter Server components specific to the dynamic version.
  */
-package edu.snu.cay.services.ps.driver.impl;
+package edu.snu.cay.services.ps.driver.impl.dynamic;

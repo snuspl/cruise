@@ -13,7 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.services.ps.ns;
+
+import edu.snu.cay.services.ps.avro.AvroPSMsg;
+import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.wake.remote.Codec;
+
+import javax.inject.Inject;
+
 /**
- * Parameter Server classes that are instantiated at the driver.
+ * Codec for {@link AvroPSMsg}s.
+ * Simply uses {@link AvroUtils} to encode and decode messages.
  */
-package edu.snu.cay.services.ps.driver.impl;
+public final class PSMsgCodec implements Codec<AvroPSMsg> {
+
+  @Inject
+  private PSMsgCodec() {
+  }
+
+  @Override
+  public byte[] encode(final AvroPSMsg msg) {
+    return AvroUtils.toBytes(msg, AvroPSMsg.class);
+  }
+
+  @Override
+  public AvroPSMsg decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, AvroPSMsg.class);
+  }
+}

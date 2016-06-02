@@ -16,12 +16,13 @@
 package edu.snu.cay.services.ps.examples.add;
 
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
-import edu.snu.cay.services.ps.driver.ParameterServerDriver;
+import edu.snu.cay.services.ps.common.Constants;
+import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.examples.add.parameters.NumKeys;
 import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
 import edu.snu.cay.services.ps.examples.add.parameters.StartKey;
-import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
+import edu.snu.cay.services.ps.common.parameters.NumServers;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -58,12 +59,11 @@ import java.util.logging.Logger;
 public final class PSExampleDriver {
   private static final Logger LOG = Logger.getLogger(PSExampleDriver.class.getName());
 
-  private static final String PS_CONTEXT_PREFIX = "PS-Context-";
   private static final String WORKER_CONTEXT_PREFIX = "Worker-Context-";
   private static final String UPDATER_TASK_PREFIX = "Updater-Task-";
   private static final String VALIDATOR_TASK_ID = "Validator-Task";
 
-  private final ParameterServerDriver psDriver;
+  private final PSDriver psDriver;
   private final EvaluatorManager evaluatorManager;
 
   private final int numServers;
@@ -89,7 +89,7 @@ public final class PSExampleDriver {
    *                                  This makes accounting of updates across Workers much simpler.
    */
   @Inject
-  private PSExampleDriver(final ParameterServerDriver psDriver,
+  private PSExampleDriver(final PSDriver psDriver,
                           final EvaluatorManager evaluatorManager,
                           @Parameter(NumServers.class) final int numServers,
                           @Parameter(NumWorkers.class) final int numWorkers,
@@ -141,7 +141,7 @@ public final class PSExampleDriver {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
         final int serverIndex = runningServerContextCount.getAndIncrement();
-        final String contextId = PS_CONTEXT_PREFIX + serverIndex;
+        final String contextId = Constants.SERVER_ID_PREFIX + serverIndex;
 
         final Configuration contextConf = Configurations.merge(
             ContextConfiguration.CONF
@@ -170,7 +170,7 @@ public final class PSExampleDriver {
   }
 
   /**
-   * Submit a Context and Service for the PS Worker, and run an UpdaterTask on top of that.
+   * Submit a Context and Service for the ParameterWorker, and run an UpdaterTask on top of that.
    */
   private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForWorker() {
     return new EventHandler<AllocatedEvaluator>() {

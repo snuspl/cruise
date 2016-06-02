@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Parameter Server classes that are instantiated at the driver.
- */
-package edu.snu.cay.services.ps.driver.impl;
+package edu.snu.cay.services.ps.server.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Number of the threads that run operations in each server",
+                default_value = "2",
+                short_name = "serverNumThreads")
+public final class ServerNumThreads implements Name<Integer> {
+}
