@@ -613,8 +613,7 @@ public final class AsyncDolphinDriver {
    *  1) contexts closed in job shutdown phase started by {@link #checkShutdown()}
    *  2) contexts closed by EM's Delete procedure
    *
-   * For a context out of upper cases that happens in job shutdown phase,
-   * this handler closes a parent of the context, if exist,
+   * For a context out of upper cases, it closes a parent of the context, if exist,
    * to prevent job from holding unnecessary resources.
    * It is also for the job to be shut down in unexpected cases.
    */
