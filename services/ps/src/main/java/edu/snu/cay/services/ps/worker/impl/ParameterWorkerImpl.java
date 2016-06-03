@@ -182,6 +182,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     final PullOp pullOp = new PullOp(encodedKey);
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
+//    System.out.println(threadId + " " + pullOp.encodedKey.getKey());
     threads[threadId].enqueue(pullOp);
     return pullOp.get();
   }
@@ -445,7 +446,12 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
             public Wrapped<V> load(final EncodedKey<K> encodedKey) throws Exception {
               final PullFuture<V> future = new PullFuture<>();
               pendingPulls.put(encodedKey.getKey(), future);
-              sender.get().sendPullMsg(serverResolver.resolveServer(encodedKey.getHash()), encodedKey);
+              try {
+                sender.get().sendPullMsg(serverResolver.resolveServer(encodedKey.getHash()), encodedKey);
+              } catch (final Throwable e) {
+                System.out.println(e);
+                throw e;
+              }
               final V value = future.getValue();
               pendingPulls.remove(encodedKey.getKey());
               return new Wrapped<>(value);
