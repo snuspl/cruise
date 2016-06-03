@@ -425,7 +425,7 @@ public final class AsyncDolphinDriver {
             ContextConfiguration.CONF
                 .set(ContextConfiguration.IDENTIFIER, contextId)
                 .build(),
-            psDriver.getContextConfiguration(),
+            psDriver.getServerContextConfiguration(),
             serverEMWrapper.getConf().getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getServerServiceConfiguration(contextId),
@@ -482,7 +482,7 @@ public final class AsyncDolphinDriver {
             ContextConfiguration.CONF
                 .set(ContextConfiguration.IDENTIFIER, contextId)
                 .build(),
-            psDriver.getContextConfiguration(),
+            psDriver.getWorkerContextConfiguration(),
             workerEMWrapper.getConf().getContextConfiguration(),
             aggregationManager.getContextConfiguration());
 

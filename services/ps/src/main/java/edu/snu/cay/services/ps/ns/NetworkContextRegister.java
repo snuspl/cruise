@@ -16,10 +16,8 @@
 package edu.snu.cay.services.ps.ns;
 
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
-import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 
@@ -31,24 +29,20 @@ import java.util.logging.Logger;
  * Register and unregister identifiers to and from a NetworkConnectionService
  * when contexts spawn/terminate, respectively.
  */
-@Unit
 public final class NetworkContextRegister {
   private static final Logger LOG = Logger.getLogger(NetworkContextRegister.class.getName());
 
-  private final PSNetworkSetup psNetworkSetup;
-  private final ParameterWorker parameterWorker;
-  private final IdentifierFactory identifierFactory;
+  public static final class RegisterContextHandler implements EventHandler<ContextStart> {
+    private final PSNetworkSetup psNetworkSetup;
+    private final IdentifierFactory identifierFactory;
 
-  @Inject
-  private NetworkContextRegister(final PSNetworkSetup psNetworkSetup,
-                                 final ParameterWorkerImpl parameterWorker,
-                                 final IdentifierFactory identifierFactory) {
-    this.psNetworkSetup = psNetworkSetup;
-    this.parameterWorker = parameterWorker;
-    this.identifierFactory = identifierFactory;
-  }
+    @Inject
+    private RegisterContextHandler(final PSNetworkSetup psNetworkSetup,
+                                   final IdentifierFactory identifierFactory) {
+      this.psNetworkSetup = psNetworkSetup;
+      this.identifierFactory = identifierFactory;
+    }
 
-  public final class RegisterContextHandler implements EventHandler<ContextStart> {
     @Override
     public void onNext(final ContextStart contextStart) {
       psNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
@@ -57,7 +51,26 @@ public final class NetworkContextRegister {
   }
 
   /**
-   * ContextStop handler for PS service.
+   * ContextStop handler for PS servers.
+   */
+  public static final class UnregisterContextHandlerForServer implements EventHandler<ContextStop> {
+    private final PSNetworkSetup psNetworkSetup;
+
+    @Inject
+    private UnregisterContextHandlerForServer(final PSNetworkSetup psNetworkSetup) {
+      this.psNetworkSetup = psNetworkSetup;
+    }
+
+    @Override
+    public void onNext(final ContextStop contextStop) {
+      // we can close servers before unregistering it from NCS just like workers
+      // but it's not necessary until now
+      psNetworkSetup.unregisterConnectionFactory();
+    }
+  }
+
+  /**
+   * ContextStop handler for PS workers.
    * It guarantees PS service to be closed after fully sending out all queued operations.
    * With this guarantee, the context can be shutdown, minimizing message loss.
    *
@@ -66,8 +79,18 @@ public final class NetworkContextRegister {
    * It appears messages buffered in NCS are not being flushed before context close,
    * but this has to be investigated further.
    */
-  public final class UnregisterContextHandler implements EventHandler<ContextStop> {
+  public static final class UnregisterContextHandlerForWorker implements EventHandler<ContextStop> {
     private static final long TIMEOUT_MS = 10000;
+
+    private final PSNetworkSetup psNetworkSetup;
+    private final ParameterWorker parameterWorker;
+
+    @Inject
+    private UnregisterContextHandlerForWorker(final PSNetworkSetup psNetworkSetup,
+                                              final ParameterWorker parameterWorker) {
+      this.psNetworkSetup = psNetworkSetup;
+      this.parameterWorker = parameterWorker;
+    }
 
     @Override
     public void onNext(final ContextStop contextStop) {
