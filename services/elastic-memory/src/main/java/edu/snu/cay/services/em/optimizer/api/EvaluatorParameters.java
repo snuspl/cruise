@@ -29,7 +29,7 @@ public interface EvaluatorParameters {
   /**
    * @return information about data on the evaluator
    */
-  DataInfo getDataInfos();
+  DataInfo getDataInfo();
 
   /**
    * @return metrics about previous execution on the evaluator

@@ -21,16 +21,34 @@ import edu.snu.cay.services.em.optimizer.api.DataInfo;
  * A plain-old-data implementation of DataInfo.
  */
 public final class DataInfoImpl implements DataInfo {
-  private final int numUnits;
+  private int numUnits;
 
+  /**
+   * Creates a DataInfo.
+   */
   public DataInfoImpl(final int numUnits) {
     this.numUnits = numUnits;
+  }
+
+  /**
+   * Creates an empty DataInfo that has no data.
+   */
+  public DataInfoImpl() {
+    this(0);
   }
 
   @Override
   public int getNumUnits() {
     return numUnits;
   }
+
+  /**
+   * Updates the number of units. Note that this method is only for testing.
+   */
+  public void setNumUnits(final int numUnits) {
+    this.numUnits = numUnits;
+  }
+
 
   @Override
   public String toString() {

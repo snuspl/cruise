@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * An Optimizer implementation that creates a Random plan.
@@ -169,15 +170,13 @@ public final class RandomOptimizer implements Optimizer {
 
   private EvaluatorParameters getNewEvaluator() {
     return new EvaluatorParametersImpl("newRandomOptimizerNode-" + newEvaluatorId.getAndIncrement(),
-        new ArrayList<DataInfo>(0), new HashMap<String, Double>(0));
+        new DataInfoImpl(), new HashMap<>(0));
   }
 
   private static long getSumData(final Collection<EvaluatorParameters> evaluators) {
     long sumData = 0;
     for (final EvaluatorParameters evaluator : evaluators) {
-      for (final DataInfo dataInfo : evaluator.getDataInfos()) {
-        sumData += dataInfo.getNumUnits();
-      }
+      sumData += evaluator.getDataInfo().getNumUnits();
     }
     return sumData;
   }
@@ -191,12 +190,10 @@ public final class RandomOptimizer implements Optimizer {
    */
   private static List<OptimizedEvaluator> initOptimizedEvaluators(final Collection<EvaluatorParameters> evaluators) {
     final List<OptimizedEvaluator> optimizedEvaluators = new ArrayList<>(evaluators.size());
-    for (final EvaluatorParameters parameters : evaluators) {
-      for (final DataInfo dataInfo : parameters.getDataInfos()) {
-        optimizedEvaluators.add(new OptimizedEvaluator(parameters.getId(), dataInfo));
-      }
-      optimizedEvaluators.add(new OptimizedEvaluator(parameters.getId()));
-    }
+    optimizedEvaluators.addAll(
+        evaluators.stream()
+            .map(parameters -> new OptimizedEvaluator(parameters.getId(), parameters.getDataInfo()))
+            .collect(Collectors.toList()));
     return optimizedEvaluators;
   }
 

@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.bsp.core.optimizer;
 import edu.snu.cay.dolphin.bsp.core.StageInfo;
 import edu.snu.cay.dolphin.bsp.core.UserJobInfo;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
+import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
@@ -227,8 +228,8 @@ public final class OptimizationOrchestrator {
           new EvaluatorParametersImpl(computeId, dataInfos.get(computeId), metrics.get(computeId)));
     }
     evaluatorParametersList.add(
-        new EvaluatorParametersImpl(controllerId, new ArrayList<DataInfo>(0), controllerMetrics));
-    final Map<String, List<EvaluatorParameters>> evaluatorParametersMap = new HashMap();
+        new EvaluatorParametersImpl(controllerId, new DataInfoImpl(), controllerMetrics));
+    final Map<String, List<EvaluatorParameters>> evaluatorParametersMap = new HashMap<>();
     evaluatorParametersMap.put(NAMESPACE_DOLPHIN_BSP, evaluatorParametersList);
     return evaluatorParametersMap;
   }

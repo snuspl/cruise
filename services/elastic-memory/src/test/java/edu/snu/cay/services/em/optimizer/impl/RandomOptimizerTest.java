@@ -15,9 +15,7 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
-import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.api.Plan;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -112,63 +110,13 @@ public final class RandomOptimizerTest {
     assertNotNull(plan.getTransferSteps(NAMESPACE));
   }
 
-  /**
-   * Test that the optimizer runs correctly with multiple data types.
-   * In particular,
-   *   (sameNumEvaluatorsPlan) no evaluators are added or deleted when
-   *     random optimizer is given a min, max of 1.0, 1.0 and
-   *     the available evaluators is the same as the previous number of evaluators.
-   *   (singleEvaluatorPlan) given a single evaluator is deleted, the
-   *     expected data types and number of units are planned for transfer.
-   *
-   */
-  @Test
-  public void testMultipleDataTypes() {
-    final RandomOptimizer randomOptimizer = getRandomOptimizer(1.0, 1.0);
-    final List<EvaluatorParameters> evalParamsList = new ArrayList<>();
-
-    final List<DataInfo> dataInfo1 = new ArrayList<>();
-    dataInfo1.add(new DataInfoImpl(300));
-    evalParamsList.add(new EvaluatorParametersImpl("1", dataInfo1, new HashMap<String, Double>(0)));
-
-    final List<DataInfo> dataInfo2 = new ArrayList<>();
-    dataInfo2.add(new DataInfoImpl(1000));
-    dataInfo2.add(new DataInfoImpl(500));
-    evalParamsList.add(new EvaluatorParametersImpl("2", dataInfo2, new HashMap<String, Double>(0)));
-
-    final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);
-    evalParamsMap.put(NAMESPACE, evalParamsList);
-    final Plan sameNumEvaluatorsPlan = randomOptimizer.optimize(evalParamsMap, evalParamsList.size());
-
-    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToAdd(NAMESPACE).size());
-    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToDelete(NAMESPACE).size());
-
-    final Plan singleEvaluatorPlan = randomOptimizer.optimize(evalParamsMap, 1);
-
-    assertEquals(0, singleEvaluatorPlan.getEvaluatorsToAdd(NAMESPACE).size());
-    assertEquals(1, singleEvaluatorPlan.getEvaluatorsToDelete(NAMESPACE).size());
-
-    final String evaluatorToDelete = singleEvaluatorPlan.getEvaluatorsToDelete(NAMESPACE).iterator().next();
-    assertEquals("2", evaluatorToDelete);
-    assertEquals(2, singleEvaluatorPlan.getTransferSteps(NAMESPACE).size());
-
-    long sum = 0;
-    for (final TransferStep transferStep : singleEvaluatorPlan.getTransferSteps(NAMESPACE)) {
-      assertEquals("2", transferStep.getSrcId());
-      assertEquals("1", transferStep.getDstId());
-      sum += transferStep.getDataInfo().getNumUnits();
-    }
-    assertEquals(1000 + 500, sum);
-  }
-
   private Map<String, List<EvaluatorParameters>> getUniformEvaluators(final String namespace,
                                                                       final long dataPerEvaluator,
                                                                       final int numEvaluators) {
     final List<EvaluatorParameters> evalParamsList = new ArrayList<>(numEvaluators);
     for (int i = 0; i < numEvaluators; i++) {
-      final List<DataInfo> dataInfos = new ArrayList<>(1);
-      dataInfos.add(new DataInfoImpl((int) dataPerEvaluator));
-      evalParamsList.add(new EvaluatorParametersImpl("test-" + i, dataInfos, new HashMap<String, Double>(0)));
+      evalParamsList.add(
+          new EvaluatorParametersImpl("test-" + i, new DataInfoImpl((int) dataPerEvaluator), new HashMap<>(0)));
     }
 
     final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);

@@ -68,7 +68,7 @@ public final class AddOneOptimizer implements Optimizer {
 
       EvaluatorParameters srcEvaluator = null;
       for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
-        if (!evaluator.getDataInfos().isEmpty()) {
+        if (evaluator.getDataInfo().getNumUnits() != 0) {
           srcEvaluator = evaluator;
           break;
         }
@@ -80,7 +80,7 @@ public final class AddOneOptimizer implements Optimizer {
         continue;
       }
 
-      final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
+      final DataInfo srcDataInfo = srcEvaluator.getDataInfo();
       final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
 
       final TransferStep transferStep = new TransferStepImpl(

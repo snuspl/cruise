@@ -195,10 +195,7 @@ public final class ILPQuickOptimizer implements Optimizer {
     int numUnitsTotal = 0;
 
     for (final Cost.ComputeTaskCost computeTaskCost : cost.getComputeTaskCosts()) {
-      int numUnits = 0;
-      for (final DataInfo dataInfo : computeTaskCost.getDataInfo()) {
-        numUnits += dataInfo.getNumUnits();
-      }
+      final int numUnits = computeTaskCost.getDataInfo().getNumUnits();
 
       final double compUnitCost = computeTaskCost.getComputeCost() / numUnits;
       final double compUnitCostInv = 1 / compUnitCost;
@@ -278,7 +275,7 @@ public final class ILPQuickOptimizer implements Optimizer {
     for (int newEvalIndex = 0; newEvalIndex < numNewEvals; ++newEvalIndex) {
       final String newEvalId = NEW_COMPUTE_TASK_ID_PREFIX + newEvalIndex;
       final int newWorkload = (int)Math.round(totalWorkload * expectedCompUnitCostInv / compUnitCostInvSum);
-      retSet.add(new OptimizedEvaluator(newEvalId, new ArrayList<DataInfo>(0),
+      retSet.add(new OptimizedEvaluator(newEvalId, new DataInfoImpl(),
           expectedCompUnitCostInv, newWorkload));
       planBuilder.addEvaluatorToAdd(NAMESPACE_DOLPHIN_BSP, newEvalId);
       remainingWorkload -= newWorkload;
@@ -351,65 +348,36 @@ public final class ILPQuickOptimizer implements Optimizer {
    */
   private static List<TransferStep> generateTransferStep(final OptimizedEvaluator sender,
                                                          final OptimizedEvaluator receiver) {
-    final List<TransferStep> ret = new ArrayList<>(sender.dataInfos.size());
+    final List<TransferStep> ret = new ArrayList<>(1);
 
-    final List<DataInfo> dataInfosToRemove = new ArrayList<>(sender.dataInfos.size());
-    final List<DataInfo> dataInfosToAdd = new ArrayList<>(1);
-    final Iterator<DataInfo> dataInfoIterator = sender.dataInfos.iterator();
-
-    int numToSend = sender.getNumUnits() - sender.numOptimalUnits;
-    int numToReceive = receiver.numOptimalUnits - receiver.getNumUnits();
-
-    while (numToSend > 0 && numToReceive > 0 && dataInfoIterator.hasNext()) {
-      final DataInfo dataInfo = dataInfoIterator.next();
-      final int numToMove = Math.min(numToSend, numToReceive);
-      final DataInfo dataInfoToMove;
-
-      if (numToMove < dataInfo.getNumUnits()) {
-        dataInfoToMove = new DataInfoImpl(numToMove);
-        dataInfosToAdd.add(new DataInfoImpl(dataInfo.getNumUnits() - numToMove));
-      } else {
-        dataInfoToMove = dataInfo;
-      }
-
-      numToSend -= dataInfoToMove.getNumUnits();
-      numToReceive -= dataInfoToMove.getNumUnits();
-
-      dataInfosToRemove.add(dataInfo);
-      receiver.dataInfos.add(dataInfoToMove);
-      ret.add(new TransferStepImpl(sender.id, receiver.id, dataInfoToMove));
-    }
-
-    sender.dataInfos.removeAll(dataInfosToRemove);
-    sender.dataInfos.addAll(dataInfosToAdd);
+    final int numToSend = sender.getNumUnits() - sender.numOptimalUnits;
+    final int numToReceive = receiver.numOptimalUnits - receiver.getNumUnits();
+    final int numToMove = Math.min(numToSend, numToReceive);
+    ret.add(new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove)));
 
     return ret;
   }
 
   private static final class OptimizedEvaluator {
     private final String id;
-    private final Collection<DataInfo> dataInfos;
+    private final DataInfo dataInfo;
     private final double compUnitCostInv;
     private int numOptimalUnits;
 
-    private OptimizedEvaluator(final String id, final Collection<DataInfo> dataInfos, final double compUnitCostInv) {
-      this(id, dataInfos, compUnitCostInv, 0);
+    private OptimizedEvaluator(final String id, final DataInfo dataInfo, final double compUnitCostInv) {
+      this(id, dataInfo, compUnitCostInv, 0);
     }
 
-    private OptimizedEvaluator(final String id, final Collection<DataInfo> dataInfos, final double compUnitCostInv,
+    private OptimizedEvaluator(final String id, final DataInfo dataInfo, final double compUnitCostInv,
                                final int numOptimalUnits) {
       this.id = id;
       this.compUnitCostInv = compUnitCostInv;
       this.numOptimalUnits = numOptimalUnits;
-      this.dataInfos = new ArrayList<>(dataInfos);
+      this.dataInfo = dataInfo;
     }
 
     private int getNumUnits() {
-      int numUnits = 0;
-      for (final DataInfo dataInfo : dataInfos) {
-        numUnits += dataInfo.getNumUnits();
-      }
-      return numUnits;
+      return dataInfo.getNumUnits();
     }
 
     @Override

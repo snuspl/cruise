@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
@@ -290,7 +289,7 @@ public final class BlockManager {
     return evalIdToNumBlocks;
   }
 
-  public Map<String, EvaluatorParameters> generateEvalParams() {
+  Map<String, EvaluatorParameters> generateEvalParams() {
     final Map<String, Integer> evalIdToNumBlocks = getEvalIdToNumBlocks();
     final int numEvaluators = evalIdToNumBlocks.size();
 
@@ -299,9 +298,7 @@ public final class BlockManager {
       final String evalId = evalIdToNumBlock.getKey();
       final int numBlocks = evalIdToNumBlock.getValue();
 
-      final List<DataInfo> dataInfos = new ArrayList<>(1);
-      dataInfos.add(new DataInfoImpl(numBlocks));
-      evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, dataInfos, new HashMap<String, Double>(0)));
+      evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, new DataInfoImpl(numBlocks), new HashMap<>(0)));
     }
     return evaluatorsMap;
   }
