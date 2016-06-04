@@ -91,6 +91,24 @@ public final class StateMachine {
   }
 
   /**
+   * Atomically sets the state to the given updated state
+   * if the current state equals to the expected state.
+   *
+   * @param expectedCurrentState an expected state
+   * @param state a state
+   * @return true if successful. False return indicates that
+   * the actual value was not equal to the expected value.
+   */
+  public synchronized boolean compareAndSetState(final String expectedCurrentState, final String state) {
+    final boolean compared = currentState.name.equals(expectedCurrentState);
+    if (compared) {
+      setState(state);
+    }
+
+    return compared;
+  }
+
+  /**
    * @return the name of the current state.
    */
   public synchronized String getCurrentState() {

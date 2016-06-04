@@ -42,6 +42,7 @@ import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
+import edu.snu.cay.utils.StateMachine;
 import edu.snu.cay.utils.trace.HTrace;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -77,7 +78,6 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -94,22 +94,17 @@ public final class AsyncDolphinDriver {
   private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
   private static final String SERVER_EM_IDENTIFIER = "ServerEM";
 
-  /**
-   * Flag indicating whether all workers have finished their work or not.
-   * When it becomes true, a thread starts to close all worker contexts and
-   * the optimizer thread stops running.
-   */
-  private final AtomicBoolean isJobFinished = new AtomicBoolean(false);
+  // states of jobStateMachine
+  private static final String RUNNING = "RUNNING";
+  private static final String CLOSING_WORKERS = "CLOSING_WORKERS";
+  private static final String CLOSING_SERVERS = "CLOSING_SERVERS";
+  private static final String CLOSING_ROOTS = "CLOSING_ROOTS";
 
   /**
-   * Flag indicating a phase of job checkShutdown closing servers contexts, after all worker contexts are closed.
+   * A state machine representing the state of job.
+   * It is initialized by {@link #initStateMachine()}.
    */
-  private final AtomicBoolean closingServerContexts = new AtomicBoolean(false);
-
-  /**
-   * Flag indicating a final phase of job checkShutdown closing root contexts of server and worker.
-   */
-  private final AtomicBoolean closingRootContexts = new AtomicBoolean(false);
+  private final StateMachine jobStateMachine;
 
   /**
    * Evaluator Manager, a unified path for requesting evaluators.
@@ -322,6 +317,8 @@ public final class AsyncDolphinDriver {
       this.psDriver = serverInjector.getInstance(PSDriver.class);
       this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
 
+      this.jobStateMachine = initStateMachine();
+
       final Injector optimizerInjector = injector.forkInjector();
       optimizerInjector.bindVolatileParameter(ServerEM.class, serverEMWrapper.getInstance());
       optimizerInjector.bindVolatileParameter(WorkerEM.class, workerEMWrapper.getInstance());
@@ -330,6 +327,22 @@ public final class AsyncDolphinDriver {
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private StateMachine initStateMachine() {
+    return StateMachine.newBuilder()
+        .addState(RUNNING, "The job is running")
+        .addState(CLOSING_WORKERS, "The job is started being closed, first closing the worker contexts")
+        .addState(CLOSING_SERVERS, "Closing the server contexts")
+        .addState(CLOSING_ROOTS, "Closing root contexts of both server and worker")
+        .setInitialState(RUNNING)
+        .addTransition(RUNNING, CLOSING_WORKERS,
+            "The job is finished, time to close the worker contexts")
+        .addTransition(CLOSING_WORKERS, CLOSING_SERVERS,
+            "Worker contexts are finished, time to close the the server contexts")
+        .addTransition(CLOSING_SERVERS, CLOSING_ROOTS,
+            "Both worker and server contexts are finished, time to close their root contexts")
+        .build();
   }
 
   final class StartHandler implements EventHandler<StartTime> {
@@ -363,7 +376,7 @@ public final class AsyncDolphinDriver {
         public Void call() throws Exception {
           // TODO #538: check actual timing of system init
           Thread.sleep(INIT_DELAY);
-          while (!isJobFinished.get()) {
+          while (jobStateMachine.getCurrentState().equals(RUNNING)) {
             optimizationOrchestrator.run();
             Thread.sleep(optimizationIntervalMs);
           }
@@ -637,6 +650,67 @@ public final class AsyncDolphinDriver {
     }
   }
 
+  private synchronized void handleClosedWorkerContext(final String contextId) {
+    workerContexts.remove(contextId);
+
+    final String jobState = jobStateMachine.getCurrentState();
+    switch (jobState) {
+    case RUNNING:
+      LOG.log(Level.WARNING, "Worker context {0} is closed when the job is not in shutdown phase", contextId);
+      break;
+    case CLOSING_WORKERS:
+      if (workerContexts.isEmpty()) { // all worker contexts are closed
+        jobStateMachine.setState(CLOSING_SERVERS);
+
+        LOG.info("Start closing server contexts");
+        for (final ActiveContext serverContext : serverContexts.values()) {
+          serverContext.close();
+        }
+      }
+      break;
+    case CLOSING_SERVERS:
+      LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of servers", contextId);
+      break;
+    case CLOSING_ROOTS:
+      LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of root contexts", contextId);
+      break;
+    default:
+      throw new RuntimeException("Unexpected state");
+    }
+  }
+
+  private void handleClosedServerContext(final String contextId) {
+    serverContexts.remove(contextId);
+
+    final String jobState = jobStateMachine.getCurrentState();
+    switch (jobState) {
+    case RUNNING:
+      LOG.log(Level.WARNING, "Server context {0} is closed when the job is not in shutdown phase", contextId);
+      break;
+    case CLOSING_WORKERS:
+      LOG.log(Level.WARNING, "Server context {0} is closed after starting close of root contexts", contextId);
+      break;
+    case CLOSING_SERVERS:
+      if (serverContexts.isEmpty()) { // all server contexts are closed
+        jobStateMachine.setState(CLOSING_ROOTS);
+
+        LOG.info("Start closing root contexts");
+        for (final ActiveContext rootWorkerContext : rootWorkerContexts.values()) {
+          rootWorkerContext.close();
+        }
+        for (final ActiveContext rootServerContext : rootServerContexts.values()) {
+          rootServerContext.close();
+        }
+      }
+      break;
+    case CLOSING_ROOTS:
+      LOG.log(Level.WARNING, "Server context {0} is closed after starting close of root contexts", contextId);
+      break;
+    default:
+      throw new RuntimeException("Unexpected state");
+    }
+  }
+
   /**
    * Handles contexts failed or closed.
    * If a context is one of contexts under tracking, it handles the context properly.
@@ -648,42 +722,9 @@ public final class AsyncDolphinDriver {
 
     // shutdown remaining contexts
     if (workerContexts.containsKey(contextId)) {
-      workerContexts.remove(contextId);
-
-      if (isJobFinished.get()) {
-        if (workerContexts.isEmpty()) { // all worker contexts are closed
-          if (closingServerContexts.compareAndSet(false, true)) {
-            LOG.info("Start closing server contexts");
-            for (final ActiveContext serverContext : serverContexts.values()) {
-              serverContext.close();
-            }
-          } else {
-            LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of servers", contextId);
-          }
-        }
-      } else {
-        LOG.log(Level.WARNING, "Worker context {0} is closed when the job is not in shutdown phase", contextId);
-      }
+      handleClosedWorkerContext(contextId);
     } else if (serverContexts.containsKey(contextId)) {
-      serverContexts.remove(contextId);
-
-      if (isJobFinished.get()) {
-        if (serverContexts.isEmpty()) { // all server contexts are closed
-          if (closingRootContexts.compareAndSet(false, true)) {
-            LOG.info("Start closing root contexts");
-            for (final ActiveContext rootWorkerContext : rootWorkerContexts.values()) {
-              rootWorkerContext.close();
-            }
-            for (final ActiveContext rootServerContext : rootServerContexts.values()) {
-              rootServerContext.close();
-            }
-          } else {
-            LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of root contexts", contextId);
-          }
-        }
-      } else {
-        LOG.log(Level.WARNING, "Server context {0} is closed when the job is not in shutdown phase", contextId);
-      }
+      handleClosedServerContext(contextId);
     } else if (rootServerContexts.remove(contextId) != null || rootWorkerContexts.remove(contextId) != null) {
       // for tracking contexts
       LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
@@ -752,7 +793,7 @@ public final class AsyncDolphinDriver {
       return;
     }
 
-    if (isJobFinished.compareAndSet(false, true)) {
+    if (jobStateMachine.compareAndSetState(RUNNING, CLOSING_WORKERS)) {
       LOG.log(Level.INFO, "Time to shut down the job");
 
       // start shutdown thread
@@ -791,7 +832,7 @@ public final class AsyncDolphinDriver {
             LOG.log(Level.FINEST, "Interrupted while waiting for close of worker contexts", e);
           }
 
-          if (closingServerContexts.compareAndSet(false, true)) {
+          if (jobStateMachine.compareAndSetState(CLOSING_WORKERS, CLOSING_SERVERS)) {
             LOG.log(Level.WARNING, "Some workers do not respond to close messages within time." +
                 " Start closing server contexts.");
 
@@ -808,7 +849,7 @@ public final class AsyncDolphinDriver {
             LOG.log(Level.FINEST, "Interrupted while waiting for close of server contexts", e);
           }
 
-          if (closingRootContexts.compareAndSet(false, true)) {
+          if (jobStateMachine.compareAndSetState(CLOSING_SERVERS, CLOSING_ROOTS)) {
             LOG.log(Level.WARNING, "Some servers do not respond to close messages within time." +
                 " Start closing root contexts.");
 
