@@ -22,6 +22,8 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -94,10 +96,11 @@ public final class NetworkContextRegister {
 
     @Override
     public void onNext(final ContextStop contextStop) {
-      LOG.log(Level.INFO, "Wait {0} milliseconds for the PS service to be closed", TIMEOUT_MS);
-      if (parameterWorker.close(TIMEOUT_MS)) {
+      LOG.log(Level.INFO, "Wait {0} milliseconds at maximum for the PS service to be closed", TIMEOUT_MS);
+      try {
+        parameterWorker.close(TIMEOUT_MS);
         LOG.info("Succeed to close PS worker cleanly");
-      } else {
+      } catch (InterruptedException | TimeoutException | ExecutionException e) {
         LOG.info("Fail to close PS worker cleanly");
       }
 

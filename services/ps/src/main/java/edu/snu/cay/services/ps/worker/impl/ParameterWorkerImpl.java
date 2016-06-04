@@ -241,16 +241,10 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * for queued messages to be sent.
    */
   @Override
-  public boolean close(final long timeoutMs) {
+  public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
     final Future result = Executors.newSingleThreadExecutor().submit((Runnable) this::close);
 
-    try {
-      result.get(timeoutMs, TimeUnit.MILLISECONDS);
-    } catch (final InterruptedException | ExecutionException | TimeoutException e) {
-      return false;
-    }
-
-    return true;
+    result.get(timeoutMs, TimeUnit.MILLISECONDS);
   }
 
   /**

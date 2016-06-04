@@ -18,6 +18,8 @@ package edu.snu.cay.services.ps.worker.api;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 /**
  * A Parameter Server worker (client) that interacts with the servers to provide or fetch parameters.
@@ -59,7 +61,6 @@ public interface ParameterWorker<K, P, V> {
   /**
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
    * for queued messages to be sent.
-   * @return true if worker is closed completely without remaining messages
    */
-  boolean close(long timeoutMs);
+  void close(long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException;
 }
