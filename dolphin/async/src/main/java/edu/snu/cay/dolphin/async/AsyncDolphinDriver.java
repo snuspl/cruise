@@ -160,14 +160,9 @@ public final class AsyncDolphinDriver {
   private final Map<String, AllocatedEvaluator> allocatedEvaluators = new ConcurrentHashMap<>();
 
   /**
-   * Bookkeeping the ActiveContext objects of the root context of the server-side evaluators.
+   * Bookkeeping the ActiveContext objects of the root context of both server and worker evaluators.
    */
-  private final Map<String, ActiveContext> rootWorkerContexts = new ConcurrentHashMap<>();
-
-  /**
-   * Bookkeeping the ActiveContext objects of the root context of the worker-side evaluators.
-   */
-  private final Map<String, ActiveContext> rootServerContexts = new ConcurrentHashMap<>();
+  private final Map<String, ActiveContext> rootContexts = new ConcurrentHashMap<>();
 
   /**
    * Bookkeeping the ActiveContext objects of the context housing the parameter server.
@@ -429,7 +424,7 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);
-        rootServerContexts.put(activeContext.getId(), activeContext);
+        rootContexts.put(activeContext.getId(), activeContext);
 
         final int serverIndex = Integer.parseInt(
             activeContext.getId().substring(dataLoadingService.getComputeContextIdPrefix().length()));
@@ -486,7 +481,7 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
-        rootWorkerContexts.put(activeContext.getId(), activeContext);
+        rootContexts.put(activeContext.getId(), activeContext);
 
         final int workerIndex = workerContextIndexCounter.getAndIncrement();
 
@@ -650,7 +645,7 @@ public final class AsyncDolphinDriver {
     }
   }
 
-  private synchronized void handleClosedWorkerContext(final String contextId) {
+  private synchronized void handleFinishedWorkerContext(final String contextId) {
     workerContexts.remove(contextId);
 
     final String jobState = jobStateMachine.getCurrentState();
@@ -679,7 +674,7 @@ public final class AsyncDolphinDriver {
     }
   }
 
-  private void handleClosedServerContext(final String contextId) {
+  private synchronized void handleFinishedServerContext(final String contextId) {
     serverContexts.remove(contextId);
 
     final String jobState = jobStateMachine.getCurrentState();
@@ -695,11 +690,8 @@ public final class AsyncDolphinDriver {
         jobStateMachine.setState(CLOSING_ROOTS);
 
         LOG.info("Start closing root contexts");
-        for (final ActiveContext rootWorkerContext : rootWorkerContexts.values()) {
-          rootWorkerContext.close();
-        }
-        for (final ActiveContext rootServerContext : rootServerContexts.values()) {
-          rootServerContext.close();
+        for (final ActiveContext rootContext : rootContexts.values()) {
+          rootContext.close();
         }
       }
       break;
@@ -722,10 +714,10 @@ public final class AsyncDolphinDriver {
 
     // shutdown remaining contexts
     if (workerContexts.containsKey(contextId)) {
-      handleClosedWorkerContext(contextId);
+      handleFinishedWorkerContext(contextId);
     } else if (serverContexts.containsKey(contextId)) {
-      handleClosedServerContext(contextId);
-    } else if (rootServerContexts.remove(contextId) != null || rootWorkerContexts.remove(contextId) != null) {
+      handleFinishedServerContext(contextId);
+    } else if (rootContexts.remove(contextId) != null) {
       // for tracking contexts
       LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
     } else if (deletedWorkerContextIds.remove(contextId) || deletedServerContextIds.remove(contextId)) {
@@ -828,7 +820,6 @@ public final class AsyncDolphinDriver {
           try {
             Thread.sleep(CONTEXT_CLOSE_GRACE_PERIOD_MS);
           } catch (InterruptedException e) {
-            e.printStackTrace();
             LOG.log(Level.FINEST, "Interrupted while waiting for close of worker contexts", e);
           }
 
@@ -845,7 +836,6 @@ public final class AsyncDolphinDriver {
           try {
             Thread.sleep(CONTEXT_CLOSE_GRACE_PERIOD_MS);
           } catch (InterruptedException e) {
-            e.printStackTrace();
             LOG.log(Level.FINEST, "Interrupted while waiting for close of server contexts", e);
           }
 
@@ -854,18 +844,14 @@ public final class AsyncDolphinDriver {
                 " Start closing root contexts.");
 
             // ignore remaining server contexts and close root contexts
-            for (final ActiveContext rootWorkerContext : rootWorkerContexts.values()) {
-              rootWorkerContext.close();
-            }
-            for (final ActiveContext rootServerContext : rootServerContexts.values()) {
-              rootServerContext.close();
+            for (final ActiveContext rootContext : rootContexts.values()) {
+              rootContext.close();
             }
           }
 
           try {
             Thread.sleep(CONTEXT_CLOSE_GRACE_PERIOD_MS);
           } catch (InterruptedException e) {
-            e.printStackTrace();
             LOG.log(Level.FINEST, "Interrupted while waiting for close of root contexts", e);
           }
 
