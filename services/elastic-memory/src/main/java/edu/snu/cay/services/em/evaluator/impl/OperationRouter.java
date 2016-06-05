@@ -89,7 +89,6 @@ public final class OperationRouter<K> {
   private final AtomicIntegerArray blockLocations;
   private final List<Integer> initialLocalBlocks;
 
-  // TODO #380: we have to improve router to provide different routing tables for each dataType.
   @Inject
   private OperationRouter(final BlockResolver<K> blockResolver,
                           final InjectionFuture<ElasticMemoryMsgSender> msgSender,

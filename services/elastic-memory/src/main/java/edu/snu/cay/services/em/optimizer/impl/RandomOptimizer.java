@@ -40,10 +40,10 @@ import java.util.stream.Collectors;
  * 1. Choosing uniformly between [minEvaluatorsFraction * availableEvaluators,
  *    maxEvaluatorsFraction * availableEvaluators] evaluators to use in the plan.
  *    {@link #getEvaluatorsToUse}
- * 2. For each dataType, randomly redistributing all units -- by batching units (of 10) and
+ * 2. Randomly redistributing all units -- by batching units (of 10) and
  *    sending each batch to an evaluator selected uniformly at random.
  *    {@link #distributeDataAcrossEvaluators}
- * 3. For each dataType, creating transfer steps by greedily taking data needed to
+ * 3. Creating transfer steps by greedily taking data needed to
  *    satisfy the request from an evaluator from it's right side (in a circular array).
  *    {@link #getTransferSteps}
  */
@@ -120,7 +120,6 @@ public final class RandomOptimizer implements Optimizer {
       planBuilder.addEvaluatorsToDelete(namespace, getIds(evaluatorsToDelete));
 
     /*
-     * For each dataType:
      * 1. Find the sum of the number of all units across the Evaluators. (getSumData)
      * 2. Initialize an OptimizedEvaluator per Evaluator from the dataType's DataInfo. (initOptimizedEvaluators)
      *    An OptimizedEvaluator keeps track of data at an Evaluator while distributing data and scheduling transfers.
@@ -182,9 +181,8 @@ public final class RandomOptimizer implements Optimizer {
   }
 
   /**
-   * Initialize an OptimizedEvaluator per Evaluator from the dataType's DataInfo.
+   * Initialize an OptimizedEvaluator per Evaluator from the DataInfo.
    * An OptimizedEvaluator keeps track of data at an Evaluator while distributing data and scheduling transfers.
-   * Checks for duplicate dataTypes.
    * @param evaluators EvaluatorParameters to create OptimizedEvaluators for
    * @return list of OptimizedEvaluator's, one per EvaluatorParameter passed in
    */
