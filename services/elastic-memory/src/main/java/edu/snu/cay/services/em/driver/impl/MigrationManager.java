@@ -92,7 +92,6 @@ final class MigrationManager {
       LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
       return;
     }
-
     callbackRouter.register(operationId, finishedCallback);
 
     final List<Integer> blocks = blockManager.chooseBlocksToMove(senderId, numBlocks);
@@ -102,7 +101,7 @@ final class MigrationManager {
     if (blocks.size() == 0) {
       final String reason =
           "There is no block to move in " + senderId + " of type. Requested numBlocks: " + numBlocks;
-      failMigration(operationId, reason);
+      notifyFailure(operationId, reason);
       return;
     }
 
@@ -123,14 +122,22 @@ final class MigrationManager {
     }
 
     migration.markBlockAsMoved(blockId);
-    blockManager.markBlockAsMoved(blockId);
+    blockManager.releaseBlockFromMove(blockId);
 
     if (migration.isComplete()) {
-      ongoingMigrations.remove(operationId);
-      notifySuccess(operationId, migration.getBlockIds());
-      broadcastSuccess(migration);
-      notifyUpdate(migration);
+      finishMigration(operationId);
     }
+  }
+
+  /**
+   * Finish migration of the data.
+   * @param operationId Identifier of {@code move} operation.
+   */
+  private void finishMigration(final String operationId) {
+    final Migration migration = ongoingMigrations.remove(operationId);
+    notifySuccess(operationId, migration.getBlockIds());
+    broadcastSuccess(migration);
+    notifyUpdate(migration);
   }
 
   /**
@@ -148,7 +155,7 @@ final class MigrationManager {
 
     final List<Integer> blockIds = migration.getBlockIds();
 
-    LOG.log(Level.INFO, "Broadcast the result of migration to other active evaluators: {0}", activeEvaluatorIds);
+    LOG.log(Level.FINE, "Broadcast the result of migration to other active evaluators: {0}", activeEvaluatorIds);
     try (final TraceScope traceScope = Trace.startSpan("ROUTING_UPDATE")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       for (final String evalId : activeEvaluatorIds) {
@@ -220,6 +227,9 @@ final class MigrationManager {
     callbackRouter.onFailed(msg);
   }
 
+  /**
+   * Notify success to the User via callback.
+   */
   private synchronized void notifySuccess(final String moveOperationId, final List<Integer> blocks) {
     final ResultMsg resultMsg = ResultMsg.newBuilder()
         .setResult(Result.SUCCESS)

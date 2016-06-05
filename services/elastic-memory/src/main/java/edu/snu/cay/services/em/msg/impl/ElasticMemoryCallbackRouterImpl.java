@@ -52,17 +52,13 @@ public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallb
   @Override
   public void register(final String operationId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
     if (callback == null) {
-
       if (handlerMap.putIfAbsent(operationId, NOOP_CALLBACK) != null) {
         LOG.warning("Failed to register NOOP callback for " + operationId + ". Already exists.");
       }
-
     } else {
-
       if (handlerMap.putIfAbsent(operationId, callback) != null) {
         LOG.warning("Failed to register callback for " + operationId + ". Already exists.");
       }
-
     }
   }
 
