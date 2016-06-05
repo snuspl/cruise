@@ -69,7 +69,7 @@ public class WorkerMsgSender<K, P> {
   private void send(final String destId, final AvroPSMsg msg) {
     final ConnectionFactory<AvroPSMsg> connFactory = psNetworkSetup.getConnectionFactory();
     if (connFactory == null) {
-      throw new RuntimeException("ConnectionFactory has not been registered or has been removed");
+      throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
     }
 
     final Connection<AvroPSMsg> conn = connFactory
@@ -109,7 +109,7 @@ public class WorkerMsgSender<K, P> {
   void sendPullMsg(final String destId, final EncodedKey<K> key) {
     final Identifier localEndPointId = psNetworkSetup.getMyId();
     if (localEndPointId == null) {
-      throw new RuntimeException("ConnectionFactory has not been registered or has been removed");
+      throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
     }
 
     final PullMsg pullMsg = PullMsg.newBuilder()

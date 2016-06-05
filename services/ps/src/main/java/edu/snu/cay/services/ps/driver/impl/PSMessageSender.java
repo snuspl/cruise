@@ -47,7 +47,7 @@ final class PSMessageSender {
   void send(final String destId, final AvroPSMsg msg) {
     final ConnectionFactory<AvroPSMsg> connFactory = psNetworkSetup.get().getConnectionFactory();
     if (connFactory == null) {
-      throw new RuntimeException("ConnectionFactory has not been registered or has been removed");
+      throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
     }
 
     final Connection<AvroPSMsg> conn = connFactory
