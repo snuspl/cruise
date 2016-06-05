@@ -53,13 +53,6 @@ final class AddIntegerWorker implements Worker {
       throws IdGenerationException {
     this.parameterWorker = parameterWorker;
     this.parameter = parameter;
-
-    // put at least one data entry to initialize blocks
-    // TODO #530: we'll not require this initialization after removing data type from MemoryStore
-    if (!addedEval) {
-      final long dataKey = dataIdFactory.getId();
-      memoryStore.put(dataKey, dataKey); // hard-coded data type
-    }
   }
 
   @Override
