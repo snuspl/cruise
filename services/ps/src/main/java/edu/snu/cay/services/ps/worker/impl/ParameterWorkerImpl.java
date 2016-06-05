@@ -436,7 +436,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final int drainSize; // Max number of operations to drain per iteration.
 
     private volatile boolean close = false;
-    private AtomicBoolean shutdown = new AtomicBoolean(false);
+    private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
     public WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
                         final ServerResolver serverResolver,

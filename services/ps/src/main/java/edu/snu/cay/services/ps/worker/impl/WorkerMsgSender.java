@@ -25,6 +25,7 @@ import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
@@ -70,6 +71,7 @@ public class WorkerMsgSender<K, P> {
     if (connFactory == null) {
       throw new RuntimeException("ConnectionFactory has not been registered or has been removed");
     }
+
     final Connection<AvroPSMsg> conn = connFactory
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
@@ -105,9 +107,14 @@ public class WorkerMsgSender<K, P> {
    * @param key a key to pull
    */
   void sendPullMsg(final String destId, final EncodedKey<K> key) {
+    final Identifier localEndPointId = psNetworkSetup.getMyId();
+    if (localEndPointId == null) {
+      throw new RuntimeException("ConnectionFactory has not been registered or has been removed");
+    }
+
     final PullMsg pullMsg = PullMsg.newBuilder()
         .setKey(ByteBuffer.wrap(key.getEncoded()))
-        .setSrcId(psNetworkSetup.getMyId().toString())
+        .setSrcId(localEndPointId.toString())
         .build();
 
     send(destId,

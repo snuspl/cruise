@@ -18,6 +18,7 @@ package edu.snu.cay.services.ps.ns;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
+import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 
@@ -47,8 +48,9 @@ public final class NetworkContextRegister {
 
     @Override
     public void onNext(final ContextStart contextStart) {
-      psNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
-      LOG.log(Level.INFO, "My NCS id is " + psNetworkSetup.getMyId());
+      final ConnectionFactory connFactory =
+          psNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
+      LOG.log(Level.INFO, "My NCS id is " + connFactory.getLocalEndPointId());
     }
   }
 

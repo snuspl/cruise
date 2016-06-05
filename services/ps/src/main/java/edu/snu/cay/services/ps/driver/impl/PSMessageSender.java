@@ -20,6 +20,7 @@ import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
+import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.IdentifierFactory;
 
@@ -44,7 +45,12 @@ final class PSMessageSender {
   }
 
   void send(final String destId, final AvroPSMsg msg) {
-    final Connection<AvroPSMsg> conn = psNetworkSetup.get().getConnectionFactory()
+    final ConnectionFactory<AvroPSMsg> connFactory = psNetworkSetup.get().getConnectionFactory();
+    if (connFactory == null) {
+      throw new RuntimeException("ConnectionFactory has not been registered or has been removed");
+    }
+
+    final Connection<AvroPSMsg> conn = connFactory
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();
