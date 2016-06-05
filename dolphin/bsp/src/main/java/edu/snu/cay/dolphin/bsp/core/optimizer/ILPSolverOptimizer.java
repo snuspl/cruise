@@ -303,7 +303,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       while (getDataUnitsToMove(sender) < 0) {
         // pick receiver as a compute task that has the biggest amount of data unit to receive.
         final OptimizedComputeTask receiver = receiverPriorityQueue.poll();
-        builder.addTransferSteps(NAMESPACE_DOLPHIN_BSP, generateTransferStep(sender, receiver));
+        builder.addTransferStep(NAMESPACE_DOLPHIN_BSP, generateTransferStep(sender, receiver));
         if (getDataUnitsToMove(receiver) > 0) {
           receiverPriorityQueue.add(receiver);
           break;
@@ -330,9 +330,8 @@ public final class ILPSolverOptimizer implements Optimizer {
    * @param receiver the compute task that receives data.
    * @return the generated {@link TransferStep}.
    */
-  private List<TransferStep> generateTransferStep(final OptimizedComputeTask sender,
-                                                  final OptimizedComputeTask receiver) {
-    final List<TransferStep> ret = new ArrayList<>();
+  private TransferStep generateTransferStep(final OptimizedComputeTask sender,
+                                            final OptimizedComputeTask receiver) {
     final int numToSend = getDataUnitsToMove(sender);
     if (numToSend >= 0) {
       throw new IllegalArgumentException("The number of data units to send must be < 0");
@@ -340,9 +339,8 @@ public final class ILPSolverOptimizer implements Optimizer {
     final int numToReceive = getDataUnitsToMove(receiver);
 
     final int numToMove = Math.min(-numToSend, numToReceive);
-    ret.add(new TransferStepImpl(sender.getId(), receiver.getId(), new DataInfoImpl(numToMove)));
 
-    return ret;
+    return new TransferStepImpl(sender.getId(), receiver.getId(), new DataInfoImpl(numToMove));
   }
 
   /**

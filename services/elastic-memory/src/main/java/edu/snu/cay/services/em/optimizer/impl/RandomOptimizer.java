@@ -141,7 +141,9 @@ public final class RandomOptimizer implements Optimizer {
       }
 
       final List<TransferStep> transferSteps = getTransferSteps(evaluators);
-      planBuilder.addTransferSteps(namespace, transferSteps);
+      for (final TransferStep transferStep : transferSteps) {
+        planBuilder.addTransferStep(namespace, transferStep);
+      }
     }
     final Plan plan = planBuilder.build();
     LOG.log(Level.FINE, "RandomOptimizer Plan: {0}", plan);

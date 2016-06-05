@@ -333,7 +333,7 @@ public final class ILPQuickOptimizer implements Optimizer {
       while (sender.getNumUnits() > sender.numOptimalUnits) {
         // pick the compute task that has the biggest amount of data units to receive to be the receiver
         final OptimizedEvaluator receiver = receiverPriorityQueue.poll();
-        builder.addTransferSteps(namespace, generateTransferStep(sender, receiver));
+        builder.addTransferStep(namespace, generateTransferStep(sender, receiver));
         if (receiver.getNumUnits() < receiver.numOptimalUnits) {
           receiverPriorityQueue.add(receiver);
           break;
@@ -343,19 +343,16 @@ public final class ILPQuickOptimizer implements Optimizer {
   }
 
   /**
-   * Helper method that creates {@link TransferStep}s that best fit the given optimization plan,
+   * Helper method that creates {@link TransferStep} that best fits the given optimization plan,
    * for {@code sender} and {@code receiver}.
    */
-  private static List<TransferStep> generateTransferStep(final OptimizedEvaluator sender,
-                                                         final OptimizedEvaluator receiver) {
-    final List<TransferStep> ret = new ArrayList<>(1);
-
+  private static TransferStep generateTransferStep(final OptimizedEvaluator sender,
+                                                   final OptimizedEvaluator receiver) {
     final int numToSend = sender.getNumUnits() - sender.numOptimalUnits;
     final int numToReceive = receiver.numOptimalUnits - receiver.getNumUnits();
     final int numToMove = Math.min(numToSend, numToReceive);
-    ret.add(new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove)));
 
-    return ret;
+    return new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove));
   }
 
   private static final class OptimizedEvaluator {
