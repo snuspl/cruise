@@ -157,9 +157,7 @@ final class PlanValidationUtils {
     final int numRemainedUnits = evaluator.getDataInfo().getNumUnits() - dataInfoToRemove.getNumUnits();
     assertTrue(String.format("Evaluator %s does not have enough data to transfer", id), numRemainedUnits >= 0);
 
-    if (numRemainedUnits > 0) {
-      ((DataInfoImpl) evaluator.getDataInfo()).setNumUnits(numRemainedUnits);
-    }
+    evaluator.getDataInfo().setNumUnits(numRemainedUnits);
   }
 
   /**
@@ -170,6 +168,6 @@ final class PlanValidationUtils {
    */
   private static void addData(final EvaluatorParameters evaluator, final DataInfo dataInfoToAdd) {
     final int numExistingUnits = evaluator.getDataInfo().getNumUnits();
-    ((DataInfoImpl) evaluator.getDataInfo()).setNumUnits(numExistingUnits + dataInfoToAdd.getNumUnits());
+    evaluator.getDataInfo().setNumUnits(numExistingUnits + dataInfoToAdd.getNumUnits());
   }
 }

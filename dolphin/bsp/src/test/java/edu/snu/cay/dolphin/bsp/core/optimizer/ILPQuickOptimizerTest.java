@@ -103,7 +103,7 @@ public final class ILPQuickOptimizerTest {
         NAMESPACE_DOLPHIN_BSP, new int[]{100, 100, 100, 100}, 100D);
 
     final Plan plan = ilpQuickOptimizer.optimize(activeEvaluators, availableEvaluators);
-
+    System.out.println(plan);
     PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
     assertTrue("At least two evaluators should be deleted",
         plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size() >= 2);

@@ -21,7 +21,12 @@ package edu.snu.cay.services.em.optimizer.api;
 public interface DataInfo {
 
   /**
-   * @return number of units stored with the dataType
+   * @return number of units stored in the MemoryStore.
    */
   int getNumUnits();
+
+  /**
+   * Set the number of units stored in the MemoryStore.
+   */
+  void setNumUnits(int numUnits);
 }

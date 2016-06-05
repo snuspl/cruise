@@ -45,10 +45,10 @@ public final class DataInfoImpl implements DataInfo {
   /**
    * Updates the number of units. Note that this method is only for testing.
    */
+  @Override
   public void setNumUnits(final int numUnits) {
     this.numUnits = numUnits;
   }
-
 
   @Override
   public String toString() {
