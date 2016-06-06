@@ -54,11 +54,6 @@ public interface ParameterWorker<K, P, V> {
   List<V> pull(List<K> keys);
 
   /**
-   * Close the worker, after waiting for queued messages to be sent.
-   */
-  void close();
-
-  /**
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
    * for queued messages to be sent.
    */

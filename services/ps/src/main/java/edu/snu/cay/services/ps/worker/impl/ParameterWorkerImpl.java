@@ -222,27 +222,25 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   }
 
   /**
-   * Close the worker, after waiting for queued messages to be sent.
-   */
-  @Override
-  public void close() {
-    // Close all threads
-    for (int i = 0; i < numThreads; i++) {
-      threads[i].close();
-    }
-    // Wait for shutdown to complete on all threads
-    for (int i = 0; i < numThreads; i++) {
-      threads[i].waitForShutdown();
-    }
-  }
-
-  /**
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
    * for queued messages to be sent.
    */
   @Override
   public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
-    final Future result = Executors.newSingleThreadExecutor().submit((Runnable) this::close);
+
+    final Future result = Executors.newSingleThreadExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        // Close all threads
+        for (int i = 0; i < numThreads; i++) {
+          threads[i].close();
+        }
+        // Wait for shutdown to complete on all threads
+        for (int i = 0; i < numThreads; i++) {
+          threads[i].waitForShutdown();
+        }
+      }
+    });
 
     result.get(timeoutMs, TimeUnit.MILLISECONDS);
   }
