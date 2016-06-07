@@ -60,7 +60,7 @@ final class PlanValidationUtils {
 
   /**
    * @param evaluators the collection of evaluator parameters
-   * @return a mapping data types to the total number of data blocks in the specified collection of evaluator parameters.
+   * @return the total number of data blocks in the specified collection of evaluator parameters.
    */
   private static Integer getSumOfDataInfos(final Collection<EvaluatorParameters> evaluators) {
     int numTotalUnits = 0;
