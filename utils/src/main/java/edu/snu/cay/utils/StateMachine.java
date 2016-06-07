@@ -80,17 +80,6 @@ public final class StateMachine {
   }
 
   /**
-   * Check the expectedCurrentState and set to a certain state.
-   *
-   * @param expectedCurrentState an expected state
-   * @param state a state
-   */
-  public synchronized void checkAndSetState(final String expectedCurrentState, final String state) {
-    checkState(expectedCurrentState);
-    setState(state);
-  }
-
-  /**
    * Atomically sets the state to the given updated state
    * if the current state equals to the expected state.
    *
@@ -98,6 +87,8 @@ public final class StateMachine {
    * @param state a state
    * @return true if successful. False return indicates that
    * the actual value was not equal to the expected value.
+   * @throws RuntimeException if the state is unknown state, or the transition
+   * from the current state to the specified state is illegal
    */
   public synchronized boolean compareAndSetState(final String expectedCurrentState, final String state) {
     final boolean compared = currentState.name.equals(expectedCurrentState);
