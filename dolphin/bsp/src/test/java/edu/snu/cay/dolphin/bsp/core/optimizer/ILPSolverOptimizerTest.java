@@ -143,23 +143,22 @@ public final class ILPSolverOptimizerTest {
    * and the specified number of compute tasks.
    * @param namespace the namespace of the evaluators to distinguish Evaluators.
    * @param numComputeTasks the number of compute tasks that participate in the execution.
-   * @param dataUnitsArray a two dimension array whose column contains the number of data units for each data type
-   *                       and whose row contains data units for each task.
+   * @param dataBlocksArray an array that contains the number of data blocks for each task.
    * @return a collection of evaluator parameters.
    */
   private Map<String, List<EvaluatorParameters>> generateEvaluatorParameters(final String namespace,
                                                                              final int numComputeTasks,
-                                                                             final int[] dataUnitsArray) {
+                                                                             final int[] dataBlocksArray) {
     final List<EvaluatorParameters> evalParamsList = new ArrayList<>(numComputeTasks + 1);
     double maxComputeTaskEndTime = 0D;
 
-    if (numComputeTasks != dataUnitsArray.length) {
-      throw new IllegalArgumentException("# of compute task should be equal to # of rows of data units array");
+    if (numComputeTasks != dataBlocksArray.length) {
+      throw new IllegalArgumentException("# of compute task should be equal to # of rows of data blocks array");
     }
 
     // generate compute tasks
     for (int i = 0; i < numComputeTasks; ++i) {
-      final int numUnits = dataUnitsArray[i];
+      final int numUnits = dataBlocksArray[i];
       final DataInfo dataInfo = new DataInfoImpl(numUnits);
 
       final Map<String, Double> cmpTaskMetrics = new HashMap<>();

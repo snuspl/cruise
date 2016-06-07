@@ -108,8 +108,8 @@ public final class ILPQuickOptimizer implements Optimizer {
       new Comparator<OptimizedEvaluator>() {
         @Override
         public int compare(final OptimizedEvaluator o1, final OptimizedEvaluator o2) {
-          final int numUnitsToMove1 = Math.abs(o1.getNumUnits() - o1.numOptimalUnits);
-          final int numUnitsToMove2 = Math.abs(o2.getNumUnits() - o2.numOptimalUnits);
+          final int numUnitsToMove1 = Math.abs(o1.getNumBlocks() - o1.numOptimalBlocks);
+          final int numUnitsToMove2 = Math.abs(o2.getNumBlocks() - o2.numOptimalBlocks);
           return numUnitsToMove2 - numUnitsToMove1;
         }
       };
@@ -169,7 +169,7 @@ public final class ILPQuickOptimizer implements Optimizer {
     final int numOptimalEvals = numOptimalEvalsPair.getFirst();
     final double compUnitCostInvSum = numOptimalEvalsPair.getSecond();
 
-    // Step 4: Compute the optimal number of data units for each evaluator.
+    // Step 4: Compute the optimal number of data blocks for each evaluator.
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
     final Set<OptimizedEvaluator> evalSet = setNumOptimalUnitsForEvaluators(
         optimizedEvalQueue, expectedCompUnitCostInv, compUnitCostInvSum, numUnitsTotal, numOptimalEvals, planBuilder);
@@ -185,7 +185,7 @@ public final class ILPQuickOptimizer implements Optimizer {
    * by unit cost in a {@link PriorityQueue}.
    *
    * @return a tuple of a {@link PriorityQueue} of {@link OptimizedEvaluator}s,
-   *   the sum of computation unit costs of all evaluators, and the total number of data units
+   *   the sum of computation unit costs of all evaluators, and the total number of data blocks
    */
   private static Tuple3<PriorityQueue<OptimizedEvaluator>, Double, Integer> getOptimizedEvaluators(final Cost cost) {
 
@@ -195,12 +195,12 @@ public final class ILPQuickOptimizer implements Optimizer {
     int numUnitsTotal = 0;
 
     for (final Cost.ComputeTaskCost computeTaskCost : cost.getComputeTaskCosts()) {
-      final int numUnits = computeTaskCost.getDataInfo().getNumUnits();
+      final int numBlocks = computeTaskCost.getDataInfo().getNumBlocks();
 
-      final double compUnitCost = computeTaskCost.getComputeCost() / numUnits;
+      final double compUnitCost = computeTaskCost.getComputeCost() / numBlocks;
       final double compUnitCostInv = 1 / compUnitCost;
       compUnitCostSum += compUnitCost;
-      numUnitsTotal += numUnits;
+      numUnitsTotal += numBlocks;
 
       optimizedEvaluatorQueue.add(new OptimizedEvaluator(
           computeTaskCost.getId(), computeTaskCost.getDataInfo(), compUnitCostInv));
@@ -285,16 +285,16 @@ public final class ILPQuickOptimizer implements Optimizer {
       if (retSet.size() >= numOptimalEvals) {
         // the optimal number of evaluators has been reached; delete the remaining ones
         planBuilder.addEvaluatorToDelete(NAMESPACE_DOLPHIN_BSP, eval.id);
-        eval.numOptimalUnits = 0;
+        eval.numOptimalBlocks = 0;
 
       } else if (retSet.size() == numOptimalEvals - 1) {
         // this is the last evaluator to be included
         // we need this if-case to prevent +1/-1 errors from Math.round()
-        eval.numOptimalUnits = remainingWorkload;
+        eval.numOptimalBlocks = remainingWorkload;
 
       } else {
         final int newWorkload = (int) Math.round(totalWorkload * eval.compUnitCostInv / compUnitCostInvSum);
-        eval.numOptimalUnits = newWorkload;
+        eval.numOptimalBlocks = newWorkload;
         remainingWorkload -= newWorkload;
       }
 
@@ -319,22 +319,22 @@ public final class ILPQuickOptimizer implements Optimizer {
         new PriorityQueue<>(optimizedEvalSet.size(), NUM_UNITS_TO_MOVE_COMPARATOR);
 
     for (final OptimizedEvaluator eval : optimizedEvalSet) {
-      if (eval.getNumUnits() > eval.numOptimalUnits) {
+      if (eval.getNumBlocks() > eval.numOptimalBlocks) {
         senderPriorityQueue.add(eval);
-      } else if (eval.getNumUnits() < eval.numOptimalUnits) {
+      } else if (eval.getNumBlocks() < eval.numOptimalBlocks) {
         receiverPriorityQueue.add(eval);
       }
     }
 
     // greedy search for generating transfer steps
     while (senderPriorityQueue.size() > 0) {
-      // pick the compute task that has the biggest amount of data units to send to be the sender
+      // pick the compute task that has the biggest amount of data blocks to send to be the sender
       final OptimizedEvaluator sender = senderPriorityQueue.poll();
-      while (sender.getNumUnits() > sender.numOptimalUnits) {
+      while (sender.getNumBlocks() > sender.numOptimalBlocks) {
         // pick the compute task that has the biggest amount of data units to receive to be the receiver
         final OptimizedEvaluator receiver = receiverPriorityQueue.poll();
         builder.addTransferStep(namespace, generateTransferStep(sender, receiver));
-        if (receiver.getNumUnits() < receiver.numOptimalUnits) {
+        if (receiver.getNumBlocks() < receiver.numOptimalBlocks) {
           receiverPriorityQueue.add(receiver);
           break;
         }
@@ -348,8 +348,8 @@ public final class ILPQuickOptimizer implements Optimizer {
    */
   private static TransferStep generateTransferStep(final OptimizedEvaluator sender,
                                                    final OptimizedEvaluator receiver) {
-    final int numToSend = sender.getNumUnits() - sender.numOptimalUnits;
-    final int numToReceive = receiver.numOptimalUnits - receiver.getNumUnits();
+    final int numToSend = sender.getNumBlocks() - sender.numOptimalBlocks;
+    final int numToReceive = receiver.numOptimalBlocks - receiver.getNumBlocks();
     final int numToMove = Math.min(numToSend, numToReceive);
 
     return new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove));
@@ -359,34 +359,34 @@ public final class ILPQuickOptimizer implements Optimizer {
     private final String id;
     private final DataInfo dataInfo;
     private final double compUnitCostInv;
-    private int numOptimalUnits;
+    private int numOptimalBlocks;
 
     private OptimizedEvaluator(final String id, final DataInfo dataInfo, final double compUnitCostInv) {
       this(id, dataInfo, compUnitCostInv, 0);
     }
 
     private OptimizedEvaluator(final String id, final DataInfo dataInfo, final double compUnitCostInv,
-                               final int numOptimalUnits) {
+                               final int numOptimalBlocks) {
       this.id = id;
       this.compUnitCostInv = compUnitCostInv;
-      this.numOptimalUnits = numOptimalUnits;
+      this.numOptimalBlocks = numOptimalBlocks;
       this.dataInfo = dataInfo;
     }
 
-    private int getNumUnits() {
-      return dataInfo.getNumUnits();
+    private int getNumBlocks() {
+      return dataInfo.getNumBlocks();
     }
 
     @Override
     public String toString() {
       final StringBuilder sb = new StringBuilder("OptimizedEvaluator[id=")
           .append(id)
-          .append(", numUnits=")
-          .append(getNumUnits())
-          .append(", compUnitCostInv=")
+          .append(", numBlocks=")
+          .append(getNumBlocks())
+          .append(", compBlockCostInv=")
           .append(compUnitCostInv)
-          .append(", numOptimalUnits=")
-          .append(numOptimalUnits)
+          .append(", numOptimalBlocks=")
+          .append(numOptimalBlocks)
           .append("]");
       return sb.toString();
     }

@@ -21,12 +21,14 @@ package edu.snu.cay.services.em.optimizer.api;
 public interface DataInfo {
 
   /**
-   * @return number of units stored in the MemoryStore.
+   * @return number of blocks stored in the MemoryStore.
    */
-  int getNumUnits();
+  int getNumBlocks();
 
   /**
-   * Set the number of units stored in the MemoryStore.
+   * Update the number of blocks stored in the MemoryStore.
+   * Note that this method is for testing only, to compare the result
+   * after applying generated optimization plan.
    */
-  void setNumUnits(int numUnits);
+  void setNumBlocks(int numBlocks);
 }

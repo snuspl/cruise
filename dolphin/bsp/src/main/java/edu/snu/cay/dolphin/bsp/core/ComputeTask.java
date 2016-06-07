@@ -298,7 +298,7 @@ public final class ComputeTask implements Task {
 
   private ComputeMsg getComputeMsg() {
     final DataInfo dataInfo = DataInfo.newBuilder()
-        .setNumUnits(memoryStore.getNumUnits())
+        .setNumBlocks(memoryStore.getNumBlocks())
         .build();
 
     final ComputeMsg computeMsg = ComputeMsg.newBuilder()

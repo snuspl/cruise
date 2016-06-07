@@ -118,7 +118,13 @@ public interface MemoryStore<K> {
   <V> Map<K, V> removeRange(K startId, K endId);
 
   /**
-   * @return number of items in the MemoryStore
+   * @return number of blocks in the MemoryStore
+   */
+  int getNumBlocks();
+
+  /**
+   * Gets the number of stored items for testing purpose.
+   * @return number of single items in the MemoryStore
    */
   int getNumUnits();
 }

@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 
 /**
  * An Optimizer that simply adds one new Evaluator for each optimize call.
- * It then moves half the units from the first Evaluator to the new Evaluator.
+ * It then moves half the blocks from the first Evaluator to the new Evaluator.
  * It skips until callsToSkip is reached, after which it runs until maxCallsToMake is reached.
  *
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
@@ -68,7 +68,7 @@ public final class AddOneOptimizer implements Optimizer {
 
       EvaluatorParameters srcEvaluator = null;
       for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
-        if (evaluator.getDataInfo().getNumUnits() != 0) {
+        if (evaluator.getDataInfo().getNumBlocks() != 0) {
           srcEvaluator = evaluator;
           break;
         }
@@ -81,10 +81,10 @@ public final class AddOneOptimizer implements Optimizer {
       }
 
       final DataInfo srcDataInfo = srcEvaluator.getDataInfo();
-      final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
+      final int numBlocksToMove = srcDataInfo.getNumBlocks() / 2;
 
       final TransferStep transferStep = new TransferStepImpl(
-          srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(numUnitsToMove));
+          srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(numBlocksToMove));
 
       planBuilder.addTransferStep(namespace, transferStep);
     }

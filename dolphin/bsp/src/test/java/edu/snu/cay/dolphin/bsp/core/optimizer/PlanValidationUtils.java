@@ -60,12 +60,12 @@ final class PlanValidationUtils {
 
   /**
    * @param evaluators the collection of evaluator parameters
-   * @return a mapping data types to the total number of data units in the specified collection of evaluator parameters.
+   * @return a mapping data types to the total number of data blocks in the specified collection of evaluator parameters.
    */
   private static Integer getSumOfDataInfos(final Collection<EvaluatorParameters> evaluators) {
     int numTotalUnits = 0;
     for (final EvaluatorParameters evaluator : evaluators) {
-      numTotalUnits += evaluator.getDataInfo().getNumUnits();
+      numTotalUnits += evaluator.getDataInfo().getNumBlocks();
     }
     return numTotalUnits;
   }
@@ -118,7 +118,7 @@ final class PlanValidationUtils {
         final EvaluatorParameters evaluator = evaluatorMap.remove(idToDelete);
         assertNotNull(String.format("No evaluator whose id is %s", idToDelete), evaluator);
         assertEquals(String.format("Evaluator %s to delete has data", idToDelete),
-            0, evaluator.getDataInfo().getNumUnits());
+            0, evaluator.getDataInfo().getNumBlocks());
       }
 
       resultMap.put(namespace, new ArrayList<>(evaluatorMap.values()));
@@ -140,7 +140,7 @@ final class PlanValidationUtils {
    * @return a copy of the specified evaluator parameters
    */
   private static EvaluatorParameters makeCopy(final EvaluatorParameters evaluatorParameters) {
-    final DataInfo dataInfoCopy = new DataInfoImpl(evaluatorParameters.getDataInfo().getNumUnits());
+    final DataInfo dataInfoCopy = new DataInfoImpl(evaluatorParameters.getDataInfo().getNumBlocks());
     return new EvaluatorParametersImpl(
         evaluatorParameters.getId(), dataInfoCopy, evaluatorParameters.getMetrics());
   }
@@ -154,10 +154,10 @@ final class PlanValidationUtils {
   private static void removeData(final EvaluatorParameters evaluator, final DataInfo dataInfoToRemove) {
     final String id = evaluator.getId();
 
-    final int numRemainedUnits = evaluator.getDataInfo().getNumUnits() - dataInfoToRemove.getNumUnits();
-    assertTrue(String.format("Evaluator %s does not have enough data to transfer", id), numRemainedUnits >= 0);
+    final int numRemainedBlocks = evaluator.getDataInfo().getNumBlocks() - dataInfoToRemove.getNumBlocks();
+    assertTrue(String.format("Evaluator %s does not have enough data to transfer", id), numRemainedBlocks >= 0);
 
-    evaluator.getDataInfo().setNumUnits(numRemainedUnits);
+    evaluator.getDataInfo().setNumBlocks(numRemainedBlocks);
   }
 
   /**
@@ -167,7 +167,7 @@ final class PlanValidationUtils {
    * @param dataInfoToAdd the information of data to add
    */
   private static void addData(final EvaluatorParameters evaluator, final DataInfo dataInfoToAdd) {
-    final int numExistingUnits = evaluator.getDataInfo().getNumUnits();
-    evaluator.getDataInfo().setNumUnits(numExistingUnits + dataInfoToAdd.getNumUnits());
+    final int numExistingBlocks = evaluator.getDataInfo().getNumBlocks();
+    evaluator.getDataInfo().setNumBlocks(numExistingBlocks + dataInfoToAdd.getNumBlocks());
   }
 }

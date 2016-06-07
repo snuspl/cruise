@@ -31,7 +31,7 @@ import java.util.logging.Logger;
 
 /**
  * The {@link UserComputeTask} for SleepREEF.
- * Retrieves the number of data units it is currently holding, from {@link MemoryStore},
+ * Retrieves the number of data blocks it is currently holding, from {@link MemoryStore},
  * multiplies that value with its computation rate,
  * and then sleeps for that amount of time using {@link Thread#sleep(long)}.
  */
@@ -84,7 +84,7 @@ public final class SleepCmpTask extends UserComputeTask
 
   @Override
   public void run(final int iteration) {
-    final int workload = memoryStore.getNumUnits();
+    final int workload = memoryStore.getNumBlocks();
     final long sleepTime = workload * computationRate;
     LOG.log(Level.INFO, "iteration start: {0}, workload: {1}, computationRate: {2}, sleepTime: {3}",
         new Object[]{iteration, workload, computationRate, sleepTime});
@@ -95,7 +95,7 @@ public final class SleepCmpTask extends UserComputeTask
       throw new RuntimeException("InterruptedException during sleeping", e);
     }
 
-    final int finWorkload = memoryStore.getNumUnits();
+    final int finWorkload = memoryStore.getNumBlocks();
     LOG.log(Level.INFO, "iteration finish: {0}, finWorkload: {1}",
         new Object[]{iteration, finWorkload});
   }

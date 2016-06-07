@@ -399,6 +399,14 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * @return the number of blocks of specific type
+   */
+  @Override
+  public int getNumBlocks() {
+    return blocks.size();
+  }
+
   @Override
   public int getNumUnits() {
     int numUnits = 0;
@@ -406,12 +414,5 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       numUnits += block.getNumUnits();
     }
     return numUnits;
-  }
-
-  /**
-   * @return the number of blocks of specific type
-   */
-  public int getNumBlocks() {
-    return blocks.size();
   }
 }

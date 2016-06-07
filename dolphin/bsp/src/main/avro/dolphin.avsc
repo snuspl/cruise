@@ -30,7 +30,7 @@
 },
 
 /**
- * Contains the number of units stored in EM for this Task.
+ * Contains the number of blocks stored in EM for this Task.
  * An Avro implementation of {@link edu.snu.cay.services.em.optimizer.api.DataInfo}.
  */
 {
@@ -39,7 +39,7 @@
   "name": "DataInfo",
   "fields":
   [
-    {"name": "numUnits", "type": "int"}
+    {"name": "numBlocks", "type": "int"}
   ]
 },
 

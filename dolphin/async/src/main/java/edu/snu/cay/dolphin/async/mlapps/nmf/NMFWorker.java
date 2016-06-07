@@ -205,20 +205,20 @@ final class NMFWorker implements Worker {
     computeTracer.reset();
   }
 
-  private void sendMetrics(final int numDataUnits) {
+  private void sendMetrics(final int numDataBlocks) {
     try {
       insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.sum());
       metricsCollector.stop();
     } catch (final MetricException e) {
       throw new RuntimeException(e);
     }
-    metricsMessageSender.setWorkerMsg(getWorkerMsg(numDataUnits)).send();
+    metricsMessageSender.setWorkerMsg(getWorkerMsg(numDataBlocks)).send();
   }
 
-  private WorkerMsg getWorkerMsg(final int numDataUnits) {
+  private WorkerMsg getWorkerMsg(final int numDataBlocks) {
     final WorkerMsg workerMsg = WorkerMsg.newBuilder()
         .setIteration(iteration)
-        .setNumDataUnits(numDataUnits)
+        .setNumDataBlocks(numDataBlocks)
         .build();
     return workerMsg;
   }

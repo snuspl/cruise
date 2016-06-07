@@ -24,7 +24,7 @@
   "fields":
   [
     {"name": "iteration", "type": "int"},
-    {"name": "numDataUnits", "type": "int"}
+    {"name": "numDataBlocks", "type": "int"}
   ]
 },
 

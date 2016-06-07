@@ -693,6 +693,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     return operation.getOutputData();
   }
 
+  /**
+   * @return the number of blocks
+   */
+  @Override
+  public int getNumBlocks() {
+    return blocks.size();
+  }
+
   @Override
   public int getNumUnits() {
     int numUnits = 0;
@@ -700,12 +708,5 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       numUnits += block.getNumUnits();
     }
     return numUnits;
-  }
-
-  /**
-   * @return the number of blocks
-   */
-  public int getNumBlocks() {
-    return blocks.size();
   }
 }

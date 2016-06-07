@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 /**
  * An Optimizer that simply deletes one new Evaluator for each optimize call.
- * The plan transfers all the units from the soon-to-be-deleted Evaluator to a random Evaluator,
+ * The plan transfers all the blocks from the soon-to-be-deleted Evaluator to a random Evaluator,
  * then removes the Evaluator.
  * It skips until callsToSkip is reached, after which it runs until maxCallsToMake is reached.
  *
@@ -71,7 +71,7 @@ public final class DeleteOneOptimizer implements Optimizer {
       // only add evaluators that have data to move
       evaluators.addAll(evalParamsMap.get(namespace)
           .stream()
-          .filter(evaluator -> evaluator.getDataInfo().getNumUnits() > 0)
+          .filter(evaluator -> evaluator.getDataInfo().getNumBlocks() > 0)
           .collect(Collectors.toList()));
       Collections.sort(evaluators, (o1, o2) -> o1.getId().compareTo(o2.getId()));
 
@@ -86,7 +86,7 @@ public final class DeleteOneOptimizer implements Optimizer {
       final TransferStep transferStep = new TransferStepImpl(
             evaluatorToDelete.getId(),
             dstEvaluator.getId(),
-            new DataInfoImpl(evaluatorToDelete.getDataInfo().getNumUnits()));
+            new DataInfoImpl(evaluatorToDelete.getDataInfo().getNumBlocks()));
 
       planBuilder.addEvaluatorToDelete(namespace, evaluatorToDelete.getId());
       planBuilder.addTransferStep(namespace, transferStep);

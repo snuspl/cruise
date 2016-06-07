@@ -78,7 +78,7 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
 
   private DataInfo getDataInfoFromAvro(
       final edu.snu.cay.dolphin.bsp.core.metric.avro.DataInfo avroDataInfo) {
-    return new DataInfoImpl(avroDataInfo.getNumUnits());
+    return new DataInfoImpl(avroDataInfo.getNumBlocks());
   }
 
   private Map<String, Double> getMetricsFromAvro(final Metrics avroMetrics) {

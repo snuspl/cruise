@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  * 1. Choosing uniformly between [minEvaluatorsFraction * availableEvaluators,
  *    maxEvaluatorsFraction * availableEvaluators] evaluators to use in the plan.
  *    {@link #getEvaluatorsToUse}
- * 2. Randomly redistributing all units -- by batching units (of 10) and
+ * 2. Randomly redistributing all blocks -- by batching blocks (of 10) and
  *    sending each batch to an evaluator selected uniformly at random.
  *    {@link #distributeDataAcrossEvaluators}
  * 3. Creating transfer steps by greedily taking data needed to
@@ -177,7 +177,7 @@ public final class RandomOptimizer implements Optimizer {
   private static long getSumData(final Collection<EvaluatorParameters> evaluators) {
     long sumData = 0;
     for (final EvaluatorParameters evaluator : evaluators) {
-      sumData += evaluator.getDataInfo().getNumUnits();
+      sumData += evaluator.getDataInfo().getNumBlocks();
     }
     return sumData;
   }
@@ -206,8 +206,8 @@ public final class RandomOptimizer implements Optimizer {
   }
 
   /**
-   * Randomly redistribute all data units.
-   * The distribution is done by batching units (of 10) and
+   * Randomly redistribute all data blocks.
+   * The distribution is done by batching blocks (of 10) and
    * sending each batch to an evaluator selected uniformly at random.
    * @param evaluators Evaluators to distribute data to. Should *not* include to-be-deleted Evaluators.
    * @param totalData the amount of data to distribute
@@ -244,7 +244,7 @@ public final class RandomOptimizer implements Optimizer {
     for (int i = 0; i < evaluators.size(); i++) {
       final OptimizedEvaluator dstEvaluator = evaluators.get(i);
       if (dstEvaluator.getDataRemaining() > 0) {
-        // Find srcEvaluator's with data units to transfer to dstEvaluator,
+        // Find srcEvaluator's with data blocks to transfer to dstEvaluator,
         // starting from the next index and iterating through as a circular array.
         for (int j = 1; j < evaluators.size(); j++) {
           final OptimizedEvaluator srcEvaluator = evaluators.get((i + j) % evaluators.size());
@@ -281,7 +281,7 @@ public final class RandomOptimizer implements Optimizer {
 
     public OptimizedEvaluator(final String id, final DataInfo dataInfo) {
       this.id = id;
-      this.dataAllocated = dataInfo.getNumUnits();
+      this.dataAllocated = dataInfo.getNumBlocks();
       this.dataRequested = 0;
     }
 

@@ -21,13 +21,13 @@ import edu.snu.cay.services.em.optimizer.api.DataInfo;
  * A plain-old-data implementation of DataInfo.
  */
 public final class DataInfoImpl implements DataInfo {
-  private int numUnits;
+  private int numBlocks;
 
   /**
    * Creates a DataInfo.
    */
-  public DataInfoImpl(final int numUnits) {
-    this.numUnits = numUnits;
+  public DataInfoImpl(final int numBlocks) {
+    this.numBlocks = numBlocks;
   }
 
   /**
@@ -38,22 +38,19 @@ public final class DataInfoImpl implements DataInfo {
   }
 
   @Override
-  public int getNumUnits() {
-    return numUnits;
+  public int getNumBlocks() {
+    return numBlocks;
   }
 
-  /**
-   * Updates the number of units. Note that this method is only for testing.
-   */
   @Override
-  public void setNumUnits(final int numUnits) {
-    this.numUnits = numUnits;
+  public void setNumBlocks(final int numBlocks) {
+    this.numBlocks = numBlocks;
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder("DataInfoImpl{");
-    sb.append("numUnits=").append(numUnits);
+    sb.append("numBlocks=").append(numBlocks);
     sb.append('}');
     return sb.toString();
   }
