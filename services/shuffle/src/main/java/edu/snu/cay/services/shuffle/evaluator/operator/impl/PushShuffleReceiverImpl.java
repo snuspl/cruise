@@ -125,7 +125,8 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     LOG.log(Level.FINE, senderId + " was completed to send data");
     if (senderStateMachineMap.get(senderId)
         .compareAndSetState(PushShuffleSenderState.SENDING, PushShuffleSenderState.COMPLETED)) {
-      throw new RuntimeException("The expected current state is different from the actual state");
+      throw new RuntimeException("The expected current state [" + PushShuffleSenderState.SENDING +
+          "] is different from the actual state");
     }
     if (completedSenderCount.incrementAndGet() == totalNumSenders) {
       onAllSendersCompleted();
@@ -134,13 +135,15 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
 
   private void onAllSendersCompleted() {
     if (stateMachine.compareAndSetState(PushShuffleReceiverState.RECEIVING, PushShuffleReceiverState.COMPLETED)) {
-      throw new RuntimeException("The expected current state is different from the actual state");
+      throw new RuntimeException("The expected current state [" + PushShuffleReceiverState.RECEIVING +
+          "] is different from the actual state");
     }
     completedSenderCount.set(0);
     LOG.log(Level.INFO, "All senders were completed to send data.");
     for (final StateMachine senderStateMachine : senderStateMachineMap.values()) {
       if (senderStateMachine.compareAndSetState(PushShuffleSenderState.COMPLETED, PushShuffleSenderState.SENDING)) {
-        throw new RuntimeException("The expected current state is different from the actual state");
+        throw new RuntimeException("The expected current state [" + PushShuffleSenderState.COMPLETED +
+            "] is different from the actual state");
       }
     }
 
@@ -163,7 +166,8 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     if (shutdown) {
       LOG.log(Level.INFO, "The receiver was finished.");
       if (stateMachine.compareAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.FINISHED)) {
-        throw new RuntimeException("The expected current state is different from the actual state");
+        throw new RuntimeException("The expected current state [" + PushShuffleReceiverState.COMPLETED +
+            "] is different from the actual state");
       }
       dataListener.onComplete();
       controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_FINISHED);
@@ -171,7 +175,8 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     } else {
       LOG.log(Level.INFO, "The receiver can receive data");
       if (stateMachine.compareAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.RECEIVING)) {
-        throw new RuntimeException("The expected current state is different from the actual state");
+        throw new RuntimeException("The expected current state [" + PushShuffleReceiverState.COMPLETED +
+            "] is different from the actual state");
       }
       controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_READIED);
       dataListener.onComplete();

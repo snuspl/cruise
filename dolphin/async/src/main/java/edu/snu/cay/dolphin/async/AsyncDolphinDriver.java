@@ -622,13 +622,6 @@ public final class AsyncDolphinDriver {
 
   /**
    * Handler for ClosedContext.
-   * The contexts should be one of following:
-   *  1) contexts closed in job shutdown phase started by {@link #checkShutdown()}
-   *  2) contexts closed by EM's Delete procedure
-   *
-   * For a context out of upper cases, it closes a parent of the context, if exist,
-   * to prevent job from holding unnecessary resources.
-   * It is also for the job to be shut down in unexpected cases.
    */
   final class ClosedContextHandler implements EventHandler<ClosedContext> {
     @Override
@@ -699,9 +692,14 @@ public final class AsyncDolphinDriver {
   }
 
   /**
-   * Handles contexts failed or closed.
-   * If a context is one of contexts under tracking, it handles the context properly.
-   * Otherwise, it closes a parent of the context.
+   * Handler for finished contexts, including ClosedContext and FailedContext.
+   * The contexts should be one of following:
+   *  1) contexts closed in job shutdown phase started by {@link #checkShutdown()}
+   *  2) contexts closed by EM's Delete procedure
+   *
+   * For an exceptional context out of upper cases, it closes the parent of the context, if it exist,
+   * to prevent the job from holding unnecessary resources.
+   * It is also for the job to be shut down in unexpected cases.
    * @param contextId an identifier of the context
    */
   private void handleFinishedContext(final String contextId, final Optional<ActiveContext> parentContext) {
@@ -744,7 +742,8 @@ public final class AsyncDolphinDriver {
       if (failedTask.getActiveContext().isPresent()) {
         final ActiveContext context = failedTask.getActiveContext().get();
         if (deletedWorkerContextIds.contains(context.getId())) {
-          context.close(); // we can reuse this evaluator by submitting new context
+          // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
+          context.close();
         }
       }
 
@@ -763,7 +762,8 @@ public final class AsyncDolphinDriver {
       // which can be accessed by other running evaluators
       final ActiveContext context = completedTask.getActiveContext();
       if (deletedWorkerContextIds.contains(context.getId())) {
-        context.close(); // we can reuse this evaluator by submitting new context
+        // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
+        context.close();
       }
 
       contextIdToWorkerTasks.remove(completedTask.getActiveContext().getId());

@@ -275,7 +275,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         initialized = true;
         LOG.log(Level.INFO, "All receivers are initialized");
         if (stateMachine.compareAndSetState(INIT, CAN_SEND)) {
-          throw new RuntimeException("The expected current state is different from the actual state");
+          throw new RuntimeException("The expected current state [" + INIT +
+              "] is different from the actual state");
         }
         for (final String senderId : initializedSenderIdList) {
           sendSenderCanSendMessage(senderId);
@@ -288,7 +289,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       stateMachine.checkState(CAN_SEND);
       if (receiverStateMachineMap.get(receiverId)
           .compareAndSetState(PushShuffleReceiverState.RECEIVING, PushShuffleReceiverState.COMPLETED)) {
-        throw new RuntimeException("The expected current state is different from the actual state");
+        throw new RuntimeException("The expected current state [" + PushShuffleReceiverState.RECEIVING +
+            "] is different from the actual state");
       }
 
       numReceivedTuplesInIteration += numReceivedTuples;
@@ -299,7 +301,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       if (numCompletedReceivers == totalNumReceivers) {
         numCompletedReceivers = 0;
         if (stateMachine.compareAndSetState(CAN_SEND, RECEIVERS_COMPLETED)) {
-          throw new RuntimeException("The expected current state is different from the actual state");
+          throw new RuntimeException("The expected current state [" + CAN_SEND +
+              "] is different from the actual state");
         }
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
         final long prevStartTime = iterationStartTime;
@@ -324,7 +327,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private synchronized void onReceiverReadied(final String receiverId) {
       if (receiverStateMachineMap.get(receiverId)
           .compareAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.RECEIVING)) {
-        throw new RuntimeException("The expected current state is different from the actual state");
+        throw new RuntimeException("The expected current state [" + PushShuffleReceiverState.COMPLETED +
+            "] is different from the actual state");
       }
       numReadiedReceivers++;
 
@@ -334,7 +338,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         numReadiedReceivers = 0;
         LOG.log(Level.INFO, "Broadcast to all senders that they can send data to receivers.");
         if (stateMachine.compareAndSetState(RECEIVERS_COMPLETED, CAN_SEND)) {
-          throw new RuntimeException("The expected current state is different from the actual state");
+          throw new RuntimeException("The expected current state [" + RECEIVERS_COMPLETED +
+              "] is different from the actual state");
         }
         broadcastToSenders(PushShuffleCode.SENDER_CAN_SEND);
       }
@@ -344,7 +349,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       stateMachine.checkState(RECEIVERS_COMPLETED);
       if (receiverStateMachineMap.get(receiverId)
           .compareAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.FINISHED)) {
-        throw new RuntimeException("The expected current state is different from the actual state");
+        throw new RuntimeException("The expected current state [" + PushShuffleReceiverState.COMPLETED +
+            "] is different from the actual state");
       }
       numFinishedReceivers++;
 
@@ -360,7 +366,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private void finishManager() {
       LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
       if (stateMachine.compareAndSetState(RECEIVERS_COMPLETED, FINISHED)) {
-        throw new RuntimeException("The expected current state is different from the actual state");
+        throw new RuntimeException("The expected current state [" + RECEIVERS_COMPLETED +
+            "] is different from the actual state");
       }
       pushShuffleListener.onFinished();
     }
