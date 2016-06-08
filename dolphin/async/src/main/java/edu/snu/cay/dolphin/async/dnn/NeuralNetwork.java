@@ -152,10 +152,12 @@ public final class NeuralNetwork {
   private void pushGradients(final int batchSize, final LayerParameter[] parameterGradients) {
     // average parameter gradients
     for (int i = 0; i < parameterGradients.length; ++i) {
-      parameterWorker.push(i, LayerParameter.newBuilder()
-          .setWeightParam(parameterGradients[i].getWeightParam().div(batchSize))
-          .setBiasParam(parameterGradients[i].getBiasParam().div(batchSize))
-          .build());
+      if (layers[i].isLearnable()) {
+        parameterWorker.push(i, LayerParameter.newBuilder()
+            .setWeightParam(parameterGradients[i].getWeightParam().div(batchSize))
+            .setBiasParam(parameterGradients[i].getBiasParam().div(batchSize))
+            .build());
+      }
     }
   }
 
