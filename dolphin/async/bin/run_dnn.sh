@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_lda.sh -input sample_lda -local true -split 4 -numServers 2 -numTopics 10 -numVocabs 102656 -maxIter 3 -maxNumEvalLocal 6 -numWorkerThreads 1 -timeout 180000 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.optimizer.AsyncDolphinPlanExecutor -optimizationIntervalMs 3000 -memoryStoreInitDelayMs 1000 -delayAfterOptimizationMs 10000
+# ./run_dnn.sh -local true -maxIter 100 -conf sample_dnn_conf -input sample_dnn_data -split 2 -maxNumEvalLocal 3 -numWorkerThreads 1 -timeout 800000 -dynamic false
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
@@ -24,7 +24,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.dolphin.async.mlapps.lda.LdaREEF
+ALG=edu.snu.cay.dolphin.async.dnn.NeuralNetworkREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD
