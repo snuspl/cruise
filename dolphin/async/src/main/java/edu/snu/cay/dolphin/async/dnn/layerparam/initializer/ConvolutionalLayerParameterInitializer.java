@@ -53,6 +53,22 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
   private final int inputWidth;
   private final int inputChannel;
 
+  /**
+   * @param matrixFactory the factory to create new matrices
+   * @param index the index of this layer
+   * @param inputShape the shape of input data
+   * @param paddingHeight the number of pixels to add to the top and bottom of the input images
+   * @param paddingWidth the number of pixels to add to the left and right sides of the input images
+   * @param strideHeight the vertical intervals at which to apply the filters to the input images
+   * @param strideWidth the horizontal intervals at which to apply the filters to the input images
+   * @param kernelHeight the height of the filters
+   * @param kernelWidth the width of the filters
+   * @param randomSeed the seed for generating random initial parameters
+   * @param initWeight the standard deviation that is used to initialize the weights from a Gaussian distribution
+   *                   with mean {@code 0.0}
+   * @param initBias constant value with which the biases of this layer are initialized
+   * @param numOutput the number of filters
+   */
   @Inject
   private ConvolutionalLayerParameterInitializer(final MatrixFactory matrixFactory,
                                                  @Parameter(LayerIndex.class) final int index,

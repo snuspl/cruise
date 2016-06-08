@@ -43,6 +43,13 @@ public final class ActivationWithLossLayer extends LayerBase {
   private final LayerBase activationLayer;
   private final String lossFunction;
 
+  /**
+   * @param index the index of this layer
+   * @param inputShape the shape of input data
+   * @param serializedLayerConf the serialized Tang configuration to inject the inner activation layer
+   * @param configurationSerializer the serializer to deserialize Tang configurations for layer parameter initializer
+   * @param lossFunction the type of the loss function
+   */
   @Inject
   private ActivationWithLossLayer(@Parameter(LayerIndex.class) final int index,
                                   @Parameter(LayerInputShape.class) final String inputShape,

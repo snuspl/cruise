@@ -47,6 +47,12 @@ public final class NeuralNetworkDataParser {
   private final int batchSize;
   private List<NeuralNetworkData> result;
 
+  /**
+   * @param matrixFactory the factory to create new matrices
+   * @param dataSet the set of unparsed input data
+   * @param delimiter the delimiter used in the input file
+   * @param batchSize the size of input batch
+   */
   @Inject
   private NeuralNetworkDataParser(final MatrixFactory matrixFactory,
                                   final DataSet<LongWritable, Text> dataSet,

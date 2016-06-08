@@ -50,6 +50,19 @@ public final class ConvolutionalLayer extends LayerBase {
   private final int inputChannel;
   private final MatrixFactory matrixFactory;
 
+  /**
+   * @param index the index of this layer
+   * @param inputShape the shape of input data
+   * @param paddingHeight the number of pixels to add to the top and bottom of the input images
+   * @param paddingWidth the number of pixels to add to the left and right sides of the input images
+   * @param strideHeight the vertical intervals at which to apply the filters to the input images
+   * @param strideWidth the horizontal intervals at which to apply the filters to the input images
+   * @param kernelHeight the height of the filters
+   * @param kernelWidth the width of the filters
+   * @param layerParameterInitializer the layer parameter initializer that generates the new layer parameter following
+   *                                  the configuration defined by users
+   * @param matrixFactory the factory to create new matrices
+   */
   @Inject
   private ConvolutionalLayer(@Parameter(LayerIndex.class) final int index,
                              @Parameter(LayerInputShape.class) final String inputShape,

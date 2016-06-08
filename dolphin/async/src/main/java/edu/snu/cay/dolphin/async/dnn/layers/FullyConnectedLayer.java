@@ -33,6 +33,12 @@ public final class FullyConnectedLayer extends LayerBase {
 
   private final int[] outputShape;
 
+  /**
+   * @param index the index of this layer
+   * @param inputShape the shape of input data
+   * @param layerParameterInitializer the layer parameter initializer that generates the new layer parameter following
+   *                                  the configuration defined by users
+   */
   @Inject
   private FullyConnectedLayer(@Parameter(LayerIndex.class) final int index,
                               @Parameter(LayerInputShape.class) final String inputShape,

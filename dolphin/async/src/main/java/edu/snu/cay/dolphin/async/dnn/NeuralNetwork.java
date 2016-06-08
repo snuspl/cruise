@@ -73,6 +73,14 @@ public final class NeuralNetwork {
    */
   private final List<Integer> learnableLayerIndices;
 
+  /**
+   * @param matrixFactory the matrix factory to create matrices
+   * @param configurationSerializer the serializer to deserialize Tang configurations for layers
+   * @param serializedLayerConfSets the set of Tang configurations used to inject layer instances
+   * @param inputShape the shape of input data
+   * @param parameterWorker the parameter worker for updating layer parameters
+   * @param injector the injector having the matrix factory configuration to be used for injecting layer instances
+   */
   @Inject
   private NeuralNetwork(
       final MatrixFactory matrixFactory,

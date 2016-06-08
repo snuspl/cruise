@@ -39,6 +39,16 @@ public final class NeuralNetworkParameterUpdater implements ParameterUpdater<Int
   private final float stepSize;
   private final LayerParameter[] initialLayerParameters;
 
+
+  /**
+   * @param serializedLayerConfigurationSet the set of serialized Tang configurations
+   *                                        used to injecting layer parameter initializer
+   * @param stepSize step size for a stochastic gradient descent method
+   * @param configurationSerializer the serializer to deserialize Tang configurations for layer parameter initializer
+   * @param inputShape the shape of input data
+   * @param injector the injector having the matrix factory configuration
+   *                 to be used for injecting layer parameter initializer instances
+   */
   @Inject
   private NeuralNetworkParameterUpdater(
       @Parameter(SerializedLayerConfigurationSet.class) final Set<String> serializedLayerConfigurationSet,

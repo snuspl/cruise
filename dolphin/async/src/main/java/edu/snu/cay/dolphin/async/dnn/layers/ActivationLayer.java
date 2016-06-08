@@ -33,6 +33,11 @@ public final class ActivationLayer extends LayerBase {
 
   private final Function activationFunction;
 
+  /**
+   * @param index the index of this layer
+   * @param inputShape the shape of input data
+   * @param activationFunction the type of the activation function
+   */
   @Inject
   private ActivationLayer(@Parameter(LayerIndex.class) final int index,
                           @Parameter(LayerInputShape.class) final String inputShape,

@@ -54,6 +54,13 @@ final class NeuralNetworkWorker implements Worker {
 
   private int iteration = 0;
 
+  /**
+   * @param workerSynchronizer the synchronizer for neural network workers
+   * @param dataParser the parser that transforms input data into {@link NeuralNetworkData} instances
+   * @param neuralNetwork the neural network model
+   * @param idFactory the factory that generates ids assigned to neural network data stored in {@link MemoryStore}
+   * @param memoryStore the key-value store for neural network data
+   */
   @Inject
   private NeuralNetworkWorker(final WorkerSynchronizer workerSynchronizer,
                               final NeuralNetworkDataParser dataParser,

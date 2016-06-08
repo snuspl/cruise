@@ -63,6 +63,12 @@ public final class NeuralNetworkREEF {
   }
 
 
+  /**
+   * @param configurationPath the path for the protobuf configuration file in which a neural network model is defined
+   * @param onLocal the flag indicating whether or not to run on local runtime
+   * @param blasLibrary the type of BLAS library implementation
+   * @param args the command line arguments
+   */
   @Inject
   private NeuralNetworkREEF(@Parameter(ConfigurationPath.class) final String configurationPath,
                             @Parameter(OnLocal.class) final boolean onLocal,

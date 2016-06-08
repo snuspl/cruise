@@ -36,6 +36,11 @@ public final class DefaultLayerParameterInitializer implements LayerParameterIni
   private final int[] inputShape;
   private final LayerParameter emptyLayerParam;
 
+  /**
+   * @param matrixFactory the factory to create new matrices
+   * @param index the index of this layer
+   * @param inputShape the shape of input data
+   */
   @Inject
   public DefaultLayerParameterInitializer(final MatrixFactory matrixFactory,
                                           @Parameter(LayerIndex.class) final int index,

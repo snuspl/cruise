@@ -43,6 +43,16 @@ public final class FullyConnectedLayerParameterInitializer implements LayerParam
   private final float initBias;
   private final long randomSeed;
 
+  /**
+   * @param matrixFactory the factory to create new matrices
+   * @param index the index of this layer
+   * @param inputShape the shape of input data
+   * @param numOutput the number of output neurons
+   * @param randomSeed the seed for generating random initial parameters
+   * @param initWeight the standard deviation that is used to initialize the weights from a Gaussian distribution
+   *                   with mean {@code 0.0}
+   * @param initBias constant value with which the biases of this layer are initialized
+   */
   @Inject
   public FullyConnectedLayerParameterInitializer(final MatrixFactory matrixFactory,
                                                  @Parameter(LayerIndex.class) final int index,

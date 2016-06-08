@@ -58,6 +58,19 @@ public final class PoolingLayer extends LayerBase {
   private final int outputWidth;
   private final MatrixFactory matrixFactory;
 
+  /**
+   * @param index the index of this layer
+   * @param inputShape the shape of input data
+   * @param poolingType the pooling method
+   * @param paddingHeight the number of pixels to add to the top and bottom of the input images
+   * @param paddingWidth the number of pixels to add to the left and right sides of the input images
+   * @param strideHeight the vertical intervals at which to apply the filters to the input images
+   * @param strideWidth the horizontal intervals at which to apply the filters to the input images
+   * @param kernelHeight the height of the filters
+   * @param kernelWidth the width of the filters
+   * @param layerParameterInitializer the layer parameter initializer that generates the empty layer parameter
+   * @param matrixFactory the factory to create new matrices
+   */
   @Inject
   private PoolingLayer(@Parameter(LayerIndex.class) final int index,
                        @Parameter(LayerInputShape.class) final String inputShape,
