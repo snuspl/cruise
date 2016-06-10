@@ -92,10 +92,17 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     this.router = router;
     this.blockResolver = blockResolver;
     this.remoteOpHandler = remoteOpHandler;
+    initBlocks();
+    initExecutor(numStoreThreads);
+  }
+
+  /**
+   * Initialize the blocks in the local MemoryStore.
+   */
+  private void initBlocks() {
     for (final int blockId : router.getInitialLocalBlockIds()) {
       blocks.put(blockId, new Block());
     }
-    initExecutor(numStoreThreads);
   }
 
   /**
