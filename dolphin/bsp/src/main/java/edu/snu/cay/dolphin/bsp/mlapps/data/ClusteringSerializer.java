@@ -22,7 +22,7 @@ import org.apache.reef.io.serialization.Codec;
 import javax.inject.Inject;
 
 /**
- * A Serializer for Dolphin jobs with a single DenseVector dataType.
+ * A Serializer for Dolphin jobs that use DenseVector.
  * For example, use this if the job only uses data from {@link ClusteringDataParser}.
  */
 public final class ClusteringSerializer implements Serializer {

@@ -45,8 +45,7 @@ import java.util.logging.Logger;
 
 /**
  * A {@code MemoryStore} implementation for a key of long type, supporting range operations.
- * All data of one data type is stored in multiple Blocks embedding a {@code TreeMap}, ordered by data ids.
- * These Blocks are then maintained as values of one big {@code HashMap}, which uses the data types as keys.
+ * All data is stored in multiple Blocks embedding a {@code TreeMap}, ordered by data ids.
  * Each Block has {@code ReentrantReadWriteLock} for synchronization between {@code get}, {@code put},
  * and {@code remove} operations within Block.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
@@ -188,7 +187,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         if (isLocal) {
           final Block block = blocks.get(blockId);
           final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRanges);
-          submitLocalResult(operation, result, Collections.EMPTY_LIST);
+          submitLocalResult(operation, result, Collections.emptyList());
         } else {
           LOG.log(Level.WARNING,
               "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
@@ -200,7 +199,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
           for (final Pair<Long, Long> subKeyRange : subKeyRanges) {
             failedRanges.add(new Pair<>(subKeyRange.getFirst(), subKeyRange.getSecond()));
           }
-          submitLocalResult(operation, Collections.EMPTY_MAP, failedRanges);
+          submitLocalResult(operation, Collections.emptyMap(), failedRanges);
         }
       } finally {
         routerLock.readLock().unlock();
@@ -365,7 +364,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     // cannot resolve any block. invalid data keys
     if (blockToSubKeyRangesMap.isEmpty()) {
       // TODO #421: should handle fail case different from empty case
-      submitLocalResult(operation, Collections.EMPTY_MAP, operation.getDataKeyRanges());
+      submitLocalResult(operation, Collections.emptyMap(), operation.getDataKeyRanges());
       LOG.log(Level.SEVERE, "Failed Op [Id: {0}, origId: {1}]",
           new Object[]{operation.getOpId(), operation.getOrigEvalId().get()});
       return;
@@ -422,7 +421,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
       // execute local operation and submit the result
       final Map<Long, V> localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangesMap);
-      submitLocalResult(operation, localOutputData, Collections.EMPTY_LIST);
+      submitLocalResult(operation, localOutputData, Collections.emptyList());
     } finally {
       routerLock.readLock().unlock();
     }
@@ -699,14 +698,5 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   @Override
   public int getNumBlocks() {
     return blocks.size();
-  }
-
-  @Override
-  public int getNumUnits() {
-    int numUnits = 0;
-    for (final Block block : blocks.values()) {
-      numUnits += block.getNumUnits();
-    }
-    return numUnits;
   }
 }

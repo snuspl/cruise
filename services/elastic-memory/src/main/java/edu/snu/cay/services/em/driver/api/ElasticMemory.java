@@ -105,5 +105,8 @@ public interface ElasticMemory {
    */
   int getNumTotalBlocks();
 
+  /**
+   * Generates the Evaluator Parameters of all MemoryStores, which consist of MemoryStore Id, Metrics, and so on.
+   */
   Map<String, EvaluatorParameters> generateEvalParams();
 }

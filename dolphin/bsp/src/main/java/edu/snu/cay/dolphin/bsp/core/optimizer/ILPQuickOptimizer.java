@@ -40,10 +40,9 @@ import static edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator.*;
  * solved by hand instead of using an ILP solver library, with an additional constraint applied.
  *
  * Similar to {@link ILPSolverOptimizer}, this class assumes that
- * there is a single controller task and several compute tasks,
- * and that data is homogeneous (all data types are treated the same).
- * Computation unit costs for new evaluators are set to the
- * average value of computation unit costs for all existing evaluators.
+ * there is a single controller task and several compute tasks.
+ * Computation costs per block for new evaluators are set to the
+ * average value of computation costs per block for all existing evaluators.
  *
  * This optimizer also assumes that there are no cases where
  * addition and deletion occurs at the same time. In other words,
@@ -56,10 +55,10 @@ import static edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator.*;
  *     Find the workload distribution <i>(w1, w2, ... wn)</i> that minimizes <i>M = max(c1w1, c2w2, ..., cnwn)</i>,
  *     under the following conditions. <i>M</i> corresponds to the computation cost of an iteration.
  *     <ul>
- *       <li><i>wi</i></li>: positive; number of data units for task <i>i</i> (workload)
+ *       <li><i>wi</i></li>: positive; number of data blocks for task <i>i</i> (workload)
  *       <li><i>w1 + w2 + ... + wn = W</i> (positive integer constant)</li>
  *       <li><i>ci</i></li>: positive real constants;
- *          time required to process a single data unit for task <i>i</i> (computation unit cost)
+ *          time required to process a data block for task <i>i</i> (computation cost per block)
  *       <li><i>n</i></li>: positive integer constant; total number of tasks
  *     </ul>
  * </p>
@@ -68,7 +67,7 @@ import static edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator.*;
  *   Solution:<br>
  *     <i>M</i> is minimized if and only if <i>c1w1 = c2w2 = ... = cnwn</i>, which leads us to our solution:<br>
  *       <ul><li><i>wi = W / ci / (1 / c1 + 1 / c2 + ... + 1 / cn)</i></li></ul>
- *     Since in the real world the number of data units is a whole number,
+ *     Since in the real world the number of data blocks is a whole number,
  *     we round the <i>wi</i> values to the nearest integers.<br>
  *     In fact, the total cost (comm cost + comp cost) can now be calculated as<br>
  *       <ul><li><i>cost = W / (1 / c1 + 1 / c2 + ... 1 / cn) + k * n</i></li></ul>
@@ -82,17 +81,18 @@ public final class ILPQuickOptimizer implements Optimizer {
   private static final String NEW_COMPUTE_TASK_ID_PREFIX = "newComputeTask-";
 
   /**
-   * Comparator to sort {@link OptimizedEvaluator}s put in a priority queue, by their inverse computation unit costs.
-   * {@link OptimizedEvaluator}s with greater inverse computation unit costs (i.e. quicker evaluators)
+   * Comparator to sort {@link OptimizedEvaluator}s put in a priority queue,
+   * by their inverse computation costs per block.
+   * {@link OptimizedEvaluator}s with greater inverse computation costs per block (i.e. quicker evaluators)
    * are put at the front (descending order).
    */
-  private static final Comparator<OptimizedEvaluator> COMP_UNIT_COST_INV_COMPARATOR =
+  private static final Comparator<OptimizedEvaluator> COMP_COST_PER_BLOCK_INV_COMPARATOR =
       new Comparator<OptimizedEvaluator>() {
         @Override
         public int compare(final OptimizedEvaluator o1, final OptimizedEvaluator o2) {
-          if (o1.compUnitCostInv < o2.compUnitCostInv) {
+          if (o1.compCostPerBlockInv < o2.compCostPerBlockInv) {
             return 1;
-          } else if (o1.compUnitCostInv > o2.compUnitCostInv) {
+          } else if (o1.compCostPerBlockInv > o2.compCostPerBlockInv) {
             return -1;
           } else {
             return 0;
@@ -101,16 +101,16 @@ public final class ILPQuickOptimizer implements Optimizer {
       };
 
   /**
-   * Comparator to sort {@link OptimizedEvaluator}s put in a priority queue, by their number of units to move.
-   * {@link OptimizedEvaluator}s with more units to move are put at the front (descending order).
+   * Comparator to sort {@link OptimizedEvaluator}s put in a priority queue, by their number of blocks to move.
+   * {@link OptimizedEvaluator}s with more blocks to move are put at the front (descending order).
    */
-  private static final Comparator<OptimizedEvaluator> NUM_UNITS_TO_MOVE_COMPARATOR =
+  private static final Comparator<OptimizedEvaluator> NUM_BLOCKS_TO_MOVE_COMPARATOR =
       new Comparator<OptimizedEvaluator>() {
         @Override
         public int compare(final OptimizedEvaluator o1, final OptimizedEvaluator o2) {
-          final int numUnitsToMove1 = Math.abs(o1.getNumBlocks() - o1.numOptimalBlocks);
-          final int numUnitsToMove2 = Math.abs(o2.getNumBlocks() - o2.numOptimalBlocks);
-          return numUnitsToMove2 - numUnitsToMove1;
+          final int numBlocksToMove1 = Math.abs(o1.getNumBlocks() - o1.numOptimalBlocks);
+          final int numBlocksToMove2 = Math.abs(o2.getNumBlocks() - o2.numOptimalBlocks);
+          return numBlocksToMove2 - numBlocksToMove1;
         }
       };
 
@@ -148,31 +148,32 @@ public final class ILPQuickOptimizer implements Optimizer {
       return PlanImpl.newBuilder().build();
     }
 
-    // Step 2: Create OptimizedEvaluators that contain compute unit cost info.
+    // Step 2: Create OptimizedEvaluators that contain compute cost per block info.
     // Evaluators with good performance are put at the front of the queue, while
     // the bad ones are put at the back.
     // Later, the worst evaluators are selected to be removed in case deletion is needed.
     final Tuple3<PriorityQueue<OptimizedEvaluator>, Double, Integer> optimizedEvalTuple =
         getOptimizedEvaluators(cost.get());
     final PriorityQueue<OptimizedEvaluator> optimizedEvalQueue = optimizedEvalTuple.getFirst();
-    final double compUnitCostSum = optimizedEvalTuple.getSecond();
-    final int numUnitsTotal = optimizedEvalTuple.getThird();
+    final double compCostSum = optimizedEvalTuple.getSecond();
+    final int numBlocksTotal = optimizedEvalTuple.getThird();
 
     // Step 3: Compute the optimal number of evaluators ('n') to use.
     final int numCurrEvals = cost.get().getComputeTaskCosts().size();
     final double commCostWeight = cost.get().getCommunicationCost() / numCurrEvals; // corresponds to 'k'
-    final double expectedCompUnitCostInv = numCurrEvals / compUnitCostSum; // expected compUnitCostInv for new evals
-    // assumption: compUnitCost for a new eval == average of compUnitCost for existing evals
+    final double expectedCompCostPerBlockInv = numCurrEvals / compCostSum; // expected compCostPerBlockInv for new evals
+    // assumption: compCostPerBlock for a new eval == average of compCostPerBlock for existing evals
 
     final Pair<Integer, Double> numOptimalEvalsPair = getNumOptimalEvals(
-        optimizedEvalQueue, availableEvaluators, commCostWeight, expectedCompUnitCostInv, numUnitsTotal);
+        optimizedEvalQueue, availableEvaluators, commCostWeight, expectedCompCostPerBlockInv, numBlocksTotal);
     final int numOptimalEvals = numOptimalEvalsPair.getFirst();
-    final double compUnitCostInvSum = numOptimalEvalsPair.getSecond();
+    final double compCostPerBlockInvSum = numOptimalEvalsPair.getSecond();
 
     // Step 4: Compute the optimal number of data blocks for each evaluator.
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
-    final Set<OptimizedEvaluator> evalSet = setNumOptimalUnitsForEvaluators(
-        optimizedEvalQueue, expectedCompUnitCostInv, compUnitCostInvSum, numUnitsTotal, numOptimalEvals, planBuilder);
+    final Set<OptimizedEvaluator> evalSet = setNumOptimalBlocksForEvaluators(
+        optimizedEvalQueue, expectedCompCostPerBlockInv, compCostPerBlockInvSum, numBlocksTotal, numOptimalEvals,
+        planBuilder);
 
     // Step 5: Generate transfer steps according to the optimal plan.
     generateTransferSteps(NAMESPACE_DOLPHIN_BSP, evalSet, planBuilder);
@@ -182,16 +183,16 @@ public final class ILPQuickOptimizer implements Optimizer {
 
   /**
    * Helper method that processes the given {@link Cost} and generates {@link OptimizedEvaluator}s that are sorted
-   * by unit cost in a {@link PriorityQueue}.
+   * by cost per block in a {@link PriorityQueue}.
    *
    * @return a tuple of a {@link PriorityQueue} of {@link OptimizedEvaluator}s,
-   *   the sum of computation unit costs of all evaluators, and the total number of data blocks
+   *   the sum of computation costs of all evaluators, and the total number of data blocks
    */
   private static Tuple3<PriorityQueue<OptimizedEvaluator>, Double, Integer> getOptimizedEvaluators(final Cost cost) {
 
     final PriorityQueue<OptimizedEvaluator> optimizedEvaluatorQueue =
-        new PriorityQueue<>(cost.getComputeTaskCosts().size(), COMP_UNIT_COST_INV_COMPARATOR);
-    double compUnitCostSum = 0;
+        new PriorityQueue<>(cost.getComputeTaskCosts().size(), COMP_COST_PER_BLOCK_INV_COMPARATOR);
+    double compCostPerBlockSum = 0;
     int numBlocksTotal = 0;
 
     for (final Cost.ComputeTaskCost computeTaskCost : cost.getComputeTaskCosts()) {
@@ -199,59 +200,60 @@ public final class ILPQuickOptimizer implements Optimizer {
 
       final double compCostPerBlock = computeTaskCost.getComputeCost() / numBlocks;
       final double compCostInv = 1 / compCostPerBlock;
-      compUnitCostSum += compCostPerBlock;
+      compCostPerBlockSum += compCostPerBlock;
       numBlocksTotal += numBlocks;
 
       optimizedEvaluatorQueue.add(new OptimizedEvaluator(
           computeTaskCost.getId(), computeTaskCost.getDataInfo(), compCostInv));
     }
 
-    return new Tuple3<>(optimizedEvaluatorQueue, compUnitCostSum, numBlocksTotal);
+    return new Tuple3<>(optimizedEvaluatorQueue, compCostPerBlockSum, numBlocksTotal);
   }
 
   /**
    * Helper method that computes the number of evaluators that produces the least cost.
    * Iterate over {@code 1} to {@code availableEvaluators - 1} and select the value with the least cost.
    *
-   * @return the optimal number of evaluators to use, and the sum of {@code compUnitCostInv}s for that optimal number
+   * @return the optimal number of evaluators to use,
+   * and the sum of {@code compCostPerBlockInv}s for that optimal number
    */
   private static Pair<Integer, Double> getNumOptimalEvals(
       final PriorityQueue<OptimizedEvaluator> optimizedEvaluatorQueue,
       final int availableEvaluators,
       final double commCostWeight,
-      final double expectedCompUnitCostInv,
+      final double expectedCompCostPerBlockInv,
       final int totalWorkload) {
 
     final Iterator<OptimizedEvaluator> iter = optimizedEvaluatorQueue.iterator();
-    double compUnitCostInvSum = 0;
+    double compCostPerBlockInvSum = 0;
     double minCost = Double.MAX_VALUE;
     int numOptimalEvals = 0;
 
     // new evaluators are not considered until all original evaluators are 'used'
     // this is main part that leads to the assumption, 'no addition and deletion at the same time'
     for (int numEvals = 1; numEvals < availableEvaluators; ++numEvals) {
-      final double currCompUnitCostInvSum;
+      final double currCompCostPerBlockInvSum;
       if (iter.hasNext()) {
         final OptimizedEvaluator eval = iter.next();
-        currCompUnitCostInvSum = compUnitCostInvSum + eval.compUnitCostInv;
+        currCompCostPerBlockInvSum = compCostPerBlockInvSum + eval.compCostPerBlockInv;
       } else {
-        currCompUnitCostInvSum = compUnitCostInvSum + expectedCompUnitCostInv;
+        currCompCostPerBlockInvSum = compCostPerBlockInvSum + expectedCompCostPerBlockInv;
       }
 
-      final double compCost = totalWorkload / currCompUnitCostInvSum;
+      final double compCost = totalWorkload / currCompCostPerBlockInvSum;
       final double commCost = commCostWeight * numEvals;
       final double cost = compCost + commCost;
       if (cost < minCost) {
         minCost = cost;
         numOptimalEvals = numEvals;
-        compUnitCostInvSum = currCompUnitCostInvSum;
+        compCostPerBlockInvSum = currCompCostPerBlockInvSum;
       } else {
         // local minimum == global minimum, for the given formula
         break;
       }
     }
 
-    return new Pair<>(numOptimalEvals, compUnitCostInvSum);
+    return new Pair<>(numOptimalEvals, compCostPerBlockInvSum);
   }
 
   /**
@@ -260,10 +262,10 @@ public final class ILPQuickOptimizer implements Optimizer {
    *
    * @return the set of optimized evaluators that produce the least cost, including new evaluators that are empty
    */
-  private static Set<OptimizedEvaluator> setNumOptimalUnitsForEvaluators(
+  private static Set<OptimizedEvaluator> setNumOptimalBlocksForEvaluators(
       final PriorityQueue<OptimizedEvaluator> optimizedEvaluatorQueue,
-      final double expectedCompUnitCostInv,
-      final double compUnitCostInvSum,
+      final double expectedCompCostPerBlockInv,
+      final double compCostPerBlockInvSum,
       final int totalWorkload,
       final int numOptimalEvals,
       final PlanImpl.Builder planBuilder) {
@@ -274,9 +276,9 @@ public final class ILPQuickOptimizer implements Optimizer {
 
     for (int newEvalIndex = 0; newEvalIndex < numNewEvals; ++newEvalIndex) {
       final String newEvalId = NEW_COMPUTE_TASK_ID_PREFIX + newEvalIndex;
-      final int newWorkload = (int)Math.round(totalWorkload * expectedCompUnitCostInv / compUnitCostInvSum);
+      final int newWorkload = (int)Math.round(totalWorkload * expectedCompCostPerBlockInv / compCostPerBlockInvSum);
       retSet.add(new OptimizedEvaluator(newEvalId, new DataInfoImpl(),
-          expectedCompUnitCostInv, newWorkload));
+          expectedCompCostPerBlockInv, newWorkload));
       planBuilder.addEvaluatorToAdd(NAMESPACE_DOLPHIN_BSP, newEvalId);
       remainingWorkload -= newWorkload;
     }
@@ -293,7 +295,7 @@ public final class ILPQuickOptimizer implements Optimizer {
         eval.numOptimalBlocks = remainingWorkload;
 
       } else {
-        final int newWorkload = (int) Math.round(totalWorkload * eval.compUnitCostInv / compUnitCostInvSum);
+        final int newWorkload = (int) Math.round(totalWorkload * eval.compCostPerBlockInv / compCostPerBlockInvSum);
         eval.numOptimalBlocks = newWorkload;
         remainingWorkload -= newWorkload;
       }
@@ -314,9 +316,9 @@ public final class ILPQuickOptimizer implements Optimizer {
                                             final Set<OptimizedEvaluator> optimizedEvalSet,
                                             final PlanImpl.Builder builder) {
     final PriorityQueue<OptimizedEvaluator> senderPriorityQueue =
-        new PriorityQueue<>(optimizedEvalSet.size(), NUM_UNITS_TO_MOVE_COMPARATOR);
+        new PriorityQueue<>(optimizedEvalSet.size(), NUM_BLOCKS_TO_MOVE_COMPARATOR);
     final PriorityQueue<OptimizedEvaluator> receiverPriorityQueue =
-        new PriorityQueue<>(optimizedEvalSet.size(), NUM_UNITS_TO_MOVE_COMPARATOR);
+        new PriorityQueue<>(optimizedEvalSet.size(), NUM_BLOCKS_TO_MOVE_COMPARATOR);
 
     for (final OptimizedEvaluator eval : optimizedEvalSet) {
       if (eval.getNumBlocks() > eval.numOptimalBlocks) {
@@ -331,7 +333,7 @@ public final class ILPQuickOptimizer implements Optimizer {
       // pick the compute task that has the biggest amount of data blocks to send to be the sender
       final OptimizedEvaluator sender = senderPriorityQueue.poll();
       while (sender.getNumBlocks() > sender.numOptimalBlocks) {
-        // pick the compute task that has the biggest amount of data units to receive to be the receiver
+        // pick the compute task that has the biggest amount of data blocks to receive to be the receiver
         final OptimizedEvaluator receiver = receiverPriorityQueue.poll();
         builder.addTransferStep(namespace, generateTransferStep(sender, receiver));
         if (receiver.getNumBlocks() < receiver.numOptimalBlocks) {
@@ -358,17 +360,17 @@ public final class ILPQuickOptimizer implements Optimizer {
   private static final class OptimizedEvaluator {
     private final String id;
     private final DataInfo dataInfo;
-    private final double compUnitCostInv;
+    private final double compCostPerBlockInv;
     private int numOptimalBlocks;
 
-    private OptimizedEvaluator(final String id, final DataInfo dataInfo, final double compUnitCostInv) {
-      this(id, dataInfo, compUnitCostInv, 0);
+    private OptimizedEvaluator(final String id, final DataInfo dataInfo, final double compCostPerBlockInv) {
+      this(id, dataInfo, compCostPerBlockInv, 0);
     }
 
-    private OptimizedEvaluator(final String id, final DataInfo dataInfo, final double compUnitCostInv,
+    private OptimizedEvaluator(final String id, final DataInfo dataInfo, final double compCostPerBlockInv,
                                final int numOptimalBlocks) {
       this.id = id;
-      this.compUnitCostInv = compUnitCostInv;
+      this.compCostPerBlockInv = compCostPerBlockInv;
       this.numOptimalBlocks = numOptimalBlocks;
       this.dataInfo = dataInfo;
     }
@@ -383,8 +385,8 @@ public final class ILPQuickOptimizer implements Optimizer {
           .append(id)
           .append(", numBlocks=")
           .append(getNumBlocks())
-          .append(", compBlockCostInv=")
-          .append(compUnitCostInv)
+          .append(", compCostPerBlockInv=")
+          .append(compCostPerBlockInv)
           .append(", numOptimalBlocks=")
           .append(numOptimalBlocks)
           .append("]");

@@ -36,8 +36,7 @@ import java.util.logging.Logger;
 
 /**
  * A {@code MemoryStore} implementation for a key of generic type, non-supporting range operations.
- * All data of one data type is stored in multiple Blocks embedding a {@code ConcurrentHashMap}.
- * These Blocks are then maintained as values of one big {@code HashMap}, which uses the data types as keys.
+ * All data is stored in multiple Blocks embedding a {@code ConcurrentHashMap}.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
 public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> {
@@ -405,14 +404,5 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   @Override
   public int getNumBlocks() {
     return blocks.size();
-  }
-
-  @Override
-  public int getNumUnits() {
-    int numUnits = 0;
-    for (final Block block : blocks.values()) {
-      numUnits += block.getNumUnits();
-    }
-    return numUnits;
   }
 }

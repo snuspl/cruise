@@ -118,7 +118,7 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a DataMsg containing {@code unitIdPairList} to the Evaluator named {@code destId}.
+   * Sends a DataMsg containing list of {@code keyValuePairs} to the Evaluator named {@code destId}.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */

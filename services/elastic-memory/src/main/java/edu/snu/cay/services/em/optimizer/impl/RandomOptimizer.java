@@ -120,11 +120,11 @@ public final class RandomOptimizer implements Optimizer {
       planBuilder.addEvaluatorsToDelete(namespace, getIds(evaluatorsToDelete));
 
     /*
-     * 1. Find the sum of the number of all units across the Evaluators. (getSumData)
-     * 2. Initialize an OptimizedEvaluator per Evaluator from the dataType's DataInfo. (initOptimizedEvaluators)
+     * 1. Find the sum of the number of blocks across the Evaluators. (getSumData)
+     * 2. Initialize an OptimizedEvaluator per Evaluator from the DataInfo. (initOptimizedEvaluators)
      *    An OptimizedEvaluator keeps track of data at an Evaluator while distributing data and scheduling transfers.
-     * 3. Randomly distribute all units across the non-deleted Evaluators. (distributeDataAcrossEvaluators)
-     * 4. Create transfer steps to satisfy the distribution of units. (getTransferSteps)
+     * 3. Randomly distribute all blocks across the non-deleted Evaluators. (distributeDataAcrossEvaluators)
+     * 4. Create transfer steps to satisfy the distribution of blocks. (getTransferSteps)
       *   Add these transfer steps to the plan.
      */
       activeEvaluators.addAll(evaluatorsToAdd);
@@ -249,7 +249,7 @@ public final class RandomOptimizer implements Optimizer {
         for (int j = 1; j < evaluators.size(); j++) {
           final OptimizedEvaluator srcEvaluator = evaluators.get((i + j) % evaluators.size());
           if (srcEvaluator.getDataRemaining() < 0) {
-            // Mark all available units at srcEvaluator as transfer steps to be transferred to dstEvaluator.
+            // Mark all available blocks at srcEvaluator as transfer steps to be transferred to dstEvaluator.
             final int dataToTransfer = Math.min(dstEvaluator.getDataRemaining(), 0 - srcEvaluator.getDataRemaining());
             srcEvaluator.sendData(dstEvaluator.getId(), dataToTransfer);
             dstEvaluator.receiveData(srcEvaluator.getId(), dataToTransfer);

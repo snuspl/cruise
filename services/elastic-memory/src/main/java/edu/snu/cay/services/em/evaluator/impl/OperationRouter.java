@@ -128,11 +128,7 @@ public final class OperationRouter<K> {
     }
   }
 
-  private synchronized void initRoutingTable() {
-    if (initialized) {
-      return;
-    }
-
+  private void initRoutingTable() {
     // initial evaluators can initialize the routing table by itself
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
       initialLocalBlocks.add(blockId);
@@ -143,8 +139,6 @@ public final class OperationRouter<K> {
       final int storeId = blockId % numInitialEvals;
       blockLocations.set(blockId, storeId);
     }
-
-    initialized = true;
   }
 
   /**
@@ -165,7 +159,7 @@ public final class OperationRouter<K> {
    * It'd be invoked by the network response of {@link #requestRoutingTable()}.
    */
   public synchronized void initialize(final List<Integer> initBlockLocations) {
-    if (initialized) {
+    if (!addedEval || initialized) {
       return;
     }
 
@@ -199,7 +193,7 @@ public final class OperationRouter<K> {
    * It throws RuntimeException, if the table is not initialized til the end.
    */
   private void checkInitialization() {
-    if (initialized) {
+    if (!addedEval || initialized) {
       return;
     }
 

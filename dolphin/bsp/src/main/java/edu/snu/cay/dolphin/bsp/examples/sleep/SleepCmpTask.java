@@ -68,8 +68,8 @@ public final class SleepCmpTask extends UserComputeTask
       final List<Long> ids = dataIdFactory.getIds(initialWorkload);
       final List<Object> objects = new ArrayList<>(initialWorkload);
 
-      // the actual data objects are not important; only the number of units is relevant
-      // thus we use the same object for all ids
+      // the actual data objects are not important; only the number of data blocks,
+      // which is proportional to the number of items, is relevant. Thus we use the same object for all ids
       final Object object = new Object();
       for (int index = 0; index < initialWorkload; ++index) {
         objects.add(object);

@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.bsp.core;
 
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import io.netty.util.internal.ConcurrentSet;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
@@ -69,9 +68,9 @@ public final class WorkloadPartition {
   }
 
   /**
-   * Fetch all data of a certain data type assigned to the task.
+   * Fetch all data assigned to the task.
    * The returned map is an aggregated result of shallow copies of the internal data structure in {@code memoryStore}.
-   * @param <T> actual data type
+   * @param <T> type of the data
    * @return a map of data ids and the corresponding data items, retrieved from {@code memoryStore}
    */
   public <T> Map<Long, T> getAllData() {

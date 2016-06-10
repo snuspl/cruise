@@ -258,7 +258,7 @@ final class RemoteEMTask implements Task {
       synchronize();
 
       // check that the total number of objects equal the expected number
-      final int numLocalData = memoryStore.getNumUnits();
+      final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != numItems) {
@@ -319,7 +319,7 @@ final class RemoteEMTask implements Task {
       }
 
       synchronize();
-      final int numUnits = memoryStore.getNumUnits();
+      final int numUnits = memoryStore.getAll().size();
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
@@ -365,7 +365,7 @@ final class RemoteEMTask implements Task {
       }
 
       synchronize();
-      final int numUnits = memoryStore.getNumUnits();
+      final int numUnits = memoryStore.getAll().size();
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
@@ -417,7 +417,7 @@ final class RemoteEMTask implements Task {
       }
 
       synchronize();
-      final int numUnits = memoryStore.getNumUnits();
+      final int numUnits = memoryStore.getAll().size();
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
@@ -471,7 +471,7 @@ final class RemoteEMTask implements Task {
       }
 
       synchronize();
-      final int numUnits = memoryStore.getNumUnits();
+      final int numUnits = memoryStore.getAll().size();
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
@@ -534,7 +534,7 @@ final class RemoteEMTask implements Task {
       synchronize();
 
       // check that the total number of objects equal the expected number
-      final int numLocalData = memoryStore.getNumUnits();
+      final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != totalNumberOfObjects * RemoteEMDriver.EVAL_NUM - numGlobalRemoves) {
@@ -600,7 +600,7 @@ final class RemoteEMTask implements Task {
       synchronize();
 
       // check that the total number of objects equal the expected number
-      final int numLocalData = memoryStore.getNumUnits();
+      final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != totalNumberOfObjects * RemoteEMDriver.EVAL_NUM - numGlobalRemoves) {
@@ -718,7 +718,7 @@ final class RemoteEMTask implements Task {
       }
 
       // check that the total number of objects equal the expected number
-      final int numLocalData = memoryStore.getNumUnits();
+      final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != expectedNumGlobalData) {

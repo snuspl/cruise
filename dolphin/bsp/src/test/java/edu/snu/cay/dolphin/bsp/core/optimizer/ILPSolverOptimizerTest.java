@@ -158,11 +158,11 @@ public final class ILPSolverOptimizerTest {
 
     // generate compute tasks
     for (int i = 0; i < numComputeTasks; ++i) {
-      final int numUnits = dataBlocksArray[i];
-      final DataInfo dataInfo = new DataInfoImpl(numUnits);
+      final int numBlocks = dataBlocksArray[i];
+      final DataInfo dataInfo = new DataInfoImpl(numBlocks);
 
       final Map<String, Double> cmpTaskMetrics = new HashMap<>();
-      final double computeTaskEndTime = (random.nextDouble() + 1) * numUnits;
+      final double computeTaskEndTime = (random.nextDouble() + 1) * numBlocks;
       if (computeTaskEndTime > maxComputeTaskEndTime) {
         maxComputeTaskEndTime = computeTaskEndTime;
       }

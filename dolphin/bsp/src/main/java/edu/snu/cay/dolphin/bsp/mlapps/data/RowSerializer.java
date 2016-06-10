@@ -25,8 +25,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 
 /**
- * A Serializer for Dolphin jobs with a single Row dataType.
- * The Row dataType could be backed by either a Dense or Sparse Vector, specified by {@code IsDenseVector}.
+ * A Serializer for Dolphin jobs that use Row.
+ * The Row could be backed by either a Dense or Sparse Vector, specified by {@code IsDenseVector}.
  * For example, use this if the job only uses data from {@link ClassificationDenseDataParser}.
  */
 public final class RowSerializer implements Serializer {

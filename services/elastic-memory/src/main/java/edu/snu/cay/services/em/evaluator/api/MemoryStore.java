@@ -33,22 +33,22 @@ import java.util.Map;
 public interface MemoryStore<K> {
 
   /**
-   * Register a data item of a certain data type to this store.
+   * Register a data item to this store.
    * MemoryStore does not permit null for data values.
    *
    * @param id global unique identifier of item
    * @param value data item to register
-   * @param <V> actual data type
+   * @param <V> type of the data
    * @return a {@link Pair} of the data id and a boolean that is true when the operation succeeded
    */
   <V> Pair<K, Boolean> put(K id, @Nonnull V value);
 
   /**
-   * Register data items of a certain data type to this store.
+   * Register data items to this store.
    *
    * @param ids list of global unique identifiers for each item
    * @param values list of data items to register
-   * @param <V> actual data type
+   * @param <V> type of the data
    * @return a map of data ids and booleans that are true when the operation succeeded for each id
    */
   <V> Map<K, Boolean> putList(List<K> ids, List<V> values);
@@ -57,17 +57,17 @@ public interface MemoryStore<K> {
    * Fetch a certain data item from this store.
    *
    * @param id global unique identifier of item
-   * @param <V> actual data type
+   * @param <V> type of the data
    * @return a {@link Pair} of the data id and the actual data item,
    *         or {@code null} if no item is associated with the given id
    */
   <V> Pair<K, V> get(K id);
 
   /**
-   * Fetch all data from this store.
+   * Fetch all local data from this store.
    * The returned list is a shallow copy of the internal data structure.
    *
-   * @param <V> actual data type
+   * @param <V> type of the data
    * @return a map of data ids and the corresponding data items.
    *         This map may be empty if no item is present.
    */
@@ -79,7 +79,7 @@ public interface MemoryStore<K> {
    *
    * @param startId minimum value of the ids of items to fetch
    * @param endId maximum value of the ids of items to fetch
-   * @param <V> actual data type
+   * @param <V> type of the data
    * @return a map of data ids and the corresponding data items.
    *         This map may be empty if no items meet the given conditions.
    */
@@ -89,17 +89,17 @@ public interface MemoryStore<K> {
    * Fetch and remove a certain data item from this store.
    *
    * @param id global unique identifier of item
-   * @param <V> actual data type
+   * @param <V> type of the data
    * @return a {@link Pair} of the data id and the actual data item,
    *         or {@code null} if no item is associated with the given id
    */
   <V> Pair<K, V> remove(K id);
 
   /**
-   * Fetch and remove all data of a certain data type from this store.
+   * Fetch and remove all local data from this store.
    * A {@code getAll()} after this method will return null.
    *
-   * @param <V> actual data type
+   * @param <V> type of the data
    * @return a map of data ids and the corresponding data items.
    *         This map may be empty if no item is present.
    */
@@ -111,7 +111,7 @@ public interface MemoryStore<K> {
    *
    * @param startId minimum value of the ids of items to fetch
    * @param endId maximum value of the ids of items to fetch
-   * @param <V> actual data type
+   * @param <V> type of the data
    * @return a map of data ids and the corresponding data items.
    *         This map may be empty if no items meet the given conditions.
    */
@@ -121,10 +121,4 @@ public interface MemoryStore<K> {
    * @return number of blocks in the MemoryStore
    */
   int getNumBlocks();
-
-  /**
-   * Gets the number of stored items for testing purpose.
-   * @return number of single items in the MemoryStore
-   */
-  int getNumUnits();
 }

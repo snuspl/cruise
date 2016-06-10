@@ -64,7 +64,7 @@ public final class ILPQuickOptimizerTest {
   public void testLowCommCost() {
     final int availableEvaluators = 6 + 1; // 1 for the ctrl task
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, new int[]{100, 100}, 5D);
+        NAMESPACE_DOLPHIN_BSP, new int[]{100, 100}, new double[]{100, 100}, 5D);
 
     final Plan plan = ilpQuickOptimizer.optimize(activeEvaluators, availableEvaluators);
 
@@ -82,7 +82,7 @@ public final class ILPQuickOptimizerTest {
   public void testHighCommCost() {
     final int availableEvaluators = 6 + 1; // 1 for the ctrl task
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, new int[]{100, 100, 100, 100}, 5000D);
+        NAMESPACE_DOLPHIN_BSP, new int[]{100, 100, 100, 100}, new double[]{100, 100, 100, 100}, 5000D);
 
     final Plan plan = ilpQuickOptimizer.optimize(activeEvaluators, availableEvaluators);
 
@@ -100,7 +100,7 @@ public final class ILPQuickOptimizerTest {
   public void testAvailableEvalsReduced() {
     final int availableEvaluators = 2 + 1; // 1 for the ctrl task
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, new int[]{100, 100, 100, 100}, 100D);
+        NAMESPACE_DOLPHIN_BSP, new int[]{100, 100, 100, 100}, new double[] {100, 100, 100, 100}, 100D);
 
     final Plan plan = ilpQuickOptimizer.optimize(activeEvaluators, availableEvaluators);
     System.out.println(plan);
@@ -124,7 +124,7 @@ public final class ILPQuickOptimizerTest {
     final ILPQuickOptimizer wrongCtrlIlpQuickerOptimizer = injector.getInstance(ILPQuickOptimizer.class);
     final int availableEvaluators = 4;
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, new int[]{100, 100}, 50D);
+        NAMESPACE_DOLPHIN_BSP, new int[]{100, 100}, new double[] {50, 100}, 50D);
 
     final Plan plan = wrongCtrlIlpQuickerOptimizer.optimize(activeEvaluators, availableEvaluators);
 
@@ -135,26 +135,27 @@ public final class ILPQuickOptimizerTest {
   }
 
   /**
-   * Generate a map of {@link EvaluatorParameters}'s using the given {@code dataArray} and {@code commCost}.
-   *
-   * The parameter {@code dataArray} is assumed to have {@code n} inner arrays, where {@code n} equals the number of
-   * compute tasks.
-   * Each inner array of {@code dataArray} should have {@code k + 1} values, where the first {@code k} values represent
-   * the number of units for {@code k} distinct types and the last value equals the computation time for
-   * that compute task.
-   * The parameter {@code commCost} is simply the total communication cost.
+   * Generate a collection of evaluator parameters that consists of one controller task
+   * and the specified number of compute tasks.
+   * @param namespace the namespace of the evaluators to distinguish Evaluators.
+   * @param numBlocks array that contains the number of data blocks for each task.
+   * @param compCosts array that contains the cost for computation for each task.
+   * @param commCost the total communication cost.
+   * @return a collection of evaluator parameters.
    */
   private Map<String, List<EvaluatorParameters>> generateEvaluatorParameters(final String namespace,
-                                                                             final int[] dataArray,
+                                                                             final int[] numBlocks,
+                                                                             final double[] compCosts,
                                                                              final double commCost) {
-    final List<EvaluatorParameters> evalParamList = new ArrayList<>(dataArray.length + 1);
+    final List<EvaluatorParameters> evalParamList = new ArrayList<>(numBlocks.length + 1);
     double maxCompCost = 0D;
+    assertEquals("Array lengths for data and compute cost are not equal", numBlocks.length, compCosts.length);
 
-    for (int index = 0; index < dataArray.length; ++index) {
-      final int dataForOneCompTask = dataArray[index];
+    for (int index = 0; index < numBlocks.length; ++index) {
+      final int dataForOneCompTask = numBlocks[index];
       final DataInfo dataInfo = new DataInfoImpl(dataForOneCompTask);
 
-      final double compCost = (double)dataForOneCompTask;
+      final double compCost = compCosts[index];
       final Map<String, Double> cmpTaskMetrics = new HashMap<>();
       cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START, 0D);
       cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END, compCost);

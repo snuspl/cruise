@@ -144,7 +144,7 @@
 
 /**
  * Control message that is sent from the driver to evaluators.
- * The message contains the data type and an array of block ids to send.
+ * The message contains an array of block ids to send.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -158,8 +158,7 @@
 
 /**
  * Data message that evaluators send to one another.
- * Actual data is all packed in these messages during data migration,
- * including its data type and identifiers.
+ * Actual data of the block is all packed in these messages during data migration, including the block's identifier.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
