@@ -98,7 +98,7 @@ public final class AsyncDolphinDriver {
   private static final String STATE_RUNNING = "RUNNING";
   private static final String STATE_CLOSING_WORKERS = "CLOSING_WORKERS";
   private static final String STATE_CLOSING_SERVERS = "CLOSING_SERVERS";
-  private static final String STATE_CLOSING_ROOTS = "CLOSING_ROOTS";
+  private static final String STATE_CLOSING_ROOT_CONTEXTS = "CLOSING_ROOT_CONTEXTS";
 
   /**
    * A state machine representing the state of job.
@@ -336,13 +336,13 @@ public final class AsyncDolphinDriver {
         .addState(STATE_RUNNING, "The job is running")
         .addState(STATE_CLOSING_WORKERS, "The job is started being closed, first closing the worker contexts")
         .addState(STATE_CLOSING_SERVERS, "Closing the server contexts")
-        .addState(STATE_CLOSING_ROOTS, "Closing root contexts of both server and worker")
+        .addState(STATE_CLOSING_ROOT_CONTEXTS, "Closing root contexts of both server and worker")
         .setInitialState(STATE_RUNNING)
         .addTransition(STATE_RUNNING, STATE_CLOSING_WORKERS,
             "The job is finished, time to close the worker contexts")
         .addTransition(STATE_CLOSING_WORKERS, STATE_CLOSING_SERVERS,
             "Worker contexts are finished, time to close the the server contexts")
-        .addTransition(STATE_CLOSING_SERVERS, STATE_CLOSING_ROOTS,
+        .addTransition(STATE_CLOSING_SERVERS, STATE_CLOSING_ROOT_CONTEXTS,
             "Both worker and server contexts are finished, time to close their root contexts")
         .build();
   }
@@ -661,7 +661,7 @@ public final class AsyncDolphinDriver {
     case STATE_CLOSING_SERVERS:
       LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of servers", contextId);
       break;
-    case STATE_CLOSING_ROOTS:
+    case STATE_CLOSING_ROOT_CONTEXTS:
       LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of root contexts", contextId);
       break;
     default:
@@ -682,7 +682,7 @@ public final class AsyncDolphinDriver {
       break;
     case STATE_CLOSING_SERVERS:
       if (contextIdToServerContexts.isEmpty()) { // all server contexts are closed
-        jobStateMachine.setState(STATE_CLOSING_ROOTS);
+        jobStateMachine.setState(STATE_CLOSING_ROOT_CONTEXTS);
 
         LOG.info("Start closing root contexts");
         for (final ActiveContext rootContext : contextIdToRootContexts.values()) {
@@ -690,7 +690,7 @@ public final class AsyncDolphinDriver {
         }
       }
       break;
-    case STATE_CLOSING_ROOTS:
+    case STATE_CLOSING_ROOT_CONTEXTS:
       LOG.log(Level.WARNING, "Server context {0} is closed after starting close of root contexts", contextId);
       break;
     default:
@@ -755,7 +755,7 @@ public final class AsyncDolphinDriver {
       }
 
       contextIdToWorkerTasks.remove(failedTask.getActiveContext().get().getId());
-      checkShutdown(); // we may resubmit task in future
+      checkShutdown(); // otherwise we may resubmit the task to compensate the fail
     }
   }
 
@@ -848,7 +848,7 @@ public final class AsyncDolphinDriver {
             LOG.log(Level.WARNING, "Interrupted while waiting for close of server contexts", e);
           }
 
-          if (jobStateMachine.compareAndSetState(STATE_CLOSING_SERVERS, STATE_CLOSING_ROOTS)) {
+          if (jobStateMachine.compareAndSetState(STATE_CLOSING_SERVERS, STATE_CLOSING_ROOT_CONTEXTS)) {
             LOG.log(Level.WARNING, "Some servers do not respond to close messages within time." +
                 " Start closing root contexts.");
 

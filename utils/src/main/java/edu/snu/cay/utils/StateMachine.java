@@ -18,11 +18,14 @@ package edu.snu.cay.utils;
 import org.apache.reef.io.Tuple;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Finite state machine that can be created with user defined states and transitions.
  */
 public final class StateMachine {
+  private static final Logger LOG = Logger.getLogger(StateMachine.class.getName());
 
   private final Map<String, State> stateMap;
   private State currentState;
@@ -94,6 +97,9 @@ public final class StateMachine {
     final boolean compared = currentState.name.equals(expectedCurrentState);
     if (compared) {
       setState(state);
+    } else {
+      LOG.log(Level.FINEST, "The expected current state [" + expectedCurrentState +
+              "] is different from the actual state [" + currentState.name + "]");
     }
 
     return compared;
