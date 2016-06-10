@@ -192,21 +192,21 @@ public final class ILPQuickOptimizer implements Optimizer {
     final PriorityQueue<OptimizedEvaluator> optimizedEvaluatorQueue =
         new PriorityQueue<>(cost.getComputeTaskCosts().size(), COMP_UNIT_COST_INV_COMPARATOR);
     double compUnitCostSum = 0;
-    int numUnitsTotal = 0;
+    int numBlocksTotal = 0;
 
     for (final Cost.ComputeTaskCost computeTaskCost : cost.getComputeTaskCosts()) {
       final int numBlocks = computeTaskCost.getDataInfo().getNumBlocks();
 
-      final double compUnitCost = computeTaskCost.getComputeCost() / numBlocks;
-      final double compUnitCostInv = 1 / compUnitCost;
-      compUnitCostSum += compUnitCost;
-      numUnitsTotal += numBlocks;
+      final double compCostPerBlock = computeTaskCost.getComputeCost() / numBlocks;
+      final double compCostInv = 1 / compCostPerBlock;
+      compUnitCostSum += compCostPerBlock;
+      numBlocksTotal += numBlocks;
 
       optimizedEvaluatorQueue.add(new OptimizedEvaluator(
-          computeTaskCost.getId(), computeTaskCost.getDataInfo(), compUnitCostInv));
+          computeTaskCost.getId(), computeTaskCost.getDataInfo(), compCostInv));
     }
 
-    return new Tuple3<>(optimizedEvaluatorQueue, compUnitCostSum, numUnitsTotal);
+    return new Tuple3<>(optimizedEvaluatorQueue, compUnitCostSum, numBlocksTotal);
   }
 
   /**
@@ -255,7 +255,7 @@ public final class ILPQuickOptimizer implements Optimizer {
   }
 
   /**
-   * Helper method that computes and sets the number of units for each evaluator
+   * Helper method that computes and sets the number of blocks for each evaluator
    * that make the computation cost ('M') become minimal.
    *
    * @return the set of optimized evaluators that produce the least cost, including new evaluators that are empty

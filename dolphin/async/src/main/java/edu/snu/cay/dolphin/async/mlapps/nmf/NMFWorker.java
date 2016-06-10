@@ -315,7 +315,7 @@ final class NMFWorker implements Worker {
             computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
             pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
 
-    sendMetrics(workload.size());
+    sendMetrics(memoryStore.getNumBlocks());
   }
 
   @Override
