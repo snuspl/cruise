@@ -108,12 +108,22 @@ public final class PSDriver {
   }
 
   /**
-   * @return context configuration for an Evaluator that uses {@code ParameterWorker} or {@code ParameterServer}
+   * @return context configuration for an Evaluator that uses {@code ParameterWorker}
    */
-  public Configuration getContextConfiguration() {
+  public Configuration getWorkerContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(ContextStartHandlers.class, NetworkContextRegister.RegisterContextHandler.class)
-        .bindSetEntry(ContextStopHandlers.class, NetworkContextRegister.UnregisterContextHandler.class)
+        .bindSetEntry(ContextStopHandlers.class, NetworkContextRegister.UnregisterContextHandlerForWorker.class)
+        .build();
+  }
+
+  /**
+   * @return context configuration for an Evaluator that uses {@code ParameterServer}
+   */
+  public Configuration getServerContextConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindSetEntry(ContextStartHandlers.class, NetworkContextRegister.RegisterContextHandler.class)
+        .bindSetEntry(ContextStopHandlers.class, NetworkContextRegister.UnregisterContextHandlerForServer.class)
         .build();
   }
 

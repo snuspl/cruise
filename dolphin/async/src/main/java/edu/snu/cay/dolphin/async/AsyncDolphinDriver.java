@@ -42,13 +42,16 @@ import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
+import edu.snu.cay.utils.StateMachine;
 import edu.snu.cay.utils.trace.HTrace;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.context.ClosedContext;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.CompletedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.driver.task.CompletedTask;
@@ -65,6 +68,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
+import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
@@ -72,12 +76,8 @@ import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -89,23 +89,22 @@ import java.util.logging.Logger;
 @Unit
 public final class AsyncDolphinDriver {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinDriver.class.getName());
-  private static final String WORKER_CONTEXT = "WorkerContext";
-  private static final String SERVER_CONTEXT = "ServerContext";
+  private static final String WORKER_CONTEXT_ID_PREFIX = "WorkerContext";
+  private static final String SERVER_CONTEXT_ID_PREFIX = "ServerContext";
   private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
   private static final String SERVER_EM_IDENTIFIER = "ServerEM";
 
-  /**
-   * Interval between trials to shutdown contexts to make sure
-   * no optimization plan is executing.
-   */
-  private static final long SHUTDOWN_TRIAL_INTERVAL_MS = 3000;
+  // states of jobStateMachine
+  private static final String STATE_RUNNING = "RUNNING";
+  private static final String STATE_CLOSING_WORKERS = "CLOSING_WORKERS";
+  private static final String STATE_CLOSING_SERVERS = "CLOSING_SERVERS";
+  private static final String STATE_CLOSING_ROOT_CONTEXTS = "CLOSING_ROOT_CONTEXTS";
 
   /**
-   * Flag indicating whether all workers have finished their work or not.
-   * When it becomes true, a thread starts to close all active contexts and
-   * the optimizer thread stops running.
+   * A state machine representing the state of job.
+   * It is initialized by {@link #initStateMachine()}.
    */
-  private final AtomicBoolean isJobFinished = new AtomicBoolean(false);
+  private final StateMachine jobStateMachine;
 
   /**
    * Evaluator Manager, a unified path for requesting evaluators.
@@ -121,16 +120,6 @@ public final class AsyncDolphinDriver {
   private final DataLoadingService dataLoadingService;
 
   /**
-   * The initial number of worker-side evaluators.
-   */
-  private final int initWorkerCount;
-
-  /**
-   * The initial number of server-side evaluators.
-   */
-  private final int initServerCount;
-
-  /**
    * Exchange messages between the driver and evaluators.
    */
   private final AggregationManager aggregationManager;
@@ -139,6 +128,21 @@ public final class AsyncDolphinDriver {
    * Accessor for parameter server service.
    */
   private final PSDriver psDriver;
+
+  /**
+   * Class providing a configuration for HTrace.
+   */
+  private final HTraceParameters traceParameters;
+
+  /**
+   * The initial number of worker-side evaluators.
+   */
+  private final int initWorkerCount;
+
+  /**
+   * The initial number of server-side evaluators.
+   */
+  private final int initServerCount;
 
   /**
    * Counter for incrementally indexing contexts of workers.
@@ -151,35 +155,39 @@ public final class AsyncDolphinDriver {
   private final AtomicInteger serverContextIndexCounter = new AtomicInteger(0);
 
   /**
-   * Class providing a configuration for HTrace.
+   * Bookkeeping the AllocatedEvaluator objects of the evaluators allocated for the job.
    */
-  private final HTraceParameters traceParameters;
+  private final Set<AllocatedEvaluator> allocatedEvaluators = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
-   * Number of worker-side evaluators that have successfully passed {@link ActiveContextHandler}.
+   * Bookkeeping the ActiveContext objects of the root context of both server and worker evaluators.
    */
-  private final AtomicInteger runningWorkerContextCount;
+  private final Map<String, ActiveContext> contextIdToRootContexts = new ConcurrentHashMap<>();
 
   /**
-   * Number of worker-side evaluators that have added by EM.add().
+   * Bookkeeping the ActiveContext objects of the context housing the parameter server.
    */
-  private final AtomicInteger addedWorkerContextCount;
+  private final Map<String, ActiveContext> contextIdToServerContexts = new ConcurrentHashMap<>();
 
   /**
-   * Number of server-side evaluators that have successfully passed {@link ActiveContextHandler}.
+   * Bookkeeping the ActiveContext objects of the context that the worker task is running on.
    */
-  private final AtomicInteger runningServerContextCount;
+  private final Map<String, ActiveContext> contextIdToWorkerContexts = new ConcurrentHashMap<>();
 
   /**
-   * Number of server-side evaluators that have added by EM.add().
+   * Bookkeeping the RunningTask objects of the running task of workers.
    */
-  private final AtomicInteger addedServerContextCount;
+  private final Map<String, RunningTask> contextIdToWorkerTasks = new ConcurrentHashMap<>();
 
   /**
-   * Configuration that should be passed to each {@link AsyncWorkerTask}.
+   * Bookkeeping of context id of workers deleted by EM's Delete.
    */
-  private final Configuration workerConf;
-  private final Configuration paramConf;
+  private final Set<String> deletedWorkerContextIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+  /**
+   * Bookkeeping of context id of servers deleted by EM's Delete.
+   */
+  private final Set<String> deletedServerContextIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
    * Configuration that should be passed to each parameter server.
@@ -187,19 +195,14 @@ public final class AsyncDolphinDriver {
   private final Configuration serverConf;
 
   /**
-   * Bookkeeping of context id of workers deleted by EM's Delete.
+   * Configuration that should be passed to each {@link AsyncWorkerTask}.
    */
-  private final Set<String> deletedWorkerSet = new HashSet<>();
+  private final Configuration workerConf;
 
   /**
-   * Bookkeeping the active contexts, including both Servers and Workers.
+   * EM client configuration, that should be passed to both worker and server EM contexts.
    */
-  private final ConcurrentMap<String, ActiveContext> activeContexts = new ConcurrentHashMap<>();
-
-  /**
-   * Bookkeeping the running task of workers.
-   */
-  private final ConcurrentMap<String, RunningTask> contextIdToRunningTasks = new ConcurrentHashMap<>();
+  private final Configuration paramConf;
 
   /**
    * Worker-side EM client configuration, that should be passed to worker EM contexts.
@@ -210,21 +213,6 @@ public final class AsyncDolphinDriver {
    * Server-side EM client configuration, that should be passed to server EM contexts.
    */
   private final Configuration emServerClientConf;
-
-  /**
-   * Number of evaluators that have completed or failed.
-   */
-  private final AtomicInteger completedOrFailedEvalCount;
-
-  /**
-   * Queue of activeContext objects of the evaluators housing the parameter server.
-   */
-  private ConcurrentLinkedQueue<ActiveContext> serverContexts;
-
-  /**
-   * Queue of activeContext objects of the worker-side evaluators waiting for driver to close.
-   */
-  private ConcurrentLinkedQueue<ActiveContext> workerContextsToClose;
 
   /**
    * Number of computation threads for each evaluator.
@@ -305,13 +293,6 @@ public final class AsyncDolphinDriver {
     this.identifierFactory = identifierFactory;
     this.driverIdStr = driverIdStr;
     this.aggregationManager = aggregationManager;
-    this.runningWorkerContextCount = new AtomicInteger(0);
-    this.addedWorkerContextCount = new AtomicInteger(0);
-    this.runningServerContextCount = new AtomicInteger(0);
-    this.addedServerContextCount = new AtomicInteger(0);
-    this.completedOrFailedEvalCount = new AtomicInteger(0);
-    this.serverContexts = new ConcurrentLinkedQueue<>();
-    this.workerContextsToClose = new ConcurrentLinkedQueue<>();
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
     this.serverConf = configurationSerializer.fromString(serializedServerConf);
@@ -338,6 +319,8 @@ public final class AsyncDolphinDriver {
       this.psDriver = serverInjector.getInstance(PSDriver.class);
       this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
 
+      this.jobStateMachine = initStateMachine();
+
       final Injector optimizerInjector = injector.forkInjector();
       optimizerInjector.bindVolatileParameter(ServerEM.class, serverEMWrapper.getInstance());
       optimizerInjector.bindVolatileParameter(WorkerEM.class, workerEMWrapper.getInstance());
@@ -346,6 +329,22 @@ public final class AsyncDolphinDriver {
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private StateMachine initStateMachine() {
+    return StateMachine.newBuilder()
+        .addState(STATE_RUNNING, "The job is running")
+        .addState(STATE_CLOSING_WORKERS, "The job is started being closed, first closing the worker contexts")
+        .addState(STATE_CLOSING_SERVERS, "Closing the server contexts")
+        .addState(STATE_CLOSING_ROOT_CONTEXTS, "Closing root contexts of both server and worker")
+        .setInitialState(STATE_RUNNING)
+        .addTransition(STATE_RUNNING, STATE_CLOSING_WORKERS,
+            "The job is finished, time to close the worker contexts")
+        .addTransition(STATE_CLOSING_WORKERS, STATE_CLOSING_SERVERS,
+            "Worker contexts are finished, time to close the the server contexts")
+        .addTransition(STATE_CLOSING_SERVERS, STATE_CLOSING_ROOT_CONTEXTS,
+            "Both worker and server contexts are finished, time to close their root contexts")
+        .build();
   }
 
   final class StartHandler implements EventHandler<StartTime> {
@@ -379,7 +378,7 @@ public final class AsyncDolphinDriver {
         public Void call() throws Exception {
           // TODO #538: check actual timing of system init
           Thread.sleep(INIT_DELAY);
-          while (!isJobFinished.get()) {
+          while (jobStateMachine.getCurrentState().equals(STATE_RUNNING)) {
             optimizationOrchestrator.run();
             Thread.sleep(optimizationIntervalMs);
           }
@@ -387,6 +386,22 @@ public final class AsyncDolphinDriver {
         }
       });
     }
+  }
+
+  private String getWorkerContextId(final int workerIndex) {
+    return WORKER_CONTEXT_ID_PREFIX + "-" + workerIndex;
+  }
+
+  private String getServerContextId(final int serverIndex) {
+    return SERVER_CONTEXT_ID_PREFIX + "-" + serverIndex;
+  }
+
+  private String getWorkerTaskId(final int workerIndex) {
+    return AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex;
+  }
+
+  private int getWorkerIndex(final String contextId) {
+    return Integer.parseInt(contextId.substring(WORKER_CONTEXT_ID_PREFIX.length() + 1));
   }
 
   /**
@@ -397,8 +412,9 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
         LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
+        allocatedEvaluators.add(allocatedEvaluator);
+
         final int serverIndex = serverContextIndexCounter.getAndIncrement();
-        runningServerContextCount.getAndIncrement();
         final Configuration idConfiguration = ContextConfiguration.CONF
             .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + serverIndex)
             .build();
@@ -414,6 +430,8 @@ public final class AsyncDolphinDriver {
     return new EventHandler<AllocatedEvaluator>() {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+        allocatedEvaluators.add(allocatedEvaluator);
+
         LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
         allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
             dataLoadingService.getServiceConfiguration(allocatedEvaluator));
@@ -429,20 +447,16 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);
+        contextIdToRootContexts.put(activeContext.getId(), activeContext);
+
         final int serverIndex = Integer.parseInt(
             activeContext.getId().substring(dataLoadingService.getComputeContextIdPrefix().length()));
-
-        if (addedEval) {
-          final int numAdded = addedServerContextCount.incrementAndGet();
-          LOG.log(Level.INFO, "Number of added evaluators for Server: {0}", numAdded);
-        }
-
-        final String contextId = SERVER_CONTEXT + "-" + serverIndex;
+        final String contextId = getServerContextId(serverIndex);
         final Configuration contextConf = Configurations.merge(
             ContextConfiguration.CONF
                 .set(ContextConfiguration.IDENTIFIER, contextId)
                 .build(),
-            psDriver.getContextConfiguration(),
+            psDriver.getServerContextConfiguration(),
             serverEMWrapper.getConf().getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getServerServiceConfiguration(contextId),
@@ -477,11 +491,7 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
-
-        // although this evaluator is not 'completed' yet,
-        // we add it beforehand so that it closes if all workers finish
-        completedOrFailedEvalCount.incrementAndGet();
-        serverContexts.add(activeContext);
+        contextIdToServerContexts.put(activeContext.getId(), activeContext);
       }
     };
   }
@@ -494,20 +504,15 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
+        contextIdToRootContexts.put(activeContext.getId(), activeContext);
+
         final int workerIndex = workerContextIndexCounter.getAndIncrement();
-        runningWorkerContextCount.getAndIncrement();
-
-        if (addedEval) {
-          final int numAdded = addedWorkerContextCount.incrementAndGet();
-          LOG.log(Level.INFO, "Number of added evaluators for Worker: {0}", numAdded);
-        }
-
-        final String contextId = WORKER_CONTEXT + "-" + workerIndex;
+        final String contextId = getWorkerContextId(workerIndex);
         final Configuration contextConf = Configurations.merge(
             ContextConfiguration.CONF
                 .set(ContextConfiguration.IDENTIFIER, contextId)
                 .build(),
-            psDriver.getContextConfiguration(),
+            psDriver.getWorkerContextConfiguration(),
             workerEMWrapper.getConf().getContextConfiguration(),
             aggregationManager.getContextConfiguration());
 
@@ -519,8 +524,8 @@ public final class AsyncDolphinDriver {
         final Configuration traceConf = traceParameters.getConfiguration();
 
         final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
-              .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
-              .build();
+            .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
+            .build();
 
         activeContext.submitContextAndService(contextConf,
             Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, workerConf, emWorkerClientConf));
@@ -554,9 +559,11 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
-        final int workerIndex = Integer.parseInt(activeContext.getId().substring(WORKER_CONTEXT.length() + 1));
+        contextIdToWorkerContexts.put(activeContext.getId(), activeContext);
+
+        final int workerIndex = getWorkerIndex(activeContext.getId());
         final Configuration taskConf = TaskConfiguration.CONF
-            .set(TaskConfiguration.IDENTIFIER, AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex)
+            .set(TaskConfiguration.IDENTIFIER, getWorkerTaskId(workerIndex))
             .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
             .set(TaskConfiguration.ON_CLOSE, AsyncWorkerTask.CloseEventHandler.class)
             .build();
@@ -580,89 +587,292 @@ public final class AsyncDolphinDriver {
     @Override
     public void onNext(final ActiveContext activeContext) {
       LOG.log(Level.INFO, "ActiveContext: {0}", activeContext);
-
       evaluatorManager.onContextActive(activeContext);
-      activeContexts.putIfAbsent(activeContext.getId(), activeContext);
     }
   }
 
   final class RunningTaskHandler implements EventHandler<RunningTask> {
     @Override
     public void onNext(final RunningTask runningTask) {
-      contextIdToRunningTasks.putIfAbsent(runningTask.getActiveContext().getId(), runningTask);
+      LOG.log(Level.INFO, "RunningTask: {0}", runningTask);
+      contextIdToWorkerTasks.put(runningTask.getActiveContext().getId(), runningTask);
     }
   }
 
   final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
-      checkShutdown();
+      LOG.log(Level.FINE, "FailedEvaluator: {0}", failedEvaluator); // just for logging
     }
   }
 
+  final class CompletedEvaluatorHandler implements EventHandler<CompletedEvaluator> {
+    @Override
+    public void onNext(final CompletedEvaluator completedEvaluator) {
+      LOG.log(Level.FINE, "CompletedEvaluator: {0}", completedEvaluator); // just for logging
+    }
+  }
+
+  /**
+   * Handler for FailedContext.
+   * It treats failed context as a same way of handling closed context by {@link ClosedContextHandler}.
+   */
   final class FailedContextHandler implements EventHandler<FailedContext> {
     @Override
     public void onNext(final FailedContext failedContext) {
-      checkShutdown();
+      LOG.log(Level.INFO, "Handle FailedContext in the same way as ClosedContext. FailedContext: {0}", failedContext);
+      final String contextId = failedContext.getId();
+
+      handleFinishedContext(contextId, failedContext.getParentContext());
+    }
+  }
+
+  /**
+   * Handler for ClosedContext.
+   */
+  final class ClosedContextHandler implements EventHandler<ClosedContext> {
+    @Override
+    public void onNext(final ClosedContext closedContext) {
+      LOG.log(Level.INFO, "ClosedContext: {0}", closedContext);
+      final String contextId = closedContext.getId();
+
+      handleFinishedContext(contextId, Optional.of(closedContext.getParentContext()));
+    }
+  }
+
+  private synchronized void handleFinishedWorkerContext(final String contextId) {
+    contextIdToWorkerContexts.remove(contextId);
+
+    final String jobState = jobStateMachine.getCurrentState();
+    switch (jobState) {
+    case STATE_RUNNING:
+      LOG.log(Level.WARNING, "Worker context {0} is closed when the job is not in shutdown phase", contextId);
+      break;
+    case STATE_CLOSING_WORKERS:
+      if (contextIdToWorkerContexts.isEmpty()) { // all worker contexts are closed
+        jobStateMachine.setState(STATE_CLOSING_SERVERS);
+
+        LOG.info("Start closing server contexts");
+        for (final ActiveContext serverContext : contextIdToServerContexts.values()) {
+          serverContext.close();
+        }
+      }
+      break;
+    case STATE_CLOSING_SERVERS:
+      LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of servers", contextId);
+      break;
+    case STATE_CLOSING_ROOT_CONTEXTS:
+      LOG.log(Level.WARNING, "Worker context {0} is closed after starting close of root contexts", contextId);
+      break;
+    default:
+      throw new RuntimeException("Unexpected state");
+    }
+  }
+
+  private synchronized void handleFinishedServerContext(final String contextId) {
+    contextIdToServerContexts.remove(contextId);
+
+    final String jobState = jobStateMachine.getCurrentState();
+    switch (jobState) {
+    case STATE_RUNNING:
+      LOG.log(Level.WARNING, "Server context {0} is closed when the job is not in shutdown phase", contextId);
+      break;
+    case STATE_CLOSING_WORKERS:
+      LOG.log(Level.WARNING, "Server context {0} is closed before starting close of servers", contextId);
+      break;
+    case STATE_CLOSING_SERVERS:
+      if (contextIdToServerContexts.isEmpty()) { // all server contexts are closed
+        jobStateMachine.setState(STATE_CLOSING_ROOT_CONTEXTS);
+
+        LOG.info("Start closing root contexts");
+        for (final ActiveContext rootContext : contextIdToRootContexts.values()) {
+          rootContext.close();
+        }
+      }
+      break;
+    case STATE_CLOSING_ROOT_CONTEXTS:
+      LOG.log(Level.WARNING, "Server context {0} is closed after starting close of root contexts", contextId);
+      break;
+    default:
+      throw new RuntimeException("Unexpected state");
+    }
+  }
+
+  /**
+   * Handler for finished contexts, including ClosedContext and FailedContext.
+   * The contexts should be one of following:
+   *  1) contexts closed in job shutdown phase started by {@link #checkShutdown()}
+   *  2) contexts closed by EM's Delete procedure
+   *
+   * For an exceptional context out of upper cases, it closes the parent of the context, if it exist,
+   * to prevent the job from holding unnecessary resources.
+   * It is also for the job to be shut down in unexpected cases.
+   * @param contextId an identifier of the context
+   */
+  private void handleFinishedContext(final String contextId, final Optional<ActiveContext> parentContext) {
+    boolean needToCloseParent = false;
+
+    // handle contexts corresponding to their type
+    if (contextIdToWorkerContexts.containsKey(contextId)) {
+      handleFinishedWorkerContext(contextId);
+    } else if (contextIdToServerContexts.containsKey(contextId)) {
+      handleFinishedServerContext(contextId);
+    } else if (contextIdToRootContexts.remove(contextId) != null) {
+      // for tracking contexts
+      LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
+    } else if (deletedWorkerContextIds.remove(contextId) || deletedServerContextIds.remove(contextId)) {
+      LOG.log(Level.INFO, "The context {0} is closed by EM's Delete.", contextId);
+      needToCloseParent = true;
+    } else {
+      LOG.log(Level.WARNING, "Untracked context: {0}", contextId);
+      needToCloseParent = true;
+    }
+
+    // close its parent context to assure job to be shutdown anyway
+    if (needToCloseParent) {
+      if (parentContext.isPresent()) {
+        LOG.log(Level.INFO, "Close a context {0}, which is a parent of the closed context whose id is {1}",
+            new Object[]{parentContext, contextId});
+        parentContext.get().close();
+      }
     }
   }
 
   final class FailedTaskHandler implements EventHandler<FailedTask> {
     @Override
     public void onNext(final FailedTask failedTask) {
+      LOG.log(Level.INFO, "Handle FailedTask in the same way as CompletedTask. FailedTask: {0}", failedTask);
+
+      // Close the context promptly when the task is finished by EM's Delete to make the resource reusable
+      // Otherwise do not close the context, because these evaluators still have valid data,
+      // which can be accessed by other running evaluators
       if (failedTask.getActiveContext().isPresent()) {
-        workerContextsToClose.add(failedTask.getActiveContext().get());
-      } else {
-        LOG.log(Level.WARNING, "FailedTask {0} has no parent context", failedTask);
+        final ActiveContext context = failedTask.getActiveContext().get();
+        if (deletedWorkerContextIds.contains(context.getId())) {
+          // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
+          context.close();
+        }
       }
 
-      checkShutdown();
+      contextIdToWorkerTasks.remove(failedTask.getActiveContext().get().getId());
+      checkShutdown(); // otherwise we may resubmit the task to compensate the fail
     }
   }
 
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(final CompletedTask completedTask) {
-      if (deletedWorkerSet.remove(completedTask.getActiveContext().getId())) {
-        // Close the resource promptly when the task is complete by EM's Delete to make it reusable for EM's Add
-        completedTask.getActiveContext().close();
-      } else {
-        // Currently we do not reuse evaluators that completely finish their work for EM's Add
-        // It is because these evaluators still have valid data, which can be accessed by other running evaluators
-        workerContextsToClose.add(completedTask.getActiveContext());
+      LOG.log(Level.INFO, "CompletedTask: {0}", completedTask);
+
+      // Close the context promptly when the task is finished by EM's Delete to make the resource reusable
+      // Otherwise do not close the context, because these evaluators still have valid data,
+      // which can be accessed by other running evaluators
+      final ActiveContext context = completedTask.getActiveContext();
+      if (deletedWorkerContextIds.contains(context.getId())) {
+        // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
+        context.close();
       }
+
+      contextIdToWorkerTasks.remove(completedTask.getActiveContext().getId());
       checkShutdown();
     }
   }
 
-  private void checkShutdown() {
-    if (completedOrFailedEvalCount.incrementAndGet() ==
-        initServerCount + addedServerContextCount.get() + initWorkerCount + addedWorkerContextCount.get()) {
+  /**
+   * Start job shutdown, if all worker tasks are finished.
+   * To shutdown job completely, following steps have to be done in sequence after completing previous step.
+   *  1) Close the worker contexts first, since worker-server communication is driven by worker
+   *  2) Close the server contexts
+   *  3) Close the root contexts of both server and worker
+   *
+   * First step is done by this method.
+   * Second and third steps are done in ClosedContextHandler, triggered by resulting events of the first step.
+   * If a previous step is not completed within time bound, it progresses to the next step.
+   */
+  private synchronized void checkShutdown() {
+    if (!contextIdToWorkerTasks.isEmpty()) {
+      return;
+    }
 
-      if (isJobFinished.compareAndSet(false, true)) {
-        Executors.newSingleThreadExecutor().submit(new Runnable() {
-          @Override
-          public void run() {
-            while (optimizationOrchestrator.isPlanExecuting()) {
-              try {
-                LOG.log(Level.INFO, "It's time to shutdown active contexts, but wait for completion of plan execution");
-                Thread.sleep(SHUTDOWN_TRIAL_INTERVAL_MS);
-              } catch (final InterruptedException e) {
-                LOG.log(Level.FINEST, "Interrupted while waiting for plan finish", e);
-              }
-            }
+    if (jobStateMachine.compareAndSetState(STATE_RUNNING, STATE_CLOSING_WORKERS)) {
+      LOG.log(Level.INFO, "Time to shut down the job");
 
-            // Since it is not guaranteed that the messages from workers are completely received and processed,
-            // the servers may lose some updates.
-            for (final ActiveContext serverContext : serverContexts) {
-              serverContext.close();
-            }
-            for (final ActiveContext workerContext : workerContextsToClose) {
-              workerContext.close();
+      // start shutdown thread
+      Executors.newSingleThreadExecutor().submit(new Runnable() {
+
+        /**
+         * Interval between trials to shutdown contexts to make sure
+         * no optimization plan is executing.
+         */
+        private static final long SHUTDOWN_TRIAL_INTERVAL_MS = 3000;
+        private static final long CONTEXT_CLOSE_GRACE_PERIOD_MS = 10000;
+
+        @Override
+        public void run() {
+          while (optimizationOrchestrator.isPlanExecuting()) {
+            try {
+              LOG.log(Level.INFO, "It's time to shutdown active contexts, but wait for completion of plan execution");
+              Thread.sleep(SHUTDOWN_TRIAL_INTERVAL_MS);
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while waiting for plan finish", e);
             }
           }
-        });
-      }
+
+          LOG.log(Level.INFO, "Shutdown worker contexts");
+          // Since it is not guaranteed that the messages from workers are completely received and processed,
+          // the servers may lose some updates.
+          for (final ActiveContext workerContext : contextIdToWorkerContexts.values()) {
+            workerContext.close();
+          }
+
+          // wait for worker contexts to be closed
+          try {
+            Thread.sleep(CONTEXT_CLOSE_GRACE_PERIOD_MS);
+          } catch (InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for close of worker contexts", e);
+          }
+
+          if (jobStateMachine.compareAndSetState(STATE_CLOSING_WORKERS, STATE_CLOSING_SERVERS)) {
+            LOG.log(Level.WARNING, "Some workers do not respond to close messages within time." +
+                " Start closing server contexts.");
+
+            // ignore remaining worker contexts and close server contexts
+            for (final ActiveContext serverContext : contextIdToServerContexts.values()) {
+              serverContext.close();
+            }
+          }
+
+          try {
+            Thread.sleep(CONTEXT_CLOSE_GRACE_PERIOD_MS);
+          } catch (InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for close of server contexts", e);
+          }
+
+          if (jobStateMachine.compareAndSetState(STATE_CLOSING_SERVERS, STATE_CLOSING_ROOT_CONTEXTS)) {
+            LOG.log(Level.WARNING, "Some servers do not respond to close messages within time." +
+                " Start closing root contexts.");
+
+            // ignore remaining server contexts and close root contexts
+            for (final ActiveContext rootContext : contextIdToRootContexts.values()) {
+              rootContext.close();
+            }
+          }
+
+          try {
+            Thread.sleep(CONTEXT_CLOSE_GRACE_PERIOD_MS);
+          } catch (InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for close of root contexts", e);
+          }
+
+          LOG.log(Level.INFO, "Some root contexts do not respond to close message. Close evaluators directly.");
+          // If I am still alive, then kill evaluators directly via AllocatedEvaluator.close(), which uses RM
+          for (final AllocatedEvaluator allocatedEvaluator : allocatedEvaluators) {
+            allocatedEvaluator.close();
+          }
+        }
+      });
+    } else {
+      LOG.log(Level.WARNING, "The Job is already being shutdown. Driver fails to correctly track worker tasks.");
     }
   }
 
@@ -673,17 +883,18 @@ public final class AsyncDolphinDriver {
   final class ServerRemover implements EMDeleteExecutor {
     @Override
     public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
-      final ActiveContext activeContext = activeContexts.remove(activeContextId);
+      final ActiveContext activeContext = contextIdToServerContexts.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
         LOG.log(Level.WARNING,
             "Trying to remove active context {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
-        serverContexts.remove(activeContext);
+        deletedServerContextIds.add(activeContextId);
+
         activeContext.close();
-        final int remainingNumServers = runningServerContextCount.decrementAndGet();
-        LOG.log(Level.FINE, "Server has been deleted successfully. Remaining Servers: {0}", remainingNumServers);
+        LOG.log(Level.FINE, "Server has been deleted successfully. Remaining Servers: {0}",
+            contextIdToServerContexts.size());
         isSuccess = true;
       }
       sendCallback(activeContextId, callback, isSuccess);
@@ -698,21 +909,21 @@ public final class AsyncDolphinDriver {
   final class WorkerRemover implements EMDeleteExecutor {
     @Override
     public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
-      final ActiveContext activeContext = activeContexts.remove(activeContextId);
+      final ActiveContext activeContext = contextIdToWorkerContexts.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
         LOG.log(Level.WARNING,
             "Trying to remove active context {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
-        deletedWorkerSet.add(activeContextId);
+        deletedWorkerContextIds.add(activeContextId);
 
-        final RunningTask runningTask = contextIdToRunningTasks.remove(activeContextId);
+        final RunningTask runningTask = contextIdToWorkerTasks.get(activeContextId);
         runningTask.close();
 
-        activeContext.close();
-        final int remainingNumWorkers = runningWorkerContextCount.decrementAndGet();
-        LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}", remainingNumWorkers);
+        // context will be closed in ClosedTaskHandler
+        LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}",
+            contextIdToWorkerContexts.size());
         isSuccess = true;
       }
       sendCallback(activeContextId, callback, isSuccess);
