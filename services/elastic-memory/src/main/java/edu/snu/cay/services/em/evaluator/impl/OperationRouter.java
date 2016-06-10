@@ -42,6 +42,7 @@ import java.util.logging.Logger;
  * Note that this class is not thread-safe, which means client of this class must synchronize explicitly.
  * @param <K> type of data key
  */
+// TODO #565: Refactor initialization methods in EM's OperationRouter
 @Private
 @NotThreadSafe
 public final class OperationRouter<K> {
