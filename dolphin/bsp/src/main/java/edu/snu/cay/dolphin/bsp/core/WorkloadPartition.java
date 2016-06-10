@@ -24,6 +24,7 @@ import org.apache.reef.tang.Configuration;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -45,7 +46,7 @@ public final class WorkloadPartition {
   @Inject
   public WorkloadPartition(final MemoryStore memoryStore) {
     this.memoryStore = memoryStore;
-    this.ranges = new ConcurrentSet<>();
+    this.ranges = Collections.newSetFromMap(new ConcurrentHashMap<>());
   }
 
   /**
