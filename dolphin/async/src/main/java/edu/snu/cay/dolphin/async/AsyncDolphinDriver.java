@@ -182,6 +182,11 @@ public final class AsyncDolphinDriver {
   private final Configuration paramConf;
 
   /**
+   * Configuration that should be passed to each parameter server.
+   */
+  private final Configuration serverConf;
+
+  /**
    * Bookkeeping of context id of workers deleted by EM's Delete.
    */
   private final Set<String> deletedWorkerSet = new HashSet<>();
@@ -281,6 +286,7 @@ public final class AsyncDolphinDriver {
                              final AggregationManager aggregationManager,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
+                             @Parameter(SerializedServerConfiguration.class) final String serializedServerConf,
                              @Parameter(SerializedEMWorkerClientConfiguration.class)
                                  final String serializedEMWorkerClientConf,
                              @Parameter(SerializedEMServerClientConfiguration.class)
@@ -308,6 +314,7 @@ public final class AsyncDolphinDriver {
     this.workerContextsToClose = new ConcurrentLinkedQueue<>();
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
+    this.serverConf = configurationSerializer.fromString(serializedServerConf);
     this.emWorkerClientConf = configurationSerializer.fromString(serializedEMWorkerClientConf);
     this.emServerClientConf = configurationSerializer.fromString(serializedEMServerClientConf);
 
@@ -457,7 +464,7 @@ public final class AsyncDolphinDriver {
         final Configuration traceConf = traceParameters.getConfiguration();
 
         activeContext.submitContextAndService(contextConf,
-            Configurations.merge(serviceConf, traceConf, paramConf, emServerClientConf));
+            Configurations.merge(serviceConf, traceConf, paramConf, serverConf, emServerClientConf));
       }
     };
   }
@@ -516,7 +523,7 @@ public final class AsyncDolphinDriver {
               .build();
 
         activeContext.submitContextAndService(contextConf,
-            Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, emWorkerClientConf));
+            Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, workerConf, emWorkerClientConf));
       }
     };
   }
@@ -556,7 +563,7 @@ public final class AsyncDolphinDriver {
         final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class).build();
 
-        activeContext.submitTask(Configurations.merge(taskConf, workerConf, emDataIdConf));
+        activeContext.submitTask(Configurations.merge(taskConf, emDataIdConf));
       }
     };
   }
