@@ -276,9 +276,9 @@ public final class AsyncDolphinDriver {
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
                              @Parameter(SerializedServerConfiguration.class) final String serializedServerConf,
                              @Parameter(SerializedEMWorkerClientConfiguration.class)
-                             final String serializedEMWorkerClientConf,
+                                 final String serializedEMWorkerClientConf,
                              @Parameter(SerializedEMServerClientConfiguration.class)
-                             final String serializedEMServerClientConf,
+                                 final String serializedEMServerClientConf,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
