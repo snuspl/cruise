@@ -22,8 +22,10 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
+import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
@@ -65,7 +67,12 @@ public class WorkerMsgSender<K, P> {
   }
 
   private void send(final String destId, final AvroPSMsg msg) {
-    final Connection<AvroPSMsg> conn = psNetworkSetup.getConnectionFactory()
+    final ConnectionFactory<AvroPSMsg> connFactory = psNetworkSetup.getConnectionFactory();
+    if (connFactory == null) {
+      throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
+    }
+
+    final Connection<AvroPSMsg> conn = connFactory
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();
@@ -100,9 +107,14 @@ public class WorkerMsgSender<K, P> {
    * @param key a key to pull
    */
   void sendPullMsg(final String destId, final EncodedKey<K> key) {
+    final Identifier localEndPointId = psNetworkSetup.getMyId();
+    if (localEndPointId == null) {
+      throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
+    }
+
     final PullMsg pullMsg = PullMsg.newBuilder()
         .setKey(ByteBuffer.wrap(key.getEncoded()))
-        .setSrcId(psNetworkSetup.getMyId().toString())
+        .setSrcId(localEndPointId.toString())
         .build();
 
     send(destId,

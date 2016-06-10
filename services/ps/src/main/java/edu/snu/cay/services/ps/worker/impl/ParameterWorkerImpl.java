@@ -31,14 +31,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -228,17 +222,27 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   }
 
   /**
-   * Close the worker, after waiting for queued messages to be sent.
+   * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
+   * for queued messages to be sent.
    */
-  public void close() {
-    // Close all partitions
-    for (int i = 0; i < numThreads; i++) {
-      threads[i].close();
-    }
-    // Wait for shutdown to complete on all partitions
-    for (int i = 0; i < numThreads; i++) {
-      threads[i].waitForShutdown();
-    }
+  @Override
+  public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
+
+    final Future result = Executors.newSingleThreadExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        // Close all threads
+        for (int i = 0; i < numThreads; i++) {
+          threads[i].close();
+        }
+        // Wait for shutdown to complete on all threads
+        for (int i = 0; i < numThreads; i++) {
+          threads[i].waitForShutdown();
+        }
+      }
+    });
+
+    result.get(timeoutMs, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -304,7 +308,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * Wrapped values for use within each partition's cache.
    * Wrapping allows the partition to replace the value on a local update,
    * without updating the write time of the cache entry.
-  */
+   */
   private static class Wrapped<V> {
     private V value;
 
@@ -430,7 +434,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final int drainSize; // Max number of operations to drain per iteration.
 
     private volatile boolean close = false;
-    private volatile boolean shutdown = false;
+    private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
     public WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
                         final ServerResolver serverResolver,
@@ -479,7 +483,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       kvCache.invalidateAll();
     }
 
-
     /**
      * @return number of pending operations in the queue.
      */
@@ -518,28 +521,33 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
         }
         localOps.clear();
       }
+
       shutdown();
     }
 
     /**
-     * Cleanly close the run thread.
+     * Close the run thread.
      */
     public void close() {
       close = true;
     }
 
-    private synchronized void shutdown() {
-      shutdown = true;
-      notifyAll();
+    private void shutdown() {
+      shutdown.set(true);
+      synchronized (shutdown) {
+        shutdown.notifyAll();
+      }
     }
 
     /**
      * Wait for shutdown confirmation (clean close has finished).
      */
-    public synchronized void waitForShutdown() {
-      while (!shutdown) {
+    public void waitForShutdown() {
+      while (!shutdown.get()) {
         try {
-          wait();
+          synchronized (shutdown) {
+            shutdown.wait();
+          }
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
         }

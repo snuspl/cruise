@@ -29,7 +29,6 @@ import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.impl.ContextStopHandler;
 import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
@@ -94,7 +93,6 @@ public final class StaticPSManager implements PSManager {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, ParameterWorkerImpl.class)
-            .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
             .build())
         .bindImplementation(ParameterWorker.class, ParameterWorkerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)

@@ -34,7 +34,6 @@ import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
-import edu.snu.cay.services.ps.worker.impl.ContextStopHandler;
 import edu.snu.cay.services.ps.common.resolver.DynamicServerResolver;
 import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStopHandler;
@@ -103,7 +102,6 @@ public final class DynamicPSManager implements PSManager {
             .set(ServiceConfiguration.SERVICES, ParameterWorkerImpl.class)
             .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
             .set(ServiceConfiguration.ON_TASK_STOP, TaskStopHandler.class)
-            .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
             .build())
         .bindImplementation(ParameterWorker.class, ParameterWorkerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)

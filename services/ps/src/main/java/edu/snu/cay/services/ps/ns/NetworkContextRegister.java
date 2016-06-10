@@ -15,13 +15,16 @@
  */
 package edu.snu.cay.services.ps.ns;
 
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
-import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,31 +32,80 @@ import java.util.logging.Logger;
  * Register and unregister identifiers to and from a NetworkConnectionService
  * when contexts spawn/terminate, respectively.
  */
-@Unit
 public final class NetworkContextRegister {
   private static final Logger LOG = Logger.getLogger(NetworkContextRegister.class.getName());
 
-  private final PSNetworkSetup psNetworkSetup;
-  private final IdentifierFactory identifierFactory;
+  public static final class RegisterContextHandler implements EventHandler<ContextStart> {
+    private final PSNetworkSetup psNetworkSetup;
+    private final IdentifierFactory identifierFactory;
 
-  @Inject
-  private NetworkContextRegister(final PSNetworkSetup psNetworkSetup,
-                                 final IdentifierFactory identifierFactory) {
-    this.psNetworkSetup = psNetworkSetup;
-    this.identifierFactory = identifierFactory;
-  }
+    @Inject
+    private RegisterContextHandler(final PSNetworkSetup psNetworkSetup,
+                                   final IdentifierFactory identifierFactory) {
+      this.psNetworkSetup = psNetworkSetup;
+      this.identifierFactory = identifierFactory;
+    }
 
-  public final class RegisterContextHandler implements EventHandler<ContextStart> {
     @Override
     public void onNext(final ContextStart contextStart) {
-      psNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
-      LOG.log(Level.INFO, "My NCS id is " + psNetworkSetup.getMyId());
+      final ConnectionFactory connFactory =
+          psNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
+      LOG.log(Level.INFO, "My NCS id is " + connFactory.getLocalEndPointId());
     }
   }
 
-  public final class UnregisterContextHandler implements EventHandler<ContextStop> {
+  /**
+   * ContextStop handler for PS servers.
+   */
+  public static final class UnregisterContextHandlerForServer implements EventHandler<ContextStop> {
+    private final PSNetworkSetup psNetworkSetup;
+
+    @Inject
+    private UnregisterContextHandlerForServer(final PSNetworkSetup psNetworkSetup) {
+      this.psNetworkSetup = psNetworkSetup;
+    }
+
     @Override
     public void onNext(final ContextStop contextStop) {
+      // we can close servers before unregistering it from NCS just like workers
+      // but it's not necessary until now
+      psNetworkSetup.unregisterConnectionFactory();
+    }
+  }
+
+  /**
+   * ContextStop handler for PS workers.
+   * It guarantees PS service to be closed after fully sending out all queued operations.
+   * With this guarantee, the context can be shutdown, minimizing message loss.
+   *
+   * However, we are still observing some lost messages when
+   * contexts are immediately closed after the task completes.
+   * It appears messages buffered in NCS are not being flushed before context close,
+   * but this has to be investigated further.
+   */
+  public static final class UnregisterContextHandlerForWorker implements EventHandler<ContextStop> {
+    private static final long TIMEOUT_MS = 10000;
+
+    private final PSNetworkSetup psNetworkSetup;
+    private final ParameterWorker parameterWorker;
+
+    @Inject
+    private UnregisterContextHandlerForWorker(final PSNetworkSetup psNetworkSetup,
+                                              final ParameterWorker parameterWorker) {
+      this.psNetworkSetup = psNetworkSetup;
+      this.parameterWorker = parameterWorker;
+    }
+
+    @Override
+    public void onNext(final ContextStop contextStop) {
+      LOG.log(Level.FINE, "Wait {0} milliseconds at maximum for the PS service to be closed", TIMEOUT_MS);
+      try {
+        parameterWorker.close(TIMEOUT_MS);
+        LOG.fine("Succeed to close PS worker cleanly");
+      } catch (InterruptedException | TimeoutException | ExecutionException e) {
+        LOG.log(Level.INFO, "Fail to close PS worker cleanly", e);
+      }
+
       psNetworkSetup.unregisterConnectionFactory();
     }
   }
