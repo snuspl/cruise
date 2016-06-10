@@ -101,12 +101,8 @@ public interface ElasticMemory {
   Map<Integer, Set<Integer>> getStoreIdToBlockIds();
 
   /**
-   * @return the number of total blocks that exist in this Elastic Memory instance.
-   */
-  int getNumTotalBlocks();
-
-  /**
    * Generates the Evaluator Parameters of all MemoryStores, which consist of MemoryStore Id, Metrics, and so on.
+   * TODO #525: Make OptimizationOrchestrator receive metrics
    */
   Map<String, EvaluatorParameters> generateEvalParams();
 }

@@ -179,11 +179,6 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public int getNumTotalBlocks() {
-    return blockManager.getNumTotalBlocks();
-  }
-
-  @Override
   public Map<String, EvaluatorParameters> generateEvalParams() {
     return blockManager.generateEvalParams();
   }

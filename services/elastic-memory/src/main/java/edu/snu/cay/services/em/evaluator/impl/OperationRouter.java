@@ -112,22 +112,10 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * Initializes the router by providing a prefix of evaluator to locate remote evaluators.
-   * In addition, for initial evaluators, it initializes the routing table by itself with a statically fixed scheme
-   * and for evaluators added by EM.add, it sends a request the up-to-date routing table to driver and
-   * postpones the initialization until the response.
-   * This method is invoked when the context is started.
+   * Initializes routing table of this MemoryStore with its local blocks, which are determined statically.
+   * Note that if the MemoryStore is created by EM.add(), this method should not be called
+   * because added MemoryStores receive the existing blocks from the initial MemoryStores.
    */
-  public void initialize(final String endpointId) {
-    // TODO #509: Remove assumption on the format of context id
-    this.evalPrefix = endpointId.split("-")[0];
-    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
-
-    if (addedEval) {
-      requestRoutingTable();
-    }
-  }
-
   private void initRoutingTable() {
     // initial evaluators can initialize the routing table by itself
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
@@ -138,6 +126,24 @@ public final class OperationRouter<K> {
     for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
       final int storeId = blockId % numInitialEvals;
       blockLocations.set(blockId, storeId);
+    }
+  }
+
+
+  /**
+   * Initializes the router to resolve remote evaluators by providing a prefix of evaluator.
+   * In addition, this method includes the initialization of the routing table for added Evaluators
+   * by EM.add(). It sends a request for up-to-date routing table to the driver and
+   * postpones the initialization until the response.
+   * Note that this method is invoked when the context is started.
+   */
+  public void initialize(final String endpointId) {
+    // TODO #509: Remove assumption on the format of context id
+    this.evalPrefix = endpointId.split("-")[0];
+    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
+
+    if (addedEval) {
+      requestRoutingTable();
     }
   }
 
@@ -153,9 +159,9 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * Initializes the routing table with the info received from the driver,
-   * providing a prefix of evaluator to locate remote evaluators.
-   * This method is for evaluators added by EM.add(), whose routing table should be updated dynamically.
+   * Initializes the routing table with the info received from the driver.
+   * This method is only for evaluators added by EM.add(),
+   * whose routing table should be initiated from the existing information.
    * It'd be invoked by the network response of {@link #requestRoutingTable()}.
    */
   public synchronized void initialize(final List<Integer> initBlockLocations) {

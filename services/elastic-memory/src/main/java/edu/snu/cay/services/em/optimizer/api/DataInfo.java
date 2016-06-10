@@ -27,8 +27,6 @@ public interface DataInfo {
 
   /**
    * Update the number of blocks stored in the MemoryStore.
-   * Note that this method is for testing only, to compare the result
-   * after applying generated optimization plan.
    */
   void setNumBlocks(int numBlocks);
 }

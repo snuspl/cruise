@@ -85,8 +85,7 @@ public final class EMRoutingTableManager {
     activeWorkerIds.add(workerId);
     return new EMRoutingTable(
         elasticMemory.getStoreIdToBlockIds(),
-        storeIdToEndpointId,
-        elasticMemory.getNumTotalBlocks());
+        storeIdToEndpointId);
   }
 
   /**
