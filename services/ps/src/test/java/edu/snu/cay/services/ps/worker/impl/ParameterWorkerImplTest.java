@@ -20,7 +20,6 @@ import edu.snu.cay.services.ps.common.resolver.ServerId;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
-
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.io.serialization.Codec;
