@@ -45,7 +45,6 @@ import static org.mockito.Mockito.*;
  * Tests for {@link ParameterWorkerImpl}.
  */
 public final class ParameterWorkerImplTest {
-  private static final int PUSH_VALUE = 1;
   private static final long CLOSE_TIMEOUT = 5000;
   private static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_THREADS_SHOULD_NOT_FINISH = "threads have finished but should not";
@@ -111,6 +110,7 @@ public final class ParameterWorkerImplTest {
   public void testMultiThreadPush() throws InterruptedException, TimeoutException, ExecutionException {
     final int numPushThreads = 8;
     final int numPushPerThread = 1000;
+    final int pushValue = 1;
     final CountDownLatch countDownLatch = new CountDownLatch(numPushThreads);
     final Runnable[] threads = new Runnable[numPushThreads];
 
@@ -118,7 +118,7 @@ public final class ParameterWorkerImplTest {
       final int key = index % 4;
       threads[index] = () -> {
         for (int push = 0; push < numPushPerThread; ++push) {
-          worker.push(key, PUSH_VALUE);
+          worker.push(key, pushValue);
         }
         countDownLatch.countDown();
       };
@@ -129,7 +129,7 @@ public final class ParameterWorkerImplTest {
     worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
-    verify(mockSender, times(numPushThreads * numPushPerThread)).sendPushMsg(anyString(), anyObject(), eq(PUSH_VALUE));
+    verify(mockSender, times(numPushThreads * numPushPerThread)).sendPushMsg(anyString(), anyObject(), eq(pushValue));
   }
 
   /**
