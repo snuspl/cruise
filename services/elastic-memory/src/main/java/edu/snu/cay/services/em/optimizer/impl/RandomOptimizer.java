@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * An Optimizer implementation that creates a Random plan.
@@ -39,10 +40,10 @@ import java.util.logging.Logger;
  * 1. Choosing uniformly between [minEvaluatorsFraction * availableEvaluators,
  *    maxEvaluatorsFraction * availableEvaluators] evaluators to use in the plan.
  *    {@link #getEvaluatorsToUse}
- * 2. For each dataType, randomly redistributing all units -- by batching units (of 10) and
+ * 2. Randomly redistributing all blocks -- by batching blocks (of 10) and
  *    sending each batch to an evaluator selected uniformly at random.
  *    {@link #distributeDataAcrossEvaluators}
- * 3. For each dataType, creating transfer steps by greedily taking data needed to
+ * 3. Creating transfer steps by greedily taking data needed to
  *    satisfy the request from an evaluator from it's right side (in a circular array).
  *    {@link #getTransferSteps}
  */
@@ -119,30 +120,29 @@ public final class RandomOptimizer implements Optimizer {
       planBuilder.addEvaluatorsToDelete(namespace, getIds(evaluatorsToDelete));
 
     /*
-     * For each dataType:
-     * 1. Find the sum of the number of all units across the Evaluators. (getSumData)
-     * 2. Initialize an OptimizedEvaluator per Evaluator from the dataType's DataInfo. (initOptimizedEvaluators)
+     * 1. Find the sum of the number of blocks across the Evaluators. (getSumData)
+     * 2. Initialize an OptimizedEvaluator per Evaluator from the DataInfo. (initOptimizedEvaluators)
      *    An OptimizedEvaluator keeps track of data at an Evaluator while distributing data and scheduling transfers.
-     * 3. Randomly distribute all units across the non-deleted Evaluators. (distributeDataAcrossEvaluators)
-     * 4. Create transfer steps to satisfy the distribution of units. (getTransferSteps)
+     * 3. Randomly distribute all blocks across the non-deleted Evaluators. (distributeDataAcrossEvaluators)
+     * 4. Create transfer steps to satisfy the distribution of blocks. (getTransferSteps)
       *   Add these transfer steps to the plan.
      */
       activeEvaluators.addAll(evaluatorsToAdd);
-      final Collection<String> dataTypes = getDataTypes(activeEvaluators);
-      for (final String dataType : dataTypes) {
-        final long sumData = getSumData(dataType, activeEvaluators);
-        final List<OptimizedEvaluator> evaluators = initOptimizedEvaluators(dataType, activeEvaluators);
-        distributeDataAcrossEvaluators(evaluators.subList(0, numEvaluators), sumData);
 
-        if (LOG.isLoggable(Level.FINE)) {
-          for (final OptimizedEvaluator evaluator : evaluators) {
-            LOG.log(Level.FINE, "RandomOptimizer data distribution: {0} {1}",
-                new Object[]{evaluator.id, evaluator.dataRequested});
-          }
+      final long sumDataBlocks = getSumDataBlocks(activeEvaluators);
+      final List<OptimizedEvaluator> evaluators = initOptimizedEvaluators(activeEvaluators);
+      distributeDataAcrossEvaluators(evaluators.subList(0, numEvaluators), sumDataBlocks);
+
+      if (LOG.isLoggable(Level.FINE)) {
+        for (final OptimizedEvaluator evaluator : evaluators) {
+          LOG.log(Level.FINE, "RandomOptimizer data distribution: {0} {1}",
+              new Object[]{evaluator.id, evaluator.dataRequested});
         }
+      }
 
-        final List<TransferStep> transferSteps = getTransferSteps(evaluators);
-        planBuilder.addTransferSteps(namespace, transferSteps);
+      final List<TransferStep> transferSteps = getTransferSteps(evaluators);
+      for (final TransferStep transferStep : transferSteps) {
+        planBuilder.addTransferStep(namespace, transferStep);
       }
     }
     final Plan plan = planBuilder.build();
@@ -171,58 +171,29 @@ public final class RandomOptimizer implements Optimizer {
 
   private EvaluatorParameters getNewEvaluator() {
     return new EvaluatorParametersImpl("newRandomOptimizerNode-" + newEvaluatorId.getAndIncrement(),
-        new ArrayList<DataInfo>(0), new HashMap<String, Double>(0));
+        new DataInfoImpl(), new HashMap<>(0));
   }
 
-  private static Collection<String> getDataTypes(final Collection<EvaluatorParameters> evaluators) {
-    final Set<String> dataTypes = new HashSet<>();
+  private static long getSumDataBlocks(final Collection<EvaluatorParameters> evaluators) {
+    long sumDataBlocks = 0;
     for (final EvaluatorParameters evaluator : evaluators) {
-      for (final DataInfo dataInfo : evaluator.getDataInfos()) {
-        dataTypes.add(dataInfo.getDataType());
-      }
+      sumDataBlocks += evaluator.getDataInfo().getNumBlocks();
     }
-    return dataTypes;
-  }
-
-  private static long getSumData(final String dataType,
-                                 final Collection<EvaluatorParameters> evaluators) {
-    long sumData = 0;
-    for (final EvaluatorParameters evaluator : evaluators) {
-      for (final DataInfo dataInfo : evaluator.getDataInfos()) {
-        if (dataType.equals(dataInfo.getDataType())) {
-          sumData += dataInfo.getNumUnits();
-        }
-      }
-    }
-    return sumData;
+    return sumDataBlocks;
   }
 
   /**
-   * Initialize an OptimizedEvaluator per Evaluator from the dataType's DataInfo.
+   * Initialize an OptimizedEvaluator per Evaluator from the DataInfo.
    * An OptimizedEvaluator keeps track of data at an Evaluator while distributing data and scheduling transfers.
-   * Checks for duplicate dataTypes.
-   * @param dataType
    * @param evaluators EvaluatorParameters to create OptimizedEvaluators for
    * @return list of OptimizedEvaluator's, one per EvaluatorParameter passed in
    */
-  private static List<OptimizedEvaluator> initOptimizedEvaluators(final String dataType,
-                                                                  final Collection<EvaluatorParameters> evaluators) {
+  private static List<OptimizedEvaluator> initOptimizedEvaluators(final Collection<EvaluatorParameters> evaluators) {
     final List<OptimizedEvaluator> optimizedEvaluators = new ArrayList<>(evaluators.size());
-    for (final EvaluatorParameters parameters : evaluators) {
-      boolean dataTypeAdded = false;
-      for (final DataInfo dataInfo : parameters.getDataInfos()) {
-        if (dataType.equals(dataInfo.getDataType())) {
-          if (dataTypeAdded) {
-            throw new IllegalArgumentException("Cannot have multiple infos for " + dataType);
-          }
-          optimizedEvaluators.add(new OptimizedEvaluator(parameters.getId(), dataInfo));
-          dataTypeAdded = true;
-        }
-      }
-      if (!dataTypeAdded) {
-        optimizedEvaluators.add(new OptimizedEvaluator(parameters.getId(), dataType));
-      }
-    }
+    optimizedEvaluators.addAll(
+        evaluators.stream()
+            .map(parameters -> new OptimizedEvaluator(parameters.getId(), parameters.getDataInfo()))
+            .collect(Collectors.toList()));
     return optimizedEvaluators;
   }
 
@@ -235,8 +206,8 @@ public final class RandomOptimizer implements Optimizer {
   }
 
   /**
-   * Randomly redistribute all data units.
-   * The distribution is done by batching units (of 10) and
+   * Randomly redistribute all data blocks.
+   * The distribution is done by batching blocks (of 10) and
    * sending each batch to an evaluator selected uniformly at random.
    * @param evaluators Evaluators to distribute data to. Should *not* include to-be-deleted Evaluators.
    * @param totalData the amount of data to distribute
@@ -273,12 +244,12 @@ public final class RandomOptimizer implements Optimizer {
     for (int i = 0; i < evaluators.size(); i++) {
       final OptimizedEvaluator dstEvaluator = evaluators.get(i);
       if (dstEvaluator.getDataRemaining() > 0) {
-        // Find srcEvaluator's with data units to transfer to dstEvaluator,
+        // Find srcEvaluator's with data blocks to transfer to dstEvaluator,
         // starting from the next index and iterating through as a circular array.
         for (int j = 1; j < evaluators.size(); j++) {
           final OptimizedEvaluator srcEvaluator = evaluators.get((i + j) % evaluators.size());
           if (srcEvaluator.getDataRemaining() < 0) {
-            // Mark all available units at srcEvaluator as transfer steps to be transferred to dstEvaluator.
+            // Mark all available blocks at srcEvaluator as transfer steps to be transferred to dstEvaluator.
             final int dataToTransfer = Math.min(dstEvaluator.getDataRemaining(), 0 - srcEvaluator.getDataRemaining());
             srcEvaluator.sendData(dstEvaluator.getId(), dataToTransfer);
             dstEvaluator.receiveData(srcEvaluator.getId(), dataToTransfer);
@@ -304,21 +275,18 @@ public final class RandomOptimizer implements Optimizer {
 
   private static class OptimizedEvaluator {
     private final String id;
-    private final String dataType;
     private final List<TransferStep> dstTransferSteps = new ArrayList<>();
     private int dataAllocated;
     private int dataRequested;
 
     public OptimizedEvaluator(final String id, final DataInfo dataInfo) {
       this.id = id;
-      this.dataType = dataInfo.getDataType();
-      this.dataAllocated = dataInfo.getNumUnits();
+      this.dataAllocated = dataInfo.getNumBlocks();
       this.dataRequested = 0;
     }
 
-    public OptimizedEvaluator(final String id, final String dataType) {
+    public OptimizedEvaluator(final String id) {
       this.id = id;
-      this.dataType = dataType;
       this.dataAllocated = 0;
       this.dataRequested = 0;
     }
@@ -349,7 +317,7 @@ public final class RandomOptimizer implements Optimizer {
 
     public void receiveData(final String src, final int data) {
       dataAllocated += data;
-      dstTransferSteps.add(new TransferStepImpl(src, id, new DataInfoImpl(dataType, data)));
+      dstTransferSteps.add(new TransferStepImpl(src, id, new DataInfoImpl(data)));
     }
 
     public List<TransferStep> getDstTransferSteps() {
@@ -360,7 +328,6 @@ public final class RandomOptimizer implements Optimizer {
     public String toString() {
       final StringBuilder sb = new StringBuilder("OptimizedEvaluator{");
       sb.append("id='").append(id).append('\'');
-      sb.append(", dataType='").append(dataType).append('\'');
       sb.append(", dstTransferSteps=").append(dstTransferSteps);
       sb.append(", dataAllocated=").append(dataAllocated);
       sb.append(", dataRequested=").append(dataRequested);

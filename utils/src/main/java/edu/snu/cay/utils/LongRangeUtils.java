@@ -97,19 +97,6 @@ public final class LongRangeUtils {
   }
 
   /**
-   * Get the number of units inside the set of ranges.
-   * @param rangeSet Set of ranges.
-   * @return Number of units.
-   */
-  public static long getNumUnits(final Set<LongRange> rangeSet) {
-    long numUnits = 0;
-    for (final LongRange idRange : rangeSet) {
-      numUnits += (idRange.getMaximumLong() - idRange.getMinimumLong() + 1);
-    }
-    return numUnits;
-  }
-
-  /**
    * @return Intersection of the two ranges. {@code null} if the ranges are disjoint.
    */
   public static LongRange getIntersection(final LongRange range1, final LongRange range2) {

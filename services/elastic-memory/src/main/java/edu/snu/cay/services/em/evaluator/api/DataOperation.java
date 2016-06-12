@@ -41,11 +41,6 @@ public interface DataOperation {
   DataOpType getOpType();
 
   /**
-   * @return a type of data
-   */
-  String getDataType();
-
-  /**
    * @return true if the operation is requested from the local client
    */
   boolean isFromLocalClient();

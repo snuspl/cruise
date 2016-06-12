@@ -67,13 +67,12 @@ public interface ElasticMemory {
   /**
    * Move a certain number of blocks to another Evaluator.
    *
-   * @param dataType data type to perform this operation
    * @param numBlocks the number of blocks to move
    * @param srcEvalId identifier of the source evaluator
    * @param destEvalId identifier of the destination evaluator
    * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
    */
-  void move(String dataType, int numBlocks, String srcEvalId, String destEvalId,
+  void move(int numBlocks, String srcEvalId, String destEvalId,
             @Nullable EventHandler<AvroElasticMemoryMessage> finishedCallback);
 
   /**
@@ -102,9 +101,8 @@ public interface ElasticMemory {
   Map<Integer, Set<Integer>> getStoreIdToBlockIds();
 
   /**
-   * @return the number of total blocks that exist in this Elastic Memory instance.
+   * Generates the Evaluator Parameters of all MemoryStores, which consist of MemoryStore Id, Metrics, and so on.
+   * TODO #525: Make OptimizationOrchestrator receive metrics
    */
-  int getNumTotalBlocks();
-
-  Map<String, EvaluatorParameters> generateEvalParams(String dataType);
+  Map<String, EvaluatorParameters> generateEvalParams();
 }

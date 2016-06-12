@@ -25,33 +25,22 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 
 /**
- * A Serializer for Dolphin jobs with a single Row dataType.
- * The Row dataType could be backed by either a Dense or Sparse Vector, specified by {@code IsDenseVector}.
+ * A Serializer for Dolphin jobs that use Row.
+ * The Row could be backed by either a Dense or Sparse Vector, specified by {@code IsDenseVector}.
  * For example, use this if the job only uses data from {@link ClassificationDenseDataParser}.
  */
 public final class RowSerializer implements Serializer {
-  /**
-   * Key used in Elastic Memory to put/get the data.
-   */
-  private final String dataType;
-
   private final Codec<Row> rowCodec;
 
   @Inject
-  private RowSerializer(@Parameter(RowDataType.class) final String dataType,
-                        @Parameter(IsDenseVector.class) final boolean isDenseVector,
+  private RowSerializer(@Parameter(IsDenseVector.class) final boolean isDenseVector,
                         final DenseRowCodec denseRowCodec,
                         final SparseRowCodec sparseRowCodec) {
-    this.dataType = dataType;
     this.rowCodec = isDenseVector ? denseRowCodec : sparseRowCodec;
   }
 
   @Override
-  public Codec getCodec(final String name) {
-    if (name.equals(dataType)) {
-      return rowCodec;
-    } else {
-      throw new RuntimeException("Unknown name " + name);
-    }
+  public Codec getCodec() {
+    return rowCodec;
   }
 }

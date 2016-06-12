@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.bsp.mlapps.data;
 import edu.snu.cay.dolphin.bsp.mlapps.sub.IntegerListCodec;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -29,26 +28,15 @@ import java.util.List;
  * (key = vertex, value = list of adjacent vertices).
  */
 public final class AdjacencyListSerializer implements Serializer {
-  /**
-   * Key used in Elastic Memory to put/get the data.
-   */
-  private final String dataType;
-
   private final Codec<List<Integer>> integerListCodec;
 
   @Inject
-  private AdjacencyListSerializer(@Parameter(AdjacencyListDataType.class) final String dataType,
-                                  final IntegerListCodec integerListCodec) {
-    this.dataType = dataType;
+  private AdjacencyListSerializer(final IntegerListCodec integerListCodec) {
     this.integerListCodec = integerListCodec;
   }
 
   @Override
-  public Codec getCodec(final String name) {
-    if (name.equals(dataType)) {
-      return integerListCodec;
-    } else {
-      throw new RuntimeException("Unknown name " + name);
-    }
+  public Codec getCodec() {
+    return integerListCodec;
   }
 }

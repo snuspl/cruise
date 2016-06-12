@@ -38,11 +38,11 @@ final class PlanValidationUtils {
    * Checks the validity of the generated plan.
    * @param activeEvaluators the collection of evaluator parameters
    * @param plan the generated plan
-   * @param availableEvaluators the number of available evaluators
+   * @param numAvailableEvals the number of available evaluators
    */
   static void checkPlan(final Map<String, List<EvaluatorParameters>> activeEvaluators,
                         final Plan plan,
-                        final int availableEvaluators) {
+                        final int numAvailableEvals) {
     final Map<String, List<EvaluatorParameters>> applied = applyPlan(activeEvaluators, plan);
     for (final Map.Entry<String, List<EvaluatorParameters>> entry : applied.entrySet()) {
       final String namespace = entry.getKey();
@@ -50,8 +50,8 @@ final class PlanValidationUtils {
       assertTrue(
           String.format(
               "After optimization, active evaluators %d must be less than or equal to available evaluators %d",
-              evaluatorParams.size(), availableEvaluators),
-          evaluatorParams.size() <= availableEvaluators);
+              evaluatorParams.size(), numAvailableEvals),
+          evaluatorParams.size() <= numAvailableEvals);
       assertEquals("Data should not be changed",
           getSumOfDataInfos(activeEvaluators.get(namespace)),
           getSumOfDataInfos(applied.get(namespace)));
@@ -60,21 +60,14 @@ final class PlanValidationUtils {
 
   /**
    * @param evaluators the collection of evaluator parameters
-   * @return a mapping data types to the total number of data units for each data type
-   *         in the specified collection of evaluator parameters.
+   * @return the total number of data blocks in the specified collection of evaluator parameters.
    */
-  private static Map<String, Integer> getSumOfDataInfos(final Collection<EvaluatorParameters> evaluators) {
-    final Map<String, Integer> dataMap = new HashMap<>();
+  private static Integer getSumOfDataInfos(final Collection<EvaluatorParameters> evaluators) {
+    int numTotalUnits = 0;
     for (final EvaluatorParameters evaluator : evaluators) {
-      for (final DataInfo dataInfo : evaluator.getDataInfos()) {
-        Integer value = dataMap.get(dataInfo.getDataType());
-        if (value == null) {
-          value = 0;
-        }
-        dataMap.put(dataInfo.getDataType(), value + dataInfo.getNumUnits());
-      }
+      numTotalUnits += evaluator.getDataInfo().getNumBlocks();
     }
-    return dataMap;
+    return numTotalUnits;
   }
 
   /**
@@ -124,7 +117,8 @@ final class PlanValidationUtils {
       for (final String idToDelete : plan.getEvaluatorsToDelete(namespace)) {
         final EvaluatorParameters evaluator = evaluatorMap.remove(idToDelete);
         assertNotNull(String.format("No evaluator whose id is %s", idToDelete), evaluator);
-        assertTrue(String.format("Evaluator %s to delete has data", idToDelete), isEmpty(evaluator.getDataInfos()));
+        assertEquals(String.format("Evaluator %s to delete has data", idToDelete),
+            0, evaluator.getDataInfo().getNumBlocks());
       }
 
       resultMap.put(namespace, new ArrayList<>(evaluatorMap.values()));
@@ -138,7 +132,7 @@ final class PlanValidationUtils {
    * @return new evaluator parameters
    */
   private static EvaluatorParameters getNewEvaluatorParameters(final String id) {
-    return new EvaluatorParametersImpl(id, new ArrayList<DataInfo>(), new HashMap<String, Double>(0));
+    return new EvaluatorParametersImpl(id, new DataInfoImpl(), new HashMap<>(0));
   }
 
   /**
@@ -146,22 +140,9 @@ final class PlanValidationUtils {
    * @return a copy of the specified evaluator parameters
    */
   private static EvaluatorParameters makeCopy(final EvaluatorParameters evaluatorParameters) {
-    final Collection<DataInfo> dataInfosCopy = new ArrayList<>(evaluatorParameters.getDataInfos());
+    final DataInfo dataInfoCopy = new DataInfoImpl(evaluatorParameters.getDataInfo().getNumBlocks());
     return new EvaluatorParametersImpl(
-        evaluatorParameters.getId(), dataInfosCopy, evaluatorParameters.getMetrics());
-  }
-
-  /**
-   * @param dataInfos the collection of data information
-   * @return whether the specified collection of data information is empty or not
-   */
-  private static boolean isEmpty(final Collection<DataInfo> dataInfos) {
-    for (final DataInfo dataInfo : dataInfos) {
-      if (dataInfo.getNumUnits() != 0) {
-        return false;
-      }
-    }
-    return true;
+        evaluatorParameters.getId(), dataInfoCopy, evaluatorParameters.getMetrics());
   }
 
   /**
@@ -172,26 +153,11 @@ final class PlanValidationUtils {
    */
   private static void removeData(final EvaluatorParameters evaluator, final DataInfo dataInfoToRemove) {
     final String id = evaluator.getId();
-    final List<DataInfo> dataInfosToRemove = new ArrayList<>(1);
 
-    for (final DataInfo dataInfo : evaluator.getDataInfos()) {
-      if (dataInfo.getDataType().equals(dataInfoToRemove.getDataType())) {
-        dataInfosToRemove.add(dataInfo);
-      }
-    }
+    final int numRemainedBlocks = evaluator.getDataInfo().getNumBlocks() - dataInfoToRemove.getNumBlocks();
+    assertTrue(String.format("Evaluator %s does not have enough data to transfer", id), numRemainedBlocks >= 0);
 
-    assertTrue(String.format("Evaluator %s does not have data for %s", id, dataInfoToRemove.getDataType()),
-        dataInfosToRemove.size() > 0);
-    assertTrue(String.format("Cannot have multiple data infos for %s", dataInfoToRemove.getDataType()),
-        dataInfosToRemove.size() == 1);
-
-    final int numRemainedUnits = dataInfosToRemove.get(0).getNumUnits() - dataInfoToRemove.getNumUnits();
-    assertTrue(String.format("Evaluator %s does not have enough data to transfer", id), numRemainedUnits >= 0);
-
-    evaluator.getDataInfos().removeAll(dataInfosToRemove);
-    if (numRemainedUnits > 0) {
-      evaluator.getDataInfos().add(new DataInfoImpl(dataInfoToRemove.getDataType(), numRemainedUnits));
-    }
+    evaluator.getDataInfo().setNumBlocks(numRemainedBlocks);
   }
 
   /**
@@ -201,24 +167,7 @@ final class PlanValidationUtils {
    * @param dataInfoToAdd the information of data to add
    */
   private static void addData(final EvaluatorParameters evaluator, final DataInfo dataInfoToAdd) {
-    final List<DataInfo> dataInfosToAdd = new ArrayList<>(1);
-
-    for (final DataInfo dataInfo : evaluator.getDataInfos()) {
-      if (dataInfo.getDataType().equals(dataInfoToAdd.getDataType())) {
-        dataInfosToAdd.add(dataInfo);
-      }
-    }
-
-    assertTrue(String.format("Cannot have multiple data infos for %s", dataInfoToAdd.getDataType()),
-        dataInfosToAdd.size() < 2);
-
-    if (dataInfosToAdd.size() == 1) {
-      final int numExistingUnits = dataInfosToAdd.get(0).getNumUnits();
-      evaluator.getDataInfos().removeAll(dataInfosToAdd);
-      evaluator.getDataInfos().add(
-          new DataInfoImpl(dataInfoToAdd.getDataType(), numExistingUnits + dataInfoToAdd.getNumUnits()));
-    } else {
-      evaluator.getDataInfos().add(dataInfoToAdd);
-    }
+    final int numExistingBlocks = evaluator.getDataInfo().getNumBlocks();
+    evaluator.getDataInfo().setNumBlocks(numExistingBlocks + dataInfoToAdd.getNumBlocks());
   }
 }

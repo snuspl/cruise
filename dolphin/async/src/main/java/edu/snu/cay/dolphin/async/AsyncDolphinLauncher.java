@@ -94,6 +94,10 @@ public final class AsyncDolphinLauncher {
   final class SerializedWorkerConfiguration implements Name<String> {
   }
 
+  @NamedParameter(doc = "configuration for server class, serialized as a string")
+  final class SerializedServerConfiguration implements Name<String> {
+  }
+
   @NamedParameter(doc = "configuration for the EM worker-side client, specifically the Serializer class")
   final class SerializedEMWorkerClientConfiguration implements Name<String> {
   }
@@ -149,14 +153,22 @@ public final class AsyncDolphinLauncher {
           .setValueCodecClass(asyncDolphinConfiguration.getValueCodecClass())
           .build();
 
-      // worker-specific configurations
       final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
+      final Configuration serializedServerConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(SerializedServerConfiguration.class,
+              confSerializer.toString(asyncDolphinConfiguration.getServerConfiguration()))
+          .build();
+
+      // worker-specific configurations
       // pass the worker class implementation as well as user-defined parameters
-      final Configuration workerConf = Tang.Factory.getTang().newConfigurationBuilder()
+      final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Worker.class, asyncDolphinConfiguration.getWorkerClass())
           .bindNamedParameter(Iterations.class,
               Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
           .build();
+      final Configuration workerConf = Configurations.merge(basicWorkerConf,
+          asyncDolphinConfiguration.getWorkerConfiguration());
+
       final Configuration serializedWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(SerializedWorkerConfiguration.class, confSerializer.toString(workerConf))
           .bindNamedParameter(SerializedParameterConfiguration.class, confSerializer.toString(userParameterConf))
@@ -180,7 +192,7 @@ public final class AsyncDolphinLauncher {
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
 
       final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
-          Configurations.merge(basicParameterConf, parameterServerConf,
+          Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
               serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf),
           timeout);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
@@ -305,8 +317,10 @@ public final class AsyncDolphinLauncher {
         .set(DriverConfiguration.ON_DRIVER_STARTED, AsyncDolphinDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AsyncDolphinDriver.AllocatedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, AsyncDolphinDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_COMPLETED, AsyncDolphinDriver.CompletedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, AsyncDolphinDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_FAILED, AsyncDolphinDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_CLOSED, AsyncDolphinDriver.ClosedContextHandler.class)
         .set(DriverConfiguration.ON_TASK_RUNNING, AsyncDolphinDriver.RunningTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, AsyncDolphinDriver.CompletedTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, AsyncDolphinDriver.FailedTaskHandler.class);

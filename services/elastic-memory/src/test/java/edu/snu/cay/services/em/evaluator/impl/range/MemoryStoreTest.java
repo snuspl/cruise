@@ -46,7 +46,6 @@ public final class MemoryStoreTest {
   private static final int NUM_TOTAL_BLOCKS = 32;
   private static final int TIMEOUT = 60;
 
-  private static final String DATA_TYPE = "DATA_TYPE";
   private static final String MSG_SIZE_ASSERTION = "size of final memory store";
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_REMOVE_ALL_ASSERTION = "getAll() after removeAll()";
@@ -88,7 +87,7 @@ public final class MemoryStoreTest {
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
       threads[index] = new MemoryStoreTestUtils.PutThread(
-          countDownLatch, memoryStore, DATA_TYPE, index, numThreads, putsPerThread, 1,
+          countDownLatch, memoryStore, index, numThreads, putsPerThread, 1,
           MemoryStoreTestUtils.IndexParity.ALL_INDEX);
     }
     ThreadUtils.runConcurrently(threads);
@@ -98,7 +97,7 @@ public final class MemoryStoreTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects,
-        memoryStore.getAll(DATA_TYPE).size());
+        memoryStore.getAll().size());
   }
 
   /**
@@ -114,13 +113,13 @@ public final class MemoryStoreTest {
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
 
     for (int i = 0; i < totalNumberOfObjects; i++) {
-      memoryStore.put(DATA_TYPE, (long) i, i);
+      memoryStore.put((long) i, i);
     }
 
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
       threads[index] = new MemoryStoreTestUtils.RemoveThread(
-          countDownLatch, memoryStore, DATA_TYPE, index, numThreads, removesPerThread, 1,
+          countDownLatch, memoryStore, index, numThreads, removesPerThread, 1,
           MemoryStoreTestUtils.IndexParity.ALL_INDEX);
     }
     ThreadUtils.runConcurrently(threads);
@@ -129,7 +128,7 @@ public final class MemoryStoreTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_SIZE_ASSERTION, 0, memoryStore.getAll().size());
   }
 
   @Test
@@ -157,7 +156,7 @@ public final class MemoryStoreTest {
       if (i / numThreadPerOperation / itemsPerPutOrRemove % 2 == 0) {
         continue;
       }
-      memoryStore.put(DATA_TYPE, (long) i, i);
+      memoryStore.put((long) i, i);
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadPerOperation];
@@ -167,10 +166,10 @@ public final class MemoryStoreTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadPerOperation; index++) {
-      threads[2 * index] = new MemoryStoreTestUtils.PutThread(countDownLatch, memoryStore, DATA_TYPE, index,
+      threads[2 * index] = new MemoryStoreTestUtils.PutThread(countDownLatch, memoryStore, index,
           numThreadPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove,
           MemoryStoreTestUtils.IndexParity.EVEN_INDEX);
-      threads[2 * index + 1] = new MemoryStoreTestUtils.RemoveThread(countDownLatch, memoryStore, DATA_TYPE, index,
+      threads[2 * index + 1] = new MemoryStoreTestUtils.RemoveThread(countDownLatch, memoryStore, index,
           numThreadPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove,
           MemoryStoreTestUtils.IndexParity.ODD_INDEX);
     }
@@ -181,11 +180,11 @@ public final class MemoryStoreTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        memoryStore.getAll(DATA_TYPE).size());
+        memoryStore.getAll().size());
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        memoryStore.removeAll(DATA_TYPE).size());
+        memoryStore.removeAll().size());
     // check that removeAll works as expected
-    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll().size());
   }
 
   @Test
@@ -212,10 +211,10 @@ public final class MemoryStoreTest {
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[2 * index] = new MemoryStoreTestUtils.PutThread(countDownLatch, memoryStore, DATA_TYPE,
+      threads[2 * index] = new MemoryStoreTestUtils.PutThread(countDownLatch, memoryStore,
           index, numThreadsPerOperation, itemsPerThread / itemsPerPut, itemsPerPut,
           MemoryStoreTestUtils.IndexParity.ALL_INDEX);
-      threads[2 * index + 1] = new MemoryStoreTestUtils.GetThread(countDownLatch, memoryStore, DATA_TYPE, getsPerThread,
+      threads[2 * index + 1] = new MemoryStoreTestUtils.GetThread(countDownLatch, memoryStore, getsPerThread,
           true, totalNumberOfObjects);
     }
     ThreadUtils.runConcurrently(threads);
@@ -225,11 +224,11 @@ public final class MemoryStoreTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects,
-        memoryStore.getAll(DATA_TYPE).size());
+        memoryStore.getAll().size());
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects,
-        memoryStore.removeAll(DATA_TYPE).size());
+        memoryStore.removeAll().size());
     // check that removeAll works as expected
-    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll().size());
   }
 
   @Test
@@ -255,15 +254,15 @@ public final class MemoryStoreTest {
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
 
     for (int i = 0; i < totalNumberOfObjects; i++) {
-      memoryStore.put(DATA_TYPE, (long) i, i);
+      memoryStore.put((long) i, i);
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[2 * index] = new MemoryStoreTestUtils.RemoveThread(countDownLatch, memoryStore, DATA_TYPE,
+      threads[2 * index] = new MemoryStoreTestUtils.RemoveThread(countDownLatch, memoryStore,
           index, numThreadsPerOperation, itemsPerThread / itemsPerRemove, itemsPerRemove,
           MemoryStoreTestUtils.IndexParity.ALL_INDEX);
-      threads[2 * index + 1] = new MemoryStoreTestUtils.GetThread(countDownLatch, memoryStore, DATA_TYPE,
+      threads[2 * index + 1] = new MemoryStoreTestUtils.GetThread(countDownLatch, memoryStore,
           getsPerThread, true, totalNumberOfObjects);
     }
     ThreadUtils.runConcurrently(threads);
@@ -272,7 +271,7 @@ public final class MemoryStoreTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_SIZE_ASSERTION, 0, memoryStore.getAll().size());
   }
 
   @Test
@@ -301,7 +300,7 @@ public final class MemoryStoreTest {
       if (i / numThreadsPerOperation / itemsPerPutOrRemove % 2 == 0) {
         continue;
       }
-      memoryStore.put(DATA_TYPE, (long) i, i);
+      memoryStore.put((long) i, i);
     }
 
     final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
@@ -311,13 +310,13 @@ public final class MemoryStoreTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[3 * index] = new MemoryStoreTestUtils.PutThread(countDownLatch, memoryStore, DATA_TYPE, index,
+      threads[3 * index] = new MemoryStoreTestUtils.PutThread(countDownLatch, memoryStore, index,
           numThreadsPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove,
           MemoryStoreTestUtils.IndexParity.EVEN_INDEX);
-      threads[3 * index + 1] = new MemoryStoreTestUtils.RemoveThread(countDownLatch, memoryStore, DATA_TYPE, index,
+      threads[3 * index + 1] = new MemoryStoreTestUtils.RemoveThread(countDownLatch, memoryStore, index,
           numThreadsPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove,
           MemoryStoreTestUtils.IndexParity.ODD_INDEX);
-      threads[3 * index + 2] = new MemoryStoreTestUtils.GetThread(countDownLatch, memoryStore, DATA_TYPE, getsPerThread,
+      threads[3 * index + 2] = new MemoryStoreTestUtils.GetThread(countDownLatch, memoryStore, getsPerThread,
           true, totalNumberOfObjects);
     }
     ThreadUtils.runConcurrently(threads);
@@ -327,10 +326,10 @@ public final class MemoryStoreTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        memoryStore.getAll(DATA_TYPE).size());
+        memoryStore.getAll().size());
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        memoryStore.removeAll(DATA_TYPE).size());
+        memoryStore.removeAll().size());
     // check that removeAll works as expected
-    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll().size());
   }
 }

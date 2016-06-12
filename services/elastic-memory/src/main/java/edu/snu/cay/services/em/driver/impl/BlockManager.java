@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
@@ -99,9 +98,10 @@ public final class BlockManager {
 
     final int memoryStoreId = getMemoryStoreId(contextId);
     if (storeIdToBlockIds.containsKey(memoryStoreId)) {
+      // TODO #545: throw a exception defined for specific purpose
       throw new RuntimeException("This evaluator is already registered. Its context Id is " + contextId);
     }
-    storeIdToBlockIds.put(memoryStoreId, new HashSet<Integer>());
+    storeIdToBlockIds.put(memoryStoreId, new HashSet<>());
 
     final int numActiveEvals = numEvalCounter.incrementAndGet();
     LOG.log(Level.FINE, "MemoryStore {0} is assigned to eval {1}", new Object[]{memoryStoreId, contextId});
@@ -126,15 +126,26 @@ public final class BlockManager {
    * It should be called after all blocks in the store of the evaluator are completely moved out.
    * @param contextId an id of context
    */
-  public synchronized void deregisterEvaluator(final String contextId) {
+  synchronized void deregisterEvaluator(final String contextId) {
     final int memoryStoreId = getMemoryStoreId(contextId);
 
-    final Set<Integer> remainingBlocks = storeIdToBlockIds.remove(memoryStoreId);
+    final Set<Integer> remainingBlocks = storeIdToBlockIds.get(memoryStoreId);
     if (remainingBlocks == null) {
+      // TODO #545: throw a exception defined for specific purpose
       throw new RuntimeException("The store " + memoryStoreId + " does not exist");
     } else if (!remainingBlocks.isEmpty()) {
+      // TODO #545: throw a exception defined for specific purpose
       throw new RuntimeException("This attempt tries to remove a non-empty store, resulting missing blocks.");
     }
+
+    storeIdToBlockIds.remove(memoryStoreId);
+  }
+
+  /**
+   * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
+   */
+  Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
+    return Collections.unmodifiableMap(storeIdToBlockIds);
   }
 
   /**
@@ -161,6 +172,7 @@ public final class BlockManager {
 
   /**
    * Updates the owner of the block to another MemoryStore.
+   * The block should be locked by {@link #chooseBlocksToMove(String, int)} to change its owner.
    * @param blockId id of the block to update its owner
    * @param oldOwnerId id of the MemoryStore who used to own the block
    * @param newOwnerId id of the MemoryStore who will own the block
@@ -168,6 +180,11 @@ public final class BlockManager {
   synchronized void updateOwner(final int blockId, final int oldOwnerId, final int newOwnerId) {
     LOG.log(Level.FINER, "Update owner of block {0} from store {1} to store {2}",
         new Object[]{blockId, oldOwnerId, newOwnerId});
+
+    if (!movingBlocks.contains(blockId)) {
+      throw new RuntimeException("The block " + blockId +
+          " has not been chosen for migration or has already been released");
+    }
 
     if (!storeIdToBlockIds.containsKey(oldOwnerId)) {
       throw new RuntimeException("MemoryStore " + oldOwnerId + " has been lost.");
@@ -177,21 +194,19 @@ public final class BlockManager {
       throw new RuntimeException("MemoryStore " + newOwnerId + " has been lost.");
     }
 
-    if (!storeIdToBlockIds.get(oldOwnerId).remove(blockId)) {
+    if (!storeIdToBlockIds.get(oldOwnerId).contains(blockId)) {
       throw new RuntimeException("Store " + oldOwnerId + " does not own block " + blockId);
     }
-    if (!storeIdToBlockIds.get(newOwnerId).add(blockId)) {
+    if (storeIdToBlockIds.get(newOwnerId).contains(blockId)) {
       throw new RuntimeException("Store " + newOwnerId + " already owns block " + blockId);
     }
 
-    blockIdToStoreId.put(blockId, newOwnerId);
-  }
+    final Set<Integer> blocksInOldStore = storeIdToBlockIds.get(oldOwnerId);
+    final Set<Integer> blocksInNewStore = storeIdToBlockIds.get(newOwnerId);
+    blocksInOldStore.remove(blockId);
+    blocksInNewStore.add(blockId);
 
-  /**
-   * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
-   */
-  Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
-    return Collections.unmodifiableMap(storeIdToBlockIds);
+    blockIdToStoreId.put(blockId, newOwnerId);
   }
 
   /**
@@ -199,6 +214,19 @@ public final class BlockManager {
    */
   int getNumTotalBlocks() {
     return numTotalBlocks;
+  }
+
+  /**
+   * @param evalId id of the Evaluator
+   * @return the number of blocks owned by the Evaluator.
+   */
+  public synchronized int getNumBlocks(final String evalId) {
+    final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
+    // the given eval id is not registered
+    if (blockIds == null) {
+      return 0;
+    }
+    return blockIds.size();
   }
 
   /**
@@ -217,6 +245,7 @@ public final class BlockManager {
 
   /**
    * Choose the blocks in the Evaluator to move to another Evaluator.
+   * The chosen blocks cannot be chosen for another move until released by {@link #releaseBlockFromMove(int)}.
    * @param evalId id of Evaluator to choose the blocks
    * @param numBlocks the maximum number of blocks to choose
    * @return list of block ids that have been chosen.
@@ -258,23 +287,11 @@ public final class BlockManager {
   }
 
   /**
-   * @param evalId id of the Evaluator
-   * @return the number of blocks owned by the Evaluator.
-   */
-  public synchronized int getNumBlocks(final String evalId) {
-    final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
-    // the given eval id is not registered
-    if (blockIds == null) {
-      return 0;
-    }
-    return blockIds.size();
-  }
-
-  /**
-   * Mark the block as moved.
+   * Release the block that was locked by {@link #chooseBlocksToMove(String, int)}.
+   * After then the block can be chosen for move again.
    * @param blockId id of the block
    */
-  synchronized void markBlockAsMoved(final int blockId) {
+  synchronized void releaseBlockFromMove(final int blockId) {
     final boolean removed = movingBlocks.remove(blockId);
     if (!removed) {
       LOG.log(Level.WARNING, "The block {0} has already been marked as finished", blockId);
@@ -290,7 +307,7 @@ public final class BlockManager {
     return evalIdToNumBlocks;
   }
 
-  public Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
+  Map<String, EvaluatorParameters> generateEvalParams() {
     final Map<String, Integer> evalIdToNumBlocks = getEvalIdToNumBlocks();
     final int numEvaluators = evalIdToNumBlocks.size();
 
@@ -299,9 +316,7 @@ public final class BlockManager {
       final String evalId = evalIdToNumBlock.getKey();
       final int numBlocks = evalIdToNumBlock.getValue();
 
-      final List<DataInfo> dataInfos = new ArrayList<>(1);
-      dataInfos.add(new DataInfoImpl(dataType, numBlocks));
-      evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, dataInfos, new HashMap<String, Double>(0)));
+      evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, new DataInfoImpl(numBlocks), new HashMap<>(0)));
     }
     return evaluatorsMap;
   }

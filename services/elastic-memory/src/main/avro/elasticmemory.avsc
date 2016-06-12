@@ -77,7 +77,6 @@
   [
     {"name": "origEvalId", "type": "string"},
     {"name": "opType", "type": {"type": "enum", "name": "DataOpType", "symbols": ["PUT", "GET", "REMOVE"]}},
-    {"name": "dataType", "type": "string"},
     {"name": "dataKeys", "type": ["DataKey", {"type": "array", "items": "KeyRange"}]},
     {"name": "dataValues", "type": ["null", "DataValue", {"type": "array", "items": "KeyValuePair"}]}
   ]
@@ -145,7 +144,7 @@
 
 /**
  * Control message that is sent from the driver to evaluators.
- * The message contains the data type and an array of block ids to send.
+ * The message contains an array of block ids to send.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -153,15 +152,13 @@
   "name": "CtrlMsg",
   "fields":
   [
-    {"name": "dataType", "type": "string"},
     {"name": "blockIds", "type": {"type": "array", "items": "int"}}
   ]
 },
 
 /**
  * Data message that evaluators send to one another.
- * Actual data is all packed in these messages during data migration,
- * including its data type and identifiers.
+ * Actual data of the block is all packed in these messages during data migration, including the block's identifier.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -169,7 +166,6 @@
   "name": "DataMsg",
   "fields":
   [
-    {"name": "dataType", "type": "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null},
     {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
   ]
@@ -183,7 +179,6 @@
   "type": "record",
   "name": "OwnershipMsg",
   "fields": [
-      {"name": "dataType", "type": "string"},
       {"name": "blockId", "type": "int"},
       {"name": "oldOwnerId", "type": "int"},
       {"name": "newOwnerId", "type": "int"}
@@ -198,7 +193,6 @@
   "type": "record",
   "name": "OwnershipAckMsg",
   "fields": [
-      {"name": "dataType", "type": "string"},
       {"name": "blockId", "type": "int"}
   ]
 },

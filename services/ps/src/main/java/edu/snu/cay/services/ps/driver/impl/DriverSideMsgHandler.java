@@ -71,7 +71,6 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPSMs
 
   private void onWorkerRegisterMsg(final String srcId) {
     final EMRoutingTable routingTable = routingTableManager.registerWorker(srcId);
-    final int numTotalBlocks = routingTable.getNumTotalBlocks();
     final List<IdMapping> idMappings = new ArrayList<>(routingTable.getStoreIdToEndpointId().size());
     final Map<Integer, String> storeIdToEndpointId = routingTable.getStoreIdToEndpointId();
     for (final Map.Entry<Integer, Set<Integer>> entry : routingTable.getStoreIdToBlockIds().entrySet()) {
@@ -87,7 +86,6 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPSMs
 
     final WorkerRegisterReplyMsg workerRegisterReplyMsg = WorkerRegisterReplyMsg.newBuilder()
         .setIdMappings(idMappings)
-        .setNumTotalBlocks(numTotalBlocks)
         .build();
 
     final AvroPSMsg responseMsg =

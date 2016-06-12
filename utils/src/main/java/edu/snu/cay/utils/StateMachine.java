@@ -18,11 +18,14 @@ package edu.snu.cay.utils;
 import org.apache.reef.io.Tuple;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Finite state machine that can be created with user defined states and transitions.
  */
 public final class StateMachine {
+  private static final Logger LOG = Logger.getLogger(StateMachine.class.getName());
 
   private final Map<String, State> stateMap;
   private State currentState;
@@ -80,14 +83,26 @@ public final class StateMachine {
   }
 
   /**
-   * Check the expectedCurrentState and set to a certain state.
+   * Atomically sets the state to the given updated state
+   * if the current state equals to the expected state.
    *
    * @param expectedCurrentState an expected state
    * @param state a state
+   * @return true if successful. False return indicates that
+   * the actual value was not equal to the expected value.
+   * @throws RuntimeException if the state is unknown state, or the transition
+   * from the current state to the specified state is illegal
    */
-  public synchronized void checkAndSetState(final String expectedCurrentState, final String state) {
-    checkState(expectedCurrentState);
-    setState(state);
+  public synchronized boolean compareAndSetState(final String expectedCurrentState, final String state) {
+    final boolean compared = currentState.name.equals(expectedCurrentState);
+    if (compared) {
+      setState(state);
+    } else {
+      LOG.log(Level.FINE, "The expected current state [" + expectedCurrentState +
+              "] is different from the actual state [" + currentState.name + "]");
+    }
+
+    return compared;
   }
 
   /**

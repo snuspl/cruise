@@ -21,7 +21,6 @@ import edu.snu.cay.dolphin.bsp.core.WorkloadPartition;
 import edu.snu.cay.dolphin.bsp.mlapps.data.LinearModel;
 import edu.snu.cay.dolphin.bsp.mlapps.data.LogisticRegSummary;
 import edu.snu.cay.dolphin.bsp.mlapps.data.Row;
-import edu.snu.cay.dolphin.bsp.mlapps.data.RowDataType;
 import edu.snu.cay.dolphin.bsp.mlapps.loss.Loss;
 import edu.snu.cay.dolphin.bsp.mlapps.parameters.StepSize;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataBroadcastReceiver;
@@ -38,7 +37,6 @@ public class LogisticRegMainCmpTask extends UserComputeTask
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
-  private final String dataType;
   private final WorkloadPartition workloadPartition;
   private LinearModel model;
   private int posNum = 0;
@@ -48,12 +46,10 @@ public class LogisticRegMainCmpTask extends UserComputeTask
   public LogisticRegMainCmpTask(@Parameter(StepSize.class) final double stepSize,
                                 final Loss loss,
                                 final Regularization regularization,
-                                @Parameter(RowDataType.class) final String dataType,
                                 final WorkloadPartition workloadPartition) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
-    this.dataType = dataType;
     this.workloadPartition = workloadPartition;
   }
 
@@ -64,7 +60,7 @@ public class LogisticRegMainCmpTask extends UserComputeTask
     posNum = 0;
     negNum = 0;
 
-    final Map<?, Row> rows = workloadPartition.getAllData(dataType);
+    final Map<?, Row> rows = workloadPartition.getAllData();
 
     for (final Row row : rows.values()) {
       final double output = row.getOutput();

@@ -36,8 +36,7 @@ import java.util.logging.Logger;
 
 /**
  * A {@code MemoryStore} implementation for a key of generic type, non-supporting range operations.
- * All data of one data type is stored in multiple Blocks embedding a {@code ConcurrentHashMap}.
- * These Blocks are then maintained as values of one big {@code HashMap}, which uses the data types as keys.
+ * All data is stored in multiple Blocks embedding a {@code ConcurrentHashMap}.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
 public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> {
@@ -47,11 +46,9 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
   /**
-   * This map uses data types, represented as strings, for keys and inner map for values.
-   * Each inner map serves as a collection of data of the same data type, which is composed of multiple Blocks.
-   * Each inner map maintains mapping between a Block id and Block itself.
+   * Maintains blocks associated with blockIds.
    */
-  private final Map<String, Map<Integer, Block>> typeToBlocks = new HashMap<>();
+  private final Map<Integer, Block> blocks = new HashMap<>();
 
   @GuardedBy("routerLock")
   private final OperationRouter<K> router;
@@ -75,7 +72,17 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     this.router = router;
     this.blockResolver = blockResolver;
     this.remoteOpHandler = remoteOpHandler;
+    initBlocks();
     initExecutor(numStoreThreads);
+  }
+
+  /**
+   * Initialize the blocks in the local MemoryStore.
+   */
+  private void initBlocks() {
+    for (final int blockId : router.getInitialLocalBlockIds()) {
+      blocks.put(blockId, new Block());
+    }
   }
 
   /**
@@ -89,27 +96,8 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     }
   }
 
-  /**
-   * Initialize blocks for a specific {@code dataType}.
-   * Each block holds the subset of the data that is assigned to this MemoryStore.
-   */
-  private synchronized void initBlocks(final String dataType) {
-    if (typeToBlocks.containsKey(dataType)) {
-      return;
-    }
-
-    final Map<Integer, Block> initialBlocks = new HashMap<>();
-    // We don't need to lock router because this method is already synchronized.
-    for (final int blockId : router.getInitialLocalBlockIds()) {
-      initialBlocks.put(blockId, new Block());
-    }
-
-    // must put initialBlocks into typeToBlocks after completely initialize it
-    typeToBlocks.put(dataType, initialBlocks);
-  }
-
   @Override
-  public void updateOwnership(final String dataType, final int blockId, final int oldOwnerId, final int newOwnerId) {
+  public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
     routerLock.writeLock().lock();
     try {
       router.updateOwnership(blockId, oldOwnerId, newOwnerId);
@@ -119,13 +107,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public void putBlock(final String dataType, final int blockId, final Map<K, Object> data) {
-    // If this MemoryStore has never stored the data in this type, initialize the blocks.
-    if (!typeToBlocks.containsKey(dataType)) {
-      initBlocks(dataType);
-    }
-
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+  public void putBlock(final int blockId, final Map<K, Object> data) {
     if (blocks.containsKey(blockId)) {
       throw new RuntimeException("Block with id " + blockId + " already exists.");
     }
@@ -136,13 +118,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public Map<K, Object> getBlock(final String dataType, final int blockId) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (null == blocks) {
-      LOG.log(Level.FINE, "Blocks are not initialized for type {0}", dataType);
-      return Collections.emptyMap();
-    }
-
+  public Map<K, Object> getBlock(final int blockId) {
     final Block block = blocks.get(blockId);
     if (null == block) {
       throw new RuntimeException("Block with id " + blockId + "does not exist.");
@@ -152,13 +128,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public void removeBlock(final String dataType, final int blockId) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (null == blocks) {
-      LOG.log(Level.FINE, "Blocks are not initialized for type {0}", dataType);
-      return;
-    }
-
+  public void removeBlock(final int blockId) {
     final Block block = blocks.remove(blockId);
     if (null == block) {
       throw new RuntimeException("Block with id " + blockId + "does not exist.");
@@ -201,8 +171,6 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
         final Optional<String> remoteEvalId = router.resolveEval(blockId);
         final boolean isLocal = !remoteEvalId.isPresent();
         if (isLocal) {
-          final String dataType = operation.getDataType();
-          final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
           final Block<V> block = blocks.get(blockId);
 
           final V output;
@@ -304,23 +272,6 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   @Override
   public void onNext(final DataOperation dataOperation) {
     final SingleKeyOperation<K, Object> operation = (SingleKeyOperation<K, Object>) dataOperation;
-    final String dataType = operation.getDataType();
-
-    // progress when there're blocks for dataType
-    if (!typeToBlocks.containsKey(dataType)) {
-      // nevertheless, for PUT operations initialize blocks and continue the operation
-      if (operation.getOpType() == DataOpType.PUT) {
-        initBlocks(dataType);
-      } else {
-        // send empty result for other types of operations
-        remoteOpHandler.sendResultToOrigin(operation, Optional.empty(), false);
-
-        LOG.log(Level.FINE, "Blocks for the type {0} do not exist. Send empty result for operation {1} from {2}",
-            new Object[]{operation.getDataType(), operation.getOpId(), operation.getOrigEvalId().get()});
-        return;
-      }
-    }
-
     LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}", operation.getOpId());
     try {
       operationQueue.put(operation);
@@ -330,7 +281,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public <V> Pair<K, Boolean> put(final String dataType, final K id, @Nonnull final V value) {
+  public <V> Pair<K, Boolean> put(final K id, @Nonnull final V value) {
 
     final int blockId = blockResolver.resolveBlock(id);
     final Optional<String> remoteEvalId = router.resolveEval(blockId);
@@ -339,21 +290,10 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     if (remoteEvalId.isPresent()) {
       // send operation to remote and wait until operation is finished
       final SingleKeyOperation<K, V> operation =
-          remoteOpHandler.sendOpToRemoteStore(DataOpType.PUT, dataType, id, Optional.of(value), remoteEvalId.get());
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.PUT, id, Optional.of(value), remoteEvalId.get());
 
       return new Pair<>(id, operation.isSuccess());
     } else {
-      // initialize blocks and continue the operation,
-      // if there's no initialized block for a data type of the operation.
-      final Map<Integer, Block> blocks;
-      final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
-      if (blockMap == null) {
-        initBlocks(dataType);
-        blocks = typeToBlocks.get(dataType);
-      } else {
-        blocks = blockMap;
-      }
-
       final Block<V> block = blocks.get(blockId);
       block.put(id, value);
       return new Pair<>(id, true);
@@ -361,12 +301,12 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public <V> Map<K, Boolean> putList(final String dataType, final List<K> ids, final List<V> values) {
+  public <V> Map<K, Boolean> putList(final List<K> ids, final List<V> values) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public <V> Pair<K, V> get(final String dataType, final K id) {
+  public <V> Pair<K, V> get(final K id) {
 
     final int blockId = blockResolver.resolveBlock(id);
     final Optional<String> remoteEvalId = router.resolveEval(blockId);
@@ -375,42 +315,29 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     if (remoteEvalId.isPresent()) {
       // send operation to remote and wait until operation is finished
       final SingleKeyOperation<K, V> operation =
-          remoteOpHandler.sendOpToRemoteStore(DataOpType.GET, dataType, id, Optional.<V>empty(), remoteEvalId.get());
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.GET, id, Optional.<V>empty(), remoteEvalId.get());
 
       final V outputData = operation.getOutputData().get();
       return outputData == null ? null : new Pair<>(id, outputData);
     } else {
-      // return if there's no initialized block for a data type of the operation
-      final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
-      if (blockMap == null) {
-        LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-        return null;
-      }
-
-      final Block<V> block = blockMap.get(blockId);
+      final Block<V> block = blocks.get(blockId);
       final V output = block.get(id);
       return output == null ? null : new Pair<>(id, output);
     }
   }
 
   @Override
-  public <V> Map<K, V> getAll(final String dataType) {
-    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
-    if (blockMap == null) {
-      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-      return Collections.EMPTY_MAP;
-    }
-
+  public <V> Map<K, V> getAll() {
     final Map<K, V> result;
 
-    final Iterator<Block> blockIterator = blockMap.values().iterator();
+    final Iterator<Block> blockIterator = blocks.values().iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIterator.hasNext()) {
       final Block<V> block = blockIterator.next();
       result = block.getAll();
     } else {
-      return Collections.EMPTY_MAP;
+      return Collections.emptyMap();
     }
 
     // execute on remaining blocks if exist
@@ -424,12 +351,12 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public <V> Map<K, V> getRange(final String dataType, final K startId, final K endId) {
+  public <V> Map<K, V> getRange(final K startId, final K endId) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public <V> Pair<K, V> remove(final String dataType, final K id) {
+  public <V> Pair<K, V> remove(final K id) {
 
     final int blockId = blockResolver.resolveBlock(id);
     final Optional<String> remoteEvalId = router.resolveEval(blockId);
@@ -438,42 +365,29 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     if (remoteEvalId.isPresent()) {
       // send operation to remote and wait until operation is finished
       final SingleKeyOperation<K, V> operation =
-          remoteOpHandler.sendOpToRemoteStore(DataOpType.REMOVE, dataType, id, Optional.<V>empty(), remoteEvalId.get());
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.REMOVE, id, Optional.<V>empty(), remoteEvalId.get());
 
       final V outputData = operation.getOutputData().get();
       return outputData == null ? null : new Pair<>(id, outputData);
     } else {
-      // return if there's no initialized block for a data type of the operation
-      final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
-      if (blockMap == null) {
-        LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-        return null;
-      }
-
-      final Block<V> block = blockMap.get(blockId);
+      final Block<V> block = blocks.get(blockId);
       final V output = block.remove(id);
       return output == null ? null : new Pair<>(id, output);
     }
   }
 
   @Override
-  public <V> Map<K, V> removeAll(final String dataType) {
-    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
-    if (blockMap == null) {
-      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-      return Collections.EMPTY_MAP;
-    }
-
+  public <V> Map<K, V> removeAll() {
     final Map<K, V> result;
 
-    final Iterator<Block> blockIterator = blockMap.values().iterator();
+    final Iterator<Block> blockIterator = blocks.values().iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIterator.hasNext()) {
       final Block<V> block = blockIterator.next();
       result = block.removeAll();
     } else {
-      return Collections.EMPTY_MAP;
+      return Collections.emptyMap();
     }
 
     // execute on remaining blocks if exist
@@ -487,42 +401,15 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public <V> Map<K, V> removeRange(final String dataType, final K startId, final K endId) {
+  public <V> Map<K, V> removeRange(final K startId, final K endId) {
     throw new UnsupportedOperationException();
   }
 
-  @Override
-  public Set<String> getDataTypes() {
-    return new HashSet<>(typeToBlocks.keySet());
-  }
-
-  @Override
-  public int getNumUnits(final String dataType) {
-    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
-    if (blockMap == null) {
-      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-      return 0;
-    }
-
-    int numUnits = 0;
-    for (final Block block : blockMap.values()) {
-      numUnits += block.getNumUnits();
-    }
-    return numUnits;
-  }
-
   /**
-   * Returns the number of local blocks whose type is {@code dataType}.
-   * @param dataType a type of data
    * @return the number of blocks of specific type
    */
-  public int getNumBlocks(final String dataType) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (blocks == null) {
-      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-      return 0;
-    } else {
-      return blocks.size();
-    }
+  @Override
+  public int getNumBlocks() {
+    return blocks.size();
   }
 }

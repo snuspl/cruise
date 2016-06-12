@@ -21,5 +21,5 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 @DefaultImplementation(JavaSerializer.class)
 public interface Serializer {
 
-  Codec getCodec(String name);
+  Codec getCodec();
 }

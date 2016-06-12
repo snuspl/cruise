@@ -31,33 +31,29 @@ import java.util.Map;
 interface MoveHandler<K> {
   /**
    * Called when the ownership arrives, to apply the change of ownership.
-   * @param dataType the type of the data
    * @param blockId id of the block to update its owner
    * @param oldOwnerId id of the MemoryStore who was the owner
    * @param newOwnerId id of the MemoryStore who will be the owner
    */
-  void updateOwnership(String dataType, int blockId, int oldOwnerId, int newOwnerId);
+  void updateOwnership(int blockId, int oldOwnerId, int newOwnerId);
 
   /**
    * Sends the data in the blocks to another MemoryStore.
-   * @param dataType the type of the data
    * @param blockId the identifier of block to send
    * @param data the data to put
    */
-  void putBlock(String dataType, int blockId, Map<K, Object> data);
+  void putBlock(int blockId, Map<K, Object> data);
 
   /**
    * Gets the data in the block.
-   * @param dataType the type of the data
    * @param blockId id of the block to get
    * @return the data in the requested block.
    */
-  Map<K, Object> getBlock(String dataType, int blockId);
+  Map<K, Object> getBlock(int blockId);
 
   /**
    * Removes the data from the MemoryStore.
-   * @param dataType the type of the data
    * @param blockId id of the block to remove
    */
-  void removeBlock(String dataType, int blockId);
+  void removeBlock(int blockId);
 }

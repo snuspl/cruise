@@ -148,7 +148,7 @@ public final class PSExampleDriver {
                 .set(ContextConfiguration.IDENTIFIER,
                     contextId)
                 .build(),
-            psDriver.getContextConfiguration());
+            psDriver.getServerContextConfiguration());
 
         final Configuration serviceConf = psDriver.getServerServiceConfiguration(contextId);
 
@@ -184,7 +184,7 @@ public final class PSExampleDriver {
                 .set(ContextConfiguration.IDENTIFIER,
                     contextId)
                 .build(),
-            psDriver.getContextConfiguration()
+            psDriver.getWorkerContextConfiguration()
         );
 
         final Configuration serviceConf = psDriver.getWorkerServiceConfiguration(contextId);

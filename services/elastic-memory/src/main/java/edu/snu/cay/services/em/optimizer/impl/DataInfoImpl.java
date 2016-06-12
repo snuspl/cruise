@@ -21,29 +21,36 @@ import edu.snu.cay.services.em.optimizer.api.DataInfo;
  * A plain-old-data implementation of DataInfo.
  */
 public final class DataInfoImpl implements DataInfo {
-  private final String dataType;
-  private final int numUnits;
+  private int numBlocks;
 
-  public DataInfoImpl(final String dataType, final int numUnits) {
-    this.dataType = dataType;
-    this.numUnits = numUnits;
+  /**
+   * Creates a DataInfo.
+   */
+  public DataInfoImpl(final int numBlocks) {
+    this.numBlocks = numBlocks;
+  }
+
+  /**
+   * Creates an empty DataInfo that has no data.
+   */
+  public DataInfoImpl() {
+    this(0);
   }
 
   @Override
-  public String getDataType() {
-    return dataType;
+  public int getNumBlocks() {
+    return numBlocks;
   }
 
   @Override
-  public int getNumUnits() {
-    return numUnits;
+  public void setNumBlocks(final int numBlocks) {
+    this.numBlocks = numBlocks;
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder("DataInfoImpl{");
-    sb.append("dataType='").append(dataType).append('\'');
-    sb.append(", numUnits=").append(numUnits);
+    sb.append("numBlocks=").append(numBlocks);
     sb.append('}');
     return sb.toString();
   }

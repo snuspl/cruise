@@ -36,7 +36,7 @@ public final class SleepSerializer implements Serializer {
   }
 
   @Override
-  public Codec getCodec(final String name) {
+  public Codec getCodec() {
     return sleepCodec;
   }
 }

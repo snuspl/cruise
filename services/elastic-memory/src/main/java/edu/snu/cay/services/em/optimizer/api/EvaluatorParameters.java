@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.em.optimizer.api;
 
-import java.util.Collection;
 import java.util.Map;
 
 /**
@@ -28,9 +27,9 @@ public interface EvaluatorParameters {
   String getId();
 
   /**
-   * @return information about all data on the evaluator
+   * @return information about data on the evaluator
    */
-  Collection<DataInfo> getDataInfos();
+  DataInfo getDataInfo();
 
   /**
    * @return metrics about previous execution on the evaluator

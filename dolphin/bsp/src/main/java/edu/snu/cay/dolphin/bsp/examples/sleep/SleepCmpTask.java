@@ -31,7 +31,7 @@ import java.util.logging.Logger;
 
 /**
  * The {@link UserComputeTask} for SleepREEF.
- * Retrieves the number of data units it is currently holding, from {@link MemoryStore},
+ * Retrieves the number of data blocks it is currently holding, from {@link MemoryStore},
  * multiplies that value with its computation rate,
  * and then sleeps for that amount of time using {@link Thread#sleep(long)}.
  */
@@ -68,14 +68,14 @@ public final class SleepCmpTask extends UserComputeTask
       final List<Long> ids = dataIdFactory.getIds(initialWorkload);
       final List<Object> objects = new ArrayList<>(initialWorkload);
 
-      // the actual data objects are not important; only the number of units is relevant
-      // thus we use the same object for all ids
+      // the actual data objects are not important; only the number of data blocks,
+      // which is proportional to the number of items, is relevant. Thus we use the same object for all ids
       final Object object = new Object();
       for (int index = 0; index < initialWorkload; ++index) {
         objects.add(object);
       }
 
-      memoryStore.putList(SleepParameters.KEY, ids, objects);
+      memoryStore.putList(ids, objects);
 
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
@@ -84,10 +84,10 @@ public final class SleepCmpTask extends UserComputeTask
 
   @Override
   public void run(final int iteration) {
-    final int workload = memoryStore.getNumUnits(SleepParameters.KEY);
-    final long sleepTime = workload * computationRate;
-    LOG.log(Level.INFO, "iteration start: {0}, workload: {1}, computationRate: {2}, sleepTime: {3}",
-        new Object[]{iteration, workload, computationRate, sleepTime});
+    final int numBlocks = memoryStore.getNumBlocks();
+    final long sleepTime = numBlocks * computationRate;
+    LOG.log(Level.INFO, "iteration start: {0}, numBlocks: {1}, computationRate: {2}, sleepTime: {3}",
+        new Object[]{iteration, numBlocks, computationRate, sleepTime});
 
     try {
       Thread.sleep(sleepTime);
@@ -95,9 +95,9 @@ public final class SleepCmpTask extends UserComputeTask
       throw new RuntimeException("InterruptedException during sleeping", e);
     }
 
-    final int finWorkload = memoryStore.getNumUnits(SleepParameters.KEY);
-    LOG.log(Level.INFO, "iteration finish: {0}, finWorkload: {1}",
-        new Object[]{iteration, finWorkload});
+    final int numBlocksAfterSleep = memoryStore.getNumBlocks();
+    LOG.log(Level.INFO, "iteration finish: {0}, numBlocks after sleep: {1}",
+        new Object[]{iteration, numBlocksAfterSleep});
   }
 
   @Override

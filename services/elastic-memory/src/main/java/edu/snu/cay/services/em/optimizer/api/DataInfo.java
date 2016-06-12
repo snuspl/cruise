@@ -16,17 +16,17 @@
 package edu.snu.cay.services.em.optimizer.api;
 
 /**
- * Information about a dataType stored at an Evaluator.
+ * Information about a data stored at an Evaluator.
  */
 public interface DataInfo {
 
   /**
-   * @return the dataType
+   * @return number of blocks stored in the MemoryStore.
    */
-  String getDataType();
+  int getNumBlocks();
 
   /**
-   * @return number of units stored with the dataType
+   * Update the number of blocks stored in the MemoryStore.
    */
-  int getNumUnits();
+  void setNumBlocks(int numBlocks);
 }

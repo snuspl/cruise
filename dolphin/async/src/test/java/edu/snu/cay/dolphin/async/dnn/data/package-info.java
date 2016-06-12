@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.bsp.mlapps.data;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Row type for EM", default_value = "rows")
-public final class RowDataType implements Name<String> {
-}
+/**
+ * Classes for neural network tests related to data serialization and parsing.
+ */
+package edu.snu.cay.dolphin.async.dnn.data;

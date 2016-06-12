@@ -44,14 +44,14 @@ import static edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator.NA
  * using <a href="http://ojalgo.org">ojAlgo</a>'s MIP(Mixed Integer Programming) solver.
  *
  * Assumes that the active evaluators consists of a single controller task and compute tasks
- * and the compute performance for each types of data is equivalent.
+ * and the compute performance is equivalent.
  * <p>
  *   Optimization is done by the following.<br>
  *   1. Calculating a communication cost and compute costs for each compute task. <br/>
  *   2. Creating ILP model and find an optimal solution for minimizing cost using ojAlgo's MIP Solver. <br/>
  *   3. Generating transfer steps by greedily moving data
  *      from the compute task having the largest amount of data to send
- *      to the one having the largest amount of data to receive without regarding to types of data.
+ *      to the one having the largest amount of data to receive.
  *      {@link #generatePlan}
  * </p>
  */
@@ -61,20 +61,20 @@ public final class ILPSolverOptimizer implements Optimizer {
   private static final String NEW_COMPUTE_TASK_ID_PREFIX = "newComputeTask-";
   private static final String TEMP_COMPUTE_TASK_ID_PREFIX = "tempComputeTask-";
   private final AtomicInteger newComputeTaskSequence = new AtomicInteger(0);
-  private final DataUnitsToMoveComparator ascendingComparator;
-  private final DataUnitsToMoveComparator descendingComparator;
+  private final DataBlocksToMoveComparator ascendingComparator;
+  private final DataBlocksToMoveComparator descendingComparator;
   private final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher;
 
   @Inject
   private ILPSolverOptimizer(final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher) {
-    this.ascendingComparator = new DataUnitsToMoveComparator();
-    this.descendingComparator = new DataUnitsToMoveComparator(DataUnitsToMoveComparator.Order.DESCENDING);
+    this.ascendingComparator = new DataBlocksToMoveComparator();
+    this.descendingComparator = new DataBlocksToMoveComparator(DataBlocksToMoveComparator.Order.DESCENDING);
     this.ctrlTaskContextIdFetcher = ctrlTaskContextIdFetcher;
   }
 
 
   @Override
-  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int numAvailableEvals) {
     final Optional<String> ctrlTaskContextId = ctrlTaskContextIdFetcher.getCtrlTaskContextId();
     if (!ctrlTaskContextId.isPresent()) {
       LOG.log(Level.WARNING, "Controller task is unidentifiable at the moment. Returning empty plan.");
@@ -90,7 +90,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     }
 
     final List<OptimizedComputeTask> optimizedComputeTasks =
-        initOptimizedComputeTasks(cost.get(), availableEvaluators - activeEvaluators.size());
+        initOptimizedComputeTasks(cost.get(), numAvailableEvals - activeEvaluators.size());
 
     // create ILP model for optimization
     // C_cmp: expected compute cost
@@ -113,13 +113,13 @@ public final class ILPSolverOptimizer implements Optimizer {
       model.addVariable(cmpTask.getRequestedDataVariable()); // without weight for being excluded in objective function.
     }
 
-    addExpressions(model, cmpCostVar, optimizedComputeTasks, availableEvaluators - 1); // -1 for excluding the ctrl task
-    final int totalDataUnits = getSumDataUnits(optimizedComputeTasks);
+    addExpressions(model, cmpCostVar, optimizedComputeTasks, numAvailableEvals - 1); // -1 for excluding the ctrl task
+    final int totalDataBlocks = getSumDataBlocks(optimizedComputeTasks);
 
     final Optimisation.Result result = model.minimise();
     LOG.log(Level.FINEST, "ILPSolverOptimizer Optimization Result: {0}", result);
 
-    makeDataUnitsInteger(optimizedComputeTasks, totalDataUnits);
+    makeDataBlocksInteger(optimizedComputeTasks, totalDataBlocks);
 
     final Plan plan = generatePlan(optimizedComputeTasks);
     LOG.log(Level.FINE, "ILPSolverOptimizer Plan: {0}", plan);
@@ -127,13 +127,13 @@ public final class ILPSolverOptimizer implements Optimizer {
   }
 
   /**
-   * Make data units for each compute tasks that participating the execution integer
-   * while preserving total number of data units.
+   * Make data blocks for each compute tasks that participating the execution integer
+   * while preserving total number of data blocks.
    * @param optimizedComputeTasks a list of optimized compute tasks
-   * @param totalDataUnits a total number of data units
+   * @param totalDataBlocks a total number of data blocks
    */
-  private static void makeDataUnitsInteger(final List<OptimizedComputeTask> optimizedComputeTasks,
-                                           final int totalDataUnits) {
+  private static void makeDataBlocksInteger(final List<OptimizedComputeTask> optimizedComputeTasks,
+                                            final int totalDataBlocks) {
     int sum = 0;
     for (final OptimizedComputeTask cmpTask : optimizedComputeTasks) {
       if (!cmpTask.getParticipateValue()) {
@@ -145,9 +145,9 @@ public final class ILPSolverOptimizer implements Optimizer {
     }
     for (final OptimizedComputeTask cmpTask : optimizedComputeTasks) {
       if (cmpTask.getParticipateValue()) {
-        // (totalDataUnits - sum) must be >= 0 due to the above floor operation.
+        // (totalDataBlocks - sum) must be >= 0 due to the above floor operation.
         cmpTask.getRequestedDataVariable().setValue(
-            BigDecimal.valueOf(cmpTask.getRequestedDataValue() + (totalDataUnits - sum)));
+            BigDecimal.valueOf(cmpTask.getRequestedDataValue() + (totalDataBlocks - sum)));
         return;
       }
     }
@@ -174,7 +174,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       final Variable participateVar = getNewParticipateVariable(cmpTaskCost.getId(), false);
 
       ret.add(new OptimizedComputeTask(
-          cmpTaskCost.getId(), participateVar, dataVar, cmpTaskCost.getDataInfos(), cmpTaskCost.getComputeCost()));
+          cmpTaskCost.getId(), participateVar, dataVar, cmpTaskCost.getDataInfo(), cmpTaskCost.getComputeCost()));
     }
 
     // create variables for unused evaluators
@@ -217,16 +217,16 @@ public final class ILPSolverOptimizer implements Optimizer {
                                      final int availableComputeTasks) {
     // C_cmp'(i): compute cost for i-th compute task.
     // C_cmp(i): expected compute cost for i-th compute task.
-    // d'(i): allocated data units for i-th compute task.
-    // d(i): requested data units for i-th compute task.
+    // d'(i): allocated data blocks for i-th compute task.
+    // d(i): requested data blocks for i-th compute task.
     // p(i): indicator for the participation of i-th compute task.
     //       if p(i) = 1, i-th compute task participates next iteration.
 
-    final int totalDataUnits = getSumDataUnits(optimizedComputeTasks);
+    final int totalDataBlocks = getSumDataBlocks(optimizedComputeTasks);
     final double predictedComputePerformance = predictComputePerformance(optimizedComputeTasks);
 
-    // [sum of data units] = sum(d(i))
-    final Expression totalDataExpression = model.addExpression("totalDataExpression").level(totalDataUnits);
+    // [sum of data blocks] = sum(d(i))
+    final Expression totalDataExpression = model.addExpression("totalDataExpression").level(totalDataBlocks);
     // sum(p(i)) <= [# of available evaluators]
     final Expression totalComputeTasksExpression =
         model.addExpression("totalComputeTasksExpression").upper(availableComputeTasks);
@@ -235,18 +235,18 @@ public final class ILPSolverOptimizer implements Optimizer {
       totalDataExpression.setLinearFactor(cmpTask.getRequestedDataVariable(), 1);
       totalComputeTasksExpression.setLinearFactor(cmpTask.getParticipateVariable(), 1);
 
-      // d(i) <= p(i) * [sum of data units]
+      // d(i) <= p(i) * [sum of data blocks]
       final Expression dataExpression =
           model.addExpression("dataExpression-" + cmpTask.getId()).lower(0);
-      dataExpression.setLinearFactor(cmpTask.getParticipateVariable(), totalDataUnits);
+      dataExpression.setLinearFactor(cmpTask.getParticipateVariable(), totalDataBlocks);
       dataExpression.setLinearFactor(cmpTask.getRequestedDataVariable(), -1);
 
       // C_cmp = max(C_cmp(i)) i.e. for all i, C_cmp >= C_cmp(i) = C_cmp'(i) / d'(i) * d(i)
       final Expression computeCostExpression =
           model.addExpression("computeCostExpression-" + cmpTask.getId()).upper(0);
-      final int sumDataUnits = getSumDataUnits(cmpTask.getAllocatedDataInfos());
+      final int numBlocks = cmpTask.getAllocatedDataInfo().getNumBlocks();
       final double computePerformance =
-          (sumDataUnits > 0) ? cmpTask.getComputeCost() / sumDataUnits : predictedComputePerformance;
+          (numBlocks > 0) ? cmpTask.getComputeCost() / numBlocks : predictedComputePerformance;
 
       computeCostExpression.setLinearFactor(cmpTask.getRequestedDataVariable(), computePerformance);
       computeCostExpression.setLinearFactor(computeCostVariable, -1);
@@ -255,24 +255,12 @@ public final class ILPSolverOptimizer implements Optimizer {
 
   /**
    * @param optimizedComputeTasks a list of {@link OptimizedComputeTask}s.
-   * @return the sum of data units that each compute task has without regard to types of data
+   * @return the sum of data blocks that each compute task
    */
-  private static int getSumDataUnits(final List<OptimizedComputeTask> optimizedComputeTasks) {
+  private static int getSumDataBlocks(final List<OptimizedComputeTask> optimizedComputeTasks) {
     int sum = 0;
     for (final OptimizedComputeTask cmpTask : optimizedComputeTasks) {
-      sum += getSumDataUnits(cmpTask.getAllocatedDataInfos());
-    }
-    return sum;
-  }
-
-  /**
-   * @param dataInfos a collection of {@link DataInfo}.
-   * @return the sum of data units regardless of types of data
-   */
-  private static int getSumDataUnits(final Collection<DataInfo> dataInfos) {
-    int sum = 0;
-    for (final DataInfo dataInfo : dataInfos) {
-      sum += dataInfo.getNumUnits();
+      sum += cmpTask.getAllocatedDataInfo().getNumBlocks();
     }
     return sum;
   }
@@ -280,7 +268,7 @@ public final class ILPSolverOptimizer implements Optimizer {
   /**
    * Generates an optimizer plan with a list of optimized compute tasks.
    * The generated plan transfers data from the compute task with the largest amount of data to send
-   * to the compute task with the largest amount of data to receive without regard to types of data.
+   * to the compute task with the largest amount of data to receive
    * @param optimizedComputeTasks a list of optimized compute tasks
    * @return the generated plan
    */
@@ -292,10 +280,10 @@ public final class ILPSolverOptimizer implements Optimizer {
         new PriorityQueue<>(optimizedComputeTasks.size(), descendingComparator);
 
     for (final OptimizedComputeTask cmpTask : optimizedComputeTasks) {
-      final int dataUnitToMove = getDataUnitsToMove(cmpTask);
-      if (dataUnitToMove < 0) {
+      final int dataBlocksToMove = getDataBlocksToMove(cmpTask);
+      if (dataBlocksToMove < 0) {
         senderPriorityQueue.add(cmpTask);
-      } else if (dataUnitToMove > 0) {
+      } else if (dataBlocksToMove > 0) {
         receiverPriorityQueue.add(cmpTask);
       } else {
         continue;
@@ -310,13 +298,13 @@ public final class ILPSolverOptimizer implements Optimizer {
     }
 
     while (senderPriorityQueue.size() > 0) {
-      // pick sender as a compute task that has the biggest amount of data units to send
+      // pick sender as a compute task that has the biggest amount of data blocks to send
       final OptimizedComputeTask sender = senderPriorityQueue.poll();
-      while (getDataUnitsToMove(sender) < 0) {
-        // pick receiver as a compute task that has the biggest amount of data unit to receive.
+      while (getDataBlocksToMove(sender) < 0) {
+        // pick receiver as a compute task that has the biggest amount of data blocks to receive.
         final OptimizedComputeTask receiver = receiverPriorityQueue.poll();
-        builder.addTransferSteps(NAMESPACE_DOLPHIN_BSP, generateTransferStep(sender, receiver));
-        if (getDataUnitsToMove(receiver) > 0) {
+        builder.addTransferStep(NAMESPACE_DOLPHIN_BSP, generateTransferStep(sender, receiver));
+        if (getDataBlocksToMove(receiver) > 0) {
           receiverPriorityQueue.add(receiver);
           break;
         }
@@ -326,14 +314,14 @@ public final class ILPSolverOptimizer implements Optimizer {
   }
 
   /**
-   * Returns the number of data units to move.
+   * Returns the number of data blocks to move.
    * If a return value is positive, the specified compute task should receive data from others.
    * If a return value is negative, the compute task should send data to others.
    * @param computeTask
-   * @return the number of data units to move
+   * @return the number of data blocks to move
    */
-  private static int getDataUnitsToMove(final OptimizedComputeTask computeTask) {
-    return computeTask.getRequestedDataValue() - getSumDataUnits(computeTask.getAllocatedDataInfos());
+  private static int getDataBlocksToMove(final OptimizedComputeTask computeTask) {
+    return computeTask.getRequestedDataValue() - computeTask.getAllocatedDataInfo().getNumBlocks();
   }
 
   /**
@@ -342,43 +330,17 @@ public final class ILPSolverOptimizer implements Optimizer {
    * @param receiver the compute task that receives data.
    * @return the generated {@link TransferStep}.
    */
-  private List<TransferStep> generateTransferStep(final OptimizedComputeTask sender,
-                                                  final OptimizedComputeTask receiver) {
-    final List<TransferStep> ret = new ArrayList<>();
-    int numToSend = getDataUnitsToMove(sender);
+  private TransferStep generateTransferStep(final OptimizedComputeTask sender,
+                                            final OptimizedComputeTask receiver) {
+    final int numToSend = getDataBlocksToMove(sender);
     if (numToSend >= 0) {
-      throw new IllegalArgumentException("The number of data units to send must be < 0");
+      throw new IllegalArgumentException("The number of data blocks to send must be < 0");
     }
-    int numToReceive = getDataUnitsToMove(receiver);
+    final int numToReceive = getDataBlocksToMove(receiver);
 
-    final List<DataInfo> dataInfosToRemove = new ArrayList<>();
-    final List<DataInfo> dataInfosToAdd = new ArrayList<>(1);
-    final Iterator<DataInfo> dataInfoIterator = sender.getAllocatedDataInfos().iterator();
+    final int numToMove = Math.min(-numToSend, numToReceive);
 
-    while (numToSend < 0 && numToReceive > 0 && dataInfoIterator.hasNext()) {
-      final DataInfo dataInfo = dataInfoIterator.next();
-      final int numToMove = Math.min(-numToSend, numToReceive);
-      final DataInfo dataInfoToMove;
-
-      if (numToMove < dataInfo.getNumUnits()) {
-        dataInfoToMove = new DataInfoImpl(dataInfo.getDataType(), numToMove);
-        dataInfosToAdd.add(new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits() - numToMove));
-      } else {
-        dataInfoToMove = dataInfo;
-      }
-
-      numToSend += dataInfoToMove.getNumUnits();
-      numToReceive -= dataInfoToMove.getNumUnits();
-
-      dataInfosToRemove.add(dataInfo);
-      receiver.getAllocatedDataInfos().add(dataInfoToMove);
-      ret.add(new TransferStepImpl(sender.getId(), receiver.getId(), dataInfoToMove));
-    }
-
-    sender.getAllocatedDataInfos().removeAll(dataInfosToRemove);
-    sender.getAllocatedDataInfos().addAll(dataInfosToAdd);
-
-    return ret;
+    return new TransferStepImpl(sender.getId(), receiver.getId(), new DataInfoImpl(numToMove));
   }
 
   /**
@@ -390,9 +352,9 @@ public final class ILPSolverOptimizer implements Optimizer {
     double sum = 0D;
     int count = 0;
     for (final OptimizedComputeTask cmpTask : optimizedComputeTasks) {
-      final int sumDataUnits = getSumDataUnits(cmpTask.getAllocatedDataInfos());
-      if (sumDataUnits > 0) {
-        sum += cmpTask.getComputeCost() / sumDataUnits;
+      final int numBlocks = cmpTask.getAllocatedDataInfo().getNumBlocks();
+      if (numBlocks > 0) {
+        sum += cmpTask.getComputeCost() / numBlocks;
         ++count;
       }
     }
@@ -410,7 +372,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     private String id;
     private final Variable participateVariable;
     private final Variable requestedDataVariable;
-    private final Collection<DataInfo> allocatedDataInfos;
+    private final DataInfo allocatedDataInfo;
     private final double computeCost;
     private final boolean newComputeTask;
 
@@ -420,7 +382,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       this.id = id;
       this.participateVariable = participateVariable;
       this.requestedDataVariable = requestedDataVariable;
-      this.allocatedDataInfos = new ArrayList<>(0);
+      this.allocatedDataInfo = new DataInfoImpl();
       this.computeCost = 0D;
       this.newComputeTask = true;
     }
@@ -428,12 +390,12 @@ public final class ILPSolverOptimizer implements Optimizer {
     OptimizedComputeTask(final String id,
                          final Variable participateVariable,
                          final Variable requestedDataVariable,
-                         final Collection<DataInfo> dataInfos,
+                         final DataInfo dataInfo,
                          final double computeCost) {
       this.id = id;
       this.participateVariable = participateVariable;
       this.requestedDataVariable = requestedDataVariable;
-      this.allocatedDataInfos = new ArrayList<>(dataInfos);
+      this.allocatedDataInfo = dataInfo;
       this.computeCost = computeCost;
       this.newComputeTask = false;
     }
@@ -466,8 +428,8 @@ public final class ILPSolverOptimizer implements Optimizer {
       return requestedDataVariable.getValue().intValueExact();
     }
 
-    public Collection<DataInfo> getAllocatedDataInfos() {
-      return allocatedDataInfos;
+    public DataInfo getAllocatedDataInfo() {
+      return allocatedDataInfo;
     }
 
     public double getComputeCost() {
@@ -477,25 +439,25 @@ public final class ILPSolverOptimizer implements Optimizer {
 
   /**
    * Comparator class that compares two {@link OptimizedComputeTask}
-   * based on the number of data units for each compute task to move.
+   * based on the number of data blocks for each compute task to move.
    */
-  private static class DataUnitsToMoveComparator implements Comparator<OptimizedComputeTask> {
+  private static class DataBlocksToMoveComparator implements Comparator<OptimizedComputeTask> {
 
     public enum Order { ASCENDING, DESCENDING }
 
     private final Order order;
 
-    public DataUnitsToMoveComparator() {
+    public DataBlocksToMoveComparator() {
       this.order = Order.ASCENDING;
     }
-    public DataUnitsToMoveComparator(final Order order) {
+    public DataBlocksToMoveComparator(final Order order) {
       this.order = order;
     }
 
     @Override
     public int compare(final OptimizedComputeTask o1, final OptimizedComputeTask o2) {
-      final int o1DataDiff = getDataUnitsToMove(o1);
-      final int o2DataDiff = getDataUnitsToMove(o2);
+      final int o1DataDiff = getDataBlocksToMove(o1);
+      final int o2DataDiff = getDataBlocksToMove(o2);
       final int ret = Integer.compare(o1DataDiff, o2DataDiff);
       if (order == Order.DESCENDING) {
         return -1 * ret;

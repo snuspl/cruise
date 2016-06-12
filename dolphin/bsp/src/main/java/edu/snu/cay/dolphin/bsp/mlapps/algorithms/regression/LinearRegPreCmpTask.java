@@ -18,33 +18,24 @@ package edu.snu.cay.dolphin.bsp.mlapps.algorithms.regression;
 import edu.snu.cay.dolphin.bsp.core.DataParser;
 import edu.snu.cay.dolphin.bsp.core.ParseException;
 import edu.snu.cay.dolphin.bsp.core.UserComputeTask;
-import edu.snu.cay.dolphin.bsp.mlapps.data.RowDataType;
 import edu.snu.cay.dolphin.bsp.mlapps.data.Row;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
 
 public final class LinearRegPreCmpTask extends UserComputeTask {
 
-  /**
-   * Key used in Elastic Memory to put/get the data.
-   */
-  private final String dataType;
-
   private final DataParser<List<Row>> dataParser;
   private final MemoryStore memoryStore;
   private final DataIdFactory<Long> dataIdFactory;
 
   @Inject
-  private LinearRegPreCmpTask(@Parameter(RowDataType.class) final String dataType,
-                              final DataParser<List<Row>> dataParser,
+  private LinearRegPreCmpTask(final DataParser<List<Row>> dataParser,
                               final MemoryStore memoryStore,
                               final DataIdFactory<Long> dataIdFactory) {
-    this.dataType = dataType;
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
     this.dataIdFactory = dataIdFactory;
@@ -55,7 +46,7 @@ public final class LinearRegPreCmpTask extends UserComputeTask {
     final List<Row> rows = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(rows.size());
-      memoryStore.putList(dataType, ids, rows);
+      memoryStore.putList(ids, rows);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }

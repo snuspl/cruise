@@ -35,9 +35,10 @@ public final class PSNetworkSetup {
 
   private final NetworkConnectionService networkConnectionService;
   private final Identifier connectionFactoryIdentifier;
+
   private final PSMsgCodec psMsgCodec;
   private final EventHandler<Message<AvroPSMsg>> handler;
-  private ConnectionFactory<AvroPSMsg> connectionFactory;
+  private volatile ConnectionFactory<AvroPSMsg> connectionFactory;
 
   @Inject
   private PSNetworkSetup(
@@ -52,26 +53,48 @@ public final class PSNetworkSetup {
     this.handler = handler;
   }
 
+  /**
+   * Registers a PS worker into {@link NetworkConnectionService}.
+   * It registers the PS worker with id, {@code localEndPointId} into a name server of NCS,
+   * and obtains a {@link ConnectionFactory} creating connections to Server.
+   * After registration, {@link #getConnectionFactory()} and {@link #getMyId()} methods will get valid return values.
+   * @param localEndPointId a local id that will represent the PS client in NCS
+   * @return a ConnectionFactory for creating connections to Server.
+   */
   public ConnectionFactory<AvroPSMsg> registerConnectionFactory(final Identifier localEndPointId) {
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryIdentifier,
         psMsgCodec, handler, null, localEndPointId);
     return connectionFactory;
   }
 
+  /**
+   * Unregisters a PS worker from {@link NetworkConnectionService}.
+   * The {@link #connectionFactory} field becomes null as before registration.
+   */
   public void unregisterConnectionFactory() {
+    connectionFactory = null;
     networkConnectionService.unregisterConnectionFactory(connectionFactoryIdentifier);
   }
 
+  /**
+   * Returns a ConnectionFactory for creating connections to Server.
+   * It returns a valid value only when the PS worker is registered to NCS,
+   * otherwise returns null.
+   * @return a ConnectionFactory when it is registered to NCS, otherwise returns null
+   */
   public ConnectionFactory<AvroPSMsg> getConnectionFactory() {
-    if (connectionFactory == null) {
-      throw new RuntimeException("A connection factory has not been registered yet.");
-    }
     return connectionFactory;
   }
 
+  /**
+   * Returns a ConnectionFactory for creating connections to Server.
+   * It returns a valid value only when the PS worker is registered to NCS,
+   * otherwise returns null.
+   * @return an Identifier when it is registered to NCS, otherwise returns null
+   */
   public Identifier getMyId() {
     if (connectionFactory == null) {
-      throw new RuntimeException("A connection factory has not been registered yet.");
+      return null;
     }
     return connectionFactory.getLocalEndPointId();
   }

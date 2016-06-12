@@ -20,31 +20,26 @@ import edu.snu.cay.dolphin.bsp.core.ParseException;
 import edu.snu.cay.dolphin.bsp.core.UserComputeTask;
 import edu.snu.cay.dolphin.bsp.core.WorkloadPartition;
 import edu.snu.cay.dolphin.bsp.mlapps.data.Row;
-import edu.snu.cay.dolphin.bsp.mlapps.data.RowDataType;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.commons.lang.math.LongRange;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
 
 public final class LogisticRegPreCmpTask extends UserComputeTask {
 
-  private final String dataType;
   private final DataParser<List<Row>> dataParser;
   private final WorkloadPartition workloadPartition;
   private final MemoryStore memoryStore;
   private final DataIdFactory<Long> dataIdFactory;
 
   @Inject
-  private LogisticRegPreCmpTask(@Parameter(RowDataType.class) final String dataType,
-                                final DataParser<List<Row>> dataParser,
+  private LogisticRegPreCmpTask(final DataParser<List<Row>> dataParser,
                                 final WorkloadPartition workloadPartition,
                                 final MemoryStore memoryStore,
                                 final DataIdFactory<Long> dataIdFactory) {
-    this.dataType = dataType;
     this.dataParser = dataParser;
     this.workloadPartition = workloadPartition;
     this.memoryStore = memoryStore;
@@ -58,13 +53,13 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
       final List<Long> ids = dataIdFactory.getIds(rows.size());
 
       // Below code assume that dataIdFactory returns consecutive ids
-      final Map<String, Set<LongRange>> workloadMap = new HashMap<>();
+      final Set<LongRange> workload = new HashSet<>();
       final Set<LongRange> rangeSet = new HashSet<>();
       rangeSet.add(new LongRange(ids.get(0).longValue(), ids.size() - 1));
-      workloadMap.put(dataType, rangeSet);
+      workload.addAll(rangeSet);
 
-      workloadPartition.initialize(workloadMap);
-      memoryStore.putList(dataType, ids, rows);
+      workloadPartition.initialize(workload);
+      memoryStore.putList(ids, rows);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }

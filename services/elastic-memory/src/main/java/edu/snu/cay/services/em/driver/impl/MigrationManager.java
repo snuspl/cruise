@@ -78,7 +78,6 @@ final class MigrationManager {
    * @param operationId Identifier of the {@code move} operation.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
-   * @param dataType Type of the data.
    * @param numBlocks Number of blocks to move.
    * @param traceInfo Information for Trace.
    * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
@@ -86,7 +85,6 @@ final class MigrationManager {
   synchronized void startMigration(final String operationId,
                                    final String senderId,
                                    final String receiverId,
-                                   final String dataType,
                                    final int numBlocks,
                                    @Nullable final TraceInfo traceInfo,
                                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
@@ -94,7 +92,6 @@ final class MigrationManager {
       LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
       return;
     }
-
     callbackRouter.register(operationId, finishedCallback);
 
     final List<Integer> blocks = blockManager.chooseBlocksToMove(senderId, numBlocks);
@@ -104,12 +101,12 @@ final class MigrationManager {
     if (blocks.size() == 0) {
       final String reason =
           "There is no block to move in " + senderId + " of type. Requested numBlocks: " + numBlocks;
-      failMigration(operationId, reason);
+      notifyFailure(operationId, reason);
       return;
     }
 
-    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, blocks));
-    sender.get().sendCtrlMsg(senderId, dataType, receiverId, blocks, operationId, traceInfo);
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, blocks));
+    sender.get().sendCtrlMsg(senderId, receiverId, blocks, operationId, traceInfo);
   }
 
   /**
@@ -125,14 +122,22 @@ final class MigrationManager {
     }
 
     migration.markBlockAsMoved(blockId);
-    blockManager.markBlockAsMoved(blockId);
+    blockManager.releaseBlockFromMove(blockId);
 
     if (migration.isComplete()) {
-      ongoingMigrations.remove(operationId);
-      notifySuccess(operationId, migration.getBlockIds());
-      broadcastSuccess(migration);
-      notifyUpdate(migration);
+      finishMigration(operationId);
     }
+  }
+
+  /**
+   * Finish migration of the data.
+   * @param operationId Identifier of {@code move} operation.
+   */
+  private void finishMigration(final String operationId) {
+    final Migration migration = ongoingMigrations.remove(operationId);
+    notifySuccess(operationId, migration.getBlockIds());
+    broadcastSuccess(migration);
+    notifyUpdate(migration);
   }
 
   /**
@@ -150,7 +155,7 @@ final class MigrationManager {
 
     final List<Integer> blockIds = migration.getBlockIds();
 
-    LOG.log(Level.INFO, "Broadcast the result of migration to other active evaluators: {0}", activeEvaluatorIds);
+    LOG.log(Level.FINE, "Broadcast the result of migration to other active evaluators: {0}", activeEvaluatorIds);
     try (final TraceScope traceScope = Trace.startSpan("ROUTING_UPDATE")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       for (final String evalId : activeEvaluatorIds) {
@@ -222,6 +227,9 @@ final class MigrationManager {
     callbackRouter.onFailed(msg);
   }
 
+  /**
+   * Notify success to the User via callback.
+   */
   private synchronized void notifySuccess(final String moveOperationId, final List<Integer> blocks) {
     final ResultMsg resultMsg = ResultMsg.newBuilder()
         .setResult(Result.SUCCESS)
@@ -252,12 +260,10 @@ final class MigrationManager {
   void updateOwner(final String operationId, final int blockId, final int oldOwnerId, final int newOwnerId,
                    @Nullable final TraceInfo traceInfo) {
     final Migration migrationInfo = ongoingMigrations.get(operationId);
-    final String dataType = migrationInfo.getDataType();
     final String senderId = migrationInfo.getSenderId();
     blockManager.updateOwner(blockId, oldOwnerId, newOwnerId);
 
     // Send the OwnershipMessage to update the owner in the sender memoryStore
-    sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, dataType, blockId, oldOwnerId, newOwnerId,
-        traceInfo);
+    sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
   }
 }

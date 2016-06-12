@@ -34,6 +34,7 @@ import org.junit.Test;
 import java.util.*;
 
 import static edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP;
+import static edu.snu.cay.dolphin.bsp.core.optimizer.PlanValidationUtils.checkPlan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
@@ -64,13 +65,13 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testIncreasedComputeTasks() {
     final int numComputeTasks = 1;
-    final int availableEvaluators = 4;
+    final int numAvailableEvals = 4;
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{10000}});
+        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{10000});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
 
-    PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size() > 0);
     assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
   }
@@ -81,52 +82,15 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testHalfNumComputeTasks() {
     final int numComputeTasks = 4;
-    final int availableEvaluators = numComputeTasks / 2 + 1; // +1 for including the controller task
+    final int numAvailableEvals = numComputeTasks / 2 + 1; // +1 for including the controller task
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{2500}, {2500}, {2500}, {2500}});
+        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{2500, 2500, 2500, 2500});
     final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan =
-        ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+        ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
 
-    PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
-    assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
-        plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size() >= lowerBoundToDelete);
-  }
-
-  /**
-   * Test that evaluators are added when available evaluators are doubled with multiple types of data.
-   */
-  @Test
-  public void testDoubleComputeTasksWithMultipleDataTypes() {
-    final int numComputeTasks = 3;
-    final int availableEvaluators = numComputeTasks * 2 + 1;
-    final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{4000, 1000}, {2000, 2000}, {5000, 2000}});
-
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
-
-    PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size() > 0);
-    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
-  }
-
-  /**
-   * Test that evaluators are deleted when available evaluators are reduce to half with multiple types of data.
-   */
-  @Test
-  public void testHalfComputeTasksWithMultipleDataTypes() {
-    final int numComputeTasks = 5;
-    final int availableEvaluators = numComputeTasks / 2 + 1;
-    final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, numComputeTasks,
-        new int[][]{{2000, 500}, {3000, 1000}, {3000, 1000}, {2500, 2000}, {2500, 2000}});
-    final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
-
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
-
-    PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
     assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
         plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size() >= lowerBoundToDelete);
@@ -138,13 +102,13 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testTwoSenderAndOneReceiver() {
     final int numComputeTasks = 2;
-    final int availableEvaluators = 4; // +1 for adding one more compute task and +1 for including the controller task
+    final int numAvailableEvals = 4; // +1 for adding one more compute task and +1 for including the controller task
     final Map<String, List<EvaluatorParameters>> activeEvaluators =
-        generateEvaluatorParameters(NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{1300}, {900}});
+        generateEvaluatorParameters(NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{1300, 900});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
 
-    PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertEquals(1, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
     assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
   }
@@ -162,13 +126,13 @@ public final class ILPSolverOptimizerTest {
 
     final ILPSolverOptimizer wrongCtrlIlpSolverOptimizer = injector.getInstance(ILPSolverOptimizer.class);
     final int numComputeTasks = 1;
-    final int availableEvaluators = 4;
+    final int numAvailableEvals = 4;
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{10000}});
+        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{10000});
 
-    final Plan plan = wrongCtrlIlpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = wrongCtrlIlpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
 
-    PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
     assertEquals("The plan should be empty", 0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
     assertEquals("The plan should be empty", 0, plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).size());
@@ -179,40 +143,33 @@ public final class ILPSolverOptimizerTest {
    * and the specified number of compute tasks.
    * @param namespace the namespace of the evaluators to distinguish Evaluators.
    * @param numComputeTasks the number of compute tasks that participate in the execution.
-   * @param dataUnitsArray a two dimension array whose column contains the number of data units for each data type
-   *                       and whose row contains data units for each task.
+   * @param dataBlocksArray an array that contains the number of data blocks for each task.
    * @return a collection of evaluator parameters.
    */
   private Map<String, List<EvaluatorParameters>> generateEvaluatorParameters(final String namespace,
                                                                              final int numComputeTasks,
-                                                                             final int[][] dataUnitsArray) {
+                                                                             final int[] dataBlocksArray) {
     final List<EvaluatorParameters> evalParamsList = new ArrayList<>(numComputeTasks + 1);
     double maxComputeTaskEndTime = 0D;
 
-    if (numComputeTasks != dataUnitsArray.length) {
-      throw new IllegalArgumentException("# of compute task should be equal to # of rows of data units array");
+    if (numComputeTasks != dataBlocksArray.length) {
+      throw new IllegalArgumentException("# of compute task should be equal to # of rows of data blocks array");
     }
 
     // generate compute tasks
     for (int i = 0; i < numComputeTasks; ++i) {
-      final List<DataInfo> cmpTaskDataInfos = new ArrayList<>(1);
-      int sumDataUnits = 0;
-
-      for (int j = 0; j < dataUnitsArray[i].length; ++j) {
-        final int dataUnits = dataUnitsArray[i][j];
-        cmpTaskDataInfos.add(new DataInfoImpl(String.format("testType-%d", j), dataUnits));
-        sumDataUnits += dataUnits;
-      }
+      final int numBlocks = dataBlocksArray[i];
+      final DataInfo dataInfo = new DataInfoImpl(numBlocks);
 
       final Map<String, Double> cmpTaskMetrics = new HashMap<>();
-      final double computeTaskEndTime = (random.nextDouble() + 1) * sumDataUnits;
+      final double computeTaskEndTime = (random.nextDouble() + 1) * numBlocks;
       if (computeTaskEndTime > maxComputeTaskEndTime) {
         maxComputeTaskEndTime = computeTaskEndTime;
       }
       cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START, 0D);
       cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END, computeTaskEndTime);
 
-      evalParamsList.add(new EvaluatorParametersImpl(ComputeTask.TASK_ID_PREFIX + i, cmpTaskDataInfos, cmpTaskMetrics));
+      evalParamsList.add(new EvaluatorParametersImpl(ComputeTask.TASK_ID_PREFIX + i, dataInfo, cmpTaskMetrics));
     }
 
     // generate a controller task
@@ -220,7 +177,7 @@ public final class ILPSolverOptimizerTest {
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START, 0D);
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END, maxComputeTaskEndTime + random.nextInt(50));
 
-    evalParamsList.add(new EvaluatorParametersImpl(ctrlTaskId, new ArrayList<DataInfo>(0), metrics));
+    evalParamsList.add(new EvaluatorParametersImpl(ctrlTaskId, new DataInfoImpl(), metrics));
 
     final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);
     evalParamsMap.put(namespace, evalParamsList);

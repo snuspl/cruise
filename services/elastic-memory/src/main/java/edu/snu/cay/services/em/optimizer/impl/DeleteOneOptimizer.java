@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
@@ -27,10 +26,11 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * An Optimizer that simply deletes one new Evaluator for each optimize call.
- * The plan transfers all the units from the soon-to-be-deleted Evaluator to a random Evaluator,
+ * The plan transfers all the blocks from the soon-to-be-deleted Evaluator to a random Evaluator,
  * then removes the Evaluator.
  * It skips until callsToSkip is reached, after which it runs until maxCallsToMake is reached.
  *
@@ -68,18 +68,12 @@ public final class DeleteOneOptimizer implements Optimizer {
 
       // Sort evaluators by ID, to select evaluators in a consistent order across job executions
       final List<EvaluatorParameters> evaluators = new ArrayList<>(evalParamsMap.size());
-      for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
-        // only add evaluators that have data to move
-        if (!evaluator.getDataInfos().isEmpty()) {
-          evaluators.add(evaluator);
-        }
-      }
-      Collections.sort(evaluators, new Comparator<EvaluatorParameters>() {
-        @Override
-        public int compare(final EvaluatorParameters o1, final EvaluatorParameters o2) {
-          return o1.getId().compareTo(o2.getId());
-        }
-      });
+      // only add evaluators that have data to move
+      evaluators.addAll(evalParamsMap.get(namespace)
+          .stream()
+          .filter(evaluator -> evaluator.getDataInfo().getNumBlocks() > 0)
+          .collect(Collectors.toList()));
+      Collections.sort(evaluators, (o1, o2) -> o1.getId().compareTo(o2.getId()));
 
       if (evaluators.size() < 2) {
         LOG.log(Level.WARNING, "Cannot delete, because not enough evaluators in {0}", namespace);
@@ -89,16 +83,13 @@ public final class DeleteOneOptimizer implements Optimizer {
       final EvaluatorParameters evaluatorToDelete = evaluators.get(0);
       final EvaluatorParameters dstEvaluator = evaluators.get(1);
 
-      final List<TransferStep> transferSteps = new ArrayList<>();
-      for (final DataInfo dataInfo : evaluatorToDelete.getDataInfos()) {
-        transferSteps.add(new TransferStepImpl(
+      final TransferStep transferStep = new TransferStepImpl(
             evaluatorToDelete.getId(),
             dstEvaluator.getId(),
-            new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits())));
-      }
+            new DataInfoImpl(evaluatorToDelete.getDataInfo().getNumBlocks()));
 
       planBuilder.addEvaluatorToDelete(namespace, evaluatorToDelete.getId());
-      planBuilder.addTransferSteps(namespace, transferSteps);
+      planBuilder.addTransferStep(namespace, transferStep);
     }
 
     return planBuilder.build();

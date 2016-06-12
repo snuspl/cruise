@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.bsp.mlapps.data;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Adjacency list type for EM", default_value = "graph")
-public final class AdjacencyListDataType implements Name<String> {
-}
+/**
+ * Parameter initializer classes for each type of neural network layer.
+ */
+package edu.snu.cay.dolphin.async.dnn.layerparam.initializer;

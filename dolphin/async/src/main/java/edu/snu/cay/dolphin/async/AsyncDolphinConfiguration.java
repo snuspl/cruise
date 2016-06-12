@@ -21,6 +21,8 @@ import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
 
 import java.util.LinkedList;
@@ -29,7 +31,8 @@ import java.util.List;
 /**
  * Job configuration of a {@code dolphin-async} application.
  *
- * Call {@code newBuilder} and supply classes for {@link Worker}, {@link ParameterUpdater}, codecs, and parameters.
+ * Call {@code newBuilder} and supply classes for {@link Worker}, {@link ParameterUpdater}, codecs, parameters,
+ * configuration for workers, and configuration for servers.
  * {@link SerializableCodec}s are used in case codec classes are not given. Parameter classes are also optional.
  * Use with {@link AsyncDolphinLauncher#launch(String, String[], AsyncDolphinConfiguration)} to launch application.
  */
@@ -43,6 +46,8 @@ public final class AsyncDolphinConfiguration {
   private final List<Class<? extends Name<?>>> parameterClassList;
   private final Class<? extends Serializer> workerSerializerClass;
   private final Class<? extends Serializer> serverSerializerClass;
+  private final Configuration workerConfiguration;
+  private final Configuration serverConfiguration;
 
 
   private AsyncDolphinConfiguration(final Class<? extends Worker> workerClass,
@@ -52,7 +57,9 @@ public final class AsyncDolphinConfiguration {
                                     final Class<? extends Codec> valueCodecClass,
                                     final List<Class<? extends Name<?>>> parameterClassList,
                                     final Class<? extends Serializer> workerSerializerClass,
-                                    final Class<? extends Serializer> serverSerializerClass) {
+                                    final Class<? extends Serializer> serverSerializerClass,
+                                    final Configuration workerConfiguration,
+                                    final Configuration serverConfiguration) {
     this.workerClass = workerClass;
     this.updaterClass = updaterClass;
     this.keyCodecClass = keyCodecClass;
@@ -61,6 +68,8 @@ public final class AsyncDolphinConfiguration {
     this.parameterClassList = parameterClassList;
     this.workerSerializerClass = workerSerializerClass;
     this.serverSerializerClass = serverSerializerClass;
+    this.workerConfiguration = workerConfiguration;
+    this.serverConfiguration = serverConfiguration;
   }
 
   public Class<? extends Worker> getWorkerClass() {
@@ -95,6 +104,14 @@ public final class AsyncDolphinConfiguration {
     return serverSerializerClass;
   }
 
+  public Configuration getWorkerConfiguration() {
+    return workerConfiguration;
+  }
+
+  public Configuration getServerConfiguration() {
+    return serverConfiguration;
+  }
+
 
   public static Builder newBuilder() {
     return new Builder();
@@ -109,6 +126,8 @@ public final class AsyncDolphinConfiguration {
     private List<Class<? extends Name<?>>> parameterClassList = new LinkedList<>();
     private Class<? extends Serializer> workerSerializerClass = JavaSerializer.class;
     private Class<? extends Serializer> serverSerializerClass = JavaSerializer.class;
+    private Configuration workerConfiguration = Tang.Factory.getTang().newConfigurationBuilder().build();
+    private Configuration serverConfiguration = Tang.Factory.getTang().newConfigurationBuilder().build();
 
 
     public Builder setWorkerClass(final Class<? extends Worker> workerClass) {
@@ -151,6 +170,16 @@ public final class AsyncDolphinConfiguration {
       return this;
     }
 
+    public Builder setWorkerConfiguration(final Configuration workerConfiguration) {
+      this.workerConfiguration = workerConfiguration;
+      return this;
+    }
+
+    public Builder setServerConfiguration(final Configuration serverConfiguration) {
+      this.serverConfiguration = serverConfiguration;
+      return this;
+    }
+
     @Override
     public AsyncDolphinConfiguration build() {
       if (workerClass == null) {
@@ -163,7 +192,7 @@ public final class AsyncDolphinConfiguration {
 
       return new AsyncDolphinConfiguration(workerClass, updaterClass,
           keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList,
-          workerSerializerClass, serverSerializerClass);
+          workerSerializerClass, serverSerializerClass, workerConfiguration, serverConfiguration);
     }
   }
 }

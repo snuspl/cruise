@@ -133,8 +133,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         try {
           for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP)) {
             elasticMemory.move(
-                transferStep.getDataInfo().getDataType(),
-                transferStep.getDataInfo().getNumUnits(),
+                transferStep.getDataInfo().getNumBlocks(),
                 transferStep.getSrcId(),
                 executingPlan.getActualContextId(transferStep.getDstId()),
                 new MovedHandler());

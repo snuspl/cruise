@@ -82,8 +82,7 @@
   "name": "WorkerRegisterReplyMsg",
   "fields":
   [
-    {"name": "idMappings", "type": {"type": "array", "items": "IdMapping"}},
-    {"name": "numTotalBlocks", "type": "int"}
+    {"name": "idMappings", "type": {"type": "array", "items": "IdMapping"}}
   ]
 },
 
