@@ -129,9 +129,9 @@ public final class RandomOptimizer implements Optimizer {
      */
       activeEvaluators.addAll(evaluatorsToAdd);
 
-      final long sumData = getSumData(activeEvaluators);
+      final long sumDataBlocks = getSumDataBlocks(activeEvaluators);
       final List<OptimizedEvaluator> evaluators = initOptimizedEvaluators(activeEvaluators);
-      distributeDataAcrossEvaluators(evaluators.subList(0, numEvaluators), sumData);
+      distributeDataAcrossEvaluators(evaluators.subList(0, numEvaluators), sumDataBlocks);
 
       if (LOG.isLoggable(Level.FINE)) {
         for (final OptimizedEvaluator evaluator : evaluators) {
@@ -174,12 +174,12 @@ public final class RandomOptimizer implements Optimizer {
         new DataInfoImpl(), new HashMap<>(0));
   }
 
-  private static long getSumData(final Collection<EvaluatorParameters> evaluators) {
-    long sumData = 0;
+  private static long getSumDataBlocks(final Collection<EvaluatorParameters> evaluators) {
+    long sumDataBlocks = 0;
     for (final EvaluatorParameters evaluator : evaluators) {
-      sumData += evaluator.getDataInfo().getNumBlocks();
+      sumDataBlocks += evaluator.getDataInfo().getNumBlocks();
     }
-    return sumData;
+    return sumDataBlocks;
   }
 
   /**

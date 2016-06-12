@@ -84,10 +84,10 @@ public final class SleepCmpTask extends UserComputeTask
 
   @Override
   public void run(final int iteration) {
-    final int workload = memoryStore.getNumBlocks();
-    final long sleepTime = workload * computationRate;
-    LOG.log(Level.INFO, "iteration start: {0}, workload: {1}, computationRate: {2}, sleepTime: {3}",
-        new Object[]{iteration, workload, computationRate, sleepTime});
+    final int numBlocks = memoryStore.getNumBlocks();
+    final long sleepTime = numBlocks * computationRate;
+    LOG.log(Level.INFO, "iteration start: {0}, numBlocks: {1}, computationRate: {2}, sleepTime: {3}",
+        new Object[]{iteration, numBlocks, computationRate, sleepTime});
 
     try {
       Thread.sleep(sleepTime);
@@ -95,9 +95,9 @@ public final class SleepCmpTask extends UserComputeTask
       throw new RuntimeException("InterruptedException during sleeping", e);
     }
 
-    final int finWorkload = memoryStore.getNumBlocks();
-    LOG.log(Level.INFO, "iteration finish: {0}, finWorkload: {1}",
-        new Object[]{iteration, finWorkload});
+    final int numBlocksAfterSleep = memoryStore.getNumBlocks();
+    LOG.log(Level.INFO, "iteration finish: {0}, numBlocks after sleep: {1}",
+        new Object[]{iteration, numBlocksAfterSleep});
   }
 
   @Override

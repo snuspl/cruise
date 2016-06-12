@@ -115,7 +115,7 @@ public final class OperationRouter<K> {
   /**
    * Initializes routing table of this MemoryStore with its local blocks, which are determined statically.
    * Note that if the MemoryStore is created by EM.add(), this method should not be called
-   * because added MemoryStores receive the existing blocks from the initial MemoryStores.
+   * because the block location might have been updated by EM.move() calls before this add() is called.
    */
   private void initRoutingTable() {
     // initial evaluators can initialize the routing table by itself

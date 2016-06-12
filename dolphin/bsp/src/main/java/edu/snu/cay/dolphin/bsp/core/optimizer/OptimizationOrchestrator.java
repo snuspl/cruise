@@ -144,7 +144,7 @@ public final class OptimizationOrchestrator {
    * Runs the optimization: get an optimized Plan based on the current Evaluator parameters, then execute the plan.
    * Optimization is skipped if the previous optimization has not finished.
    */
-  public void run(final Map<String, DataInfo> dataInfo,
+  public void run(final Map<String, DataInfo> dataInfos,
                   final Map<String, Map<String, Double>> computeMetrics,
                   final String controllerId,
                   final Map<String, Double> controllerMetrics) {
@@ -165,7 +165,7 @@ public final class OptimizationOrchestrator {
         logPreviousResult();
 
         final Plan plan = optimizer.optimize(
-            getEvaluatorParameters(dataInfo, computeMetrics, controllerId, controllerMetrics),
+            getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
             getAvailableEvaluators(computeMetrics.size() + 1));
 
         LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
