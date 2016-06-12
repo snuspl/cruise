@@ -20,11 +20,9 @@ import edu.snu.cay.dolphin.bsp.core.UserTaskTrace;
 import edu.snu.cay.dolphin.bsp.mlapps.data.VectorSum;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataReduceSender;
-import edu.snu.cay.dolphin.bsp.mlapps.data.ClusteringDataType;
 import edu.snu.cay.dolphin.bsp.mlapps.data.VectorDistanceMeasure;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
-import org.apache.reef.tang.annotations.Parameter;
 import org.htrace.TraceScope;
 
 import javax.inject.Inject;
@@ -52,8 +50,6 @@ public final class KMeansMainCmpTask extends UserComputeTask
    */
   private final VectorDistanceMeasure distanceMeasure;
 
-  private final String dataType;
-
   /**
    * Memory storage to put/get the data.
    */
@@ -69,11 +65,9 @@ public final class KMeansMainCmpTask extends UserComputeTask
    */
   @Inject
   public KMeansMainCmpTask(final VectorDistanceMeasure distanceMeasure,
-                           @Parameter(ClusteringDataType.class) final String dataType,
                            final MemoryStore memoryStore,
                            final UserTaskTrace trace) {
     this.distanceMeasure = distanceMeasure;
-    this.dataType = dataType;
     this.memoryStore = memoryStore;
     this.trace = trace;
   }
@@ -85,7 +79,7 @@ public final class KMeansMainCmpTask extends UserComputeTask
     pointSum = new HashMap<>();
 
     final TraceScope getPointsScope = trace.startSpan("getPoints");
-    final Map<?, Vector> points = memoryStore.getAll(dataType);
+    final Map<?, Vector> points = memoryStore.getAll();
     getPointsScope.close();
 
     final TraceScope computeCentroidsScope = trace.startSpan("computeCentroids");

@@ -91,7 +91,7 @@ public final class PlanImpl implements Plan {
 
     public Builder addEvaluatorToAdd(final String namespace, final String evaluatorId) {
       if (!evaluatorsToAdd.containsKey(namespace)) {
-        evaluatorsToAdd.put(namespace, new HashSet<String>());
+        evaluatorsToAdd.put(namespace, new HashSet<>());
       }
       final Set<String> evaluatorIds = evaluatorsToAdd.get(namespace);
       evaluatorIds.add(evaluatorId);
@@ -100,7 +100,7 @@ public final class PlanImpl implements Plan {
 
     public Builder addEvaluatorsToAdd(final String namespace, final Collection<String> evaluatorIdsToAdd) {
       if (!evaluatorsToAdd.containsKey(namespace)) {
-        evaluatorsToAdd.put(namespace, new HashSet<String>());
+        evaluatorsToAdd.put(namespace, new HashSet<>());
       }
       final Set<String> evaluatorIds = evaluatorsToAdd.get(namespace);
       evaluatorIds.addAll(evaluatorIdsToAdd);
@@ -109,7 +109,7 @@ public final class PlanImpl implements Plan {
 
     public Builder addEvaluatorToDelete(final String namespace, final String evaluatorId) {
       if (!evaluatorsToDelete.containsKey(namespace)) {
-        evaluatorsToDelete.put(namespace, new HashSet<String>());
+        evaluatorsToDelete.put(namespace, new HashSet<>());
       }
       final Set<String> evaluatorIds = evaluatorsToDelete.get(namespace);
       evaluatorIds.add(evaluatorId);
@@ -127,17 +127,10 @@ public final class PlanImpl implements Plan {
 
     public Builder addTransferStep(final String namespace, final TransferStep transferStep) {
       if (!allTransferSteps.containsKey(namespace)) {
-        allTransferSteps.put(namespace, new ArrayList<TransferStep>());
+        allTransferSteps.put(namespace, new ArrayList<>());
       }
       final List<TransferStep> transferSteps = allTransferSteps.get(namespace);
       transferSteps.add(transferStep);
-      return this;
-    }
-
-    public Builder addTransferSteps(final String namespace, final Collection<TransferStep> newTransferSteps) {
-      for (final TransferStep transferStep : newTransferSteps) {
-        addTransferStep(namespace, transferStep);
-      }
       return this;
     }
 

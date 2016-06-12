@@ -26,9 +26,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -63,7 +61,7 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
           metricsMessage.getIterationInfo().getCommGroupName().toString(),
           metricsMessage.getIterationInfo().getIteration(),
           getMetricsFromAvro(metricsMessage.getMetrics()),
-          getDataInfoFromAvro(metricsMessage.getComputeMsg().getDataInfos()));
+          getDataInfoFromAvro(metricsMessage.getComputeMsg().getDataInfo()));
 
     } else if (SrcType.Controller.equals(srcType)) {
 
@@ -78,13 +76,9 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
     LOG.exiting(DriverSideMetricsMsgHandler.class.getSimpleName(), "onNext");
   }
 
-  private List<DataInfo> getDataInfoFromAvro(
-      final List<edu.snu.cay.dolphin.bsp.core.metric.avro.DataInfo> avroDataInfos) {
-    final List<DataInfo> dataInfos = new ArrayList<>(avroDataInfos.size());
-    for (final edu.snu.cay.dolphin.bsp.core.metric.avro.DataInfo avroDataInfo : avroDataInfos) {
-      dataInfos.add(new DataInfoImpl(avroDataInfo.getDataType().toString(), avroDataInfo.getNumUnits()));
-    }
-    return dataInfos;
+  private DataInfo getDataInfoFromAvro(
+      final edu.snu.cay.dolphin.bsp.core.metric.avro.DataInfo avroDataInfo) {
+    return new DataInfoImpl(avroDataInfo.getNumBlocks());
   }
 
   private Map<String, Double> getMetricsFromAvro(final Metrics avroMetrics) {

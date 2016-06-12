@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
@@ -231,18 +230,6 @@ public final class BlockManager {
   }
 
   /**
-   * @return mapping between identifier of evaluator and the number of blocks it has
-   */
-  private Map<String, Integer> getEvalIdToNumBlocks() {
-    final Map<String, Integer> evalIdToNumBlocks = new HashMap<>();
-    for (final Map.Entry<Integer, Set<Integer>> storeIdToblockId : storeIdToBlockIds.entrySet()) {
-      final String evalId = getEvaluatorId(storeIdToblockId.getKey());
-      evalIdToNumBlocks.put(evalId, storeIdToblockId.getValue().size());
-    }
-    return evalIdToNumBlocks;
-  }
-
-  /**
    * Converts the Evaluator id to the MemoryStore id.
    */
   int getMemoryStoreId(final String evalId) {
@@ -311,11 +298,16 @@ public final class BlockManager {
     }
   }
 
-  /**
-   * @param dataType the type of data
-   * @return mapping between identifier of evaluator and its EvaluatorParameters
-   */
-  Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
+  private Map<String, Integer> getEvalIdToNumBlocks() {
+    final Map<String, Integer> evalIdToNumBlocks = new HashMap<>();
+    for (final Map.Entry<Integer, Set<Integer>> storeIdToblockId : storeIdToBlockIds.entrySet()) {
+      final String evalId = getEvaluatorId(storeIdToblockId.getKey());
+      evalIdToNumBlocks.put(evalId, storeIdToblockId.getValue().size());
+    }
+    return evalIdToNumBlocks;
+  }
+
+  Map<String, EvaluatorParameters> generateEvalParams() {
     final Map<String, Integer> evalIdToNumBlocks = getEvalIdToNumBlocks();
     final int numEvaluators = evalIdToNumBlocks.size();
 
@@ -324,9 +316,7 @@ public final class BlockManager {
       final String evalId = evalIdToNumBlock.getKey();
       final int numBlocks = evalIdToNumBlock.getValue();
 
-      final List<DataInfo> dataInfos = new ArrayList<>(1);
-      dataInfos.add(new DataInfoImpl(dataType, numBlocks));
-      evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, dataInfos, new HashMap<String, Double>(0)));
+      evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, new DataInfoImpl(numBlocks), new HashMap<>(0)));
     }
     return evaluatorsMap;
   }

@@ -234,14 +234,14 @@ public final class DynamicParameterServerTest {
 
     @Override
     public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final String dataType, final List<KeyRange> dataKeyRanges,
+                                final List<KeyRange> dataKeyRanges,
                                 final List<KeyValuePair> dataKVPairList, final String operationId,
                                 @Nullable final TraceInfo parentTraceInfo) {
     }
 
     @Override
     public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final String dataType, final DataKey dataKey, final DataValue dataValue,
+                                final DataKey dataKey, final DataValue dataValue,
                                 final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     }
 
@@ -274,25 +274,25 @@ public final class DynamicParameterServerTest {
     }
 
     @Override
-    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+    public void sendCtrlMsg(final String destId, final String targetEvalId,
                             final List<Integer> blocks, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
     }
 
     @Override
-    public void sendDataMsg(final String destId, final String dataType,
+    public void sendDataMsg(final String destId,
                             final List<KeyValuePair> keyValuePairs, final int blockId, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
     }
 
     @Override
-    public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final String dataType,
+    public void sendOwnershipMsg(final Optional<String> destId, final String operationId,
                                  final int blockId, final int oldOwnerId, final int newOwnerId,
                                  @Nullable final TraceInfo parentTraceInfo) {
     }
 
     @Override
-    public void sendOwnershipAckMsg(final String operationId, final String dataType, final int blockId,
+    public void sendOwnershipAckMsg(final String operationId, final int blockId,
                                     @Nullable final TraceInfo parentTraceInfo) {
     }
 

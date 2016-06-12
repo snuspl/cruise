@@ -47,8 +47,6 @@ final class NeuralNetworkWorker implements Worker {
   private final Validator crossValidator;
   private final Validator trainingValidator;
 
-  // TODO #530: Data type will be removed.
-  private static final String DATA_TYPE = "WORKER_DATA";
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
@@ -86,7 +84,7 @@ final class NeuralNetworkWorker implements Worker {
     } catch (final IdGenerationException e) {
       throw new RuntimeException("Failed to generate ids for MemoryStore", e);
     }
-    memoryStore.putList(DATA_TYPE, dataKeys, dataValues);
+    memoryStore.putList(dataKeys, dataValues);
 
     LOG.log(Level.INFO, "Number of input instances = {0}", dataValues.size());
 
@@ -95,7 +93,7 @@ final class NeuralNetworkWorker implements Worker {
 
   @Override
   public void run() {
-    final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll(DATA_TYPE);
+    final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
     final Collection<NeuralNetworkData> workload = workloadMap.values();
 
     for (final NeuralNetworkData data : workload) {

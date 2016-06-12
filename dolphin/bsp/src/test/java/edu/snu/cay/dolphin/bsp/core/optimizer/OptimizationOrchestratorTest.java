@@ -21,7 +21,6 @@ import edu.snu.cay.dolphin.bsp.examples.simple.SimpleCmpTask;
 import edu.snu.cay.dolphin.bsp.examples.simple.SimpleCommGroup;
 import edu.snu.cay.dolphin.bsp.examples.simple.SimpleCtrlTask;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.RandomOptimizer;
@@ -110,18 +109,18 @@ public final class OptimizationOrchestratorTest {
 
     assertEquals(previousResult, orchestrator.getPlanExecutionResult());
     orchestrator.receiveComputeMetrics("context-0", groupName, iteration, getComputeTaskMetrics(),
-        getSingleDataInfo(1000));
+        new DataInfoImpl(1000));
     assertEquals(previousResult, orchestrator.getPlanExecutionResult());
     orchestrator.receiveComputeMetrics("context-1", groupName, iteration, getComputeTaskMetrics(),
-        getSingleDataInfo(2000));
+        new DataInfoImpl(2000));
     assertEquals(previousResult, orchestrator.getPlanExecutionResult());
     orchestrator.receiveControllerMetrics("context-controller", groupName, iteration, getControllerTaskMetrics());
     assertEquals(previousResult, orchestrator.getPlanExecutionResult());
     orchestrator.receiveComputeMetrics("context-2", groupName, iteration, getComputeTaskMetrics(),
-        getSingleDataInfo(3000));
+        new DataInfoImpl(3000));
     assertEquals(previousResult, orchestrator.getPlanExecutionResult());
     orchestrator.receiveComputeMetrics("context-3", groupName, iteration, getComputeTaskMetrics(),
-        getSingleDataInfo(4000));
+        new DataInfoImpl(4000));
 
     // All metrics received; optimization should have run
     orchestrator.getOptimizationAttemptResult().get(1, TimeUnit.SECONDS);
@@ -138,11 +137,5 @@ public final class OptimizationOrchestratorTest {
   private Map<String, Double> getControllerTaskMetrics() {
     final Map<String, Double> metrics = new HashMap<>();
     return metrics;
-  }
-
-  private List<DataInfo> getSingleDataInfo(final int numUnits) {
-    final List<DataInfo> dataInfos = new ArrayList<>(1);
-    dataInfos.add(new DataInfoImpl("testDataType", numUnits));
-    return dataInfos;
   }
 }

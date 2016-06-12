@@ -87,55 +87,53 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                              final String dataType, final List<KeyRange> dataKeyRanges,
+                              final List<KeyRange> dataKeyRanges,
                               final List<KeyValuePair> dataKVPairList, final String operationId,
                               @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpMsgScope = Trace.startSpan(SEND_REMOTE_OP_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType});
+          operationType});
 
       // the operation begins with a local client, when the origId is null
       final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
 
-      send(destId, generateRemoteOpMsg(origEvalId, destId, operationType, dataType,
+      send(destId, generateRemoteOpMsg(origEvalId, destId, operationType,
           dataKeyRanges, dataKVPairList, operationId, parentTraceInfo));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType});
+          operationType});
     }
   }
 
   @Override
   public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                              final String dataType, final DataKey dataKey,
-                              final DataValue dataValue, final String operationId,
+                              final DataKey dataKey, final DataValue dataValue, final String operationId,
                               @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpMsgScope = Trace.startSpan(SEND_REMOTE_OP_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType});
+          operationType});
 
       // the operation begins with a local client, when the origId is null
       final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
 
-      send(destId, generateRemoteOpMsg(origEvalId, destId, operationType, dataType,
+      send(destId, generateRemoteOpMsg(origEvalId, destId, operationType,
           dataKey, dataValue, operationId, parentTraceInfo));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType});
+          operationType});
     }
   }
 
   private AvroElasticMemoryMessage generateRemoteOpMsg(final String origId, final String destId,
-                                                       final DataOpType operationType, final String dataType,
+                                                       final DataOpType operationType,
                                                        final Object dataKeys, final Object dataValues,
                                                        final String operationId,
                                                        @Nullable final TraceInfo parentTraceInfo) {
     final RemoteOpMsg remoteOpMsg = RemoteOpMsg.newBuilder()
         .setOrigEvalId(origId)
         .setOpType(operationType)
-        .setDataType(dataType)
         .setDataKeys(dataKeys)
         .setDataValues(dataValues)
         .build();
@@ -280,13 +278,12 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+  public void sendCtrlMsg(final String destId, final String targetEvalId,
                           final List<Integer> blocks, final String operationId,
                           @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo)) {
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
-          .setDataType(dataType)
           .setBlockIds(blocks)
           .build();
 
@@ -303,16 +300,14 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendDataMsg(final String destId, final String dataType,
-                          final List<KeyValuePair> keyValuePairs, final int blockId, final String operationId,
-                          final TraceInfo parentTraceInfo) {
+  public void sendDataMsg(final String destId, final List<KeyValuePair> keyValuePairs, final int blockId,
+                          final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
-          new Object[]{destId, dataType});
+          new Object[]{destId});
 
       final DataMsg dataMsg = DataMsg.newBuilder()
-          .setDataType(dataType)
           .setKeyValuePairs(keyValuePairs)
           .setBlockId(blockId)
           .build();
@@ -328,18 +323,17 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
-          new Object[]{destId, dataType});
+          new Object[]{destId});
     }
   }
 
   @Override
-  public void sendOwnershipMsg(final Optional<String> destIdOptional, final String operationId, final String dataType,
+  public void sendOwnershipMsg(final Optional<String> destIdOptional, final String operationId,
                                final int blockId, final int oldOwnerId, final int newOwnerId,
                                @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendUpdateAckMsgScope = Trace.startSpan(SEND_OWNERSHIP_MSG, parentTraceInfo)) {
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
-              .setDataType(dataType)
               .setBlockId(blockId)
               .setOldOwnerId(oldOwnerId)
               .setNewOwnerId(newOwnerId)
@@ -360,11 +354,10 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendOwnershipAckMsg(final String operationId, final String dataType, final int blockId,
+  public void sendOwnershipAckMsg(final String operationId, final int blockId,
                                   @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan(SEND_OWNERSHIP_ACK_MSG, parentTraceInfo)) {
       final OwnershipAckMsg ownershipAckMsg = OwnershipAckMsg.newBuilder()
-          .setDataType(dataType)
           .setBlockId(blockId)
           .build();
       send(driverId,

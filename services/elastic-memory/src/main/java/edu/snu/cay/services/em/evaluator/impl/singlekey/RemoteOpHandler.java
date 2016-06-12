@@ -72,33 +72,27 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
 
   /**
    * Send operation to remote evaluators.
-   * @param operation an operation
-   * @param <V> a type of data
-   */
-  /**
-   * Send operation to remote evaluators.
    * @param opType a type of operation
-   * @param dataType a type of data
    * @param key a data key
    * @param value an Optional with a data value
    * @param targetEvalId a target evaluator
    * @param <V> a type of data
    * @return an operation holding the result
    */
-  <V> SingleKeyOperation<K, V> sendOpToRemoteStore(final DataOpType opType, final String dataType,
+  <V> SingleKeyOperation<K, V> sendOpToRemoteStore(final DataOpType opType,
                                final K key, final Optional<V> value,
                                final String targetEvalId) {
 
     final String operationId = Long.toString(remoteOpIdCounter.getAndIncrement());
     final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
-          opType, dataType, key, value);
+          opType, key, value);
 
     LOG.log(Level.FINEST, "Send op to remote. OpId: {0}, OpType: {1}",
         new Object[]{operation.getOpId(), operation.getOpType()});
 
     registerOp(operation);
 
-    final Codec<V> dataCodec = serializer.getCodec(operation.getDataType());
+    final Codec<V> dataCodec = serializer.getCodec();
 
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
@@ -117,7 +111,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
       }
 
       msgSender.get().sendRemoteOpMsg(operation.getOrigEvalId().get(), targetEvalId,
-          operation.getOpType(), operation.getDataType(), new DataKey(encodedKey), dataValue,
+          operation.getOpType(), new DataKey(encodedKey), dataValue,
           operation.getOpId(), traceInfo);
     }
 
@@ -158,7 +152,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
     // decode data value
     final Optional<Object> decodedValue;
     if (isSuccess && remoteOutput != null) {
-      final Codec dataCodec = serializer.getCodec(operation.getDataType());
+      final Codec dataCodec = serializer.getCodec();
       decodedValue = Optional.of(dataCodec.decode(remoteOutput.getValue().array()));
     } else {
       decodedValue = Optional.empty();
@@ -198,8 +192,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
 
     // send the original store the result (RemoteOpResultMsg)
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
-      final String dataType = operation.getDataType();
-      final Codec<V> dataCodec = serializer.getCodec(dataType);
+      final Codec<V> dataCodec = serializer.getCodec();
 
       final Optional<String> origEvalId = operation.getOrigEvalId();
 

@@ -57,8 +57,6 @@ final class RemoteEMTask implements Task {
       "the number of items in the global MemoryStore is not as expected";
   private static final String MSG_OPERATION_FAILED = "not all operations succeeded";
 
-  private static final String DATA_TYPE = "INTEGER";
-
   private final MemoryStore<Long> memoryStore;
   private final DataIdFactory<Long> localDataIdFactory;
 
@@ -157,7 +155,7 @@ final class RemoteEMTask implements Task {
   private void cleanUp() {
     // wait until previous test is finished completely
     synchronize();
-    memoryStore.removeAll(DATA_TYPE);
+    memoryStore.removeAll();
 
     // wait until all stores are cleaned up
     synchronize();
@@ -233,7 +231,7 @@ final class RemoteEMTask implements Task {
       final int numItems = 10000;
       Map<Long, Integer> outputMap;
 
-      outputMap = memoryStore.getRange(DATA_TYPE, 0L, maxDataKey);
+      outputMap = memoryStore.getRange(0L, maxDataKey);
       if (!outputMap.isEmpty()) {
         throw new RuntimeException("Wrong initial state");
       }
@@ -249,7 +247,7 @@ final class RemoteEMTask implements Task {
 
         final List<Long> keyList = new ArrayList<>(keySet);
 
-        final Map<Long, Boolean> putResult = memoryStore.putList(DATA_TYPE, keyList, keyList);
+        final Map<Long, Boolean> putResult = memoryStore.putList(keyList, keyList);
         for (final Boolean value : putResult.values()) {
           if (!value) {
             throw new RuntimeException("Fail to put data");
@@ -260,7 +258,7 @@ final class RemoteEMTask implements Task {
       synchronize();
 
       // check that the total number of objects equal the expected number
-      final int numLocalData = memoryStore.getNumUnits(DATA_TYPE);
+      final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != numItems) {
@@ -269,7 +267,7 @@ final class RemoteEMTask implements Task {
 
       synchronize();
 
-      outputMap = memoryStore.removeRange(DATA_TYPE, 0L, maxDataKey);
+      outputMap = memoryStore.removeRange(0L, maxDataKey);
 
       final long numGlobalRemoves = syncGlobalCount(outputMap.size());
       LOG.log(Level.INFO, "localRemoves: {0}, numGlobalRemoves: {1}", new Object[]{outputMap.size(), numGlobalRemoves});
@@ -278,7 +276,7 @@ final class RemoteEMTask implements Task {
       }
 
       // check that the total number of objects equal the expected number
-      outputMap = memoryStore.getRange(DATA_TYPE, 0L, maxDataKey);
+      outputMap = memoryStore.getRange(0L, maxDataKey);
       LOG.log(Level.FINE, "outputMap.size: {0}", outputMap.size());
       if (outputMap.size() != 0) {
         throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
@@ -321,7 +319,7 @@ final class RemoteEMTask implements Task {
       }
 
       synchronize();
-      final int numUnits = memoryStore.getNumUnits(DATA_TYPE);
+      final int numUnits = memoryStore.getAll().size();
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
@@ -367,7 +365,7 @@ final class RemoteEMTask implements Task {
       }
 
       synchronize();
-      final int numUnits = memoryStore.getNumUnits(DATA_TYPE);
+      final int numUnits = memoryStore.getAll().size();
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
@@ -419,7 +417,7 @@ final class RemoteEMTask implements Task {
       }
 
       synchronize();
-      final int numUnits = memoryStore.getNumUnits(DATA_TYPE);
+      final int numUnits = memoryStore.getAll().size();
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
@@ -473,7 +471,7 @@ final class RemoteEMTask implements Task {
       }
 
       synchronize();
-      final int numUnits = memoryStore.getNumUnits(DATA_TYPE);
+      final int numUnits = memoryStore.getAll().size();
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
@@ -536,7 +534,7 @@ final class RemoteEMTask implements Task {
       synchronize();
 
       // check that the total number of objects equal the expected number
-      final int numLocalData = memoryStore.getNumUnits(DATA_TYPE);
+      final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != totalNumberOfObjects * RemoteEMDriver.EVAL_NUM - numGlobalRemoves) {
@@ -602,7 +600,7 @@ final class RemoteEMTask implements Task {
       synchronize();
 
       // check that the total number of objects equal the expected number
-      final int numLocalData = memoryStore.getNumUnits(DATA_TYPE);
+      final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != totalNumberOfObjects * RemoteEMDriver.EVAL_NUM - numGlobalRemoves) {
@@ -648,7 +646,7 @@ final class RemoteEMTask implements Task {
       }
 
       synchronize();
-      final Map<Long, Object> outputMap = memoryStore.getAll(DATA_TYPE);
+      final Map<Long, Object> outputMap = memoryStore.getAll();
 
       LOG.log(Level.FINE, "outputMap.size(): {0}", outputMap.size());
 
@@ -710,7 +708,7 @@ final class RemoteEMTask implements Task {
       final int totalNumberOfLocalObjects = numThreads * putsPerThread +
           numThreads * (putsPerThread + prevRemoteStoreId);
 
-      if (memoryStore.getAll(DATA_TYPE).size() != totalNumberOfLocalObjects) {
+      if (memoryStore.getAll().size() != totalNumberOfLocalObjects) {
         throw new RuntimeException(MSG_LOCAL_SIZE_MISMATCH);
       }
 
@@ -720,7 +718,7 @@ final class RemoteEMTask implements Task {
       }
 
       // check that the total number of objects equal the expected number
-      final int numLocalData = memoryStore.getNumUnits(DATA_TYPE);
+      final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != expectedNumGlobalData) {
@@ -752,14 +750,14 @@ final class RemoteEMTask implements Task {
       for (int i = 0; i < putsPerThread; i++) {
         if (itemsPerPut == 1) {
           final long key = idFactory.getId();
-          final Pair<Long, Boolean> res = memoryStore.put(DATA_TYPE, key, key);
+          final Pair<Long, Boolean> res = memoryStore.put(key, key);
 
           if (res.getSecond()) {
             numPutSuccess++;
           }
         } else {
           final List<Long> keys = idFactory.getIds(itemsPerPut);
-          final Map<Long, Boolean> res = memoryStore.putList(DATA_TYPE, keys, keys);
+          final Map<Long, Boolean> res = memoryStore.putList(keys, keys);
 
           for (final Boolean value : res.values()) {
             if (value) {
@@ -793,14 +791,14 @@ final class RemoteEMTask implements Task {
       for (int i = 0; i < getsPerThread; i++) {
         if (itemsPerGet == 1) {
           final long key = getRandomLongKey();
-          final Pair<Long, Object> res = memoryStore.get(DATA_TYPE, key);
+          final Pair<Long, Object> res = memoryStore.get(key);
 
           if (res != null) {
             numGetSuccess++;
           }
         } else {
           final Pair<Long, Long> range = getRandomLongRangeKey(itemsPerGet);
-          final Map<Long, Object> res = memoryStore.getRange(DATA_TYPE, range.getFirst(), range.getSecond());
+          final Map<Long, Object> res = memoryStore.getRange(range.getFirst(), range.getSecond());
 
           numGetSuccess += res.size();
         }
@@ -830,14 +828,14 @@ final class RemoteEMTask implements Task {
       for (int i = 0; i < removesPerThread; i++) {
         if (itemsPerRemove == 1) {
           final long key = getRandomLongKey();
-          final Pair<Long, Object> res = memoryStore.remove(DATA_TYPE, key);
+          final Pair<Long, Object> res = memoryStore.remove(key);
 
           if (res != null) {
             numRemoveSuccess++;
           }
         } else {
           final Pair<Long, Long> range = getRandomLongRangeKey(itemsPerRemove);
-          final Map<Long, Object> res = memoryStore.removeRange(DATA_TYPE, range.getFirst(), range.getSecond());
+          final Map<Long, Object> res = memoryStore.removeRange(range.getFirst(), range.getSecond());
 
           numRemoveSuccess += res.size();
         }
@@ -877,7 +875,7 @@ final class RemoteEMTask implements Task {
       final boolean isLocalKey = !router.route(rangeList).getFirst().isEmpty();
 
       // 1. INITIAL STATE: check that the store does not contain DATA
-      outputMap = memoryStore.getRange(DATA_TYPE, dataKey0, dataKey1);
+      outputMap = memoryStore.getRange(dataKey0, dataKey1);
       LOG.log(Level.FINE, "getRange({0}, {1}): {2}", new Object[]{dataKey0, dataKey1, outputMap});
 
       if (!outputMap.isEmpty()) {
@@ -889,7 +887,7 @@ final class RemoteEMTask implements Task {
       // 2. Put DATA into store via remote access
       // It should be performed by a memory store that does not own DATA_KEY.
       if (!isLocalKey) {
-        final Map<Long, Boolean> putResult = memoryStore.putList(DATA_TYPE, keys, values);
+        final Map<Long, Boolean> putResult = memoryStore.putList(keys, values);
 
         LOG.log(Level.FINE, "putList({0}, {1}): {2}", new Object[]{keys, values, putResult});
         for (final Boolean value : putResult.values()) {
@@ -902,7 +900,7 @@ final class RemoteEMTask implements Task {
       synchronize();
 
       // 3. AFTER PUT: check that all workers can get DATA from the store
-      outputPair = memoryStore.get(DATA_TYPE, dataKey0);
+      outputPair = memoryStore.get(dataKey0);
       LOG.log(Level.FINE, "get({0}): {1}", new Object[]{dataKey0, outputPair});
 
       if (outputPair == null) {
@@ -912,7 +910,7 @@ final class RemoteEMTask implements Task {
         throw new RuntimeException("Fail to get correct data");
       }
 
-      outputPair = memoryStore.get(DATA_TYPE, dataKey1);
+      outputPair = memoryStore.get(dataKey1);
       LOG.log(Level.FINE, "get({0}): {1}", new Object[]{dataKey1, outputPair});
 
       if (outputPair == null) {
@@ -922,7 +920,7 @@ final class RemoteEMTask implements Task {
         throw new RuntimeException("Fail to get correct data");
       }
 
-      outputMap = memoryStore.getRange(DATA_TYPE, 0L, 1L);
+      outputMap = memoryStore.getRange(0L, 1L);
       LOG.log(Level.FINE, "getRange({0}, {1}): {2}", new Object[]{dataKey0, dataKey1, outputMap});
 
       if (!outputMap.containsKey(dataKey0) || !outputMap.containsKey(dataKey1)) {
@@ -937,7 +935,7 @@ final class RemoteEMTask implements Task {
       // 4. Remove DATA from the store via remote access
       // It should be performed by a memory store that does not own DATA_KEY.
       if (!isLocalKey) {
-        outputMap = memoryStore.removeRange(DATA_TYPE, dataKey0, dataKey1);
+        outputMap = memoryStore.removeRange(dataKey0, dataKey1);
         LOG.log(Level.FINE, "removeRange({0}, {1}): {2}", new Object[]{dataKey0, dataKey1, outputMap});
 
         if (!outputMap.containsKey(dataKey0) || !outputMap.containsKey(dataKey1)) {
@@ -951,7 +949,7 @@ final class RemoteEMTask implements Task {
       synchronize();
 
       // 5. AFTER REMOVE: check that the store does not contain DATA
-      outputMap = memoryStore.getRange(DATA_TYPE, dataKey0, dataKey1);
+      outputMap = memoryStore.getRange(dataKey0, dataKey1);
       LOG.log(Level.FINE, "getRange({0}, {1}): {2}", new Object[]{dataKey0, dataKey1, outputMap});
 
       if (!outputMap.isEmpty()) {

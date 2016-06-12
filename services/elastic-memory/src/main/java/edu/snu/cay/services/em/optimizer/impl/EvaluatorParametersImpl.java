@@ -18,7 +18,6 @@ package edu.snu.cay.services.em.optimizer.impl;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 
-import java.util.Collection;
 import java.util.Map;
 
 /**
@@ -26,14 +25,14 @@ import java.util.Map;
  */
 public final class EvaluatorParametersImpl implements EvaluatorParameters {
   private final String id;
-  private final Collection<DataInfo> dataInfos;
+  private final DataInfo dataInfo;
   private final Map<String, Double> metrics;
 
   public EvaluatorParametersImpl(final String id,
-                                 final Collection<DataInfo> dataInfos,
+                                 final DataInfo dataInfo,
                                  final Map<String, Double> metrics) {
     this.id = id;
-    this.dataInfos = dataInfos;
+    this.dataInfo = dataInfo;
     this.metrics = metrics;
   }
 
@@ -43,8 +42,8 @@ public final class EvaluatorParametersImpl implements EvaluatorParameters {
   }
 
   @Override
-  public Collection<DataInfo> getDataInfos() {
-    return dataInfos;
+  public DataInfo getDataInfo() {
+    return dataInfo;
   }
 
   @Override

@@ -41,7 +41,6 @@ final class RangeOperationImpl<K, V> implements RangeOperation<K, V> {
   private final Optional<String> origEvalId;
   private final String operationId;
   private final DataOpType operationType;
-  private final String dataType;
   private final List<Pair<K, K>> dataKeyRanges;
   private final Optional<NavigableMap<K, V>> dataKeyValueMap;
 
@@ -63,19 +62,16 @@ final class RangeOperationImpl<K, V> implements RangeOperation<K, V> {
    *                   It is empty when the operation is requested from the local client.
    * @param operationId an id of operation
    * @param operationType a type of operation
-   * @param dataType a type of data
    * @param dataKeyRanges a list of data key ranges
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
   public RangeOperationImpl(final Optional<String> origEvalId, final String operationId,
-                            final DataOpType operationType, final String dataType,
-                            final List<Pair<K, K>> dataKeyRanges,
+                            final DataOpType operationType, final List<Pair<K, K>> dataKeyRanges,
                             final Optional<NavigableMap<K, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
-    this.dataType = dataType;
     this.dataKeyRanges = dataKeyRanges;
     this.dataKeyValueMap = dataKeyValueMap;
   }
@@ -86,19 +82,16 @@ final class RangeOperationImpl<K, V> implements RangeOperation<K, V> {
    *                   It is empty when the operation is requested from the local client.
    * @param operationId an id of operation
    * @param operationType a type of operation
-   * @param dataType a type of data
    * @param dataKeyRange a range of data keys
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
   public RangeOperationImpl(final Optional<String> origEvalId, final String operationId,
-                            final DataOpType operationType, final String dataType,
-                            final Pair<K, K> dataKeyRange,
+                            final DataOpType operationType, final Pair<K, K> dataKeyRange,
                             final Optional<NavigableMap<K, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
-    this.dataType = dataType;
 
     final List<Pair<K, K>> keyRanges = new ArrayList<>(1);
     keyRanges.add(dataKeyRange);
@@ -113,18 +106,15 @@ final class RangeOperationImpl<K, V> implements RangeOperation<K, V> {
    *                   It is empty when the operation is requested from the local client.
    * @param operationId an id of operation
    * @param operationType a type of operation
-   * @param dataType a type of data
    * @param dataKey a key of data
    * @param dataValue an Optional with the value of data.
    *                  It is empty when the operation is one of GET or REMOVE.
    */
   public RangeOperationImpl(final Optional<String> origEvalId, final String operationId,
-                            final DataOpType operationType, final String dataType, final K dataKey,
-                            final Optional<V> dataValue) {
+                            final DataOpType operationType, final K dataKey, final Optional<V> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
-    this.dataType = dataType;
 
     final List<Pair<K, K>> keyRanges = new ArrayList<>(1);
     keyRanges.add(new Pair<>(dataKey, dataKey));
@@ -158,11 +148,6 @@ final class RangeOperationImpl<K, V> implements RangeOperation<K, V> {
   @Override
   public DataOpType getOpType() {
     return operationType;
-  }
-
-  @Override
-  public String getDataType() {
-    return dataType;
   }
 
   /**

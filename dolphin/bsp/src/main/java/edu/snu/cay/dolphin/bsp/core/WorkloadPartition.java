@@ -24,7 +24,6 @@ import org.apache.reef.tang.Configuration;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -40,84 +39,46 @@ public final class WorkloadPartition {
   /**
    * Typed data ids, which represent a workload partition assigned to a single ComputeTask.
    */
-  private final ConcurrentMap<String, Set<LongRange>> typeToRanges;
+  private final Set<LongRange> ranges;
   private final MemoryStore memoryStore;
 
   @Inject
   public WorkloadPartition(final MemoryStore memoryStore) {
     this.memoryStore = memoryStore;
-    this.typeToRanges = new ConcurrentHashMap<>();
+    this.ranges = Collections.newSetFromMap(new ConcurrentHashMap<>());
   }
 
   /**
-   * Put all entries of {@code workloadMap} into {@code typeToRanges}.
+   * Put all entries of {@code workload} into {@code ranges}.
    * The initialization can be done only once.
    * ControllerTask or PreComputeTask initializes a local workload partition.
-   * @param workloadMap initially assigned to this task
+   * @param workload initially assigned to this task
    * @return true when successfully initialized
    */
-  public boolean initialize(final Map<String, Set<LongRange>> workloadMap) {
-    if (workloadMap == null) {
+  public boolean initialize(final Set<LongRange> workload) {
+    if (workload == null) {
       return false;
     }
     if (!initialized.compareAndSet(false, true)) {
       return false;
     }
 
-    typeToRanges.putAll(workloadMap);
+    ranges.addAll(workload);
     return true;
   }
 
   /**
-   * Returns all data types that this workload partition holds.
-   * UserComputeTask invokes the method to get the data types that it has to process, when starting an iteration.
-   * @return a set of types composing this workload partition
-   */
-  public Set<String> getDataTypes() {
-
-    if (!initialized.get()) {
-      return Collections.emptySet();
-    } else {
-      return Collections.unmodifiableSet(typeToRanges.keySet());
-    }
-  }
-
-  /**
-   * Returns workload partition of specific type.
-   * UserComputeTask invokes the method to retrieve the workload partition, when starting an iteration.
-   * @param dataType a type of data
-   * @return a range set of {@code dataType}
-   */
-  public Set<LongRange> getRanges(final String dataType) {
-    if (!initialized.get()) {
-      return Collections.emptySet();
-    }
-
-    final Set<LongRange> rangeSet = typeToRanges.get(dataType);
-    if (rangeSet == null) {
-      return Collections.emptySet();
-    } else {
-      return Collections.unmodifiableSet(rangeSet);
-    }
-  }
-
-  /**
-   * Fetch all data of a certain data type assigned to the task.
+   * Fetch all data assigned to the task.
    * The returned map is an aggregated result of shallow copies of the internal data structure in {@code memoryStore}.
-   * @param dataType string that represents a certain data type
-   * @param <T> actual data type
+   * @param <T> type of the data
    * @return a map of data ids and the corresponding data items, retrieved from {@code memoryStore}
    */
-  public <T> Map<Long, T> getAllData(final String dataType) {
-    final Set<LongRange> ranges = typeToRanges.get(dataType);
+  public <T> Map<Long, T> getAllData() {
     final Map<Long, T> dataMap = new HashMap<>();
 
-    if (ranges != null) {
-      for (final LongRange range : ranges) {
-        final Map<Long, T> rangeData = memoryStore.getRange(dataType,
-            range.getMinimumLong(), range.getMaximumLong());
-        dataMap.putAll(rangeData);
-      }
+    for (final LongRange range : ranges) {
+      final Map<Long, T> rangeData = memoryStore.getRange(range.getMinimumLong(), range.getMaximumLong());
+      dataMap.putAll(rangeData);
     }
 
     return dataMap;

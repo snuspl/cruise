@@ -78,7 +78,6 @@ final class MigrationManager {
    * @param operationId Identifier of the {@code move} operation.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
-   * @param dataType Type of the data.
    * @param numBlocks Number of blocks to move.
    * @param traceInfo Information for Trace.
    * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
@@ -86,7 +85,6 @@ final class MigrationManager {
   synchronized void startMigration(final String operationId,
                                    final String senderId,
                                    final String receiverId,
-                                   final String dataType,
                                    final int numBlocks,
                                    @Nullable final TraceInfo traceInfo,
                                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
@@ -107,8 +105,8 @@ final class MigrationManager {
       return;
     }
 
-    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, blocks));
-    sender.get().sendCtrlMsg(senderId, dataType, receiverId, blocks, operationId, traceInfo);
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, blocks));
+    sender.get().sendCtrlMsg(senderId, receiverId, blocks, operationId, traceInfo);
   }
 
   /**
@@ -262,12 +260,10 @@ final class MigrationManager {
   void updateOwner(final String operationId, final int blockId, final int oldOwnerId, final int newOwnerId,
                    @Nullable final TraceInfo traceInfo) {
     final Migration migrationInfo = ongoingMigrations.get(operationId);
-    final String dataType = migrationInfo.getDataType();
     final String senderId = migrationInfo.getSenderId();
     blockManager.updateOwner(blockId, oldOwnerId, newOwnerId);
 
     // Send the OwnershipMessage to update the owner in the sender memoryStore
-    sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, dataType, blockId, oldOwnerId, newOwnerId,
-        traceInfo);
+    sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
   }
 }

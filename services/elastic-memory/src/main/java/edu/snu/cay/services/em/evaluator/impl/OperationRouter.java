@@ -42,6 +42,7 @@ import java.util.logging.Logger;
  * Note that this class is not thread-safe, which means client of this class must synchronize explicitly.
  * @param <K> type of data key
  */
+// TODO #565: Refactor initialization methods in EM's OperationRouter
 @Private
 @NotThreadSafe
 public final class OperationRouter<K> {
@@ -89,7 +90,6 @@ public final class OperationRouter<K> {
   private final AtomicIntegerArray blockLocations;
   private final List<Integer> initialLocalBlocks;
 
-  // TODO #380: we have to improve router to provide different routing tables for each dataType.
   @Inject
   private OperationRouter(final BlockResolver<K> blockResolver,
                           final InjectionFuture<ElasticMemoryMsgSender> msgSender,
@@ -107,32 +107,17 @@ public final class OperationRouter<K> {
     final int numInitialLocalBlocks = addedEval ? 0 : (numTotalBlocks / numInitialEvals + 1); // +1 for remainders
     this.initialLocalBlocks = new ArrayList<>(numInitialLocalBlocks);
     this.blockLocations = new AtomicIntegerArray(numTotalBlocks);
+    if (!addedEval) {
+      initRoutingTable();
+    }
   }
 
   /**
-   * Initializes the router by providing a prefix of evaluator to locate remote evaluators.
-   * In addition, for initial evaluators, it initializes the routing table by itself with a statically fixed scheme
-   * and for evaluators added by EM.add, it sends a request the up-to-date routing table to driver and
-   * postpones the initialization until the response.
-   * This method is invoked when the context is started.
+   * Initializes routing table of this MemoryStore with its local blocks, which are determined statically.
+   * Note that if the MemoryStore is created by EM.add(), this method should not be called
+   * because the block location might have been updated by EM.move() calls before this add() is called.
    */
-  public void initialize(final String endpointId) {
-    // TODO #509: Remove assumption on the format of context id
-    this.evalPrefix = endpointId.split("-")[0];
-    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
-
-    if (!addedEval) {
-      initRoutingTable();
-    } else {
-      requestRoutingTable();
-    }
-  }
-
-  private synchronized void initRoutingTable() {
-    if (initialized) {
-      return;
-    }
-
+  private void initRoutingTable() {
     // initial evaluators can initialize the routing table by itself
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
       initialLocalBlocks.add(blockId);
@@ -143,8 +128,24 @@ public final class OperationRouter<K> {
       final int storeId = blockId % numInitialEvals;
       blockLocations.set(blockId, storeId);
     }
+  }
 
-    initialized = true;
+
+  /**
+   * Initializes the router to resolve remote evaluators by providing a prefix of evaluator.
+   * In addition, this method includes the initialization of the routing table for added Evaluators
+   * by EM.add(). It sends a request for up-to-date routing table to the driver and
+   * postpones the initialization until the response.
+   * Note that this method is invoked when the context is started.
+   */
+  public void initialize(final String endpointId) {
+    // TODO #509: Remove assumption on the format of context id
+    this.evalPrefix = endpointId.split("-")[0];
+    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
+
+    if (addedEval) {
+      requestRoutingTable();
+    }
   }
 
   /**
@@ -159,13 +160,13 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * Initializes the routing table with the info received from the driver,
-   * providing a prefix of evaluator to locate remote evaluators.
-   * This method is for evaluators added by EM.add(), whose routing table should be updated dynamically.
+   * Initializes the routing table with the info received from the driver.
+   * This method is only for evaluators added by EM.add(),
+   * whose routing table should be initiated from the existing information.
    * It'd be invoked by the network response of {@link #requestRoutingTable()}.
    */
   public synchronized void initialize(final List<Integer> initBlockLocations) {
-    if (initialized) {
+    if (!addedEval || initialized) {
       return;
     }
 
@@ -199,7 +200,7 @@ public final class OperationRouter<K> {
    * It throws RuntimeException, if the table is not initialized til the end.
    */
   private void checkInitialization() {
-    if (initialized) {
+    if (!addedEval || initialized) {
       return;
     }
 

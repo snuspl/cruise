@@ -98,7 +98,6 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
 
   private void onRoutingTableReplyMsg(final WorkerRegisterReplyMsg workerRegisterReplyMsg) {
     final List<IdMapping> idMappings = workerRegisterReplyMsg.getIdMappings();
-    final int numTotalBlocks = workerRegisterReplyMsg.getNumTotalBlocks();
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds  = new HashMap<>(idMappings.size());
     final Map<Integer, String> storeIdToEndpointId = new HashMap<>(idMappings.size());
@@ -111,7 +110,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
       storeIdToEndpointId.put(memoryStoreId, endpointId);
     }
 
-    serverResolver.initRoutingTable(new EMRoutingTable(storeIdToBlockIds, storeIdToEndpointId, numTotalBlocks));
+    serverResolver.initRoutingTable(new EMRoutingTable(storeIdToBlockIds, storeIdToEndpointId));
   }
 
   private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg) {

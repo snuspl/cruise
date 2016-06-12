@@ -32,11 +32,21 @@ public final class EMRoutingTable {
   private final int numTotalBlocks;
 
   public EMRoutingTable(final Map<Integer, Set<Integer>> storeIdToBlockIds,
-                        final Map<Integer, String> storeIdToEndpointId,
-                        final int numTotalBlocks) {
+                        final Map<Integer, String> storeIdToEndpointId) {
     this.storeIdToBlockIds = storeIdToBlockIds;
     this.storeIdToEndpointId = storeIdToEndpointId;
-    this.numTotalBlocks = numTotalBlocks;
+    this.numTotalBlocks = countNumBlocks();
+  }
+
+  /**
+   * Counts the number of blocks.
+   */
+  private int countNumBlocks() {
+    int numBlocks = 0;
+    for (final Set<Integer> blockIds : storeIdToBlockIds.values()) {
+      numBlocks += blockIds.size();
+    }
+    return numBlocks;
   }
 
   /**

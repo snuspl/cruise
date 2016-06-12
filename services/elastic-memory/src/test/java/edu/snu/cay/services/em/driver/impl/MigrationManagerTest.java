@@ -64,7 +64,6 @@ public class MigrationManagerTest {
 
   private static final String OP_PREFIX = "op";
   private static final String EVAL_PREFIX = "eval-";
-  private static final String DATA_TYPE = "dataType";
   private static final int NUM_REQUESTS_PER_EVAL = 10;
   private static final int NUM_THREAD = 4;
 
@@ -394,8 +393,7 @@ public class MigrationManagerTest {
 
     @Override
     public void run() {
-      migrationManager.startMigration(OP_PREFIX + opId, srcId, destId, DATA_TYPE, numBlocksToMove,
-          null, finishedCallback);
+      migrationManager.startMigration(OP_PREFIX + opId, srcId, destId, numBlocksToMove, null, finishedCallback);
     }
   }
 
@@ -428,7 +426,7 @@ public class MigrationManagerTest {
 
     @Override
     public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final String dataType, final List<KeyRange> dataKeyRanges,
+                                final List<KeyRange> dataKeyRanges,
                                 final List<KeyValuePair> dataKVPairList, final String operationId,
                                 @Nullable final TraceInfo parentTraceInfo) {
 
@@ -436,7 +434,7 @@ public class MigrationManagerTest {
 
     @Override
     public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final String dataType, final DataKey dataKey, final DataValue dataValue,
+                                final DataKey dataKey, final DataValue dataValue,
                                 final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 
     }
@@ -474,7 +472,7 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+    public void sendCtrlMsg(final String destId, final String targetEvalId,
                             final List<Integer> blocks, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
       // invoke a handler logic of response for CtrlMsg
@@ -486,13 +484,13 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendDataMsg(final String destId, final String dataType,
-                            final List<KeyValuePair> keyValuePairs, final int blockId, final String operationId,
+    public void sendDataMsg(final String destId, final List<KeyValuePair> keyValuePairs,
+                            final int blockId, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
     }
 
     @Override
-    public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final String dataType,
+    public void sendOwnershipMsg(final Optional<String> destId, final String operationId,
                                  final int blockId, final int oldOwnerId, final int newOwnerId,
                                  @Nullable final TraceInfo parentTraceInfo) {
       // invoke a handler logic of response for OwnershipMsg
@@ -500,7 +498,7 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendOwnershipAckMsg(final String operationId, final String dataType, final int blockId,
+    public void sendOwnershipAckMsg(final String operationId, final int blockId,
                                     @Nullable final TraceInfo parentTraceInfo) {
 
     }

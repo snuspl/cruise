@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.bsp.mlapps.algorithms.clustering.em;
 import edu.snu.cay.dolphin.bsp.core.UserComputeTask;
 import edu.snu.cay.dolphin.bsp.mlapps.data.ClusterStats;
 import edu.snu.cay.dolphin.bsp.mlapps.data.ClusterSummary;
-import edu.snu.cay.dolphin.bsp.mlapps.data.ClusteringDataType;
 import edu.snu.cay.dolphin.bsp.mlapps.parameters.IsCovarianceShared;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataReduceSender;
@@ -48,8 +47,6 @@ public final class EMMainCmpTask extends UserComputeTask
    */
   private final boolean isCovarianceDiagonal;
 
-  private final String dataType;
-
   /**
    * Memory storage to put/get the data.
    */
@@ -58,16 +55,13 @@ public final class EMMainCmpTask extends UserComputeTask
   /**
    * Constructs a single Compute Task for the EM algorithm.
    * This class is instantiated by TANG.
-   * @param dataParser
    * @param memoryStore Memory storage to put/get the data
    * @param isCovarianceDiagonal  whether covariance matrices are diagonal or not
    */
   @Inject
   public EMMainCmpTask(
-      @Parameter(ClusteringDataType.class) final String dataType,
       final MemoryStore memoryStore,
       @Parameter(IsCovarianceShared.class) final boolean isCovarianceDiagonal) {
-    this.dataType = dataType;
     this.memoryStore = memoryStore;
     this.isCovarianceDiagonal = isCovarianceDiagonal;
   }
@@ -78,7 +72,7 @@ public final class EMMainCmpTask extends UserComputeTask
     final int numClusters = clusterSummaries.size();
 
     // Compute the partial statistics of each cluster
-    final Map<?, Vector> points = memoryStore.getAll(dataType);
+    final Map<?, Vector> points = memoryStore.getAll();
     for (final Vector vector : points.values()) {
       final int dimension = vector.size();
       Matrix outProd = null;

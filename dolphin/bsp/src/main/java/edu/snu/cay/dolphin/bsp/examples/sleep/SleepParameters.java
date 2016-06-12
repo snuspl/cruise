@@ -47,7 +47,7 @@ import java.io.*;
  *
  * <p>
  *   Following is an example of a configuration file.
- *   The first column represents the initial number of data units (workload) given to an evaluator.
+ *   The first column represents the initial number of data blocks (workload) given to an evaluator.
  *   The second column is the computation rate of an evaluator (ms per data unit).
  *   When the number of evaluators start to exceed the number of lines,
  *   the default values (0, 50) are assigned.
@@ -62,8 +62,6 @@ import java.io.*;
  * }</pre>
  */
 public final class SleepParameters implements UserParameters {
-
-  public static final String KEY = "KEY";
 
   private final File confFile;
   private final int maxIterations;
@@ -228,7 +226,7 @@ public final class SleepParameters implements UserParameters {
   private final class ConfigurationFilePath implements Name<String> {
   }
 
-  @NamedParameter(doc = "initial number of data units given to an evaluator", default_value = "0")
+  @NamedParameter(doc = "initial number of data blocks given to an evaluator", default_value = "0")
   final class InitialWorkload implements Name<Integer> {
   }
 

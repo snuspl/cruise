@@ -45,8 +45,7 @@ import java.util.logging.Logger;
 
 /**
  * A {@code MemoryStore} implementation for a key of long type, supporting range operations.
- * All data of one data type is stored in multiple Blocks embedding a {@code TreeMap}, ordered by data ids.
- * These Blocks are then maintained as values of one big {@code HashMap}, which uses the data types as keys.
+ * All data is stored in multiple Blocks embedding a {@code TreeMap}, ordered by data ids.
  * Each Block has {@code ReentrantReadWriteLock} for synchronization between {@code get}, {@code put},
  * and {@code remove} operations within Block.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
@@ -60,11 +59,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
   /**
-   * This map uses data types, represented as strings, for keys and inner map for values.
-   * Each inner map serves as a collection of data of the same data type, which is compose of multiple Blocks.
-   * Each inner map maintains mapping between a Block id and Block itself.
+   * Maintains blocks associated with blockIds.
    */
-  private final Map<String, Map<Integer, Block>> typeToBlocks = new HashMap<>();
+  private final Map<Integer, Block> blocks = new HashMap<>();
 
   @GuardedBy("routerLock")
   private final OperationRouter<Long> router;
@@ -95,7 +92,17 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     this.router = router;
     this.blockResolver = blockResolver;
     this.remoteOpHandler = remoteOpHandler;
+    initBlocks();
     initExecutor(numStoreThreads);
+  }
+
+  /**
+   * Initialize the blocks in the local MemoryStore.
+   */
+  private void initBlocks() {
+    for (final int blockId : router.getInitialLocalBlockIds()) {
+      blocks.put(blockId, new Block());
+    }
   }
 
   /**
@@ -109,27 +116,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     }
   }
 
-  /**
-   * Initialize blocks for a specific {@code dataType}.
-   * Each block holds the subset of the data that is assigned to this MemoryStore.
-   */
-  private synchronized void initBlocks(final String dataType) {
-    if (typeToBlocks.containsKey(dataType)) {
-      return;
-    }
-
-    final Map<Integer, Block> initialBlocks = new HashMap<>();
-    // We don't need to lock router because this method is already synchronized.
-    for (final int blockId : router.getInitialLocalBlockIds()) {
-      initialBlocks.put(blockId, new Block());
-    }
-
-    // must put initialBlocks into typeToBlocks after completely initialize it
-    typeToBlocks.put(dataType, initialBlocks);
-  }
-
   @Override
-  public void updateOwnership(final String dataType, final int blockId, final int oldOwnerId, final int newOwnerId) {
+  public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
     routerLock.writeLock().lock();
     try {
       router.updateOwnership(blockId, oldOwnerId, newOwnerId);
@@ -139,13 +127,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public void putBlock(final String dataType, final int blockId, final Map<Long, Object> data) {
-    // If this MemoryStore has never stored the data in this type, initialize the blocks.
-    if (!typeToBlocks.containsKey(dataType)) {
-      initBlocks(dataType);
-    }
-
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+  public void putBlock(final int blockId, final Map<Long, Object> data) {
     if (blocks.containsKey(blockId)) {
       throw new RuntimeException("Block with id " + blockId + " already exists.");
     }
@@ -156,13 +138,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public Map<Long, Object> getBlock(final String dataType, final int blockId) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (null == blocks) {
-      LOG.log(Level.FINE, "Blocks are not initialized for type {0}", dataType);
-      return Collections.emptyMap();
-    }
-
+  public Map<Long, Object> getBlock(final int blockId) {
     final Block block = blocks.get(blockId);
     if (null == block) {
       throw new RuntimeException("Block with id " + blockId + "does not exist.");
@@ -172,13 +148,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public void removeBlock(final String dataType, final int blockId) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (null == blocks) {
-      LOG.log(Level.FINE, "Blocks are not initialized for type {0}", dataType);
-      return;
-    }
-
+  public void removeBlock(final int blockId) {
     final Block block = blocks.remove(blockId);
     if (null == block) {
       throw new RuntimeException("Block with id " + blockId + "does not exist.");
@@ -222,9 +192,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         final Optional<String> remoteEvalId = router.resolveEval(blockId);
         final boolean isLocal = !remoteEvalId.isPresent();
         if (isLocal) {
-          final Block block = typeToBlocks.get(operation.getDataType()).get(blockId);
+          final Block block = blocks.get(blockId);
           final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRanges);
-          submitLocalResult(operation, result, Collections.EMPTY_LIST);
+          submitLocalResult(operation, result, Collections.emptyList());
         } else {
           LOG.log(Level.WARNING,
               "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
@@ -236,7 +206,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
           for (final Pair<Long, Long> subKeyRange : subKeyRanges) {
             failedRanges.add(new Pair<>(subKeyRange.getFirst(), subKeyRange.getSecond()));
           }
-          submitLocalResult(operation, Collections.EMPTY_MAP, failedRanges);
+          submitLocalResult(operation, Collections.emptyMap(), failedRanges);
         }
       } finally {
         routerLock.readLock().unlock();
@@ -377,7 +347,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   @Override
   public void onNext(final DataOperation dataOperation) {
     final RangeOperation<Long, Object> operation = (RangeOperation<Long, Object>) dataOperation;
-    final String dataType = operation.getDataType();
 
     // split data key ranges into blocks
     final List<Pair<Long, Long>> dataKeyRanges = operation.getDataKeyRanges();
@@ -402,25 +371,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     // cannot resolve any block. invalid data keys
     if (blockToSubKeyRangesMap.isEmpty()) {
       // TODO #421: should handle fail case different from empty case
-      submitLocalResult(operation, Collections.EMPTY_MAP, operation.getDataKeyRanges());
+      submitLocalResult(operation, Collections.emptyMap(), operation.getDataKeyRanges());
       LOG.log(Level.SEVERE, "Failed Op [Id: {0}, origId: {1}]",
           new Object[]{operation.getOpId(), operation.getOrigEvalId().get()});
       return;
-    }
-
-    // progress when there're blocks for dataType
-    if (!typeToBlocks.containsKey(dataType)) {
-      // nevertheless, for PUT operations initialize blocks and continue the operation
-      if (operation.getOpType() == DataOpType.PUT) {
-        initBlocks(dataType);
-      } else {
-        // submit empty result for other types of operations
-        submitLocalResult(operation, Collections.EMPTY_MAP, operation.getDataKeyRanges());
-
-        LOG.log(Level.FINE, "Blocks for the type {0} do not exist. Send empty result for operation {1} from {2}",
-            new Object[]{operation.getDataType(), operation.getOpId(), operation.getOrigEvalId().get()});
-        return;
-      }
     }
 
     enqueueOperation(operation, blockToSubKeyRangesMap);
@@ -474,7 +428,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
       // execute local operation and submit the result
       final Map<Long, V> localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangesMap);
-      submitLocalResult(operation, localOutputData, Collections.EMPTY_LIST);
+      submitLocalResult(operation, localOutputData, Collections.emptyList());
     } finally {
       routerLock.readLock().unlock();
     }
@@ -489,23 +443,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private <V> Map<Long, V> executeLocalOperation(final RangeOperation<Long, V> operation,
                                                  final Map<Integer, List<Pair<Long, Long>>> blockToSubKeyRangesMap) {
     if (blockToSubKeyRangesMap.isEmpty()) {
-      return Collections.EMPTY_MAP;
+      return Collections.emptyMap();
     }
-
-    final String dataType = operation.getDataType();
-
-    // if there's no initialized block for a data type of the operation,
-    // initialize blocks and continue the operation only when it's operation type is PUT.
-    // for other types of operation do not execute the operation.
-    if (!typeToBlocks.containsKey(dataType)) {
-      if (operation.getOpType() == DataOpType.PUT) {
-        initBlocks(dataType);
-      } else {
-        return Collections.EMPTY_MAP;
-      }
-    }
-
-    final Map<Integer, Block> blocks = typeToBlocks.get(operation.getDataType());
 
     final Map<Long, V> outputData;
     final Iterator<Map.Entry<Integer, List<Pair<Long, Long>>>> blockToSubKeyRangesIterator =
@@ -519,7 +458,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
       outputData = block.executeSubOperation(operation, subKeyRanges);
     } else {
-      return Collections.EMPTY_MAP;
+      return Collections.emptyMap();
     }
 
     // execute remaining ranges if exist
@@ -552,11 +491,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> Pair<Long, Boolean> put(final String dataType, final Long id, @Nonnull final V value) {
+  public <V> Pair<Long, Boolean> put(final Long id, @Nonnull final V value) {
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
     final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.PUT, dataType, id, Optional.of(value));
+        DataOpType.PUT, id, Optional.of(value));
 
     executeOperation(operation);
 
@@ -564,7 +503,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> Map<Long, Boolean> putList(final String dataType, final List<Long> ids, final List<V> values) {
+  public <V> Map<Long, Boolean> putList(final List<Long> ids, final List<V> values) {
     if (ids.size() != values.size()) {
       throw new RuntimeException("Different list sizes: ids " + ids.size() + ", values " + values.size());
     }
@@ -583,7 +522,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     }
 
     final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.PUT, dataType, keyRangeList, Optional.of(dataKeyValueMap));
+        DataOpType.PUT, keyRangeList, Optional.of(dataKeyValueMap));
 
     executeOperation(operation);
 
@@ -651,12 +590,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> Pair<Long, V> get(final String dataType, final Long id) {
+  public <V> Pair<Long, V> get(final Long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
     final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.GET, dataType, id, Optional.<V>empty());
+        DataOpType.GET, id, Optional.<V>empty());
 
     executeOperation(operation);
 
@@ -666,13 +605,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> Map<Long, V> getAll(final String dataType) {
-    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
-    if (blockMap == null) {
-      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-      return Collections.EMPTY_MAP;
-    }
-
+  public <V> Map<Long, V> getAll() {
     routerLock.readLock().lock();
     try {
       final Map<Long, V> result;
@@ -683,15 +616,15 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
       // first execute on a head block to reuse the returned map object for a return map
       if (blockIdIterator.hasNext()) {
-        final Block<V> block = blockMap.get(blockIdIterator.next());
+        final Block<V> block = blocks.get(blockIdIterator.next());
         result = block.getAll();
       } else {
-        return Collections.EMPTY_MAP;
+        return Collections.emptyMap();
       }
 
       // execute on remaining blocks if exist
       while (blockIdIterator.hasNext()) {
-        final Block<V> block = blockMap.get(blockIdIterator.next());
+        final Block<V> block = blocks.get(blockIdIterator.next());
         // huge memory pressure may happen here
         result.putAll(block.getAll());
       }
@@ -703,12 +636,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> Map<Long, V> getRange(final String dataType, final Long startId, final Long endId) {
+  public <V> Map<Long, V> getRange(final Long startId, final Long endId) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
     final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.GET, dataType, new Pair<>(startId, endId), Optional.<NavigableMap<Long, V>>empty());
+        DataOpType.GET, new Pair<>(startId, endId), Optional.<NavigableMap<Long, V>>empty());
 
     executeOperation(operation);
 
@@ -716,11 +649,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> Pair<Long, V> remove(final String dataType, final Long id) {
+  public <V> Pair<Long, V> remove(final Long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
     final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.REMOVE, dataType, id, Optional.<V>empty());
+        DataOpType.REMOVE, id, Optional.<V>empty());
 
     executeOperation(operation);
 
@@ -730,23 +663,17 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> Map<Long, V> removeAll(final String dataType) {
-    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
-    if (blockMap == null) {
-      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-      return Collections.EMPTY_MAP;
-    }
-
+  public <V> Map<Long, V> removeAll() {
     final Map<Long, V> result;
 
-    final Iterator<Block> blockIterator = blockMap.values().iterator();
+    final Iterator<Block> blockIterator = blocks.values().iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIterator.hasNext()) {
       final Block<V> block = blockIterator.next();
       result = block.removeAll();
     } else {
-      return Collections.EMPTY_MAP;
+      return Collections.emptyMap();
     }
 
     // execute on remaining blocks if exist
@@ -760,51 +687,23 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> Map<Long, V> removeRange(final String dataType, final Long startId, final Long endId) {
+  public <V> Map<Long, V> removeRange(final Long startId, final Long endId) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
     final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.REMOVE, dataType, new Pair<>(startId, endId), Optional.<NavigableMap<Long, V>>empty());
+        DataOpType.REMOVE, new Pair<>(startId, endId), Optional.<NavigableMap<Long, V>>empty());
 
     executeOperation(operation);
 
     return operation.getOutputData();
   }
 
-  @Override
-  public Set<String> getDataTypes() {
-    return new HashSet<>(typeToBlocks.keySet());
-  }
-
-  @Override
-  public int getNumUnits(final String dataType) {
-    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
-    if (blockMap == null) {
-      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-      return 0;
-    }
-
-    int numUnits = 0;
-    final Collection<Block> blocks = blockMap.values();
-    for (final Block block : blocks) {
-      numUnits += block.getNumUnits();
-    }
-    return numUnits;
-  }
-
   /**
-   * Returns the number of local blocks whose type is {@code dataType}.
-   * @param dataType a type of data
-   * @return the number of blocks of specific type
+   * @return the number of blocks
    */
-  public int getNumBlocks(final String dataType) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (blocks == null) {
-      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
-      return 0;
-    } else {
-      return blocks.size();
-    }
+  @Override
+  public int getNumBlocks() {
+    return blocks.size();
   }
 }
