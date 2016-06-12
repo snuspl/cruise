@@ -65,13 +65,13 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testIncreasedComputeTasks() {
     final int numComputeTasks = 1;
-    final int availableEvaluators = 4;
+    final int numAvailableEvals = 4;
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
         NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{10000});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size() > 0);
     assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
   }
@@ -82,15 +82,15 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testHalfNumComputeTasks() {
     final int numComputeTasks = 4;
-    final int availableEvaluators = numComputeTasks / 2 + 1; // +1 for including the controller task
+    final int numAvailableEvals = numComputeTasks / 2 + 1; // +1 for including the controller task
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
         NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{2500, 2500, 2500, 2500});
     final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan =
-        ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+        ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
     assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
         plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size() >= lowerBoundToDelete);
@@ -102,13 +102,13 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testTwoSenderAndOneReceiver() {
     final int numComputeTasks = 2;
-    final int availableEvaluators = 4; // +1 for adding one more compute task and +1 for including the controller task
+    final int numAvailableEvals = 4; // +1 for adding one more compute task and +1 for including the controller task
     final Map<String, List<EvaluatorParameters>> activeEvaluators =
         generateEvaluatorParameters(NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{1300, 900});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertEquals(1, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
     assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
   }
@@ -126,13 +126,13 @@ public final class ILPSolverOptimizerTest {
 
     final ILPSolverOptimizer wrongCtrlIlpSolverOptimizer = injector.getInstance(ILPSolverOptimizer.class);
     final int numComputeTasks = 1;
-    final int availableEvaluators = 4;
+    final int numAvailableEvals = 4;
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
         NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{10000});
 
-    final Plan plan = wrongCtrlIlpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = wrongCtrlIlpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
     assertEquals("The plan should be empty", 0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
     assertEquals("The plan should be empty", 0, plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).size());

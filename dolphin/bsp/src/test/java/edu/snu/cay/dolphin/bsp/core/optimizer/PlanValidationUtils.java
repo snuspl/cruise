@@ -38,11 +38,11 @@ final class PlanValidationUtils {
    * Checks the validity of the generated plan.
    * @param activeEvaluators the collection of evaluator parameters
    * @param plan the generated plan
-   * @param availableEvaluators the number of available evaluators
+   * @param numAvailableEvals the number of available evaluators
    */
   static void checkPlan(final Map<String, List<EvaluatorParameters>> activeEvaluators,
                         final Plan plan,
-                        final int availableEvaluators) {
+                        final int numAvailableEvals) {
     final Map<String, List<EvaluatorParameters>> applied = applyPlan(activeEvaluators, plan);
     for (final Map.Entry<String, List<EvaluatorParameters>> entry : applied.entrySet()) {
       final String namespace = entry.getKey();
@@ -50,8 +50,8 @@ final class PlanValidationUtils {
       assertTrue(
           String.format(
               "After optimization, active evaluators %d must be less than or equal to available evaluators %d",
-              evaluatorParams.size(), availableEvaluators),
-          evaluatorParams.size() <= availableEvaluators);
+              evaluatorParams.size(), numAvailableEvals),
+          evaluatorParams.size() <= numAvailableEvals);
       assertEquals("Data should not be changed",
           getSumOfDataInfos(activeEvaluators.get(namespace)),
           getSumOfDataInfos(applied.get(namespace)));

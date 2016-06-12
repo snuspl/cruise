@@ -212,14 +212,14 @@ public final class ILPQuickOptimizer implements Optimizer {
 
   /**
    * Helper method that computes the number of evaluators that produces the least cost.
-   * Iterate over {@code 1} to {@code availableEvaluators - 1} and select the value with the least cost.
+   * Iterate over {@code 1} to {@code numAvailableEvals - 1} and select the value with the least cost.
    *
    * @return the optimal number of evaluators to use,
    * and the sum of {@code compCostPerBlockInv}s for that optimal number
    */
   private static Pair<Integer, Double> getNumOptimalEvals(
       final PriorityQueue<OptimizedEvaluator> optimizedEvaluatorQueue,
-      final int availableEvaluators,
+      final int numAvailableEvals,
       final double commCostWeight,
       final double expectedCompCostPerBlockInv,
       final int numTotalBlocks) {
@@ -231,7 +231,7 @@ public final class ILPQuickOptimizer implements Optimizer {
 
     // new evaluators are not considered until all original evaluators are 'used'
     // this is main part that leads to the assumption, 'no addition and deletion at the same time'
-    for (int numEvals = 1; numEvals < availableEvaluators; ++numEvals) {
+    for (int numEvals = 1; numEvals < numAvailableEvals; ++numEvals) {
       final double currCompCostPerBlockInvSum;
       if (iter.hasNext()) {
         final OptimizedEvaluator eval = iter.next();

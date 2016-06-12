@@ -166,7 +166,7 @@ public final class OptimizationOrchestrator {
 
         final Plan plan = optimizer.optimize(
             getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
-            getAvailableEvaluators(computeMetrics.size() + 1));
+            getNumAvailableEvals(computeMetrics.size() + 1));
 
         LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
 
@@ -213,7 +213,7 @@ public final class OptimizationOrchestrator {
    * TODO #176: assign availableEvaluators depending on the resource situation
    * @return the number of available evaluators to be considered in optimization
    */
-  private int getAvailableEvaluators(final int numEvaluators) {
+  private int getNumAvailableEvals(final int numEvaluators) {
     return numEvaluators + 1;
   }
 

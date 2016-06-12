@@ -74,7 +74,7 @@ public final class ILPSolverOptimizer implements Optimizer {
 
 
   @Override
-  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int numAvailableEvals) {
     final Optional<String> ctrlTaskContextId = ctrlTaskContextIdFetcher.getCtrlTaskContextId();
     if (!ctrlTaskContextId.isPresent()) {
       LOG.log(Level.WARNING, "Controller task is unidentifiable at the moment. Returning empty plan.");
@@ -90,7 +90,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     }
 
     final List<OptimizedComputeTask> optimizedComputeTasks =
-        initOptimizedComputeTasks(cost.get(), availableEvaluators - activeEvaluators.size());
+        initOptimizedComputeTasks(cost.get(), numAvailableEvals - activeEvaluators.size());
 
     // create ILP model for optimization
     // C_cmp: expected compute cost
@@ -113,7 +113,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       model.addVariable(cmpTask.getRequestedDataVariable()); // without weight for being excluded in objective function.
     }
 
-    addExpressions(model, cmpCostVar, optimizedComputeTasks, availableEvaluators - 1); // -1 for excluding the ctrl task
+    addExpressions(model, cmpCostVar, optimizedComputeTasks, numAvailableEvals - 1); // -1 for excluding the ctrl task
     final int totalDataBlocks = getSumDataBlocks(optimizedComputeTasks);
 
     final Optimisation.Result result = model.minimise();

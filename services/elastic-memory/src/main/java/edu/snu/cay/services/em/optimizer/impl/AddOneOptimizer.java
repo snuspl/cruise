@@ -68,7 +68,7 @@ public final class AddOneOptimizer implements Optimizer {
 
       EvaluatorParameters srcEvaluator = null;
       for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
-        if (evaluator.getDataInfo().getNumBlocks() != 0) {
+        if (evaluator.getDataInfo().getNumBlocks() > 0) {
           srcEvaluator = evaluator;
           break;
         }
