@@ -34,10 +34,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertFalse;
@@ -48,7 +45,8 @@ import static org.mockito.Mockito.*;
  * Tests for {@link ParameterWorkerImpl}.
  */
 public final class ParameterWorkerImplTest {
-  private static final Integer PUSH_VALUE = 1;
+  private static final int PUSH_VALUE = 1;
+  private static final long CLOSE_TIMEOUT = 1000;
   private static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_THREADS_SHOULD_NOT_FINISH = "threads have finished but should not";
   private static final String MSG_RESULT_ASSERTION = "threads received incorrect values";
@@ -75,6 +73,7 @@ public final class ParameterWorkerImplTest {
     injector.bindVolatileParameter(ParameterWorkerNumThreads.class, 2);
     injector.bindVolatileParameter(WorkerExpireTimeout.class, 60000L);
 
+    // pull messages should return values s.t. key == value
     doAnswer(invocationOnMock -> {
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         handler.processReply(encodedKey.getKey(), encodedKey.getKey());
@@ -86,14 +85,14 @@ public final class ParameterWorkerImplTest {
   }
 
   /**
-   * Test that {@link ParameterWorkerImpl#close()} does indeed block further operations from being processed.
+   * Test that {@link ParameterWorkerImpl#close(long)} does indeed block further operations from being processed.
    */
   @Test
-  public void testClose() throws InterruptedException {
+  public void testClose() throws InterruptedException, TimeoutException, ExecutionException {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
-    worker.close();
+    worker.close(CLOSE_TIMEOUT);
 
     pool.submit((Runnable) () -> {
         worker.pull(0);
@@ -110,7 +109,7 @@ public final class ParameterWorkerImplTest {
    * creating multiple threads that try to push values to the server using {@link ParameterWorkerImpl}.
    */
   @Test
-  public void testMultiThreadPush() throws InterruptedException {
+  public void testMultiThreadPush() throws InterruptedException, TimeoutException, ExecutionException {
     final int numPushThreads = 8;
     final int numPushPerThread = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(numPushThreads);
@@ -128,7 +127,7 @@ public final class ParameterWorkerImplTest {
 
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
-    worker.close();
+    worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     verify(mockSender, times(numPushThreads * numPushPerThread)).sendPushMsg(anyString(), anyObject(), eq(PUSH_VALUE));
@@ -137,9 +136,11 @@ public final class ParameterWorkerImplTest {
   /**
    * Test the thread safety of {@link ParameterWorkerImpl} by
    * creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
+   * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
+   * Thus, we verify the validity of the result by simply checking whether pulled values are as expected or not.
    */
   @Test
-  public void testMultiThreadPull() throws InterruptedException {
+  public void testMultiThreadPull() throws InterruptedException, TimeoutException, ExecutionException {
     final int numPullThreads = 8;
     final int numPullPerThread = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
@@ -161,7 +162,7 @@ public final class ParameterWorkerImplTest {
 
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
-    worker.close();
+    worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
@@ -172,7 +173,7 @@ public final class ParameterWorkerImplTest {
    * creating multiple threads that try to pull several values from the server using {@link ParameterWorkerImpl}.
    */
   @Test
-  public void testMultiThreadMultiKeyPull() throws InterruptedException {
+  public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException, ExecutionException {
     final int numPullThreads = 8;
     final int numPullPerThread = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
@@ -204,7 +205,7 @@ public final class ParameterWorkerImplTest {
 
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
-    worker.close();
+    worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
@@ -215,7 +216,7 @@ public final class ParameterWorkerImplTest {
    * so that new pull messages must be issued for each pull request.
    */
   @Test
-  public void testInvalidateAll() throws InterruptedException {
+  public void testInvalidateAll() throws InterruptedException, TimeoutException, ExecutionException {
     final int numPulls = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -230,7 +231,7 @@ public final class ParameterWorkerImplTest {
     pool.shutdown();
 
     final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
-    worker.close();
+    worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject());
