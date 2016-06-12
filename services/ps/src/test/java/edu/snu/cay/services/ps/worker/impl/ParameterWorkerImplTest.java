@@ -20,7 +20,7 @@ import edu.snu.cay.services.ps.common.resolver.ServerId;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
-import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
+
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.io.serialization.Codec;
@@ -46,7 +46,7 @@ import static org.mockito.Mockito.*;
  */
 public final class ParameterWorkerImplTest {
   private static final int PUSH_VALUE = 1;
-  private static final long CLOSE_TIMEOUT = 1000;
+  private static final long CLOSE_TIMEOUT = 5000;
   private static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_THREADS_SHOULD_NOT_FINISH = "threads have finished but should not";
   private static final String MSG_RESULT_ASSERTION = "threads received incorrect values";
@@ -71,7 +71,6 @@ public final class ParameterWorkerImplTest {
     injector.bindVolatileParameter(PSParameters.KeyCodecName.class, new IntegerCodec());
     injector.bindVolatileParameter(WorkerQueueSize.class, 2500);
     injector.bindVolatileParameter(ParameterWorkerNumThreads.class, 2);
-    injector.bindVolatileParameter(WorkerExpireTimeout.class, 60000L);
 
     // pull messages should return values s.t. key == value
     doAnswer(invocationOnMock -> {
