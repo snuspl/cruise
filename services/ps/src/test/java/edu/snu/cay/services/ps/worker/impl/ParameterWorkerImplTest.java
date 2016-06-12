@@ -19,6 +19,7 @@ import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.resolver.ServerId;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.utils.ThreadUtils;
@@ -53,7 +54,7 @@ public final class ParameterWorkerImplTest {
   private final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
 
   private ParameterWorkerImpl<Integer, Integer, Integer> worker;
-  private AsyncWorkerHandlerImpl<Integer, Integer> handler;
+  private AsyncWorkerHandler<Integer, Integer> handler;
   private WorkerMsgSender<Integer, Integer> mockSender;
 
 
