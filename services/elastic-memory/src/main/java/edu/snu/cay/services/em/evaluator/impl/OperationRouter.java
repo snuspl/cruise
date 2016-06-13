@@ -103,12 +103,14 @@ public final class OperationRouter<K> {
     this.numTotalBlocks = numTotalBlocks;
     this.numInitialEvals = numInitialEvals;
     this.addedEval = addedEval;
-
-    final int numInitialLocalBlocks = addedEval ? 0 : (numTotalBlocks / numInitialEvals + 1); // +1 for remainders
-    this.initialLocalBlocks = new ArrayList<>(numInitialLocalBlocks);
     this.blockLocations = new AtomicIntegerArray(numTotalBlocks);
+
     if (!addedEval) {
+      final int numInitialLocalBlocks = numTotalBlocks / numInitialEvals + 1; // +1 for remainders
+      this.initialLocalBlocks = new ArrayList<>(numInitialLocalBlocks);
       initRoutingTable();
+    } else {
+      this.initialLocalBlocks = Collections.emptyList();
     }
   }
 
@@ -291,8 +293,6 @@ public final class OperationRouter<K> {
    * @return a list of block ids which are initially assigned to the local MemoryStore.
    */
   public List<Integer> getInitialLocalBlockIds() {
-    checkInitialization();
-
     return Collections.unmodifiableList(initialLocalBlocks);
   }
 
