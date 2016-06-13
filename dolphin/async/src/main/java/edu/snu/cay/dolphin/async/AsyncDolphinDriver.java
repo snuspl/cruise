@@ -710,8 +710,6 @@ public final class AsyncDolphinDriver {
    * @param contextId an identifier of the context
    */
   private void handleFinishedContext(final String contextId, final Optional<ActiveContext> parentContext) {
-    boolean needToCloseParent = false;
-
     // handle contexts corresponding to their type
     if (contextIdToWorkerContexts.containsKey(contextId)) {
       handleFinishedWorkerContext(contextId);
@@ -722,16 +720,13 @@ public final class AsyncDolphinDriver {
       LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
     } else if (deletedWorkerContextIds.remove(contextId) || deletedServerContextIds.remove(contextId)) {
       LOG.log(Level.INFO, "The context {0} is closed by EM's Delete.", contextId);
-      needToCloseParent = true;
+      final String rootContextId = parentContext.get().getId();
+      final ActiveContext rootContext = contextIdToRootContexts.remove(rootContextId);
+      rootContext.close();
     } else {
       LOG.log(Level.WARNING, "Untracked context: {0}", contextId);
-      needToCloseParent = true;
-    }
-
-    // close its parent context to assure job to be shutdown anyway
-    if (needToCloseParent) {
       if (parentContext.isPresent()) {
-        LOG.log(Level.INFO, "Close a context {0}, which is a parent of the closed context whose id is {1}",
+        LOG.log(Level.INFO, "Close a context {0}, which is a parent of the finished context whose id is {1}",
             new Object[]{parentContext, contextId});
         parentContext.get().close();
       }
