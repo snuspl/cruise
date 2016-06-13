@@ -66,7 +66,7 @@ public class WorkerMsgSender<K, P> {
     this.driverIdentifier = driverIdentifier;
   }
 
-  private void send(final String destId, final AvroPSMsg msg) {
+  private void send(final String destId, final AvroPSMsg msg) throws NetworkException {
     final ConnectionFactory<AvroPSMsg> connFactory = psNetworkSetup.getConnectionFactory();
     if (connFactory == null) {
       throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
@@ -74,12 +74,9 @@ public class WorkerMsgSender<K, P> {
 
     final Connection<AvroPSMsg> conn = connFactory
         .newConnection(identifierFactory.getNewInstance(destId));
-    try {
-      conn.open();
-      conn.write(msg);
-    } catch (final NetworkException ex) {
-      throw new RuntimeException("NetworkException during connection open/write", ex);
-    }
+
+    conn.open();
+    conn.write(msg);
   }
 
   /**
@@ -88,7 +85,7 @@ public class WorkerMsgSender<K, P> {
    * @param key a key to push
    * @param preValue a previous value to push
    */
-  void sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) {
+  void sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) throws NetworkException {
     final PushMsg pushMsg = PushMsg.newBuilder()
         .setKey(ByteBuffer.wrap(key.getEncoded()))
         .setPreValue(ByteBuffer.wrap(preValueCodec.encode(preValue)))
@@ -106,7 +103,7 @@ public class WorkerMsgSender<K, P> {
    * @param destId an id of destination server
    * @param key a key to pull
    */
-  void sendPullMsg(final String destId, final EncodedKey<K> key) {
+  void sendPullMsg(final String destId, final EncodedKey<K> key) throws NetworkException {
     final Identifier localEndPointId = psNetworkSetup.getMyId();
     if (localEndPointId == null) {
       throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
@@ -134,11 +131,15 @@ public class WorkerMsgSender<K, P> {
   public void sendWorkerRegisterMsg() {
     final WorkerRegisterMsg workerRegisterMsg = WorkerRegisterMsg.newBuilder()
         .build();
-    send(driverIdentifier,
-        AvroPSMsg.newBuilder()
-            .setType(Type.WorkerRegisterMsg)
-            .setWorkerRegisterMsg(workerRegisterMsg)
-            .build());
+    try {
+      send(driverIdentifier,
+          AvroPSMsg.newBuilder()
+              .setType(Type.WorkerRegisterMsg)
+              .setWorkerRegisterMsg(workerRegisterMsg)
+              .build());
+    } catch (final NetworkException e) {
+      throw new RuntimeException("Network exception while communicating with driver", e);
+    }
   }
 
   /**
@@ -148,10 +149,14 @@ public class WorkerMsgSender<K, P> {
   public void sendWorkerDeregisterMsg() {
     final WorkerDeregisterMsg workerDeregisterMsg = WorkerDeregisterMsg.newBuilder()
         .build();
-    send(driverIdentifier,
-        AvroPSMsg.newBuilder()
-            .setType(Type.WorkerDeregisterMsg)
-            .setWorkerDeregisterMsg(workerDeregisterMsg)
-            .build());
+    try {
+      send(driverIdentifier,
+          AvroPSMsg.newBuilder()
+              .setType(Type.WorkerDeregisterMsg)
+              .setWorkerDeregisterMsg(workerDeregisterMsg)
+              .build());
+    } catch (final NetworkException e) {
+      throw new RuntimeException("Network exception while communicating with driver", e);
+    }
   }
 }
