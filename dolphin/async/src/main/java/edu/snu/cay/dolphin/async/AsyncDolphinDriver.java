@@ -711,18 +711,32 @@ public final class AsyncDolphinDriver {
    */
   private void handleFinishedContext(final String contextId, final Optional<ActiveContext> parentContext) {
     // handle contexts corresponding to their type
+    // case1. Worker context is finished
     if (contextIdToWorkerContexts.containsKey(contextId)) {
       handleFinishedWorkerContext(contextId);
+
+    // case2. Server context is finished
     } else if (contextIdToServerContexts.containsKey(contextId)) {
       handleFinishedServerContext(contextId);
+
+    // case3. root context is finished
     } else if (contextIdToRootContexts.remove(contextId) != null) {
       // for tracking contexts
       LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
+
+    // case4. worker/server context is finished by EM's delete
     } else if (deletedWorkerContextIds.remove(contextId) || deletedServerContextIds.remove(contextId)) {
       LOG.log(Level.INFO, "The context {0} is closed by EM's Delete.", contextId);
+      // the deleted worker/server context was running on the root context, a data loading context.
+      // we should close the root context to completely release the evaluator on which the deleted worker/server has run
+      if (!parentContext.isPresent()) {
+        throw new RuntimeException("Root context of the deleted worker/server context does not exist");
+      }
       final String rootContextId = parentContext.get().getId();
       final ActiveContext rootContext = contextIdToRootContexts.remove(rootContextId);
       rootContext.close();
+
+    // case5. untracked context is finished
     } else {
       LOG.log(Level.WARNING, "Untracked context: {0}", contextId);
       if (parentContext.isPresent()) {
