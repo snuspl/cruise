@@ -43,12 +43,10 @@ public final class OptimizationOrchestrator {
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
+  private final MetricsHub metricsHub;
   private final AtomicBoolean isPlanExecuting = new AtomicBoolean(false);
 
   private final ExecutorService optimizationThreadPool = Executors.newSingleThreadExecutor();
-
-  private ElasticMemory serverEM;
-  private ElasticMemory workerEM;
 
   /**
    * A delay after completion of optimization to wait the system to be stable.
@@ -60,14 +58,12 @@ public final class OptimizationOrchestrator {
   @Inject
   private OptimizationOrchestrator(final Optimizer optimizer,
                                    final PlanExecutor planExecutor,
-                                   @Parameter(ServerEM.class) final ElasticMemory serverEM,
-                                   @Parameter(WorkerEM.class) final ElasticMemory workerEM,
+                                   final MetricsHub metricsHub,
                                    @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                    @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
-    this.serverEM = serverEM;
-    this.workerEM = workerEM;
+    this.metricsHub = metricsHub;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
     this.maxNumEvals = maxNumEvals;
   }
@@ -82,12 +78,10 @@ public final class OptimizationOrchestrator {
       @Override
       public void run() {
         LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan");
-        final Collection<EvaluatorParameters> serverEvalParams = serverEM.generateEvalParams().values();
-        final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams().values();
 
         final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
-        evaluatorParameters.put(NAMESPACE_SERVER, new ArrayList<>(serverEvalParams));
-        evaluatorParameters.put(NAMESPACE_WORKER, new ArrayList<>(workerEvalParams));
+        evaluatorParameters.put(NAMESPACE_SERVER, metricsHub.drainServerMetrics());
+        evaluatorParameters.put(NAMESPACE_WORKER, metricsHub.drainWorkerMetrics());
 
         final Plan plan = optimizer.optimize(evaluatorParameters, maxNumEvals);
         LOG.log(Level.INFO, "Calculating the optimal plan is finished. Start executing plan: {0}", plan);

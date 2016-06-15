@@ -38,7 +38,7 @@
   "fields":
   [
     {"name": "window", "type": "int"},
-    {"name": "numKeys", "type": "int"}
+    {"name": "numPartitionBlocks", "type": "int"}
   ]
 },
 

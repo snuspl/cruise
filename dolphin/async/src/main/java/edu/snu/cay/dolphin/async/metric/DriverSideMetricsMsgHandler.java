@@ -18,7 +18,10 @@ package edu.snu.cay.dolphin.async.metric;
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.async.metric.avro.MetricsMessage;
+import edu.snu.cay.dolphin.async.metric.avro.ServerMsg;
 import edu.snu.cay.dolphin.async.metric.avro.SrcType;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
+import edu.snu.cay.dolphin.async.optimizer.MetricsHub;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.wake.EventHandler;
 
@@ -37,10 +40,13 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
   private static final Logger LOG = Logger.getLogger(DriverSideMetricsMsgHandler.class.getName());
 
   private final MetricsMessageCodec metricsMessageCodec;
+  private final MetricsHub metricsHub;
 
   @Inject
-  private DriverSideMetricsMsgHandler(final MetricsMessageCodec metricsMessageCodec) {
+  private DriverSideMetricsMsgHandler(final MetricsMessageCodec metricsMessageCodec,
+                                      final MetricsHub metricsHub) {
     this.metricsMessageCodec = metricsMessageCodec;
+    this.metricsHub = metricsHub;
   }
 
   @Override
@@ -51,13 +57,23 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
     final SrcType srcType = metricsMessage.getSrcType();
 
     if (SrcType.Worker.equals(srcType)) {
-      LOG.log(Level.FINE, "Metric from worker: {0}, iteration: {1}, metrics: {2}", new Object[]{msg.getSourceId(),
-          metricsMessage.getWorkerMsg().getIteration(), getMetricsFromAvro(metricsMessage.getMetrics())});
-      // do something
+      final String workerId = msg.getSourceId().toString();
+      final WorkerMsg workerMsg = metricsMessage.getWorkerMsg();
+      final Map<String, Double> workerMetrics = getMetricsFromAvro(metricsMessage.getMetrics());
+
+      LOG.log(Level.FINE, "Metric from worker: {0}, iteration: {1}, metrics: {2}", new Object[]{workerId,
+          workerMsg.getIteration(), workerMetrics});
+      metricsHub.storeWorkerMetrics(workerId, workerMsg.getNumDataBlocks(), workerMetrics);
+
     } else if (SrcType.Server.equals(srcType)) {
-      LOG.log(Level.FINE, "Metric from server: {0}, window: {1}, metrics: {2}", new Object[]{msg.getSourceId(),
-          metricsMessage.getServerMsg().getWindow(), getMetricsFromAvro(metricsMessage.getMetrics())});
-      // do something
+      final String serverId = msg.getSourceId().toString();
+      final ServerMsg serverMsg = metricsMessage.getServerMsg();
+      final Map<String, Double> serverMetrics = getMetricsFromAvro(metricsMessage.getMetrics());
+
+      LOG.log(Level.INFO, "Metric from server: {0}, window: {1}, metrics: {2}", new Object[]{serverId,
+          serverMsg.getWindow(), serverMetrics});
+      metricsHub.storeServerMetrics(serverId, serverMsg.getNumPartitionBlocks(), serverMetrics);
+
     } else {
       throw new RuntimeException("Unknown SrcType " + srcType);
     }
