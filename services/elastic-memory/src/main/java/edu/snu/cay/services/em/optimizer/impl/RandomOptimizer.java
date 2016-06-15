@@ -49,6 +49,9 @@ import java.util.stream.Collectors;
  */
 public final class RandomOptimizer implements Optimizer {
 
+  private final int maxCallsToMake = 5;
+  private int callsMade = 0;
+
   @NamedParameter(short_name = "random_optimizer_min_fraction",
       default_value = "0.5", doc = "The minimum fraction of available evaluators to use. Range [0, 1.0]")
   public static final class MinEvaluatorsFraction implements Name<Double> {
@@ -91,6 +94,12 @@ public final class RandomOptimizer implements Optimizer {
     if (availableEvaluators <= 0) {
       throw new IllegalArgumentException("availableEvaluators " + availableEvaluators + " must be > 0");
     }
+
+    if (callsMade >= maxCallsToMake || evalParamsMap.isEmpty()) {
+      return PlanImpl.newBuilder().build();
+    }
+
+    callsMade++;
 
     final int numNamespace = evalParamsMap.size();
 
