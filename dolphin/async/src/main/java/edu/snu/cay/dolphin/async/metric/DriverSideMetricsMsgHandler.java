@@ -70,7 +70,7 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
       final ServerMsg serverMsg = metricsMessage.getServerMsg();
       final Map<String, Double> serverMetrics = getMetricsFromAvro(metricsMessage.getMetrics());
 
-      LOG.log(Level.INFO, "Metric from server: {0}, window: {1}, metrics: {2}", new Object[]{serverId,
+      LOG.log(Level.FINE, "Metric from server: {0}, window: {1}, metrics: {2}", new Object[]{serverId,
           serverMsg.getWindow(), serverMetrics});
       metricsHub.storeServerMetrics(serverId, serverMsg.getNumPartitionBlocks(), serverMetrics);
 
