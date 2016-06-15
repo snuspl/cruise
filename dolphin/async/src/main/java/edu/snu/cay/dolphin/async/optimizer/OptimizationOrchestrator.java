@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
