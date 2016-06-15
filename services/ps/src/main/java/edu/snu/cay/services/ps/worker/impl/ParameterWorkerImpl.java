@@ -448,6 +448,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * We should further explore this trade-off with real ML workloads.
    */
   private static class WorkerThread<K, P, V> implements Runnable {
+    private static final int MAX_RETRY_COUNT = 10;
     private static final long QUEUE_TIMEOUT_MS = 3000;
 
     private final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache;
@@ -476,8 +477,12 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
               V value = null;
 
-              // we assume that pull finally succeeds
+              int retryCount = 0;
               while (value == null) {
+                if (++retryCount > MAX_RETRY_COUNT) {
+                  throw new RuntimeException("Fail to load a value for pull");
+                }
+
                 // re-resolve server for every retry
                 // since an operation may throw NetworkException when routing table is obsolete
                 final String serverId = serverResolver.resolveServer(encodedKey.getHash());
@@ -490,7 +495,9 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
                   continue;
                 }
-                value = future.getValue(RETRY_INTERVAL_MS); // retry if fails
+
+                // if failed, future returns null and pull is retried in the while loop
+                value = future.getValue(RETRY_INTERVAL_MS);
               }
 
               pendingPulls.remove(encodedKey.getKey());
