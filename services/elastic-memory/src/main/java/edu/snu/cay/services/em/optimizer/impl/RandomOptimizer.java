@@ -91,12 +91,12 @@ public final class RandomOptimizer implements Optimizer {
     LOG.log(Level.INFO, "EvaluatorParameters: {0}, Available Evaluators: {1}",
         new Object[]{evalParamsMap, availableEvaluators});
 
-    if (callsMade >= maxCallsToMake || evalParamsMap.isEmpty()) {
-      return PlanImpl.newBuilder().build();
-    }
-
     if (availableEvaluators <= 0) {
       throw new IllegalArgumentException("availableEvaluators " + availableEvaluators + " must be > 0");
+    }
+
+    if (callsMade >= maxCallsToMake || evalParamsMap.isEmpty()) {
+      return PlanImpl.newBuilder().build();
     }
 
     callsMade++;

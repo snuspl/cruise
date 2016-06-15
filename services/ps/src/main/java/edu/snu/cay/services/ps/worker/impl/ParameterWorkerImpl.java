@@ -330,6 +330,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * A push operation.
    */
   private class PushOp implements Op<K, V> {
+    private static final int MAX_RETRY_COUNT = 10;
+
     private final EncodedKey<K> encodedKey;
     private final P preValue;
 
@@ -359,8 +361,14 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       }
 
       // Send to remote PS
+      int retryCount = 0;
       while (true) {
+        if (++retryCount > MAX_RETRY_COUNT) {
+          throw new RuntimeException("Fail to send push message");
+        }
+
         // re-resolve server for every retry
+        // since an operation may throw NetworkException when routing table is obsolete
         final String serverId = serverResolver.resolveServer(encodedKey.getHash());
         LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}",
             new Object[]{encodedKey.getKey(), encodedKey.getHash()});
@@ -471,6 +479,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
               // we assume that pull finally succeeds
               while (value == null) {
                 // re-resolve server for every retry
+                // since an operation may throw NetworkException when routing table is obsolete
                 final String serverId = serverResolver.resolveServer(encodedKey.getHash());
                 LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}",
                     new Object[]{encodedKey.getKey(), encodedKey.getHash()});

@@ -84,6 +84,7 @@ public class WorkerMsgSender<K, P> {
    * @param destId an id of destination server
    * @param key a key to push
    * @param preValue a previous value to push
+   * @throws NetworkException when fail to open a connection
    */
   void sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) throws NetworkException {
     final PushMsg pushMsg = PushMsg.newBuilder()
@@ -102,6 +103,7 @@ public class WorkerMsgSender<K, P> {
    * Sends a pull msg for {@code key} to a corresponding server.
    * @param destId an id of destination server
    * @param key a key to pull
+   * @throws NetworkException when fail to open a connection
    */
   void sendPullMsg(final String destId, final EncodedKey<K> key) throws NetworkException {
     final Identifier localEndPointId = psNetworkSetup.getMyId();
