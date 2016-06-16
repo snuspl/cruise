@@ -17,7 +17,6 @@ package edu.snu.cay.services.em.driver.api;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.impl.ElasticMemoryImpl;
-import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -99,10 +98,4 @@ public interface ElasticMemory {
    * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
    */
   Map<Integer, Set<Integer>> getStoreIdToBlockIds();
-
-  /**
-   * Generates the Evaluator Parameters of all MemoryStores, which consist of MemoryStore Id, Metrics, and so on.
-   * TODO #525: Make OptimizationOrchestrator receive metrics
-   */
-  Map<String, EvaluatorParameters> generateEvalParams();
 }

@@ -16,12 +16,9 @@
 package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher.*;
-import edu.snu.cay.dolphin.async.optimizer.EmptyDataSet;
-import edu.snu.cay.dolphin.async.optimizer.ServerEM;
+import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.dolphin.async.metric.MetricsCollectionService;
-import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
-import edu.snu.cay.dolphin.async.optimizer.WorkerEM;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
@@ -265,6 +262,13 @@ public final class AsyncDolphinDriver {
    */
   private final ExecutorService optimizerExecutor = Executors.newSingleThreadExecutor();
 
+  /**
+   * Injectable constructor.
+   *
+   * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestrator} and
+   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandler} hold references to the same
+   * {@link MetricsHub} instance.
+   */
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
@@ -283,6 +287,7 @@ public final class AsyncDolphinDriver {
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
                              @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
+                             final MetricsHub metricsHub,
                              final HTraceParameters traceParameters,
                              final HTrace hTrace) throws IOException {
     hTrace.initialize();

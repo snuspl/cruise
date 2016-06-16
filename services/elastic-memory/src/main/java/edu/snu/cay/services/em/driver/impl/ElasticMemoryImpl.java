@@ -22,7 +22,6 @@ import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
-import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
@@ -176,10 +175,5 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
     return blockManager.getStoreIdToBlockIds();
-  }
-
-  @Override
-  public Map<String, EvaluatorParameters> generateEvalParams() {
-    return blockManager.generateEvalParams();
   }
 }
