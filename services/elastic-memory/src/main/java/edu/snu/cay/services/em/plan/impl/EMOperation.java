@@ -31,6 +31,12 @@ public final class EMOperation {
   private final Optional<String> evalId;
   private final Optional<TransferStep> transferStep;
 
+  /**
+   * A constructor for Add and Delete operations.
+   * @param namespace a namespace of operation
+   * @param opType a type of operation, which is one of Add or Remove
+   * @param evalId a target evaluator id
+   */
   public EMOperation(final String namespace, final OpType opType, final String evalId) {
     this.namespace = namespace;
     this.opType = opType;
@@ -38,6 +44,11 @@ public final class EMOperation {
     this.transferStep = Optional.empty();
   }
 
+  /**
+   * A constructor for Move operation.
+   * @param namespace a namespace of operation
+   * @param transferStep a TransferStep including src, dest, data info of Move operation
+   */
   public EMOperation(final String namespace, final TransferStep transferStep) {
     this.namespace = namespace;
     this.opType = OpType.Move;
@@ -45,18 +56,34 @@ public final class EMOperation {
     this.transferStep = Optional.of(transferStep);
   }
 
+  /**
+   * @return a namespace of operation
+   */
   public String getNamespace() {
     return namespace;
   }
 
+  /**
+   * @return a type of operation
+   */
   public OpType getOpType() {
     return opType;
   }
 
+  /**
+   * Returns an id of target evaluator of Add and Delete operations.
+   * It returns empty for Move operation.
+   * @return an Optional with an target evaluator id
+   */
   public Optional<String> getEvalId() {
     return evalId;
   }
 
+  /**
+   * Returns a TransferStep for Move operation.
+   * It returns empty for Add and Delete operations.
+   * @return an Optional with a TransferStep
+   */
   public Optional<TransferStep> getTransferStep() {
     return transferStep;
   }

@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  * This implements DAG with adjacent list.
  * This implementation is not thread-safe.
  * It is based on the one of MIST.
- * @param <V> vertex type
+ * @param <V> type of the vertex
  */
 public final class DAGImpl<V> implements DAG<V> {
   private static final Logger LOG = Logger.getLogger(DAGImpl.class.getName());
@@ -93,7 +93,7 @@ public final class DAGImpl<V> implements DAG<V> {
       rootVertices.remove(v);
       return true;
     } else {
-      LOG.log(Level.WARNING, "The vertex {0} does exists", new Object[]{v});
+      LOG.log(Level.WARNING, "The vertex {0} does exists", v);
       return false;
     }
   }

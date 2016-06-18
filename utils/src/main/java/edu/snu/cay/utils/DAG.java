@@ -20,7 +20,7 @@ import java.util.Set;
 /**
  * This interface represents Directed Acyclic Graph (DAG).
  * It is based on the one of MIST.
- * @param <V> vertex
+ * @param <V> type of the vertex
  */
 public interface DAG<V> {
 

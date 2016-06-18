@@ -72,21 +72,21 @@ public final class PlanImplTest {
     // test whether a plan contains all the added steps
     for (final String namespace : namespaces) {
       final Collection<String> addSteps = plan.getEvaluatorsToAdd(namespace);
-      assertTrue(addSteps.containsAll(evalsToAdd));
-      assertEquals(evalsToAdd.size(), addSteps.size());
+      assertTrue("Plan does not contain all Add steps what we expect", addSteps.containsAll(evalsToAdd));
+      assertEquals("Plan contains additional Add steps what we do not expect", evalsToAdd.size(), addSteps.size());
 
       final Collection<String> delSteps = plan.getEvaluatorsToDelete(namespace);
-      assertTrue(delSteps.containsAll(evalsToDel));
-      assertEquals(evalsToDel.size(), delSteps.size());
+      assertTrue("Plan does not contain all Delete steps what we expect", delSteps.containsAll(evalsToDel));
+      assertEquals("Plan contains additional Delete steps what we do not expect", evalsToDel.size(), delSteps.size());
 
       final Collection<TransferStep> moveSteps = plan.getTransferSteps(namespace);
-      assertTrue(moveSteps.containsAll(transferSteps));
-      assertEquals(transferSteps.size(), moveSteps.size());
+      assertTrue("Plan does not contain all Move steps what we expect", moveSteps.containsAll(transferSteps));
+      assertEquals("Plan contains additional Move steps what we do not expect", transferSteps.size(), moveSteps.size());
     }
   }
 
   @Test
-  public void testPlanConflictCheck() {
+  public void testPlanViolationCheck() {
     PlanImpl.Builder planBuilder;
 
     // 1. case of moving out data from newly added eval
@@ -97,7 +97,7 @@ public final class PlanImplTest {
 
     try {
       planBuilder.build();
-      fail("Plan builder fails to detect a conflict in the plan");
+      fail("Plan builder fails to detect a violation in the plan");
     } catch (final RuntimeException e) {
       // expected exception
     }
@@ -110,7 +110,7 @@ public final class PlanImplTest {
 
     try {
       planBuilder.build();
-      fail("Plan builder fails to detect a conflict in the plan");
+      fail("Plan builder fails to detect a violation in the plan");
     } catch (final RuntimeException e) {
       // expected exception
     }
@@ -122,7 +122,7 @@ public final class PlanImplTest {
 
     try {
       planBuilder.build();
-      fail("Plan builder fails to detect a conflict in the plan");
+      fail("Plan builder fails to detect a violation in the plan");
     } catch (final RuntimeException e) {
       // expected exception
     }
@@ -138,7 +138,7 @@ public final class PlanImplTest {
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .build();
 
-    final Set<EMOperation> firstOpsToExec = plan.getNextOperationsToExecute();
+    final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(2, firstOpsToExec.size());
     for (final EMOperation operation : firstOpsToExec) {
       assertEquals(EMOperation.OpType.Del, operation.getOpType());
@@ -147,7 +147,7 @@ public final class PlanImplTest {
     final Set<EMOperation> executingPlans = new HashSet<>();
 
     for (final EMOperation operation : firstOpsToExec) {
-      final Set<EMOperation> nextOpsToExec = plan.markEMOperationComplete(operation);
+      final Set<EMOperation> nextOpsToExec = plan.onComplete(operation);
       assertEquals(1, nextOpsToExec.size());
       final EMOperation nextOpToExec = nextOpsToExec.iterator().next();
       assertEquals(EMOperation.OpType.Add, nextOpToExec.getOpType());
@@ -157,24 +157,24 @@ public final class PlanImplTest {
 
     assertEquals(2, executingPlans.size());
     for (final EMOperation executingPlan : executingPlans) {
-      final Set<EMOperation> nextOpsToExec = plan.markEMOperationComplete(executingPlan);
+      final Set<EMOperation> nextOpsToExec = plan.onComplete(executingPlan);
       assertTrue(nextOpsToExec.isEmpty());
     }
 
-    assertTrue(plan.getNextOperationsToExecute().isEmpty());
+    assertTrue(plan.getReadyOps().isEmpty());
   }
 
   @Test
   public void testMoveDelPlanDependency() {
     // move -> del
     final Plan plan = PlanImpl.newBuilder()
-        //
+        // a first set of dependencies comprised of one Delete and two moves
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 0, EVAL_PREFIX + 1, new DataInfoImpl(1)))
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 0, EVAL_PREFIX + 2, new DataInfoImpl(1)))
-        //
+        // a second set of dependencies comprised of one Delete and two moves
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 3, EVAL_PREFIX + 1, new DataInfoImpl(1)))
@@ -182,7 +182,7 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 3, EVAL_PREFIX + 2, new DataInfoImpl(1)))
         .build();
 
-    final Set<EMOperation> firstOpsToExec = plan.getNextOperationsToExecute();
+    final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(4, firstOpsToExec.size());
 
     final Set<EMOperation> firstMoveSet = new HashSet<>();
@@ -200,34 +200,34 @@ public final class PlanImplTest {
     assertEquals(2, secondMoveSet.size());
 
     final Iterator<EMOperation> firstMoveSetIter = firstMoveSet.iterator();
-    assertTrue(plan.markEMOperationComplete(firstMoveSetIter.next()).isEmpty());
-    final Set<EMOperation> nextOpsToExec = plan.markEMOperationComplete(firstMoveSetIter.next());
+    assertTrue(plan.onComplete(firstMoveSetIter.next()).isEmpty());
+    final Set<EMOperation> nextOpsToExec = plan.onComplete(firstMoveSetIter.next());
     assertEquals(1, nextOpsToExec.size());
 
     final Iterator<EMOperation> secondMoveSetIter = secondMoveSet.iterator();
-    assertTrue(plan.markEMOperationComplete(secondMoveSetIter.next()).isEmpty());
-    nextOpsToExec.addAll(plan.markEMOperationComplete(secondMoveSetIter.next()));
+    assertTrue(plan.onComplete(secondMoveSetIter.next()).isEmpty());
+    nextOpsToExec.addAll(plan.onComplete(secondMoveSetIter.next()));
     assertEquals(2, nextOpsToExec.size());
 
     for (final EMOperation operation : nextOpsToExec) {
       assertEquals(EMOperation.OpType.Del, operation.getOpType());
 
-      assertTrue(plan.markEMOperationComplete(operation).isEmpty());
+      assertTrue(plan.onComplete(operation).isEmpty());
     }
-    assertTrue(plan.getNextOperationsToExecute().isEmpty());
+    assertTrue(plan.getReadyOps().isEmpty());
   }
 
   @Test
   public void testAddMovePlanDependency() {
     // add -> move
     final Plan plan = PlanImpl.newBuilder()
-        //
+        // a first set of dependencies comprised of one Add and two moves
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 1, EVAL_PREFIX + 0, new DataInfoImpl(1)))
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 2, EVAL_PREFIX + 0, new DataInfoImpl(1)))
-        //
+        // a first set of dependencies comprised of one Add and two moves
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 1, EVAL_PREFIX + 3, new DataInfoImpl(1)))
@@ -235,7 +235,7 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 2, EVAL_PREFIX + 3, new DataInfoImpl(1)))
         .build();
 
-    final Set<EMOperation> firstOpsToExec = plan.getNextOperationsToExecute();
+    final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(2, firstOpsToExec.size());
 
     EMOperation firstAdd = null;
@@ -252,17 +252,17 @@ public final class PlanImplTest {
     assertNotNull(firstAdd);
     assertNotNull(secondAdd);
 
-    final Set<EMOperation> nextOpsToExec = plan.markEMOperationComplete(firstAdd);
+    final Set<EMOperation> nextOpsToExec = plan.onComplete(firstAdd);
     assertEquals(2, nextOpsToExec.size());
 
-    nextOpsToExec.addAll(plan.markEMOperationComplete(secondAdd));
+    nextOpsToExec.addAll(plan.onComplete(secondAdd));
     assertEquals(4, nextOpsToExec.size());
 
     for (final EMOperation operation : nextOpsToExec) {
       assertEquals(EMOperation.OpType.Move, operation.getOpType());
 
-      assertTrue(plan.markEMOperationComplete(operation).isEmpty());
+      assertTrue(plan.onComplete(operation).isEmpty());
     }
-    assertTrue(plan.getNextOperationsToExecute().isEmpty());
+    assertTrue(plan.getReadyOps().isEmpty());
   }
 }

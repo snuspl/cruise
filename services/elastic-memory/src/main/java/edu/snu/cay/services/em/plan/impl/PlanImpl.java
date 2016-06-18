@@ -47,12 +47,12 @@ public final class PlanImpl implements Plan {
   }
 
   @Override
-  public synchronized Set<EMOperation> getNextOperationsToExecute() {
+  public synchronized Set<EMOperation> getReadyOps() {
     return new HashSet<>(dependencyGraph.getRootVertices());
   }
 
   @Override
-  public synchronized Set<EMOperation> markEMOperationComplete(final EMOperation operation) {
+  public synchronized Set<EMOperation> onComplete(final EMOperation operation) {
     final Set<EMOperation> newAvaliableOperations = new HashSet<>(dependencyGraph.getNeighbors(operation));
     dependencyGraph.removeVertex(operation);
 
@@ -181,7 +181,7 @@ public final class PlanImpl implements Plan {
 
     @Override
     public PlanImpl build() {
-      // check conflicts in the plan
+      // check the observance of invariants in the plan (details are described below)
 
       // 1. do not allow the use of same evaluator id for both in Add and Delete in the same namespace
       // note that we do not care the uniqueness of evaluator id across namespaces
