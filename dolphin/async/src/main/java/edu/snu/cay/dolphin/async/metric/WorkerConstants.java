@@ -33,4 +33,8 @@ public final class WorkerConstants {
   // Keys to get/set the metrics in the worker.
   public static final String KEY_WORKER_COMPUTE_TIME =
       "METRIC_WORKER_COMPUTE_TIME";
+
+  // Keys to get/set metrics in servers
+  public static final String SERVER_PROCESSING_TIME_PER_REQUEST =
+      "METRIC_SERVER_PROCESSING_TIME_PER_REQUEST";
 }
