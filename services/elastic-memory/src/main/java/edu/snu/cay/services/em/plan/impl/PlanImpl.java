@@ -34,30 +34,30 @@ public final class PlanImpl implements Plan {
   private final Map<String, Set<String>> evaluatorsToAdd;
   private final Map<String, Set<String>> evaluatorsToDelete;
   private final Map<String, List<TransferStep>> transferSteps;
-  private final DAG<EMOperation> denpendencyGraph;
+  private final DAG<EMOperation> dependencyGraph;
 
   private PlanImpl(final Map<String, Set<String>> evaluatorsToAdd,
                    final Map<String, Set<String>> evaluatorsToDelete,
                    final Map<String, List<TransferStep>> transferSteps,
-                   final DAG<EMOperation> denpendencyGraph) {
+                   final DAG<EMOperation> dependencyGraph) {
     this.evaluatorsToAdd = evaluatorsToAdd;
     this.evaluatorsToDelete = evaluatorsToDelete;
     this.transferSteps = transferSteps;
-    this.denpendencyGraph = denpendencyGraph;
+    this.dependencyGraph = dependencyGraph;
   }
 
   @Override
   public synchronized Set<EMOperation> getNextOperationsToExecute() {
-    return denpendencyGraph.getRootVertices();
+    return new HashSet<>(dependencyGraph.getRootVertices());
   }
 
   @Override
   public synchronized Set<EMOperation> markEMOperationComplete(final EMOperation operation) {
-    final Set<EMOperation> newAvaliableOperations = denpendencyGraph.getNeighbors(operation);
-    denpendencyGraph.removeVertex(operation);
+    final Set<EMOperation> newAvaliableOperations = new HashSet<>(dependencyGraph.getNeighbors(operation));
+    dependencyGraph.removeVertex(operation);
 
     for (final EMOperation candidate : newAvaliableOperations) {
-      if (denpendencyGraph.getInDegree(candidate) > 0) {
+      if (dependencyGraph.getInDegree(candidate) > 0) {
         newAvaliableOperations.remove(candidate);
       }
     }
@@ -112,8 +112,10 @@ public final class PlanImpl implements Plan {
    * A builder of PlanImpl.
    * Before instantiating a PlanImpl object, it checks the feasibility of plan and
    * constructs a dependency graph between steps, based on the following rules:
-   *   1. Evaluators must be added before they participate in transfers.
-   *   2. Evaluators must finish all transfers which they are a part of before they are deleted.
+   *   1. Evaluators must be added before they participate in transfers. (add -> move)
+   *   2. Evaluators must finish all transfers which they are a part of before they are deleted. (move -> del)
+   *   3. One evaluator must be deleted before adding a new evaluator,
+   *     because we are using the whole available resources. (del -> add)
    */
   public static final class Builder implements org.apache.reef.util.Builder<PlanImpl> {
     private final Map<String, Set<String>> evaluatorsToAdd = new HashMap<>();
@@ -163,14 +165,25 @@ public final class PlanImpl implements Plan {
       if (!allTransferSteps.containsKey(namespace)) {
         allTransferSteps.put(namespace, new ArrayList<>());
       }
-      final List<TransferStep> transferSteps = allTransferSteps.get(namespace);
-      transferSteps.add(transferStep);
+      final List<TransferStep> transferStepList = allTransferSteps.get(namespace);
+      transferStepList.add(transferStep);
+      return this;
+    }
+
+    public Builder addTransferSteps(final String namespace, final Collection<TransferStep> transferSteps) {
+      if (!allTransferSteps.containsKey(namespace)) {
+        allTransferSteps.put(namespace, new ArrayList<>());
+      }
+      final List<TransferStep> transferStepList = allTransferSteps.get(namespace);
+      transferStepList.addAll(transferSteps);
       return this;
     }
 
     @Override
     public PlanImpl build() {
       // check conflicts in the plan
+
+      // 1. we do not allow the use of same evaluator id for both in
       for (final String namespace : evaluatorsToAdd.keySet()) {
         for (final String evaluator : evaluatorsToAdd.get(namespace)) {
           if (evaluatorsToDelete.containsKey(namespace) &&
@@ -180,7 +193,8 @@ public final class PlanImpl implements Plan {
         }
       }
 
-      for (final String namespace : evaluatorsToDelete.keySet()) {
+      // 2. do not allow moving out/in of data from/to evaluators will be added/deleted in a single plan
+      for (final String namespace : allTransferSteps.keySet()) {
         for (final TransferStep transferStep : allTransferSteps.get(namespace)) {
           if (evaluatorsToDelete.containsKey(namespace) &&
               evaluatorsToDelete.get(namespace).contains(transferStep.getDstId())) {
@@ -198,6 +212,9 @@ public final class PlanImpl implements Plan {
       return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, dependencyGraph);
     }
 
+    /**
+     * Constructs a directed acyclic graph based on the rule described in the comment of builder.
+     */
     private DAG<EMOperation> constructDAG(final Map<String, Set<String>> namespaceToEvalsToAdd,
                                           final Map<String, Set<String>> namespaceToEvalsToDel,
                                           final Map<String, List<TransferStep>> namespaceToTransferSteps) {
@@ -242,14 +259,18 @@ public final class PlanImpl implements Plan {
       }
 
       // add edges representing dependencies between vertices
-      final Iterator<EMOperation> addOperationsIter = addOperations.values().iterator();
-      for (final EMOperation delOperation : delOperations.values()) {
-        if (addOperationsIter.hasNext()) {
-          final EMOperation addOperation = addOperationsIter.next();
-          dag.addEdge(delOperation, addOperation); // del -> add
+
+      // 1. del -> add
+      // We need one Add for each Delete, because we assume that the job always use the whole available resources.
+      // The current strategy simply maps one Delete and one Add that is not necessarily relevant with.
+      final Iterator<EMOperation> delOperationsIter = delOperations.values().iterator();
+      for (final EMOperation addOperation : addOperations.values()) {
+        if (delOperationsIter.hasNext()) {
+          final EMOperation delOperation = delOperationsIter.next();
+          dag.addEdge(delOperation, addOperation);
         } else {
-          LOG.log(Level.WARNING, "The number of Deletes are larger than the one of Adds." +
-              " When executing the plan, this delete step would be blocked due to the resource limit.");
+          LOG.log(Level.WARNING, "The number of Adds are larger than the one of Deletes." +
+              " When executing the plan, this Add step would be blocked due to the resource limit. {0}", addOperation);
         }
       }
 
@@ -258,14 +279,16 @@ public final class PlanImpl implements Plan {
         final String srcId = transferStep.getSrcId();
         final String dstId = transferStep.getDstId();
 
+        // 2. add -> move
         if (addOperations.containsKey(dstId)) {
           final EMOperation addOperation = addOperations.get(dstId);
-          dag.addEdge(addOperation, moveOperation); // add -> move
+          dag.addEdge(addOperation, moveOperation);
         }
 
+        // 3. move -> del
         if (delOperations.containsKey(srcId)) {
           final EMOperation delOperation = delOperations.get(srcId);
-          dag.addEdge(delOperation, moveOperation); // move -> del
+          dag.addEdge(moveOperation, delOperation);
         }
       }
 

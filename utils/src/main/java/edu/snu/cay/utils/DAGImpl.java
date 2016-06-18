@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  * It is based on the one of MIST.
  * @param <V> vertex type
  */
-public class DAGImpl<V> implements DAG<V> {
+public final class DAGImpl<V> implements DAG<V> {
   private static final Logger LOG = Logger.getLogger(DAGImpl.class.getName());
 
   /**
@@ -45,7 +45,7 @@ public class DAGImpl<V> implements DAG<V> {
 
   @Override
   public Set<V> getRootVertices() {
-    return rootVertices;
+    return Collections.unmodifiableSet(rootVertices);
   }
 
   @Override
@@ -60,7 +60,7 @@ public class DAGImpl<V> implements DAG<V> {
     if (adjs == null) {
       throw new NoSuchElementException("No src vertex " + v);
     }
-    return adjs;
+    return Collections.unmodifiableSet(adjs);
   }
 
   @Override
@@ -71,7 +71,7 @@ public class DAGImpl<V> implements DAG<V> {
       rootVertices.add(v);
       return true;
     } else {
-      LOG.log(Level.WARNING, "The vertex {0} already exists", new Object[]{v});
+      LOG.log(Level.WARNING, "The vertex {0} already exists", v);
       return false;
     }
   }
