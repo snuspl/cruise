@@ -183,7 +183,8 @@ public final class PlanImpl implements Plan {
     public PlanImpl build() {
       // check conflicts in the plan
 
-      // 1. we do not allow the use of same evaluator id for both in
+      // 1. do not allow the use of same evaluator id for both in Add and Delete in the same namespace
+      // note that we do not care the uniqueness of evaluator id across namespaces
       for (final String namespace : evaluatorsToAdd.keySet()) {
         for (final String evaluator : evaluatorsToAdd.get(namespace)) {
           if (evaluatorsToDelete.containsKey(namespace) &&
@@ -213,7 +214,7 @@ public final class PlanImpl implements Plan {
     }
 
     /**
-     * Constructs a directed acyclic graph based on the rule described in the comment of builder.
+     * Constructs a directed acyclic graph based on the rules described in the comment of builder.
      */
     private DAG<EMOperation> constructDAG(final Map<String, Set<String>> namespaceToEvalsToAdd,
                                           final Map<String, Set<String>> namespaceToEvalsToDel,
