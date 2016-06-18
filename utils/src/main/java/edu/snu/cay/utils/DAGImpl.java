@@ -125,7 +125,7 @@ public final class DAGImpl<V> implements DAG<V> {
 
   @Override
   public boolean removeEdge(final V v, final V w) {
-    final Set<V> adjs = getNeighbors(v);
+    final Set<V> adjs = adjacent.get(v);
     if (adjs == null) {
       throw new NoSuchElementException("No src vertex " + v);
     }
