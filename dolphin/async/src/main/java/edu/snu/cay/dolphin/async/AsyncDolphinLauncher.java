@@ -41,10 +41,7 @@ import edu.snu.cay.services.ps.driver.impl.fixed.StaticPSManager;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
-import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
-import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
-import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.parameters.ReceiverHost;
 import edu.snu.cay.utils.trace.parameters.ReceiverPort;
@@ -225,7 +222,7 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(26);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(27);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -246,6 +243,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
     basicParameterClassList.add(WorkerKeyCacheSize.class);
+    basicParameterClassList.add(WorkerLogPeriod.class);
     basicParameterClassList.add(Dynamic.class);
 
     // add em parameters

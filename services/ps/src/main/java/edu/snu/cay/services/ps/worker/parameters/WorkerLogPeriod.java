@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.server.parameters;
+package edu.snu.cay.services.ps.worker.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Time period for outputting statistics of parameter server processing time",
     default_value = "0",
-    short_name = "serverLogPeriod")
-public final class ServerLogPeriod implements Name<Integer> {
+    short_name = "workerLogPeriod")
+public final class WorkerLogPeriod implements Name<Integer> {
 }

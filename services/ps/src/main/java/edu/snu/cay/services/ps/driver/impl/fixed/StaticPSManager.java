@@ -38,6 +38,7 @@ import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.worker.parameters.WorkerLogPeriod;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -65,6 +66,7 @@ public final class StaticPSManager implements PSManager {
   private final int serverQueueSize;
   private final long workerExpireTimeout;
   private final int workerKeyCacheSize;
+  private final int workerLogPeriod;
   private final int serverLogPeriod;
 
   @Inject
@@ -76,7 +78,8 @@ public final class StaticPSManager implements PSManager {
                           @Parameter(ServerQueueSize.class) final int serverQueueSize,
                           @Parameter(WorkerExpireTimeout.class) final long workerExpireTimeout,
                           @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize,
-                          @Parameter(ServerLogPeriod.class) final int serverLogPeriod) {
+                          @Parameter(ServerLogPeriod.class) final int serverLogPeriod,
+                          @Parameter(WorkerLogPeriod.class) final int workerLogPeriod) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.workerNumThreads = workerNumThrs;
@@ -85,6 +88,7 @@ public final class StaticPSManager implements PSManager {
     this.serverQueueSize = serverQueueSize;
     this.workerExpireTimeout = workerExpireTimeout;
     this.workerKeyCacheSize = workerKeyCacheSize;
+    this.workerLogPeriod = workerLogPeriod;
     this.serverLogPeriod = serverLogPeriod;
   }
 
@@ -108,6 +112,7 @@ public final class StaticPSManager implements PSManager {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
+        .bindNamedParameter(WorkerLogPeriod.class, Integer.toString(workerLogPeriod))
         .build();
   }
 
