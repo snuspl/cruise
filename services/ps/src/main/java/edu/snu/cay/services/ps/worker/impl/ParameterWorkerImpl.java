@@ -109,6 +109,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private final long logPeriod;
   private final Statistics[] pushStats;
   private final Statistics[] encodeStats;
+  private final Statistics[] pullStats;
   private final long[] startTimes;
   private final Ticker ticker = Ticker.systemTicker();
 
@@ -129,6 +130,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     this.serverResolver = serverResolver;
     this.sender = sender;
     this.pendingPulls = new ConcurrentHashMap<>();
+    this.pullStats = Statistics.newInstances(numThreads);
     this.threadPool = Executors.newFixedThreadPool(numThreads);
     this.threads = initThreads();
     this.encodedKeyCache = CacheBuilder.newBuilder()
@@ -158,7 +160,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
     final WorkerThread<K, P, V>[] initialized = new WorkerThread[numThreads];
     for (int i = 0; i < numThreads; i++) {
-      initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize, expireTimeout);
+      initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize, expireTimeout, pullStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -317,12 +319,14 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private void printStatistics(final int threadId, final long elapsedTime) {
     final Statistics pushStat = pushStats[threadId];
     final Statistics encodeStat = encodeStats[threadId];
+    final Statistics pullStat = pullStats[threadId];
     LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Worker Thread Id: {1}, PS Worker Push Avg: {2}, " +
         "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
-        "PS Worker Encode Sum: {6}",
+        "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
         new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
             String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
-            String.format("%g", encodeStat.sum())});
+            String.format("%g", encodeStat.sum()), String.format("%g", pullStat.avg()),
+            String.format("%g", pullStat.sum()), String.format("%g", pullStat.count())});
     startTimes[threadId] = ticker.read();
     pushStat.reset();
     encodeStat.reset();
@@ -502,6 +506,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final BlockingQueue<Op<K, V>> queue;
     private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
     private final int drainSize; // Max number of operations to drain per iteration.
+    private final Ticker ticker = Ticker.systemTicker();
 
     private volatile boolean close = false;
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
@@ -510,7 +515,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                         final ServerResolver serverResolver,
                         final InjectionFuture<WorkerMsgSender<K, P>> sender,
                         final int queueSize,
-                        final long expireTimeout) {
+                        final long expireTimeout,
+                        final Statistics pullStats) {
       kvCache = CacheBuilder.newBuilder()
           .concurrencyLevel(1)
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
@@ -537,7 +543,9 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                     new Object[]{encodedKey.getKey(), encodedKey.getHash()});
 
                 try {
+                  final long beginTick = ticker.read();
                   sender.get().sendPullMsg(serverId, encodedKey);
+                  pullStats.put(ticker.read() - beginTick);
                 } catch (final NetworkException e) {
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
                   continue;
