@@ -70,6 +70,9 @@ public final class PlanImplTest {
     final Plan plan = planBuilder.build();
 
     // test whether a plan contains all the added steps
+    assertEquals("Plan does not contain all the steps what we expect",
+        (numEvalsToAdd + numEvalsToDel + numTransfers) * numNameSpaces, plan.getPlanSize());
+
     for (final String namespace : namespaces) {
       final Collection<String> addSteps = plan.getEvaluatorsToAdd(namespace);
       assertTrue("Plan does not contain all Add steps what we expect", addSteps.containsAll(evalsToAdd));
@@ -130,7 +133,7 @@ public final class PlanImplTest {
 
   @Test
   public void testDelAddPlanDependency() {
-    // 1. del -> add
+    // del -> add
     final Plan plan = PlanImpl.newBuilder()
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
