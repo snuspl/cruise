@@ -401,7 +401,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
         wrapped.setValue(updatedValue);
       }
 
-      final long encodeStartTime = ticker.read();
       // Send to remote PS
       int retryCount = 0;
       while (true) {
@@ -416,6 +415,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
             new Object[]{encodedKey.getKey(), encodedKey.getHash()});
 
         try {
+          final long encodeStartTime = ticker.read();
           sender.get().sendPushMsg(serverId, encodedKey, preValue);
 
           // Can reach here only when sendPushMsg succeeds.
