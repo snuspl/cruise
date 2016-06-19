@@ -46,13 +46,16 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    * are put at the front (descending order).
    */
   private static final Comparator<EvaluatorSummary> UNIT_COST_INV_COMPARATOR =
-      (o1, o2) -> {
-        if (o1.getUnitCostInv() < o2.getUnitCostInv()) {
-          return 1;
-        } else if (o1.getUnitCostInv() > o2.getUnitCostInv()) {
-          return -1;
-        } else {
-          return 0;
+      new Comparator<EvaluatorSummary>() {
+        @Override
+        public int compare(final EvaluatorSummary o1, final EvaluatorSummary o2) {
+          if (o1.getUnitCostInv() < o2.getUnitCostInv()) {
+            return 1;
+          } else if (o1.getUnitCostInv() > o2.getUnitCostInv()) {
+            return -1;
+          } else {
+            return 0;
+          }
         }
       };
 
@@ -61,10 +64,13 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    * {@link EvaluatorSummary}s with more blocks to move are put at the front (descending order).
    */
   private static final Comparator<EvaluatorSummary> NUM_BLOCKS_TO_MOVE_COMPARATOR =
-      (o1, o2) -> {
-        final int numBlocksToMove1 = Math.abs(o1.getNumBlocks() - o1.getNumOptimalBlocks());
-        final int numBlocksToMove2 = Math.abs(o2.getNumBlocks() - o2.getNumOptimalBlocks());
-        return numBlocksToMove2 - numBlocksToMove1;
+      new Comparator<EvaluatorSummary>() {
+        @Override
+        public int compare(final EvaluatorSummary o1, final EvaluatorSummary o2) {
+          final int numBlocksToMove1 = Math.abs(o1.getNumBlocks() - o1.getNumOptimalBlocks());
+          final int numBlocksToMove2 = Math.abs(o2.getNumBlocks() - o2.getNumOptimalBlocks());
+          return numBlocksToMove2 - numBlocksToMove1;
+        }
       };
 
   @Override
@@ -86,7 +92,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final int optimalNumWorkers = IntStream.range(1, availableEvaluators)
         .mapToObj(numWorkers ->
-            new Pair<>(numWorkers, totalCost(numWorkers, numDataBlocks, numModelBlocks, availableEvaluators, workers, servers)))
+            new Pair<>(numWorkers,
+                totalCost(numWorkers, numDataBlocks, numModelBlocks, availableEvaluators, workers, servers)))
         .reduce((p1, p2) -> p1.getSecond() > p2.getSecond() ? p2 : p1)
         .get()
         .getFirst();
