@@ -33,6 +33,13 @@ import java.util.Set;
  *   3. Wait the completion of operations. Goto step 2 again.
  */
 public interface Plan {
+
+  /**
+   * Gets the total number of operations that compose the plan.
+   * @return the number of total number of operations
+   */
+  int getPlanSize();
+
   /**
    * Gets ready operations that have no prerequisite operation.
    * @return a set of ready operations

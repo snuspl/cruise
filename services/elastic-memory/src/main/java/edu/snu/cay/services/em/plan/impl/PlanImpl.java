@@ -34,16 +34,25 @@ public final class PlanImpl implements Plan {
   private final Map<String, Set<String>> evaluatorsToAdd;
   private final Map<String, Set<String>> evaluatorsToDelete;
   private final Map<String, List<TransferStep>> transferSteps;
+
   private final DAG<EMOperation> dependencyGraph;
+  private final int numTotalOperations;
 
   private PlanImpl(final Map<String, Set<String>> evaluatorsToAdd,
                    final Map<String, Set<String>> evaluatorsToDelete,
                    final Map<String, List<TransferStep>> transferSteps,
-                   final DAG<EMOperation> dependencyGraph) {
+                   final DAG<EMOperation> dependencyGraph,
+                   final int numTotalOperations) {
     this.evaluatorsToAdd = evaluatorsToAdd;
     this.evaluatorsToDelete = evaluatorsToDelete;
     this.transferSteps = transferSteps;
     this.dependencyGraph = dependencyGraph;
+    this.numTotalOperations = numTotalOperations;
+  }
+
+  @Override
+  public int getPlanSize() {
+    return numTotalOperations;
   }
 
   @Override
@@ -210,7 +219,19 @@ public final class PlanImpl implements Plan {
       // build an execution graph considering dependency between steps
       final DAG<EMOperation> dependencyGraph = constructDAG(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps);
 
-      return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, dependencyGraph);
+      // count the total number of operations
+      int numTotalOps = 0;
+      for (final Set<String> evalsToAdd : evaluatorsToAdd.values()) {
+        numTotalOps += evalsToAdd.size();
+      }
+      for (final Set<String> evalsToDel : evaluatorsToDelete.values()) {
+        numTotalOps += evalsToDel.size();
+      }
+      for (final List<TransferStep> transferSteps : allTransferSteps.values()) {
+        numTotalOps += transferSteps.size();
+      }
+
+      return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, dependencyGraph, numTotalOps);
     }
 
     /**
