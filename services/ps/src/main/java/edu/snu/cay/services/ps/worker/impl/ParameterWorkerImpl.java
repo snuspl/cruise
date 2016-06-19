@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
+import com.google.common.base.Ticker;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -105,10 +106,11 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    */
   private final InjectionFuture<WorkerMsgSender<K, P>> sender;
 
-  private final int logPeriod;
+  private final long logPeriod;
   private final Statistics[] pushStats;
   private final Statistics[] encodeStats;
   private final long[] startTimes;
+  private final Ticker ticker = Ticker.systemTicker();
 
   @Inject
   private ParameterWorkerImpl(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
@@ -137,11 +139,11 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
             return new EncodedKey<>(key, keyCodec);
           }
         });
-    this.logPeriod = logPeriod;
+    this.logPeriod = TimeUnit.NANOSECONDS.convert(logPeriod, TimeUnit.MILLISECONDS);
     this.pushStats = Statistics.newInstances(numThreads);
     this.encodeStats = Statistics.newInstances(numThreads);
     this.startTimes = new long[numThreads];
-    final long currentTime = System.currentTimeMillis();
+    final long currentTime = ticker.read();
     for (int i = 0; i < numThreads; ++i) {
       startTimes[i] = currentTime;
     }
@@ -321,7 +323,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
         new Object[]{elapsedTime, threadId, String.format("%g", pushStat.avg()),
             String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
             String.format("%g", encodeStat.sum())});
-    startTimes[threadId] = System.currentTimeMillis();
+    startTimes[threadId] = ticker.read();
     pushStat.reset();
     encodeStat.reset();
   }
@@ -381,7 +383,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      */
     @Override
     public void apply(final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache) {
-      final long pushStartTime = System.currentTimeMillis();
+      final long pushStartTime = ticker.read();
       final Wrapped<V> wrapped = kvCache.getIfPresent(encodedKey);
 
       // If it exists, update the local value, without updating the cache's write time
@@ -395,7 +397,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
         wrapped.setValue(updatedValue);
       }
 
-      final long encodeStartTime = System.currentTimeMillis();
+      final long encodeStartTime = ticker.read();
       // Send to remote PS
       int retryCount = 0;
       while (true) {
@@ -413,7 +415,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           sender.get().sendPushMsg(serverId, encodedKey, preValue);
 
           // Can reach here only when sendPushMsg succeeds.
-          final long endTime = System.currentTimeMillis();
+          final long endTime = ticker.read();
           pushStats[threadId].put(endTime - pushStartTime);
           encodeStats[threadId].put(endTime - encodeStartTime);
           final long elapsedTime = endTime - startTimes[threadId];
