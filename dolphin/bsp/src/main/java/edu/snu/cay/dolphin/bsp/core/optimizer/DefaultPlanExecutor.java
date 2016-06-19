@@ -113,7 +113,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         if (plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).isEmpty() &&
             plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).isEmpty() &&
             plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).isEmpty()) {
-          return new PlanResultImpl();
+          return new PlanResultImpl("");
         }
         executingPlan = new ExecutingPlan(plan);
 
@@ -150,7 +150,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         executingPlan.awaitSynchronizedExecution();
 
         executingPlan = null;
-        return new PlanResultImpl();
+        return new PlanResultImpl("");
       }
     });
   }

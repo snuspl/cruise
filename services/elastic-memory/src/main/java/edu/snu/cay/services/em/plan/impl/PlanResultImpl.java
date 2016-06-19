@@ -21,4 +21,14 @@ import edu.snu.cay.services.em.plan.api.PlanResult;
  * A plain-old-data implementation of PlanResult.
  */
 public final class PlanResultImpl implements PlanResult {
+  private final String summary;
+
+  public PlanResultImpl(final String summary) {
+    this.summary = summary;
+  }
+
+  @Override
+  public String getExecutionSummary() {
+    return summary;
+  }
 }

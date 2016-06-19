@@ -24,6 +24,7 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
 import edu.snu.cay.services.em.plan.api.TransferStep;
+import edu.snu.cay.services.em.plan.impl.EMOperation;
 import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -36,21 +37,25 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.*;
+import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.NAMESPACE_SERVER;
+import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.NAMESPACE_WORKER;
 
 /**
  * Implementation of Plan Executor for AsyncDolphin.
  */
-// TODO #505: Improve scheduling in plan execution of Async Dolphin's Optimizer
 public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinPlanExecutor.class.getName());
+
+  public enum OpExecutionStatus {
+    In_Progress, Complete
+  }
 
   private final ElasticMemory serverEM;
   private final ElasticMemory workerEM;
@@ -64,9 +69,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
 
   /**
-   * Delay for waiting until added MemoryStores are initialized.
+   * Delay for the initialization of newly added MemoryStores.
    */
   private long memoryStoreInitDelayMs;
+
 
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
@@ -82,13 +88,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   /**
    * Executes a plan using ElasticMemory.
    *
-   * The main steps are as follows. Intermediate steps take place within respective handlers,
-   * as summarized in {@link ExecutingPlan}.
-   * 1. Create and assign an executingPlan. Run 2-4 for all Namespaces (e.g., Server, Worker).
-   * 2. Call ElasticMemory.add(), wait for active contexts
-   * 3. Call ElasticMemory.move(), wait for data transfers to complete
-   * 4. Call ElasticMemory.delete(), wait for closed contexts
-   * 5. Clear executingPlan and return
+   * The execution of a {@link Plan} is executed concurrently for independent EM operations.
+   * Dependency is given by the DAG representation of a plan.
+   * Once an event handler to add/move/delete operation is called back after the EM operation completes,
+   * plan executor marks the operation as complete
+   * and executes the next round of independent EM operations concurrently.
    *
    * @param plan to execute
    * @return execution result
@@ -98,72 +102,15 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     return mainExecutor.submit(new Callable<PlanResult>() {
       @Override
       public PlanResult call() throws Exception {
-        final Collection<String> serverEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_SERVER);
-        final Collection<String> serverEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_SERVER);
-        final Collection<TransferStep> serverTransferSteps = plan.getTransferSteps(NAMESPACE_SERVER);
-
-        final Collection<String> workerEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_WORKER);
-        final Collection<String> workerEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_WORKER);
-        final Collection<TransferStep> workerTransferSteps = plan.getTransferSteps(NAMESPACE_WORKER);
-
-        if (serverEvalsToAdd.isEmpty() && serverEvalsToDel.isEmpty() && serverTransferSteps.isEmpty() &&
-            workerEvalsToAdd.isEmpty() && workerEvalsToDel.isEmpty() && workerTransferSteps.isEmpty()) {
-          LOG.log(Level.FINE, "Plan is empty");
-          return new PlanResultImpl();
-        }
-
         executingPlan = new ExecutingPlan(plan);
 
-        LOG.log(Level.FINE, "Add {0} servers", serverEvalsToAdd.size());
-        serverEM.add(serverEvalsToAdd.size(), 1024, 1,
-            getAllocatedEvalHandler(NAMESPACE_SERVER),
-            getActiveContextHandler(NAMESPACE_SERVER));
+        final Set<EMOperation> initialOperationsToExecute = executingPlan.getNextOpsToExecute();
 
-        LOG.log(Level.FINE, "Add {0} workers", workerEvalsToAdd.size());
-        workerEM.add(workerEvalsToAdd.size(), 1024, 1,
-            getAllocatedEvalHandler(NAMESPACE_WORKER),
-            getActiveContextHandler(NAMESPACE_WORKER));
+        executeNextSetOfIndependentOps(initialOperationsToExecute);
 
-        executingPlan.awaitActiveContexts();
+        executingPlan.awaitPlanExecutionComplete();
 
-        LOG.log(Level.INFO, "All evaluators were added, will transfer data.");
-        // TODO #90: The try-catch is needed to close contexts on network failure in EM.move.
-        // TODO #90: Need to revisit whether EM.move should throw a RuntimeException on network failure.
-        // TODO #90: Perhaps the handlers should receive this failure information instead.
-        try {
-          // TODO #505: The delay must be applied only for the destination MemoryStores that are added by EM.add().
-          Thread.sleep(memoryStoreInitDelayMs);
-          for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_SERVER)) {
-            serverEM.move(
-                transferStep.getDataInfo().getNumBlocks(),
-                transferStep.getSrcId(),
-                executingPlan.getServerActualContextId(transferStep.getDstId()),
-                new MovedHandler());
-          }
-          for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_WORKER)) {
-            workerEM.move(
-                transferStep.getDataInfo().getNumBlocks(),
-                transferStep.getSrcId(),
-                executingPlan.getWorkerActualContextId(transferStep.getDstId()),
-                new MovedHandler());
-          }
-        } catch (final Exception e) {
-          LOG.log(Level.WARNING, "Caught Exception, closing Evaluators.", e);
-        }
-
-        executingPlan.awaitMoves();
-
-        // 3. execute delete plans
-        LOG.log(Level.INFO, "All data transfers were completed, will delete evaluators.");
-        for (final String evaluatorId : executingPlan.getServerEvaluatorsToDelete()) {
-          serverEM.delete(evaluatorId, new DeletedHandler());
-        }
-        for (final String evaluatorId : executingPlan.getWorkerEvaluatorsToDelete()) {
-          workerEM.delete(evaluatorId, new DeletedHandler());
-        }
-        executingPlan.awaitDeletes();
-
-        return new PlanResultImpl();
+        return new PlanResultImpl("Plan Execution Complete!\n[SUMMARY]\n" + executingPlan.getPlanExecutionStatus());
       }
     });
   }
@@ -204,16 +151,17 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   /**
    * This handler is registered as the active context callback of ElasticMemory.add().
    */
-  private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace) {
+  private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace
+      , final EMOperation operation) {
     final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(2);
     switch (namespace) {
     case NAMESPACE_SERVER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer(true));
-      activeContextHandlers.add(new ServerContextActiveHandler());
+      activeContextHandlers.add(new ServerContextActiveHandler(operation));
       break;
     case NAMESPACE_WORKER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForWorker(true));
-      activeContextHandlers.add(new WorkerContextActiveHandler());
+      activeContextHandlers.add(new WorkerContextActiveHandler(operation));
       break;
     default:
       throw new RuntimeException("Unsupported namespace");
@@ -227,38 +175,63 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as a callback to ElasticMemory.add().
+   * This handler is registered as a callback to ElasticMemory.add() for servers.
    */
   private final class ServerContextActiveHandler implements EventHandler<ActiveContext> {
+    private final EMOperation triggerOp;
+
+    public ServerContextActiveHandler(final EMOperation triggerOp) {
+      this.triggerOp = triggerOp;
+    }
     @Override
     public void onNext(final ActiveContext context) {
       if (executingPlan == null) {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForServer().onNext(context);
-      executingPlan.onActiveContext(context);
+      onActiveContextForServer(context, triggerOp);
     }
   }
 
-   /**
-   * This handler is registered as a callback to ElasticMemory.add().
+  /**
+   * This handler is registered as a callback to ElasticMemory.add() for workers.
    */
   private final class WorkerContextActiveHandler implements EventHandler<ActiveContext> {
+    private final EMOperation triggerOp;
+
+    public WorkerContextActiveHandler(final EMOperation triggerOp) {
+      this.triggerOp = triggerOp;
+    }
     @Override
     public void onNext(final ActiveContext context) {
       if (executingPlan == null) {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker().onNext(context);
-      executingPlan.onActiveContext(context);
+      onActiveContextForWorker(context, triggerOp);
     }
   }
 
+  void onActiveContextForServer(final ActiveContext context, final EMOperation triggerOp) {
+    executingPlan.addServerEvaluatorIdsToContexts(context.getEvaluatorId(), context);
+    triggerNextSetOfIndependentOpsIfExists(triggerOp);
+  }
+
+  void onActiveContextForWorker(final ActiveContext context, final EMOperation triggerOp) {
+    executingPlan.addWorkerEvaluatorIdsToContexts(context.getEvaluatorId(), context);
+    triggerNextSetOfIndependentOpsIfExists(triggerOp);
+  }
 
   /**
    * This handler is registered as the second callback to ElasticMemory.move().
    */
   private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
+    private final EMOperation triggerOp;
+
+    public MovedHandler(final EMOperation triggerOp) {
+      this.triggerOp = triggerOp;
+    }
+
     @Override
     public void onNext(final AvroElasticMemoryMessage msg) {
       LOG.log(Level.FINER, "Received new MoveFinished {0}.", msg);
@@ -268,7 +241,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("MoveFinished " + msg + " received, but no executingPlan available.");
       }
-      executingPlan.onMoved();
+      triggerNextSetOfIndependentOpsIfExists(triggerOp);
     }
   }
 
@@ -276,6 +249,12 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the callback to ElasticMemory.delete().
    */
   private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
+    private final EMOperation triggerOp;
+
+    public DeletedHandler(final EMOperation triggerOp) {
+      this.triggerOp = triggerOp;
+    }
+
     @Override
     public void onNext(final AvroElasticMemoryMessage msg) {
       LOG.log(Level.FINER, "Received new Evaluators Deleted {0}", msg);
@@ -285,92 +264,159 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("Evaluators deleted " + msg + " received, but no executingPlan available.");
       }
-      executingPlan.onDeleted();
+      triggerNextSetOfIndependentOpsIfExists(triggerOp);
     }
+  }
+
+  /**
+   * Refer to the steps explained in {@link Plan}.   *
+   */
+  void triggerNextSetOfIndependentOpsIfExists(final EMOperation triggerOp) {
+    final Set<EMOperation> nextOpsToExecute = executingPlan.markOperationComplete(triggerOp);
+    LOG.log(Level.INFO, "Operation marked complete: {0}", triggerOp);
+
+    if (nextOpsToExecute == null) {
+      final Set<EMOperation> checkRemainingOps = executingPlan.getNextOpsToExecute();
+      if (checkRemainingOps == null || checkRemainingOps.isEmpty()) {
+        LOG.log(Level.INFO, "Oops! There are no more operations to be executed. " +
+            "CountDownLatch should have returned after marking the last operation complete! TriggerOp: {0}", triggerOp);
+      } else {
+        LOG.log(Level.INFO, "There are no independent operations that can be executed at the moment." +
+            " TriggerOp: {0}", triggerOp);
+      }
+    } else {
+      LOG.log(Level.INFO, "Executing the next set of independent operations. " +
+          "TriggerOp: {0}", triggerOp);
+      executeNextSetOfIndependentOps(nextOpsToExecute);
+    }
+  }
+
+
+  /**
+   * Executes the EM operations by distinguishing each OpType as well as namespace.
+   * If the operation is already in_progress or complete (operationStatus == null),
+   * the operation is skipped to prevent duplication.
+   *
+   * @param operationsToExecute a set of EM operations that can be executed independently at the point of trigger
+   */
+  void executeNextSetOfIndependentOps(final Set<EMOperation> operationsToExecute) {
+    try {
+      for (final EMOperation operation : operationsToExecute) {
+        final EMOperation.OpType opType = operation.getOpType();
+        final String namespace = operation.getNamespace();
+
+        final OpExecutionStatus operationStatus = executingPlan.markOperationRequest(operation);
+
+        if (operationStatus != null) {
+          continue;
+        }
+
+        if (opType == EMOperation.OpType.Add) {
+          if (namespace.equals(NAMESPACE_SERVER)) {
+            LOG.log(Level.FINE, "Adding server {0}", operation.getEvalId());
+            serverEM.add(1, 1024, 1,
+                getAllocatedEvalHandler(NAMESPACE_SERVER),
+                getActiveContextHandler(NAMESPACE_SERVER, operation));
+          } else if (namespace.equals(NAMESPACE_WORKER)) {
+            LOG.log(Level.FINE, "Adding worker {0}", operation.getEvalId());
+            workerEM.add(1, 1024, 1,
+                getAllocatedEvalHandler(NAMESPACE_WORKER),
+                getActiveContextHandler(NAMESPACE_WORKER, operation));
+          } else {
+            throw new RuntimeException("Unsupported namespace");
+          }
+        } else if (opType == EMOperation.OpType.Del) {
+          final String evaluatorId = operation.getEvalId().get();
+          if (namespace.equals(NAMESPACE_SERVER)) {
+            LOG.log(Level.FINE, "Deleting server {0}", evaluatorId);
+            serverEM.delete(evaluatorId, new DeletedHandler(operation));
+          } else if (namespace.equals(NAMESPACE_WORKER)) {
+            LOG.log(Level.FINE, "Deleting worker {0}", evaluatorId);
+            workerEM.delete(evaluatorId, new DeletedHandler(operation));
+          } else {
+            throw new RuntimeException("Unsupported namespace");
+          }
+        } else if (opType == EMOperation.OpType.Move) {
+          Thread.sleep(memoryStoreInitDelayMs);
+          final TransferStep transferStep = operation.getTransferStep().get();
+          if (namespace.equals(NAMESPACE_SERVER)) {
+            serverEM.move(
+                transferStep.getDataInfo().getNumBlocks(),
+                transferStep.getSrcId(),
+                executingPlan.getServerActualContextId(transferStep.getDstId()),
+                new MovedHandler(operation));
+          } else if (namespace.equals(NAMESPACE_WORKER)) {
+            workerEM.move(
+                transferStep.getDataInfo().getNumBlocks(),
+                transferStep.getSrcId(),
+                executingPlan.getWorkerActualContextId(transferStep.getDstId()),
+                new MovedHandler(operation));
+          } else {
+            throw new RuntimeException("Unsupported namespace");
+          }
+        } else {
+          throw new RuntimeException("Unsupported EM operation type");
+        }
+      }
+    } catch (Exception e) {
+      LOG.log(Level.WARNING, "Caught Exception, closing Evaluators.", e);
+    }
+
   }
 
   /**
    * Encapsulates a single executing plan and its state.
    * By referencing the current executing plan Callback handlers are implemented as stateless.
    *
-   * The executing plan runs through a sequence of barriers implemented as CountDownLatches:
-   * 1. Wait until all Contexts have been allocated as ActiveContexts (activeContextLatch)
-   * 2. Wait until all Moves are complete (moveLatch)
-   * 3. Wait until all Evaluators have been deleted (deleteLatch)
+   * emOperationsRequested: A map of EM operations requested and the execution state (in_progress/complete).
+   * planExecutionLatch: set as the number of ops included in the initial plan.
+   * plan: optimizer generated plan. This class uses the DAG representation.
+   *
    */
   private static final class ExecutingPlan {
-    private final List<String> addServerEvaluatorIds;
-    private final List<ActiveContext> serverActiveContexts;
-    private final ConcurrentMap<String, ActiveContext> addServerEvaluatorIdsToContexts;
+    private final ConcurrentMap<String, ActiveContext> serverEvalIdToCtx;
+    private final ConcurrentMap<String, ActiveContext> workerEvalIdToCtx;
 
-    private final List<String> addWorkerEvaluatorIds;
-    private final List<ActiveContext> workerActiveContexts;
-    private final ConcurrentMap<String, ActiveContext> addWorkerEvaluatorIdsToContexts;
-
-    private final List<String> deleteServerEvaluatorsIds;
-    private final List<String> deleteWorkerEvaluatorsIds;
-
-    private final CountDownLatch activeContextLatch;
-    private final CountDownLatch moveLatch;
-    private final CountDownLatch deleteLatch;
+    private final ConcurrentMap<EMOperation, OpExecutionStatus> emOperationsRequested;
+    private final Plan plan;
+    private final CountDownLatch planExecutionLatch;
 
     private ExecutingPlan(final Plan plan) {
-      this.addServerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_SERVER));
-      this.serverActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_SERVER).size());
-      this.addServerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
-      this.deleteServerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_SERVER));
-
-      this.addWorkerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER));
-      this.workerActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER).size());
-      this.addWorkerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
-      this.deleteWorkerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_WORKER));
-
-      this.activeContextLatch = new CountDownLatch(addServerEvaluatorIds.size() + addWorkerEvaluatorIds.size());
-      this.moveLatch = new CountDownLatch(
-          plan.getTransferSteps(NAMESPACE_SERVER).size() +
-          plan.getTransferSteps(NAMESPACE_WORKER).size());
-
-      this.deleteLatch = new CountDownLatch(
-          plan.getEvaluatorsToDelete(NAMESPACE_SERVER).size() +
-          plan.getEvaluatorsToDelete(NAMESPACE_WORKER).size());
+      this.serverEvalIdToCtx = new ConcurrentHashMap<>();
+      this.workerEvalIdToCtx = new ConcurrentHashMap<>();
+      this.emOperationsRequested = new ConcurrentHashMap<>();
+      this.planExecutionLatch = new CountDownLatch(plan.getPlanSize());
+      this.plan = plan;
     }
 
-    void awaitActiveContexts() {
+    void addServerEvaluatorIdsToContexts(final String evaluatorId, final ActiveContext context) {
+      serverEvalIdToCtx.put(evaluatorId, context);
+    }
+
+    void addWorkerEvaluatorIdsToContexts(final String evaluatorId, final ActiveContext context) {
+      workerEvalIdToCtx.put(evaluatorId, context);
+    }
+
+    Set<EMOperation> getNextOpsToExecute() {
+      return plan.getReadyOps();
+    }
+
+    Set<EMOperation> markOperationComplete(final EMOperation op) {
+      planExecutionLatch.countDown();
+      return plan.onComplete(op);
+    }
+
+    void awaitPlanExecutionComplete() {
       try {
-        activeContextLatch.await();
+        planExecutionLatch.await();
       } catch (final InterruptedException e) {
         throw new RuntimeException(e);
       }
-      LOG.info("Received All ActiveContexts!");
-
-      for (int i = 0; i < serverActiveContexts.size(); i++) {
-        addServerEvaluatorIdsToContexts.put(addServerEvaluatorIds.get(i), serverActiveContexts.get(i));
-      }
-
-      for (int j = 0; j < workerActiveContexts.size(); j++) {
-        addWorkerEvaluatorIdsToContexts.put(addWorkerEvaluatorIds.get(j), workerActiveContexts.get(j));
-      }
+      LOG.info("All EM operations included in the plan are complete!");
     }
 
-    /**
-     * Registers active context to Servers first, and then registers contexts to Workers,
-     * based on the assumption in {@link AsyncDolphinPlanExecutor#execute(Plan)}
-     * (Servers are added first, followed by workers).
-     */
-    void onActiveContext(final ActiveContext context) {
-      if (serverActiveContexts.size() < addServerEvaluatorIds.size()) {
-        serverActiveContexts.add(context);
-        LOG.log(Level.FINE, "Add active context {0} to servers. {1} more contexts should be added",
-            new Object[] {context.getId(), addServerEvaluatorIds.size() - serverActiveContexts.size()});
-      } else if (workerActiveContexts.size() < addWorkerEvaluatorIds.size()) {
-        workerActiveContexts.add(context);
-        LOG.log(Level.FINE, "Add active context {0} to workers. {1} more contexts should be added",
-            new Object[] {context.getId(), addWorkerEvaluatorIds.size() - workerActiveContexts.size()});
-      } else {
-        LOG.log(Level.WARNING, "{0} is active, but there is no outstanding server or worker",
-            context.getId());
-      }
-      activeContextLatch.countDown();
+    OpExecutionStatus markOperationRequest(final EMOperation operation) {
+      return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.In_Progress);
     }
 
     /**
@@ -384,45 +430,17 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @return an addressable context ID
      */
     String getServerActualContextId(final String planContextId) {
-      return addServerEvaluatorIdsToContexts.containsKey(planContextId) ?
-          addServerEvaluatorIdsToContexts.get(planContextId).getId() : planContextId;
+      return serverEvalIdToCtx.containsKey(planContextId) ?
+          serverEvalIdToCtx.get(planContextId).getId() : planContextId;
     }
 
     String getWorkerActualContextId(final String planContextId) {
-      return addWorkerEvaluatorIdsToContexts.containsKey(planContextId) ?
-          addWorkerEvaluatorIdsToContexts.get(planContextId).getId() : planContextId;
+      return workerEvalIdToCtx.containsKey(planContextId) ?
+          workerEvalIdToCtx.get(planContextId).getId() : planContextId;
     }
 
-    void awaitMoves() {
-      try {
-        moveLatch.await();
-      } catch (final InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    void onMoved() {
-      moveLatch.countDown();
-    }
-
-    Collection<String> getServerEvaluatorsToDelete() {
-      return deleteServerEvaluatorsIds;
-    }
-
-    Collection<String> getWorkerEvaluatorsToDelete() {
-      return deleteWorkerEvaluatorsIds;
-    }
-
-    void awaitDeletes() {
-      try {
-        deleteLatch.await();
-      } catch (final InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    void onDeleted() {
-      deleteLatch.countDown();
+    ConcurrentMap<EMOperation, OpExecutionStatus> getPlanExecutionStatus() {
+      return emOperationsRequested;
     }
   }
 }

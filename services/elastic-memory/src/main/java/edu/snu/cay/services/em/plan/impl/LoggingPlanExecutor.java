@@ -62,7 +62,7 @@ public final class LoggingPlanExecutor implements PlanExecutor {
 
         LOG.log(Level.INFO, "Done.");
 
-        return new PlanResultImpl();
+        return new PlanResultImpl("");
       }
     });
   }
