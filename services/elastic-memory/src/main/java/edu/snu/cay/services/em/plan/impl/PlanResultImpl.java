@@ -23,12 +23,16 @@ import edu.snu.cay.services.em.plan.api.PlanResult;
 public final class PlanResultImpl implements PlanResult {
   private final String summary;
 
+  public PlanResultImpl() {
+    this.summary = null;
+  }
+
   public PlanResultImpl(final String summary) {
     this.summary = summary;
   }
 
   @Override
-  public String getExecutionSummary() {
+  public String toString() {
     return summary;
   }
 }

@@ -264,9 +264,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     final Set<EMOperation> nextOpsToExecute = executingPlan.markOperationComplete(completeOp);
     LOG.log(Level.INFO, "Operation marked complete: {0}", completeOp);
 
-    if (nextOpsToExecute == null || nextOpsToExecute.isEmpty()) {
+    if (nextOpsToExecute.isEmpty()) {
       final Set<EMOperation> checkRemainingOps = executingPlan.getNextOpsToExecute();
-      if (checkRemainingOps == null || checkRemainingOps.isEmpty()) {
+      if (checkRemainingOps.isEmpty()) {
         LOG.log(Level.INFO, "Oops! There are no more operations to be executed. " +
             "CountDownLatch should have returned after marking the last operation complete! " +
             "CompleteOp: {0}", completeOp);
@@ -295,9 +295,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         final EMOperation.OpType opType = operation.getOpType();
         final String namespace = operation.getNamespace();
 
-        final OpExecutionStatus operationStatus = executingPlan.markOperationRequest(operation);
-
-        if (operationStatus != null) {
+        if (!executingPlan.markOperationRequest(operation)) {
           continue;
         }
 
@@ -455,11 +453,12 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     /**
      * Puts the initiated EM operation into a map, mapping the operation to the execution status of "In progress".
      *
-     * @param operation being initiated
-     * @return the previous state of the operation if it has already been requested.
+     * @param operation
+     * @return true if operation has successfully been put into the <operation, status> map;
+     *        false if the operation mapping already exists - i.e. is in progress or already complete.
      */
-    OpExecutionStatus markOperationRequest(final EMOperation operation) {
-      return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.In_Progress);
+    boolean markOperationRequest(final EMOperation operation) {
+      return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.In_Progress) == null;
     }
 
     /**

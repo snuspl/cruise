@@ -19,10 +19,4 @@ package edu.snu.cay.services.em.plan.api;
  * The result of the applied plan.
  */
 public interface PlanResult {
-  /**
-   * Returns the execution result of a plan.
-   * The underlying data structure involves a map of <EMOperation, AsyncDolphinPlanExecutor.OpExecutionStatus>
-   * @return a string of plan execution summary
-   */
-  String getExecutionSummary();
 }
