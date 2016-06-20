@@ -15,15 +15,14 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
-import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
+import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
+import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandler;
 import edu.snu.cay.dolphin.async.metric.EvalSideMetricsMsgHandler;
 import edu.snu.cay.dolphin.async.metric.MetricsCollectionService;
-import edu.snu.cay.dolphin.async.optimizer.parameters.MemoryStoreInitDelayMs;
-import edu.snu.cay.common.aggregation.AggregationConfiguration;
-import edu.snu.cay.common.param.Parameters.*;
-import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
+import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
+import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
@@ -34,15 +33,15 @@ import edu.snu.cay.services.ps.PSConfigurationBuilder;
 import edu.snu.cay.services.ps.common.parameters.Dynamic;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
-import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
+import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.impl.dynamic.DynamicPSManager;
 import edu.snu.cay.services.ps.driver.impl.fixed.StaticPSManager;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
+import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.parameters.ReceiverHost;
@@ -257,7 +256,6 @@ public final class AsyncDolphinLauncher {
 
     // add optimizer parameters
     basicParameterClassList.add(OptimizationIntervalMs.class);
-    basicParameterClassList.add(MemoryStoreInitDelayMs.class);
     basicParameterClassList.add(DelayAfterOptimizationMs.class);
 
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {

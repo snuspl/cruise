@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinDriver;
-import edu.snu.cay.dolphin.async.optimizer.parameters.MemoryStoreInitDelayMs;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -53,7 +52,7 @@ import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.NAMES
 public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinPlanExecutor.class.getName());
 
-  public enum OpExecutionStatus {
+  private enum OpExecutionStatus {
     In_Progress, Complete
   }
 
@@ -68,19 +67,15 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
 
-  /**
-   * Delay for the initialization of newly added MemoryStores.
-   */
-  private long memoryStoreInitDelayMs;
-
+  private static final int DEFAULT_EVAL_MEM_SIZE = 1024;
+  private static final int DEFAULT_EVAL_ADD_COUNT = 1;
+  private static final int DEFAULT_EVAL_NUM_CORES = 1;
 
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
-                                   @Parameter(MemoryStoreInitDelayMs.class) final long memoryStoreInitDelayMs,
                                    @Parameter(ServerEM.class) final ElasticMemory serverEM,
                                    @Parameter(WorkerEM.class) final ElasticMemory workerEM) {
     this.asyncDolphinDriver = asyncDolphinDriver;
-    this.memoryStoreInitDelayMs = memoryStoreInitDelayMs;
     this.serverEM = serverEM;
     this.workerEM = workerEM;
   }
@@ -106,7 +101,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
         final Set<EMOperation> initialOperationsToExecute = executingPlan.getNextOpsToExecute();
 
-        executeNextSetOfIndependentOps(initialOperationsToExecute);
+        executeOperations(initialOperationsToExecute);
 
         executingPlan.awaitPlanExecutionComplete();
 
@@ -151,8 +146,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   /**
    * This handler is registered as the active context callback of ElasticMemory.add().
    */
-  private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace
-      , final EMOperation operation) {
+  private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace,
+                                                                    final EMOperation operation) {
     final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(2);
     switch (namespace) {
     case NAMESPACE_SERVER:
@@ -178,18 +173,20 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for servers.
    */
   private final class ServerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMOperation triggerOp;
+    private final EMOperation completeOp;
 
-    public ServerContextActiveHandler(final EMOperation triggerOp) {
-      this.triggerOp = triggerOp;
+    private ServerContextActiveHandler(final EMOperation completeOp) {
+      this.completeOp = completeOp;
     }
+
     @Override
     public void onNext(final ActiveContext context) {
       if (executingPlan == null) {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForServer().onNext(context);
-      onActiveContextForServer(context, triggerOp);
+      executingPlan.addServerEvaluatorIdsToContexts(context.getEvaluatorId(), context);
+      onOperationComplete(completeOp);
     }
   }
 
@@ -197,10 +194,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for workers.
    */
   private final class WorkerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMOperation triggerOp;
+    private final EMOperation completeOp;
 
-    public WorkerContextActiveHandler(final EMOperation triggerOp) {
-      this.triggerOp = triggerOp;
+    private WorkerContextActiveHandler(final EMOperation completeOp) {
+      this.completeOp = completeOp;
     }
     @Override
     public void onNext(final ActiveContext context) {
@@ -208,28 +205,20 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker().onNext(context);
-      onActiveContextForWorker(context, triggerOp);
+      executingPlan.addWorkerEvaluatorIdsToContexts(context.getEvaluatorId(), context);
+      onOperationComplete(completeOp);
     }
   }
 
-  void onActiveContextForServer(final ActiveContext context, final EMOperation triggerOp) {
-    executingPlan.addServerEvaluatorIdsToContexts(context.getEvaluatorId(), context);
-    triggerNextSetOfIndependentOpsIfExists(triggerOp);
-  }
-
-  void onActiveContextForWorker(final ActiveContext context, final EMOperation triggerOp) {
-    executingPlan.addWorkerEvaluatorIdsToContexts(context.getEvaluatorId(), context);
-    triggerNextSetOfIndependentOpsIfExists(triggerOp);
-  }
 
   /**
    * This handler is registered as the second callback to ElasticMemory.move().
    */
   private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
-    private final EMOperation triggerOp;
+    private final EMOperation completeOp;
 
-    public MovedHandler(final EMOperation triggerOp) {
-      this.triggerOp = triggerOp;
+    public MovedHandler(final EMOperation completeOp) {
+      this.completeOp = completeOp;
     }
 
     @Override
@@ -241,7 +230,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("MoveFinished " + msg + " received, but no executingPlan available.");
       }
-      triggerNextSetOfIndependentOpsIfExists(triggerOp);
+      onOperationComplete(completeOp);
     }
   }
 
@@ -249,10 +238,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the callback to ElasticMemory.delete().
    */
   private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
-    private final EMOperation triggerOp;
+    private final EMOperation completeOp;
 
-    public DeletedHandler(final EMOperation triggerOp) {
-      this.triggerOp = triggerOp;
+    public DeletedHandler(final EMOperation completeOp) {
+      this.completeOp = completeOp;
     }
 
     @Override
@@ -264,42 +253,43 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("Evaluators deleted " + msg + " received, but no executingPlan available.");
       }
-      triggerNextSetOfIndependentOpsIfExists(triggerOp);
+      onOperationComplete(completeOp);
     }
   }
 
   /**
-   * Refer to the steps explained in {@link Plan}.   *
+   * Refer to the steps explained in {@link Plan}.
    */
-  void triggerNextSetOfIndependentOpsIfExists(final EMOperation triggerOp) {
-    final Set<EMOperation> nextOpsToExecute = executingPlan.markOperationComplete(triggerOp);
-    LOG.log(Level.INFO, "Operation marked complete: {0}", triggerOp);
+  private void onOperationComplete(final EMOperation completeOp) {
+    final Set<EMOperation> nextOpsToExecute = executingPlan.markOperationComplete(completeOp);
+    LOG.log(Level.INFO, "Operation marked complete: {0}", completeOp);
 
-    if (nextOpsToExecute == null) {
+    if (nextOpsToExecute == null || nextOpsToExecute.isEmpty()) {
       final Set<EMOperation> checkRemainingOps = executingPlan.getNextOpsToExecute();
       if (checkRemainingOps == null || checkRemainingOps.isEmpty()) {
         LOG.log(Level.INFO, "Oops! There are no more operations to be executed. " +
-            "CountDownLatch should have returned after marking the last operation complete! TriggerOp: {0}", triggerOp);
+            "CountDownLatch should have returned after marking the last operation complete! " +
+            "CompleteOp: {0}", completeOp);
       } else {
         LOG.log(Level.INFO, "There are no independent operations that can be executed at the moment." +
-            " TriggerOp: {0}", triggerOp);
+            " CompleteOp: {0}", completeOp);
       }
     } else {
       LOG.log(Level.INFO, "Executing the next set of independent operations. " +
-          "TriggerOp: {0}", triggerOp);
-      executeNextSetOfIndependentOps(nextOpsToExecute);
+          "CompleteOp: {0}", completeOp);
+      executeOperations(nextOpsToExecute);
     }
   }
 
 
   /**
    * Executes the EM operations by distinguishing each OpType as well as namespace.
-   * If the operation is already in_progress or complete (operationStatus == null),
+   * If the operation is already in_progress or complete (operationStatus != null),
    * the operation is skipped to prevent duplication.
    *
    * @param operationsToExecute a set of EM operations that can be executed independently at the point of trigger
    */
-  void executeNextSetOfIndependentOps(final Set<EMOperation> operationsToExecute) {
+  private void executeOperations(final Set<EMOperation> operationsToExecute) {
     try {
       for (final EMOperation operation : operationsToExecute) {
         final EMOperation.OpType opType = operation.getOpType();
@@ -311,74 +301,95 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
           continue;
         }
 
-        if (opType == EMOperation.OpType.Add) {
-          if (namespace.equals(NAMESPACE_SERVER)) {
+        switch (opType) {
+        case Add:
+          switch (namespace) {
+          case NAMESPACE_SERVER:
             LOG.log(Level.FINE, "Adding server {0}", operation.getEvalId());
-            serverEM.add(1, 1024, 1,
+            serverEM.add(DEFAULT_EVAL_ADD_COUNT, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
                 getAllocatedEvalHandler(NAMESPACE_SERVER),
                 getActiveContextHandler(NAMESPACE_SERVER, operation));
-          } else if (namespace.equals(NAMESPACE_WORKER)) {
+            break;
+          case NAMESPACE_WORKER:
             LOG.log(Level.FINE, "Adding worker {0}", operation.getEvalId());
-            workerEM.add(1, 1024, 1,
+            workerEM.add(DEFAULT_EVAL_ADD_COUNT, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
                 getAllocatedEvalHandler(NAMESPACE_WORKER),
                 getActiveContextHandler(NAMESPACE_WORKER, operation));
-          } else {
+            break;
+          default:
             throw new RuntimeException("Unsupported namespace");
           }
-        } else if (opType == EMOperation.OpType.Del) {
+          break;
+        case Del:
           final String evaluatorId = operation.getEvalId().get();
-          if (namespace.equals(NAMESPACE_SERVER)) {
+          switch (namespace) {
+          case NAMESPACE_SERVER:
             LOG.log(Level.FINE, "Deleting server {0}", evaluatorId);
             serverEM.delete(evaluatorId, new DeletedHandler(operation));
-          } else if (namespace.equals(NAMESPACE_WORKER)) {
+            break;
+          case NAMESPACE_WORKER:
             LOG.log(Level.FINE, "Deleting worker {0}", evaluatorId);
             workerEM.delete(evaluatorId, new DeletedHandler(operation));
-          } else {
+            break;
+          default:
             throw new RuntimeException("Unsupported namespace");
           }
-        } else if (opType == EMOperation.OpType.Move) {
-          Thread.sleep(memoryStoreInitDelayMs);
+          break;
+        case Move:
           final TransferStep transferStep = operation.getTransferStep().get();
-          if (namespace.equals(NAMESPACE_SERVER)) {
+          switch (namespace) {
+          case NAMESPACE_SERVER:
             serverEM.move(
                 transferStep.getDataInfo().getNumBlocks(),
                 transferStep.getSrcId(),
                 executingPlan.getServerActualContextId(transferStep.getDstId()),
                 new MovedHandler(operation));
-          } else if (namespace.equals(NAMESPACE_WORKER)) {
+            break;
+          case NAMESPACE_WORKER:
             workerEM.move(
                 transferStep.getDataInfo().getNumBlocks(),
                 transferStep.getSrcId(),
                 executingPlan.getWorkerActualContextId(transferStep.getDstId()),
                 new MovedHandler(operation));
-          } else {
+            break;
+          default:
             throw new RuntimeException("Unsupported namespace");
           }
-        } else {
+          break;
+        default:
           throw new RuntimeException("Unsupported EM operation type");
         }
       }
     } catch (Exception e) {
       LOG.log(Level.WARNING, "Caught Exception, closing Evaluators.", e);
     }
-
   }
 
   /**
-   * Encapsulates a single executing plan and its state.
+   * Encapsulates a single executing plan and its state in a DAG representation.
    * By referencing the current executing plan Callback handlers are implemented as stateless.
    *
-   * emOperationsRequested: A map of EM operations requested and the execution state (in_progress/complete).
-   * planExecutionLatch: set as the number of ops included in the initial plan.
-   * plan: optimizer generated plan. This class uses the DAG representation.
-   *
+   * The executing plan is initialized with a CountDownLatch value of the total number of operations.
+   * For each complete operation, the handlers being called back count down the latch.
+   * When all operations are complete, control is given back to the main plan executor's call().
    */
   private static final class ExecutingPlan {
     private final ConcurrentMap<String, ActiveContext> serverEvalIdToCtx;
     private final ConcurrentMap<String, ActiveContext> workerEvalIdToCtx;
 
+    /**
+     * emOperationsRequested: A map of EM operations requested and the execution state (in_progress/complete).
+     */
     private final ConcurrentMap<EMOperation, OpExecutionStatus> emOperationsRequested;
+
+    /**
+     * plan: optimizer generated plan. This class uses the DAG representation.
+     */
     private final Plan plan;
+
+    /**
+     * planExecutionLatch: set as the number of ops included in the initial plan.
+     */
     private final CountDownLatch planExecutionLatch;
 
     private ExecutingPlan(final Plan plan) {
@@ -389,6 +400,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       this.plan = plan;
     }
 
+    /**
+     * In order to keep track of context mappings to evaluator IDs, we store the mappings when contexts are activated.
+     * @param evaluatorId
+     * @param context ActiveContext from the event handler
+     */
     void addServerEvaluatorIdsToContexts(final String evaluatorId, final ActiveContext context) {
       serverEvalIdToCtx.put(evaluatorId, context);
     }
@@ -397,15 +413,36 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       workerEvalIdToCtx.put(evaluatorId, context);
     }
 
+    /**
+     * Get a set of operations in the plan that can be executed next.
+     * @return the set of operations
+     */
     Set<EMOperation> getNextOpsToExecute() {
       return plan.getReadyOps();
     }
 
+    /**
+     * Updates an operation's status as complete,
+     * counts down the latch on the entire plan,
+     * gets the next set of operations that can be executed.
+     *
+     * @param op the operation that has just been completed
+     * @return the set of operations that can be executed after op's completion
+     */
     Set<EMOperation> markOperationComplete(final EMOperation op) {
+      final OpExecutionStatus prevStatus = emOperationsRequested.replace(op, OpExecutionStatus.Complete);
+
+      if (prevStatus == null) {
+        throw new RuntimeException("The operation " + op + " was never in the request queue");
+      }
+
       planExecutionLatch.countDown();
       return plan.onComplete(op);
     }
 
+    /**
+     * Initiates a latch on the entire plan composed of EM operations to be executed.
+     */
     void awaitPlanExecutionComplete() {
       try {
         planExecutionLatch.await();
@@ -415,6 +452,12 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       LOG.info("All EM operations included in the plan are complete!");
     }
 
+    /**
+     * Puts the initiated EM operation into a map, mapping the operation to the execution status of "In progress".
+     *
+     * @param operation being initiated
+     * @return the previous state of the operation if it has already been requested.
+     */
     OpExecutionStatus markOperationRequest(final EMOperation operation) {
       return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.In_Progress);
     }
@@ -439,6 +482,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
           workerEvalIdToCtx.get(planContextId).getId() : planContextId;
     }
 
+    /**
+     * @return the map of operations already requested and each operation's status (in progress or complete)
+     */
     ConcurrentMap<EMOperation, OpExecutionStatus> getPlanExecutionStatus() {
       return emOperationsRequested;
     }
