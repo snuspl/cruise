@@ -15,6 +15,12 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
+import edu.snu.cay.common.metric.InsertableMetricTracker;
+import edu.snu.cay.common.metric.MetricException;
+import edu.snu.cay.common.metric.MetricTracker;
+import edu.snu.cay.common.metric.MetricsCollector;
+import edu.snu.cay.dolphin.async.metric.MetricsMessageSender;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
 import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.*;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.WorkerSynchronizer;
@@ -30,11 +36,11 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.dolphin.async.metric.MetricKeys.WORKER_COMPUTE_TIME;
 
 /**
  * {@link Worker} class for the MLRREEF application.
@@ -138,6 +144,10 @@ final class MLRWorker implements Worker {
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
+  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+  private final MetricsCollector metricsCollector;
+  private final InsertableMetricTracker insertableMetricTracker;
+  private final MetricsMessageSender metricsMessageSender;
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -159,6 +169,9 @@ final class MLRWorker implements Worker {
                     @Parameter(NumBatchPerIter.class) final int numBatchPerIter,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
+                    final MetricsCollector metricsCollector,
+                    final InsertableMetricTracker insertableMetricTracker,
+                    final MetricsMessageSender metricsMessageSender,
                     final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
     this.synchronizer = synchronizer;
@@ -181,6 +194,10 @@ final class MLRWorker implements Worker {
     this.decayPeriod = decayPeriod;
     this.trainErrorDatasetSize = trainErrorDatasetSize;
     this.numBatchPerLossLog = numBatchPerLossLog;
+    this.metricsCollector = metricsCollector;
+    this.insertableMetricTracker = insertableMetricTracker;
+    this.metricsMessageSender = metricsMessageSender;
+    this.addedEval = addedEval;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
 
@@ -194,8 +211,13 @@ final class MLRWorker implements Worker {
    */
   @Override
   public void initialize() {
+    final Set<MetricTracker> metricTrackerSet = new HashSet<>(1);
+    metricTrackerSet.add(insertableMetricTracker);
+    metricsCollector.registerTrackers(metricTrackerSet);
+
     // The input dataset, given as a list of pairs which are in the form, (input vector, label).
     final List<Pair<Vector, Integer>> dataValues = mlrParser.parse();
+
     final List<Long> dataKeys;
 
     try {
@@ -235,6 +257,12 @@ final class MLRWorker implements Worker {
 
   @Override
   public void run() {
+    try {
+      metricsCollector.start();
+    } catch (final MetricException e) {
+      throw new RuntimeException(e);
+    }
+
     resetTracers();
     final long iterationBegin = System.currentTimeMillis();
     pullModels();
@@ -322,6 +350,8 @@ final class MLRWorker implements Worker {
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
+
+    sendMetrics(memoryStore.getNumBlocks());
   }
 
   /**
@@ -490,5 +520,23 @@ final class MLRWorker implements Worker {
       }
     }
     return new Pair<>(maxIndex, maxValue);
+  }
+
+  private void sendMetrics(final int numDataBlocks) {
+    try {
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.sum());
+      metricsCollector.stop();
+    } catch (final MetricException e) {
+      throw new RuntimeException(e);
+    }
+    metricsMessageSender.setWorkerMsg(getWorkerMsg(numDataBlocks)).send();
+  }
+
+  private WorkerMsg getWorkerMsg(final int numDataBlocks) {
+    final WorkerMsg workerMsg = WorkerMsg.newBuilder()
+        .setIteration(iteration)
+        .setNumDataBlocks(numDataBlocks)
+        .build();
+    return workerMsg;
   }
 }
