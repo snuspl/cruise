@@ -68,7 +68,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
 
   private static final int DEFAULT_EVAL_MEM_SIZE = 1024;
-  private static final int DEFAULT_EVAL_ADD_COUNT = 1;
   private static final int DEFAULT_EVAL_NUM_CORES = 1;
 
   @Inject
@@ -304,13 +303,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
           switch (namespace) {
           case NAMESPACE_SERVER:
             LOG.log(Level.FINE, "Adding server {0}", operation.getEvalId());
-            serverEM.add(DEFAULT_EVAL_ADD_COUNT, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+            serverEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
                 getAllocatedEvalHandler(NAMESPACE_SERVER),
                 getActiveContextHandler(NAMESPACE_SERVER, operation));
             break;
           case NAMESPACE_WORKER:
             LOG.log(Level.FINE, "Adding worker {0}", operation.getEvalId());
-            workerEM.add(DEFAULT_EVAL_ADD_COUNT, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+            workerEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
                 getAllocatedEvalHandler(NAMESPACE_WORKER),
                 getActiveContextHandler(NAMESPACE_WORKER, operation));
             break;

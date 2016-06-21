@@ -24,7 +24,7 @@ public final class PlanResultImpl implements PlanResult {
   private final String summary;
 
   public PlanResultImpl() {
-    this.summary = null;
+    this.summary = "The plan result is not specified";
   }
 
   public PlanResultImpl(final String summary) {
