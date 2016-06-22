@@ -763,6 +763,8 @@ public final class AsyncDolphinDriver {
       if (failedTask.getActiveContext().isPresent()) {
         final ActiveContext context = failedTask.getActiveContext().get();
         if (deletedWorkerContextIds.contains(context.getId())) {
+          contextIdToWorkerContexts.remove(context.getId());
+
           // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
           context.close();
         }
@@ -783,6 +785,8 @@ public final class AsyncDolphinDriver {
       // which can be accessed by other running evaluators
       final ActiveContext context = completedTask.getActiveContext();
       if (deletedWorkerContextIds.contains(context.getId())) {
+        contextIdToWorkerContexts.remove(context.getId());
+
         // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
         context.close();
       }
@@ -923,21 +927,19 @@ public final class AsyncDolphinDriver {
   final class WorkerRemover implements EMDeleteExecutor {
     @Override
     public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
-      final ActiveContext activeContext = contextIdToWorkerContexts.remove(activeContextId);
+      final RunningTask runningTask = contextIdToWorkerTasks.remove(activeContextId);
       final boolean isSuccess;
-      if (activeContext == null) {
+      if (runningTask == null) {
         LOG.log(Level.WARNING,
-            "Trying to remove active context {0}, which is not found", activeContextId);
+            "Trying to close running task on {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
+        runningTask.close();
         deletedWorkerContextIds.add(activeContextId);
 
-        final RunningTask runningTask = contextIdToWorkerTasks.get(activeContextId);
-        runningTask.close();
-
-        // context will be closed in ClosedTaskHandler
+        // context will be closed in ClosedTaskHandler (or FailedTaskHandler)
         LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}",
-            contextIdToWorkerContexts.size());
+            contextIdToWorkerTasks.size());
         isSuccess = true;
       }
       sendCallback(activeContextId, callback, isSuccess);
