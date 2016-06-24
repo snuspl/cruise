@@ -46,16 +46,15 @@ import static org.mockito.Mockito.*;
  */
 public final class ParameterWorkerImplTest {
   private static final long CLOSE_TIMEOUT = 5000;
+  private static final int WORKER_QUEUE_SIZE = 2500;
+  private static final int WORKER_NUM_THREADS = 2;
   private static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_THREADS_SHOULD_NOT_FINISH = "threads have finished but should not";
   private static final String MSG_RESULT_ASSERTION = "threads received incorrect values";
 
-  private final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
-
   private ParameterWorkerImpl<Integer, Integer, Integer> worker;
   private AsyncWorkerHandler<Integer, Integer> handler;
   private WorkerMsgSender<Integer, Integer> mockSender;
-
 
   @Before
   public void setup() throws InjectionException {
@@ -68,8 +67,8 @@ public final class ParameterWorkerImplTest {
     injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
     injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
     injector.bindVolatileParameter(PSParameters.KeyCodecName.class, new IntegerCodec());
-    injector.bindVolatileParameter(WorkerQueueSize.class, 2500);
-    injector.bindVolatileParameter(ParameterWorkerNumThreads.class, 2);
+    injector.bindVolatileParameter(WorkerQueueSize.class, WORKER_QUEUE_SIZE);
+    injector.bindVolatileParameter(ParameterWorkerNumThreads.class, WORKER_NUM_THREADS);
 
     // pull messages should return values s.t. key == value
     doAnswer(invocationOnMock -> {
@@ -109,13 +108,14 @@ public final class ParameterWorkerImplTest {
   @Test
   public void testMultiThreadPush() throws InterruptedException, TimeoutException, ExecutionException {
     final int numPushThreads = 8;
+    final int numKeys = 4;
     final int numPushPerThread = 1000;
     final int pushValue = 1;
     final CountDownLatch countDownLatch = new CountDownLatch(numPushThreads);
     final Runnable[] threads = new Runnable[numPushThreads];
 
     for (int index = 0; index < numPushThreads; ++index) {
-      final int key = index % 4;
+      final int key = index % numKeys;
       threads[index] = () -> {
         for (int push = 0; push < numPushPerThread; ++push) {
           worker.push(key, pushValue);
@@ -144,6 +144,7 @@ public final class ParameterWorkerImplTest {
     final int numPullPerThread = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
     final Runnable[] threads = new Runnable[numPullThreads];
+    final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
 
     for (int index = 0; index < numPullThreads; ++index) {
       final int key = index % 4;
@@ -177,6 +178,7 @@ public final class ParameterWorkerImplTest {
     final int numPullPerThread = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
     final Runnable[] threads = new Runnable[numPullThreads];
+    final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
 
     for (int index = 0; index < numPullThreads; ++index) {
       final int threadIndex = index;
