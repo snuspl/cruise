@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Data object for non-negative matrix factorization.
  */
-final class NMFData implements Serializable {
+final class NMFData {
 
   private final int rowIndex;
   private final List<Pair<Integer, Double>> columns;
