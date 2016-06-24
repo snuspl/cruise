@@ -937,7 +937,7 @@ public final class AsyncDolphinDriver {
         runningTask.close();
         deletedWorkerContextIds.add(activeContextId);
 
-        // context will be closed in ClosedTaskHandler (or FailedTaskHandler)
+        // context will be closed in ClosedTaskHandler or unintentionally by FailedTaskHandler
         LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}",
             contextIdToWorkerTasks.size());
         isSuccess = true;
