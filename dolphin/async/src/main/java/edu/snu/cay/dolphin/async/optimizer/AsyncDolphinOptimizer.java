@@ -91,6 +91,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final int numDataBlocks = workerPair.getSecond();
 
     final int optimalNumWorkers = IntStream.range(1, availableEvaluators)
+        .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
         .mapToObj(numWorkers ->
             new Pair<>(numWorkers,
                 totalCost(numWorkers, numDataBlocks, numModelBlocks, availableEvaluators, workers, servers)))
@@ -105,10 +106,19 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final double workerUnitCostInvSum = workers.subList(0, optimalNumWorkers).stream()
         .mapToDouble(worker -> worker.unitCostInv)
         .sum();
+    int numAssignedDataBlocks = 0;
     for (int workerIndex = 0; workerIndex < optimalNumWorkers; ++workerIndex) {
       final EvaluatorSummary worker = workers.get(workerIndex);
-      worker.setNumOptimalBlocks((int) Math.round(numDataBlocks * worker.getUnitCostInv() / workerUnitCostInvSum));
+      if (workerIndex == optimalNumWorkers - 1) {
+        worker.setNumOptimalBlocks(numDataBlocks - numAssignedDataBlocks);
+
+      } else {
+        final int numOptimalBlocks = (int) Math.round(numDataBlocks * worker.getUnitCostInv() / workerUnitCostInvSum);
+        numAssignedDataBlocks += numOptimalBlocks;
+        worker.setNumOptimalBlocks(numOptimalBlocks);
+      }
     }
+
     for (int workerIndex = optimalNumWorkers; workerIndex < workerParams.size(); ++workerIndex) {
       final EvaluatorSummary worker = workers.get(workerIndex);
       worker.setNumOptimalBlocks(0);
@@ -118,9 +128,18 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final double serverUnitCostInvSum = servers.subList(0, optimalNumServers).stream()
         .mapToDouble(server -> server.unitCostInv)
         .sum();
+    int numAssignedModelBlocks = 0;
     for (int serverIndex = 0; serverIndex < optimalNumServers; ++serverIndex) {
       final EvaluatorSummary server = servers.get(serverIndex);
-      server.setNumOptimalBlocks((int) Math.round(numModelBlocks * server.getUnitCostInv() / serverUnitCostInvSum));
+      if (serverIndex == optimalNumServers - 1) {
+        server.setNumOptimalBlocks(numModelBlocks - numAssignedModelBlocks);
+
+      } else {
+        final int numOptimalBlocks = (int) Math.round(numModelBlocks * server.getUnitCostInv() / serverUnitCostInvSum);
+        numAssignedModelBlocks += numOptimalBlocks;
+        server.setNumOptimalBlocks(numOptimalBlocks);
+      }
+
     }
 
     for (int serverIndex = optimalNumServers; serverIndex < serverParams.size(); ++serverIndex) {
