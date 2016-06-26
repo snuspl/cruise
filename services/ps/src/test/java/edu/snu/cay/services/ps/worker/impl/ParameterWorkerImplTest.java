@@ -23,6 +23,7 @@ import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.utils.ThreadUtils;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -57,7 +58,7 @@ public final class ParameterWorkerImplTest {
   private WorkerMsgSender<Integer, Integer> mockSender;
 
   @Before
-  public void setup() throws InjectionException {
+  public void setup() throws InjectionException, NetworkException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ServerId.class, "ServerId")
         .build();
@@ -108,7 +109,8 @@ public final class ParameterWorkerImplTest {
    * {@code numPushThreads} threads are generated, each sending {@code numPushPerThread} pushes.
    */
   @Test
-  public void testMultiThreadPush() throws InterruptedException, TimeoutException, ExecutionException {
+  public void testMultiThreadPush()
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPushThreads = 8;
     final int numKeys = 4;
     final int numPushPerThread = 1000;
@@ -143,7 +145,8 @@ public final class ParameterWorkerImplTest {
    * Thus, we verify the validity of the result by simply checking whether pulled values are as expected or not.
    */
   @Test
-  public void testMultiThreadPull() throws InterruptedException, TimeoutException, ExecutionException {
+  public void testMultiThreadPull()
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPullThreads = 8;
     final int numKeys = 4;
     final int numPullPerThread = 1000;
