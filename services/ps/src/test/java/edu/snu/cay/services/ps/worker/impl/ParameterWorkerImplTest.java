@@ -230,7 +230,8 @@ public final class ParameterWorkerImplTest {
    * so that new pull messages must be issued for each pull request.
    */
   @Test
-  public void testInvalidateAll() throws InterruptedException, TimeoutException, ExecutionException {
+  public void testInvalidateAll()
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPulls = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
