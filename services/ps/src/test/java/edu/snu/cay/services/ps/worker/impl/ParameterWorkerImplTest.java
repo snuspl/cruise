@@ -169,7 +169,7 @@ public final class ParameterWorkerImplTest {
     }
 
     ThreadUtils.runConcurrently(threads);
-    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+    final boolean allThreadsFinished = countDownLatch.await(180, TimeUnit.SECONDS);
     worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
@@ -218,7 +218,7 @@ public final class ParameterWorkerImplTest {
     }
 
     ThreadUtils.runConcurrently(threads);
-    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+    final boolean allThreadsFinished = countDownLatch.await(180, TimeUnit.SECONDS);
     worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
@@ -245,7 +245,7 @@ public final class ParameterWorkerImplTest {
       });
     pool.shutdown();
 
-    final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
+    final boolean allThreadsFinished = countDownLatch.await(30, TimeUnit.SECONDS);
     worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
