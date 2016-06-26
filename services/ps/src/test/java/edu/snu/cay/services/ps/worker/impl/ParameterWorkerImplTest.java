@@ -104,6 +104,8 @@ public final class ParameterWorkerImplTest {
   /**
    * Test the thread safety of {@link ParameterWorkerImpl} by
    * creating multiple threads that try to push values to the server using {@link ParameterWorkerImpl}.
+   *
+   * {@code numPushThreads} threads are generated, each sending {@code numPushPerThread} pushes.
    */
   @Test
   public void testMultiThreadPush() throws InterruptedException, TimeoutException, ExecutionException {
@@ -135,19 +137,22 @@ public final class ParameterWorkerImplTest {
   /**
    * Test the thread safety of {@link ParameterWorkerImpl} by
    * creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
+   *
+   * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
    * Thus, we verify the validity of the result by simply checking whether pulled values are as expected or not.
    */
   @Test
   public void testMultiThreadPull() throws InterruptedException, TimeoutException, ExecutionException {
     final int numPullThreads = 8;
+    final int numKeys = 4;
     final int numPullPerThread = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
     final Runnable[] threads = new Runnable[numPullThreads];
     final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
 
     for (int index = 0; index < numPullThreads; ++index) {
-      final int key = index % 4;
+      final int key = index % numKeys;
       threads[index] = () -> {
         for (int pull = 0; pull < numPullPerThread; ++pull) {
           final Integer val = worker.pull(key);
@@ -171,11 +176,16 @@ public final class ParameterWorkerImplTest {
   /**
    * Test the thread safety of {@link ParameterWorkerImpl} by
    * creating multiple threads that try to pull several values from the server using {@link ParameterWorkerImpl}.
+   *
+   * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
+   * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
    */
   @Test
   public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException, ExecutionException {
     final int numPullThreads = 8;
+    final int numKeys = 4;
     final int numPullPerThread = 1000;
+    final int numKeysPerPull = 3;
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
     final Runnable[] threads = new Runnable[numPullThreads];
     final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
@@ -185,10 +195,10 @@ public final class ParameterWorkerImplTest {
 
       threads[index] = () -> {
         for (int pull = 0; pull < numPullPerThread; ++pull) {
-          final List<Integer> keyList = new ArrayList<>(3);
-          keyList.add((threadIndex + pull) % 4);
-          keyList.add((threadIndex + pull + 1));
-          keyList.add((threadIndex + pull + 2) % 4);
+          final List<Integer> keyList = new ArrayList<>(numKeysPerPull);
+          for (int keyIndex = 0; keyIndex < numKeysPerPull; ++keyIndex) {
+            keyList.add((threadIndex + pull + keyIndex) % numKeys);
+          }
 
           final List<Integer> vals = worker.pull(keyList);
           for (int listIndex = 0; listIndex < 3; ++listIndex) {
