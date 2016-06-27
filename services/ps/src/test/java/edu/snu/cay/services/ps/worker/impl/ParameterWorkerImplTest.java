@@ -37,6 +37,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -46,6 +48,8 @@ import static org.mockito.Mockito.*;
  * Tests for {@link ParameterWorkerImpl}.
  */
 public final class ParameterWorkerImplTest {
+  private static final Logger LOG = Logger.getLogger(ParameterWorkerImplTest.class.getName());
+
   private static final long CLOSE_TIMEOUT = 5000;
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
@@ -155,9 +159,11 @@ public final class ParameterWorkerImplTest {
     final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
 
     for (int index = 0; index < numPullThreads; ++index) {
+      final int threadIndex = index;
       final int key = index % numKeys;
       threads[index] = () -> {
         for (int pull = 0; pull < numPullPerThread; ++pull) {
+          LOG.log(Level.INFO, "{0} pulling {1}", new Object[]{threadIndex, pull});
           final Integer val = worker.pull(key);
           if (val == null || !val.equals(key)) {
             correctResultReturned.set(false);
