@@ -24,6 +24,7 @@ import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -266,19 +267,19 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * We do not implement a true Future, because this is simpler.
    */
   private static final class PullFuture<V> {
-    private volatile V value;
+    private volatile V value = null;
 
     /**
-     * Block until a value is set.
+     * Block until a value is set or the maximum waiting time elapses.
+     * It returns null when it fails to get the value in given timeout.
+     * @param timeout the maximum time to wait in milliseconds
      * @return the value
      */
-    public synchronized V getValue() {
-      while (value == null) {
-        try {
-          wait();
-        } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "InterruptedException on wait", e);
-        }
+    public synchronized V getValue(final long timeout) {
+      try {
+        wait(timeout);
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "InterruptedException on wait", e);
       }
       return value;
     }
@@ -329,6 +330,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * A push operation.
    */
   private class PushOp implements Op<K, V> {
+    private static final int MAX_RETRY_COUNT = 10;
+
     private final EncodedKey<K> encodedKey;
     private final P preValue;
 
@@ -358,7 +361,26 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       }
 
       // Send to remote PS
-      sender.get().sendPushMsg(serverResolver.resolveServer(encodedKey.getHash()), encodedKey, preValue);
+      int retryCount = 0;
+      while (true) {
+        if (++retryCount > MAX_RETRY_COUNT) {
+          throw new RuntimeException("Fail to send push message");
+        }
+
+        // re-resolve server for every retry
+        // since an operation may throw NetworkException when routing table is obsolete
+        final String serverId = serverResolver.resolveServer(encodedKey.getHash());
+        LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}",
+            new Object[]{encodedKey.getKey(), encodedKey.getHash()});
+
+        try {
+          sender.get().sendPushMsg(serverId, encodedKey, preValue);
+        } catch (final NetworkException e) {
+          LOG.log(Level.FINE, "NetworkException while sending push msg. Do retry", e);
+          continue;
+        }
+        break;
+      }
     }
   }
 
@@ -426,6 +448,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * We should further explore this trade-off with real ML workloads.
    */
   private static class WorkerThread<K, P, V> implements Runnable {
+    private static final int MAX_RETRY_COUNT = 10;
     private static final long QUEUE_TIMEOUT_MS = 3000;
 
     private final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache;
@@ -445,12 +468,38 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           .concurrencyLevel(1)
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
           .build(new CacheLoader<EncodedKey<K>, Wrapped<V>>() {
+            private static final long RETRY_INTERVAL_MS = 5000;
+
             @Override
-            public Wrapped<V> load(final EncodedKey<K> encodedKey) throws Exception {
+            public Wrapped<V> load(final EncodedKey<K> encodedKey) {
               final PullFuture<V> future = new PullFuture<>();
               pendingPulls.put(encodedKey.getKey(), future);
-              sender.get().sendPullMsg(serverResolver.resolveServer(encodedKey.getHash()), encodedKey);
-              final V value = future.getValue();
+
+              V value = null;
+
+              int retryCount = 0;
+              while (value == null) {
+                if (++retryCount > MAX_RETRY_COUNT) {
+                  throw new RuntimeException("Fail to load a value for pull");
+                }
+
+                // re-resolve server for every retry
+                // since an operation may throw NetworkException when routing table is obsolete
+                final String serverId = serverResolver.resolveServer(encodedKey.getHash());
+                LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}",
+                    new Object[]{encodedKey.getKey(), encodedKey.getHash()});
+
+                try {
+                  sender.get().sendPullMsg(serverId, encodedKey);
+                } catch (final NetworkException e) {
+                  LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
+                  continue;
+                }
+
+                // if failed, future returns null and pull is retried in the while loop
+                value = future.getValue(RETRY_INTERVAL_MS);
+              }
+
               pendingPulls.remove(encodedKey.getKey());
               return new Wrapped<>(value);
             }

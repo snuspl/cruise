@@ -16,12 +16,9 @@
 package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher.*;
-import edu.snu.cay.dolphin.async.optimizer.EmptyDataSet;
-import edu.snu.cay.dolphin.async.optimizer.ServerEM;
+import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.dolphin.async.metric.MetricsCollectionService;
-import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
-import edu.snu.cay.dolphin.async.optimizer.WorkerEM;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
@@ -265,6 +262,13 @@ public final class AsyncDolphinDriver {
    */
   private final ExecutorService optimizerExecutor = Executors.newSingleThreadExecutor();
 
+  /**
+   * Injectable constructor.
+   *
+   * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestrator} and
+   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandler} hold references to the same
+   * {@link MetricsHub} instance.
+   */
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
@@ -283,6 +287,7 @@ public final class AsyncDolphinDriver {
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
                              @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
+                             final MetricsHub metricsHub,
                              final HTraceParameters traceParameters,
                              final HTrace hTrace) throws IOException {
     hTrace.initialize();
@@ -710,28 +715,37 @@ public final class AsyncDolphinDriver {
    * @param contextId an identifier of the context
    */
   private void handleFinishedContext(final String contextId, final Optional<ActiveContext> parentContext) {
-    boolean needToCloseParent = false;
-
     // handle contexts corresponding to their type
+    // case1. Worker context is finished
     if (contextIdToWorkerContexts.containsKey(contextId)) {
       handleFinishedWorkerContext(contextId);
+
+    // case2. Server context is finished
     } else if (contextIdToServerContexts.containsKey(contextId)) {
       handleFinishedServerContext(contextId);
+
+    // case3. root context is finished
     } else if (contextIdToRootContexts.remove(contextId) != null) {
       // for tracking contexts
       LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
+
+    // case4. worker/server context is finished by EM's delete
     } else if (deletedWorkerContextIds.remove(contextId) || deletedServerContextIds.remove(contextId)) {
       LOG.log(Level.INFO, "The context {0} is closed by EM's Delete.", contextId);
-      needToCloseParent = true;
+      // the deleted worker/server context was running on the root context, a data loading context.
+      // we should close the root context to completely release the evaluator on which the deleted worker/server has run
+      if (!parentContext.isPresent()) {
+        throw new RuntimeException("Root context of the deleted worker/server context does not exist");
+      }
+      final String rootContextId = parentContext.get().getId();
+      final ActiveContext rootContext = contextIdToRootContexts.remove(rootContextId);
+      rootContext.close();
+
+    // case5. untracked context is finished
     } else {
       LOG.log(Level.WARNING, "Untracked context: {0}", contextId);
-      needToCloseParent = true;
-    }
-
-    // close its parent context to assure job to be shutdown anyway
-    if (needToCloseParent) {
       if (parentContext.isPresent()) {
-        LOG.log(Level.INFO, "Close a context {0}, which is a parent of the closed context whose id is {1}",
+        LOG.log(Level.INFO, "Close a context {0}, which is a parent of the finished context whose id is {1}",
             new Object[]{parentContext, contextId});
         parentContext.get().close();
       }
@@ -749,6 +763,8 @@ public final class AsyncDolphinDriver {
       if (failedTask.getActiveContext().isPresent()) {
         final ActiveContext context = failedTask.getActiveContext().get();
         if (deletedWorkerContextIds.contains(context.getId())) {
+          contextIdToWorkerContexts.remove(context.getId());
+
           // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
           context.close();
         }
@@ -769,6 +785,8 @@ public final class AsyncDolphinDriver {
       // which can be accessed by other running evaluators
       final ActiveContext context = completedTask.getActiveContext();
       if (deletedWorkerContextIds.contains(context.getId())) {
+        contextIdToWorkerContexts.remove(context.getId());
+
         // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
         context.close();
       }
@@ -909,21 +927,19 @@ public final class AsyncDolphinDriver {
   final class WorkerRemover implements EMDeleteExecutor {
     @Override
     public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
-      final ActiveContext activeContext = contextIdToWorkerContexts.remove(activeContextId);
+      final RunningTask runningTask = contextIdToWorkerTasks.remove(activeContextId);
       final boolean isSuccess;
-      if (activeContext == null) {
+      if (runningTask == null) {
         LOG.log(Level.WARNING,
-            "Trying to remove active context {0}, which is not found", activeContextId);
+            "Trying to close running task on {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
+        runningTask.close();
         deletedWorkerContextIds.add(activeContextId);
 
-        final RunningTask runningTask = contextIdToWorkerTasks.get(activeContextId);
-        runningTask.close();
-
-        // context will be closed in ClosedTaskHandler
+        // context will be closed in ClosedTaskHandler, or in FailedTaskHandler when Task accidentally fails
         LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}",
-            contextIdToWorkerContexts.size());
+            contextIdToWorkerTasks.size());
         isSuccess = true;
       }
       sendCallback(activeContextId, callback, isSuccess);
