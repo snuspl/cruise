@@ -66,7 +66,7 @@ public interface DAG<V> {
    * @param v src vertex
    * @param w dest vertex
    * @return true if the edge is added, false if the edge already exists between v and w
-   * @throws java.util.NoSuchElementException if the vertex v does not exist
+   * @throws java.util.NoSuchElementException if the vertex v or w does not exist
    * @throws IllegalStateException if the added edge generates a cycle in the graph
    */
   boolean addEdge(V v, V w);

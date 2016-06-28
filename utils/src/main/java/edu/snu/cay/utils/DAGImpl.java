@@ -101,11 +101,10 @@ public final class DAGImpl<V> implements DAG<V> {
   @Override
   public boolean addEdge(final V v, final V w) {
     if (!adjacent.containsKey(v)) {
-      LOG.log(Level.WARNING, "The vertex {0} does not exist", v);
-      return false;
+      throw new NoSuchElementException("No src vertex " + v);
     }
     if (!adjacent.containsKey(w)) {
-      LOG.log(Level.WARNING, "The vertex {0} does not exist", w);
+      throw new NoSuchElementException("No dest vertex " + w);
     }
 
     final Set<V> adjs = adjacent.get(v);
