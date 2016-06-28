@@ -21,6 +21,9 @@ import edu.snu.cay.dolphin.async.WorkerSynchronizer;
 import edu.snu.cay.dolphin.async.mlapps.nmf.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
@@ -29,6 +32,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -136,6 +140,9 @@ final class MLRWorker implements Worker {
    */
   private final int numBatchPerLossLog;
 
+  private final DataIdFactory<Long> idFactory;
+  private final MemoryStore<Long> memoryStore;
+
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -155,6 +162,8 @@ final class MLRWorker implements Worker {
                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
                     @Parameter(NumBatchPerLossLog.class) final int numBatchPerLossLog,
                     @Parameter(NumBatchPerIter.class) final int numBatchPerIter,
+                    final DataIdFactory<Long> idFactory,
+                    final MemoryStore<Long> memoryStore,
                     final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
     this.synchronizer = synchronizer;
@@ -177,6 +186,8 @@ final class MLRWorker implements Worker {
     this.decayPeriod = decayPeriod;
     this.trainErrorDatasetSize = trainErrorDatasetSize;
     this.numBatchPerLossLog = numBatchPerLossLog;
+    this.idFactory = idFactory;
+    this.memoryStore = memoryStore;
 
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
@@ -189,6 +200,16 @@ final class MLRWorker implements Worker {
   @Override
   public void initialize() {
     data = mlrParser.parse();
+
+    final List<Long> dataKeys;
+
+    try {
+      dataKeys = idFactory.getIds(data.size());
+    } catch (final IdGenerationException e) {
+      throw new RuntimeException("Fail to generate data keys", e);
+    }
+
+    memoryStore.putList(dataKeys, data);
 
     classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
@@ -228,6 +249,8 @@ final class MLRWorker implements Worker {
         "Accuracy: {4}",
         new Object[]{iteration, trainErrorDatasetSize, tuple3.getFirst(), tuple3.getSecond(), tuple3.getThird()});
 
+    final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
+    data = new ArrayList<>(workloadMap.values());
 
     int numInstances = 0;
     int numBatch = 0;
