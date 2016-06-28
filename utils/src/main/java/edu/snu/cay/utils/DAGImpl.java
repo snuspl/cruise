@@ -115,6 +115,9 @@ public final class DAGImpl<V> implements DAG<V> {
       inDegrees.put(w, inDegree + 1);
       if (inDegree == 0) {
         rootVertices.remove(w);
+        if (rootVertices.size() == 0) {
+          throw new IllegalStateException("Thd edge from " + v + " to " + w + " makes a cycle in the graph");
+        }
       }
       return true;
     } else {
