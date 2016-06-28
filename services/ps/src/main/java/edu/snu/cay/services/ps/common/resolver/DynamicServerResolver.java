@@ -50,7 +50,7 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   private final Map<Integer, String> storeIdToEndpointId = new ConcurrentHashMap<>();
 
-  private int numTotalBlocks = 0;
+  private volatile int numTotalBlocks = 0;
 
   /**
    * Volatile boolean representing whether it receives the initial routing table from driver or not.
@@ -80,6 +80,16 @@ public final class DynamicServerResolver implements ServerResolver {
    * It throws RuntimeException, if the table is not initialized til the end.
    */
   private void checkInitialization() {
+    // check without locking
+    if (initialized) {
+      return;
+    }
+
+    retryInitialization();
+  }
+
+  private synchronized void retryInitialization() {
+    // check after locking
     if (initialized) {
       return;
     }
@@ -108,10 +118,6 @@ public final class DynamicServerResolver implements ServerResolver {
    * Requests a routing table to driver.
    */
   public void requestRoutingTable() {
-    if (initialized) {
-      return;
-    }
-
     LOG.log(Level.FINE, "Sends a request for the routing table");
     msgSender.get().sendWorkerRegisterMsg();
   }

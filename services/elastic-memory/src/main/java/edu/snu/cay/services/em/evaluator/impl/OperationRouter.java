@@ -65,7 +65,7 @@ public final class OperationRouter<K> {
    * A prefix of evaluator id will be set by {@link #initialize(String)} or {@link #initialize(List)} once,
    * and used by {@link #getEvalId(int)} to make the complete evaluator id.
    */
-  private String evalPrefix;
+  private volatile String evalPrefix;
 
   private final int localStoreId;
 
@@ -202,7 +202,17 @@ public final class OperationRouter<K> {
    * It throws RuntimeException, if the table is not initialized til the end.
    */
   private void checkInitialization() {
+    // check without locking
     if (!addedEval || initialized) {
+      return;
+    }
+
+    retryInitialization();
+  }
+
+  private synchronized void retryInitialization() {
+    // check after locking
+    if (initialized) {
       return;
     }
 
