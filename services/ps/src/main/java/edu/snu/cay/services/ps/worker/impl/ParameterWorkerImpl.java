@@ -266,7 +266,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * We do not implement a true Future, because this is simpler.
    */
   private static final class PullFuture<V> {
-    private V value;
+    private volatile V value;
 
     /**
      * Block until a value is set.
