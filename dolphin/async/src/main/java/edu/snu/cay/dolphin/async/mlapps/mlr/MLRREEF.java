@@ -16,8 +16,9 @@
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
-import edu.snu.cay.dolphin.async.mlapps.nmf.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
@@ -38,6 +39,8 @@ public final class MLRREEF {
         .setUpdaterClass(MLRUpdater.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
+        .setServerSerializerClass(DenseVectorSerializer.class)
+        .setWorkerSerializerClass(MLRDataSerializer.class)
         .addParameterClass(NumClasses.class)
         .addParameterClass(NumFeatures.class)
         .addParameterClass(InitialStepSize.class)

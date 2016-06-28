@@ -44,7 +44,7 @@ final class NMFData implements Serializable {
 
   List<Pair<Integer, Double>> getColumns() {
     return columns;
-  };
+  }
 
   Vector getVector() {
     return vector;
