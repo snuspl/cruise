@@ -48,8 +48,6 @@ import static org.mockito.Mockito.*;
  * Tests for {@link ParameterWorkerImpl}.
  */
 public final class ParameterWorkerImplTest {
-  private static final Logger LOG = Logger.getLogger(ParameterWorkerImplTest.class.getName());
-
   private static final long CLOSE_TIMEOUT = 5000;
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
@@ -159,11 +157,9 @@ public final class ParameterWorkerImplTest {
     final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
 
     for (int index = 0; index < numPullThreads; ++index) {
-      final int threadIndex = index;
       final int key = index % numKeys;
       threads[index] = () -> {
         for (int pull = 0; pull < numPullPerThread; ++pull) {
-          LOG.log(Level.INFO, "{0} pulling {1}", new Object[]{threadIndex, pull});
           final Integer val = worker.pull(key);
           if (val == null || !val.equals(key)) {
             correctResultReturned.set(false);
@@ -175,7 +171,7 @@ public final class ParameterWorkerImplTest {
     }
 
     ThreadUtils.runConcurrently(threads);
-    final boolean allThreadsFinished = countDownLatch.await(180, TimeUnit.SECONDS);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
     worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
@@ -224,7 +220,7 @@ public final class ParameterWorkerImplTest {
     }
 
     ThreadUtils.runConcurrently(threads);
-    final boolean allThreadsFinished = countDownLatch.await(180, TimeUnit.SECONDS);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
     worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
@@ -242,7 +238,7 @@ public final class ParameterWorkerImplTest {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
-    pool.submit((Runnable) () -> {
+    pool.submit(() -> {
         for (int pull = 0; pull < numPulls; ++pull) {
           worker.pull(0);
           worker.invalidateAll();
@@ -251,7 +247,7 @@ public final class ParameterWorkerImplTest {
       });
     pool.shutdown();
 
-    final boolean allThreadsFinished = countDownLatch.await(30, TimeUnit.SECONDS);
+    final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
     worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
