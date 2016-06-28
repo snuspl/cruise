@@ -267,7 +267,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * We do not implement a true Future, because this is simpler.
    */
   private static final class PullFuture<V> {
-    private volatile V value = null;
+    private V value = null;
 
     /**
      * Block until a value is set or the maximum waiting time elapses.
@@ -276,10 +276,12 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      * @return the value
      */
     public synchronized V getValue(final long timeout) {
-      try {
-        wait(timeout);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "InterruptedException on wait", e);
+      if (value == null) {
+        try {
+          wait(timeout);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "InterruptedException on wait", e);
+        }
       }
       return value;
     }
