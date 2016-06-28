@@ -37,7 +37,7 @@ public final class PlanImplTest {
     final int numNameSpaces = 2;
     final int numEvalsToAdd = 50;
     final int numEvalsToDel = 50;
-    final int numTransfers = 50;
+    final int numTransfers = numEvalsToAdd + numEvalsToDel;
 
     final Set<String> namespaces = new HashSet<>(numNameSpaces);
     final List<String> evalsToAdd = new ArrayList<>(numEvalsToAdd);
@@ -47,15 +47,21 @@ public final class PlanImplTest {
     for (int i = 0; i < numNameSpaces; i++) {
       namespaces.add(NAMESPACE_PREFIX + i);
     }
+
+    int evalIdCounter = 0;
+
     for (int i = 0; i < numEvalsToAdd; i++) {
-      evalsToAdd.add(EVAL_PREFIX + i);
+      evalsToAdd.add(EVAL_PREFIX + evalIdCounter++);
     }
-    for (int i = numEvalsToAdd; i < numEvalsToAdd + numEvalsToDel; i++) {
-      evalsToDel.add(EVAL_PREFIX + i);
+    for (int i = 0; i < numEvalsToDel; i++) {
+      evalsToDel.add(EVAL_PREFIX + evalIdCounter++);
     }
-    for (int i = 0; i < numTransfers; i++) {
-      transferSteps.add(new TransferStepImpl(evalsToDel.get(i), evalsToAdd.get(i),
-          new DataInfoImpl(1)));
+
+    for (final String evalToAdd : evalsToAdd) {
+      transferSteps.add(new TransferStepImpl(EVAL_PREFIX + "-SRC", evalToAdd, new DataInfoImpl(1)));
+    }
+    for (final String evalToDel : evalsToDel) {
+      transferSteps.add(new TransferStepImpl(evalToDel, EVAL_PREFIX + "-DEST", new DataInfoImpl(1)));
     }
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
@@ -122,6 +128,20 @@ public final class PlanImplTest {
     planBuilder = PlanImpl.newBuilder()
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 0);
+
+    try {
+      planBuilder.build();
+      fail("Plan builder fails to detect a violation in the plan");
+    } catch (final RuntimeException e) {
+      // expected exception
+    }
+
+    // 4. case of plan with a cyclic dependency (Add -> Move -> Del -> Add)
+    planBuilder = PlanImpl.newBuilder()
+        .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
+        .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
+        .addTransferStep(NAMESPACE_PREFIX,
+            new TransferStepImpl(EVAL_PREFIX + 1, EVAL_PREFIX + 0, new DataInfoImpl(1)));
 
     try {
       planBuilder.build();
