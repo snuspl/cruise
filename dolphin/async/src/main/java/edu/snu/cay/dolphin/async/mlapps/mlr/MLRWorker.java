@@ -339,19 +339,19 @@ final class MLRWorker implements Worker {
 
     final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
     final List<Pair<Vector, Integer>> data = new ArrayList<>(workloadMap.values());
-    final int numInstances = data.size();
+    final int entireDatasetSize = data.size();
 
     // Compute loss with the entire dataset.
-    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(numInstances, data);
+    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(entireDatasetSize, data);
 
-    computeTracer.end(numInstances);
+    computeTracer.end(data.size());
     final float cleanupEnd = System.currentTimeMillis();
 
-    LOG.log(Level.INFO, "Number of instances: {0}", numInstances);
+    LOG.log(Level.INFO, "Number of instances: {0}", entireDatasetSize);
     LOG.log(Level.INFO, "Prediction accuracy on training dataset: {0}", lossRegLossAccuracy.getThird());
     LOG.log(Level.INFO, "Cleanup Samples: {0}, Avg Comp Per Row: {1}, Sum Comp: {2}, Avg Pull: {3}, Sum Pull: {4}, " +
             "Elapsed Time: {5}, Wait Time: {6}, Sample Loss Avg: {7}",
-        new Object[]{numInstances, computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(),
+        new Object[]{entireDatasetSize, computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(),
             cleanupEnd - waitStart, cleanupStart - waitStart, lossRegLossAccuracy.getFirst()});
   }
 
