@@ -290,6 +290,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    */
   private void executeOperations(final Set<EMOperation> operationsToExecute) {
     try {
+      System.out.println(operationsToExecute.size());
       for (final EMOperation operation : operationsToExecute) {
         final EMOperation.OpType opType = operation.getOpType();
         final String namespace = operation.getNamespace();
