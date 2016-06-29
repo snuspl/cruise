@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.network.util.Pair;

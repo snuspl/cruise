@@ -13,7 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.dolphin.async.mlapps.mlr;
+
+import edu.snu.cay.services.em.serialize.Serializer;
+import org.apache.reef.io.serialization.Codec;
+
+import javax.inject.Inject;
+
 /**
- * Classes for (de-)serialization.
+ * Provides the DenseVectorCodec that (de-)serializes
+ * DenseVector backed by breeze.
  */
-package edu.snu.cay.dolphin.async.mlapps.serialization;
+public final class DenseVectorSerializer implements Serializer {
+  private final DenseVectorCodec denseVectorCodec;
+
+  @Inject
+  private DenseVectorSerializer(final DenseVectorCodec denseVectorCodec) {
+    this.denseVectorCodec = denseVectorCodec;
+  }
+
+  @Override
+  public Codec getCodec() {
+    return denseVectorCodec;
+  }
+}

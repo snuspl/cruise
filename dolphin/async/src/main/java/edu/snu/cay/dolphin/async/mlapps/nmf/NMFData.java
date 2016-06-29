@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 import edu.snu.cay.common.math.linalg.Vector;
 import org.apache.reef.io.network.util.Pair;
 
-import java.io.Serializable;
 import java.util.List;
 
 /**
