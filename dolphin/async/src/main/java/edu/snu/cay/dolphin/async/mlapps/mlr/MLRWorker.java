@@ -100,11 +100,6 @@ final class MLRWorker implements Worker {
   private final VectorFactory vectorFactory;
 
   /**
-   * The input dataset, given as a list of pairs which are in the form, (input vector, label).
-   */
-  private List<Pair<Vector, Integer>> data;
-
-  /**
    * Model vectors that represent each class.
    */
   private final Vector[] oldModels;
@@ -199,17 +194,17 @@ final class MLRWorker implements Worker {
    */
   @Override
   public void initialize() {
-    data = mlrParser.parse();
-
+    // The input dataset, given as a list of pairs which are in the form, (input vector, label).
+    final List<Pair<Vector, Integer>> dataValues = mlrParser.parse();
     final List<Long> dataKeys;
 
     try {
-      dataKeys = idFactory.getIds(data.size());
+      dataKeys = idFactory.getIds(dataValues.size());
     } catch (final IdGenerationException e) {
       throw new RuntimeException("Fail to generate data keys", e);
     }
 
-    memoryStore.putList(dataKeys, data);
+    memoryStore.putList(dataKeys, dataValues);
 
     classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
@@ -223,8 +218,8 @@ final class MLRWorker implements Worker {
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of batches per iteration = {0}", numBatchPerIter);
-    LOG.log(Level.INFO, "Total number of samples = {0}", data.size());
-    if (data.size() < trainErrorDatasetSize) {
+    LOG.log(Level.INFO, "Total number of samples = {0}", dataValues.size());
+    if (dataValues.size() < trainErrorDatasetSize) {
       LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDatasetSize);
     }
 
@@ -244,20 +239,21 @@ final class MLRWorker implements Worker {
     final long iterationBegin = System.currentTimeMillis();
     pullModels();
 
-    final Tuple3<Double, Double, Float> tuple3 = computeLoss(trainErrorDatasetSize);
-    LOG.log(Level.INFO, "Iteration For Loss: {0}, NumInstances: {1}, Sample Loss Avg: {2}, Reg Loss Avg: {3}, " +
-        "Accuracy: {4}",
-        new Object[]{iteration, trainErrorDatasetSize, tuple3.getFirst(), tuple3.getSecond(), tuple3.getThird()});
-
     final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
-    data = new ArrayList<>(workloadMap.values());
+    final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
+
+    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(trainErrorDatasetSize, workload);
+    LOG.log(Level.INFO,
+        "Iteration For Loss: {0}, NumInstances: {1}, Sample Loss Avg: {2}, Reg Loss Avg: {3}, Accuracy: {4}",
+        new Object[]{iteration, trainErrorDatasetSize, lossRegLossAccuracy.getFirst(), lossRegLossAccuracy.getSecond(),
+            lossRegLossAccuracy.getThird()});
 
     int numInstances = 0;
     int numBatch = 0;
-    int batchSize = data.size() / numBatchPerIter;
-    batchSize += data.size() % numBatchPerIter == 0 ? 0 : 1;
+    int batchSize = workload.size() / numBatchPerIter;
+    batchSize += workload.size() % numBatchPerIter == 0 ? 0 : 1;
     computeTracer.start();
-    for (final Pair<Vector, Integer> entry : data) {
+    for (final Pair<Vector, Integer> entry : workload) {
       if (numInstances >= batchSize) {
         computeTracer.end(numInstances);
 
@@ -266,15 +262,15 @@ final class MLRWorker implements Worker {
         computeTracer.start();
 
         if (++numBatch % numBatchPerLossLog == 0) {
-          final Tuple3<Double, Double, Float> pair = computeLoss(trainErrorDatasetSize);
+          final Tuple3<Double, Double, Float> pair = computeLoss(trainErrorDatasetSize, workload);
           LOG.log(Level.INFO, "Iteration For Loss: {0}, NumInstances: {1}, Sample Loss Avg: {2}, Reg Loss Avg: {3}, " +
               "Accuracy: {4}",
               new Object[]{iteration, trainErrorDatasetSize, pair.getFirst(), pair.getSecond(), pair.getThird()});
         }
 
         numInstances = 0;
-        batchSize = data.size() / numBatchPerIter;
-        batchSize += data.size() % numBatchPerIter <= numBatch ? 0 : 1;
+        batchSize = workload.size() / numBatchPerIter;
+        batchSize += workload.size() % numBatchPerIter <= numBatch ? 0 : 1;
       }
 
       final Vector features = entry.getFirst();
@@ -315,9 +311,9 @@ final class MLRWorker implements Worker {
       LOG.log(Level.INFO, "Iteration: {0}, Sample Count: {1}, " +
               "Avg Comp Per Row: {2}, Sum Comp: {3}, Avg Pull: {4}, Sum Pull: {5}, Avg Push: {6}, " +
               "Sum Push: {7}, DvT: {8}, Elapsed Time: {9}",
-          new Object[]{iteration, data.size(),
+          new Object[]{iteration, workload.size(),
               computeTracer.avgElement(), computeTracer.sum(), pullTracer.avgElement(), pullTracer.sum(),
-              pushTracer.avgElement(), pushTracer.sum(), data.size() / elapsedTime, elapsedTime});
+              pushTracer.avgElement(), pushTracer.sum(), workload.size() / elapsedTime, elapsedTime});
     }
 
     if (iteration % decayPeriod == 0) {
@@ -340,40 +336,23 @@ final class MLRWorker implements Worker {
 
     pullModels();
     computeTracer.start();
-    int numInstances = 0;
-    int correctPredictions = 0;
-    double loss = 0;
-    for (final Pair<Vector, Integer> entry : data) {
-      final Vector features = entry.getFirst();
-      final int label = entry.getSecond();
-      final Vector predictions = predict(features);
-      final int prediction = max(predictions).getFirst();
 
-      ++numInstances;
-      if (label == prediction) {
-        ++correctPredictions;
-      }
+    final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
+    final List<Pair<Vector, Integer>> data = new ArrayList<>(workloadMap.values());
+    final int numInstances = data.size();
 
-      for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
-        if (classIndex == label) {
-          loss += -Math.log(predictions.get(classIndex));
-        } else {
-          loss += -Math.log(1 - predictions.get(classIndex));
-        }
-      }
-    }
-    loss /= data.size();
+    // Compute loss with the entire dataset.
+    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(numInstances, data);
 
     computeTracer.end(numInstances);
     final float cleanupEnd = System.currentTimeMillis();
 
     LOG.log(Level.INFO, "Number of instances: {0}", numInstances);
-    LOG.log(Level.INFO, "Correct predictions on training dataset: {0}", correctPredictions);
-    LOG.log(Level.INFO, "Prediction accuracy on training dataset: {0}", (float) correctPredictions / numInstances);
+    LOG.log(Level.INFO, "Prediction accuracy on training dataset: {0}", lossRegLossAccuracy.getThird());
     LOG.log(Level.INFO, "Cleanup Samples: {0}, Avg Comp Per Row: {1}, Sum Comp: {2}, Avg Pull: {3}, Sum Pull: {4}, " +
             "Elapsed Time: {5}, Wait Time: {6}, Sample Loss Avg: {7}",
         new Object[]{numInstances, computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(),
-            cleanupEnd - waitStart, cleanupStart - waitStart, loss});
+            cleanupEnd - waitStart, cleanupStart - waitStart, lossRegLossAccuracy.getFirst()});
   }
 
   private void pullModels() {
@@ -421,7 +400,8 @@ final class MLRWorker implements Worker {
    * Compute the loss value using the current models and all data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Float> computeLoss(final int datasetSize) {
+  private Tuple3<Double, Double, Float> computeLoss(final int datasetSize,
+                                                    final List<Pair<Vector, Integer>> data) {
     double loss = 0;
     int numInstances = 0;
     int correctPredictions = 0;
