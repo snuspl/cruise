@@ -23,7 +23,7 @@ import org.apache.reef.util.Optional;
  */
 public final class EMOperation {
   public enum OpType {
-    Add, Del, Move
+    ADD, DEL, MOVE
   }
 
   private final String namespace;
@@ -32,9 +32,9 @@ public final class EMOperation {
   private final Optional<TransferStep> transferStep;
 
   /**
-   * A constructor for Add and Delete operations.
+   * A constructor for ADD and DELTE operations.
    * @param namespace a namespace of operation
-   * @param opType a type of operation, which is one of Add or Remove
+   * @param opType a type of operation, which is one of ADD or REMOVE
    * @param evalId a target evaluator id
    */
   public EMOperation(final String namespace, final OpType opType, final String evalId) {
@@ -45,13 +45,13 @@ public final class EMOperation {
   }
 
   /**
-   * A constructor for Move operation.
+   * A constructor for MOVE operation.
    * @param namespace a namespace of operation
-   * @param transferStep a TransferStep including src, dest, data info of Move operation
+   * @param transferStep a TransferStep including src, dest, data info of MOVE operation
    */
   public EMOperation(final String namespace, final TransferStep transferStep) {
     this.namespace = namespace;
-    this.opType = OpType.Move;
+    this.opType = OpType.MOVE;
     this.evalId = Optional.empty();
     this.transferStep = Optional.of(transferStep);
   }
@@ -71,18 +71,16 @@ public final class EMOperation {
   }
 
   /**
-   * Returns an id of target evaluator of Add and Delete operations.
-   * It returns empty for Move operation.
-   * @return an Optional with an target evaluator id
+   * @return an Optional with the target evaluator id if the operation type is ADD or DELETE.
+   * For Move operation, it returns an empty Optional.
    */
   public Optional<String> getEvalId() {
     return evalId;
   }
 
   /**
-   * Returns a TransferStep for Move operation.
-   * It returns empty for Add and Delete operations.
-   * @return an Optional with a TransferStep
+   * @return an Optional with the TransferStep if the operation type is MOVE.
+   * For ADD or DELETE operations, it returns an empty Optional.
    */
   public Optional<TransferStep> getTransferStep() {
     return transferStep;

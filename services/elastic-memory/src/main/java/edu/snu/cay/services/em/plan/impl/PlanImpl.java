@@ -33,21 +33,32 @@ public final class PlanImpl implements Plan {
 
   private final Map<String, Set<String>> evaluatorsToAdd;
   private final Map<String, Set<String>> evaluatorsToDelete;
-  private final Map<String, List<TransferStep>> transferSteps;
+  private final Map<String, List<TransferStep>> allTransferSteps;
 
   private final DAG<EMOperation> dependencyGraph;
   private final int numTotalOperations;
 
   private PlanImpl(final Map<String, Set<String>> evaluatorsToAdd,
                    final Map<String, Set<String>> evaluatorsToDelete,
-                   final Map<String, List<TransferStep>> transferSteps,
-                   final DAG<EMOperation> dependencyGraph,
-                   final int numTotalOperations) {
+                   final Map<String, List<TransferStep>> allTransferSteps,
+                   final DAG<EMOperation> dependencyGraph) {
     this.evaluatorsToAdd = evaluatorsToAdd;
     this.evaluatorsToDelete = evaluatorsToDelete;
-    this.transferSteps = transferSteps;
+    this.allTransferSteps = allTransferSteps;
     this.dependencyGraph = dependencyGraph;
-    this.numTotalOperations = numTotalOperations;
+
+    // count the total number of operations
+    int numTotalOps = 0;
+    for (final Set<String> evalsToAdd : evaluatorsToAdd.values()) {
+      numTotalOps += evalsToAdd.size();
+    }
+    for (final Set<String> evalsToDel : evaluatorsToDelete.values()) {
+      numTotalOps += evalsToDel.size();
+    }
+    for (final List<TransferStep> transferSteps : allTransferSteps.values()) {
+      numTotalOps += transferSteps.size();
+    }
+    this.numTotalOperations = numTotalOps;
   }
 
   @Override
@@ -91,10 +102,10 @@ public final class PlanImpl implements Plan {
 
   @Override
   public Collection<TransferStep> getTransferSteps(final String namespace) {
-    if (!transferSteps.containsKey(namespace)) {
+    if (!allTransferSteps.containsKey(namespace)) {
       return Collections.emptyList();
     }
-    return transferSteps.get(namespace);
+    return allTransferSteps.get(namespace);
   }
 
   @Override
@@ -106,8 +117,8 @@ public final class PlanImpl implements Plan {
     for (final String key : evaluatorsToDelete.keySet()) {
       sb.append("evaluatorsToDelete=(").append(key).append(',').append(evaluatorsToDelete.get(key)).append(')');
     }
-    for (final String key : transferSteps.keySet()) {
-      sb.append("TransferSteps=(").append(key).append(',').append(transferSteps.get(key)).append(')');
+    for (final String key : allTransferSteps.keySet()) {
+      sb.append("TransferSteps=(").append(key).append(',').append(allTransferSteps.get(key)).append(')');
     }
     sb.append('}');
     return sb.toString();
@@ -203,7 +214,7 @@ public final class PlanImpl implements Plan {
         }
       }
 
-      // 2. do not allow moving out/in of data from/to evaluators will be added/deleted in a single plan
+      // 2. do not allow moving out/in of data from/to evaluators that will be added/deleted in a single plan
       for (final String namespace : allTransferSteps.keySet()) {
         for (final TransferStep transferStep : allTransferSteps.get(namespace)) {
           if (evaluatorsToDelete.containsKey(namespace) &&
@@ -219,19 +230,7 @@ public final class PlanImpl implements Plan {
       // build an execution graph considering dependency between steps
       final DAG<EMOperation> dependencyGraph = constructDAG(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps);
 
-      // count the total number of operations
-      int numTotalOps = 0;
-      for (final Set<String> evalsToAdd : evaluatorsToAdd.values()) {
-        numTotalOps += evalsToAdd.size();
-      }
-      for (final Set<String> evalsToDel : evaluatorsToDelete.values()) {
-        numTotalOps += evalsToDel.size();
-      }
-      for (final List<TransferStep> transferSteps : allTransferSteps.values()) {
-        numTotalOps += transferSteps.size();
-      }
-
-      return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, dependencyGraph, numTotalOps);
+      return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, dependencyGraph);
     }
 
     /**
@@ -249,7 +248,7 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToDel = entry.getValue();
         for (final String evalToDel : evalsToDel) {
-          final EMOperation delOperation = new EMOperation(namespace, EMOperation.OpType.Del, evalToDel);
+          final EMOperation delOperation = new EMOperation(namespace, EMOperation.OpType.DEL, evalToDel);
           delOperations.put(evalToDel, delOperation);
           dag.addVertex(delOperation);
         }
@@ -261,7 +260,7 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToAdd = entry.getValue();
         for (final String evalToAdd : evalsToAdd) {
-          final EMOperation addOperation = new EMOperation(namespace, EMOperation.OpType.Add, evalToAdd);
+          final EMOperation addOperation = new EMOperation(namespace, EMOperation.OpType.ADD, evalToAdd);
           addOperations.put(evalToAdd, addOperation);
           dag.addVertex(addOperation);
         }
