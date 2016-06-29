@@ -199,6 +199,11 @@ public final class PlanImpl implements Plan {
       return this;
     }
 
+    /**
+     * {@inheritDoc}
+     * @return {@inheritDoc}
+     * @throws IllegalStateException if a dependency in the plan forms a cycle
+     */
     @Override
     public PlanImpl build() {
       // check the observance of invariants in the plan (details are described below)
@@ -235,6 +240,7 @@ public final class PlanImpl implements Plan {
 
     /**
      * Constructs a directed acyclic graph based on the rules described in the comment of builder.
+     * @throws IllegalStateException if the graph contains a cycle
      */
     private DAG<EMOperation> constructDAG(final Map<String, Set<String>> namespaceToEvalsToAdd,
                                           final Map<String, Set<String>> namespaceToEvalsToDel,
