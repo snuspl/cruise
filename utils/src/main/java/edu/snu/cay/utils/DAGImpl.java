@@ -15,16 +15,17 @@
  */
 package edu.snu.cay.utils;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * This implements DAG with adjacent list.
- * This implementation is not thread-safe.
  * It is based on the one of MIST.
  * @param <V> type of the vertex
  */
+@NotThreadSafe
 public final class DAGImpl<V> implements DAG<V> {
   private static final Logger LOG = Logger.getLogger(DAGImpl.class.getName());
 
