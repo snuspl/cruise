@@ -25,14 +25,13 @@ import javax.inject.Inject;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * Serializer that provides codec for (de-)serializing data used in NMF.
  */
 final class NMFDataSerializer implements Serializer {
-  private static final Logger LOG = Logger.getLogger(NMFDataSerializer.class.getName());
   private final DenseVectorCodec denseVectorCodec;
+  private final NMFDataCodec nmfDataCodec = new NMFDataCodec();
 
   @Inject
   private NMFDataSerializer(final DenseVectorCodec denseVectorCodec) {
@@ -41,13 +40,14 @@ final class NMFDataSerializer implements Serializer {
 
   @Override
   public Codec getCodec() {
-    return new NMFDataCodec();
+    return nmfDataCodec;
   }
 
   private final class NMFDataCodec implements Codec<NMFData>, StreamingCodec<NMFData> {
     @Override
     public byte[] encode(final NMFData nmfData) {
-      final int numBytes = getNumBytes(nmfData.getVector()) + getNumBytes(nmfData.getColumns()) + Integer.SIZE;
+      final int numBytes =
+          denseVectorCodec.getNumBytes(nmfData.getVector()) + getNumBytes(nmfData.getColumns()) + Integer.SIZE;
       try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
            final DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(nmfData, daos);
@@ -90,15 +90,13 @@ final class NMFDataSerializer implements Serializer {
     }
   }
 
-  private int getNumBytes(final Vector vector) {
-    if (!vector.isDense()) {
-      LOG.warning("the given vector is not dense.");
-    }
-    return Integer.SIZE + Double.SIZE * vector.length();
-  }
-
+  /**
+   * Computes the number of bytes of columns for allocating buffer. Note that an extra integer is written
+   * to record the number of the columns {@link #encodeColumns(List, DataOutputStream)}.
+   * @return the total number of bytes of the encoded columns
+   */
   private int getNumBytes(final List<Pair<Integer, Double>> columns) {
-    return columns.size() * (Integer.SIZE + Double.SIZE);
+    return Integer.SIZE + columns.size() * (Integer.SIZE + Double.SIZE);
   }
 
   private void encodeColumns(final List<Pair<Integer, Double>> columns,

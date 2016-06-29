@@ -29,6 +29,7 @@ import java.io.*;
  */
 final class MLRDataSerializer implements Serializer {
   private final DenseVectorCodec denseVectorCodec;
+  private final MLRDataCodec mlrDataCodec = new MLRDataCodec();
 
   @Inject
   private MLRDataSerializer(final DenseVectorCodec denseVectorCodec) {
@@ -37,10 +38,10 @@ final class MLRDataSerializer implements Serializer {
 
   @Override
   public Codec getCodec() {
-    return new MLRCodec();
+    return mlrDataCodec;
   }
 
-  private final class MLRCodec implements Codec<Pair<Vector, Integer>>, StreamingCodec<Pair<Vector, Integer>> {
+  private final class MLRDataCodec implements Codec<Pair<Vector, Integer>>, StreamingCodec<Pair<Vector, Integer>> {
     @Override
     public byte[] encode(final Pair<Vector, Integer> mlrData) {
       final int numBytes = denseVectorCodec.getNumBytes(mlrData.getFirst()) + Integer.SIZE;
