@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_addinteger.sh -split 3 -numServers 2 -maxIter 100 -param 4 -maxNumEvalLocal 5 -input run_addinteger.sh -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.optimizer.AsyncDolphinPlanExecutor -optimizationIntervalMs 3000 -memoryStoreInitDelayMs 1000 -delayAfterOptimizationMs 10000
+# ./run_addinteger.sh -split 3 -number_of_workers 3 -numServers 2 -numPartitions 4 -maxIter 100 -param 4 -start_key 100 -number_of_keys 100 -number_of_updates 2 -maxNumEvalLocal 5 -input run_addinteger.sh -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.optimizer.AsyncDolphinPlanExecutor -optimizationIntervalMs 3000 -memoryStoreInitDelayMs 1000 -delayAfterOptimizationMs 10000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

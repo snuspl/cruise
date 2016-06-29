@@ -36,10 +36,30 @@ public final class AddIntegerREEF {
         .setWorkerClass(AddIntegerWorker.class)
         .setUpdaterClass(AddIntegerUpdater.class)
         .addParameterClass(AddIntegerParameter.class)
+        .addParameterClass(StartKeyParameter.class)
+        .addParameterClass(NumberOfKeysParameter.class)
+        .addParameterClass(NumberOfUpdatesParameter.class)
+        .addParameterClass(NumberOfWorkersParameter.class)
         .build());
   }
 
   @NamedParameter(doc = "all workers will add this integer to the sum", short_name = "param")
   final class AddIntegerParameter implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "the start key", short_name = "start_key")
+  final class StartKeyParameter implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "the number of keys", short_name = "number_of_keys")
+  final class NumberOfKeysParameter implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "number_of_updates")
+  final class NumberOfUpdatesParameter implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of workers", short_name = "number_of_workers")
+  final class NumberOfWorkersParameter implements Name<Integer> {
   }
 }
