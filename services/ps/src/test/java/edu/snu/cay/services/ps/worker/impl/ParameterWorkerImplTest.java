@@ -204,14 +204,13 @@ public final class ParameterWorkerImplTest {
           }
 
           final List<Integer> vals = worker.pull(keyList);
-          for (int listIndex = 0; listIndex < 3; ++listIndex) {
+          for (int listIndex = 0; listIndex < keyList.size(); ++listIndex) {
             final Integer val = vals.get(listIndex);
             if (val == null || !val.equals(keyList.get(listIndex))) {
               correctResultReturned.set(false);
               break;
             }
           }
-
         }
         countDownLatch.countDown();
       };
