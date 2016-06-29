@@ -31,7 +31,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * Orchestrates the Optimization in Dolphin Async.
@@ -80,7 +79,6 @@ public final class OptimizationOrchestrator {
   }
 
   public void run() {
-    // Check whether the metrics have been collected enough.
     serverParameters.addAll(metricsHub.drainServerMetrics());
     workerParameters.addAll(metricsHub.drainWorkerMetrics());
 
@@ -91,14 +89,18 @@ public final class OptimizationOrchestrator {
 
     // Case1. If the collected metrics are not enough.
     if (numServerMetricSources < numRunningServers || numWorkerMetricSources < numRunningWorkers) {
-      LOG.log(Level.FINE, "Skip this round. Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
+      LOG.log(Level.INFO, "Skip this round, because the collected metrics are not enough." +
+          " These metrics will be reused in the next optimization try." +
+          " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
           new Object[] {numServerMetricSources, numRunningServers, numWorkerMetricSources, numRunningWorkers});
       // Just return and wait for more metrics to be collected
       return;
 
     // Case2. If the collected metrics are more than they are supposed to be.
     } else if (numServerMetricSources > numRunningServers || numWorkerMetricSources > numRunningWorkers) {
-      LOG.log(Level.FINE, "Skip this round. Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
+      LOG.log(Level.INFO, "Skip this round, because the collected metrics are more than they are supposed to be." +
+          "These metrics are dumped and will not used in the next optimization try, because they are stale." +
+          " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
           new Object[] {numServerMetricSources, numRunningServers, numWorkerMetricSources, numRunningWorkers});
       // Dump all the collected metrics, because these metrics are stale
       serverParameters.clear();
@@ -161,28 +163,24 @@ public final class OptimizationOrchestrator {
   }
 
   private int getNumMetricSources(final List<EvaluatorParameters> evalParams) {
-    return evalParams.stream()
+    return (int) evalParams.stream()
         .map(EvaluatorParameters::getId)
-        .distinct()
-        .collect(Collectors.toList()).size();
+        .distinct().count();
   }
 
   /**
    * Filter the Evaluator Parameters, so that there exist only one latest value per Evaluator.
    */
   private List<EvaluatorParameters> filterLatestParams(final List<EvaluatorParameters> params) {
-    final Set<String> uniqueIds =
-        params.stream().map(EvaluatorParameters::getId).distinct().collect(Collectors.toSet());
+    final Map<String, EvaluatorParameters> evalIdToParameters = new HashMap<>();
+    final ListIterator<EvaluatorParameters> listIterator = params.listIterator(params.size());
 
-    final List<EvaluatorParameters> latestParams = new ArrayList<>(uniqueIds.size());
-
-    for (final String id : uniqueIds) {
-      final List<EvaluatorParameters> filteredList =
-          params.stream().filter(param -> param.getId().equals(id)).collect(Collectors.toList());
-      final EvaluatorParameters latestParam = filteredList.get(filteredList.size() - 1);
-      latestParams.add(latestParam);
+    // iterate from the tail in order to save the latest params
+    while (listIterator.hasPrevious()) {
+      final EvaluatorParameters evalParams = listIterator.previous();
+      evalIdToParameters.putIfAbsent(evalParams.getId(), evalParams);
     }
 
-    return latestParams;
+    return new ArrayList<>(evalIdToParameters.values());
   }
 }
