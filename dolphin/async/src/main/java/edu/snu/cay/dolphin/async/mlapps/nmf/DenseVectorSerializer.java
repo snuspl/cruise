@@ -24,6 +24,7 @@ import javax.inject.Inject;
  * Provides the DenseVectorCodec that (de-)serializes
  * DenseVector backed by breeze.
  */
+// TODO #402: Remove this duplicate of {@code DenseVectorCodec} in dolphin submodule.
 public final class DenseVectorSerializer implements Serializer {
   private final DenseVectorCodec denseVectorCodec;
 
