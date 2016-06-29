@@ -18,6 +18,6 @@ package edu.snu.cay.services.ps.worker.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of threads in ParameterWorker", default_value = "2", short_name = "psWorkerNumThreads")
+@NamedParameter(doc = "Number of threads in ParameterWorker", default_value = "2", short_name = "ps_worker_num_threads")
 public final class ParameterWorkerNumThreads implements Name<Integer> {
 }

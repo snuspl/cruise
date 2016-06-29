@@ -19,6 +19,6 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Max number of items that can be queued for each partition", default_value = "100",
-    short_name = "workerQueueSize")
+    short_name = "worker_queue_size")
 public final class WorkerQueueSize implements Name<Integer> {
 }

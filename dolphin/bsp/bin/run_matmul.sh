@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_matmul.sh -local true -split 4 -input sample_matmul_lg -small_matrix sample_matmul_sm -output output_matmul -maxNumEvalLocal 5
+# ./run_matmul.sh -local true -split 4 -input sample_matmul_lg -small_matrix sample_matmul_sm -output output_matmul -max_num_eval_local 5
 
 # RUNTIME
 SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar

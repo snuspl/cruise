@@ -25,13 +25,13 @@ import org.apache.reef.tang.annotations.NamedParameter;
  */
 public final class LayerConfigurationParameters {
 
-  @NamedParameter(doc = "initial bias of a parameter", short_name = "initB")
+  @NamedParameter(doc = "initial bias of a parameter", short_name = "init_b")
   public static final class InitialBias implements Name<Float> {
   }
 
   @NamedParameter(
       doc = "standard deviation of a normal distribution that is used to generate initial weight of a parameter",
-      short_name = "initW")
+      short_name = "init_w")
   public static final class InitialWeight implements Name<Float> {
   }
 
@@ -50,18 +50,18 @@ public final class LayerConfigurationParameters {
   /**
    * For fully connected layers.
    */
-  @NamedParameter(doc = "number of layer output nodes", short_name = "numOutput")
+  @NamedParameter(doc = "number of layer output nodes", short_name = "num_output")
   public static final class NumberOfOutput implements Name<Integer> {
   }
 
   /**
    * For activation layers.
    */
-  @NamedParameter(doc = "activation function of layer node", short_name = "activationFunc")
+  @NamedParameter(doc = "activation function of layer node", short_name = "activation_func")
   public static final class ActivationFunction implements Name<String> {
   }
 
-  @NamedParameter(doc = "loss function of loss layer", short_name = "lossFunc")
+  @NamedParameter(doc = "loss function of loss layer", short_name = "loss_func")
   public static final class LossFunction implements Name<String> {
   }
 

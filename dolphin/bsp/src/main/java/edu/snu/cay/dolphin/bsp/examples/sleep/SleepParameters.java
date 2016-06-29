@@ -235,25 +235,25 @@ public final class SleepParameters implements UserParameters {
   }
 
   @NamedParameter(doc = "time required to encode data per operation/iteration for group communication, milliseconds",
-                  short_name = "gcEncodeTime",
+                  short_name = "gc_encode_time",
                   default_value = "0")
   final class GCEncodeTime implements Name<Long> {
   }
 
   @NamedParameter(doc = "time required to decode data per operation/iteration for group communication, milliseconds",
-                  short_name = "gcDecodeTime",
+                  short_name = "gc_decode_time",
                   default_value = "0")
   final class GCDecodeTime implements Name<Long> {
   }
 
   @NamedParameter(doc = "the encode rate of an evaluator for elastic memory, milliseconds per data unit",
-                  short_name = "emEncodeRate",
+                  short_name = "em_encode_rate",
                   default_value = "0")
   final class EMEncodeRate implements Name<Long> {
   }
 
   @NamedParameter(doc = "the decode rate of an evaluator for elastic memory, milliseconds per data unit",
-                  short_name = "emDecodeRate",
+                  short_name = "em_decode_rate",
                   default_value = "0")
   final class EMDecodeRate implements Name<Long> {
   }

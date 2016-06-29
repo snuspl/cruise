@@ -19,6 +19,6 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Name of job",
-                short_name = "jobName")
+                short_name = "job_name")
 public final class JobIdentifier implements Name<String> {
 }
