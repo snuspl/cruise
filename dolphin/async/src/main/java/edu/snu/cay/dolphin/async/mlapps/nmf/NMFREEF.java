@@ -37,6 +37,8 @@ public final class NMFREEF {
         .setUpdaterClass(NMFUpdater.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
+        .setServerSerializerClass(DenseVectorSerializer.class)
+        .setWorkerSerializerClass(NMFDataSerializer.class)
         .addParameterClass(Rank.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
