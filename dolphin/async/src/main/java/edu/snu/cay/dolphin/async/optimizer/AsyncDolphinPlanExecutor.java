@@ -104,7 +104,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
         executingPlan.awaitPlanExecutionComplete();
 
-        ConcurrentMap<EMOperation, OpExecutionStatus> planExecutionResult = executingPlan.getPlanExecutionStatus();
+        final ConcurrentMap<EMOperation, OpExecutionStatus> planExecutionResult =
+                executingPlan.getPlanExecutionStatus();
 
         return new PlanResultImpl("Plan Execution Complete!\n[SUMMARY]\n" +
                 planExecutionResult, planExecutionResult.size());
@@ -269,8 +270,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     if (nextOpsToExecute.isEmpty()) {
       final Set<EMOperation> checkRemainingOps = executingPlan.getNextOpsToExecute();
       if (checkRemainingOps.isEmpty()) {
-        LOG.log(Level.INFO, "Oops! There are no more operations to be executed. " +
-            "CountDownLatch should have returned after marking the last operation complete! " +
+        LOG.log(Level.INFO, "There are no more operations to be executed. " +
             "CompleteOp: {0}", completeOp);
       } else {
         LOG.log(Level.INFO, "There are no independent operations that can be executed at the moment." +
@@ -293,8 +293,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    */
   private void executeOperations(final Set<EMOperation> operationsToExecute) {
     try {
-      System.err.println("*********Executing " + operationsToExecute.size());
-      LOG.log(Level.INFO, "!!!!!!!!! {0}", operationsToExecute);
       for (final EMOperation operation : operationsToExecute) {
         final EMOperation.OpType opType = operation.getOpType();
         final String namespace = operation.getNamespace();
@@ -302,7 +300,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         if (!executingPlan.markOperationRequest(operation)) {
           continue;
         }
-        System.err.println("OPTYPE " + opType);
         switch (opType) {
 
         case Add:
