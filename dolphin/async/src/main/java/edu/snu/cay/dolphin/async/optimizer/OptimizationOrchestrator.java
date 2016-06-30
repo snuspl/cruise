@@ -87,24 +87,24 @@ public final class OptimizationOrchestrator {
     final int numRunningServers = getNumRunningInstances(serverEM);
     final int numRunningWorkers = getNumRunningInstances(workerEM);
 
-    // Case1. If the collected metrics are not enough.
-    if (numServerMetricSources < numRunningServers || numWorkerMetricSources < numRunningWorkers) {
-      LOG.log(Level.INFO, "Skip this round, because the collected metrics are not enough." +
-          " These metrics will be reused in the next optimization try." +
+    // Case1. If there are metrics from dead nodes
+    if (numServerMetricSources > numRunningServers || numWorkerMetricSources > numRunningWorkers) {
+      LOG.log(Level.INFO, "Skip this round, because the collected metrics include ones from dead nodes." +
+          "The current metrics will be dumped to prevent them from being used in the next optimization try." +
           " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
           new Object[] {numServerMetricSources, numRunningServers, numWorkerMetricSources, numRunningWorkers});
-      // Just return and wait for more metrics to be collected
-      return;
-
-    // Case2. If the collected metrics are more than they are supposed to be.
-    } else if (numServerMetricSources > numRunningServers || numWorkerMetricSources > numRunningWorkers) {
-      LOG.log(Level.INFO, "Skip this round, because the collected metrics are more than they are supposed to be." +
-          "These metrics are dumped and will not used in the next optimization try, because they are stale." +
-          " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
-          new Object[] {numServerMetricSources, numRunningServers, numWorkerMetricSources, numRunningWorkers});
-      // Dump all the collected metrics, because these metrics are stale
+      // Dump all the collected metrics
       serverParameters.clear();
       workerParameters.clear();
+      return;
+
+    // Case2. If there are missing metrics
+    } else if (numServerMetricSources < numRunningServers || numWorkerMetricSources < numRunningWorkers) {
+      LOG.log(Level.INFO, "Skip this round, because there are missing metrics." +
+              " The existing metrics will be kept and reused in the next optimization try." +
+              " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
+          new Object[]{numServerMetricSources, numRunningServers, numWorkerMetricSources, numRunningWorkers});
+      // Just return and wait for more metrics to be collected
       return;
     }
 
