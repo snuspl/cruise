@@ -108,4 +108,3 @@ public final class DAGImplTest {
         new HashSet<>(expectedRoot4), dag.getRootVertices());
   }
 }
-

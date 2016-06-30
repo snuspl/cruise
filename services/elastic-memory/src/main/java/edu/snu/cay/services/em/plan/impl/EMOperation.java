@@ -122,4 +122,3 @@ public final class EMOperation {
         '}';
   }
 }
-
