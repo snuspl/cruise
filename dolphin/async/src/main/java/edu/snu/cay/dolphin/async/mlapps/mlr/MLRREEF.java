@@ -62,7 +62,7 @@ public final class MLRREEF {
   final class NumFeatures implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "initial value of the step size", short_name = "initStepSize")
+  @NamedParameter(doc = "initial value of the step size", short_name = "init_step_size")
   final class InitialStepSize implements Name<Double> {
   }
 
@@ -71,44 +71,44 @@ public final class MLRREEF {
   }
 
   @NamedParameter(doc = "number of iterations to wait until logging the current status",
-                  short_name = "statusLogPeriod",
+                  short_name = "status_log_period",
                   default_value = "0")
   final class StatusLogPeriod implements Name<Integer> {
   }
 
   @NamedParameter(doc = "number of features for each model partition",
-                  short_name = "featuresPerPartition")
+                  short_name = "features_per_partition")
   final class NumFeaturesPerPartition implements Name<Integer> {
   }
 
   @NamedParameter(doc = "standard deviation of the gaussian distribution used for initializing model parameters",
-                  short_name = "modelGaussian",
+                  short_name = "model_gaussian",
                   default_value = "0.001")
   final class ModelGaussian implements Name<Double> {
   }
 
   @NamedParameter(doc = "number of iterations to wait until learning wait decreases (periodic)",
-                  short_name = "decayPeriod")
+                  short_name = "decay_period")
   final class DecayPeriod implements Name<Integer> {
   }
 
   @NamedParameter(doc = "ratio which learning rate decreases by (multiplicative)",
-                  short_name = "decayRate")
+                  short_name = "decay_rate")
   final class DecayRate implements Name<Double> {
   }
 
   @NamedParameter(doc = "size of the dataset used for measuring training loss",
-                  short_name = "trainErrorDatasetSize")
+                  short_name = "train_error_dataset_size")
   final class TrainErrorDatasetSize implements Name<Integer> {
   }
 
   @NamedParameter(doc = "log the current loss after this many mini-batches",
-                  short_name = "numBatchPerLossLog")
+                  short_name = "num_batch_per_loss_log")
   final class NumBatchPerLossLog implements Name<Integer> {
   }
 
   @NamedParameter(doc = "number of mini-batches per iteration",
-                  short_name = "numBatchPerIter")
+                  short_name = "num_batch_per_iter")
   final class NumBatchPerIter implements Name<Integer> {
   }
 }

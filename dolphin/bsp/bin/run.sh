@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run.sh -local true -split 4 -input sample -output output_simple -maxNumEvalLocal 5
+# ./run.sh -local true -split 4 -input sample -output output_simple -max_num_eval_local 5
 
 # RUNTIME
 SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar

@@ -18,6 +18,6 @@ package edu.snu.cay.services.ps.examples.add.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Total number of updates", default_value = "100", short_name = "numUpdates")
+@NamedParameter(doc = "Total number of updates", default_value = "100", short_name = "num_updates")
 public final class NumUpdates implements Name<Integer> {
 }

@@ -41,11 +41,11 @@ public final class SynchronizationTest {
   @Test
   public void testSynchronization() {
     final String[] args = {
-        "-maxIter", "5",
-        "-maxNumEvalLocal", "9",
+        "-max_iter", "5",
+        "-max_num_eval_local", "9",
         "-split", "8",
         "-input", ClassLoader.getSystemResource("data").getPath() + "/empty_file",
-        "-numWorkerThreads", "3"
+        "-num_worker_threads", "3"
     };
 
     final LauncherStatus status = AsyncDolphinLauncher.launch("SynchronizationTest", args,

@@ -19,7 +19,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "A delay after completion of optimization to wait the system to be stable",
-                short_name = "delayAfterOptimizationMs",
+                short_name = "delay_after_optimization_ms",
                 default_value = "10000")
 public class DelayAfterOptimizationMs implements Name<Long> {
 }
