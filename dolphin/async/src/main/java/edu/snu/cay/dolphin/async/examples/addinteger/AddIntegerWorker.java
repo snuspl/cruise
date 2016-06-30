@@ -33,8 +33,6 @@ import java.util.logging.Logger;
  */
 final class AddIntegerWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(AddIntegerWorker.class.getName());
-  //private static final int KEY = 0;
-
   /**
    * Sleep 300 ms to simulate computation.
    */
@@ -70,10 +68,10 @@ final class AddIntegerWorker implements Worker {
   private AddIntegerWorker(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
                            final WorkerSynchronizer synchronizer,
                            @Parameter(AddIntegerREEF.AddIntegerParameter.class) final int parameter,
-                           @Parameter(AddIntegerREEF.StartKeyParameter.class) final int startKey,
-                           @Parameter(AddIntegerREEF.NumberOfKeysParameter.class) final int numberOfKeys,
-                           @Parameter(AddIntegerREEF.NumberOfUpdatesParameter.class) final int numberOfUpdates,
-                           @Parameter(AddIntegerREEF.NumberOfWorkersParameter.class) final int numberOfWorkers,
+                           @Parameter(AddIntegerREEF.StartKey.class) final int startKey,
+                           @Parameter(AddIntegerREEF.NumberOfKeys.class) final int numberOfKeys,
+                           @Parameter(AddIntegerREEF.NumberOfUpdates.class) final int numberOfUpdates,
+                           @Parameter(AddIntegerREEF.NumberOfWorkers.class) final int numberOfWorkers,
                            @Parameter(Parameters.NumWorkerThreads.class) final int numWorkerThreads,
                            @Parameter(Parameters.Iterations.class) final int numIterations
   )
