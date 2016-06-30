@@ -25,21 +25,20 @@ import org.apache.reef.tang.annotations.NamedParameter;
  */
 public final class LayerConfigurationParameters {
 
-  @NamedParameter(doc = "initial bias of a parameter", short_name = "init_b")
+  @NamedParameter(doc = "initial bias of a parameter")
   public static final class InitialBias implements Name<Float> {
   }
 
   @NamedParameter(
-      doc = "standard deviation of a normal distribution that is used to generate initial weight of a parameter",
-      short_name = "init_w")
+      doc = "standard deviation of a normal distribution that is used to generate initial weight of a parameter")
   public static final class InitialWeight implements Name<Float> {
   }
 
-  @NamedParameter(doc = "random seed that is used to generate initial weight", short_name = "seed")
+  @NamedParameter(doc = "random seed that is used to generate initial weight")
   public static final class RandomSeed implements Name<Long> {
   }
 
-  @NamedParameter(doc = "index of the layer", short_name = "index")
+  @NamedParameter(doc = "index of the layer")
   public static final class LayerIndex implements Name<Integer> {
   }
 
@@ -50,18 +49,18 @@ public final class LayerConfigurationParameters {
   /**
    * For fully connected layers.
    */
-  @NamedParameter(doc = "number of layer output nodes", short_name = "num_output")
+  @NamedParameter(doc = "number of layer output nodes")
   public static final class NumberOfOutput implements Name<Integer> {
   }
 
   /**
    * For activation layers.
    */
-  @NamedParameter(doc = "activation function of layer node", short_name = "activation_func")
+  @NamedParameter(doc = "activation function of layer node")
   public static final class ActivationFunction implements Name<String> {
   }
 
-  @NamedParameter(doc = "loss function of loss layer", short_name = "loss_func")
+  @NamedParameter(doc = "loss function of loss layer")
   public static final class LossFunction implements Name<String> {
   }
 
