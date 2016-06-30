@@ -104,7 +104,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
         executingPlan.awaitPlanExecutionComplete();
 
-        return new PlanResultImpl("Plan Execution Complete!\n[SUMMARY]\n" + executingPlan.getPlanExecutionStatus());
+        ConcurrentMap<EMOperation, OpExecutionStatus> planExecutionResult = executingPlan.getPlanExecutionStatus();
+
+        return new PlanResultImpl("Plan Execution Complete!\n[SUMMARY]\n" +
+                planExecutionResult, planExecutionResult.size());
       }
     });
   }
@@ -290,7 +293,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    */
   private void executeOperations(final Set<EMOperation> operationsToExecute) {
     try {
-      System.out.println(operationsToExecute.size());
+      System.err.println("*********Executing " + operationsToExecute.size());
+      LOG.log(Level.INFO, "!!!!!!!!! {0}", operationsToExecute);
       for (final EMOperation operation : operationsToExecute) {
         final EMOperation.OpType opType = operation.getOpType();
         final String namespace = operation.getNamespace();
@@ -298,8 +302,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         if (!executingPlan.markOperationRequest(operation)) {
           continue;
         }
-
+        System.err.println("OPTYPE " + opType);
         switch (opType) {
+
         case Add:
           switch (namespace) {
           case NAMESPACE_SERVER:
@@ -458,6 +463,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      *        false if the operation mapping already exists - i.e. is in progress or already complete.
      */
     boolean markOperationRequest(final EMOperation operation) {
+      LOG.log(Level.INFO, "Operation requested: {0}", operation);
       return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.In_Progress) == null;
     }
 

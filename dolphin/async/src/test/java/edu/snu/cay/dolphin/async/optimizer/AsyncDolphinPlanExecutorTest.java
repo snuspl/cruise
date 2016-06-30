@@ -26,6 +26,7 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
+import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -34,6 +35,7 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.impl.Tuple2;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -47,10 +49,11 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
 import static org.powermock.api.mockito.PowerMockito.*;
 
 //import static org.mockito.Mockito.*;
@@ -135,17 +138,19 @@ public final class AsyncDolphinPlanExecutorTest {
   @Test
   public void simplePlanExecutionTest() {
     final Plan plan = PlanImpl.newBuilder()
-            .addEvaluatorToDelete("SERVER", EVAL_PREFIX + 0)
-            .addEvaluatorToAdd("SERVER", EVAL_PREFIX + 1)
-            .addTransferStep("SERVER", new TransferStepImpl(EVAL_PREFIX + 0, EVAL_PREFIX + 1, new DataInfoImpl(1)))
+            .addEvaluatorToDelete("WORKER", EVAL_PREFIX + 0)
+            .addEvaluatorToAdd("WORKER", EVAL_PREFIX + 1)
+            .addEvaluatorToAdd("SERVER", EVAL_PREFIX + 2)
+            .addEvaluatorToDelete("SERVER", EVAL_PREFIX + 3)
+            .addTransferStep("SERVER", new TransferStepImpl(EVAL_PREFIX + 4, EVAL_PREFIX + 2, new DataInfoImpl(1)))
             .build();
 
-    System.out.println(plan.getReadyOps());
-
     Future<PlanResult> result = planExecutor.execute(plan);
+    int planSize = plan.getPlanSize();
 
     try{
-      System.out.println(((PlanResult) result.get()).toString());
+      PlanResultImpl summary = (PlanResultImpl) result.get();
+      assertEquals(planSize, summary.getNumExecutedOps());
     } catch (Exception e) {
       System.err.println(e.getMessage());
     }
@@ -160,9 +165,11 @@ public final class AsyncDolphinPlanExecutorTest {
             .build();
 
     Future<PlanResult> result = planExecutor.execute(plan);
+    int planSize = plan.getPlanSize();
 
     try{
-      System.out.println(((PlanResult) result.get()).toString());
+      PlanResultImpl summary = (PlanResultImpl) result.get();
+      assertEquals(planSize, summary.getNumExecutedOps());
     } catch (Exception e) {
       System.err.println(e.getMessage());
     }
@@ -170,9 +177,42 @@ public final class AsyncDolphinPlanExecutorTest {
 
   private final class MockElasticMemory implements ElasticMemory{
 
-    @Override
-    public void add(int number, int megaBytes, int cores, EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
-                    List<EventHandler <ActiveContext>> contextActiveHandlerList) {
+    private ConcurrentLinkedQueue<EventHandler<AvroElasticMemoryMessage>> deleteQueue;
+    private ConcurrentLinkedQueue<Tuple2<EventHandler<AllocatedEvaluator>, List<EventHandler<ActiveContext>>>> addQueue;
+    private ConcurrentLinkedQueue<EventHandler<AvroElasticMemoryMessage>> moveQueue;
+
+    private MockElasticMemory(){
+      deleteQueue = new ConcurrentLinkedQueue<>();
+      addQueue = new ConcurrentLinkedQueue<>();
+      moveQueue = new ConcurrentLinkedQueue<>();
+      initializeDelete();
+      initializeAdd();
+      initializeMove();
+    }
+
+    private void initializeDelete(){
+      AvroElasticMemoryMessage msg = mock(AvroElasticMemoryMessage.class);
+      ResultMsg resultMsg = mock(ResultMsg.class);
+      when(resultMsg.getResult()).thenReturn(Result.SUCCESS);
+      when(msg.getResultMsg()).thenReturn(resultMsg);
+
+      Thread deletion = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          while(true){
+            if(!deleteQueue.isEmpty()){
+              EventHandler<AvroElasticMemoryMessage> deleteHandler= deleteQueue.poll();
+              deleteHandler.onNext(msg);
+              System.out.println("DELETE COMPLETE");
+            }
+          }
+        }
+      });
+      deletion.start();
+    }
+
+    private void initializeAdd(){
+
       AllocatedEvaluator evaluator = mock(AllocatedEvaluator.class);
 
       when(evaluator.getId()).thenReturn("instance" + idInt.getAndIncrement());
@@ -183,33 +223,67 @@ public final class AsyncDolphinPlanExecutorTest {
       when(context.getEvaluatorId()).thenReturn(evalId);
       doNothing().when(context).submitContextAndService(mock(Configuration.class), mock(Configuration.class));
 
-      Answer todo = new Answer() {
+      Thread addition = new Thread(new Runnable() {
         @Override
-        public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
-          for(EventHandler<ActiveContext> handler : contextActiveHandlerList){
-            handler.onNext(context);
+        public void run() {
+          while(true){
+            if(!addQueue.isEmpty()){
+              Tuple2 addHandlers= addQueue.poll();
+              EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler
+                      = (EventHandler<AllocatedEvaluator>) addHandlers.getT1();
+              List<EventHandler<ActiveContext>> ctxHandlerList
+                      = (List<EventHandler<ActiveContext>>) addHandlers.getT2();
+
+              Answer todo = new Answer() {
+                @Override
+                public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
+                  for(EventHandler<ActiveContext> handler : ctxHandlerList){
+                    handler.onNext(context);
+                  }
+                  return null;
+                }
+              };
+              doAnswer(todo).when(evaluator).submitContext(Mockito.any(Configuration.class));
+
+              evaluatorAllocatedHandler.onNext(evaluator);
+              System.out.println("ADD COMPLETE");
+            }
           }
-          return null;
         }
-      };
-      doAnswer(todo).when(evaluator).submitContext(Mockito.any(Configuration.class));
-
-      assertNotNull(evaluatorAllocatedHandler);
-      evaluatorAllocatedHandler.onNext(evaluator);
-
-      System.out.println("ADD COMPLETE");
+      });
+      addition.start();
     }
 
-    @Override
-    public void delete(String evalId, @Nullable EventHandler<AvroElasticMemoryMessage> callback) {
+    private void initializeMove(){
       AvroElasticMemoryMessage msg = mock(AvroElasticMemoryMessage.class);
       ResultMsg resultMsg = mock(ResultMsg.class);
       when(resultMsg.getResult()).thenReturn(Result.SUCCESS);
       when(msg.getResultMsg()).thenReturn(resultMsg);
 
-      callback.onNext(msg);
+      Thread move = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          while(true){
+            if(!moveQueue.isEmpty()){
+              EventHandler<AvroElasticMemoryMessage> moveHandler= moveQueue.poll();
+              moveHandler.onNext(msg);
+              System.out.println("MOVE COMPLETE");
+            }
+          }
+        }
+      });
+      move.start();
+    }
 
-      System.out.println("DELETE COMPLETE");
+    @Override
+    public void add(int number, int megaBytes, int cores, EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
+                    List<EventHandler <ActiveContext>> contextActiveHandlerList) {
+      addQueue.add(new Tuple2<>(evaluatorAllocatedHandler, contextActiveHandlerList));
+    }
+
+    @Override
+    public void delete(String evalId, @Nullable EventHandler<AvroElasticMemoryMessage> callback) {
+      deleteQueue.add(callback);
     }
 
     @Override
@@ -220,12 +294,7 @@ public final class AsyncDolphinPlanExecutorTest {
     @Override
     public void move(int numBlocks, String srcEvalId, String destEvalId,
                      @Nullable EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-      AvroElasticMemoryMessage msg = mock(AvroElasticMemoryMessage.class);
-      ResultMsg resultMsg = mock(ResultMsg.class);
-      when(resultMsg.getResult()).thenReturn(Result.SUCCESS);
-      when(msg.getResultMsg()).thenReturn(resultMsg);
-
-      finishedCallback.onNext(msg);
+      moveQueue.add(finishedCallback);
     }
 
     @Override

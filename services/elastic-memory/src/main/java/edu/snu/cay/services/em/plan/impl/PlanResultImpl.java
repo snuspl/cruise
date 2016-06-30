@@ -22,17 +22,29 @@ import edu.snu.cay.services.em.plan.api.PlanResult;
  */
 public final class PlanResultImpl implements PlanResult {
   private final String summary;
+  private final int numExecutedOps;
 
   public PlanResultImpl() {
     this.summary = "The plan result is not specified";
+    this.numExecutedOps = -1;
   }
 
   public PlanResultImpl(final String summary) {
     this.summary = summary;
+    this.numExecutedOps = -1;
+  }
+
+  public PlanResultImpl(final String summary, final int numExecutedOps) {
+    this.summary = summary;
+    this.numExecutedOps = numExecutedOps;
   }
 
   @Override
   public String toString() {
     return summary;
+  }
+
+  public int getNumExecutedOps() {
+    return numExecutedOps;
   }
 }
