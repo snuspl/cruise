@@ -296,8 +296,10 @@ public final class PlanImpl implements Plan {
           final EMOperation delOperation = delOperationsIter.next();
           dag.addEdge(delOperation, addOperation);
         } else {
-          LOG.log(Level.WARNING, "The number of Adds are larger than the one of Deletes." +
-              " When executing the plan, this Add step would be blocked due to the resource limit. {0}", addOperation);
+          LOG.log(Level.WARNING, "The number of Adds ({0}) are larger than the one of Deletes ({1})." +
+              " While executing the plan, adding evaluators might be blocked if the resources are smaller" +
+              " than it must be.", new Object[]{addOperations.size(), delOperations.size()});
+          break;
         }
       }
 
