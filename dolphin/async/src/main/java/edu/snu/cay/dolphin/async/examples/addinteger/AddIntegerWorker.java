@@ -120,32 +120,29 @@ final class AddIntegerWorker implements Worker {
     while (numRetries > 0) {
       numRetries--;
 
-      try {
-        if (validate()) {
-          return;
+      if (validate()) {
+        return;
+      } else if (numRetries > 0) {
+        try {
+          Thread.sleep(sleepMillis);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "Interrupted while sleeping to compare the result with expected value", e);
         }
-      } catch (final IntegerValidationException e) {
-        if (numRetries > 0) {
-          try {
-            Thread.sleep(sleepMillis);
-          } catch (final InterruptedException e1) {
-            LOG.log(Level.WARNING, "Interrupted while sleeping to compare the result with expected value", e);
-          }
-        } else {
-          throw new RuntimeException(e);
-        }
+      } else {
+        LOG.log(Level.WARNING, "Validation test is failed");
+        throw new RuntimeException();
       }
     }
   }
 
-  private boolean validate() throws IntegerValidationException {
+  private boolean validate() {
     for (int i = 0; i < numberOfKeys; i++) {
       final int result = parameterWorker.pull(startKey + i);
 
       if (expectedResult != result) {
         LOG.log(Level.WARNING, "For key {0}, expected value {1} but received {2}",
             new Object[]{startKey + i, expectedResult, result});
-        throw new IntegerValidationException(startKey + i, expectedResult, result);
+        return false;
       } else {
         LOG.log(Level.INFO, "For key {0}, received expected value {1}.", new Object[]{startKey + i, expectedResult});
       }
@@ -153,10 +150,5 @@ final class AddIntegerWorker implements Worker {
     return true;
   }
 
-  private static class IntegerValidationException extends Exception {
-    public IntegerValidationException(final int key, final int expected, final int actual) {
-      super(String.format("For key %d, expected value %d but received %d", key, expected, actual));
-    }
-  }
 }
 
