@@ -15,7 +15,7 @@
 #
 
 # EXAMPLE USAGE 
-# ./run_regression.sh -dim 3 -maxIter 20 -stepSize 0.001 -lambda 0.1 -local true -split 4 -input sample_regression -output output_regression -maxNumEvalLocal 5
+# ./run_regression.sh -dim 3 -max_iter 20 -step_size 0.001 -lambda 0.1 -local true -split 4 -input sample_regression -output output_regression -max_num_eval_local 5
 
 # RUNTIME
 SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar

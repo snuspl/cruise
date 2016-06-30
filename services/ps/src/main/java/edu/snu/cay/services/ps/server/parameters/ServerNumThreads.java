@@ -20,6 +20,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Number of the threads that run operations in each server",
                 default_value = "2",
-                short_name = "serverNumThreads")
+                short_name = "server_num_threads")
 public final class ServerNumThreads implements Name<Integer> {
 }

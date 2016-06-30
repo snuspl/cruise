@@ -18,13 +18,12 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 import edu.snu.cay.common.math.linalg.Vector;
 import org.apache.reef.io.network.util.Pair;
 
-import java.io.Serializable;
 import java.util.List;
 
 /**
  * Data object for non-negative matrix factorization.
  */
-final class NMFData implements Serializable {
+final class NMFData {
 
   private final int rowIndex;
   private final List<Pair<Integer, Double>> columns;
@@ -44,7 +43,7 @@ final class NMFData implements Serializable {
 
   List<Pair<Integer, Double>> getColumns() {
     return columns;
-  };
+  }
 
   Vector getVector() {
     return vector;

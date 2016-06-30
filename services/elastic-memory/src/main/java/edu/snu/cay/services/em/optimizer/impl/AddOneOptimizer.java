@@ -63,11 +63,14 @@ public final class AddOneOptimizer implements Optimizer {
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    for (final String namespace : evalParamsMap.keySet()) {
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParamsMap.entrySet()) {
+      final String namespace = entry.getKey();
+      final List<EvaluatorParameters> evalParams = entry.getValue();
+
       planBuilder.addEvaluatorToAdd(namespace, evaluatorToAdd);
 
       EvaluatorParameters srcEvaluator = null;
-      for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
+      for (final EvaluatorParameters evaluator : evalParams) {
         if (evaluator.getDataInfo().getNumBlocks() > 0) {
           srcEvaluator = evaluator;
           break;

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_sleep.sh -local true -split 3 -input sample -conf sample_sleep_conf -output output -gcEncodeTime 200 -gcDecodeTime 200 -emEncodeRate 5 -emDecodeRate 5 -maxIter 10 -timeout 120000 -maxNumEvalLocal 5 -optimizer edu.snu.cay.services.em.optimizer.impl.AddOneOptimizer -plan_executor edu.snu.cay.dolphin.bsp.core.optimizer.DefaultPlanExecutor
+# ./run_sleep.sh -local true -split 3 -input sample -conf sample_sleep_conf -output output -gc_encode_time 200 -gc_decode_time 200 -em_encode_rate 5 -em_decode_rate 5 -max_iter 10 -timeout 120000 -max_num_eval_local 5 -optimizer edu.snu.cay.services.em.optimizer.impl.AddOneOptimizer -plan_executor edu.snu.cay.dolphin.bsp.core.optimizer.DefaultPlanExecutor
 
 # RUNTIME
 SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar

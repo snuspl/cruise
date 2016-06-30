@@ -108,11 +108,13 @@ public final class RandomOptimizer implements Optimizer {
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    for (final String namespace : evalParamsMap.keySet()) {
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParamsMap.entrySet()) {
+      final String namespace = entry.getKey();
+      final List<EvaluatorParameters> evalParams = entry.getValue();
 
       final List<EvaluatorParameters> evaluatorsToAdd;
       final List<EvaluatorParameters> evaluatorsToDelete;
-      final List<EvaluatorParameters> activeEvaluators = new ArrayList<>(evalParamsMap.get(namespace));
+      final List<EvaluatorParameters> activeEvaluators = new ArrayList<>(evalParams);
       if (numEvaluators > activeEvaluators.size()) {
         evaluatorsToDelete = new ArrayList<>(0);
         evaluatorsToAdd = getNewEvaluators(numEvaluators - activeEvaluators.size()); // Add to the tail
