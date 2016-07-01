@@ -33,32 +33,49 @@ import java.util.logging.Logger;
  */
 final class AddIntegerWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(AddIntegerWorker.class.getName());
+
   /**
    * Sleep 300 ms to simulate computation.
    */
   private static final long DELAY_MS = 300;
 
+  /**
+   * Sleep to wait validation check is possible.
+   */
+  private static final long VALIDATE_SLEEP_MS = 100;
+
+  /**
+   * Retry validation check maximum 20 times to wait server processing.
+   */
+  private static final int NUM_VALIDATE_RETRIES = 20;
+
   private final ParameterWorker<Integer, Integer, Integer> parameterWorker;
+
   /**
    * Synchronization component for setting a global barrier across workers.
    */
   private final WorkerSynchronizer synchronizer;
+
   /**
    * The integer to be added to each key in an update.
    */
-  private final int parameter;
+  private final int delta;
+
   /**
    * The start key.
    */
   private final int startKey;
+
   /**
    * The number of keys.
    */
   private final int numberOfKeys;
+
   /**
    * The number of updates for each key in an iteration.
    */
   private final int numberOfUpdates;
+
   /**
    * The expected total sum of each key.
    */
@@ -67,7 +84,7 @@ final class AddIntegerWorker implements Worker {
   @Inject
   private AddIntegerWorker(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
                            final WorkerSynchronizer synchronizer,
-                           @Parameter(AddIntegerREEF.AddIntegerParameter.class) final int parameter,
+                           @Parameter(AddIntegerREEF.DeltaValue.class) final int delta,
                            @Parameter(AddIntegerREEF.StartKey.class) final int startKey,
                            @Parameter(AddIntegerREEF.NumberOfKeys.class) final int numberOfKeys,
                            @Parameter(AddIntegerREEF.NumberOfUpdates.class) final int numberOfUpdates,
@@ -78,17 +95,18 @@ final class AddIntegerWorker implements Worker {
       throws IdGenerationException {
     this.parameterWorker = parameterWorker;
     this.synchronizer = synchronizer;
-    this.parameter = parameter;
+    this.delta = delta;
     this.startKey = startKey;
     this.numberOfKeys = numberOfKeys;
     this.numberOfUpdates = numberOfUpdates;
-    this.expectedResult = parameter * numberOfWorkers * numWorkerThreads * numIterations * numberOfUpdates;
-    LOG.log(Level.INFO, "param : {0}, splits : {1}, numWorkerThreads : {2}, numIterations : {3}, numberOfUpdates : {4}",
-        new Object[]{parameter, numberOfWorkers, numWorkerThreads, numIterations, numberOfUpdates});
+    this.expectedResult = delta * numberOfWorkers * numWorkerThreads * numIterations * numberOfUpdates;
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numWorkerThreads:{2}, numIterations:{3}, numberOfUpdates:{4}",
+        new Object[]{delta, numberOfWorkers, numWorkerThreads, numIterations, numberOfUpdates});
   }
 
   @Override
   public void initialize() {
+    // all of the workers should start at the same time to use it as a benchmark
     synchronizer.globalBarrier();
   }
 
@@ -103,7 +121,7 @@ final class AddIntegerWorker implements Worker {
     for (int i = 0; i < numberOfKeys; i++) {
       Integer value = 0;
       for (int j = 0; j < numberOfUpdates; j++) {
-        parameterWorker.push(startKey + i, parameter);
+        parameterWorker.push(startKey + i, delta);
         value = parameterWorker.pull(startKey + i);
       }
       LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{startKey + i, value});
@@ -112,29 +130,33 @@ final class AddIntegerWorker implements Worker {
 
   @Override
   public void cleanup() {
+    // validation check is possible when all of the workers finish their jobs
+    // so, barrier is used to wait other workers
     synchronizer.globalBarrier();
 
-    final long sleepMillis = 100;
-    int numRetries = 20;
+    int numRetries = NUM_VALIDATE_RETRIES;
 
-    while (numRetries > 0) {
-      numRetries--;
-
+    while (numRetries-- > 0) {
       if (validate()) {
         return;
-      } else if (numRetries > 0) {
-        try {
-          Thread.sleep(sleepMillis);
-        } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "Interrupted while sleeping to compare the result with expected value", e);
-        }
-      } else {
-        LOG.log(Level.WARNING, "Validation test is failed");
-        throw new RuntimeException();
+      }
+
+      try {
+        Thread.sleep(VALIDATE_SLEEP_MS);
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while sleeping to compare the result with expected value", e);
       }
     }
+
+    LOG.log(Level.WARNING, "Validation test is failed");
+    throw new RuntimeException();
   }
 
+  /**
+   * check the result(total sum) of each key is same with expected result.
+   *
+   * @return true if all of the values of keys are matched with expected result, otherwise false.
+   */
   private boolean validate() {
     for (int i = 0; i < numberOfKeys; i++) {
       final int result = parameterWorker.pull(startKey + i);
@@ -149,6 +171,5 @@ final class AddIntegerWorker implements Worker {
     }
     return true;
   }
-
 }
 
