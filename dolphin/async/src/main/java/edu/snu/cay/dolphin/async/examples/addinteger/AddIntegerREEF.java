@@ -51,15 +51,15 @@ public final class AddIntegerREEF {
   final class StartKey implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The number of keys", short_name = "number_of_keys")
+  @NamedParameter(doc = "The number of keys", short_name = "num_keys")
   final class NumberOfKeys implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "number_of_updates")
+  @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "num_updates")
   final class NumberOfUpdates implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The number of workers", short_name = "number_of_workers")
+  @NamedParameter(doc = "The number of workers", short_name = "num_workers")
   final class NumberOfWorkers implements Name<Integer> {
   }
 }

@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.WorkerSynchronizer;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -90,9 +89,7 @@ final class AddIntegerWorker implements Worker {
                            @Parameter(AddIntegerREEF.NumberOfUpdates.class) final int numberOfUpdates,
                            @Parameter(AddIntegerREEF.NumberOfWorkers.class) final int numberOfWorkers,
                            @Parameter(Parameters.NumWorkerThreads.class) final int numWorkerThreads,
-                           @Parameter(Parameters.Iterations.class) final int numIterations
-  )
-      throws IdGenerationException {
+                           @Parameter(Parameters.Iterations.class) final int numIterations) {
     this.parameterWorker = parameterWorker;
     this.synchronizer = synchronizer;
     this.delta = delta;
@@ -118,11 +115,11 @@ final class AddIntegerWorker implements Worker {
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     }
-    for (int i = 0; i < numberOfKeys; i++) {
+    for (int i = 0; i < numberOfUpdates; i++) {
       Integer value = 0;
-      for (int j = 0; j < numberOfUpdates; j++) {
-        parameterWorker.push(startKey + i, delta);
-        value = parameterWorker.pull(startKey + i);
+      for (int j = 0; j < numberOfKeys; j++) {
+        parameterWorker.push(startKey + j, delta);
+        value = parameterWorker.pull(startKey + j);
       }
       LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{startKey + i, value});
     }
@@ -172,4 +169,3 @@ final class AddIntegerWorker implements Worker {
     return true;
   }
 }
-
