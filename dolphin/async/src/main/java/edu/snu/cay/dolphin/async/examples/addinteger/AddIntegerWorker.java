@@ -85,9 +85,9 @@ final class AddIntegerWorker implements Worker {
                            final WorkerSynchronizer synchronizer,
                            @Parameter(AddIntegerREEF.DeltaValue.class) final int delta,
                            @Parameter(AddIntegerREEF.StartKey.class) final int startKey,
-                           @Parameter(AddIntegerREEF.NumberOfKeys.class) final int numberOfKeys,
-                           @Parameter(AddIntegerREEF.NumberOfUpdates.class) final int numberOfUpdates,
-                           @Parameter(AddIntegerREEF.NumberOfWorkers.class) final int numberOfWorkers,
+                           @Parameter(AddIntegerREEF.NumKeys.class) final int numberOfKeys,
+                           @Parameter(AddIntegerREEF.NumUpdates.class) final int numberOfUpdates,
+                           @Parameter(AddIntegerREEF.NumWorkers.class) final int numberOfWorkers,
                            @Parameter(Parameters.NumWorkerThreads.class) final int numWorkerThreads,
                            @Parameter(Parameters.Iterations.class) final int numIterations) {
     this.parameterWorker = parameterWorker;
@@ -116,12 +116,11 @@ final class AddIntegerWorker implements Worker {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     }
     for (int i = 0; i < numberOfUpdates; i++) {
-      Integer value = 0;
       for (int j = 0; j < numberOfKeys; j++) {
         parameterWorker.push(startKey + j, delta);
-        value = parameterWorker.pull(startKey + j);
+        final Integer value = parameterWorker.pull(startKey + j);
+        LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{startKey + j, value});
       }
-      LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{startKey + i, value});
     }
   }
 

@@ -37,9 +37,9 @@ public final class AddIntegerREEF {
         .setUpdaterClass(AddIntegerUpdater.class)
         .addParameterClass(DeltaValue.class)
         .addParameterClass(StartKey.class)
-        .addParameterClass(NumberOfKeys.class)
-        .addParameterClass(NumberOfUpdates.class)
-        .addParameterClass(NumberOfWorkers.class)
+        .addParameterClass(NumKeys.class)
+        .addParameterClass(NumUpdates.class)
+        .addParameterClass(NumWorkers.class)
         .build());
   }
 
@@ -52,14 +52,14 @@ public final class AddIntegerREEF {
   }
 
   @NamedParameter(doc = "The number of keys", short_name = "num_keys")
-  final class NumberOfKeys implements Name<Integer> {
+  final class NumKeys implements Name<Integer> {
   }
 
   @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "num_updates")
-  final class NumberOfUpdates implements Name<Integer> {
+  final class NumUpdates implements Name<Integer> {
   }
 
   @NamedParameter(doc = "The number of workers", short_name = "num_workers")
-  final class NumberOfWorkers implements Name<Integer> {
+  final class NumWorkers implements Name<Integer> {
   }
 }
