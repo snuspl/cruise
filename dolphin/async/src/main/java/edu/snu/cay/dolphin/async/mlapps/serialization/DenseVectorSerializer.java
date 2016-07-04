@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.nmf;
+package edu.snu.cay.dolphin.async.mlapps.serialization;
 
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.serialization.Codec;
@@ -24,7 +24,6 @@ import javax.inject.Inject;
  * Provides the DenseVectorCodec that (de-)serializes
  * DenseVector backed by breeze.
  */
-// TODO #402: Remove this duplicate of {@code DenseVectorCodec} in dolphin submodule.
 public final class DenseVectorSerializer implements Serializer {
   private final DenseVectorCodec denseVectorCodec;
 
