@@ -15,20 +15,21 @@
  */
 package edu.snu.cay.services.ps.server.impl.dynamic;
 
+import com.google.common.base.Ticker;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.ps.common.Statistics;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -87,21 +88,65 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
    */
   private final ThreadResolver threadResolver;
 
+  /**
+   * Time period to log the server's statistics.
+   */
+  private final long logPeriod;
+
+  /**
+   * Statistics of the processing time of push operation.
+   */
+  private final Statistics[] pushStats;
+
+  /**
+   * Statistics of the processing time of pull operation.
+   */
+  private final Statistics[] pullStats;
+
+  /**
+   * Statistics of the processing time of both operations - push and pull.
+   */
+  private final Statistics[] requestStats;
+
+  /**
+   * Statistics of the waiting time of push operation since enqueued.
+   */
+  private final Statistics[] pushWaitStats;
+
+  /**
+   * Statistics of the waiting time of push operation.
+   */
+  private final Statistics[] pullWaitStats;
+  private long[] startTimes;
+  private final Ticker ticker = Ticker.systemTicker();
+
   @Inject
   private DynamicParameterServer(final MemoryStore<HashedKey<K>> memoryStore,
                                  final BlockResolver<HashedKey<K>> blockResolver,
                                  @Parameter(ServerNumThreads.class) final int numThreads,
                                  @Parameter(ServerQueueSize.class) final int queueSize,
+                                 @Parameter(ServerLogPeriod.class) final int logPeriod,
                                  final ParameterUpdater<K, P, V> parameterUpdater,
                                  final ServerSideReplySender<K, V> sender) {
     this.memoryStore = memoryStore;
     this.blockResolver = blockResolver;
     this.queueSize = queueSize;
+    this.logPeriod = TimeUnit.NANOSECONDS.convert(logPeriod, TimeUnit.MILLISECONDS);
     this.threadPool = Executors.newFixedThreadPool(numThreads);
     this.threads = initThreads(numThreads);
     this.parameterUpdater = parameterUpdater;
     this.sender = sender;
     this.threadResolver = new ThreadResolver(numThreads);
+    pushStats = Statistics.newInstances(numThreads);
+    pullStats = Statistics.newInstances(numThreads);
+    requestStats = Statistics.newInstances(numThreads);
+    pushWaitStats = Statistics.newInstances(numThreads);
+    pullWaitStats = Statistics.newInstances(numThreads);
+    startTimes = new long[numThreads];
+    final long currentTime = ticker.read();
+    for (int i = 0; i < numThreads; ++i) {
+      startTimes[i] = currentTime;
+    }
   }
 
   /**
@@ -127,7 +172,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     final int threadId = threadResolver.resolveThread(blockId);
     LOG.log(Level.FINEST, "Enqueue push request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
         new Object[] {key, blockId, threadId, keyHash});
-    threads.get(threadId).enqueue(new PushOp(hashedKey, preValue));
+    threads.get(threadId).enqueue(new PushOp(hashedKey, preValue, threadId));
   }
 
   @Override
@@ -137,7 +182,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     final int threadId = threadResolver.resolveThread(blockId);
     LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
         new Object[] {key, blockId, threadId, keyHash});
-    threads.get(threadId).enqueue(new PullOp(hashedKey, srcId));
+    threads.get(threadId).enqueue(new PullOp(hashedKey, srcId, threadId));
   }
 
   /**
@@ -150,6 +195,31 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       sum += partition.opsPending();
     }
     return sum;
+  }
+
+  private void printStats(final int threadId, final long elapsedTime) {
+    final Statistics pullStat = pullStats[threadId];
+    final Statistics pushStat = pushStats[threadId];
+    final Statistics requestStat = requestStats[threadId];
+    final Statistics pushWaitStat = pushWaitStats[threadId];
+    final Statistics pullWaitStat = pullWaitStats[threadId];
+
+    LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Sum Pull: {1}, PS Avg Pull: {2}, PS Pull Count: {3}, " +
+            "PS Sum Push: {4}, PS Avg Push: {5}, PS Push Count: {6}, " +
+            "PS Avg Request: {7}, PS Sum Request: {8}, PS Request Count: {9}, " +
+            "PS Avg Push Wait: {10}, PS Sum Push Wait: {11}, " +
+            "PS Avg Pull Wait: {12}, PS Sum Pull Wait: {13}",
+        new Object[]{elapsedTime / 1e9D, Double.toString(pullStat.sum()), Double.toString(pullStat.avg()),
+            pullStat.count(), Double.toString(pushStat.sum()), Double.toString(pushStat.avg()), pushStat.count(),
+            Double.toString(requestStat.avg()), Double.toString(requestStat.sum()), requestStat.count(),
+            Double.toString(pushWaitStat.avg()), Double.toString(pushWaitStat.sum()),
+            Double.toString(pullWaitStat.avg()), Double.toString(pullWaitStat.sum())});
+    pushStat.reset();
+    pullStat.reset();
+    requestStat.reset();
+    pushWaitStat.reset();
+    pullWaitStat.reset();
+    startTimes[threadId] = ticker.read();
   }
 
   /**
@@ -168,10 +238,14 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private class PushOp implements Op<K, V> {
     private final HashedKey<K> hashedKey;
     private final P preValue;
+    private final long timestamp;
+    private final int threadId;
 
-    PushOp(final HashedKey<K> hashedKey, final P preValue) {
+    PushOp(final HashedKey<K> hashedKey, final P preValue, final int threadId) {
       this.hashedKey = hashedKey;
       this.preValue = preValue;
+      this.timestamp = ticker.read();
+      this.threadId = threadId;
     }
 
     /**
@@ -180,6 +254,9 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     @Override
     public void apply() {
       try {
+        final long waitEndTime = ticker.read();
+        pushWaitStats[threadId].put(waitEndTime - timestamp);
+
         final Pair<HashedKey<K>, V> oldKVPair = memoryStore.get(hashedKey);
 
         final V oldValue;
@@ -197,6 +274,17 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
         final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
         memoryStore.put(hashedKey, updatedValue);
+
+        final long processEndTime = ticker.read();
+        final long processingTime = processEndTime - waitEndTime;
+        pushStats[threadId].put(processingTime);
+        requestStats[threadId].put(processingTime);
+
+        final long elapsedTime = processEndTime - startTimes[threadId];
+        if (logPeriod > 0 && elapsedTime > logPeriod) {
+          printStats(threadId, elapsedTime);
+        }
+
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
@@ -208,11 +296,15 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
    */
   private class PullOp implements Op<K, V> {
     private final HashedKey<K> hashedKey;
+    private final long timestamp;
     private final String srcId;
+    private final int threadId;
 
-    PullOp(final HashedKey<K> hashedKey, final String srcId) {
+    PullOp(final HashedKey<K> hashedKey, final String srcId, final int threadId) {
       this.hashedKey = hashedKey;
       this.srcId = srcId;
+      this.timestamp = ticker.read();
+      this.threadId = threadId;
     }
 
     /**
@@ -222,6 +314,9 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     @Override
     public void apply() {
       try {
+        final long waitEndTime = ticker.read();
+        pullWaitStats[threadId].put(waitEndTime - timestamp);
+
         final Pair<HashedKey<K>, V> kvPair = memoryStore.get(hashedKey);
         final V value;
         if (kvPair == null) {
@@ -237,7 +332,15 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
           value = kvPair.getSecond();
         }
         sender.sendReplyMsg(srcId, hashedKey.getKey(), value);
+        final long processEndTime = ticker.read();
+        final long processingTime = processEndTime - waitEndTime;
+        pullStats[threadId].put(processingTime);
+        requestStats[threadId].put(processingTime);
 
+        final long elapsedTime = processEndTime - startTimes[threadId];
+        if (logPeriod > 0 && elapsedTime > logPeriod) {
+          printStats(threadId, elapsedTime);
+        }
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
