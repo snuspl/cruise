@@ -67,6 +67,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
 
+  /**
+   * DEFAULT_EVAL_NUM_CORES Although EM's add() supports multiple evaluator additions,
+   * the default number of evaluators to be requested is 1 because in this implementation of the plan executor,
+   * we assume that the plan generated does not involve many operations (especially adds) at once.
+   */
   private static final int DEFAULT_EVAL_MEM_SIZE = 1024;
   private static final int DEFAULT_EVAL_NUM_CORES = 1;
 
@@ -297,7 +302,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         final EMOperation.OpType opType = operation.getOpType();
         final String namespace = operation.getNamespace();
 
-        if (!executingPlan.markOperationRequest(operation)) {
+        if (!executingPlan.markOperationRequested(operation)) {
           continue;
         }
         switch (opType) {
@@ -422,6 +427,18 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
 
     /**
+     * Puts the initiated EM operation into a map, mapping the operation to the execution status of "In progress".
+     *
+     * @param operation that has just been initiated
+     * @return true if operation has successfully been put into the <operation, status> map;
+     *        false if the operation mapping already exists - i.e. is in progress or already complete.
+     */
+    boolean markOperationRequested(final EMOperation operation) {
+      LOG.log(Level.INFO, "Operation requested: {0}", operation);
+      return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.In_Progress) == null;
+    }
+
+    /**
      * Updates an operation's status as complete,
      * counts down the latch on the entire plan,
      * gets the next set of operations that can be executed.
@@ -430,9 +447,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @return the set of operations that can be executed after op's completion
      */
     Set<EMOperation> markOperationComplete(final EMOperation op) {
-      final OpExecutionStatus prevStatus = emOperationsRequested.replace(op, OpExecutionStatus.Complete);
+      final boolean wasInProgress = emOperationsRequested.replace(op,
+              OpExecutionStatus.In_Progress, OpExecutionStatus.Complete);
 
-      if (prevStatus == null) {
+      if (!wasInProgress) {
         throw new RuntimeException("The operation " + op + " was never in the request queue");
       }
 
@@ -450,18 +468,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException(e);
       }
       LOG.info("All EM operations included in the plan are complete!");
-    }
-
-    /**
-     * Puts the initiated EM operation into a map, mapping the operation to the execution status of "In progress".
-     *
-     * @param operation
-     * @return true if operation has successfully been put into the <operation, status> map;
-     *        false if the operation mapping already exists - i.e. is in progress or already complete.
-     */
-    boolean markOperationRequest(final EMOperation operation) {
-      LOG.log(Level.INFO, "Operation requested: {0}", operation);
-      return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.In_Progress) == null;
     }
 
     /**

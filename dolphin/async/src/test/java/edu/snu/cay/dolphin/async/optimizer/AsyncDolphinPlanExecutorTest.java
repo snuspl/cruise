@@ -65,12 +65,7 @@ public final class AsyncDolphinPlanExecutorTest {
 
   private static PlanExecutor planExecutor;
 
-  private static AsyncDolphinDriver driver;
-
-  private final AtomicInteger idInt = new AtomicInteger();
-
   private static final String EVAL_PREFIX = "EVAL";
-
 
   @Before
   public void setUp() throws InjectionException {
@@ -79,7 +74,7 @@ public final class AsyncDolphinPlanExecutorTest {
             .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
-    driver = mock(AsyncDolphinDriver.class);
+    final AsyncDolphinDriver driver = mock(AsyncDolphinDriver.class);
     when(driver.getEvalAllocHandlerForServer()).thenReturn(new EventHandler<AllocatedEvaluator>() {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
@@ -157,15 +152,16 @@ public final class AsyncDolphinPlanExecutorTest {
 
   @Test
   public void complexDependencyPlanExecutionTest() {
+    // The plan below is composed of operations in the order of dependency
     final Plan plan = PlanImpl.newBuilder()
             .addEvaluatorToDelete("SERVER", EVAL_PREFIX + 1)
-            .addEvaluatorToDelete("SERVER", EVAL_PREFIX + 3)
-            .addEvaluatorToDelete("WORKER", EVAL_PREFIX + 7)
-            .addEvaluatorToAdd("SERVER", EVAL_PREFIX + 2)
-            .addEvaluatorToAdd("WORKER", EVAL_PREFIX + 5)
-            .addEvaluatorToAdd("WORKER", EVAL_PREFIX + 6)
-            .addTransferStep("SERVER", new TransferStepImpl(EVAL_PREFIX + 4, EVAL_PREFIX + 2, new DataInfoImpl(1)))
-            .addTransferStep("WORKER", new TransferStepImpl(EVAL_PREFIX + 8, EVAL_PREFIX + 9, new DataInfoImpl(1)))
+            .addEvaluatorToDelete("SERVER", EVAL_PREFIX + 2)
+            .addEvaluatorToDelete("WORKER", EVAL_PREFIX + 3)
+            .addTransferStep("WORKER", new TransferStepImpl(EVAL_PREFIX + 4, EVAL_PREFIX + 5, new DataInfoImpl(1)))
+            .addEvaluatorToAdd("SERVER", EVAL_PREFIX + 6)
+            .addEvaluatorToAdd("WORKER", EVAL_PREFIX + 7)
+            .addEvaluatorToAdd("WORKER", EVAL_PREFIX + 8)
+            .addTransferStep("SERVER", new TransferStepImpl(EVAL_PREFIX + 9, EVAL_PREFIX + 6, new DataInfoImpl(1)))
             .build();
 
     final Future<PlanResult> result = planExecutor.execute(plan);
@@ -181,15 +177,17 @@ public final class AsyncDolphinPlanExecutorTest {
 
   private final class MockElasticMemory implements ElasticMemory {
 
-    private final ConcurrentLinkedQueue<EventHandler<AvroElasticMemoryMessage>> deleteQueue;
+    private final ConcurrentLinkedQueue<EventHandler<AvroElasticMemoryMessage>> deleteHandlerQueue;
     private final ConcurrentLinkedQueue<Tuple2<EventHandler<AllocatedEvaluator>,
-            List<EventHandler<ActiveContext>>>> addQueue;
-    private final ConcurrentLinkedQueue<EventHandler<AvroElasticMemoryMessage>> moveQueue;
+            List<EventHandler<ActiveContext>>>> addHandlerQueue;
+    private final ConcurrentLinkedQueue<EventHandler<AvroElasticMemoryMessage>> moveHandlerQueue;
+
+    private final AtomicInteger idInt = new AtomicInteger();
 
     private MockElasticMemory() {
-      deleteQueue = new ConcurrentLinkedQueue<>();
-      addQueue = new ConcurrentLinkedQueue<>();
-      moveQueue = new ConcurrentLinkedQueue<>();
+      deleteHandlerQueue = new ConcurrentLinkedQueue<>();
+      addHandlerQueue = new ConcurrentLinkedQueue<>();
+      moveHandlerQueue = new ConcurrentLinkedQueue<>();
       initializeDelete();
       initializeAdd();
       initializeMove();
@@ -205,8 +203,8 @@ public final class AsyncDolphinPlanExecutorTest {
         @Override
         public void run() {
           while (true) {
-            if (!deleteQueue.isEmpty()) {
-              final EventHandler<AvroElasticMemoryMessage> deleteHandler = deleteQueue.poll();
+            if (!deleteHandlerQueue.isEmpty()) {
+              final EventHandler<AvroElasticMemoryMessage> deleteHandler = deleteHandlerQueue.poll();
               deleteHandler.onNext(msg);
             }
           }
@@ -231,8 +229,8 @@ public final class AsyncDolphinPlanExecutorTest {
         @Override
         public void run() {
           while (true) {
-            if (!addQueue.isEmpty()) {
-              final Tuple2 addHandlers = addQueue.poll();
+            if (!addHandlerQueue.isEmpty()) {
+              final Tuple2 addHandlers = addHandlerQueue.poll();
               final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler
                       = (EventHandler<AllocatedEvaluator>) addHandlers.getT1();
               final List<EventHandler<ActiveContext>> ctxHandlerList
@@ -267,8 +265,8 @@ public final class AsyncDolphinPlanExecutorTest {
         @Override
         public void run() {
           while (true) {
-            if (!moveQueue.isEmpty()) {
-              final EventHandler<AvroElasticMemoryMessage> moveHandler = moveQueue.poll();
+            if (!moveHandlerQueue.isEmpty()) {
+              final EventHandler<AvroElasticMemoryMessage> moveHandler = moveHandlerQueue.poll();
               moveHandler.onNext(msg);
             }
           }
@@ -281,12 +279,12 @@ public final class AsyncDolphinPlanExecutorTest {
     public void add(final int number, final int megaBytes, final int cores,
                     final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                     final List<EventHandler <ActiveContext>> contextActiveHandlerList) {
-      addQueue.add(new Tuple2<>(evaluatorAllocatedHandler, contextActiveHandlerList));
+      addHandlerQueue.add(new Tuple2<>(evaluatorAllocatedHandler, contextActiveHandlerList));
     }
 
     @Override
     public void delete(final String evalId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
-      deleteQueue.add(callback);
+      deleteHandlerQueue.add(callback);
     }
 
     @Override
@@ -297,7 +295,7 @@ public final class AsyncDolphinPlanExecutorTest {
     @Override
     public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
                      @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-      moveQueue.add(finishedCallback);
+      moveHandlerQueue.add(finishedCallback);
     }
 
     @Override

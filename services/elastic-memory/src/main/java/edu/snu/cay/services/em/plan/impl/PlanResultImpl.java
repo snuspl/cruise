@@ -44,6 +44,7 @@ public final class PlanResultImpl implements PlanResult {
     return summary;
   }
 
+  @Override
   public int getNumExecutedOps() {
     return numExecutedOps;
   }
