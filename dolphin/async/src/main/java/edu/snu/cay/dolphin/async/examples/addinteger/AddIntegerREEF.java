@@ -35,11 +35,31 @@ public final class AddIntegerREEF {
     AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setWorkerClass(AddIntegerWorker.class)
         .setUpdaterClass(AddIntegerUpdater.class)
-        .addParameterClass(AddIntegerParameter.class)
+        .addParameterClass(DeltaValue.class)
+        .addParameterClass(StartKey.class)
+        .addParameterClass(NumKeys.class)
+        .addParameterClass(NumUpdates.class)
+        .addParameterClass(NumWorkers.class)
         .build());
   }
 
-  @NamedParameter(doc = "all workers will add this integer to the sum", short_name = "param")
-  final class AddIntegerParameter implements Name<Integer> {
+  @NamedParameter(doc = "All workers will add this integer to the sum", short_name = "delta")
+  final class DeltaValue implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The start key", short_name = "start_key")
+  final class StartKey implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of keys", short_name = "num_keys")
+  final class NumKeys implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "num_updates")
+  final class NumUpdates implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of workers", short_name = "num_workers")
+  final class NumWorkers implements Name<Integer> {
   }
 }

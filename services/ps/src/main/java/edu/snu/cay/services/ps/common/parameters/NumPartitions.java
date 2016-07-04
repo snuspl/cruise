@@ -18,6 +18,6 @@ package edu.snu.cay.services.ps.common.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of partitions across all servers", default_value = "2", short_name = "numPartitions")
+@NamedParameter(doc = "Number of partitions across all servers", default_value = "2", short_name = "num_partitions")
 public final class NumPartitions implements Name<Integer> {
 }

@@ -19,6 +19,6 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Time in ms to expire local cache", default_value = "1000",
-    short_name = "workerExpireTimeout")
+    short_name = "worker_expire_timeout")
 public final class WorkerExpireTimeout implements Name<Long> {
 }

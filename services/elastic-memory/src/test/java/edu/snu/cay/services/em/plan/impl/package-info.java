@@ -13,12 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.server.parameters;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Max number of items that can be queued for each partition", default_value = "1000",
-    short_name = "server_queue_size")
-public final class ServerQueueSize implements Name<Integer> {
-}
+/**
+ * Tests for the Plan implementation.
+ */
+package edu.snu.cay.services.em.plan.impl;

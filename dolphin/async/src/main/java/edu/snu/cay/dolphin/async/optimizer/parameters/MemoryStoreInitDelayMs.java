@@ -19,7 +19,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Delay for added MemoryStore to be initialized (e.g., routing table)",
-                short_name = "memoryStoreInitDelayMs",
+                short_name = "memory_store_init_delay_ms",
                 default_value = "1000")
 public class MemoryStoreInitDelayMs implements Name<Long> {
 }

@@ -19,7 +19,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "The time interval between the moment to trigger optimization in Milliseconds.",
-                short_name = "optimizationIntervalMs",
+                short_name = "optimization_interval_ms",
                 default_value = "10000")
 public final class OptimizationIntervalMs implements Name<Long> {
 }

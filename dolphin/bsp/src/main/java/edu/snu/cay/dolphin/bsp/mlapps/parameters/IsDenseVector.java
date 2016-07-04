@@ -19,6 +19,6 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "whether a type of input vector is dense or not",
-                short_name = "isDense")
+                short_name = "is_dense")
 public final class IsDenseVector implements Name<Boolean> {
 }

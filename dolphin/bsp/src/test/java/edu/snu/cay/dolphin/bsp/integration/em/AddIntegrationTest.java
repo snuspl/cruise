@@ -55,7 +55,7 @@ public final class AddIntegrationTest {
         "-local", "true",
         "-input", ClassLoader.getSystemResource("data").getPath() + "/sample",
         "-output", ClassLoader.getSystemResource("data").getPath() + "/result",
-        "-maxNumEvalLocal", Integer.toString(addEvalNum + 2),
+        "-max_num_eval_local", Integer.toString(addEvalNum + 2),
         "-timeout", "120000"
     };
 

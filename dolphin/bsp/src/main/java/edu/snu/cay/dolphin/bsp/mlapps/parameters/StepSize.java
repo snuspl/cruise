@@ -19,7 +19,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "initial value of the step size",
-                short_name = "stepSize",
+                short_name = "step_size",
                 default_value = "1e-2")
 public final class StepSize implements Name<Double> {
 }

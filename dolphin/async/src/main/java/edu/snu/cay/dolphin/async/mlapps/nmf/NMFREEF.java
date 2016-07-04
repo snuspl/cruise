@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
 
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
