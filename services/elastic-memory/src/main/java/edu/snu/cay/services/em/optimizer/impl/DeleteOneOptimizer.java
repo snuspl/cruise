@@ -64,32 +64,40 @@ public final class DeleteOneOptimizer implements Optimizer {
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    for (final String namespace : evalParamsMap.keySet()) {
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParamsMap.entrySet()) {
+      final String namespace = entry.getKey();
+      final List<EvaluatorParameters> evalParams = entry.getValue();
 
-      // Sort evaluators by ID, to select evaluators in a consistent order across job executions
-      final List<EvaluatorParameters> evaluators = new ArrayList<>(evalParamsMap.size());
-      // only add evaluators that have data to move
-      evaluators.addAll(evalParamsMap.get(namespace)
-          .stream()
-          .filter(evaluator -> evaluator.getDataInfo().getNumBlocks() > 0)
-          .collect(Collectors.toList()));
-      Collections.sort(evaluators, (o1, o2) -> o1.getId().compareTo(o2.getId()));
-
-      if (evaluators.size() < 2) {
+      if (evalParams.size() < 2) {
         LOG.log(Level.WARNING, "Cannot delete, because not enough evaluators in {0}", namespace);
         continue;
       }
 
+      // make a new array to avoid the change in input
+      final List<EvaluatorParameters> evaluators = new ArrayList<>(evalParams.size());
+      // only add evaluators that have data to move
+      evaluators.addAll(evalParams
+          .stream()
+          .filter(evaluator -> evaluator.getDataInfo().getNumBlocks() > 0)
+          .collect(Collectors.toList()));
+
+      // sort evaluators by ID, to select evaluators in a consistent order across job executions
+      Collections.sort(evaluators, (o1, o2) -> o1.getId().compareTo(o2.getId()));
+
       final EvaluatorParameters evaluatorToDelete = evaluators.get(0);
       final EvaluatorParameters dstEvaluator = evaluators.get(1);
 
-      final TransferStep transferStep = new TransferStepImpl(
+      planBuilder.addEvaluatorToDelete(namespace, evaluatorToDelete.getId());
+
+      // add a transfer step, if evaluatorToDelete has blocks
+      final int numBlocksInEvalToBeDeleted = evaluatorToDelete.getDataInfo().getNumBlocks();
+      if (numBlocksInEvalToBeDeleted > 0) {
+        final TransferStep transferStep = new TransferStepImpl(
             evaluatorToDelete.getId(),
             dstEvaluator.getId(),
-            new DataInfoImpl(evaluatorToDelete.getDataInfo().getNumBlocks()));
-
-      planBuilder.addEvaluatorToDelete(namespace, evaluatorToDelete.getId());
-      planBuilder.addTransferStep(namespace, transferStep);
+            new DataInfoImpl(numBlocksInEvalToBeDeleted));
+        planBuilder.addTransferStep(namespace, transferStep);
+      }
     }
 
     return planBuilder.build();

@@ -48,7 +48,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   /**
    * Maintains blocks associated with blockIds.
    */
-  private final Map<Integer, Block> blocks = new HashMap<>();
+  private final ConcurrentMap<Integer, Block> blocks = new ConcurrentHashMap<>();
 
   @GuardedBy("routerLock")
   private final OperationRouter<K> router;
@@ -108,13 +108,12 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
   @Override
   public void putBlock(final int blockId, final Map<K, Object> data) {
-    if (blocks.containsKey(blockId)) {
-      throw new RuntimeException("Block with id " + blockId + " already exists.");
-    }
-
     final Block block = new Block();
     block.putAll(data);
-    blocks.put(blockId, block);
+
+    if (blocks.putIfAbsent(blockId, block) != null) {
+      throw new RuntimeException("Block with id " + blockId + " already exists.");
+    }
   }
 
   @Override

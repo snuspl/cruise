@@ -276,10 +276,12 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      * @return the value
      */
     public synchronized V getValue(final long timeout) {
-      try {
-        wait(timeout);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "InterruptedException on wait", e);
+      if (value == null) {
+        try {
+          wait(timeout);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "InterruptedException on wait", e);
+        }
       }
       return value;
     }
