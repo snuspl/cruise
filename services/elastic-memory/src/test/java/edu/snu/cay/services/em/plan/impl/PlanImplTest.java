@@ -32,12 +32,20 @@ public final class PlanImplTest {
   private static final String NAMESPACE_PREFIX = "NAMESPACE";
   private static final String EVAL_PREFIX = "EVAL";
 
+
+  /**
+   * Tests for building an arbitrary plan, a combination of multiple Add, Del, and Move operations.
+   * The generated plan adds and deletes multiple distinct evaluators.
+   * For testing move steps, it moves data from evaluators being deleted to a single source evaluator
+   * and moves data from a single destination evaluator to evaluators being added.
+   */
+
   @Test
   public void testPlanBuilding() {
     final int numNameSpaces = 2;
     final int numEvalsToAdd = 50;
     final int numEvalsToDel = 50;
-    final int numTransfers = 50;
+    final int numTransfers = numEvalsToAdd + numEvalsToDel;
 
     final Set<String> namespaces = new HashSet<>(numNameSpaces);
     final List<String> evalsToAdd = new ArrayList<>(numEvalsToAdd);
@@ -47,15 +55,21 @@ public final class PlanImplTest {
     for (int i = 0; i < numNameSpaces; i++) {
       namespaces.add(NAMESPACE_PREFIX + i);
     }
+
+    int evalIdCounter = 0;
+
     for (int i = 0; i < numEvalsToAdd; i++) {
-      evalsToAdd.add(EVAL_PREFIX + i);
+      evalsToAdd.add(EVAL_PREFIX + evalIdCounter++);
     }
-    for (int i = numEvalsToAdd; i < numEvalsToAdd + numEvalsToDel; i++) {
-      evalsToDel.add(EVAL_PREFIX + i);
+    for (int i = 0; i < numEvalsToDel; i++) {
+      evalsToDel.add(EVAL_PREFIX + evalIdCounter++);
     }
-    for (int i = 0; i < numTransfers; i++) {
-      transferSteps.add(new TransferStepImpl(evalsToDel.get(i), evalsToAdd.get(i),
-          new DataInfoImpl(1)));
+
+    for (final String evalToAdd : evalsToAdd) {
+      transferSteps.add(new TransferStepImpl(EVAL_PREFIX + "-SRC", evalToAdd, new DataInfoImpl(1)));
+    }
+    for (final String evalToDel : evalsToDel) {
+      transferSteps.add(new TransferStepImpl(evalToDel, EVAL_PREFIX + "-DEST", new DataInfoImpl(1)));
     }
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
@@ -70,23 +84,26 @@ public final class PlanImplTest {
     final Plan plan = planBuilder.build();
 
     // test whether a plan contains all the added steps
+    assertEquals("Plan does not contain all the steps that we expect",
+        (numEvalsToAdd + numEvalsToDel + numTransfers) * numNameSpaces, plan.getPlanSize());
+
     for (final String namespace : namespaces) {
       final Collection<String> addSteps = plan.getEvaluatorsToAdd(namespace);
-      assertTrue("Plan does not contain all Add steps what we expect", addSteps.containsAll(evalsToAdd));
-      assertEquals("Plan contains additional Add steps what we do not expect", evalsToAdd.size(), addSteps.size());
+      assertTrue("Plan does not contain all Add steps that we expect", addSteps.containsAll(evalsToAdd));
+      assertEquals("Plan contains additional Add steps that we do not expect", evalsToAdd.size(), addSteps.size());
 
       final Collection<String> delSteps = plan.getEvaluatorsToDelete(namespace);
-      assertTrue("Plan does not contain all Delete steps what we expect", delSteps.containsAll(evalsToDel));
-      assertEquals("Plan contains additional Delete steps what we do not expect", evalsToDel.size(), delSteps.size());
+      assertTrue("Plan does not contain all Delete steps that we expect", delSteps.containsAll(evalsToDel));
+      assertEquals("Plan contains additional Delete steps that we do not expect", evalsToDel.size(), delSteps.size());
 
       final Collection<TransferStep> moveSteps = plan.getTransferSteps(namespace);
-      assertTrue("Plan does not contain all Move steps what we expect", moveSteps.containsAll(transferSteps));
-      assertEquals("Plan contains additional Move steps what we do not expect", transferSteps.size(), moveSteps.size());
+      assertTrue("Plan does not contain all Move steps that we expect", moveSteps.containsAll(transferSteps));
+      assertEquals("Plan contains additional Move steps that we do not expect", transferSteps.size(), moveSteps.size());
     }
   }
 
   @Test
-  public void testPlanViolationCheck() {
+  public void testInvalidPlans() {
     PlanImpl.Builder planBuilder;
 
     // 1. case of moving out data from newly added eval
@@ -102,7 +119,7 @@ public final class PlanImplTest {
       // expected exception
     }
 
-    // 2. case of moving in data to eval will be deleted within the same plan
+    // 2. case of moving in data to an eval that will be deleted within the same plan
     planBuilder = PlanImpl.newBuilder()
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addTransferStep(NAMESPACE_PREFIX,
@@ -126,11 +143,29 @@ public final class PlanImplTest {
     } catch (final RuntimeException e) {
       // expected exception
     }
+
+    // 4. case of plan with a cyclic dependency (Add -> Move -> Del -> Add)
+    planBuilder = PlanImpl.newBuilder()
+        .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
+        .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
+        .addTransferStep(NAMESPACE_PREFIX,
+            new TransferStepImpl(EVAL_PREFIX + 1, EVAL_PREFIX + 0, new DataInfoImpl(1)));
+
+    try {
+      planBuilder.build();
+      fail("Plan builder fails to detect a violation in the plan");
+    } catch (final RuntimeException e) {
+      // expected exception
+    }
   }
 
+  /**
+   * Tests a generated plan contains the correct dependency information
+   * that each Delete is executed before a single Add.
+   */
   @Test
   public void testDelAddPlanDependency() {
-    // 1. del -> add
+    // del -> add
     final Plan plan = PlanImpl.newBuilder()
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
@@ -138,24 +173,31 @@ public final class PlanImplTest {
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .build();
 
+    // Dels should be executed first to make a room for Adds
     final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(2, firstOpsToExec.size());
     for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.OpType.Del, operation.getOpType());
+      assertEquals(EMOperation.OpType.DEL, operation.getOpType());
     }
 
     final Set<EMOperation> executingPlans = new HashSet<>();
+
+    // a single Add step can be executed after completing each Del step
 
     for (final EMOperation operation : firstOpsToExec) {
       final Set<EMOperation> nextOpsToExec = plan.onComplete(operation);
       assertEquals(1, nextOpsToExec.size());
       final EMOperation nextOpToExec = nextOpsToExec.iterator().next();
-      assertEquals(EMOperation.OpType.Add, nextOpToExec.getOpType());
+
+      assertEquals(EMOperation.OpType.ADD, nextOpToExec.getOpType());
 
       executingPlans.add(nextOpToExec);
     }
 
+    // as a result of two Dels, two Adds started
     assertEquals(2, executingPlans.size());
+
+    // these two Adds are the final stages of the plan
     for (final EMOperation executingPlan : executingPlans) {
       final Set<EMOperation> nextOpsToExec = plan.onComplete(executingPlan);
       assertTrue(nextOpsToExec.isEmpty());
@@ -164,17 +206,23 @@ public final class PlanImplTest {
     assertTrue(plan.getReadyOps().isEmpty());
   }
 
+  /**
+   * Tests a generated plan contains the correct dependency information
+   * that Moves are executed first, followed by corresponding Dels
+   * when the source evaluator of Move is same with the target eval of Del step.
+   */
   @Test
   public void testMoveDelPlanDependency() {
     // move -> del
     final Plan plan = PlanImpl.newBuilder()
-        // a first set of dependencies comprised of one Delete and two moves
+        // the first set of dependencies comprised of one Delete and two moves
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 0, EVAL_PREFIX + 1, new DataInfoImpl(1)))
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 0, EVAL_PREFIX + 2, new DataInfoImpl(1)))
-        // a second set of dependencies comprised of one Delete and two moves
+
+        // the second set of dependencies comprised of one Delete and two moves
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 3, EVAL_PREFIX + 1, new DataInfoImpl(1)))
@@ -182,13 +230,17 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 3, EVAL_PREFIX + 2, new DataInfoImpl(1)))
         .build();
 
+
+    // Moves should be executed first
     final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(4, firstOpsToExec.size());
 
     final Set<EMOperation> firstMoveSet = new HashSet<>();
     final Set<EMOperation> secondMoveSet = new HashSet<>();
+
+    // after finishing Moves from each evaluator, Dels for the evaluator will be ready
     for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.OpType.Move, operation.getOpType());
+      assertEquals(EMOperation.OpType.MOVE, operation.getOpType());
 
       if (operation.getTransferStep().get().getSrcId().equals(EVAL_PREFIX + 0)) {
         firstMoveSet.add(operation);
@@ -199,6 +251,7 @@ public final class PlanImplTest {
     assertEquals(2, firstMoveSet.size());
     assertEquals(2, secondMoveSet.size());
 
+    // Delete will be ready after finishing all Moves from target evaluator
     final Iterator<EMOperation> firstMoveSetIter = firstMoveSet.iterator();
     assertTrue(plan.onComplete(firstMoveSetIter.next()).isEmpty());
     final Set<EMOperation> nextOpsToExec = plan.onComplete(firstMoveSetIter.next());
@@ -210,24 +263,33 @@ public final class PlanImplTest {
     assertEquals(2, nextOpsToExec.size());
 
     for (final EMOperation operation : nextOpsToExec) {
-      assertEquals(EMOperation.OpType.Del, operation.getOpType());
+      assertEquals(EMOperation.OpType.DEL, operation.getOpType());
 
+      // these Deletes are the final stages of the plan
       assertTrue(plan.onComplete(operation).isEmpty());
     }
     assertTrue(plan.getReadyOps().isEmpty());
   }
 
+
+  /**
+   * Tests a generated plan contains the correct dependency information
+   * that Moves follow corresponding Adds when the destination evaluator of Move
+   * is same with the target eval of Add step.
+   */
   @Test
   public void testAddMovePlanDependency() {
     // add -> move
     final Plan plan = PlanImpl.newBuilder()
-        // a first set of dependencies comprised of one Add and two moves
+        // the first set of dependencies comprised of one Add and two moves
+
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 1, EVAL_PREFIX + 0, new DataInfoImpl(1)))
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 2, EVAL_PREFIX + 0, new DataInfoImpl(1)))
-        // a first set of dependencies comprised of one Add and two moves
+
+        // the second set of dependencies comprised of one Add and two moves
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 1, EVAL_PREFIX + 3, new DataInfoImpl(1)))
@@ -235,13 +297,14 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 2, EVAL_PREFIX + 3, new DataInfoImpl(1)))
         .build();
 
+    // Adds should be executed first
     final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(2, firstOpsToExec.size());
 
     EMOperation firstAdd = null;
     EMOperation secondAdd = null;
     for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.OpType.Add, operation.getOpType());
+      assertEquals(EMOperation.OpType.ADD, operation.getOpType());
 
       if (operation.getEvalId().get().equals(EVAL_PREFIX + 0)) {
         firstAdd = operation;
@@ -252,6 +315,7 @@ public final class PlanImplTest {
     assertNotNull(firstAdd);
     assertNotNull(secondAdd);
 
+    // Moves will be ready after finishing Add of destination evaluator
     final Set<EMOperation> nextOpsToExec = plan.onComplete(firstAdd);
     assertEquals(2, nextOpsToExec.size());
 
@@ -259,8 +323,9 @@ public final class PlanImplTest {
     assertEquals(4, nextOpsToExec.size());
 
     for (final EMOperation operation : nextOpsToExec) {
-      assertEquals(EMOperation.OpType.Move, operation.getOpType());
+      assertEquals(EMOperation.OpType.MOVE, operation.getOpType());
 
+      // these Moves are the final stages of the plan
       assertTrue(plan.onComplete(operation).isEmpty());
     }
     assertTrue(plan.getReadyOps().isEmpty());

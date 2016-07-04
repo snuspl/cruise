@@ -19,6 +19,6 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Max number of encoded keys to cache", default_value = "100",
-    short_name = "workerKeyCacheSize")
+    short_name = "worker_key_cache_size")
 public final class WorkerKeyCacheSize implements Name<Integer> {
 }

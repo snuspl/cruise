@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.em.plan.impl;
 
-import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.TransferStep;
+import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.utils.DAG;
 import edu.snu.cay.utils.DAGImpl;
 
@@ -38,8 +38,21 @@ public final class PlanImpl implements Plan {
   private final DAG<EMOperation> dependencyGraph;
   private final int numTotalOperations;
 
+  private final DAG<EMOperation> dependencyGraph;
+  private final int numTotalOperations;
+
   private PlanImpl(final Map<String, Set<String>> evaluatorsToAdd,
                    final Map<String, Set<String>> evaluatorsToDelete,
+<<<<<<< HEAD
+                   final Map<String, List<TransferStep>> transferSteps,
+                   final DAG<EMOperation> dependencyGraph,
+                   final int numTotalOperations) {
+    this.evaluatorsToAdd = evaluatorsToAdd;
+    this.evaluatorsToDelete = evaluatorsToDelete;
+    this.transferSteps = transferSteps;
+    this.dependencyGraph = dependencyGraph;
+    this.numTotalOperations = numTotalOperations;
+=======
                    final Map<String, List<TransferStep>> allTransferSteps,
                    final DAG<EMOperation> dependencyGraph) {
     this.evaluatorsToAdd = evaluatorsToAdd;
@@ -59,6 +72,7 @@ public final class PlanImpl implements Plan {
       numTotalOps += transferSteps.size();
     }
     this.numTotalOperations = numTotalOps;
+>>>>>>> origin
   }
 
   @Override
@@ -219,7 +233,11 @@ public final class PlanImpl implements Plan {
         }
       }
 
+<<<<<<< HEAD
+      // 2. do not allow moving out/in of data from/to evaluators will be added/deleted in a single plan
+=======
       // 2. do not allow moving out/in of data from/to evaluators that will be added/deleted in a single plan
+>>>>>>> origin
       for (final String namespace : allTransferSteps.keySet()) {
         for (final TransferStep transferStep : allTransferSteps.get(namespace)) {
           if (evaluatorsToDelete.containsKey(namespace) &&
@@ -235,12 +253,31 @@ public final class PlanImpl implements Plan {
       // build an execution graph considering dependency between steps
       final DAG<EMOperation> dependencyGraph = constructDAG(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps);
 
+<<<<<<< HEAD
+      // count the total number of operations
+      int numTotalOps = 0;
+      for (final Set<String> evalsToAdd : evaluatorsToAdd.values()) {
+        numTotalOps += evalsToAdd.size();
+      }
+      for (final Set<String> evalsToDel : evaluatorsToDelete.values()) {
+        numTotalOps += evalsToDel.size();
+      }
+      for (final List<TransferStep> transferSteps : allTransferSteps.values()) {
+        numTotalOps += transferSteps.size();
+      }
+
+      return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, dependencyGraph, numTotalOps);
+=======
       return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, dependencyGraph);
+>>>>>>> origin
     }
 
     /**
      * Constructs a directed acyclic graph based on the rules described in the comment of builder.
+<<<<<<< HEAD
+=======
      * @throws IllegalStateException if the graph contains a cycle
+>>>>>>> origin
      */
     private DAG<EMOperation> constructDAG(final Map<String, Set<String>> namespaceToEvalsToAdd,
                                           final Map<String, Set<String>> namespaceToEvalsToDel,
@@ -254,7 +291,11 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToDel = entry.getValue();
         for (final String evalToDel : evalsToDel) {
+<<<<<<< HEAD
+          final EMOperation delOperation = new EMOperation(namespace, EMOperation.OpType.Del, evalToDel);
+=======
           final EMOperation delOperation = new EMOperation(namespace, EMOperation.OpType.DEL, evalToDel);
+>>>>>>> origin
           delOperations.put(evalToDel, delOperation);
           dag.addVertex(delOperation);
         }
@@ -266,7 +307,11 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToAdd = entry.getValue();
         for (final String evalToAdd : evalsToAdd) {
+<<<<<<< HEAD
+          final EMOperation addOperation = new EMOperation(namespace, EMOperation.OpType.Add, evalToAdd);
+=======
           final EMOperation addOperation = new EMOperation(namespace, EMOperation.OpType.ADD, evalToAdd);
+>>>>>>> origin
           addOperations.put(evalToAdd, addOperation);
           dag.addVertex(addOperation);
         }
@@ -296,10 +341,15 @@ public final class PlanImpl implements Plan {
           final EMOperation delOperation = delOperationsIter.next();
           dag.addEdge(delOperation, addOperation);
         } else {
+<<<<<<< HEAD
+          LOG.log(Level.WARNING, "The number of Adds are larger than the one of Deletes." +
+              " When executing the plan, this Add step would be blocked due to the resource limit. {0}", addOperation);
+=======
           LOG.log(Level.WARNING, "The number of Adds ({0}) are larger than the one of Deletes ({1})." +
               " While executing the plan, adding evaluators might be blocked if the resources are smaller" +
               " than it must be.", new Object[]{addOperations.size(), delOperations.size()});
           break;
+>>>>>>> origin
         }
       }
 

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_em.sh -numCls 3 -convThr 0.01 -maxIter 20 -local true -split 4 -input sample_cluster -output output_em -maxNumEvalLocal 5
+# ./run_em.sh -num_cls 3 -conv_thr 0.01 -max_iter 20 -local true -split 4 -input sample_cluster -output output_em -max_num_eval_local 5
 
 # RUNTIME
 SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar

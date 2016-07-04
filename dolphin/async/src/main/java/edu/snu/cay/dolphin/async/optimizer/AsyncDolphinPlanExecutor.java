@@ -302,7 +302,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         }
         switch (opType) {
 
-        case Add:
+        case ADD:
           switch (namespace) {
           case NAMESPACE_SERVER:
             LOG.log(Level.FINE, "Adding server {0}", operation.getEvalId());
@@ -320,7 +320,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
             throw new RuntimeException("Unsupported namespace");
           }
           break;
-        case Del:
+        case DEL:
           final String evaluatorId = operation.getEvalId().get();
           switch (namespace) {
           case NAMESPACE_SERVER:
@@ -335,7 +335,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
             throw new RuntimeException("Unsupported namespace");
           }
           break;
-        case Move:
+        case MOVE:
           final TransferStep transferStep = operation.getTransferStep().get();
           switch (namespace) {
           case NAMESPACE_SERVER:

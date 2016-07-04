@@ -15,16 +15,17 @@
  */
 package edu.snu.cay.utils;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * This implements DAG with adjacent list.
- * This implementation is not thread-safe.
  * It is based on the one of MIST.
  * @param <V> type of the vertex
  */
+@NotThreadSafe
 public final class DAGImpl<V> implements DAG<V> {
   private static final Logger LOG = Logger.getLogger(DAGImpl.class.getName());
 
@@ -101,21 +102,25 @@ public final class DAGImpl<V> implements DAG<V> {
   @Override
   public boolean addEdge(final V v, final V w) {
     if (!adjacent.containsKey(v)) {
-      LOG.log(Level.WARNING, "The vertex {0} does not exist", v);
-      return false;
+      throw new NoSuchElementException("No src vertex " + v);
     }
     if (!adjacent.containsKey(w)) {
-      LOG.log(Level.WARNING, "The vertex {0} does not exist", w);
+      throw new NoSuchElementException("No dest vertex " + w);
     }
 
     final Set<V> adjs = adjacent.get(v);
 
     if (adjs.add(w)) {
       final int inDegree = inDegrees.get(w);
-      inDegrees.put(w, inDegree + 1);
+
       if (inDegree == 0) {
+        if (rootVertices.size() == 1) {
+          throw new IllegalStateException("Thd edge from " + v + " to " + w + " makes a cycle in the graph");
+        }
         rootVertices.remove(w);
       }
+      inDegrees.put(w, inDegree + 1);
+
       return true;
     } else {
       LOG.log(Level.WARNING, "The edge from {0} to {1} already exists", new Object[]{v, w});

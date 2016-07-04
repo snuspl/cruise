@@ -19,7 +19,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Whether to share a covariance matrix among clusters or not",
-        short_name = "isCovShared",
+        short_name = "is_cov_shared",
         default_value = "false")
 public class IsCovarianceShared implements Name<Boolean> {
 }

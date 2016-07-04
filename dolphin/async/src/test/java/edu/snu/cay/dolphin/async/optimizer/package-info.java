@@ -13,7 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+<<<<<<< HEAD:dolphin/async/src/test/java/edu/snu/cay/dolphin/async/optimizer/package-info.java
 /**
  * Classes for optimizer tests.
  */
 package edu.snu.cay.dolphin.async.optimizer;
+=======
+package edu.snu.cay.dolphin.async.optimizer.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Delay for added MemoryStore to be initialized (e.g., routing table)",
+                short_name = "memory_store_init_delay_ms",
+                default_value = "1000")
+public class MemoryStoreInitDelayMs implements Name<Long> {
+}
+>>>>>>> origin:dolphin/async/src/main/java/edu/snu/cay/dolphin/async/optimizer/parameters/MemoryStoreInitDelayMs.java
