@@ -43,9 +43,12 @@ import static org.mockito.Mockito.*;
  * Test the orchestrator correctly processes metrics from MetricHub and provides them to Optimizer.
  */
 public final class OptimizationOrchestratorTest {
-
   private static final String EVAL_PREFIX = "EVAL";
   private static final long OPTIMIZATION_DELAY = 0; // optimizer does no actual reconfiguration
+
+  // configuration variables for calibrating the waiting time for a plan execution
+  private static final int MAX_WAIT_LOOP = 20;
+  private static final int WAIT_TIME = 10;
 
   private OptimizationOrchestrator orchestrator;
   private Optimizer optimizer;
@@ -53,11 +56,8 @@ public final class OptimizationOrchestratorTest {
   private MetricsHub metricsHub;
 
   // Key in these storeId maps will represent the actual active evaluators in the system.
-  // Contrary, value has no meaning.
   private Map<Integer, Set<Integer>> workerStoreIdMap;
   private Map<Integer, Set<Integer>> serverStoreIdMap;
-
-
 
   /**
    * Setup orchestrator with a fake optimizer and two ElasticMemory instances.
@@ -69,17 +69,18 @@ public final class OptimizationOrchestratorTest {
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(PlanExecutor.class, LoggingPlanExecutor.class)
             .bindNamedParameter(DelayAfterOptimizationMs.class, String.valueOf(OPTIMIZATION_DELAY))
-            .build()
-    );
+            .build());
 
     metricsHub = injector.getInstance(MetricsHub.class);
 
     final ElasticMemory workerEM = mock(ElasticMemory.class);
     workerStoreIdMap = new HashMap<>();
-    when(workerEM.getStoreIdToBlockIds()).thenReturn(workerStoreIdMap);
 
     final ElasticMemory serverEM = mock(ElasticMemory.class);
     serverStoreIdMap = new HashMap<>();
+
+    // return storeIdMaps when orchestrator tries to obtain the actual number of evaluators
+    when(workerEM.getStoreIdToBlockIds()).thenReturn(workerStoreIdMap);
     when(serverEM.getStoreIdToBlockIds()).thenReturn(serverStoreIdMap);
 
     injector.bindVolatileParameter(WorkerEM.class, workerEM);
@@ -244,9 +245,11 @@ public final class OptimizationOrchestratorTest {
    * Wait until the orchestrator finishes the plan execution.
    */
   private void waitPlanExecuting() {
-    while (orchestrator.isPlanExecuting()) {
+    int numLoop = 0;
+    while (orchestrator.isPlanExecuting() && numLoop < MAX_WAIT_LOOP) {
+      ++numLoop;
       try {
-        Thread.sleep(10);
+        Thread.sleep(WAIT_TIME);
       } catch (final InterruptedException e) {
         throw new RuntimeException("Interrupted while waiting the completion of plan execution");
       }
