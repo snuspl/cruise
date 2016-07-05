@@ -226,7 +226,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
     private final EMOperation completeOp;
 
-    public MovedHandler(final EMOperation completeOp) {
+    MovedHandler(final EMOperation completeOp) {
       this.completeOp = completeOp;
     }
 
@@ -249,7 +249,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
     private final EMOperation completeOp;
 
-    public DeletedHandler(final EMOperation completeOp) {
+    DeletedHandler(final EMOperation completeOp) {
       this.completeOp = completeOp;
     }
 

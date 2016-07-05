@@ -32,14 +32,12 @@ public final class PlanImplTest {
   private static final String NAMESPACE_PREFIX = "NAMESPACE";
   private static final String EVAL_PREFIX = "EVAL";
 
-
   /**
    * Tests for building an arbitrary plan, a combination of multiple Add, Del, and Move operations.
    * The generated plan adds and deletes multiple distinct evaluators.
    * For testing move steps, it moves data from evaluators being deleted to a single source evaluator
    * and moves data from a single destination evaluator to evaluators being added.
    */
-
   @Test
   public void testPlanBuilding() {
     final int numNameSpaces = 2;
@@ -230,7 +228,6 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 3, EVAL_PREFIX + 2, new DataInfoImpl(1)))
         .build();
 
-
     // Moves should be executed first
     final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(4, firstOpsToExec.size());
@@ -271,7 +268,6 @@ public final class PlanImplTest {
     assertTrue(plan.getReadyOps().isEmpty());
   }
 
-
   /**
    * Tests a generated plan contains the correct dependency information
    * that Moves follow corresponding Adds when the destination evaluator of Move
@@ -282,7 +278,6 @@ public final class PlanImplTest {
     // add -> move
     final Plan plan = PlanImpl.newBuilder()
         // the first set of dependencies comprised of one Add and two moves
-
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 1, EVAL_PREFIX + 0, new DataInfoImpl(1)))
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
