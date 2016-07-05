@@ -26,7 +26,6 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
-import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -51,9 +50,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.powermock.api.mockito.PowerMockito.*;
 
 /**
@@ -143,8 +145,11 @@ public final class AsyncDolphinPlanExecutorTest {
     final int planSize = plan.getPlanSize();
 
     try {
-      final PlanResultImpl summary = (PlanResultImpl) result.get();
+      final PlanResult summary = result.get(10, TimeUnit.SECONDS);
       assertEquals(planSize, summary.getNumExecutedOps());
+    } catch (final TimeoutException e) {
+      fail("Failed to execute the plan. Timeout occurred.");
+      e.printStackTrace();
     } catch (final Exception e) {
       e.printStackTrace();
     }
@@ -168,8 +173,11 @@ public final class AsyncDolphinPlanExecutorTest {
     final int planSize = plan.getPlanSize();
 
     try {
-      final PlanResultImpl summary = (PlanResultImpl) result.get();
+      final PlanResult summary = result.get(10, TimeUnit.SECONDS);
       assertEquals(planSize, summary.getNumExecutedOps());
+    } catch (final TimeoutException e) {
+      fail("Failed to execute the plan. Timeout occurred.");
+      e.printStackTrace();
     } catch (final Exception e) {
       e.printStackTrace();
     }
@@ -188,12 +196,12 @@ public final class AsyncDolphinPlanExecutorTest {
       deleteHandlerQueue = new ConcurrentLinkedQueue<>();
       addHandlerQueue = new ConcurrentLinkedQueue<>();
       moveHandlerQueue = new ConcurrentLinkedQueue<>();
-      initializeDelete();
-      initializeAdd();
-      initializeMove();
+      initDeleteThread();
+      initAddThread();
+      initMoveThread();
     }
 
-    private void initializeDelete() {
+    private void initDeleteThread() {
       final AvroElasticMemoryMessage msg = mock(AvroElasticMemoryMessage.class);
       final ResultMsg resultMsg = mock(ResultMsg.class);
       when(resultMsg.getResult()).thenReturn(Result.SUCCESS);
@@ -203,8 +211,8 @@ public final class AsyncDolphinPlanExecutorTest {
         @Override
         public void run() {
           while (true) {
-            if (!deleteHandlerQueue.isEmpty()) {
-              final EventHandler<AvroElasticMemoryMessage> deleteHandler = deleteHandlerQueue.poll();
+            final EventHandler<AvroElasticMemoryMessage> deleteHandler = deleteHandlerQueue.poll();
+            if (deleteHandler != null) {
               deleteHandler.onNext(msg);
             }
           }
@@ -213,7 +221,7 @@ public final class AsyncDolphinPlanExecutorTest {
       deletion.start();
     }
 
-    private void initializeAdd() {
+    private void initAddThread() {
 
       final AllocatedEvaluator evaluator = mock(AllocatedEvaluator.class);
 
@@ -221,7 +229,7 @@ public final class AsyncDolphinPlanExecutorTest {
 
       final ActiveContext context = mock(ActiveContext.class);
       final String evalId = evaluator.getId();
-      when(context.getId()).thenReturn("" + idInt.getAndIncrement());
+      when(context.getId()).thenReturn(Integer.toString(idInt.getAndIncrement()));
       when(context.getEvaluatorId()).thenReturn(evalId);
       doNothing().when(context).submitContextAndService(mock(Configuration.class), mock(Configuration.class));
 
@@ -229,8 +237,8 @@ public final class AsyncDolphinPlanExecutorTest {
         @Override
         public void run() {
           while (true) {
-            if (!addHandlerQueue.isEmpty()) {
-              final Tuple2 addHandlers = addHandlerQueue.poll();
+            final Tuple2 addHandlers = addHandlerQueue.poll();
+            if (addHandlers != null) {
               final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler
                       = (EventHandler<AllocatedEvaluator>) addHandlers.getT1();
               final List<EventHandler<ActiveContext>> ctxHandlerList
@@ -255,7 +263,7 @@ public final class AsyncDolphinPlanExecutorTest {
       addition.start();
     }
 
-    private void initializeMove() {
+    private void initMoveThread() {
       final AvroElasticMemoryMessage msg = mock(AvroElasticMemoryMessage.class);
       final ResultMsg resultMsg = mock(ResultMsg.class);
       when(resultMsg.getResult()).thenReturn(Result.SUCCESS);
@@ -265,8 +273,8 @@ public final class AsyncDolphinPlanExecutorTest {
         @Override
         public void run() {
           while (true) {
-            if (!moveHandlerQueue.isEmpty()) {
-              final EventHandler<AvroElasticMemoryMessage> moveHandler = moveHandlerQueue.poll();
+            final EventHandler<AvroElasticMemoryMessage> moveHandler = moveHandlerQueue.poll();
+            if (moveHandler != null) {
               moveHandler.onNext(msg);
             }
           }

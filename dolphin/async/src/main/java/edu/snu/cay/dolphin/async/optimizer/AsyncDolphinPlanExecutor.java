@@ -67,12 +67,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
 
+  private static final int DEFAULT_EVAL_MEM_SIZE = 1024;
+
   /**
-   * DEFAULT_EVAL_NUM_CORES Although EM's add() supports multiple evaluator additions,
+   * Although EM's add() supports multiple evaluator additions,
    * the default number of evaluators to be requested is 1 because in this implementation of the plan executor,
    * we assume that the plan generated does not involve many operations (especially adds) at once.
    */
-  private static final int DEFAULT_EVAL_MEM_SIZE = 1024;
   private static final int DEFAULT_EVAL_NUM_CORES = 1;
 
   @Inject
