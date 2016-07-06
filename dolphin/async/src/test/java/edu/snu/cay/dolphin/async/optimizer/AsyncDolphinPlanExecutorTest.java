@@ -148,6 +148,7 @@ public final class AsyncDolphinPlanExecutorTest {
       fail("Failed to execute the plan. Timeout occurred.");
       e.printStackTrace();
     } catch (final InterruptedException | ExecutionException e) {
+      fail("Failed to execute the plan. Exception occurred.");
       e.printStackTrace();
     }
   }
@@ -176,6 +177,7 @@ public final class AsyncDolphinPlanExecutorTest {
       fail("Failed to execute the plan. Timeout occurred.");
       e.printStackTrace();
     } catch (final InterruptedException | ExecutionException e) {
+      fail("Failed to execute the plan. Exception occurred.");
       e.printStackTrace();
     }
   }
