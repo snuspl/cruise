@@ -48,10 +48,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -150,7 +147,7 @@ public final class AsyncDolphinPlanExecutorTest {
     } catch (final TimeoutException e) {
       fail("Failed to execute the plan. Timeout occurred.");
       e.printStackTrace();
-    } catch (final Exception e) {
+    } catch (final InterruptedException | ExecutionException e) {
       e.printStackTrace();
     }
   }
@@ -178,7 +175,7 @@ public final class AsyncDolphinPlanExecutorTest {
     } catch (final TimeoutException e) {
       fail("Failed to execute the plan. Timeout occurred.");
       e.printStackTrace();
-    } catch (final Exception e) {
+    } catch (final InterruptedException | ExecutionException e) {
       e.printStackTrace();
     }
   }

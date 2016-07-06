@@ -112,7 +112,6 @@ public final class DAGImpl<V> implements DAG<V> {
 
     if (adjs.add(w)) {
       final int inDegree = inDegrees.get(w);
-
       if (inDegree == 0) {
         if (rootVertices.size() == 1) {
           throw new IllegalStateException("Thd edge from " + v + " to " + w + " makes a cycle in the graph");
@@ -120,7 +119,6 @@ public final class DAGImpl<V> implements DAG<V> {
         rootVertices.remove(w);
       }
       inDegrees.put(w, inDegree + 1);
-
       return true;
     } else {
       LOG.log(Level.WARNING, "The edge from {0} to {1} already exists", new Object[]{v, w});
