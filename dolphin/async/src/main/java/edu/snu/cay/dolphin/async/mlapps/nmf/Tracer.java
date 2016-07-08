@@ -47,15 +47,17 @@ public class Tracer {
 
   public double avg() {
     if (count == 0) {
-      return 0;
+      return Double.POSITIVE_INFINITY;
     }
+
     return sum / count / 1000.0D;
   }
 
   public double avgElement() {
-    if (count == 0) {
-      return 0;
+    if (elemCount == 0) {
+      return Double.POSITIVE_INFINITY;
     }
+
     return sum / elemCount / 1000.0D;
   }
 }
