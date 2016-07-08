@@ -46,10 +46,16 @@ public class Tracer {
   }
 
   public double avg() {
+    if (count == 0) {
+      return 0;
+    }
     return sum / count / 1000.0D;
   }
 
   public double avgElement() {
+    if (count == 0) {
+      return 0;
+    }
     return sum / elemCount / 1000.0D;
   }
 }
