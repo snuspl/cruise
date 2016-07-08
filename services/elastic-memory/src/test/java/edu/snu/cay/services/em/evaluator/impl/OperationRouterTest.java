@@ -36,7 +36,7 @@ import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 
 /**
- * Test for OperationRouter class.
+ * Tests to check whether OperationRouter is initialized correctly, and routes operations to the correct target.
  */
 public class OperationRouterTest {
   private OperationRouter newOperationRouter(final int numInitialEvals,
@@ -62,22 +62,23 @@ public class OperationRouterTest {
   }
 
   /**
-   * Tests that stores are assigned with disjoint local keys, and routers can correctly manage them.
+   * Checks whether blocks assigned to each MemoryStore have its unique owner (MemoryStore),
+   * and the local blocks acquired from getInitialLocalBlockIds() are routed to the local MemoryStore.
    */
   @Test
-  public void testLocalBlockRouting() {
+  public void testRoutingLocalBlocks() {
     final int numTotalBlocks = 1024;
     final int numMemoryStores = 4;
 
     final Set<Integer> totalBlocks = new HashSet<>(numTotalBlocks);
 
     for (int localStoreId = 0; localStoreId < numMemoryStores; localStoreId++) {
-      final OperationRouter operationRouter = newOperationRouter(numMemoryStores, numTotalBlocks, localStoreId, false);
+      final OperationRouter<?> operationRouter = newOperationRouter(numMemoryStores, numTotalBlocks, localStoreId, false);
 
       final List<Integer> localBlockIds = operationRouter.getInitialLocalBlockIds();
 
       for (final int blockId : localBlockIds) {
-        // router returns empty for local store
+        // OperationRouter.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
         assertEquals("Router fails to classify local blocks", Optional.empty(), operationRouter.resolveEval(blockId));
         assertTrue("The same block is owned by multiple stores", totalBlocks.add(blockId));
       }
@@ -87,45 +88,46 @@ public class OperationRouterTest {
   }
 
   /**
-   * Tests that routers in each stores share the same routing table at the init.
+   * Checks whether MemoryStores share the same routing table initially.
    */
   @Test
   public void testMultipleRouters() {
     final int numTotalBlocks = 1024;
     final int numMemoryStores = 4;
 
-    final OperationRouter[] routers = new OperationRouter[numMemoryStores];
+    final OperationRouter<?>[] routers = new OperationRouter[numMemoryStores];
     for (int storeId = 0; storeId < numMemoryStores; storeId++) {
       routers[storeId] = newOperationRouter(numMemoryStores, numTotalBlocks, storeId, false);
     }
 
     for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-      int localStoreId = -1; // -1 means not set
-      boolean findLocalStore = false;
+
+      // This is the memory store id that is answered at the first time.
+      // It is for checking all routers give the same answer.
+      // -1 means that memory store id for the block has not been found yet
+      int firstAnswer = -1;
+
+      boolean localStoreFound = false;
 
       // check all routers give same answer
       for (int storeId = 0; storeId < numMemoryStores; storeId++) {
         final Optional<String> evalId = routers[storeId].resolveEval(blockId);
 
-        // router returns empty for local store
+        final int targetStoreId;
+        // OperationRouter.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
         if (!evalId.isPresent()) {
-          final int targetStoreId = storeId;
-          assertFalse("Block should belong to only one store", findLocalStore);
-          findLocalStore = true;
+          assertFalse("Block should belong to only one store", localStoreFound);
+          localStoreFound = true;
 
-          if (localStoreId == -1) {
-            localStoreId = targetStoreId;
-          } else {
-            assertEquals("Routers generate contradictory result", localStoreId, targetStoreId);
-          }
+          targetStoreId = storeId;
         } else {
-          final int targetStoreId = Integer.valueOf(evalId.get().split("-")[1]);
+          targetStoreId = Integer.valueOf(evalId.get().split("-")[1]);
+        }
 
-          if (localStoreId == -1) {
-            localStoreId = targetStoreId;
-          } else {
-            assertEquals("Routers generate contradictory result", localStoreId, targetStoreId);
-          }
+        if (firstAnswer == -1) {
+          firstAnswer = targetStoreId; // it's set by the first router's answer
+        } else {
+          assertEquals("Routers should give the same memory store id for the same block", firstAnswer, targetStoreId);
         }
       }
     }
@@ -135,22 +137,23 @@ public class OperationRouterTest {
    * Tests whether routers are correctly updated by {@link OperationRouter#updateOwnership(int, int, int)}.
    */
   @Test
-  public void testRouterUpdate() {
+  public void testUpdatingOwnership() {
     final int numTotalBlocks = 1024;
     final int numInitialMemoryStores = 4;
 
     final int srcStoreId = 0;
-    final OperationRouter srcRouter = newOperationRouter(numInitialMemoryStores, numTotalBlocks, srcStoreId, false);
+    final OperationRouter<?> srcRouter = newOperationRouter(numInitialMemoryStores, numTotalBlocks, srcStoreId, false);
 
     final List<Integer> srcInitialBlocks = srcRouter.getInitialLocalBlockIds();
     List<Integer> srcCurrentBlocks = srcRouter.getCurrentLocalBlockIds();
 
-    assertEquals("Router is incorrectly initialized", srcInitialBlocks.size(), srcCurrentBlocks.size());
-    assertTrue("Router is incorrectly initialized", srcInitialBlocks.containsAll(srcCurrentBlocks));
+    assertEquals("Router is initialized incorrectly", srcInitialBlocks.size(), srcCurrentBlocks.size());
+    assertTrue("Router is initialized incorrectly", srcInitialBlocks.containsAll(srcCurrentBlocks));
 
     final int destStoreId = 1;
-    final OperationRouter destRouter = newOperationRouter(numInitialMemoryStores, numTotalBlocks, destStoreId, false);
+    final OperationRouter<?> destRouter = newOperationRouter(numInitialMemoryStores, numTotalBlocks, destStoreId, false);
 
+    // move the half of blocks between two evaluators by updating routers
     final int numBlocksToMove = srcInitialBlocks.size() / 2;
     final List<Integer> movedBlocks = new ArrayList<>(numBlocksToMove);
     for (int i = 0; i < numBlocksToMove; i++) {
@@ -160,18 +163,23 @@ public class OperationRouterTest {
       movedBlocks.add(movingBlockId);
     }
 
+    // check that the router is correctly updated as expected
     srcCurrentBlocks = srcRouter.getCurrentLocalBlockIds();
     final List<Integer> destCurrentBlocks = destRouter.getCurrentLocalBlockIds();
     final List<Integer> destInitialBlocks = destRouter.getInitialLocalBlockIds();
 
-    assertEquals(srcInitialBlocks.size() - numBlocksToMove, srcCurrentBlocks.size());
-    assertEquals(destInitialBlocks.size() + numBlocksToMove, destCurrentBlocks.size());
-    assertTrue(srcInitialBlocks.containsAll(srcCurrentBlocks));
-    assertTrue(destCurrentBlocks.containsAll(destInitialBlocks));
+    assertEquals("The number of current blocks in source router has not been updated correctly",
+        srcInitialBlocks.size() - numBlocksToMove, srcCurrentBlocks.size());
+    assertEquals("The number of current blocks in destination router has not been updated correctly",
+        destInitialBlocks.size() + numBlocksToMove, destCurrentBlocks.size());
+    assertTrue("Current blocks in source router have not been updated correctly",
+        srcInitialBlocks.containsAll(srcCurrentBlocks));
+    assertTrue("Current blocks in destination router have not been updated correctly",
+        destCurrentBlocks.containsAll(destInitialBlocks));
 
     for (final int blockId : movedBlocks) {
-      assertFalse(srcCurrentBlocks.contains(blockId));
-      assertTrue(destCurrentBlocks.contains(blockId));
+      assertFalse("This block should have been moved out from source router", srcCurrentBlocks.contains(blockId));
+      assertTrue("This block should have been moved into destination router", destCurrentBlocks.contains(blockId));
     }
   }
 }
