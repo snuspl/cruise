@@ -121,6 +121,7 @@ public class OperationRouterTest {
 
           targetStoreId = storeId;
         } else {
+          // TODO #509: remove the assumption on the format of context id
           targetStoreId = Integer.valueOf(evalId.get().split("-")[1]);
         }
 
