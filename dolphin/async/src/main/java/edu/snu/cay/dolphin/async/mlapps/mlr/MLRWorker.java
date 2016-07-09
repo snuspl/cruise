@@ -24,12 +24,13 @@ import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
 import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.*;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.WorkerSynchronizer;
-import edu.snu.cay.dolphin.async.mlapps.nmf.Tracer;
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
+import edu.snu.cay.services.ps.avro.ServerMetrics;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
@@ -197,7 +198,6 @@ final class MLRWorker implements Worker {
     this.metricsCollector = metricsCollector;
     this.insertableMetricTracker = insertableMetricTracker;
     this.metricsMessageSender = metricsMessageSender;
-    this.addedEval = addedEval;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
 
@@ -250,9 +250,9 @@ final class MLRWorker implements Worker {
   }
 
   private void resetTracers() {
-    pushTracer.reset();
-    pullTracer.reset();
-    computeTracer.reset();
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
   }
 
   @Override
@@ -280,14 +280,14 @@ final class MLRWorker implements Worker {
     int numBatch = 0;
     int batchSize = workload.size() / numBatchPerIter;
     batchSize += workload.size() % numBatchPerIter == 0 ? 0 : 1;
-    computeTracer.start();
+    computeTracer.startTimer();
     for (final Pair<Vector, Integer> entry : workload) {
       if (numInstances >= batchSize) {
-        computeTracer.end(numInstances);
+        computeTracer.recordTime(numInstances);
 
         // push gradients and pull fresh models
         refreshModel();
-        computeTracer.start();
+        computeTracer.startTimer();
 
         if (++numBatch % numBatchPerLossLog == 0) {
           final Tuple3<Double, Double, Float> pair = computeLoss(trainErrorDatasetSize, workload);
@@ -327,7 +327,7 @@ final class MLRWorker implements Worker {
       ++numInstances;
     }
 
-    computeTracer.end(numInstances);
+    computeTracer.recordTime(numInstances);
     if (numInstances > 0) {
       // flush gradients for remaining instances to server
       pushAndResetGradients();
@@ -336,12 +336,14 @@ final class MLRWorker implements Worker {
     ++iteration;
     if (statusLogPeriod > 0 && iteration % statusLogPeriod == 0) {
       final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
+
       LOG.log(Level.INFO, "Iteration: {0}, Sample Count: {1}, " +
               "Avg Comp Per Row: {2}, Sum Comp: {3}, Avg Pull: {4}, Sum Pull: {5}, Avg Push: {6}, " +
               "Sum Push: {7}, DvT: {8}, Elapsed Time: {9}",
           new Object[]{iteration, workload.size(),
-              computeTracer.avgElement(), computeTracer.sum(), pullTracer.avgElement(), pullTracer.sum(),
-              pushTracer.avgElement(), pushTracer.sum(), workload.size() / elapsedTime, elapsedTime});
+              computeTracer.avgTimePerElem(), computeTracer.totalElapsedTime(), pullTracer.avgTimePerElem(),
+              pullTracer.totalElapsedTime(), pushTracer.avgTimePerElem(),
+              pushTracer.totalElapsedTime(), workload.size() / elapsedTime, elapsedTime});
     }
 
     if (iteration % decayPeriod == 0) {
@@ -365,7 +367,7 @@ final class MLRWorker implements Worker {
     resetTracers();
 
     pullModels();
-    computeTracer.start();
+    computeTracer.startTimer();
 
     final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
     final List<Pair<Vector, Integer>> data = new ArrayList<>(workloadMap.values());
@@ -374,22 +376,23 @@ final class MLRWorker implements Worker {
     // Compute loss with the entire dataset.
     final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(entireDatasetSize, data);
 
-    computeTracer.end(data.size());
+    computeTracer.recordTime(data.size());
     final float cleanupEnd = System.currentTimeMillis();
 
     LOG.log(Level.INFO, "Number of instances: {0}", entireDatasetSize);
     LOG.log(Level.INFO, "Prediction accuracy on training dataset: {0}", lossRegLossAccuracy.getThird());
     LOG.log(Level.INFO, "Cleanup Samples: {0}, Avg Comp Per Row: {1}, Sum Comp: {2}, Avg Pull: {3}, Sum Pull: {4}, " +
             "Elapsed Time: {5}, Wait Time: {6}, Sample Loss Avg: {7}",
-        new Object[]{entireDatasetSize, computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(),
+        new Object[]{entireDatasetSize, computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(),
+            pullTracer.avgTimePerRecord(), pullTracer.totalElapsedTime(),
             cleanupEnd - waitStart, cleanupStart - waitStart, lossRegLossAccuracy.getFirst()});
   }
 
   private void pullModels() {
-    pullTracer.start();
+    pullTracer.startTimer();
     final List<Vector> partitions = worker.pull(classPartitionIndices);
-    pullTracer.end(partitions.size());
-    computeTracer.start();
+    pullTracer.recordTime(partitions.size());
+    computeTracer.startTimer();
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       // 0 ~ (numPartitionsPerClass - 1) is for class 0
       // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
@@ -401,7 +404,7 @@ final class MLRWorker implements Worker {
       oldModels[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
       newModels[classIndex] = oldModels[classIndex].copy();
     }
-    computeTracer.end(0);
+    computeTracer.recordTime(0);
   }
 
   private void refreshModel() {
@@ -411,18 +414,18 @@ final class MLRWorker implements Worker {
 
   private void pushAndResetGradients() {
     for (int classIndex = 0; classIndex < numClasses; classIndex++) {
-      computeTracer.start();
+      computeTracer.startTimer();
       final Vector gradient = newModels[classIndex].sub(oldModels[classIndex]);
-      computeTracer.end(0);
+      computeTracer.recordTime(0);
 
-      pushTracer.start();
+      pushTracer.startTimer();
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
         final int partitionStart = partitionIndex * numFeaturesPerPartition;
         final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
         worker.push(classIndex * numPartitionsPerClass + partitionIndex,
             gradient.slice(partitionStart, partitionEnd));
       }
-      pushTracer.end(numPartitionsPerClass);
+      pushTracer.recordTime(numPartitionsPerClass);
     }
   }
 
@@ -524,7 +527,8 @@ final class MLRWorker implements Worker {
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.sum());
+
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
     } catch (final MetricException e) {
       throw new RuntimeException(e);
