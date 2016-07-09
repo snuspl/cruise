@@ -15,18 +15,29 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
-/**
- * Keys to identify metrics that come from Async-Dolphin.
- */
-public final class MetricKeys {
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
+import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.wake.remote.Codec;
 
-  /**
-   * Should not be instantiated.
-   */
-  private MetricKeys() {
+import javax.inject.Inject;
+
+/**
+ * Codec for WorkerWorkerMetricsMsg.
+ * Simply uses AvroUtils to encode and decode messages.
+ */
+public final class WorkerMetricsMsgCodec implements Codec<WorkerMetricsMsg> {
+
+  @Inject
+  private WorkerMetricsMsgCodec() {
   }
 
-  // Keys to get/set the metrics in the worker.
-  public static final String WORKER_COMPUTE_TIME =
-      "METRIC_WORKER_COMPUTE_TIME";
+  @Override
+  public byte[] encode(final WorkerMetricsMsg msg) {
+    return AvroUtils.toBytes(msg, WorkerMetricsMsg.class);
+  }
+
+  @Override
+  public WorkerMetricsMsg decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, WorkerMetricsMsg.class);
+  }
 }

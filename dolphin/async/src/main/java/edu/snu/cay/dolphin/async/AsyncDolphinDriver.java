@@ -15,10 +15,12 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.common.metric.MetricsCollectionServiceConf;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher.*;
+import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgCodec;
+import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
-import edu.snu.cay.dolphin.async.metric.MetricsCollectionService;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
@@ -266,7 +268,7 @@ public final class AsyncDolphinDriver {
    * Injectable constructor.
    *
    * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestrator} and
-   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandler} hold references to the same
+   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForWorker} hold references to the same
    * {@link MetricsHub} instance.
    */
   @Inject
@@ -525,7 +527,7 @@ public final class AsyncDolphinDriver {
             psDriver.getWorkerServiceConfiguration(contextId),
             getEMServiceConfForWorker(contextId, addedEval),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
-            MetricsCollectionService.getServiceConfiguration());
+            getMetricsCollectionServiceConfForWorker());
         final Configuration traceConf = traceParameters.getConfiguration();
 
         final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -536,6 +538,18 @@ public final class AsyncDolphinDriver {
             Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, workerConf, emWorkerClientConf));
       }
     };
+  }
+
+  /**
+   * Returns worker-side Configuration for MetricsCollectionService by binding the
+   * MetricsMsgCodec and MetricHandler.
+   */
+  private Configuration getMetricsCollectionServiceConfForWorker() {
+    final MetricsCollectionServiceConf conf = MetricsCollectionServiceConf.newBuilder()
+        .setMetricsHandlerClass(WorkerMetricsMsgSender.class)
+        .setMetricsMsgCodecClass(WorkerMetricsMsgCodec.class)
+        .build();
+    return conf.getConfiguration();
   }
 
   /**

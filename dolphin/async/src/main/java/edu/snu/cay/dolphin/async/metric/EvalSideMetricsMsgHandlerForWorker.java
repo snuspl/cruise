@@ -29,10 +29,10 @@ import javax.inject.Inject;
  * for example, pull-based metric aggregation.
  */
 @EvaluatorSide
-public final class EvalSideMetricsMsgHandler implements EventHandler<AggregationMessage> {
+public final class EvalSideMetricsMsgHandlerForWorker implements EventHandler<AggregationMessage> {
 
   @Inject
-  private EvalSideMetricsMsgHandler() {
+  private EvalSideMetricsMsgHandlerForWorker() {
   }
 
   @Override
