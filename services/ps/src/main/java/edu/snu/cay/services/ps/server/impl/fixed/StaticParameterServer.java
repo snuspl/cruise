@@ -16,7 +16,12 @@
 package edu.snu.cay.services.ps.server.impl.fixed;
 
 import com.google.common.base.Ticker;
+import edu.snu.cay.common.metric.InsertableMetricTracker;
+import edu.snu.cay.common.metric.MetricException;
+import edu.snu.cay.common.metric.MetricsCollector;
 import edu.snu.cay.services.ps.common.Statistics;
+import edu.snu.cay.services.ps.metric.ConstantsForServer;
+import edu.snu.cay.services.ps.metric.ServerMetricsMsgSender;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
@@ -53,6 +58,11 @@ import java.util.logging.Logger;
 @EvaluatorSide
 public final class StaticParameterServer<K, P, V> implements ParameterServer<K, P, V> {
   private static final Logger LOG = Logger.getLogger(StaticParameterServer.class.getName());
+
+  /**
+   * Initial delay before sending the first metric.
+   */
+  private static final long METRIC_INIT_DELAY_MS = 3000;
 
   /**
    * ServerResolver that maps hashed keys to partitions.
@@ -96,13 +106,60 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
 
   private final long logPeriod;
 
+  /**
+   * Statistics of the processing time of push operation.
+   */
   private final Statistics[] pushStats;
+
+  /**
+   * Statistics of the processing time of pull operation.
+   */
   private final Statistics[] pullStats;
+
+  /**
+   * Statistics of the processing time of both operations - push and pull.
+   */
   private final Statistics[] requestStats;
+
+  /**
+   * Statistics of the waiting time of push operation since enqueued.
+   */
   private final Statistics[] pushWaitStats;
+
+  /**
+   * Statistics of the waiting time of push operation.
+   */
   private final Statistics[] pullWaitStats;
+
+  /**
+   * Bookkeeping start time of the processing threads.
+   */
   private long[] startTimes;
+
+  /**
+   * Ticker to track the time.
+   */
   private final Ticker ticker = Ticker.systemTicker();
+
+  /**
+   * Collects metrics within each window.
+   */
+  private final MetricsCollector metricsCollector;
+
+  /**
+   * Records user-defined Metrics (e.g., push-time, pull-time).
+   */
+  private final InsertableMetricTracker insertableMetricTracker;
+
+  /**
+   * Builds and sends ServerMetricsMessages by using received Metrics.
+   */
+  private final ServerMetricsMsgSender serverMetricsMsgSender;
+
+  /**
+   * The discrete time unit to send metrics.
+   */
+  private int window;
 
   private void printStats(final int threadId, final long elapsedTime) {
     final Statistics pullStat = pullStats[threadId];
@@ -134,6 +191,9 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
                                 @Parameter(ServerNumThreads.class) final int numThreads,
                                 @Parameter(ServerQueueSize.class) final int queueSize,
                                 @Parameter(ServerLogPeriod.class) final int logPeriod,
+                                final MetricsCollector metricsCollector,
+                                final InsertableMetricTracker insertableMetricTracker,
+                                final ServerMetricsMsgSender serverMetricsMsgSender,
                                 final ServerResolver serverResolver,
                                 final ParameterUpdater<K, P, V> parameterUpdater,
                                 final ServerSideReplySender<K, V> sender) {
@@ -156,6 +216,12 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     for (int i = 0; i < numThreads; ++i) {
       this.startTimes[i] = currentTime;
     }
+    this.metricsCollector = metricsCollector;
+    this.insertableMetricTracker = insertableMetricTracker;
+    this.serverMetricsMsgSender = serverMetricsMsgSender;
+
+    // Execute a thread to send metrics.
+    Executors.newSingleThreadExecutor().submit(this::sendMetrics);
   }
 
   /**
@@ -197,6 +263,48 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       sum += partition.opsPending();
     }
     return sum;
+  }
+
+  /**
+   * Sends metrics that have been collected within the current window.
+   */
+  private void sendMetrics() {
+    try {
+      Thread.sleep(METRIC_INIT_DELAY_MS);
+      while (true) {
+        insertableMetricTracker.put(ConstantsForServer.SERVER_PROCESSING_UNIT, getProcessingUnit());
+        metricsCollector.stop();
+
+        serverMetricsMsgSender.send(window, 0);
+        window++;
+        Thread.sleep(logPeriod);
+      }
+    } catch (final MetricException | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Computes processing unit (C_s_proc) across all threads in this Server.
+   * {@code Double.POSITIVE_INFINITY} is returned when all threads
+   * have not processed any pull requests so far.
+   */
+  private double getProcessingUnit() {
+    double count = 0D;
+    double sum = 0D;
+
+    synchronized (pullStats) {
+      for (final Statistics stat : pullStats) {
+        count += stat.count();
+        sum += stat.sum();
+      }
+    }
+
+    if (count == 0D) {
+      return Double.POSITIVE_INFINITY;
+    } else {
+      return sum / count;
+    }
   }
 
   /**

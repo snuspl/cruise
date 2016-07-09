@@ -15,9 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.dolphin.async.metric.ConstantsForWorker;
-import edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForWorker;
-import edu.snu.cay.dolphin.async.metric.EvalSideMetricsMsgHandlerForWorker;
+import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MemoryStoreInitDelayMs;
@@ -38,6 +36,7 @@ import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.driver.impl.dynamic.DynamicPSManager;
 import edu.snu.cay.services.ps.driver.impl.fixed.StaticPSManager;
+import edu.snu.cay.services.ps.metric.ConstantsForServer;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
@@ -338,7 +337,10 @@ public final class AsyncDolphinLauncher {
             WorkerSynchronizer.MessageHandler.class)
         .addAggregationClient(ConstantsForWorker.AGGREGATION_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForWorker.class,
-            EvalSideMetricsMsgHandlerForWorker.class)
+            EvalSideMetricsMsgHandler.class)
+        .addAggregationClient(ConstantsForServer.AGGREGATION_CLIENT_NAME,
+            DriverSideMetricsMsgHandlerForServer.class,
+            EvalSideMetricsMsgHandler.class)
         .build();
 
     // set up an optimizer configuration
