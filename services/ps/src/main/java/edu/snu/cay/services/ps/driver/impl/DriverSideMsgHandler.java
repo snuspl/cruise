@@ -16,20 +16,12 @@
 package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.services.ps.avro.AvroPSMsg;
-import edu.snu.cay.services.ps.avro.IdMapping;
-import edu.snu.cay.services.ps.avro.Type;
-import edu.snu.cay.services.ps.avro.WorkerRegisterReplyMsg;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Receives the messages from ParameterServers and ParameterWorkers.
@@ -41,13 +33,10 @@ import java.util.Set;
 @DriverSide
 public final class DriverSideMsgHandler implements EventHandler<Message<AvroPSMsg>> {
   private final EMRoutingTableManager routingTableManager;
-  private final InjectionFuture<PSMessageSender> sender;
 
   @Inject
-  private DriverSideMsgHandler(final EMRoutingTableManager routingTableManager,
-                               final InjectionFuture<PSMessageSender> sender) {
+  private DriverSideMsgHandler(final EMRoutingTableManager routingTableManager) {
     this.routingTableManager = routingTableManager;
-    this.sender = sender;
   }
 
   @Override
@@ -70,31 +59,7 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPSMs
   }
 
   private void onWorkerRegisterMsg(final String srcId) {
-    final EMRoutingTable routingTable = routingTableManager.registerWorker(srcId);
-    final List<IdMapping> idMappings = new ArrayList<>(routingTable.getStoreIdToEndpointId().size());
-    final Map<Integer, String> storeIdToEndpointId = routingTable.getStoreIdToEndpointId();
-    for (final Map.Entry<Integer, Set<Integer>> entry : routingTable.getStoreIdToBlockIds().entrySet()) {
-      final int storeId = entry.getKey();
-      final List<Integer> blockIds = new ArrayList<>(entry.getValue());
-      final IdMapping idMapping = IdMapping.newBuilder()
-          .setMemoryStoreId(storeId)
-          .setBlockIds(blockIds)
-          .setEndpointId(storeIdToEndpointId.get(storeId))
-          .build();
-      idMappings.add(idMapping);
-    }
-
-    final WorkerRegisterReplyMsg workerRegisterReplyMsg = WorkerRegisterReplyMsg.newBuilder()
-        .setIdMappings(idMappings)
-        .build();
-
-    final AvroPSMsg responseMsg =
-        AvroPSMsg.newBuilder()
-            .setType(Type.WorkerRegisterReplyMsg)
-            .setWorkerRegisterReplyMsg(workerRegisterReplyMsg)
-            .build();
-
-    sender.get().send(srcId, responseMsg);
+    routingTableManager.registerWorker(srcId);
   }
 
   private void onWorkerDeregisterMsg(final String srcId) {
