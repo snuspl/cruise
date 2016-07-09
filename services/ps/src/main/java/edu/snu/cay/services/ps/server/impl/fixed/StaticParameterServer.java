@@ -146,16 +146,15 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     this.threads = initThreads();
     this.parameterUpdater = parameterUpdater;
     this.sender = sender;
-    LOG.log(Level.INFO, "Log Period = {0} millisecond", logPeriod);
-    pushStats = Statistics.newInstances(numThreads);
-    pullStats = Statistics.newInstances(numThreads);
-    requestStats = Statistics.newInstances(numThreads);
-    pushWaitStats = Statistics.newInstances(numThreads);
-    pullWaitStats = Statistics.newInstances(numThreads);
-    startTimes = new long[numThreads];
+    this.pushStats = Statistics.newInstances(numThreads);
+    this.pullStats = Statistics.newInstances(numThreads);
+    this.requestStats = Statistics.newInstances(numThreads);
+    this.pushWaitStats = Statistics.newInstances(numThreads);
+    this.pullWaitStats = Statistics.newInstances(numThreads);
+    this.startTimes = new long[numThreads];
     final long currentTime = ticker.read();
     for (int i = 0; i < numThreads; ++i) {
-      startTimes[i] = currentTime;
+      this.startTimes[i] = currentTime;
     }
   }
 
