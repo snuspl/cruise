@@ -29,7 +29,7 @@ public class Tracer {
   private long elemCount = 0;
 
   /**
-   * Resets all measurements taken so far by this tracer
+   * Resets all measurements taken so far by this tracer.
    */
   public void resetTrace() {
     sum = 0;
@@ -38,7 +38,7 @@ public class Tracer {
   }
 
   /**
-   * Marks the start time of a timestamp measurement to be taken
+   * Marks the start time of a timestamp measurement to be taken.
    */
   public void startTimer() {
     begin = System.currentTimeMillis();
@@ -57,7 +57,7 @@ public class Tracer {
   }
 
   /**
-   * Total amount of time taken for the execution during the "tracing"
+   * Total amount of time taken for the execution during the "tracing".
    * @return total elapsed time in seconds.
    */
   public double totalElapsedTime() {
@@ -65,7 +65,7 @@ public class Tracer {
   }
 
   /**
-   * Average time taken per measurement for the "tracing"
+   * Average time taken per measurement for the "tracing".
    * @return avg time taken per measurement in seconds.
    */
   public double avgTimePerRecord() {
@@ -73,7 +73,7 @@ public class Tracer {
   }
 
   /**
-   * Average time taken per processed element for the "tracing"
+   * Average time taken per processed element for the "tracing".
    * @return avg time taken per element in seconds.
    */
   public double avgTimePerElem() {
