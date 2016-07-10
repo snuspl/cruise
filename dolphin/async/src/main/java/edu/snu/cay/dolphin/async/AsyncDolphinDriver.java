@@ -117,7 +117,7 @@ public final class AsyncDolphinDriver {
   private final DataLoadingService dataLoadingService;
 
   /**
-   * Synchronize workers including added ones.
+   * Synchronize workers by exchanging messages.
    */
   private final SynchronizationManager synchronizationManager;
 
@@ -574,7 +574,7 @@ public final class AsyncDolphinDriver {
         contextIdToWorkerContexts.put(activeContext.getId(), activeContext);
 
         // notify SyncManager about the addition of worker
-        synchronizationManager.onAdd();
+        synchronizationManager.onWorkerAdded();
 
         final int workerIndex = getWorkerIndex(activeContext.getId());
         final Configuration taskConf = TaskConfiguration.CONF
@@ -744,7 +744,7 @@ public final class AsyncDolphinDriver {
       LOG.log(Level.INFO, "The worker context {0} is closed by EM's Delete.", contextId);
 
       // notify SyncManager about the deletion of worker
-      synchronizationManager.onDelete(contextId);
+      synchronizationManager.onWorkerDeleted(contextId);
 
       if (!parentContext.isPresent()) {
         throw new RuntimeException("Root context of the deleted worker context does not exist");

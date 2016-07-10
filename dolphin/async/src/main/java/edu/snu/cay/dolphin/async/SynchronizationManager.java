@@ -34,13 +34,16 @@ import java.util.logging.Logger;
 
 /**
  * A driver-side component that coordinates synchronization messages between the driver and workers.
- * It maintains a global state that all workers should match with their own local states.
+ * It is used to synchronize workers in two points: after initialization and before cleanup.
+ * To achieve this, it maintains a global state that all workers should match with their own local states.
  * Workers added by EM can bypass the initial barriers.
  */
 @DriverSide
 @Unit
 final class SynchronizationManager {
   private static final Logger LOG = Logger.getLogger(SynchronizationManager.class.getName());
+
+  private static final byte[] EMPTY_DATA = new byte[0];
 
   static final String AGGREGATION_CLIENT_NAME = SynchronizationManager.class.getName();
 
@@ -84,19 +87,19 @@ final class SynchronizationManager {
   }
 
   /**
-   * Make it work with an newly added worker.
+   * Embraces the newly added worker to be synchronized from the next synchronization point.
    */
-  synchronized void onAdd() {
+  synchronized void onWorkerAdded() {
     // increase the number of workers to block
     numWorkersToSync++;
     LOG.log(Level.FINE, "Total number of workers participating in the synchronization = {0}", numWorkersToSync);
   }
 
   /**
-   * Make it work when the existing worker has been deleted.
+   * Excludes the deleted worker from the party of the synchronization barrier.
    * @param workerId an id of worker
    */
-  synchronized void onDelete(final String workerId) {
+  synchronized void onWorkerDeleted(final String workerId) {
     // when deleted worker already has sent sync msg
     if (blockedWorkerIds.contains(workerId)) {
       numWorkersToSync--;
@@ -135,10 +138,9 @@ final class SynchronizationManager {
 
       transitState(globalStateMachine);
 
-      final byte[] data = new byte[0];
       // broadcast responses to blocked workers
       for (final String workerId : blockedWorkerIds) {
-        sendResponseMessage(workerId, data);
+        sendResponseMessage(workerId, EMPTY_DATA);
       }
 
       blockedWorkerIds.clear();
@@ -161,12 +163,15 @@ final class SynchronizationManager {
       final String localState = codec.decode(aggregationMessage.getData().array());
       final String globalState = globalStateMachine.getCurrentState();
 
+      // In case when a worker's local state is behind the globally synchronized state,
+      // this implies the worker is added by EM.
+      // If so, the worker is replied to continue until it reaches the global state.
       switch (globalState) {
       case STATE_INIT:
         break;
       case STATE_RUN:
         if (localState.equals(STATE_INIT)) { // let added evaluators skip the initial barriers
-          sendResponseMessage(workerId, new byte[0]);
+          sendResponseMessage(workerId, EMPTY_DATA);
           return;
         }
         break;

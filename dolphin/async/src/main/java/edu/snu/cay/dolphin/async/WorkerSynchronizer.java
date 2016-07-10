@@ -34,6 +34,8 @@ import java.util.logging.Logger;
 
 /**
  * Synchronizes all workers by exchanging synchronization messages with the driver.
+ * It is used to synchronize the local worker threads themselves and
+ * with other workers in two points: after initialization and before cleanup.
  * It maintains a local state for enabling workers newly added by EM to bypass the initial barrier.
  */
 @EvaluatorSide
@@ -49,7 +51,7 @@ final class WorkerSynchronizer {
   @Inject
   private WorkerSynchronizer(final AggregationSlave aggregationSlave,
                              final SerializableCodec<String> codec,
-                             @Parameter(NumWorkerThreads.class)final int numWorkerThreads) {
+                             @Parameter(NumWorkerThreads.class) final int numWorkerThreads) {
     this.localStateMachine = SynchronizationManager.initStateMachine();
     this.cyclicBarrier = new CyclicBarrier(numWorkerThreads, new Runnable() {
       @Override
