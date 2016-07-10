@@ -16,12 +16,11 @@
 package edu.snu.cay.services.ps.server.impl.fixed;
 
 import com.google.common.base.Ticker;
-import edu.snu.cay.common.metric.InsertableMetricTracker;
-import edu.snu.cay.common.metric.MetricException;
-import edu.snu.cay.common.metric.MetricsCollector;
+import edu.snu.cay.common.metric.*;
+import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.services.ps.common.Statistics;
 import edu.snu.cay.services.ps.metric.ConstantsForServer;
-import edu.snu.cay.services.ps.metric.ServerMetricsMsgSender;
+import edu.snu.cay.services.ps.metric.avro.ServerMetricsMsg;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
@@ -152,9 +151,15 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   private final InsertableMetricTracker insertableMetricTracker;
 
   /**
-   * Builds and sends ServerMetricsMessages by using received Metrics.
+   * Receives the Metrics collected by MetricsCollector.
    */
-  private final ServerMetricsMsgSender serverMetricsMsgSender;
+  private final MetricsHandler metricsHandler;
+
+  /**
+   * Sends MetricsMessage that consists of Metrics and additional information
+   * such as window, and the number of partition blocks in the local MemoryStore.
+   */
+  private final MetricsMsgSender<ServerMetricsMsg> metricsMsgSender;
 
   /**
    * The discrete time unit to send metrics.
@@ -193,7 +198,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
                                 @Parameter(ServerLogPeriod.class) final int logPeriod,
                                 final MetricsCollector metricsCollector,
                                 final InsertableMetricTracker insertableMetricTracker,
-                                final ServerMetricsMsgSender serverMetricsMsgSender,
+                                final MetricsHandler metricsHandler,
+                                final MetricsMsgSender<ServerMetricsMsg> metricsMsgSender,
                                 final ServerResolver serverResolver,
                                 final ParameterUpdater<K, P, V> parameterUpdater,
                                 final ServerSideReplySender<K, V> sender) {
@@ -218,7 +224,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     }
     this.metricsCollector = metricsCollector;
     this.insertableMetricTracker = insertableMetricTracker;
-    this.serverMetricsMsgSender = serverMetricsMsgSender;
+    this.metricsHandler = metricsHandler;
+    this.metricsMsgSender = metricsMsgSender;
 
     // Execute a thread to send metrics.
     Executors.newSingleThreadExecutor().submit(this::sendMetrics);
@@ -275,7 +282,13 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         insertableMetricTracker.put(ConstantsForServer.SERVER_PROCESSING_UNIT, getProcessingUnit());
         metricsCollector.stop();
 
-        serverMetricsMsgSender.send(window, 0);
+        final Metrics metrics = metricsHandler.getMetrics();
+        final ServerMetricsMsg metricsMessage = ServerMetricsMsg.newBuilder()
+            .setMetrics(metrics)
+            .setWindow(window)
+            .setNumPartitionBlocks(0) // There is no block managed by EM, as Static PS does not use it.
+            .build();
+        metricsMsgSender.send(metricsMessage);
         window++;
         Thread.sleep(logPeriod);
       }

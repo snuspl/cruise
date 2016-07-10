@@ -39,6 +39,8 @@ import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
+import edu.snu.cay.services.ps.metric.ServerMetricsMsgCodec;
+import edu.snu.cay.services.ps.metric.ServerMetricsMsgSender;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import edu.snu.cay.utils.StateMachine;
@@ -470,7 +472,8 @@ public final class AsyncDolphinDriver {
             Tang.Factory.getTang().newConfigurationBuilder(
                 serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
-                .build());
+                .build(),
+            getMetricsCollectionServiceConfForServer());
 
         final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
         try {
@@ -541,12 +544,26 @@ public final class AsyncDolphinDriver {
   }
 
   /**
+   * Returns server-side Configuration for MetricsCollectionService by binding the
+   * required parameters.
+   */
+  private Configuration getMetricsCollectionServiceConfForServer() {
+    final MetricsCollectionServiceConf conf = MetricsCollectionServiceConf.newBuilder()
+        .setMetricsHandlerClass(ServerMetricsMsgSender.class)
+        .setMetricsMsgSenderClass(ServerMetricsMsgSender.class)
+        .setMetricsMsgCodecClass(ServerMetricsMsgCodec.class)
+        .build();
+    return conf.getConfiguration();
+  }
+
+  /**
    * Returns worker-side Configuration for MetricsCollectionService by binding the
-   * MetricsMsgCodec and MetricHandler.
+   * required parameters.
    */
   private Configuration getMetricsCollectionServiceConfForWorker() {
     final MetricsCollectionServiceConf conf = MetricsCollectionServiceConf.newBuilder()
         .setMetricsHandlerClass(WorkerMetricsMsgSender.class)
+        .setMetricsMsgSenderClass(WorkerMetricsMsgSender.class)
         .setMetricsMsgCodecClass(WorkerMetricsMsgCodec.class)
         .build();
     return conf.getConfiguration();

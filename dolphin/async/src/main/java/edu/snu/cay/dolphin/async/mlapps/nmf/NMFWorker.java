@@ -18,16 +18,14 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
+import edu.snu.cay.common.metric.*;
+import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.WorkerSynchronizer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.common.metric.InsertableMetricTracker;
-import edu.snu.cay.common.metric.MetricException;
-import edu.snu.cay.common.metric.MetricTracker;
-import edu.snu.cay.common.metric.MetricsCollector;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -77,7 +75,9 @@ final class NMFWorker implements Worker {
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsCollector metricsCollector;
   private final InsertableMetricTracker insertableMetricTracker;
-  private final WorkerMetricsMsgSender workerMetricsMsgSender;
+  private final MetricsHandler metricsHandler;
+  private final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender;
+
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -103,7 +103,8 @@ final class NMFWorker implements Worker {
                     final MemoryStore<Long> memoryStore,
                     final MetricsCollector metricsCollector,
                     final InsertableMetricTracker insertableMetricTracker,
-                    final WorkerMetricsMsgSender workerMetricsMsgSender) {
+                    final MetricsHandler metricsHandler,
+                    final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.workerSynchronizer = workerSynchronizer;
     this.vectorFactory = vectorFactory;
@@ -119,7 +120,8 @@ final class NMFWorker implements Worker {
     this.memoryStore = memoryStore;
     this.metricsCollector = metricsCollector;
     this.insertableMetricTracker = insertableMetricTracker;
-    this.workerMetricsMsgSender = workerMetricsMsgSender;
+    this.metricsHandler = metricsHandler;
+    this.metricsMsgSender = metricsMsgSender;
 
     this.keys = Lists.newArrayList();
     this.rMatrix = Maps.newHashMap();
@@ -208,10 +210,18 @@ final class NMFWorker implements Worker {
     try {
       insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.sum());
       metricsCollector.stop();
+      final Metrics metrics = metricsHandler.getMetrics();
+      final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()
+          .setMetrics(metrics)
+          .setIteration(iteration)
+          .setNumDataBlocks(numDataBlocks)
+          .build();
+      LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+
+      metricsMsgSender.send(metricsMessage);
     } catch (final MetricException e) {
       throw new RuntimeException(e);
     }
-    workerMetricsMsgSender.send(iteration, numDataBlocks);
   }
 
   @Override

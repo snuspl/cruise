@@ -17,11 +17,11 @@ package edu.snu.cay.services.ps.metric;
 
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
+import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.services.ps.metric.avro.ServerMetricsMsg;
 
 import javax.inject.Inject;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -31,45 +31,34 @@ import java.util.logging.Logger;
  * built when sending the network message. As it builds the message incrementally,
  * this class is *not* thread-safe.
  */
-public final class ServerMetricsMsgSender implements MetricsHandler {
+public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgSender<ServerMetricsMsg> {
   private static final Logger LOG = Logger.getLogger(ServerMetricsMsgSender.class.getName());
 
   private final ServerMetricsMsgCodec metricsMessageCodec;
-  private ServerMetricsMsg.Builder metricsMessageBuilder;
+  private Metrics metrics;
   private final AggregationSlave aggregationSlave;
 
   @Inject
   private ServerMetricsMsgSender(final ServerMetricsMsgCodec metricsMessageCodec,
                                  final AggregationSlave aggregationSlave) {
     this.metricsMessageCodec = metricsMessageCodec;
-    this.metricsMessageBuilder = ServerMetricsMsg.newBuilder();
     this.aggregationSlave = aggregationSlave;
   }
 
-  /**
-   * Sends the ServerMetricsMsg with iteration and data information via AggregationService.
-   * @param window The window number from which the Metrics are collected
-   * @param numPartitionBlocks The number of partition blocks in the local MemoryStore
-   */
-  public void send(final int window, final int numPartitionBlocks) {
-    LOG.entering(ServerMetricsMsgSender.class.getSimpleName(), "send");
-    aggregationSlave.send(ConstantsForServer.AGGREGATION_CLIENT_NAME, getMessage(window, numPartitionBlocks));
-    LOG.exiting(ServerMetricsMsgSender.class.getSimpleName(), "send");
+  @Override
+  public void onNext(final Metrics metricsParam) {
+    this.metrics = metricsParam;
   }
 
   @Override
-  public void onNext(final Metrics metrics) {
-    metricsMessageBuilder.setMetrics(metrics);
+  public Metrics getMetrics() {
+    return metrics;
   }
 
-  private byte[] getMessage(final int window, final int numPartitionBlocks) {
-    final ServerMetricsMsg metricsMessage = metricsMessageBuilder
-        .setWindow(window)
-        .setNumPartitionBlocks(numPartitionBlocks)
-        .build();
-    metricsMessageBuilder = ServerMetricsMsg.newBuilder();
-    LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
-
-    return metricsMessageCodec.encode(metricsMessage);
+  @Override
+  public void send(final ServerMetricsMsg message) {
+    LOG.entering(ServerMetricsMsgSender.class.getSimpleName(), "send");
+    aggregationSlave.send(ConstantsForServer.AGGREGATION_CLIENT_NAME, metricsMessageCodec.encode(message));
+    LOG.exiting(ServerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }

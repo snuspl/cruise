@@ -50,6 +50,7 @@ public final class MetricsCollectionServiceConf {
   public static final class Builder implements org.apache.reef.util.Builder<MetricsCollectionServiceConf> {
     private Class<? extends Codec> codecClass = null;
     private Class<? extends MetricsHandler> metricsHandlerClass = null;
+    private Class<? extends MetricsMsgSender> metricsMsgSenderClass = null;
 
     private Builder() {
     }
@@ -64,10 +65,16 @@ public final class MetricsCollectionServiceConf {
       return this;
     }
 
+    public Builder setMetricsMsgSenderClass(final Class<? extends MetricsMsgSender> metricsMsgSenderClassParam) {
+      this.metricsMsgSenderClass = metricsMsgSenderClassParam;
+      return this;
+    }
+
     @Override
     public MetricsCollectionServiceConf build() {
       BuilderUtils.notNull(codecClass);
       BuilderUtils.notNull(metricsHandlerClass);
+      BuilderUtils.notNull(metricsMsgSenderClass);
       final Configuration conf = Configurations.merge(
           ServiceConfiguration.CONF
               .set(ServiceConfiguration.SERVICES, MetricsCollector.class)
@@ -75,6 +82,7 @@ public final class MetricsCollectionServiceConf {
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(Codec.class, codecClass)
               .bindImplementation(MetricsHandler.class, metricsHandlerClass)
+              .bindImplementation(MetricsMsgSender.class, metricsMsgSenderClass)
               .build()
       );
       return new MetricsCollectionServiceConf(conf);

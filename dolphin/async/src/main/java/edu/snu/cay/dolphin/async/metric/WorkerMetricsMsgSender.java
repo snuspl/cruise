@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
+import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.avro.Metrics;
 
 import javax.inject.Inject;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -31,45 +31,34 @@ import java.util.logging.Logger;
  * built when sending the network message. As it builds the message incrementally,
  * this class is *not* thread-safe.
  */
-public final class WorkerMetricsMsgSender implements MetricsHandler {
+public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgSender<WorkerMetricsMsg> {
   private static final Logger LOG = Logger.getLogger(WorkerMetricsMsgSender.class.getName());
 
   private final WorkerMetricsMsgCodec workerMetricsMsgCodec;
-  private WorkerMetricsMsg.Builder metricsMessageBuilder;
   private final AggregationSlave aggregationSlave;
+  private Metrics metrics;
 
   @Inject
   private WorkerMetricsMsgSender(final WorkerMetricsMsgCodec workerMetricsMsgCodec,
                                  final AggregationSlave aggregationSlave) {
     this.workerMetricsMsgCodec = workerMetricsMsgCodec;
-    this.metricsMessageBuilder = WorkerMetricsMsg.newBuilder();
     this.aggregationSlave = aggregationSlave;
   }
 
-  /**
-   * Sends the WorkerMetricsMsg with iteration and data information via AggregationService.
-   * @param iteration The iteration number from which the Metrics are collected
-   * @param numDataBlocks The number of data blocks in the local MemoryStore
-   */
-  public void send(final int iteration, final int numDataBlocks) {
-    LOG.entering(WorkerMetricsMsgSender.class.getSimpleName(), "send");
-    aggregationSlave.send(ConstantsForWorker.AGGREGATION_CLIENT_NAME, getMessage(iteration, numDataBlocks));
-    LOG.exiting(WorkerMetricsMsgSender.class.getSimpleName(), "send");
+  @Override
+  public void onNext(final Metrics metricsParam) {
+    this.metrics = metricsParam;
   }
 
   @Override
-  public void onNext(final Metrics metrics) {
-    metricsMessageBuilder.setMetrics(metrics);
+  public Metrics getMetrics() {
+    return metrics;
   }
 
-  private byte[] getMessage(final int iteration, final int numDataBlocks) {
-    final WorkerMetricsMsg metricsMessage = metricsMessageBuilder
-        .setIteration(iteration)
-        .setNumDataBlocks(numDataBlocks)
-        .build();
-    metricsMessageBuilder = WorkerMetricsMsg.newBuilder();
-    LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
-
-    return workerMetricsMsgCodec.encode(metricsMessage);
+  @Override
+  public void send(final WorkerMetricsMsg message) {
+    LOG.entering(WorkerMetricsMsgSender.class.getSimpleName(), "send");
+    aggregationSlave.send(ConstantsForWorker.AGGREGATION_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
+    LOG.exiting(WorkerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }
