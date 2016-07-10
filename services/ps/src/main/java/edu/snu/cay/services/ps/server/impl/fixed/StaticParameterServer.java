@@ -33,10 +33,7 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -277,22 +274,34 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
    */
   private void sendMetrics() {
     try {
+      // Initialize the MetricCollector by registering MetricTrackers.
+      final Set<MetricTracker> metricTrackerSet = new HashSet<>(1);
+      metricTrackerSet.add(insertableMetricTracker);
+      metricsCollector.registerTrackers(metricTrackerSet);
+
+      // Sleep to skip the initial metrics that have been collected while the server being set up.
       Thread.sleep(METRIC_INIT_DELAY_MS);
       while (true) {
+        // Start the MetricTrackers
+        metricsCollector.start();
+        Thread.sleep(logPeriod);
+
+        // After time has elapsed as long as a window, get the collected metrics and build a MetricsMessage.
         insertableMetricTracker.put(ConstantsForServer.SERVER_PROCESSING_UNIT, getProcessingUnit());
         metricsCollector.stop();
-
         final Metrics metrics = metricsHandler.getMetrics();
         final ServerMetricsMsg metricsMessage = ServerMetricsMsg.newBuilder()
             .setMetrics(metrics)
             .setWindow(window)
             .setNumPartitionBlocks(0) // There is no block managed by EM, as Static PS does not use it.
             .build();
+
+        LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
         metricsMsgSender.send(metricsMessage);
         window++;
-        Thread.sleep(logPeriod);
       }
     } catch (final MetricException | InterruptedException e) {
+      LOG.log(Level.SEVERE, "Exception Occurred", e); // Log for the case when the thread swallows the exception
       throw new RuntimeException(e);
     }
   }

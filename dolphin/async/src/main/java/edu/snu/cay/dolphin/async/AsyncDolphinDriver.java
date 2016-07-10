@@ -466,13 +466,15 @@ public final class AsyncDolphinDriver {
                 .set(ContextConfiguration.IDENTIFIER, contextId)
                 .build(),
             psDriver.getServerContextConfiguration(),
-            serverEMWrapper.getConf().getContextConfiguration());
+            serverEMWrapper.getConf().getContextConfiguration(),
+            aggregationManager.getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getServerServiceConfiguration(contextId),
             Tang.Factory.getTang().newConfigurationBuilder(
                 serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
                 .build(),
+            aggregationManager.getServiceConfigurationWithoutNameResolver(),
             getMetricsCollectionServiceConfForServer());
 
         final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
