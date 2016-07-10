@@ -21,7 +21,7 @@ import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.common.Statistics;
-import edu.snu.cay.services.ps.metric.ConstantsForServer;
+import edu.snu.cay.services.ps.metric.ServerConstants;
 import edu.snu.cay.services.ps.metric.avro.ServerMetricsMsg;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
@@ -303,7 +303,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         Thread.sleep(metricsWindowMs);
 
         // After time has elapsed as long as a window, get the collected metrics and build a MetricsMessage.
-        insertableMetricTracker.put(ConstantsForServer.SERVER_PROCESSING_UNIT, getProcessingUnit());
+        insertableMetricTracker.put(ServerConstants.KEY_SERVER_PROCESSING_UNIT, getProcessingUnit());
         metricsCollector.stop();
 
         final int numPartitionBlocks = memoryStore.getNumBlocks();

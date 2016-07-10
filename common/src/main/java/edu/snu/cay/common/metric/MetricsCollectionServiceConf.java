@@ -39,6 +39,10 @@ public final class MetricsCollectionServiceConf {
     return new MetricsCollectionServiceConf.Builder();
   }
 
+  /**
+   * @return Configuration built by {@link Builder}. Note that this method throws a runtime exception
+   * unless {@link Builder#build()} is complete.
+   */
   public Configuration getConfiguration() {
     if (conf == null) {
       throw new RuntimeException("Configuration has not been configured properly in MetricCollectionConf");
@@ -55,16 +59,25 @@ public final class MetricsCollectionServiceConf {
     private Builder() {
     }
 
+    /**
+     * @param codecClassParam Class of the codec used to (de-)serialize the MetricsMessage
+     */
     public Builder setMetricsMsgCodecClass(final Class<? extends Codec> codecClassParam) {
       this.codecClass = codecClassParam;
       return this;
     }
 
+    /**
+     * @param metricsHandlerClassParam Class for handling Metrics sent by {@link MetricsCollector}
+     */
     public Builder setMetricsHandlerClass(final Class<? extends MetricsHandler> metricsHandlerClassParam) {
       this.metricsHandlerClass = metricsHandlerClassParam;
       return this;
     }
 
+    /**
+     * @param metricsMsgSenderClassParam Class for sending MetricsMessage including raw metrics and app-specific info
+     */
     public Builder setMetricsMsgSenderClass(final Class<? extends MetricsMsgSender> metricsMsgSenderClassParam) {
       this.metricsMsgSenderClass = metricsMsgSenderClassParam;
       return this;

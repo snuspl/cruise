@@ -58,7 +58,7 @@ public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   @Override
   public void send(final ServerMetricsMsg message) {
     LOG.entering(ServerMetricsMsgSender.class.getSimpleName(), "send");
-    aggregationSlave.send(ConstantsForServer.AGGREGATION_CLIENT_NAME, metricsMessageCodec.encode(message));
+    aggregationSlave.send(ServerConstants.AGGREGATION_CLIENT_NAME, metricsMessageCodec.encode(message));
     LOG.exiting(ServerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }

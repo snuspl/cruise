@@ -36,7 +36,7 @@ import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.driver.impl.dynamic.DynamicPSManager;
 import edu.snu.cay.services.ps.driver.impl.fixed.StaticPSManager;
-import edu.snu.cay.services.ps.metric.ConstantsForServer;
+import edu.snu.cay.services.ps.metric.ServerConstants;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
@@ -337,10 +337,10 @@ public final class AsyncDolphinLauncher {
         .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
             SynchronizationManager.MessageHandler.class,
             WorkerSynchronizer.MessageHandler.class)
-        .addAggregationClient(ConstantsForWorker.AGGREGATION_CLIENT_NAME,
+        .addAggregationClient(WorkerConstants.AGGREGATION_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForWorker.class,
             EvalSideMetricsMsgHandler.class)
-        .addAggregationClient(ConstantsForServer.AGGREGATION_CLIENT_NAME,
+        .addAggregationClient(ServerConstants.AGGREGATION_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForServer.class,
             EvalSideMetricsMsgHandler.class)
         .build();

@@ -18,17 +18,20 @@
  */
 package edu.snu.cay.common.metric;
 
+import org.apache.reef.annotations.audience.EvaluatorSide;
+
 /**
  * Sends MetricsMsg that consists of raw metrics and additional information
  * such as iteration number.
- * @param <M> Type of message specified by client of MetricsCollectionService.
+ * @param <T> Type of message specified by client of MetricsCollectionService.
  */
-public interface MetricsMsgSender<M> {
+@EvaluatorSide
+public interface MetricsMsgSender<T> {
 
   /**
    * Sends the message.
    * @param message The message containing additional information that
    *                client wants to send together with raw metrics.
    */
-  void send(M message);
+  void send(T message);
 }

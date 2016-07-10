@@ -16,20 +16,21 @@
 package edu.snu.cay.dolphin.async.metric;
 
 /**
- * Keys to identify metrics that come from Async-Dolphin.
+ * Constants for Worker metrics, which consists of client name of AggregationService and
+ * Keys to identify metrics.
  */
-public final class ConstantsForWorker {
+public final class WorkerConstants {
 
   /**
    * Should not be instantiated.
    */
-  private ConstantsForWorker() {
+  private WorkerConstants() {
   }
 
   public static final String AGGREGATION_CLIENT_NAME =
       "METRIC_COLLECTION_SERVICE_FOR_WORKER";
 
   // Keys to get/set the metrics in the worker.
-  public static final String WORKER_COMPUTE_TIME =
+  public static final String KEY_WORKER_COMPUTE_TIME =
       "METRIC_WORKER_COMPUTE_TIME";
 }

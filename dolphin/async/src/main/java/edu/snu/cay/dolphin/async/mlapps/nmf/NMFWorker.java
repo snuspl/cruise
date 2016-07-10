@@ -38,7 +38,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.metric.ConstantsForWorker.WORKER_COMPUTE_TIME;
+import static edu.snu.cay.dolphin.async.metric.WorkerConstants.KEY_WORKER_COMPUTE_TIME;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
 /**
@@ -208,7 +208,7 @@ final class NMFWorker implements Worker {
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.sum());
+      insertableMetricTracker.put(KEY_WORKER_COMPUTE_TIME, computeTracer.sum());
       metricsCollector.stop();
       final Metrics metrics = metricsHandler.getMetrics();
       final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()

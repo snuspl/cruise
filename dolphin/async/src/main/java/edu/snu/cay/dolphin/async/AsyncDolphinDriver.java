@@ -546,8 +546,7 @@ public final class AsyncDolphinDriver {
   }
 
   /**
-   * Returns server-side Configuration for MetricsCollectionService by binding the
-   * required parameters.
+   * Returns server-side Configuration for MetricsCollectionService by binding required parameters.
    */
   private Configuration getMetricsCollectionServiceConfForServer() {
     final MetricsCollectionServiceConf conf = MetricsCollectionServiceConf.newBuilder()
@@ -559,8 +558,7 @@ public final class AsyncDolphinDriver {
   }
 
   /**
-   * Returns worker-side Configuration for MetricsCollectionService by binding the
-   * required parameters.
+   * Returns worker-side Configuration for MetricsCollectionService by binding required parameters.
    */
   private Configuration getMetricsCollectionServiceConfForWorker() {
     final MetricsCollectionServiceConf conf = MetricsCollectionServiceConf.newBuilder()

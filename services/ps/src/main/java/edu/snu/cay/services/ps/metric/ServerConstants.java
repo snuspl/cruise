@@ -16,20 +16,21 @@
 package edu.snu.cay.services.ps.metric;
 
 /**
- * Keys to identify metrics that come from Async-Dolphin.
+ * Constants for PS metrics, which consists of client name of AggregationService and
+ * Keys to identify metrics.
  */
-public final class ConstantsForServer {
+public final class ServerConstants {
 
   /**
    * Should not be instantiated.
    */
-  private ConstantsForServer() {
+  private ServerConstants() {
   }
 
   public static final String AGGREGATION_CLIENT_NAME =
       "METRIC_COLLECTION_SERVICE_FOR_WORKER";
 
   // Keys to get/set the metrics in the server.
-  public static final String SERVER_PROCESSING_UNIT =
+  public static final String KEY_SERVER_PROCESSING_UNIT =
       "METRIC_SERVER_PROCESSING_UNIT";
 }

@@ -58,7 +58,7 @@ public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   @Override
   public void send(final WorkerMetricsMsg message) {
     LOG.entering(WorkerMetricsMsgSender.class.getSimpleName(), "send");
-    aggregationSlave.send(ConstantsForWorker.AGGREGATION_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
+    aggregationSlave.send(WorkerConstants.AGGREGATION_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
     LOG.exiting(WorkerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }

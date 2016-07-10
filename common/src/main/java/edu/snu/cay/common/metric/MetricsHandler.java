@@ -19,6 +19,7 @@
 package edu.snu.cay.common.metric;
 
 import edu.snu.cay.common.metric.avro.Metrics;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.wake.EventHandler;
 
 /**
@@ -26,6 +27,7 @@ import org.apache.reef.wake.EventHandler;
  * to the one who wants to handle them. For example, Tasks may want to include
  * information about iteration, number of data, when sending Metrics.
  */
+@EvaluatorSide
 public interface MetricsHandler extends EventHandler<Metrics> {
 
   /**
