@@ -277,11 +277,11 @@ final class MLRWorker implements Worker {
 
     int numInstances = 0;
     int numBatch = 0;
-    int batchSize = workload.size() / numBatchPerIter;
-    batchSize += workload.size() % numBatchPerIter == 0 ? 0 : 1;
+    int batchCount = workload.size() / numBatchPerIter;
+    batchCount += workload.size() % numBatchPerIter == 0 ? 0 : 1;
     computeTracer.startTimer();
     for (final Pair<Vector, Integer> entry : workload) {
-      if (numInstances >= batchSize) {
+      if (numInstances >= batchCount) {
         computeTracer.recordTime(numInstances);
 
         // push gradients and pull fresh models
@@ -296,8 +296,8 @@ final class MLRWorker implements Worker {
         }
 
         numInstances = 0;
-        batchSize = workload.size() / numBatchPerIter;
-        batchSize += workload.size() % numBatchPerIter <= numBatch ? 0 : 1;
+        batchCount = workload.size() / numBatchPerIter;
+        batchCount += workload.size() % numBatchPerIter <= numBatch ? 0 : 1;
       }
 
       final Vector features = entry.getFirst();
@@ -526,7 +526,6 @@ final class MLRWorker implements Worker {
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-
       insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
     } catch (final MetricException e) {
