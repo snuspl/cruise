@@ -147,9 +147,9 @@
   "name": "ServerMetricsMsg",
   "fields":
   [
+    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
     {"name": "window", "type": "int"},
-    {"name": "numPartitionBlocks", "type": "int"},
-    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"}
+    {"name": "numPartitionBlocks", "type": "int"}
   ]
 }
 ]
