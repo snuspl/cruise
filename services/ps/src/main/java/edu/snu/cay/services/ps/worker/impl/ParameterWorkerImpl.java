@@ -472,13 +472,15 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
             private static final int MAX_RETRY_COUNT = 20;
             private static final long RETRY_INTERVAL_MS = 200;
 
-            @Override
-            public Wrapped<V> load(final EncodedKey<K> encodedKey) {
-              final PullFuture<V> future = new PullFuture<>();
-              pendingPulls.put(encodedKey.getKey(), future);
-
+            /**
+             * Sends a pull msg for the {@code encodedKey} to the target server.
+             * @param encodedKey encoded key
+             * @return target server id
+             */
+            private String sendMsg(final EncodedKey<K> encodedKey) {
               int retryCount = 0;
               String serverId;
+
               while (true) {
                 if (++retryCount > MAX_RETRY_COUNT) {
                   throw new RuntimeException("Fail to send a pull msg");
@@ -492,15 +494,27 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
                 try {
                   sender.get().sendPullMsg(serverId, encodedKey);
+                  break;
                 } catch (final NetworkException e) {
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
-                  continue;
                 }
-                break;
               }
 
+              return serverId;
+            }
+
+            /**
+             * Waits until receiving the result from the server.
+             * @param future Pull future
+             * @param serverId server id
+             * @param encodedKey encoded key
+             * @return the value or null if the target server has been changed during wait.
+             */
+            private V waitResponse(final PullFuture<V> future, final String serverId,
+                                      final EncodedKey<K> encodedKey) {
+              int retryCount = 0;
               V value;
-              retryCount = 0;
+
               while (true) {
                 if (++retryCount > MAX_RETRY_COUNT) {
                   throw new RuntimeException("Fail to receive a value for pull");
@@ -514,8 +528,25 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                 final String newServerId = serverResolver.resolveServer(encodedKey.getHash());
                 if (!serverId.equals(newServerId)) {
                   LOG.log(Level.INFO, "Target server has been changed while waiting for the response. Do retry");
-                  return load(encodedKey);
+                  return null;
                 }
+              }
+
+              return value;
+            }
+
+            @Override
+            public Wrapped<V> load(final EncodedKey<K> encodedKey) {
+              final PullFuture<V> future = new PullFuture<>();
+              pendingPulls.put(encodedKey.getKey(), future);
+
+              V value = null;
+              while (value == null) {
+                // 1. try sending msg to server
+                final String serverId = sendMsg(encodedKey);
+
+                // 2. wait until receives result from the server
+                value = waitResponse(future, serverId, encodedKey);
               }
 
               pendingPulls.remove(encodedKey.getKey());
