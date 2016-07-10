@@ -21,6 +21,7 @@ import com.google.common.collect.Sets;
 import edu.snu.cay.dolphin.async.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.WorkerSynchronizer;
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
@@ -181,33 +182,33 @@ final class NMFWorker implements Worker {
 
   private void pushAndClearGradients() {
     // push gradients
-    pushTracer.start();
+    pushTracer.startTimer();
     for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
       parameterWorker.push(entry.getKey(), entry.getValue());
     }
-    pushTracer.end(gradients.size());
+    pushTracer.recordTime(gradients.size());
     // clear gradients
     gradients.clear();
   }
 
   private void pullRMatrix() {
-    pullTracer.start();
+    pullTracer.startTimer();
     final List<Vector> vectors = parameterWorker.pull(keys);
     for (int i = 0; i < keys.size(); ++i) {
       rMatrix.put(keys.get(i), vectors.get(i));
     }
-    pullTracer.end(keys.size());
+    pullTracer.recordTime(keys.size());
   }
 
   private void resetTracers() {
-    pushTracer.reset();
-    pullTracer.reset();
-    computeTracer.reset();
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
   }
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.sum());
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
     } catch (final MetricException e) {
       throw new RuntimeException(e);
@@ -244,7 +245,7 @@ final class NMFWorker implements Worker {
     pullRMatrix();
 
     for (final NMFData datum : workload) {
-      computeTracer.start();
+      computeTracer.startTimer();
       final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
       final Vector lGradSum;
       if (lambda != 0.0D) {
@@ -287,7 +288,7 @@ final class NMFWorker implements Worker {
       modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
 
       ++rowCount;
-      computeTracer.end(datum.getColumns().size());
+      computeTracer.recordTime(datum.getColumns().size());
 
       if (batchSize > 0 && rowCount % batchSize == 0) {
         pushAndClearGradients();
@@ -300,8 +301,9 @@ final class NMFWorker implements Worker {
             "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
             "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
             new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
-                computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
-                pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
+                computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(), pullTracer.avgTimePerRecord(),
+                pullTracer.totalElapsedTime(), pushTracer.avgTimePerRecord(),
+                pushTracer.totalElapsedTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
       }
     }
 
@@ -312,8 +314,9 @@ final class NMFWorker implements Worker {
             "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
             "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
         new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
-            computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
-            pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
+            computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(), pullTracer.avgTimePerRecord(),
+            pullTracer.totalElapsedTime(), pushTracer.avgTimePerRecord(),
+            pushTracer.totalElapsedTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
 
     sendMetrics(memoryStore.getNumBlocks());
   }
