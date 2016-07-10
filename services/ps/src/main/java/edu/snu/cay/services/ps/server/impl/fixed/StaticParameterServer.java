@@ -289,23 +289,29 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
 
       // Sleep to skip the initial metrics that have been collected while the server being set up.
       Thread.sleep(METRIC_INIT_DELAY_MS);
+
       while (true) {
         // Start the MetricTrackers
         metricsCollector.start();
         Thread.sleep(metricsWindowMs);
 
         // After time has elapsed as long as a window, get the collected metrics and build a MetricsMessage.
-        insertableMetricTracker.put(ServerConstants.KEY_SERVER_PROCESSING_UNIT, getProcessingUnit());
+        final double processingUnit = getProcessingUnit();
+        insertableMetricTracker.put(ServerConstants.KEY_SERVER_PROCESSING_UNIT, processingUnit);
         metricsCollector.stop();
-        final Metrics metrics = metricsHandler.getMetrics();
-        final ServerMetricsMsg metricsMessage = ServerMetricsMsg.newBuilder()
-            .setMetrics(metrics)
-            .setWindow(window)
-            .setNumPartitionBlocks(0) // There is no block managed by EM, as Static PS does not use it.
-            .build();
 
-        LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
-        metricsMsgSender.send(metricsMessage);
+        // Send meaningful metrics only (i.e., infinity processing time implies that no data has been processed yet).
+        if (processingUnit != Double.POSITIVE_INFINITY) {
+          final Metrics metrics = metricsHandler.getMetrics();
+          final ServerMetricsMsg metricsMessage = ServerMetricsMsg.newBuilder()
+              .setMetrics(metrics)
+              .setWindow(window)
+              .setNumPartitionBlocks(0) // There is no block managed by EM, as Static PS does not use it.
+              .build();
+
+          LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+          metricsMsgSender.send(metricsMessage);
+        }
         window++;
       }
     } catch (final MetricException | InterruptedException e) {
@@ -327,6 +333,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       for (final Statistics stat : pullStats) {
         count += stat.count();
         sum += stat.sum();
+        stat.reset();
       }
     }
 
