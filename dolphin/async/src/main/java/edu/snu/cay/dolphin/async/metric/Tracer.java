@@ -69,6 +69,10 @@ public class Tracer {
    * @return avg time taken per measurement in seconds.
    */
   public double avgTimePerRecord() {
+    if (count == 0) {
+      return Double.POSITIVE_INFINITY;
+    }
+
     return sum / count / 1000.0D;
   }
 
@@ -77,6 +81,10 @@ public class Tracer {
    * @return avg time taken per element in seconds.
    */
   public double avgTimePerElem() {
+    if (elemCount == 0) {
+      return Double.POSITIVE_INFINITY;
+    }
+
     return sum / elemCount / 1000.0D;
   }
 }
