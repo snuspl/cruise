@@ -73,7 +73,8 @@ public class OperationRouterTest {
     final Set<Integer> totalBlocks = new HashSet<>(numTotalBlocks);
 
     for (int localStoreId = 0; localStoreId < numMemoryStores; localStoreId++) {
-      final OperationRouter<?> operationRouter = newOperationRouter(numMemoryStores, numTotalBlocks, localStoreId, false);
+      final OperationRouter<?> operationRouter =
+          newOperationRouter(numMemoryStores, numTotalBlocks, localStoreId, false);
 
       final List<Integer> localBlockIds = operationRouter.getInitialLocalBlockIds();
 
@@ -152,7 +153,8 @@ public class OperationRouterTest {
     assertTrue("Router is initialized incorrectly", srcInitialBlocks.containsAll(srcCurrentBlocks));
 
     final int destStoreId = 1;
-    final OperationRouter<?> destRouter = newOperationRouter(numInitialMemoryStores, numTotalBlocks, destStoreId, false);
+    final OperationRouter<?> destRouter =
+        newOperationRouter(numInitialMemoryStores, numTotalBlocks, destStoreId, false);
 
     // move the half of blocks between two evaluators by updating routers
     final int numBlocksToMove = srcInitialBlocks.size() / 2;
