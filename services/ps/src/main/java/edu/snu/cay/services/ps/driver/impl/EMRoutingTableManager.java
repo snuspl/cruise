@@ -44,7 +44,11 @@ public final class EMRoutingTableManager {
    */
   private final Map<Integer, String> storeIdToEndpointId = new HashMap<>();
 
+  /**
+   * Server-side ElasticMemory instance.
+   */
   private final ElasticMemory serverEM;
+
   private final InjectionFuture<PSMessageSender> sender;
 
   /**
@@ -57,18 +61,21 @@ public final class EMRoutingTableManager {
    */
   private final Set<String> waitingWorkers = new HashSet<>();
 
+  /**
+   * The number of initial servers, which is used for deciding when to send the routing table to workers initially.
+   */
   private final int numInitServers;
 
   /**
    * A boolean flag representing whether all the initial servers are registered.
    */
-  private volatile boolean initialized = false;
+  private volatile boolean initialServersReady = false;
 
   @Inject
-  EMRoutingTableManager(final ElasticMemory elasticMemory,
+  EMRoutingTableManager(final ElasticMemory serverEM,
                         @Parameter(NumServers.class) final int numServers,
                         final InjectionFuture<PSMessageSender> sender) {
-    this.serverEM = elasticMemory;
+    this.serverEM = serverEM;
     this.numInitServers = numServers;
     this.sender = sender;
   }
@@ -83,8 +90,8 @@ public final class EMRoutingTableManager {
    */
   public synchronized void registerServer(final int storeId, final String endpointId) {
     storeIdToEndpointId.put(storeId, endpointId);
-    if (!initialized && storeIdToEndpointId.size() == numInitServers) {
-      initialized = true;
+    if (!initialServersReady && storeIdToEndpointId.size() == numInitServers) {
+      initialServersReady = true;
 
       final EMRoutingTable routingTable = new EMRoutingTable(serverEM.getStoreIdToBlockIds(), storeIdToEndpointId);
 
@@ -108,7 +115,7 @@ public final class EMRoutingTableManager {
   /**
    * Registers an worker, {@code workerId} to be notified about updates in the routing table.
    * As a result of this method, it sends the PS server-side EM's routing table to an initiating ParameterWorker,
-   * if all the initial servers are registered: it means that the server-side EM is initialized.
+   * if all the initial servers are registered: it means that the server-side EM is initialServersReady.
    * Otherwise it puts worker id into a queue that will be processed by {@link #registerServer(int, String)}.
    * @param workerId an worker id
    */
@@ -119,7 +126,7 @@ public final class EMRoutingTableManager {
     activeWorkerIds.add(workerId);
 
     // wait for all servers to be registered
-    if (!initialized) {
+    if (!initialServersReady) {
       waitingWorkers.add(workerId);
 
     } else {
