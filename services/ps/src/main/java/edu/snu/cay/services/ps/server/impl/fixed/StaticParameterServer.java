@@ -30,11 +30,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -89,7 +86,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   /**
    * Sender that sends pull responses.
    */
-  private final ServerSideReplySender<K, V> sender;
+  private final ServerSideReplySender<K, P, V> sender;
 
   @Inject
   private StaticParameterServer(@Parameter(EndpointId.class) final String endpointId,
@@ -97,7 +94,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
                                 @Parameter(ServerQueueSize.class) final int queueSize,
                                 final ServerResolver serverResolver,
                                 final ParameterUpdater<K, P, V> parameterUpdater,
-                                final ServerSideReplySender<K, V> sender) {
+                                final ServerSideReplySender<K, P, V> sender) {
     this.numThreads = numThreads;
     this.localPartitions = serverResolver.getPartitions(endpointId);
     this.serverResolver = serverResolver;
@@ -124,7 +121,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   }
 
   @Override
-  public void push(final K key, final P preValue, final int keyHash) {
+  public void push(final K key, final P preValue, final String srcId, final int keyHash) {
     final int partitionId = serverResolver.resolvePartition(keyHash);
     final int threadId = localPartitions.indexOf(partitionId) % numThreads;
     threads.get(threadId).enqueue(new PushOp(key, preValue));
@@ -147,6 +144,29 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       sum += partition.opsPending();
     }
     return sum;
+  }
+
+  /**
+   * Close the server after processing all the queued operations.
+   */
+  @Override
+  public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
+
+    final Future result = Executors.newSingleThreadExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        // Close all threads
+        for (final ServerThread thread : threads.values()) {
+          thread.close();
+        }
+        // Wait for shutdown to complete on all threads
+        for (final ServerThread thread : threads.values()) {
+          thread.waitForShutdown();
+        }
+      }
+    });
+
+    result.get(timeoutMs, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -239,7 +259,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
     private final int drainSize; // Max number of operations to drain per iteration.
 
-    private volatile boolean shutdown = false;
+    private volatile boolean close = false;
+    private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
     public ServerThread(final int queueSize) {
       this.kvStore = new HashMap<>();
@@ -280,7 +301,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
      */
     @Override
     public void run() {
-      while (!shutdown) {
+      while (!close || !queue.isEmpty()) {
         // First, poll and apply. The timeout allows the run thread to shutdown cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -302,13 +323,37 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         }
         localOps.clear();
       }
+
+      shutdown();
     }
 
     /**
-     * Cleanly shutdown the run thread.
+     * Close the run thread.
      */
-    public void shutdown() {
-      shutdown = true;
+    public void close() {
+      close = true;
+    }
+
+    private void shutdown() {
+      shutdown.set(true);
+      synchronized (shutdown) {
+        shutdown.notifyAll();
+      }
+    }
+
+    /**
+     * Wait for shutdown confirmation (clean close has finished).
+     */
+    public void waitForShutdown() {
+      while (!shutdown.get()) {
+        try {
+          synchronized (shutdown) {
+            shutdown.wait();
+          }
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
+        }
+      }
     }
   }
 }
