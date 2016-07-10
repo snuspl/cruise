@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 
 /**
  * Driver-side message handler.
- * Receives AggregationMessage and hands over them to optimizer.
+ * Receives AggregationMessage from Workers and hands over them to optimizer.
  */
 @DriverSide
 public final class DriverSideMetricsMsgHandlerForWorker implements EventHandler<AggregationMessage> {
