@@ -52,15 +52,15 @@ public final class DriverSideMetricsMsgHandlerForServer implements EventHandler<
     LOG.entering(DriverSideMetricsMsgHandlerForServer.class.getSimpleName(), "onNext");
     final ServerMetricsMsg metricsMessage = metricsMessageCodec.decode(msg.getData().array());
 
-    final String workerId = msg.getSourceId().toString();
-    final int iteration = metricsMessage.getWindow();
-    final int numDataBlocks = metricsMessage.getNumPartitionBlocks();
+    final String serverId = msg.getSourceId().toString();
+    final int window = metricsMessage.getWindow();
+    final int numPartitionBlocks = metricsMessage.getNumPartitionBlocks();
 
-    final Map<String, Double> workerMetrics = getMetricsFromAvro(metricsMessage.getMetrics());
+    final Map<String, Double> serverMetrics = getMetricsFromAvro(metricsMessage.getMetrics());
 
     LOG.log(Level.FINE, "Metric from server: {0}, window: {1}, metrics: {2}",
-        new Object[]{workerId, iteration, workerMetrics});
-    metricsHub.storeServerMetrics(workerId, numDataBlocks, workerMetrics);
+        new Object[]{serverId, window, serverMetrics});
+    metricsHub.storeServerMetrics(serverId, numPartitionBlocks, serverMetrics);
 
     LOG.exiting(DriverSideMetricsMsgHandlerForServer.class.getSimpleName(), "onNext");
   }
