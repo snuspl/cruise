@@ -53,13 +53,13 @@ public final class DriverSideMetricsMsgHandlerForServer implements EventHandler<
     final ServerMetricsMsg metricsMessage = metricsMessageCodec.decode(msg.getData().array());
 
     final String serverId = msg.getSourceId().toString();
-    final int window = metricsMessage.getWindow();
+    final int windowIndex = metricsMessage.getWindowIndex();
     final int numPartitionBlocks = metricsMessage.getNumPartitionBlocks();
 
     final Map<String, Double> serverMetrics = getMetricsFromAvro(metricsMessage.getMetrics());
 
-    LOG.log(Level.FINE, "Metric from server: {0}, window: {1}, metrics: {2}",
-        new Object[]{serverId, window, serverMetrics});
+    LOG.log(Level.FINE, "Metric from server: {0}, windowIndex: {1}, metrics: {2}",
+        new Object[]{serverId, windowIndex, serverMetrics});
     metricsHub.storeServerMetrics(serverId, numPartitionBlocks, serverMetrics);
 
     LOG.exiting(DriverSideMetricsMsgHandlerForServer.class.getSimpleName(), "onNext");

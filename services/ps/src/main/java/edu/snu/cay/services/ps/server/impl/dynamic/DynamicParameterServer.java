@@ -155,7 +155,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
   /**
    * Sends MetricsMessage that consists of Metrics and additional information
-   * such as window, and the number of partition blocks in the local MemoryStore.
+   * such as windowIndex, and the number of partition blocks in the local MemoryStore.
    */
   private final MetricsMsgSender<ServerMetricsMsg> metricsMsgSender;
 
@@ -167,7 +167,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   /**
    * The current index of window.
    */
-  private int window;
+  private int windowIndex = 0;
 
   @Inject
   private DynamicParameterServer(final MemoryStore<HashedKey<K>> memoryStore,
@@ -285,7 +285,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   /**
-   * Sends metrics that have been collected within the current window.
+   * Sends metrics that have been collected within the current windowIndex.
    */
   private void sendMetrics() {
     try {
@@ -302,7 +302,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         metricsCollector.start();
         Thread.sleep(metricsWindowMs);
 
-        // After time has elapsed as long as a window, get the collected metrics and build a MetricsMessage.
+        // After time has elapsed as long as a windowIndex, get the collected metrics and build a MetricsMessage.
         final double processingUnit = getProcessingUnit();
         insertableMetricTracker.put(ServerConstants.KEY_SERVER_PROCESSING_UNIT, processingUnit);
         metricsCollector.stop();
@@ -313,14 +313,14 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
           final Metrics metrics = metricsHandler.getMetrics();
           final ServerMetricsMsg metricsMessage = ServerMetricsMsg.newBuilder()
               .setMetrics(metrics)
-              .setWindow(window)
+              .setWindowIndex(windowIndex)
               .setNumPartitionBlocks(numPartitionBlocks)
               .build();
 
           LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
           metricsMsgSender.send(metricsMessage);
         }
-        window++;
+        windowIndex++;
       }
     } catch (final MetricException | InterruptedException e) {
       LOG.log(Level.SEVERE, "Exception Occurred", e); // Log for the case when the thread swallows the exception

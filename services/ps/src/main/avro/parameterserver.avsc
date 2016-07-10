@@ -138,7 +138,7 @@
 
 /**
  * A message containing metrics and other server-specific information.
- * Since Server does have iteration as workers, metrics are collected and
+ * Since Server does not have iteration as workers, metrics are collected and
  * sent in a fixed time unit, which is called window.
  */
 {
@@ -148,7 +148,7 @@
   "fields":
   [
     {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
-    {"name": "window", "type": "int"},
+    {"name": "windowIndex", "type": "int"},
     {"name": "numPartitionBlocks", "type": "int"}
   ]
 }

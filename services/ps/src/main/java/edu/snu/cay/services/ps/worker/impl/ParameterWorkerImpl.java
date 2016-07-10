@@ -516,7 +516,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                         final InjectionFuture<WorkerMsgSender<K, P>> sender,
                         final int queueSize,
                         final long expireTimeout,
-                        final Statistics pullStats) {
+                        final Statistics pullStat) {
       kvCache = CacheBuilder.newBuilder()
           .concurrencyLevel(1)
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
@@ -545,7 +545,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                 try {
                   final long beginTick = ticker.read();
                   sender.get().sendPullMsg(serverId, encodedKey);
-                  pullStats.put(ticker.read() - beginTick);
+                  pullStat.put(ticker.read() - beginTick);
                 } catch (final NetworkException e) {
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
                   continue;
