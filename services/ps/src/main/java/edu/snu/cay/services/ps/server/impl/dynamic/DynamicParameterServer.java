@@ -27,6 +27,7 @@ import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
+import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import org.apache.reef.io.network.util.Pair;
@@ -159,7 +160,12 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private final MetricsMsgSender<ServerMetricsMsg> metricsMsgSender;
 
   /**
-   * The discrete time unit to send metrics.
+   * Length of window, which is discrete time period to send metrics (in ms).
+   */
+  private final long metricsWindowMs;
+
+  /**
+   * The current index of window.
    */
   private int window;
 
@@ -168,7 +174,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
                                  final BlockResolver<HashedKey<K>> blockResolver,
                                  @Parameter(ServerNumThreads.class) final int numThreads,
                                  @Parameter(ServerQueueSize.class) final int queueSize,
-                                 @Parameter(ServerLogPeriod.class) final int logPeriod,
+                                 @Parameter(ServerLogPeriod.class) final long logPeriod,
+                                 @Parameter(ServerMetricsWindowMs.class) final long metricsWindowMs,
                                  final MetricsCollector metricsCollector,
                                  final InsertableMetricTracker insertableMetricTracker,
                                  final MetricsHandler metricsHandler,
@@ -198,6 +205,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     this.insertableMetricTracker = insertableMetricTracker;
     this.metricsHandler = metricsHandler;
     this.metricsMsgSender = metricsMsgSender;
+    this.metricsWindowMs = metricsWindowMs;
 
     // Execute a thread to send metrics.
     Executors.newSingleThreadExecutor().submit(this::sendMetrics);
@@ -292,7 +300,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       while (true) {
         // Start the MetricTrackers
         metricsCollector.start();
-        Thread.sleep(logPeriod);
+        Thread.sleep(metricsWindowMs);
 
         // After time has elapsed as long as a window, get the collected metrics and build a MetricsMessage.
         insertableMetricTracker.put(ConstantsForServer.SERVER_PROCESSING_UNIT, getProcessingUnit());

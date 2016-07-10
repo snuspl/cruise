@@ -37,6 +37,7 @@ import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.driver.impl.dynamic.DynamicPSManager;
 import edu.snu.cay.services.ps.driver.impl.fixed.StaticPSManager;
 import edu.snu.cay.services.ps.metric.ConstantsForServer;
+import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
@@ -221,7 +222,7 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(27);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(29);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -244,6 +245,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(WorkerKeyCacheSize.class);
     basicParameterClassList.add(WorkerLogPeriod.class);
     basicParameterClassList.add(Dynamic.class);
+    basicParameterClassList.add(ServerMetricsWindowMs.class);
 
     // add em parameters
     basicParameterClassList.add(OptimizerClass.class);

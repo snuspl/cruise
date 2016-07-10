@@ -119,7 +119,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                               @Parameter(WorkerExpireTimeout.class) final long expireTimeout,
                               @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                              @Parameter(WorkerLogPeriod.class) final int logPeriod,
+                              @Parameter(WorkerLogPeriod.class) final long logPeriod,
                               final ParameterUpdater<K, P, V> parameterUpdater,
                               final ServerResolver serverResolver,
                               final InjectionFuture<WorkerMsgSender<K, P>> sender) {

@@ -18,8 +18,8 @@ package edu.snu.cay.services.ps.server.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Time period in ms for outputting statistics of parameter server processing time",
+@NamedParameter(doc = "Time period in ms for outputting statistics of parameter server",
     default_value = "0",
-    short_name = "serverLogPeriod")
-public final class ServerLogPeriod implements Name<Integer> {
+    short_name = "server_log_period")
+public final class ServerLogPeriod implements Name<Long> {
 }

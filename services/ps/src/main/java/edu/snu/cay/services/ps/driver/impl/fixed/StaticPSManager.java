@@ -25,6 +25,7 @@ import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.impl.fixed.StaticParameterServer;
 import edu.snu.cay.services.ps.server.impl.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.impl.ServerSideReplySenderImpl;
+import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
@@ -66,8 +67,9 @@ public final class StaticPSManager implements PSManager {
   private final int serverQueueSize;
   private final long workerExpireTimeout;
   private final int workerKeyCacheSize;
-  private final int workerLogPeriod;
-  private final int serverLogPeriod;
+  private final long workerLogPeriod;
+  private final long serverLogPeriod;
+  private final long serverMetricsWindowMs;
 
   @Inject
   private StaticPSManager(@Parameter(NumServers.class) final int numServers,
@@ -78,8 +80,9 @@ public final class StaticPSManager implements PSManager {
                           @Parameter(ServerQueueSize.class) final int serverQueueSize,
                           @Parameter(WorkerExpireTimeout.class) final long workerExpireTimeout,
                           @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize,
-                          @Parameter(ServerLogPeriod.class) final int serverLogPeriod,
-                          @Parameter(WorkerLogPeriod.class) final int workerLogPeriod) {
+                          @Parameter(ServerMetricsWindowMs.class) final long serverMetricsWindowMs,
+                          @Parameter(ServerLogPeriod.class) final long serverLogPeriod,
+                          @Parameter(WorkerLogPeriod.class) final long workerLogPeriod) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.workerNumThreads = workerNumThrs;
@@ -90,6 +93,7 @@ public final class StaticPSManager implements PSManager {
     this.workerKeyCacheSize = workerKeyCacheSize;
     this.workerLogPeriod = workerLogPeriod;
     this.serverLogPeriod = serverLogPeriod;
+    this.serverMetricsWindowMs = serverMetricsWindowMs;
   }
 
   /**
@@ -112,7 +116,7 @@ public final class StaticPSManager implements PSManager {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
-        .bindNamedParameter(WorkerLogPeriod.class, Integer.toString(workerLogPeriod))
+        .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
         .build();
   }
 
@@ -134,7 +138,8 @@ public final class StaticPSManager implements PSManager {
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
         .bindNamedParameter(ServerNumThreads.class, Integer.toString(serverNumThreads))
         .bindNamedParameter(ServerQueueSize.class, Integer.toString(serverQueueSize))
-        .bindNamedParameter(ServerLogPeriod.class, Integer.toString(serverLogPeriod))
+        .bindNamedParameter(ServerLogPeriod.class, Long.toString(serverLogPeriod))
+        .bindNamedParameter(ServerMetricsWindowMs.class, Long.toString(serverMetricsWindowMs))
         .build();
   }
 }

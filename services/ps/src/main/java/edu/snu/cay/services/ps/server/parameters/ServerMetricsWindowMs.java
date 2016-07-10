@@ -15,10 +15,11 @@
  */
 package edu.snu.cay.services.ps.server.parameters;
 
+import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Time period in ms for sending metrics",
     default_value = "1000",
-    short_name = "metrics_window_ms")
-public class ServerMetricsWindowMs {
+    short_name = "server_metrics_window_ms")
+public class ServerMetricsWindowMs implements Name<Long> {
 }
