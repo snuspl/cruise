@@ -21,6 +21,7 @@ import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.bsp.core.metric.avro.MetricsMessage;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -30,8 +31,8 @@ import java.util.logging.Logger;
  * The metrics are set via MetricsHandler. The other message parts must be
  * set via the setters for each Dolphin iteration. The MetricsMessage is
  * built when sending the network message. As it builds the message incrementally,
- * this class is *not* thread-safe.
  */
+@NotThreadSafe
 public final class MetricsMessageSender implements MetricsHandler, MetricsMsgSender<MetricsMessage> {
   private static final Logger LOG = Logger.getLogger(MetricsMessageSender.class.getName());
 

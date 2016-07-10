@@ -21,6 +21,7 @@ import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.avro.Metrics;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.logging.Logger;
 
@@ -29,8 +30,8 @@ import java.util.logging.Logger;
  * The metrics are set via MetricsHandler. The other message parts must be
  * set via the setters for each worker iteration or server window. The WorkerMetricsMsg is
  * built when sending the network message. As it builds the message incrementally,
- * this class is *not* thread-safe.
  */
+@NotThreadSafe
 public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgSender<WorkerMetricsMsg> {
   private static final Logger LOG = Logger.getLogger(WorkerMetricsMsgSender.class.getName());
 
