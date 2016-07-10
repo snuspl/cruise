@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -70,7 +71,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   /**
    * Sender that sends pull responses.
    */
-  private final ServerSideReplySender<K, V> sender;
+  private final ServerSideReplySender<K, P, V> sender;
 
   /**
    * MemoryStore instance to access the data.
@@ -93,7 +94,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
                                  @Parameter(ServerNumThreads.class) final int numThreads,
                                  @Parameter(ServerQueueSize.class) final int queueSize,
                                  final ParameterUpdater<K, P, V> parameterUpdater,
-                                 final ServerSideReplySender<K, V> sender) {
+                                 final ServerSideReplySender<K, P, V> sender) {
     this.memoryStore = memoryStore;
     this.blockResolver = blockResolver;
     this.queueSize = queueSize;
@@ -113,7 +114,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
     for (int threadIndex = 0; threadIndex < numThreads; threadIndex++) {
-      final ServerThread<K, V> thread = new ServerThread<>(queueSize, memoryStore);
+      final ServerThread<K, V> thread = new ServerThread<>(queueSize);
       initialized.put(threadIndex, thread);
       threadPool.submit(thread);
     }
@@ -121,13 +122,13 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   @Override
-  public void push(final K key, final P preValue, final int keyHash) {
+  public void push(final K key, final P preValue, final String srcId, final int keyHash) {
     final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
     final int blockId = blockResolver.resolveBlock(hashedKey);
     final int threadId = threadResolver.resolveThread(blockId);
     LOG.log(Level.FINEST, "Enqueue push request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
         new Object[] {key, blockId, threadId, keyHash});
-    threads.get(threadId).enqueue(new PushOp(hashedKey, preValue));
+    threads.get(threadId).enqueue(new PushOp(hashedKey, preValue, srcId));
   }
 
   @Override
@@ -153,13 +154,43 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   /**
-   * A generic operation; operations are queued at each Partition.
+   * Close the server by rejecting and sending back all the queued operations to sender workers.
+   */
+  @Override
+  public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
+
+    final Future result = Executors.newSingleThreadExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        // Close all threads
+        for (final ServerThread thread : threads.values()) {
+          thread.close();
+        }
+
+        // Wait for shutdown to complete on all threads
+        for (final ServerThread thread : threads.values()) {
+          thread.waitForShutdown();
+        }
+      }
+    });
+
+    result.get(timeoutMs, TimeUnit.MILLISECONDS);
+  }
+
+  /**
+   * A generic operation; operations are queued at each ServerThread.
    */
   private interface Op<K, V> {
+
     /**
-     * Method to apply when dequeued by the Partition.
+     * Method to apply when dequeued by the ServerThread.
      */
     void apply();
+
+    /**
+     * Method to reject the operation when closing the ServerThread.
+     */
+    void reject();
   }
 
   /**
@@ -168,10 +199,12 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private class PushOp implements Op<K, V> {
     private final HashedKey<K> hashedKey;
     private final P preValue;
+    private final String srcId;
 
-    PushOp(final HashedKey<K> hashedKey, final P preValue) {
+    PushOp(final HashedKey<K> hashedKey, final P preValue, final String srcId) {
       this.hashedKey = hashedKey;
       this.preValue = preValue;
+      this.srcId = srcId;
     }
 
     /**
@@ -200,6 +233,11 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
+    }
+
+    @Override
+    public void reject() {
+      sender.sendPushRejectMsg(srcId, hashedKey.getKey(), preValue);
     }
   }
 
@@ -242,6 +280,11 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
     }
+
+    @Override
+    public void reject() {
+      sender.sendPullRejectMsg(srcId, hashedKey.getKey());
+    }
   }
 
   /**
@@ -263,15 +306,14 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     private final BlockingQueue<Op<K, V>> queue;
     private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
     private final int drainSize; // Max number of operations to drain per iteration.
-    private final MemoryStore<HashedKey<K>> memoryStore;
 
-    private volatile boolean shutdown = false;
+    private volatile boolean close = false;
+    private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
-    ServerThread(final int queueSize, final MemoryStore<HashedKey<K>> memoryStore) {
+    ServerThread(final int queueSize) {
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
       this.localOps = new ArrayList<>(drainSize);
-      this.memoryStore = memoryStore;
     }
 
     /**
@@ -302,7 +344,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     @Override
     public void run() {
-      while (!shutdown) {
+      while (!close) {
         // First, poll and apply. The timeout allows the run thread to shutdown cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -324,13 +366,46 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         }
         localOps.clear();
       }
+
+      // reject all operations in the queue before exit
+      while (!queue.isEmpty()) {
+        queue.drainTo(localOps, drainSize);
+        for (final Op<K, V> op : localOps) {
+          op.reject();
+        }
+        localOps.clear();
+      }
+
+      shutdown();
     }
 
     /**
-     * Cleanly shutdown the run thread.
+     * Close the run thread.
      */
-    public void shutdown() {
-      shutdown = true;
+    public void close() {
+      close = true;
+    }
+
+    private void shutdown() {
+      shutdown.set(true);
+      synchronized (shutdown) {
+        shutdown.notifyAll();
+      }
+    }
+
+    /**
+     * Wait for shutdown confirmation (clean close has finished).
+     */
+    public void waitForShutdown() {
+      while (!shutdown.get()) {
+        try {
+          synchronized (shutdown) {
+            shutdown.wait();
+          }
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
+        }
+      }
     }
   }
 

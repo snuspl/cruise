@@ -18,7 +18,7 @@ package edu.snu.cay.services.ps.server.api;
 /**
  * Sender for ParameterServer.
  */
-public interface ServerSideReplySender<K, V> {
+public interface ServerSideReplySender<K, P, V> {
   /**
    * Implementing classes must serialize K, V immediately within the calling thread,
    * to ensure atomicity of updates.
@@ -27,4 +27,19 @@ public interface ServerSideReplySender<K, V> {
    * @param value value, to be serialized immediately
    */
   void sendReplyMsg(String destId, K key, V value);
+
+  /**
+   * Send a reject msg for push operation to the worker who had requested.
+   * @param destId the destination's network address
+   * @param key key object that {@code preValue} is associated with
+   * @param preValue preValue sent from the worker
+   */
+  void sendPushRejectMsg(String destId, K key, P preValue);
+
+  /**
+   * Send a reject msg for pull operation to the worker who had requested.
+   * @param destId the destination's network address
+   * @param key key object that the requested {@code value} is associated with
+   */
+  void sendPullRejectMsg(String destId, K key);
 }

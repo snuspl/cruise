@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.ns;
 
+import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
@@ -34,6 +35,8 @@ import java.util.logging.Logger;
  */
 public final class NetworkContextRegister {
   private static final Logger LOG = Logger.getLogger(NetworkContextRegister.class.getName());
+
+  private static final long CLOSE_TIMEOUT_MS = 10000;
 
   public static final class RegisterContextHandler implements EventHandler<ContextStart> {
     private final PSNetworkSetup psNetworkSetup;
@@ -59,16 +62,25 @@ public final class NetworkContextRegister {
    */
   public static final class UnregisterContextHandlerForServer implements EventHandler<ContextStop> {
     private final PSNetworkSetup psNetworkSetup;
+    private final ParameterServer parameterServer;
 
     @Inject
-    private UnregisterContextHandlerForServer(final PSNetworkSetup psNetworkSetup) {
+    private UnregisterContextHandlerForServer(final PSNetworkSetup psNetworkSetup,
+                                              final ParameterServer parameterServer) {
+      this.parameterServer = parameterServer;
       this.psNetworkSetup = psNetworkSetup;
     }
 
     @Override
     public void onNext(final ContextStop contextStop) {
-      // we can close servers before unregistering it from NCS just like workers
-      // but it's not necessary until now
+      LOG.log(Level.FINE, "Wait {0} milliseconds at maximum for the PS server to be closed", CLOSE_TIMEOUT_MS);
+      try {
+        parameterServer.close(CLOSE_TIMEOUT_MS);
+        LOG.fine("Succeed to close PS server cleanly");
+      } catch (InterruptedException | TimeoutException | ExecutionException e) {
+        LOG.log(Level.INFO, "Fail to close PS server cleanly", e);
+      }
+
       psNetworkSetup.unregisterConnectionFactory();
     }
   }
@@ -84,8 +96,6 @@ public final class NetworkContextRegister {
    * but this has to be investigated further.
    */
   public static final class UnregisterContextHandlerForWorker implements EventHandler<ContextStop> {
-    private static final long TIMEOUT_MS = 10000;
-
     private final PSNetworkSetup psNetworkSetup;
     private final ParameterWorker parameterWorker;
 
@@ -98,9 +108,9 @@ public final class NetworkContextRegister {
 
     @Override
     public void onNext(final ContextStop contextStop) {
-      LOG.log(Level.FINE, "Wait {0} milliseconds at maximum for the PS service to be closed", TIMEOUT_MS);
+      LOG.log(Level.FINE, "Wait {0} milliseconds at maximum for the PS worker to be closed", CLOSE_TIMEOUT_MS);
       try {
-        parameterWorker.close(TIMEOUT_MS);
+        parameterWorker.close(CLOSE_TIMEOUT_MS);
         LOG.fine("Succeed to close PS worker cleanly");
       } catch (InterruptedException | TimeoutException | ExecutionException e) {
         LOG.log(Level.INFO, "Fail to close PS worker cleanly", e);

@@ -18,9 +18,11 @@ package edu.snu.cay.services.ps.worker.impl;
 import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.PSParameters.KeyCodecName;
+import edu.snu.cay.services.ps.PSParameters.PreValueCodecName;
 import edu.snu.cay.services.ps.PSParameters.ValueCodecName;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
@@ -44,6 +46,8 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
    */
   private final AsyncWorkerHandler<K, V> asyncWorkerHandler;
 
+  private final ParameterWorker<K, P, V> parameterWorker;
+
   private final ServerResolver serverResolver;
 
   /**
@@ -52,18 +56,27 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   private final Codec<K> keyCodec;
 
   /**
+   * Codec for decoding PS preValues.
+   */
+  private final Codec<P> preValueCodec;
+
+  /**
    * Codec for decoding PS values.
    */
   private final Codec<V> valueCodec;
 
   @Inject
   private WorkerSideMsgHandler(final AsyncWorkerHandler<K, V> asyncWorkerHandler,
+                               final ParameterWorker<K, P, V> parameterWorker,
                                final ServerResolver serverResolver,
                                @Parameter(KeyCodecName.class)final Codec<K> keyCodec,
+                               @Parameter(PreValueCodecName.class)final Codec<P> preValueCodec,
                                @Parameter(ValueCodecName.class) final Codec<V> valueCodec) {
     this.asyncWorkerHandler = asyncWorkerHandler;
+    this.parameterWorker = parameterWorker;
     this.serverResolver = serverResolver;
     this.keyCodec = keyCodec;
+    this.preValueCodec = preValueCodec;
     this.valueCodec = valueCodec;
   }
 
@@ -79,6 +92,14 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     switch (innerMsg.getType()) {
     case ReplyMsg:
       onReplyMsg(innerMsg.getReplyMsg());
+      break;
+
+    case PushRejectMsg:
+      onPushRejectMsg(innerMsg.getPushRejectMsg());
+      break;
+
+    case PullRejectMsg:
+      onPullRejectMsg(innerMsg.getPullRejectMsg());
       break;
 
     case WorkerRegisterReplyMsg:
@@ -126,5 +147,16 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     final K key = keyCodec.decode(replyMsg.getKey().array());
     final V value = valueCodec.decode(replyMsg.getValue().array());
     asyncWorkerHandler.processReply(key, value);
+  }
+
+  private void onPushRejectMsg(final PushRejectMsg pushRejectMsg) {
+    final K key = keyCodec.decode(pushRejectMsg.getKey().array());
+    final P preValue = preValueCodec.decode(pushRejectMsg.getPreValue().array());
+    parameterWorker.push(key, preValue);
+  }
+
+  private void onPullRejectMsg(final PullRejectMsg pullRejectMsg) {
+    final K key = keyCodec.decode(pullRejectMsg.getKey().array());
+    parameterWorker.pull(key);
   }
 }

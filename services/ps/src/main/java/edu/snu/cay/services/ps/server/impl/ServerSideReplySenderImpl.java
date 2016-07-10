@@ -16,9 +16,7 @@
 package edu.snu.cay.services.ps.server.impl;
 
 import edu.snu.cay.services.ps.PSParameters;
-import edu.snu.cay.services.ps.avro.AvroPSMsg;
-import edu.snu.cay.services.ps.avro.ReplyMsg;
-import edu.snu.cay.services.ps.avro.Type;
+import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -37,7 +35,7 @@ import java.nio.ByteBuffer;
  * Sender implementation that uses Network Connection Service.
  */
 @EvaluatorSide
-public final class ServerSideReplySenderImpl<K, V> implements ServerSideReplySender<K, V> {
+public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReplySender<K, P, V> {
 
   /**
    * Network Connection Service related setup required for a Parameter Server application.
@@ -55,6 +53,11 @@ public final class ServerSideReplySenderImpl<K, V> implements ServerSideReplySen
   private final Codec<K> keyCodec;
 
   /**
+   * Codec for encoding PS preValues.
+   */
+  private final Codec<P> preValueCodec;
+
+  /**
    * Codec for encoding PS values.
    */
   private final Codec<V> valueCodec;
@@ -64,11 +67,13 @@ public final class ServerSideReplySenderImpl<K, V> implements ServerSideReplySen
       final InjectionFuture<PSNetworkSetup> psNetworkSetup,
       final IdentifierFactory identifierFactory,
       @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
+      @Parameter(PSParameters.PreValueCodecName.class) final Codec<P> preValueCodec,
       @Parameter(PSParameters.ValueCodecName.class) final Codec<V> valueCodec) {
 
     this.psNetworkSetup = psNetworkSetup;
     this.identifierFactory = identifierFactory;
     this.keyCodec = keyCodec;
+    this.preValueCodec = preValueCodec;
     this.valueCodec = valueCodec;
   }
 
@@ -102,6 +107,33 @@ public final class ServerSideReplySenderImpl<K, V> implements ServerSideReplySen
         AvroPSMsg.newBuilder()
             .setType(Type.ReplyMsg)
             .setReplyMsg(replyMsg)
+            .build());
+  }
+
+  @Override
+  public void sendPushRejectMsg(final String destId, final K key, final P preValue) {
+    final PushRejectMsg pushRejectMsg = PushRejectMsg.newBuilder()
+        .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
+        .setPreValue(ByteBuffer.wrap(preValueCodec.encode(preValue)))
+        .build();
+
+    send(destId,
+        AvroPSMsg.newBuilder()
+            .setType(Type.PushRejectMsg)
+            .setPushRejectMsg(pushRejectMsg)
+            .build());
+  }
+
+  @Override
+  public void sendPullRejectMsg(final String destId, final K key) {
+    final PullRejectMsg pullRejectMsg = PullRejectMsg.newBuilder()
+        .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
+        .build();
+
+    send(destId,
+        AvroPSMsg.newBuilder()
+            .setType(Type.PullRejectMsg)
+            .setPullRejectMsg(pullRejectMsg)
             .build());
   }
 }
