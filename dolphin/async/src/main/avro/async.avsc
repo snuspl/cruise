@@ -23,6 +23,7 @@
   "name": "WorkerMetricsMsg",
   "fields":
   [
+    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
     {"name": "iteration", "type": "int"},
     {"name": "numDataBlocks", "type": "int"}
