@@ -200,8 +200,11 @@ public final class AsyncDolphinLauncher {
 
     } catch (final Exception e) {
       final LauncherStatus status = LauncherStatus.failed(e);
-      LOG.log(Level.WARNING, "Exception occurred", e);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
+
+      // This log is for giving more detailed info about failure, which status object does not show
+      LOG.log(Level.WARNING, "Exception occurred", e);
+
       return status;
     }
   }
