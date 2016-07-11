@@ -340,10 +340,10 @@ public final class AsyncDolphinLauncher {
             WorkerSynchronizer.MessageHandler.class)
         .addAggregationClient(WorkerConstants.AGGREGATION_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForWorker.class,
-            EvalSideMetricsMsgHandler.class)
+            EvalSideMetricsMsgHandlerForWorker.class)
         .addAggregationClient(ServerConstants.AGGREGATION_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForServer.class,
-            EvalSideMetricsMsgHandler.class)
+            EvalSideMetricsMsgHandlerForServer.class)
         .build();
 
     // set up an optimizer configuration

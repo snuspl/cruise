@@ -28,7 +28,7 @@ public final class ServerConstants {
   }
 
   public static final String AGGREGATION_CLIENT_NAME =
-      "METRIC_COLLECTION_SERVICE_FOR_WORKER";
+      "METRIC_COLLECTION_SERVICE_FOR_SERVER";
 
   // Keys to get/set the metrics in the server.
   public static final String KEY_SERVER_PROCESSING_UNIT =
