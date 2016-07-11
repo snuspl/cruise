@@ -52,8 +52,11 @@ import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.NAMES
 public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinPlanExecutor.class.getName());
 
+  private static final int DEFAULT_EVAL_MEM_SIZE = 1024;
+  private static final int DEFAULT_EVAL_NUM_CORES = 1;
+
   private enum OpExecutionStatus {
-    In_Progress, Complete
+    IN_PROGRESS, COMPLETE
   }
 
   private final ElasticMemory serverEM;
@@ -66,15 +69,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private ExecutingPlan executingPlan;
 
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
-
-  private static final int DEFAULT_EVAL_MEM_SIZE = 1024;
-
-  /**
-   * Although EM's add() supports multiple evaluator additions,
-   * the default number of evaluators to be requested is 1 because in this implementation of the plan executor,
-   * we assume that the plan generated does not involve many operations (especially adds) at once.
-   */
-  private static final int DEFAULT_EVAL_NUM_CORES = 1;
 
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
@@ -436,7 +430,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      */
     boolean markOperationRequested(final EMOperation operation) {
       LOG.log(Level.INFO, "Operation requested: {0}", operation);
-      return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.In_Progress) == null;
+      return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.IN_PROGRESS) == null;
     }
 
     /**
@@ -449,7 +443,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      */
     Set<EMOperation> markOperationComplete(final EMOperation op) {
       final boolean wasInProgress = emOperationsRequested.replace(op,
-              OpExecutionStatus.In_Progress, OpExecutionStatus.Complete);
+              OpExecutionStatus.IN_PROGRESS, OpExecutionStatus.COMPLETE);
 
       if (!wasInProgress) {
         throw new RuntimeException("The operation " + op + " was never in the request queue");
