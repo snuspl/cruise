@@ -27,8 +27,8 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -65,7 +65,7 @@ final class SynchronizationManager {
   /**
    * A set that maintains workers that have sent a sync msg for the current barrier.
    */
-  private final Set<String> blockedWorkerIds = Collections.synchronizedSet(new HashSet<String>());
+  private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Inject
   private SynchronizationManager(final AggregationMaster aggregationMaster,
@@ -77,9 +77,9 @@ final class SynchronizationManager {
 
   static StateMachine initStateMachine() {
     return StateMachine.newBuilder()
-        .addState(STATE_INIT, "Worker threads are initializing themselves")
-        .addState(STATE_RUN, "Worker threads are running their tasks")
-        .addState(STATE_CLEANUP, "Worker threads are cleaning up the task")
+        .addState(STATE_INIT, "Workers are initializing themselves")
+        .addState(STATE_RUN, "Workers are running their tasks")
+        .addState(STATE_CLEANUP, "Workers are cleaning up the task")
         .addTransition(STATE_INIT, STATE_RUN, "The initialization is finished, time to start running task")
         .addTransition(STATE_RUN, STATE_CLEANUP, "The task execution is finished, time to clean up the task")
         .setInitialState(STATE_INIT)
@@ -87,7 +87,7 @@ final class SynchronizationManager {
   }
 
   /**
-   * Embraces the newly added worker to be synchronized from the next synchronization point.
+   * Embraces the newly added worker to be synchronized from now.
    */
   synchronized void onWorkerAdded() {
     // increase the number of workers to block
@@ -100,12 +100,12 @@ final class SynchronizationManager {
    * @param workerId an id of worker
    */
   synchronized void onWorkerDeleted(final String workerId) {
-    // when deleted worker already has sent sync msg
+    // when deleted worker already has sent a sync msg
     if (blockedWorkerIds.contains(workerId)) {
       numWorkersToSync--;
       blockedWorkerIds.remove(workerId);
 
-    // when deleted worker did not yet send the sync msg
+    // when deleted worker did not send a sync msg yet
     } else {
       numWorkersToSync--;
       tryReleaseWorkers();
@@ -156,6 +156,15 @@ final class SynchronizationManager {
     }
   }
 
+  private synchronized void blockWorker(final String workerId) {
+
+    blockedWorkerIds.add(workerId);
+    LOG.log(Level.FINE, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
+        new Object[]{workerId, blockedWorkerIds.size(), numWorkersToSync});
+
+    tryReleaseWorkers();
+  }
+
   final class MessageHandler implements EventHandler<AggregationMessage> {
 
     @Override
@@ -187,11 +196,7 @@ final class SynchronizationManager {
         throw new RuntimeException("Invalid state");
       }
 
-      blockedWorkerIds.add(workerId);
-      LOG.log(Level.FINE, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
-          new Object[]{workerId, blockedWorkerIds.size(), numWorkersToSync});
-
-      tryReleaseWorkers();
+      blockWorker(workerId);
     }
   }
 }
