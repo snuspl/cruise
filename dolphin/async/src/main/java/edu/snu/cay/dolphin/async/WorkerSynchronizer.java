@@ -80,6 +80,7 @@ final class WorkerSynchronizer {
     case SynchronizationManager.STATE_RUN:
       break;
     case SynchronizationManager.STATE_CLEANUP:
+      throw new RuntimeException("Workers never call the global barrier in cleanup");
     default:
       throw new RuntimeException("Invalid state");
     }

@@ -36,7 +36,7 @@ import java.util.logging.Logger;
  * A driver-side component that coordinates synchronization messages between the driver and workers.
  * It is used to synchronize workers in two points: after initialization and before cleanup.
  * To achieve this, it maintains a global state that all workers should match with their own local states.
- * Workers added by EM can bypass the initial barriers.
+ * Workers added by EM can bypass barriers if their state is behind the global state.
  */
 @DriverSide
 @Unit
@@ -127,6 +127,7 @@ final class SynchronizationManager {
       stateMachine.setState(STATE_CLEANUP);
       break;
     case STATE_CLEANUP:
+      throw new RuntimeException("No more transition is allowed after STATE_CLEANUP state");
     default:
       throw new RuntimeException("Invalid state");
     }
@@ -168,14 +169,20 @@ final class SynchronizationManager {
       // If so, the worker is replied to continue until it reaches the global state.
       switch (globalState) {
       case STATE_INIT:
+        if (!localState.equals(STATE_INIT)) {
+          throw new RuntimeException("Individual workers cannot overtake the global state");
+        }
         break;
       case STATE_RUN:
         if (localState.equals(STATE_INIT)) { // let added evaluators skip the initial barriers
           sendResponseMessage(workerId, EMPTY_DATA);
           return;
+        } else if (!localState.equals(STATE_RUN)) {
+          throw new RuntimeException("Individual workers cannot overtake the global state");
         }
         break;
       case STATE_CLEANUP:
+        throw new RuntimeException("Workers never call the global barrier in STATE_CLEANUP state");
       default:
         throw new RuntimeException("Invalid state");
       }

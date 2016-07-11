@@ -104,7 +104,7 @@ final class AsyncWorkerTask implements Task {
           worker.initialize();
 
           // synchronize all workers before starting the main iteration
-          // to avoid meaningless iterations by the workers started fast
+          // to avoid meaningless iterations by the workers who started earlier
           synchronizer.globalBarrier();
 
           for (int iteration = 0; iteration < maxIterations; ++iteration) {
@@ -115,8 +115,8 @@ final class AsyncWorkerTask implements Task {
             worker.run();
           }
 
-          // synchronize all workers at the end of the main iteration
-          // to make wrap-up in the cleanup stage meaningful
+          // Synchronize all workers before cleanup for workers
+          // to finish with the globally equivalent view of trained model
           synchronizer.globalBarrier();
 
           worker.cleanup();
