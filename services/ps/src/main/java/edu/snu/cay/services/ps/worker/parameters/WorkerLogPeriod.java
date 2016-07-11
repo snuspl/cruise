@@ -20,6 +20,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Time period in ms for outputting statistics of parameter worker",
     default_value = "0",
-    short_name = "worker_log_period")
+    short_name = "worker_log_period_ms")
 public final class WorkerLogPeriod implements Name<Long> {
 }
