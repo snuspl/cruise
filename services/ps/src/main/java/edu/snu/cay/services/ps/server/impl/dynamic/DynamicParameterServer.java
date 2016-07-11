@@ -266,11 +266,11 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     final Statistics pushWaitStat = pushWaitStats[threadId];
     final Statistics pullWaitStat = pullWaitStats[threadId];
 
-    LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Sum Pull: {1}, PS Avg Pull: {2}, PS Pull Count: {3}, " +
-            "PS Sum Push: {4}, PS Avg Push: {5}, PS Push Count: {6}, " +
-            "PS Avg Request: {7}, PS Sum Request: {8}, PS Request Count: {9}, " +
-            "PS Avg Push Wait: {10}, PS Sum Push Wait: {11}, " +
-            "PS Avg Pull Wait: {12}, PS Sum Pull Wait: {13}",
+    LOG.log(Level.INFO, "PS Elapsed Time (sec): {0}, PS Sum Pull (sec): {1}, PS Avg Pull (sec): {2}, " +
+            "PS Pull Count: {3}, PS Sum Push (sec): {4}, PS Avg Push (sec): {5}, PS Push Count: {6}, " +
+            "PS Avg Request (sec): {7}, PS Sum Request (sec): {8}, PS Request Count: {9}, " +
+            "PS Avg Push Wait (sec): {10}, PS Sum Push Wait (sec): {11}, " +
+            "PS Avg Pull Wait (sec): {12}, PS Sum Pull Wait (sec): {13}",
         new Object[]{elapsedTime / 1e9D, Double.toString(pullStat.sum()), Double.toString(pullStat.avg()),
             pullStat.count(), Double.toString(pushStat.sum()), Double.toString(pushStat.avg()), pushStat.count(),
             Double.toString(requestStat.avg()), Double.toString(requestStat.sum()), requestStat.count(),
