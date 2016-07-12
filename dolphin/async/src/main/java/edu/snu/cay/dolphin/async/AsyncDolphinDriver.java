@@ -117,6 +117,11 @@ public final class AsyncDolphinDriver {
   private final DataLoadingService dataLoadingService;
 
   /**
+   * Synchronize workers by exchanging messages.
+   */
+  private final SynchronizationManager synchronizationManager;
+
+  /**
    * Exchange messages between the driver and evaluators.
    */
   private final AggregationManager aggregationManager;
@@ -272,6 +277,7 @@ public final class AsyncDolphinDriver {
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
+                             final SynchronizationManager synchronizationManager,
                              final Injector injector,
                              final IdentifierFactory identifierFactory,
                              @Parameter(DriverIdentifier.class) final String driverIdStr,
@@ -293,6 +299,7 @@ public final class AsyncDolphinDriver {
     hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
     this.dataLoadingService = dataLoadingService;
+    this.synchronizationManager = synchronizationManager;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.initServerCount = numServers;
     this.identifierFactory = identifierFactory;
@@ -566,6 +573,9 @@ public final class AsyncDolphinDriver {
         LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
         contextIdToWorkerContexts.put(activeContext.getId(), activeContext);
 
+        // notify SyncManager about the addition of worker
+        synchronizationManager.onWorkerAdded();
+
         final int workerIndex = getWorkerIndex(activeContext.getId());
         final Configuration taskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, getWorkerTaskId(workerIndex))
@@ -729,17 +739,26 @@ public final class AsyncDolphinDriver {
       // for tracking contexts
       LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
 
-    // case4. worker/server context is finished by EM's delete
-    } else if (deletedWorkerContextIds.remove(contextId) || deletedServerContextIds.remove(contextId)) {
-      LOG.log(Level.INFO, "The context {0} is closed by EM's Delete.", contextId);
-      // the deleted worker/server context was running on the root context, a data loading context.
-      // we should close the root context to completely release the evaluator on which the deleted worker/server has run
+    // case4-1. worker context is finished by EM's delete
+    } else if (deletedWorkerContextIds.remove(contextId)) {
+      LOG.log(Level.INFO, "The worker context {0} is closed by EM's Delete.", contextId);
+
+      // notify SyncManager about the deletion of worker
+      synchronizationManager.onWorkerDeleted(contextId);
+
       if (!parentContext.isPresent()) {
-        throw new RuntimeException("Root context of the deleted worker/server context does not exist");
+        throw new RuntimeException("Root context of the deleted worker context does not exist");
       }
-      final String rootContextId = parentContext.get().getId();
-      final ActiveContext rootContext = contextIdToRootContexts.remove(rootContextId);
-      rootContext.close();
+      closeParentRootContext(parentContext.get());
+
+    // case4-2. server context is finished by EM's delete
+    } else if (deletedServerContextIds.remove(contextId)) {
+      LOG.log(Level.INFO, "The server context {0} is closed by EM's Delete.", contextId);
+
+      if (!parentContext.isPresent()) {
+        throw new RuntimeException("Root context of the deleted server context does not exist");
+      }
+      closeParentRootContext(parentContext.get());
 
     // case5. untracked context is finished
     } else {
@@ -750,6 +769,14 @@ public final class AsyncDolphinDriver {
         parentContext.get().close();
       }
     }
+  }
+
+  private void closeParentRootContext(final ActiveContext parentContext) {
+    // the deleted worker/server context was running on the root context, a data loading context.
+    // we should close the root context to completely release the evaluator on which the deleted worker/server has run
+    final String rootContextId = parentContext.getId();
+    final ActiveContext rootContext = contextIdToRootContexts.remove(rootContextId);
+    rootContext.close();
   }
 
   final class FailedTaskHandler implements EventHandler<FailedTask> {

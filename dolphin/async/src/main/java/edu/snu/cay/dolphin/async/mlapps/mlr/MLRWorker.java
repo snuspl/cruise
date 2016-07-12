@@ -23,7 +23,6 @@ import edu.snu.cay.dolphin.async.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
 import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.*;
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.WorkerSynchronizer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
@@ -54,11 +53,6 @@ final class MLRWorker implements Worker {
    * Parser object for fetching and parsing the input dataset.
    */
   private final MLRParser mlrParser;
-
-  /**
-   * Synchronization component for setting a global barrier across workers.
-   */
-  private final WorkerSynchronizer synchronizer;
 
   /**
    * Worker object used to interact with the parameter server.
@@ -154,7 +148,6 @@ final class MLRWorker implements Worker {
 
   @Inject
   private MLRWorker(final MLRParser mlrParser,
-                    final WorkerSynchronizer synchronizer,
                     final ParameterWorker<Integer, Vector, Vector> worker,
                     @Parameter(NumClasses.class) final int numClasses,
                     @Parameter(NumFeatures.class) final int numFeatures,
@@ -174,7 +167,6 @@ final class MLRWorker implements Worker {
                     final MetricsMessageSender metricsMessageSender,
                     final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
-    this.synchronizer = synchronizer;
     this.worker = worker;
     this.numClasses = numClasses;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
@@ -243,9 +235,6 @@ final class MLRWorker implements Worker {
     if (dataValues.size() < trainErrorDatasetSize) {
       LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDatasetSize);
     }
-
-    // all workers should start at the same time
-    synchronizer.globalBarrier();
   }
 
   private void resetTracers() {
@@ -361,8 +350,6 @@ final class MLRWorker implements Worker {
   @Override
   public void cleanup() {
     final float waitStart = System.currentTimeMillis();
-    synchronizer.globalBarrier();
-    final float cleanupStart = System.currentTimeMillis();
     resetTracers();
 
     pullModels();
@@ -381,10 +368,10 @@ final class MLRWorker implements Worker {
     LOG.log(Level.INFO, "Number of instances: {0}", entireDatasetSize);
     LOG.log(Level.INFO, "Prediction accuracy on training dataset: {0}", lossRegLossAccuracy.getThird());
     LOG.log(Level.INFO, "Cleanup Samples: {0}, Avg Comp Per Row: {1}, Sum Comp: {2}, Avg Pull: {3}, Sum Pull: {4}, " +
-            "Elapsed Time: {5}, Wait Time: {6}, Sample Loss Avg: {7}",
+            "Elapsed Time: {5}, Sample Loss Avg: {6}",
         new Object[]{entireDatasetSize, computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(),
             pullTracer.avgTimePerRecord(), pullTracer.totalElapsedTime(),
-            cleanupEnd - waitStart, cleanupStart - waitStart, lossRegLossAccuracy.getFirst()});
+            cleanupEnd - waitStart, lossRegLossAccuracy.getFirst()});
   }
 
   private void pullModels() {

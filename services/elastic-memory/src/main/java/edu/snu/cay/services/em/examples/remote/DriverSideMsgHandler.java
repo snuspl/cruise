@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.examples.remote;
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.wake.EventHandler;
@@ -125,8 +126,12 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
     private void sendResponseToWorkers(final long aggregatedCount) {
       for (final String slaveId : workerIds) {
         LOG.log(Level.INFO, "Sending a message to {0}", slaveId);
-        aggregationMaster.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, slaveId,
-            codec.encode(Long.toString(aggregatedCount)));
+        try {
+          aggregationMaster.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, slaveId,
+              codec.encode(Long.toString(aggregatedCount)));
+        } catch (final NetworkException e) {
+          throw new RuntimeException(e);
+        }
       }
     }
   }
