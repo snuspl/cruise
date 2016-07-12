@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.WorkerSynchronizer;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -51,11 +50,6 @@ final class AddIntegerWorker implements Worker {
   private final ParameterWorker<Integer, Integer, Integer> parameterWorker;
 
   /**
-   * Synchronization component for setting a global barrier across workers.
-   */
-  private final WorkerSynchronizer synchronizer;
-
-  /**
    * The integer to be added to each key in an update.
    */
   private final int delta;
@@ -82,7 +76,6 @@ final class AddIntegerWorker implements Worker {
 
   @Inject
   private AddIntegerWorker(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
-                           final WorkerSynchronizer synchronizer,
                            @Parameter(AddIntegerREEF.DeltaValue.class) final int delta,
                            @Parameter(AddIntegerREEF.StartKey.class) final int startKey,
                            @Parameter(AddIntegerREEF.NumKeys.class) final int numberOfKeys,
@@ -91,7 +84,6 @@ final class AddIntegerWorker implements Worker {
                            @Parameter(Parameters.NumWorkerThreads.class) final int numWorkerThreads,
                            @Parameter(Parameters.Iterations.class) final int numIterations) {
     this.parameterWorker = parameterWorker;
-    this.synchronizer = synchronizer;
     this.delta = delta;
     this.startKey = startKey;
     this.numberOfKeys = numberOfKeys;
@@ -103,8 +95,6 @@ final class AddIntegerWorker implements Worker {
 
   @Override
   public void initialize() {
-    // all of the workers should start at the same time to use it as a benchmark
-    synchronizer.globalBarrier();
   }
 
   @Override
@@ -126,10 +116,6 @@ final class AddIntegerWorker implements Worker {
 
   @Override
   public void cleanup() {
-    // validation check is possible when all of the workers finish their jobs
-    // so, barrier is used to wait other workers
-    synchronizer.globalBarrier();
-
     int numRetries = NUM_VALIDATE_RETRIES;
 
     while (numRetries-- > 0) {

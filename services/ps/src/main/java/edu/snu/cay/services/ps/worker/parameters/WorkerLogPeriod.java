@@ -13,20 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.metric;
+package edu.snu.cay.services.ps.worker.parameters;
 
-/**
- * Keys to identify metrics that come from Async-Dolphin.
- */
-public final class MetricKeys {
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-  /**
-   * Should not be instantiated.
-   */
-  private MetricKeys() {
-  }
-
-  // Keys to get/set the metrics in the worker.
-  public static final String WORKER_COMPUTE_TIME =
-      "METRIC_WORKER_COMPUTE_TIME";
+@NamedParameter(doc = "Time period in ms for outputting statistics of parameter worker",
+    default_value = "0",
+    short_name = "worker_log_period_ms")
+public final class WorkerLogPeriod implements Name<Long> {
 }

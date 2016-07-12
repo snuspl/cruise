@@ -54,6 +54,7 @@ final class AsyncWorkerTask implements Task {
   private final String taskId;
   private final int maxIterations;
   private final int numWorkerThreads;
+  private final WorkerSynchronizer synchronizer;
   private final Injector injector;
   private final DataSet<LongWritable, Text> dataSet;
 
@@ -67,6 +68,7 @@ final class AsyncWorkerTask implements Task {
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
                           @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
+                          final WorkerSynchronizer synchronizer,
                           final Injector injector,
                           final DataIdFactory<Long> idFactory,
                           final OperationRouter<Long> router,
@@ -75,6 +77,7 @@ final class AsyncWorkerTask implements Task {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
     this.numWorkerThreads = numWorkerThreads;
+    this.synchronizer = synchronizer;
     this.injector = injector;
     this.dataSet = dataSet;
   }
@@ -99,6 +102,11 @@ final class AsyncWorkerTask implements Task {
         @Override
         public void run() {
           worker.initialize();
+
+          // synchronize all workers before starting the main iteration
+          // to avoid meaningless iterations by the workers who started earlier
+          synchronizer.globalBarrier();
+
           for (int iteration = 0; iteration < maxIterations; ++iteration) {
             if (aborted) {
               LOG.log(Level.INFO, "Abort a thread to completely close the task");
@@ -106,6 +114,11 @@ final class AsyncWorkerTask implements Task {
             }
             worker.run();
           }
+
+          // Synchronize all workers before cleanup for workers
+          // to finish with the globally equivalent view of trained model
+          synchronizer.globalBarrier();
+
           worker.cleanup();
         }
       });

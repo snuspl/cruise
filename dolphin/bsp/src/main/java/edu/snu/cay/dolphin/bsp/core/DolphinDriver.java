@@ -18,7 +18,9 @@ package edu.snu.cay.dolphin.bsp.core;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.metric.MetricTracker;
 import edu.snu.cay.common.metric.MetricTrackers;
-import edu.snu.cay.dolphin.bsp.core.metric.MetricsCollectionService;
+import edu.snu.cay.common.metric.MetricsCollectionServiceConf;
+import edu.snu.cay.dolphin.bsp.core.metric.MetricsMessageCodec;
+import edu.snu.cay.dolphin.bsp.core.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.dolphin.bsp.core.sync.ControllerTaskSyncRegister;
 import edu.snu.cay.dolphin.bsp.core.sync.DriverSync;
@@ -534,7 +536,7 @@ public final class DolphinDriver {
     final Configuration outputServiceConf = outputService.getServiceConfiguration();
     final Configuration keyValueStoreServiceConf = KeyValueStoreService.getServiceConfiguration();
     final Configuration aggregationServiceConf = aggregationManager.getServiceConfigurationWithoutNameResolver();
-    final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
+    final Configuration metricCollectionServiceConf = getMetricsCollectionServiceConfiguration();
     final Configuration workloadServiceConf = WorkloadPartition.getServiceConfiguration();
     final Configuration emServiceConf =
         emConf.getServiceConfigurationWithoutNameResolver(contextId, dataLoadingService.getNumberOfPartitions() + 1);
@@ -757,6 +759,18 @@ public final class DolphinDriver {
         return true;
       }
     }
+  }
+
+  /**
+   * @return Configuration for collecting metrics by using MetricsCollectionService.
+   */
+  private Configuration getMetricsCollectionServiceConfiguration() {
+    final MetricsCollectionServiceConf metricsCollectionServiceConf = MetricsCollectionServiceConf.newBuilder()
+        .setMetricsHandlerClass(MetricsMessageSender.class)
+        .setMetricsMsgSenderClass(MetricsMessageSender.class)
+        .setMetricsMsgCodecClass(MetricsMessageCodec.class)
+        .build();
+    return metricsCollectionServiceConf.getConfiguration();
   }
 
   private Configuration getShuffleTaskConfiguration(final int stageSequence, final String computeTaskId) {

@@ -19,6 +19,7 @@ import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
@@ -108,7 +109,11 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
 
     for (final String slaveId : slaveIds) {
       LOG.log(Level.INFO, "Sending a message to {0}", slaveId);
-      aggregationMaster.send(AggregationExampleDriver.AGGREGATION_CLIENT_ID, slaveId, codec.encode(MSG_FROM_DRIVER));
+      try {
+        aggregationMaster.send(AggregationExampleDriver.AGGREGATION_CLIENT_ID, slaveId, codec.encode(MSG_FROM_DRIVER));
+      } catch (final NetworkException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }
