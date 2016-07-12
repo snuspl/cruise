@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.snu.cay.common.metric.*;
@@ -37,6 +36,7 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import static edu.snu.cay.dolphin.async.metric.WorkerConstants.KEY_WORKER_COMPUTE_TIME;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
@@ -64,7 +64,6 @@ final class NMFWorker implements Worker {
   private final boolean printMatrices;
   private final int logPeriod;
   private final NMFModelGenerator modelGenerator;
-  private final ArrayList<Integer> keys;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
 
@@ -120,7 +119,6 @@ final class NMFWorker implements Worker {
     this.metricsHandler = metricsHandler;
     this.metricsMsgSender = metricsMsgSender;
 
-    this.keys = Lists.newArrayList();
     this.rMatrix = Maps.newHashMap();
     this.gradients = Maps.newHashMap();
 
@@ -146,15 +144,13 @@ final class NMFWorker implements Worker {
 
     memoryStore.putList(dataKeys, dataValues);
 
-    final Set<Integer> keySet = Sets.newTreeSet();
+    final Set<Integer> keys = new HashSet<>();
     // aggregate column indices
     for (final NMFData datum : dataValues) {
       for (final Pair<Integer, Double> column : datum.getColumns()) {
-        keySet.add(column.getFirst());
+        keys.add(column.getFirst());
       }
     }
-    keys.ensureCapacity(keySet.size());
-    keys.addAll(keySet);
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Batch size = {0}", batchSize);
@@ -162,18 +158,22 @@ final class NMFWorker implements Worker {
     LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
   }
 
+  /**
+   * @param dataValues Dataset assigned to this worker
+   * @return Keys to send pull requests, which are determined by ratings of NMFData.
+   */
   private List<Integer> getKeys(final Collection<NMFData> dataValues) {
-    final List<Integer> keys2 = new ArrayList<>();
+    final List<Integer> keys = new ArrayList<>();
     final Set<Integer> keySet = Sets.newTreeSet();
     // aggregate column indices
     for (final NMFData datum : dataValues) {
-      for (final Pair<Integer, Double> column : datum.getColumns()) {
-        keySet.add(column.getFirst());
-      }
+      keySet.addAll(
+          datum.getColumns()
+              .stream()
+              .map(Pair::getFirst)
+              .collect(Collectors.toList()));
     }
-    keys.ensureCapacity(keySet.size());
-    keys.addAll(keySet);
-    return keys2;
+    return keys;
 
   }
 
