@@ -25,7 +25,6 @@ import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.ps.PSParameters;
-import edu.snu.cay.services.ps.common.resolver.ServerId;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
@@ -77,7 +76,6 @@ public final class DynamicParameterServerTest {
   @Before
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(ServerId.class, SERVER_ID_PREFIX + 0)
         .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + 0)
         .bindNamedParameter(PSParameters.KeyCodecName.class, IntegerCodec.class)
         .bindNamedParameter(PSParameters.ValueCodecName.class, IntegerCodec.class)
