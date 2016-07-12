@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
+import com.google.common.base.Ticker;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -23,6 +24,7 @@ import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
+import edu.snu.cay.services.ps.common.Statistics;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
@@ -104,12 +106,20 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    */
   private final InjectionFuture<WorkerMsgSender<K, P>> sender;
 
+  private final long logPeriod;
+  private final Statistics[] pushStats;
+  private final Statistics[] encodeStats;
+  private final Statistics[] pullStats;
+  private final long[] startTimes;
+  private final Ticker ticker = Ticker.systemTicker();
+
   @Inject
   private ParameterWorkerImpl(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
                               @Parameter(WorkerQueueSize.class) final int queueSize,
                               @Parameter(WorkerExpireTimeout.class) final long expireTimeout,
                               @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
+                              @Parameter(WorkerLogPeriod.class) final long logPeriod,
                               final ParameterUpdater<K, P, V> parameterUpdater,
                               final ServerResolver serverResolver,
                               final InjectionFuture<WorkerMsgSender<K, P>> sender) {
@@ -120,6 +130,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     this.serverResolver = serverResolver;
     this.sender = sender;
     this.pendingPulls = new ConcurrentHashMap<>();
+    this.pullStats = Statistics.newInstances(numThreads);
     this.threadPool = Executors.newFixedThreadPool(numThreads);
     this.threads = initThreads();
     this.encodedKeyCache = CacheBuilder.newBuilder()
@@ -130,6 +141,15 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
             return new EncodedKey<>(key, keyCodec);
           }
         });
+    this.logPeriod = TimeUnit.NANOSECONDS.convert(logPeriod, TimeUnit.MILLISECONDS);
+    this.pushStats = Statistics.newInstances(numThreads);
+    this.encodeStats = Statistics.newInstances(numThreads);
+    this.startTimes = new long[numThreads];
+    final long currentTime = ticker.read();
+    for (int i = 0; i < numThreads; ++i) {
+      startTimes[i] = currentTime;
+    }
+    LOG.log(Level.INFO, "Parameter worker log period = {0} ms", logPeriod);
   }
 
   /**
@@ -140,7 +160,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
     final WorkerThread<K, P, V>[] initialized = new WorkerThread[numThreads];
     for (int i = 0; i < numThreads; i++) {
-      initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize, expireTimeout);
+      initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize, expireTimeout, pullStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -161,7 +181,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   public void push(final EncodedKey<K> encodedKey, final P preValue) {
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
-    threads[threadId].enqueue(new PushOp(encodedKey, preValue));
+    threads[threadId].enqueue(new PushOp(encodedKey, preValue, threadId));
   }
 
   @Override
@@ -296,6 +316,22 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     }
   }
 
+  private void printStatistics(final int threadId, final long elapsedTime) {
+    final Statistics pushStat = pushStats[threadId];
+    final Statistics encodeStat = encodeStats[threadId];
+    final Statistics pullStat = pullStats[threadId];
+    LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Worker Thread Id: {1}, PS Worker Push Avg: {2}, " +
+        "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
+        "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
+        new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
+            String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
+            String.format("%g", encodeStat.sum()), String.format("%g", pullStat.avg()),
+            String.format("%g", pullStat.sum()), String.format("%g", pullStat.count())});
+    startTimes[threadId] = ticker.read();
+    pushStat.reset();
+    encodeStat.reset();
+  }
+
   /**
    * A generic operation; operations are queued at each Partition.
    */
@@ -336,10 +372,12 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
     private final EncodedKey<K> encodedKey;
     private final P preValue;
+    private final int threadId;
 
-    public PushOp(final EncodedKey<K> encodedKey, final P preValue) {
+    public PushOp(final EncodedKey<K> encodedKey, final P preValue, final int threadId) {
       this.encodedKey = encodedKey;
       this.preValue = preValue;
+      this.threadId = threadId;
     }
 
     /**
@@ -349,6 +387,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      */
     @Override
     public void apply(final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache) {
+      final long pushStartTime = ticker.read();
       final Wrapped<V> wrapped = kvCache.getIfPresent(encodedKey);
 
       // If it exists, update the local value, without updating the cache's write time
@@ -376,7 +415,17 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
             new Object[]{encodedKey.getKey(), encodedKey.getHash()});
 
         try {
+          final long encodeStartTime = ticker.read();
           sender.get().sendPushMsg(serverId, encodedKey, preValue);
+
+          // Can reach here only when sendPushMsg succeeds.
+          final long endTime = ticker.read();
+          pushStats[threadId].put(endTime - pushStartTime);
+          encodeStats[threadId].put(endTime - encodeStartTime);
+          final long elapsedTime = endTime - startTimes[threadId];
+          if (logPeriod > 0 && elapsedTime > logPeriod) {
+            printStatistics(threadId, elapsedTime);
+          }
         } catch (final NetworkException e) {
           LOG.log(Level.FINE, "NetworkException while sending push msg. Do retry", e);
           continue;
@@ -457,6 +506,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final BlockingQueue<Op<K, V>> queue;
     private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
     private final int drainSize; // Max number of operations to drain per iteration.
+    private final Ticker ticker = Ticker.systemTicker();
 
     private volatile boolean close = false;
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
@@ -465,7 +515,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                         final ServerResolver serverResolver,
                         final InjectionFuture<WorkerMsgSender<K, P>> sender,
                         final int queueSize,
-                        final long expireTimeout) {
+                        final long expireTimeout,
+                        final Statistics pullStat) {
       kvCache = CacheBuilder.newBuilder()
           .concurrencyLevel(1)
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
@@ -492,7 +543,9 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                     new Object[]{encodedKey.getKey(), encodedKey.getHash()});
 
                 try {
+                  final long beginTick = ticker.read();
                   sender.get().sendPullMsg(serverId, encodedKey);
+                  pullStat.put(ticker.read() - beginTick);
                 } catch (final NetworkException e) {
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
                   continue;

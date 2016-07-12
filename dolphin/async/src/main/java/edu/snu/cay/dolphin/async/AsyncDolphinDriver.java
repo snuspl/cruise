@@ -15,10 +15,12 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.common.metric.MetricsCollectionServiceConf;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher.*;
+import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgCodec;
+import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
-import edu.snu.cay.dolphin.async.metric.MetricsCollectionService;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
@@ -37,6 +39,8 @@ import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
+import edu.snu.cay.services.ps.metric.ServerMetricsMsgCodec;
+import edu.snu.cay.services.ps.metric.ServerMetricsMsgSender;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import edu.snu.cay.utils.StateMachine;
@@ -270,8 +274,9 @@ public final class AsyncDolphinDriver {
   /**
    * Injectable constructor.
    *
-   * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestrator} and
-   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandler} hold references to the same
+   * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestrator},
+   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForWorker}, and
+   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForServer} hold references to the same
    * {@link MetricsHub} instance.
    */
   @Inject
@@ -469,13 +474,16 @@ public final class AsyncDolphinDriver {
                 .set(ContextConfiguration.IDENTIFIER, contextId)
                 .build(),
             psDriver.getServerContextConfiguration(),
-            serverEMWrapper.getConf().getContextConfiguration());
+            serverEMWrapper.getConf().getContextConfiguration(),
+            aggregationManager.getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getServerServiceConfiguration(contextId),
             Tang.Factory.getTang().newConfigurationBuilder(
                 serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
-                .build());
+                .build(),
+            aggregationManager.getServiceConfigurationWithoutNameResolver(),
+            getMetricsCollectionServiceConfForServer());
 
         final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
         try {
@@ -532,7 +540,7 @@ public final class AsyncDolphinDriver {
             psDriver.getWorkerServiceConfiguration(contextId),
             getEMServiceConfForWorker(contextId, addedEval),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
-            MetricsCollectionService.getServiceConfiguration());
+            getMetricsCollectionServiceConfForWorker());
         final Configuration traceConf = traceParameters.getConfiguration();
 
         final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -543,6 +551,30 @@ public final class AsyncDolphinDriver {
             Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, workerConf, emWorkerClientConf));
       }
     };
+  }
+
+  /**
+   * Returns server-side Configuration for MetricsCollectionService by binding required parameters.
+   */
+  private Configuration getMetricsCollectionServiceConfForServer() {
+    final MetricsCollectionServiceConf conf = MetricsCollectionServiceConf.newBuilder()
+        .setMetricsHandlerClass(ServerMetricsMsgSender.class)
+        .setMetricsMsgSenderClass(ServerMetricsMsgSender.class)
+        .setMetricsMsgCodecClass(ServerMetricsMsgCodec.class)
+        .build();
+    return conf.getConfiguration();
+  }
+
+  /**
+   * Returns worker-side Configuration for MetricsCollectionService by binding required parameters.
+   */
+  private Configuration getMetricsCollectionServiceConfForWorker() {
+    final MetricsCollectionServiceConf conf = MetricsCollectionServiceConf.newBuilder()
+        .setMetricsHandlerClass(WorkerMetricsMsgSender.class)
+        .setMetricsMsgSenderClass(WorkerMetricsMsgSender.class)
+        .setMetricsMsgCodecClass(WorkerMetricsMsgCodec.class)
+        .build();
+    return conf.getConfiguration();
   }
 
   /**

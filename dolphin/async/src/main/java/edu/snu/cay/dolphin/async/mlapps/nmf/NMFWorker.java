@@ -18,17 +18,14 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import edu.snu.cay.dolphin.async.metric.MetricsMessageSender;
+import edu.snu.cay.common.metric.*;
+import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.metric.Tracer;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.common.metric.InsertableMetricTracker;
-import edu.snu.cay.common.metric.MetricException;
-import edu.snu.cay.common.metric.MetricTracker;
-import edu.snu.cay.common.metric.MetricsCollector;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -41,7 +38,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.metric.MetricKeys.WORKER_COMPUTE_TIME;
+import static edu.snu.cay.dolphin.async.metric.WorkerConstants.KEY_WORKER_COMPUTE_TIME;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
 /**
@@ -77,7 +74,9 @@ final class NMFWorker implements Worker {
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsCollector metricsCollector;
   private final InsertableMetricTracker insertableMetricTracker;
-  private final MetricsMessageSender metricsMessageSender;
+  private final MetricsHandler metricsHandler;
+  private final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender;
+
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -102,7 +101,8 @@ final class NMFWorker implements Worker {
                     final MemoryStore<Long> memoryStore,
                     final MetricsCollector metricsCollector,
                     final InsertableMetricTracker insertableMetricTracker,
-                    final MetricsMessageSender metricsMessageSender) {
+                    final MetricsHandler metricsHandler,
+                    final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.vectorFactory = vectorFactory;
     this.dataParser = dataParser;
@@ -117,7 +117,8 @@ final class NMFWorker implements Worker {
     this.memoryStore = memoryStore;
     this.metricsCollector = metricsCollector;
     this.insertableMetricTracker = insertableMetricTracker;
-    this.metricsMessageSender = metricsMessageSender;
+    this.metricsHandler = metricsHandler;
+    this.metricsMsgSender = metricsMsgSender;
 
     this.keys = Lists.newArrayList();
     this.rMatrix = Maps.newHashMap();
@@ -202,20 +203,20 @@ final class NMFWorker implements Worker {
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
+      insertableMetricTracker.put(KEY_WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
+      final Metrics metrics = metricsHandler.getMetrics();
+      final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()
+          .setMetrics(metrics)
+          .setIteration(iteration)
+          .setNumDataBlocks(numDataBlocks)
+          .build();
+      LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+
+      metricsMsgSender.send(metricsMessage);
     } catch (final MetricException e) {
       throw new RuntimeException(e);
     }
-    metricsMessageSender.setWorkerMsg(getWorkerMsg(numDataBlocks)).send();
-  }
-
-  private WorkerMsg getWorkerMsg(final int numDataBlocks) {
-    final WorkerMsg workerMsg = WorkerMsg.newBuilder()
-        .setIteration(iteration)
-        .setNumDataBlocks(numDataBlocks)
-        .build();
-    return workerMsg;
   }
 
   @Override

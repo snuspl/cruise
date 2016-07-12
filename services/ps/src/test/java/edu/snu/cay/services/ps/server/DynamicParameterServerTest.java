@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.ps.server;
 
+import edu.snu.cay.common.metric.MetricsHandler;
+import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
@@ -43,6 +45,7 @@ import org.htrace.SpanReceiver;
 import org.htrace.TraceInfo;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -87,6 +90,8 @@ public final class DynamicParameterServerTest {
         .bindNamedParameter(NumInitialEvals.class, "1")
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
+    injector.bindVolatileInstance(MetricsHandler.class, Mockito.mock(MetricsHandler.class));
+    injector.bindVolatileInstance(MetricsMsgSender.class, Mockito.mock(MetricsMsgSender.class));
     injector.bindVolatileInstance(ParameterUpdater.class, new ParameterUpdater<Integer, Integer, Integer>() {
       @Override
       public Integer process(final Integer key, final Integer preValue) {

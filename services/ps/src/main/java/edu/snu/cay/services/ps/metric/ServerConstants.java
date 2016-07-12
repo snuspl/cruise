@@ -13,20 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-[
+package edu.snu.cay.services.ps.metric;
+
 /**
- * A message containing worker-side metrics and other Task-specific information.
+ * Constants for PS metrics, which consists of client name of AggregationService and
+ * Keys to identify metrics.
  */
-{
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
-  "type": "record",
-  "name": "WorkerMetricsMsg",
-  "fields":
-  [
-    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
-    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
-    {"name": "iteration", "type": "int"},
-    {"name": "numDataBlocks", "type": "int"}
-  ]
+public final class ServerConstants {
+
+  /**
+   * Should not be instantiated.
+   */
+  private ServerConstants() {
+  }
+
+  public static final String AGGREGATION_CLIENT_NAME =
+      "METRIC_COLLECTION_SERVICE_FOR_SERVER";
+
+  // Keys to get/set the metrics in the server.
+  public static final String KEY_SERVER_PROCESSING_UNIT =
+      "METRIC_SERVER_PROCESSING_UNIT";
 }
-]
