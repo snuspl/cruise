@@ -162,6 +162,21 @@ final class NMFWorker implements Worker {
     LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
   }
 
+  private List<Integer> getKeys(final Collection<NMFData> dataValues) {
+    final List<Integer> keys2 = new ArrayList<>();
+    final Set<Integer> keySet = Sets.newTreeSet();
+    // aggregate column indices
+    for (final NMFData datum : dataValues) {
+      for (final Pair<Integer, Double> column : datum.getColumns()) {
+        keySet.add(column.getFirst());
+      }
+    }
+    keys.ensureCapacity(keySet.size());
+    keys.addAll(keySet);
+    return keys2;
+
+  }
+
   private void saveRMatrixGradient(final int key, final Vector newGrad) {
     final Vector grad = gradients.get(key);
     if (grad == null) {
@@ -186,13 +201,13 @@ final class NMFWorker implements Worker {
     gradients.clear();
   }
 
-  private void pullRMatrix() {
+  private void pullRMatrix(final List<Integer> pKeys) {
     pullTracer.startTimer();
-    final List<Vector> vectors = parameterWorker.pull(keys);
-    for (int i = 0; i < keys.size(); ++i) {
-      rMatrix.put(keys.get(i), vectors.get(i));
+    final List<Vector> vectors = parameterWorker.pull(pKeys);
+    for (int i = 0; i < pKeys.size(); ++i) {
+      rMatrix.put(pKeys.get(i), vectors.get(i));
     }
-    pullTracer.recordTime(keys.size());
+    pullTracer.recordTime(pKeys.size());
   }
 
   private void resetTracers() {
@@ -237,7 +252,7 @@ final class NMFWorker implements Worker {
     final Map<Long, NMFData> workloadMap = memoryStore.getAll();
     final Collection<NMFData> workload = workloadMap.values();
 
-    pullRMatrix();
+    pullRMatrix(getKeys(workload));
 
     for (final NMFData datum : workload) {
       computeTracer.startTimer();
@@ -287,7 +302,7 @@ final class NMFWorker implements Worker {
 
       if (batchSize > 0 && rowCount % batchSize == 0) {
         pushAndClearGradients();
-        pullRMatrix();
+        pullRMatrix(getKeys(workload));
       }
 
       if (logPeriod > 0 && rowCount % logPeriod == 0) {
@@ -344,7 +359,7 @@ final class NMFWorker implements Worker {
     LOG.log(Level.INFO, lsb.toString());
 
     // print transposed R matrix
-    pullRMatrix();
+    pullRMatrix(getKeys(workload));
     final StringBuilder rsb = new StringBuilder();
     for (final Map.Entry<Integer, Vector> entry : rMatrix.entrySet()) {
       rsb.append(String.format("R(*, %d):", entry.getKey()));
