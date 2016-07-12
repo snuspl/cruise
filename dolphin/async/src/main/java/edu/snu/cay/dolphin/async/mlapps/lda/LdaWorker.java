@@ -16,10 +16,15 @@
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,22 +41,38 @@ final class LdaWorker implements Worker {
   private final LdaBatchParameterWorker batchWorker;
   private final SparseLdaSampler sampler;
   private final int numVocabs;
-  private List<Document> documents;
+
+  private final DataIdFactory<Long> idFactory;
+  private final MemoryStore<Long> memoryStore;
 
   @Inject
   private LdaWorker(final LdaDataParser dataParser,
                     final LdaBatchParameterWorker batchWorker,
                     final SparseLdaSampler sampler,
+                    final DataIdFactory<Long> idFactory,
+                    final MemoryStore<Long> memoryStore,
                     @Parameter(LdaREEF.NumVocabs.class) final int numVocabs) {
     this.dataParser = dataParser;
     this.batchWorker = batchWorker;
     this.sampler = sampler;
+    this.idFactory = idFactory;
+    this.memoryStore = memoryStore;
     this.numVocabs = numVocabs;
   }
 
   @Override
   public void initialize() {
-    this.documents = dataParser.parse();
+    final List<Document> documents = dataParser.parse();
+    final List<Long> dataKeys;
+
+    try {
+      dataKeys = idFactory.getIds(documents.size());
+    } catch (final IdGenerationException e) {
+      throw new RuntimeException(e);
+    }
+
+    memoryStore.putList(dataKeys, documents);
+
     for (final Document document : documents) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
@@ -69,11 +90,14 @@ final class LdaWorker implements Worker {
   public void run() {
     LOG.log(Level.INFO, "Iteration Started");
 
-    final int numDocuments = documents.size();
+    final Map<Long, Document> workloadMap = memoryStore.getAll();
+    final Collection<Document> workload = workloadMap.values();
+
+    final int numDocuments = workload.size();
     final int countForLogging = numDocuments / 3;
     int numSampledDocuments = 0;
 
-    for (final Document document : documents) {
+    for (final Document document : workload) {
       sampler.sample(document);
       numSampledDocuments++;
 
