@@ -28,8 +28,8 @@ import java.util.logging.Logger;
 /**
  * A MetricsHandler implementation that sends a ServerMetricsMsg via Aggregation Service.
  * The metrics are set via MetricsHandler. The other message parts must be
- * set via the setters for each worker iteration or server window. The ServerMetricsMsg is
- * built when sending the network message. As it builds the message incrementally,
+ * set via the setters for each worker iteration or server window.
+ * The built MetricsMessage is passed through {@code send()} when sending the network message.
  */
 @NotThreadSafe
 public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgSender<ServerMetricsMsg> {

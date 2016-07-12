@@ -29,8 +29,8 @@ import java.util.logging.Logger;
 /**
  * A MetricsHandler implementation that sends a MetricsMessage via Aggregation Service.
  * The metrics are set via MetricsHandler. The other message parts must be
- * set via the setters for each Dolphin iteration. The MetricsMessage is
- * built when sending the network message. As it builds the message incrementally,
+ * set at Task code via the setters for each Dolphin iteration.
+ * The built MetricsMessage is passed through {@code send()} when sending the network message.
  */
 @NotThreadSafe
 public final class MetricsMessageSender implements MetricsHandler, MetricsMsgSender<MetricsMessage> {

@@ -269,8 +269,9 @@ public final class AsyncDolphinDriver {
   /**
    * Injectable constructor.
    *
-   * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestrator} and
-   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForWorker} hold references to the same
+   * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestrator},
+   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForWorker}, and
+   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForServer} hold references to the same
    * {@link MetricsHub} instance.
    */
   @Inject
