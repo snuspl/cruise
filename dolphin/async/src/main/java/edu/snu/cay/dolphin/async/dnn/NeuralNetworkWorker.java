@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.dnn;
 
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.WorkerSynchronizer;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkData;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkDataParser;
@@ -41,7 +40,6 @@ final class NeuralNetworkWorker implements Worker {
 
   private static final Logger LOG = Logger.getLogger(NeuralNetworkWorker.class.getName());
 
-  private final WorkerSynchronizer workerSynchronizer;
   private final NeuralNetworkDataParser dataParser;
   private final NeuralNetwork neuralNetwork;
   private final Validator crossValidator;
@@ -53,19 +51,16 @@ final class NeuralNetworkWorker implements Worker {
   private int iteration = 0;
 
   /**
-   * @param workerSynchronizer the synchronizer for neural network workers
    * @param dataParser the parser that transforms input data into {@link NeuralNetworkData} instances
    * @param neuralNetwork the neural network model
    * @param idFactory the factory that generates ids assigned to neural network data stored in {@link MemoryStore}
    * @param memoryStore the key-value store for neural network data
    */
   @Inject
-  private NeuralNetworkWorker(final WorkerSynchronizer workerSynchronizer,
-                              final NeuralNetworkDataParser dataParser,
+  private NeuralNetworkWorker(final NeuralNetworkDataParser dataParser,
                               final NeuralNetwork neuralNetwork,
                               final DataIdFactory<Long> idFactory,
                               final MemoryStore<Long> memoryStore) {
-    this.workerSynchronizer = workerSynchronizer;
     this.dataParser = dataParser;
     this.neuralNetwork = neuralNetwork;
     this.trainingValidator = new Validator(neuralNetwork);
@@ -87,8 +82,6 @@ final class NeuralNetworkWorker implements Worker {
     memoryStore.putList(dataKeys, dataValues);
 
     LOG.log(Level.INFO, "Number of input instances = {0}", dataValues.size());
-
-    workerSynchronizer.globalBarrier();
   }
 
   @Override

@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.WorkerSynchronizer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.io.network.util.Pair;
@@ -93,16 +92,10 @@ final class LassoWorker implements Worker {
    */
   private final ParameterWorker<Integer, Double, Double> worker;
 
-  /**
-   * Synchronization component for setting a global barrier across workers.
-   */
-  private final WorkerSynchronizer synchronizer;
-
   @Inject
   private LassoWorker(final LassoParser lassoParser,
                       @Parameter(LassoREEF.Lambda.class) final double lambda,
-                      final ParameterWorker<Integer, Double, Double> worker,
-                      final WorkerSynchronizer synchronizer) {
+                      final ParameterWorker<Integer, Double, Double> worker) {
     final Pair<Vector[], Vector> pair = lassoParser.parse();
     this.vecXArray = pair.getFirst();
     this.vecY = pair.getSecond();
@@ -111,7 +104,6 @@ final class LassoWorker implements Worker {
     this.x2x = HashBasedTable.create();
     this.random = new Random();
     this.worker = worker;
-    this.synchronizer = synchronizer;
   }
 
   /**
@@ -133,8 +125,6 @@ final class LassoWorker implements Worker {
     for (int index = 0; index < vecXArray.length; index++) {
       x2y[index] = vecXArray[index].dot(vecY);
     }
-
-    synchronizer.globalBarrier();
   }
 
   /**

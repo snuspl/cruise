@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.WorkerSynchronizer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -36,7 +35,6 @@ final class LdaWorker implements Worker {
   private final LdaDataParser dataParser;
   private final LdaBatchParameterWorker batchWorker;
   private final SparseLdaSampler sampler;
-  private final WorkerSynchronizer synchronizer;
   private final int numVocabs;
   private List<Document> documents;
 
@@ -44,12 +42,10 @@ final class LdaWorker implements Worker {
   private LdaWorker(final LdaDataParser dataParser,
                     final LdaBatchParameterWorker batchWorker,
                     final SparseLdaSampler sampler,
-                    final WorkerSynchronizer synchronizer,
                     @Parameter(LdaREEF.NumVocabs.class) final int numVocabs) {
     this.dataParser = dataParser;
     this.batchWorker = batchWorker;
     this.sampler = sampler;
-    this.synchronizer = synchronizer;
     this.numVocabs = numVocabs;
   }
 
@@ -67,7 +63,6 @@ final class LdaWorker implements Worker {
     }
 
     LOG.log(Level.INFO, "All random topic assignments are updated");
-    synchronizer.globalBarrier();
   }
 
   @Override

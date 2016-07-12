@@ -20,7 +20,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.snu.cay.dolphin.async.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.WorkerSynchronizer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
 import edu.snu.cay.common.math.linalg.Vector;
@@ -55,7 +54,6 @@ final class NMFWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(NMFWorker.class.getName());
 
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
-  private final WorkerSynchronizer workerSynchronizer;
   private final VectorFactory vectorFactory;
   private final NMFDataParser dataParser;
   private final int rank;
@@ -92,7 +90,6 @@ final class NMFWorker implements Worker {
   @Inject
   private NMFWorker(final NMFDataParser dataParser,
                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
-                    final WorkerSynchronizer workerSynchronizer,
                     final VectorFactory vectorFactory,
                     @Parameter(Rank.class) final int rank,
                     @Parameter(StepSize.class) final double stepSize,
@@ -107,7 +104,6 @@ final class NMFWorker implements Worker {
                     final InsertableMetricTracker insertableMetricTracker,
                     final MetricsMessageSender metricsMessageSender) {
     this.parameterWorker = parameterWorker;
-    this.workerSynchronizer = workerSynchronizer;
     this.vectorFactory = vectorFactory;
     this.dataParser = dataParser;
     this.rank = rank;
@@ -163,8 +159,6 @@ final class NMFWorker implements Worker {
     LOG.log(Level.INFO, "Batch size = {0}", batchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
     LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
-
-    workerSynchronizer.globalBarrier();
   }
 
   private void saveRMatrixGradient(final int key, final Vector newGrad) {
