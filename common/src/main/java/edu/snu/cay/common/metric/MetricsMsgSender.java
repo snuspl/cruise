@@ -18,25 +18,20 @@
  */
 package edu.snu.cay.common.metric;
 
-import edu.snu.cay.common.metric.avro.Metrics;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.wake.EventHandler;
 
 /**
- * Receives Metrics from MetricsCollector, and passes the collected Metrics
- * to the one who wants to handle them. For example, Tasks may want to include
- * information about iteration, number of data, when sending Metrics.
+ * Sends MetricsMsg that consists of raw metrics and additional information
+ * such as iteration number.
+ * @param <T> Type of message specified by client of MetricsCollectionService.
  */
 @EvaluatorSide
-public interface MetricsHandler extends EventHandler<Metrics> {
+public interface MetricsMsgSender<T> {
 
   /**
-   * Receives the Metrics, which consist of mapping between {@code String} type keys and {@code Double} type values.
+   * Sends the message.
+   * @param message The message containing additional information that
+   *                client wants to send together with raw metrics.
    */
-  void onNext(Metrics metrics);
-
-  /**
-   * @return Metrics received in {@link #onNext(Metrics)}.
-   */
-  Metrics getMetrics();
+  void send(T message);
 }

@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.ps.server;
 
+import edu.snu.cay.common.metric.MetricsHandler;
+import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.resolver.SingleNodeServerResolver;
@@ -32,6 +34,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicMarkableReference;
@@ -64,6 +67,8 @@ public final class StaticParameterServerTest {
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(ServerSideReplySender.class, mock(ServerSideReplySender.class));
+    injector.bindVolatileInstance(MetricsHandler.class, Mockito.mock(MetricsHandler.class));
+    injector.bindVolatileInstance(MetricsMsgSender.class, Mockito.mock(MetricsMsgSender.class));
     injector.bindVolatileInstance(ParameterUpdater.class, new ParameterUpdater<Integer, Integer, Integer>() {
       @Override
       public Integer process(final Integer key, final Integer preValue) {

@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.ps.server;
 
+import edu.snu.cay.common.metric.MetricsHandler;
+import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -23,7 +25,6 @@ import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.ps.PSParameters;
-//import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.resolver.ServerId;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
 import edu.snu.cay.services.ps.ns.EndpointId;
@@ -91,10 +92,11 @@ public final class DynamicParameterServerTest {
         .bindNamedParameter(NumInitialEvals.class, "1")
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
-
     injector.bindVolatileInstance(ServerSideReplySender.class, mock(ServerSideReplySender.class));
     injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
+    injector.bindVolatileInstance(MetricsHandler.class, mock(MetricsHandler.class));
+    injector.bindVolatileInstance(MetricsMsgSender.class, mock(MetricsMsgSender.class));
     injector.bindVolatileInstance(ParameterUpdater.class, new ParameterUpdater<Integer, Integer, Integer>() {
       @Override
       public Integer process(final Integer key, final Integer preValue) {

@@ -78,6 +78,7 @@
   "name": "MetricsMessage",
   "fields":
   [
+    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     {"name": "srcType", "type": {"type": "enum", "name": "SrcType",
         "symbols": ["Compute", "Controller"]}},
     {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.bsp.core.avro.IterationInfo"},

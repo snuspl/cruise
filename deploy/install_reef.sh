@@ -29,6 +29,11 @@ sudo apt-get install -y openjdk-7-jdk
 export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64/
 echo "export JAVA_HOME=$JAVA_HOME" >> ~/.profile
 
+# (Java 8 HotSpot)
+# sudo add-apt-repository ppa:webupd8team/java
+# sudo apt-get update
+# sudo apt-get install oracle-java8-installer
+
 # Install Hadoop
 cd /tmp
 wget http://apache.mirror.cdnetworks.com/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz

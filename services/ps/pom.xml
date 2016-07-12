@@ -80,6 +80,11 @@
       <artifactId>cay-utils</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
+   <dependency>
+      <groupId>${project.parent.groupId}</groupId>
+      <artifactId>cay-common</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
     <dependency>
       <groupId>${project.parent.groupId}.services</groupId>
       <artifactId>evaluator-manager</artifactId>
@@ -106,6 +111,9 @@
             <configuration>
               <sourceDirectory>${project.basedir}/src/main/avro</sourceDirectory>
               <outputDirectory>${project.basedir}/target/generated-sources/avro</outputDirectory>
+              <imports>
+                <import>${project.parent.basedir}/common/src/main/avro/metric.avsc</import>
+              </imports>
             </configuration>
           </execution>
         </executions>

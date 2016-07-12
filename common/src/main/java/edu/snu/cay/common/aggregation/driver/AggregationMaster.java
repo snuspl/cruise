@@ -59,8 +59,9 @@ public final class AggregationMaster {
    * @param clientClassName class name of the aggregation service client
    * @param slaveId an end point id of the slave
    * @param data data which is encoded as a byte array
+   * @throws NetworkException when target slave has been unregistered
    */
-  public void send(final String clientClassName, final String slaveId, final byte[] data) {
+  public void send(final String clientClassName, final String slaveId, final byte[] data) throws NetworkException {
     final AggregationMessage msg = AggregationMessage.newBuilder()
         .setSourceId(aggregationNetworkSetup.get().getMyId().toString())
         .setClientClassName(clientClassName)
@@ -68,11 +69,7 @@ public final class AggregationMaster {
         .build();
     final Connection<AggregationMessage> conn = aggregationNetworkSetup.get().getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(slaveId));
-    try {
-      conn.open();
-      conn.write(msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException during AggregationMaster.send()", e);
-    }
+    conn.open();
+    conn.write(msg);
   }
 }

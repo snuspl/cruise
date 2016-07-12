@@ -15,15 +15,11 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
-import edu.snu.cay.common.metric.InsertableMetricTracker;
-import edu.snu.cay.common.metric.MetricException;
-import edu.snu.cay.common.metric.MetricTracker;
-import edu.snu.cay.common.metric.MetricsCollector;
-import edu.snu.cay.dolphin.async.metric.MetricsMessageSender;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
+import edu.snu.cay.common.metric.*;
+import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
 import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.*;
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.WorkerSynchronizer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
@@ -40,7 +36,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.metric.MetricKeys.WORKER_COMPUTE_TIME;
+import static edu.snu.cay.dolphin.async.metric.WorkerConstants.KEY_WORKER_COMPUTE_TIME;
 
 /**
  * {@link Worker} class for the MLRREEF application.
@@ -54,11 +50,6 @@ final class MLRWorker implements Worker {
    * Parser object for fetching and parsing the input dataset.
    */
   private final MLRParser mlrParser;
-
-  /**
-   * Synchronization component for setting a global barrier across workers.
-   */
-  private final WorkerSynchronizer synchronizer;
 
   /**
    * Worker object used to interact with the parameter server.
@@ -147,14 +138,14 @@ final class MLRWorker implements Worker {
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsCollector metricsCollector;
   private final InsertableMetricTracker insertableMetricTracker;
-  private final MetricsMessageSender metricsMessageSender;
+  private final MetricsHandler metricsHandler;
+  private final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender;
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
 
   @Inject
   private MLRWorker(final MLRParser mlrParser,
-                    final WorkerSynchronizer synchronizer,
                     final ParameterWorker<Integer, Vector, Vector> worker,
                     @Parameter(NumClasses.class) final int numClasses,
                     @Parameter(NumFeatures.class) final int numFeatures,
@@ -171,10 +162,10 @@ final class MLRWorker implements Worker {
                     final MemoryStore<Long> memoryStore,
                     final MetricsCollector metricsCollector,
                     final InsertableMetricTracker insertableMetricTracker,
-                    final MetricsMessageSender metricsMessageSender,
+                    final MetricsHandler metricsHandler,
+                    final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender,
                     final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
-    this.synchronizer = synchronizer;
     this.worker = worker;
     this.numClasses = numClasses;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
@@ -196,7 +187,8 @@ final class MLRWorker implements Worker {
     this.numBatchPerLossLog = numBatchPerLossLog;
     this.metricsCollector = metricsCollector;
     this.insertableMetricTracker = insertableMetricTracker;
-    this.metricsMessageSender = metricsMessageSender;
+    this.metricsHandler = metricsHandler;
+    this.metricsMsgSender = metricsMsgSender;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
 
@@ -243,9 +235,6 @@ final class MLRWorker implements Worker {
     if (dataValues.size() < trainErrorDatasetSize) {
       LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDatasetSize);
     }
-
-    // all workers should start at the same time
-    synchronizer.globalBarrier();
   }
 
   private void resetTracers() {
@@ -361,8 +350,6 @@ final class MLRWorker implements Worker {
   @Override
   public void cleanup() {
     final float waitStart = System.currentTimeMillis();
-    synchronizer.globalBarrier();
-    final float cleanupStart = System.currentTimeMillis();
     resetTracers();
 
     pullModels();
@@ -381,10 +368,10 @@ final class MLRWorker implements Worker {
     LOG.log(Level.INFO, "Number of instances: {0}", entireDatasetSize);
     LOG.log(Level.INFO, "Prediction accuracy on training dataset: {0}", lossRegLossAccuracy.getThird());
     LOG.log(Level.INFO, "Cleanup Samples: {0}, Avg Comp Per Row: {1}, Sum Comp: {2}, Avg Pull: {3}, Sum Pull: {4}, " +
-            "Elapsed Time: {5}, Wait Time: {6}, Sample Loss Avg: {7}",
+            "Elapsed Time: {5}, Sample Loss Avg: {6}",
         new Object[]{entireDatasetSize, computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(),
             pullTracer.avgTimePerRecord(), pullTracer.totalElapsedTime(),
-            cleanupEnd - waitStart, cleanupStart - waitStart, lossRegLossAccuracy.getFirst()});
+            cleanupEnd - waitStart, lossRegLossAccuracy.getFirst()});
   }
 
   private void pullModels() {
@@ -526,19 +513,20 @@ final class MLRWorker implements Worker {
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
+      insertableMetricTracker.put(KEY_WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
+
+      final Metrics metrics = metricsHandler.getMetrics();
+      final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()
+          .setMetrics(metrics)
+          .setIteration(iteration)
+          .setNumDataBlocks(numDataBlocks)
+          .build();
+      LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+
+      metricsMsgSender.send(metricsMessage);
     } catch (final MetricException e) {
       throw new RuntimeException(e);
     }
-    metricsMessageSender.setWorkerMsg(getWorkerMsg(numDataBlocks)).send();
-  }
-
-  private WorkerMsg getWorkerMsg(final int numDataBlocks) {
-    final WorkerMsg workerMsg = WorkerMsg.newBuilder()
-        .setIteration(iteration)
-        .setNumDataBlocks(numDataBlocks)
-        .build();
-    return workerMsg;
   }
 }

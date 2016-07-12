@@ -251,6 +251,10 @@ public final class BlockManager {
    * @return list of block ids that have been chosen.
    */
   synchronized List<Integer> chooseBlocksToMove(final String evalId, final int numBlocks) {
+    if (numBlocks <= 0) {
+      Collections.emptyList();
+    }
+
     final int storeId = getMemoryStoreId(evalId);
     final Set<Integer> blockIds = storeIdToBlockIds.get(storeId);
 
