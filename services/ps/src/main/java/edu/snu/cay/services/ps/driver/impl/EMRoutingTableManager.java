@@ -62,7 +62,7 @@ public final class EMRoutingTableManager {
   private final Set<String> waitingWorkers = new HashSet<>();
 
   /**
-   * The number of initial servers, which is used for deciding when to send the routing table to workers initially.
+   * The number of initial servers, which is for deciding when to send the routing table to workers at the beginning.
    */
   private final int numInitServers;
 
@@ -84,7 +84,7 @@ public final class EMRoutingTableManager {
    * Called when a Server instance based on EM is created. This method adds a relationship between
    * EM's MemoryStore ID and PS's NCS endpoint ID.
    * If all the initial servers are registered, it sends
-   * the PS server-side EM's routing table to all waiting ParameterWorkers.
+   * the PS server-side EM's routing table to all waiting {@code ParameterWorker}s.
    * @param storeId The MemoryStore id in EM.
    * @param endpointId The Endpoint id in PS.
    */
@@ -113,11 +113,12 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * Registers an worker, {@code workerId} to be notified about updates in the routing table.
-   * As a result of this method, it sends the PS server-side EM's routing table to an initiating ParameterWorker,
-   * if all the initial servers are registered: it means that the server-side EM is initialServersReady.
-   * Otherwise it puts worker id into a queue that will be processed by {@link #registerServer(int, String)}.
-   * @param workerId an worker id
+   * Registers a worker ({@code workerId}) to be notified about updates in the routing table.
+   * As a result of this method, it sends the PS server-side EM's routing table to the new {code ParameterWorker}
+   * if all the initial servers have been registered (i.e., {@code initialServersReady} is true for server-side EM).
+   * Otherwise it puts the worker id into a queue, so the worker will be notified
+   * when {@link #registerServer(int, String)} is called by all the initial servers.
+   * @param workerId Id of worker to be notified updates in routing table.
    */
   synchronized void registerWorker(final String workerId) {
     if (activeWorkerIds.isEmpty()) {
@@ -138,7 +139,7 @@ public final class EMRoutingTableManager {
   /**
    * Deregisters a worker, {@code workerId} when the worker stops working.
    * After invoking this method, the worker will not be notified with the further update of the routing table.
-   * @param workerId an worker id
+   * @param workerId Id of worker, who will not subscribe the notification any more.
    */
   synchronized void deregisterWorker(final String workerId) {
     activeWorkerIds.remove(workerId);
@@ -177,7 +178,7 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * Broadcasts update in routing tables of EM in Parameter Servers to all active Parameter Workers.
+   * Broadcasts update in routing tables of Server-side EM to all active {@code ParameterWorker}s.
    */
   private synchronized void broadcastMsg(final AvroPSMsg updateMsg) {
     for (final String workerId : activeWorkerIds) {
@@ -187,7 +188,7 @@ public final class EMRoutingTableManager {
 
   /**
    * A handler of EMRoutingTableUpdate.
-   * It broadcasts the update info to all active ParameterWorkers.
+   * It broadcasts the update info to all active {@code ParameterWorker}s.
    */
   private final class EMRoutingTableUpdateHandler implements EventHandler<EMRoutingTableUpdate> {
     @Override

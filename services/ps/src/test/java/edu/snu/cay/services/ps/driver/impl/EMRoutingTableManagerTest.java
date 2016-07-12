@@ -91,7 +91,7 @@ public final class EMRoutingTableManagerTest {
 
   /**
    * Tests whether RoutingTableManager broadcasts the initial routing table to workers,
-   * after it is initialized by registration of all servers.
+   * after all servers have been registered.
    */
   @Test(timeout = 20000)
   public void testInitializingWorkers() throws InterruptedException {
