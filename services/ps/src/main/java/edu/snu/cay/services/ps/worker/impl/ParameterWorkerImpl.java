@@ -276,9 +276,9 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     if (future != null) {
       future.setValue(value);
     } else {
-      // Because we use partitions, there can be at most one active pendingPull for a key.
-      // Thus, a null value should never appear.
-      throw new RuntimeException(String.format("Pending pull was not found for key %s", key));
+      // Because we assign each key to a dedicated thread, there can be at most one active pendingPull for a key.
+      // But it may happen if the worker retried due to the late response from the target server.
+      LOG.log(Level.WARNING, "Pending pull was not found for key {0}", key);
     }
   }
 
@@ -499,7 +499,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * We should further explore this trade-off with real ML workloads.
    */
   private static class WorkerThread<K, P, V> implements Runnable {
-    private static final int MAX_RETRY_COUNT = 10;
     private static final long QUEUE_TIMEOUT_MS = 3000;
 
     private final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache;
@@ -521,7 +520,73 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           .concurrencyLevel(1)
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
           .build(new CacheLoader<EncodedKey<K>, Wrapped<V>>() {
-            private static final long RETRY_INTERVAL_MS = 5000;
+            private static final int MAX_RETRY_COUNT = 20;
+            private static final long RETRY_INTERVAL_MS = 200;
+
+            /**
+             * Sends a pull msg for the {@code encodedKey} to the target server.
+             * @param encodedKey encoded key
+             * @return target server id
+             */
+            private String sendMsg(final EncodedKey<K> encodedKey) {
+              int retryCount = 0;
+              String serverId;
+
+              while (true) {
+                if (++retryCount > MAX_RETRY_COUNT) {
+                  throw new RuntimeException("Fail to send a pull msg");
+                }
+
+                // re-resolve server for every retry
+                // since an operation may throw NetworkException when routing table is obsolete
+                serverId = serverResolver.resolveServer(encodedKey.getHash());
+                LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
+                    new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
+
+                try {
+                  final long beginTick = ticker.read();
+                  sender.get().sendPullMsg(serverId, encodedKey);
+                  pullStat.put(ticker.read() - beginTick);
+                  break;
+                } catch (final NetworkException e) {
+                  LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
+                }
+              }
+
+              return serverId;
+            }
+
+            /**
+             * Waits until receiving the result from the server.
+             * @param future Pull future
+             * @param serverId server id
+             * @param encodedKey encoded key
+             * @return the value or null if the target server has been changed during wait.
+             */
+            private V waitResponse(final PullFuture<V> future, final String serverId,
+                                      final EncodedKey<K> encodedKey) {
+              int retryCount = 0;
+              V value;
+
+              while (true) {
+                if (++retryCount > MAX_RETRY_COUNT) {
+                  throw new RuntimeException("Fail to receive a value for pull");
+                }
+                value = future.getValue(RETRY_INTERVAL_MS);
+
+                if (value != null) {
+                  break;
+                }
+
+                final String newServerId = serverResolver.resolveServer(encodedKey.getHash());
+                if (!serverId.equals(newServerId)) {
+                  LOG.log(Level.INFO, "Target server has been changed while waiting for the response. Do retry");
+                  return null;
+                }
+              }
+
+              return value;
+            }
 
             @Override
             public Wrapped<V> load(final EncodedKey<K> encodedKey) {
@@ -529,30 +594,12 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
               pendingPulls.put(encodedKey.getKey(), future);
 
               V value = null;
-
-              int retryCount = 0;
               while (value == null) {
-                if (++retryCount > MAX_RETRY_COUNT) {
-                  throw new RuntimeException("Fail to load a value for pull");
-                }
+                // 1. try sending msg to server
+                final String serverId = sendMsg(encodedKey);
 
-                // re-resolve server for every retry
-                // since an operation may throw NetworkException when routing table is obsolete
-                final String serverId = serverResolver.resolveServer(encodedKey.getHash());
-                LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}",
-                    new Object[]{encodedKey.getKey(), encodedKey.getHash()});
-
-                try {
-                  final long beginTick = ticker.read();
-                  sender.get().sendPullMsg(serverId, encodedKey);
-                  pullStat.put(ticker.read() - beginTick);
-                } catch (final NetworkException e) {
-                  LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
-                  continue;
-                }
-
-                // if failed, future returns null and pull is retried in the while loop
-                value = future.getValue(RETRY_INTERVAL_MS);
+                // 2. wait until receives result from the server
+                value = waitResponse(future, serverId, encodedKey);
               }
 
               pendingPulls.remove(encodedKey.getKey());
