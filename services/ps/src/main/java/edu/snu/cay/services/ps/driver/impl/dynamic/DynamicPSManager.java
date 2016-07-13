@@ -28,6 +28,8 @@ import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
 import edu.snu.cay.services.ps.server.impl.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.impl.ServerSideReplySenderImpl;
+import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
+import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
@@ -37,10 +39,7 @@ import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
 import edu.snu.cay.services.ps.common.resolver.DynamicServerResolver;
 import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStopHandler;
-import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
-import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
-import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.worker.parameters.*;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -71,6 +70,9 @@ public final class DynamicPSManager implements PSManager {
   private final int serverQueueSize;
   private final long workerExpireTimeout;
   private final int workerKeyCacheSize;
+  private final long workerLogPeriod;
+  private final long serverLogPeriod;
+  private final long serverMetricsWindowMs;
 
   @Inject
   private DynamicPSManager(@Parameter(NumServers.class)final int numServers,
@@ -80,7 +82,10 @@ public final class DynamicPSManager implements PSManager {
                            @Parameter(WorkerQueueSize.class) final int workerQueueSize,
                            @Parameter(ServerQueueSize.class) final int serverQueueSize,
                            @Parameter(WorkerExpireTimeout.class) final long workerExpireTimeout,
-                           @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize) {
+                           @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize,
+                           @Parameter(ServerMetricsWindowMs.class) final long serverMetricsWindowMs,
+                           @Parameter(ServerLogPeriod.class) final long serverLogPeriod,
+                           @Parameter(WorkerLogPeriod.class) final long workerLogPeriod) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.workerNumThreads = workerNumThrs;
@@ -89,6 +94,9 @@ public final class DynamicPSManager implements PSManager {
     this.serverQueueSize = serverQueueSize;
     this.workerExpireTimeout = workerExpireTimeout;
     this.workerKeyCacheSize = workerKeyCacheSize;
+    this.workerLogPeriod = workerLogPeriod;
+    this.serverLogPeriod = serverLogPeriod;
+    this.serverMetricsWindowMs = serverMetricsWindowMs;
   }
 
   /**
@@ -113,6 +121,7 @@ public final class DynamicPSManager implements PSManager {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
+        .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
         .build();
   }
 
@@ -136,6 +145,8 @@ public final class DynamicPSManager implements PSManager {
             .bindNamedParameter(ServerNumThreads.class, Integer.toString(serverNumThreads))
             .bindNamedParameter(ServerQueueSize.class, Integer.toString(serverQueueSize))
             .bindImplementation(BlockResolver.class, HashBlockResolver.class)
+            .bindNamedParameter(ServerLogPeriod.class, Long.toString(serverLogPeriod))
+            .bindNamedParameter(ServerMetricsWindowMs.class, Long.toString(serverMetricsWindowMs))
             .build());
   }
 }

@@ -13,20 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-[
 /**
- * A message containing worker-side metrics and other Task-specific information.
+ * Classes used to collect metrics from Parameter Server. For example,
+ * wall clock time to process push/pull requests or delay until an operation being processed.
  */
-{
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
-  "type": "record",
-  "name": "WorkerMetricsMsg",
-  "fields":
-  [
-    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
-    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
-    {"name": "iteration", "type": "int"},
-    {"name": "numDataBlocks", "type": "int"}
-  ]
-}
-]
+package edu.snu.cay.services.ps.metric;

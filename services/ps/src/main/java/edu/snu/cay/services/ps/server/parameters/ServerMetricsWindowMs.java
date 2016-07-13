@@ -13,20 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-[
-/**
- * A message containing worker-side metrics and other Task-specific information.
- */
-{
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
-  "type": "record",
-  "name": "WorkerMetricsMsg",
-  "fields":
-  [
-    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
-    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
-    {"name": "iteration", "type": "int"},
-    {"name": "numDataBlocks", "type": "int"}
-  ]
+package edu.snu.cay.services.ps.server.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Time period in ms for sending metrics",
+    default_value = "1000",
+    short_name = "server_metrics_window_ms")
+public class ServerMetricsWindowMs implements Name<Long> {
 }
-]
