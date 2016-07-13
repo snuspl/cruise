@@ -17,12 +17,12 @@ package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
-import edu.snu.cay.services.ps.avro.AvroPSMsg;
-import edu.snu.cay.services.ps.avro.RoutingTableUpdateMsg;
-import edu.snu.cay.services.ps.avro.Type;
+import edu.snu.cay.services.ps.avro.*;
+import edu.snu.cay.services.ps.common.parameters.NumServers;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -39,27 +39,67 @@ import java.util.*;
 public final class EMRoutingTableManager {
   private static final String CLIENT_ID = "PS_CLIENT";
 
-  private final Map<Integer, String> storeIdToEndpointId = new HashMap<>(); // server-side id mapping
-  private final ElasticMemory elasticMemory;
+  /**
+   * A mapping between store id and endpoint id of server-side evaluators.
+   */
+  private final Map<Integer, String> storeIdToEndpointId = new HashMap<>();
+
+  /**
+   * Server-side ElasticMemory instance.
+   */
+  private final ElasticMemory serverEM;
+
   private final InjectionFuture<PSMessageSender> sender;
 
+  /**
+   * Workers participating in the system and subscribing the routing table of servers.
+   */
   private final Set<String> activeWorkerIds = new HashSet<>();
 
+  /**
+   * Workers waiting for the server initialization to receive the initial routing table for resolving servers.
+   */
+  private final Set<String> waitingWorkers = new HashSet<>();
+
+  /**
+   * The number of initial servers, which is for deciding when to send the routing table to workers at the beginning.
+   */
+  private final int numInitServers;
+
+  /**
+   * A boolean flag representing whether all the initial servers are registered.
+   */
+  private volatile boolean initialServersReady = false;
+
   @Inject
-  EMRoutingTableManager(final ElasticMemory elasticMemory,
+  EMRoutingTableManager(final ElasticMemory serverEM,
+                        @Parameter(NumServers.class) final int numServers,
                         final InjectionFuture<PSMessageSender> sender) {
-    this.elasticMemory = elasticMemory;
+    this.serverEM = serverEM;
+    this.numInitServers = numServers;
     this.sender = sender;
   }
 
   /**
    * Called when a Server instance based on EM is created. This method adds a relationship between
    * EM's MemoryStore ID and PS's NCS endpoint ID.
+   * If all the initial servers are registered, it sends
+   * the PS server-side EM's routing table to all waiting {@code ParameterWorker}s.
    * @param storeId The MemoryStore id in EM.
    * @param endpointId The Endpoint id in PS.
    */
   public synchronized void registerServer(final int storeId, final String endpointId) {
     storeIdToEndpointId.put(storeId, endpointId);
+    if (!initialServersReady && storeIdToEndpointId.size() == numInitServers) {
+      initialServersReady = true;
+
+      final EMRoutingTable routingTable = new EMRoutingTable(serverEM.getStoreIdToBlockIds(), storeIdToEndpointId);
+
+      for (final String workerId : waitingWorkers) {
+        sendWorkerRegisterReplyMsg(workerId, routingTable);
+      }
+      waitingWorkers.clear(); // will not use this data structure any more
+    }
   }
 
   /**
@@ -73,35 +113,72 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * Registers an worker, {@code workerId} to be notified about updates in the routing table.
-   * It also returns the PS server-side EM's routing table to pass it to an initiating ParameterWorker.
-   * @param workerId an worker id
-   * @return The server-side EM's routing table
+   * Registers a worker ({@code workerId}) to be notified about updates in the routing table.
+   * As a result of this method, it sends the PS server-side EM's routing table to the new {code ParameterWorker}
+   * if all the initial servers have been registered (i.e., {@code initialServersReady} is true for server-side EM).
+   * Otherwise it puts the worker id into a queue, so the worker will be notified
+   * when {@link #registerServer(int, String)} is called by all the initial servers.
+   * @param workerId Id of worker to be notified updates in routing table.
    */
-  synchronized EMRoutingTable registerWorker(final String workerId) {
+  synchronized void registerWorker(final String workerId) {
     if (activeWorkerIds.isEmpty()) {
-      elasticMemory.registerRoutingTableUpdateCallback(CLIENT_ID, new EMRoutingTableUpdateHandler());
+      serverEM.registerRoutingTableUpdateCallback(CLIENT_ID, new EMRoutingTableUpdateHandler());
     }
     activeWorkerIds.add(workerId);
-    return new EMRoutingTable(
-        elasticMemory.getStoreIdToBlockIds(),
-        storeIdToEndpointId);
+
+    // wait for all servers to be registered
+    if (!initialServersReady) {
+      waitingWorkers.add(workerId);
+
+    } else {
+      final EMRoutingTable routingTable = new EMRoutingTable(serverEM.getStoreIdToBlockIds(), storeIdToEndpointId);
+      sendWorkerRegisterReplyMsg(workerId, routingTable);
+    }
   }
 
   /**
    * Deregisters a worker, {@code workerId} when the worker stops working.
    * After invoking this method, the worker will not be notified with the further update of the routing table.
-   * @param workerId an worker id
+   * @param workerId Id of worker, who will not subscribe the notification any more.
    */
   synchronized void deregisterWorker(final String workerId) {
     activeWorkerIds.remove(workerId);
     if (activeWorkerIds.isEmpty()) {
-      elasticMemory.deregisterRoutingTableUpdateCallback(CLIENT_ID);
+      serverEM.deregisterRoutingTableUpdateCallback(CLIENT_ID);
     }
   }
 
+  private void sendWorkerRegisterReplyMsg(final String workerId, final EMRoutingTable routingTable) {
+    final List<IdMapping> idMappings = new ArrayList<>(routingTable.getStoreIdToEndpointId().size());
+    final Map<Integer, String> storeIdToEndpointIdMap = routingTable.getStoreIdToEndpointId();
+
+    for (final Map.Entry<Integer, Set<Integer>> entry : routingTable.getStoreIdToBlockIds().entrySet()) {
+      final int storeId = entry.getKey();
+      final List<Integer> blockIds = new ArrayList<>(entry.getValue());
+
+      final IdMapping idMapping = IdMapping.newBuilder()
+          .setMemoryStoreId(storeId)
+          .setBlockIds(blockIds)
+          .setEndpointId(storeIdToEndpointIdMap.get(storeId))
+          .build();
+      idMappings.add(idMapping);
+    }
+
+    final WorkerRegisterReplyMsg workerRegisterReplyMsg = WorkerRegisterReplyMsg.newBuilder()
+        .setIdMappings(idMappings)
+        .build();
+
+    final AvroPSMsg responseMsg =
+        AvroPSMsg.newBuilder()
+            .setType(Type.WorkerRegisterReplyMsg)
+            .setWorkerRegisterReplyMsg(workerRegisterReplyMsg)
+            .build();
+
+    sender.get().send(workerId, responseMsg);
+  }
+
   /**
-   * Broadcasts update in routing tables of EM in Parameter Servers to all active Parameter Workers.
+   * Broadcasts update in routing tables of Server-side EM to all active {@code ParameterWorker}s.
    */
   private synchronized void broadcastMsg(final AvroPSMsg updateMsg) {
     for (final String workerId : activeWorkerIds) {
@@ -111,7 +188,7 @@ public final class EMRoutingTableManager {
 
   /**
    * A handler of EMRoutingTableUpdate.
-   * It broadcasts the update info to all active ParameterWorkers.
+   * It broadcasts the update information to all active {@code ParameterWorker}s.
    */
   private final class EMRoutingTableUpdateHandler implements EventHandler<EMRoutingTableUpdate> {
     @Override
