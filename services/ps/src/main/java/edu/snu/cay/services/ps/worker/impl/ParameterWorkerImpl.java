@@ -293,15 +293,16 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * We do not implement a true Future, because this is simpler.
    */
   private static final class PullFuture<V> {
+    private boolean rejected = false;
     private V value = null;
 
     /**
      * Block until a value is set.
-     * It returns null when it fails to get the value in given timeout.
+     * It returns null when it fails to get the value.
      * @return the value
      */
     public synchronized V getValue() {
-      if (value == null) {
+      if (value == null && !rejected) {
         try {
           wait();
         } catch (final InterruptedException e) {
@@ -324,6 +325,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      * Wake up the waiting thread without setting a value, in order to retry.
      */
     public synchronized void reject() {
+      rejected = true;
       notify();
     }
   }
@@ -542,7 +544,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
               int retryCount = 0;
               while (value == null) {
-                if (++retryCount > MAX_RETRY_COUNT) {
+                if (retryCount > MAX_RETRY_COUNT) {
                   throw new RuntimeException("Fail to send a value for pull");
                 }
 
@@ -558,6 +560,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                   pullStat.put(ticker.read() - beginTick);
                 } catch (final NetworkException e) {
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
+                  retryCount++;
                   continue;
                 }
 

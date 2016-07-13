@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -86,7 +87,7 @@ public final class ParameterWorkerImplTest {
    * Test that {@link ParameterWorkerImpl#close(long)} does indeed block further operations from being processed.
    */
   @Test
-  public void testClose() throws InterruptedException, TimeoutException, ExecutionException {
+  public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
@@ -184,7 +185,8 @@ public final class ParameterWorkerImplTest {
    * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
    */
   @Test
-  public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException, ExecutionException {
+  public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException,
+      ExecutionException, NetworkException {
     final int numPullThreads = 8;
     final int numKeys = 4;
     final int numPullPerThread = 1000;
@@ -223,6 +225,63 @@ public final class ParameterWorkerImplTest {
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
   }
+
+  /**
+   * Test the correct handling of pull rejects by {@link ParameterWorkerImpl},
+   * creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
+   *
+   * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
+   * To guarantee that {@code sender.sendPullMsg()} should be invoked as many times as {@code worker.pull()} is called,
+   * this test use different keys for each pull.
+   */
+  @Test
+  public void testPullReject()
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+    final int numPullThreads = 8;
+    final int numPullPerThread = 100;
+    final int numReject = 100;
+    final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
+    final Runnable[] threads = new Runnable[numPullThreads];
+    final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
+
+    final AtomicInteger counter = new AtomicInteger(0);
+    // pull messages should return values s.t. key == value
+    doAnswer(invocationOnMock -> {
+        final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
+
+        final int count = counter.getAndIncrement();
+        if (count < numReject) {
+          handler.processPullReject(encodedKey.getKey());
+        } else {
+          handler.processPullResult(encodedKey.getKey(), encodedKey.getKey());
+        }
+        return null;
+      }).when(mockSender).sendPullMsg(anyString(), anyObject());
+
+    for (int index = 0; index < numPullThreads; ++index) {
+      final int baseKey = index * numPullPerThread;
+      threads[index] = () -> {
+        for (int pull = 0; pull < numPullPerThread; pull++) {
+          final int key = baseKey + pull;
+          final Integer val = worker.pull(key);
+          if (val == null || !val.equals(key)) {
+            correctResultReturned.set(false);
+            break;
+          }
+        }
+        countDownLatch.countDown();
+      };
+    }
+
+    ThreadUtils.runConcurrently(threads);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+    worker.close(CLOSE_TIMEOUT);
+
+    assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
+    assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
+    verify(mockSender, times(numPullPerThread * numPullThreads + numReject)).sendPullMsg(anyString(), anyObject());
+  }
+
 
   /**
    * Test that the {@link ParameterWorkerImpl#invalidateAll()} method invalidates all caches
