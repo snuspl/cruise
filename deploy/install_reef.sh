@@ -1,79 +1,95 @@
-#!/bin/sh
-# Copyright (C) 2016 Seoul National University
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+#!/bin/bash
+# Install packages and leave a log in /tmp/install_reef_log file to track the progress.
+LOG_FILE=/tmp/install_reef.log
 
-# SSH, Rsync
-sudo apt-get install -y ssh 
-sudo apt-get install -y rsync
+function install_essential {
+  # SSH, rsync, Git, Maven
+  sudo apt-get install -y ssh rsync git maven
 
-# SSH key
-ssh-keygen -t dsa -P '' -f ~/.ssh/id_rsa 
-cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+  #Install prerequisite for protobuf
+  sudo apt-get install -y automake autoconf g++ make
 
-# Install Git
-sudo apt-get install -y git
+  # SSH key
+  ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
+  cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+}
 
-# Install Java
-sudo apt-get install -y openjdk-7-jdk
-export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64/
-echo "export JAVA_HOME=$JAVA_HOME" >> ~/.profile
+function install_protobuf {
+  cd /tmp
+  wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.bz2
+  tar xjf protobuf-2.5.0.tar.bz2
+  rm protobuf-2.5.0.tar.bz2
+  cd /tmp/protobuf-2.5.0
+  ./configure
+  sudo make
+  sudo make install
+  sudo ldconfig
+}
 
-# (Java 8 HotSpot)
-# sudo add-apt-repository ppa:webupd8team/java
-# sudo apt-get update
-# sudo apt-get install oracle-java8-installer
+# Let's go with HotSpot, as OpenJDK has an issue (http://stackoverflow.com/questions/8375423/missing-artifact-com-suntoolsjar). Note that keyboard interrupt is required while installation (Choose <OK>, then <YES>).
+function install_java {
+  sudo add-apt-repository ppa:webupd8team/java
+  sudo apt-get update
+  sudo apt-get install -y oracle-java8-installer
+  export JAVA_HOME=/usr/lib/jvm/java-8-oracle/
+  echo "export JAVA_HOME=$JAVA_HOME" >> ~/.profile
+}
 
-# Install Hadoop
-cd /tmp
-wget http://apache.mirror.cdnetworks.com/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
-tar -xzvf hadoop-2.7.2.tar.gz
-mv hadoop-2.7.2 ~/hadoop
+# Install hadoop on $HOME/hadoop
+function install_hadoop {
+  cd /tmp
+  wget http://mirror.navercorp.com/apache/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
+  tar -xzvf hadoop-2.7.2.tar.gz
+  mv hadoop-2.7.2 ~/hadoop
 
-export HADOOP_HOME=/home/azureuser/hadoop
-export YARN_HOME=$HADOOP_HOME
-export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
-export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
-echo "export HADOOP_HOME=$HADOOP_HOME" >> ~/.profile
-echo "export YARN_HOME=\$HADOOP_HOME" >> ~/.profile
-echo "export YARN_CONF_DIR=\$HADOOP_HOME/etc/hadoop" >> ~/.profile
-echo "export PATH=\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin:\$PATH" >> ~/.profile
+  export HADOOP_HOME=$HOME/hadoop
+  export YARN_HOME=$HADOOP_HOME
+  export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
+  export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
+  echo "export HADOOP_HOME=$HADOOP_HOME" >> ~/.profile
+  echo "export YARN_HOME=\$HADOOP_HOME" >> ~/.profile
+  echo "export YARN_CONF_DIR=\$HADOOP_HOME/etc/hadoop" >> ~/.profile
+  echo "export PATH=\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin:\$PATH" >> ~/.profile
+}
 
-# Install Spark
-#cd /tmp
-#wget http://apache.mirror.cdnetworks.com/spark/spark-1.6.0/spark-1.6.0-bin-hadoop2.6.tgz
-#tar -xzvf spark-1.6.0-bin-hadoop2.6.tgz
-#mv spark-1.6.0-bin-hadoop2.6 ~/spark
-#export SPARK_HOME=/home/azureuser/spark
+function install_reef {
+  cd ~
+  git clone https://github.com/apache/reef
+  cd reef
+  mvn clean -TC1 install -DskipTests -Dcheckstyle.skip=true -Dfindbugs.skip=true
+}
 
-# Install Maven
-sudo apt-get install -y maven
+# Normally we don't have to build cay in all machines.
+function install_cay {
+  # Install Fortran (which cay depends on)
+  sudo apt-get install -y libgfortran3
 
-#Install protobuf
-sudo apt-get install -y automake autoconf g++ make
+  cd ~
+  git clone https://github.com/cmssnu/cay # Username/password is required
+  cd cay
+  mvn clean -TC1 install -DskipTests -Dcheckstyle.skip=true -Dfindbugs.skip=true
+}
 
-cd /tmp
-wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.bz2
-tar xjf protobuf-2.5.0.tar.bz2
-rm protobuf-2.5.0.tar.bz2
-cd /tmp/protobuf-2.5.0
-./configure 
-sudo make
-sudo make install
-sudo ldconfig
-cd ~
+# Start installation
+export LC_ALL="en_US.UTF-8"
+echo "Install start: $(date)" > $LOG_FILE
 
-# Install REEF
-git clone https://github.com/apache/reef
-cd ~/reef
-mvn clean -TC1 install -DskipTests -Dcheckstyle.skip=true -Dfindbugs.skip=true
+install_essential
+echo "Essential packages installed" >> $LOG_FILE
+
+install_protobuf
+echo "Protobuf installed" >> $LOG_FILE
+
+install_java
+echo "Java installed" >> $LOG_FILE
+
+install_hadoop
+echo "Hadoop installed" >> $LOG_FILE
+
+install_reef
+echo "REEF installed" >> $LOG_FILE
+
+# install_cay #  Comment out this line only when you want to build cay on your machine
+# echo "Cay installed" >> $LOG_FILE
+
+echo "Done: $(date)" >> $LOG_FILE
