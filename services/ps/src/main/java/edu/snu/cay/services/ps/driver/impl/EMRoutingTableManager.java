@@ -188,7 +188,7 @@ public final class EMRoutingTableManager {
 
   /**
    * A handler of EMRoutingTableUpdate.
-   * It broadcasts the update info to all active {@code ParameterWorker}s.
+   * It broadcasts the update information to all active {@code ParameterWorker}s.
    */
   private final class EMRoutingTableUpdateHandler implements EventHandler<EMRoutingTableUpdate> {
     @Override
