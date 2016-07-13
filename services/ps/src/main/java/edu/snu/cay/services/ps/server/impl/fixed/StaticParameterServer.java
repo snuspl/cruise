@@ -456,7 +456,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         kvStore.put(key, parameterUpdater.initValue(key));
       }
 
-      sender.sendReplyMsg(srcId, key, kvStore.get(key));
+      sender.sendPullResultMsg(srcId, key, kvStore.get(key));
 
       final long processEndTime = ticker.read();
       final long processingTime = processEndTime - waitEndTime;

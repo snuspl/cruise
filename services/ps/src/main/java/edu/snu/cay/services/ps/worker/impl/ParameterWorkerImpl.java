@@ -31,6 +31,7 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
@@ -269,12 +270,17 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   /**
    * Handles incoming pull replies, by setting the value of the future.
    * This will notify the Partition's (synchronous) CacheLoader method to continue.
-   * Called by {@link AsyncWorkerHandlerImpl#processReply}.
+   * Called by {@link AsyncWorkerHandlerImpl#processPullResult}.
    */
-  public void processReply(final K key, final V value) {
+  public void processPullReply(final K key, @Nullable final V value) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
-      future.setValue(value);
+      if (value == null) {
+        future.reject();
+      } else {
+        future.setValue(value);
+      }
+
     } else {
       // Because we use partitions, there can be at most one active pendingPull for a key.
       // Thus, a null value should never appear.
@@ -290,15 +296,14 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private V value = null;
 
     /**
-     * Block until a value is set or the maximum waiting time elapses.
+     * Block until a value is set.
      * It returns null when it fails to get the value in given timeout.
-     * @param timeout the maximum time to wait in milliseconds
      * @return the value
      */
-    public synchronized V getValue(final long timeout) {
+    public synchronized V getValue() {
       if (value == null) {
         try {
-          wait(timeout);
+          wait();
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "InterruptedException on wait", e);
         }
@@ -312,6 +317,13 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      */
     public synchronized void setValue(final V value) {
       this.value = value;
+      notify();
+    }
+
+    /**
+     * Wake up the waiting thread without setting a value, in order to retry.
+     */
+    public synchronized void reject() {
       notify();
     }
   }
@@ -521,8 +533,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           .concurrencyLevel(1)
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
           .build(new CacheLoader<EncodedKey<K>, Wrapped<V>>() {
-            private static final long RETRY_INTERVAL_MS = 5000;
-
             @Override
             public Wrapped<V> load(final EncodedKey<K> encodedKey) {
               final PullFuture<V> future = new PullFuture<>();
@@ -533,7 +543,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
               int retryCount = 0;
               while (value == null) {
                 if (++retryCount > MAX_RETRY_COUNT) {
-                  throw new RuntimeException("Fail to load a value for pull");
+                  throw new RuntimeException("Fail to send a value for pull");
                 }
 
                 // re-resolve server for every retry
@@ -551,8 +561,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                   continue;
                 }
 
-                // if failed, future returns null and pull is retried in the while loop
-                value = future.getValue(RETRY_INTERVAL_MS);
+                // returns null when rejected by server future and then pull is retried in the while loop
+                value = future.getValue();
               }
 
               pendingPulls.remove(encodedKey.getKey());

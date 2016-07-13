@@ -54,7 +54,7 @@ public final class ParameterWorkerImplTest {
   private static final String MSG_RESULT_ASSERTION = "threads received incorrect values";
 
   private ParameterWorkerImpl<Integer, Integer, Integer> worker;
-  private AsyncWorkerHandler<Integer, Integer> handler;
+  private AsyncWorkerHandler<Integer, Integer, Integer> handler;
   private WorkerMsgSender<Integer, Integer> mockSender;
 
   @Before
@@ -74,7 +74,7 @@ public final class ParameterWorkerImplTest {
     // pull messages should return values s.t. key == value
     doAnswer(invocationOnMock -> {
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        handler.processReply(encodedKey.getKey(), encodedKey.getKey());
+        handler.processPullResult(encodedKey.getKey(), encodedKey.getKey());
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 

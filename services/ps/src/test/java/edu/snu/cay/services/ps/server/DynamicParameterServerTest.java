@@ -173,14 +173,14 @@ public final class DynamicParameterServerTest {
     System.out.println("Ops completed in " + (endTime - startTime) + " milliseconds");
 
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
-    verify(mockSender, times(numPulls * numPullThreads)).sendReplyMsg(anyString(), anyInt(), anyInt());
+    verify(mockSender, times(numPulls * numPullThreads)).sendPullResultMsg(anyString(), anyInt(), anyInt());
 
     final AtomicMarkableReference<Integer> replayValue = new AtomicMarkableReference<>(null, false);
     doAnswer(invocation -> {
         final int value = invocation.getArgumentAt(2, Integer.class);
         replayValue.set(value, true);
         return null;
-      }).when(mockSender).sendReplyMsg(anyString(), anyInt(), anyInt());
+      }).when(mockSender).sendPullResultMsg(anyString(), anyInt(), anyInt());
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
@@ -220,7 +220,7 @@ public final class DynamicParameterServerTest {
         // sleep to guarantee the queue not empty when closing server
         Thread.sleep(1000);
         return null;
-      }).when(mockSender).sendReplyMsg(anyString(), anyInt(), anyInt());
+      }).when(mockSender).sendPullResultMsg(anyString(), anyInt(), anyInt());
     doAnswer(invocation -> {
         rejectedOps.getAndIncrement();
         return null;
@@ -237,7 +237,7 @@ public final class DynamicParameterServerTest {
 
     // closing server should reject all the remaining queued operations, if time allows
     server.close(CLOSE_TIMEOUT);
-    verify(mockSender, atMost(numPulls - 1)).sendReplyMsg(anyString(), anyInt(), anyInt());
+    verify(mockSender, atMost(numPulls - 1)).sendPullResultMsg(anyString(), anyInt(), anyInt());
 
     LOG.log(Level.INFO, "Handled ops: {0}, Rejected ops: {1}", new Object[]{repliedOps.get(), rejectedOps.get()});
     assertEquals(numPulls, repliedOps.get() + rejectedOps.get());

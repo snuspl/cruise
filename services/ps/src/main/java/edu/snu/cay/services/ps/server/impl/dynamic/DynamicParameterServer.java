@@ -499,7 +499,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         } else {
           value = kvPair.getSecond();
         }
-        sender.sendReplyMsg(srcId, hashedKey.getKey(), value);
+        sender.sendPullResultMsg(srcId, hashedKey.getKey(), value);
         final long processEndTime = ticker.read();
         final long processingTime = processEndTime - waitEndTime;
         pullStats[threadId].put(processingTime);

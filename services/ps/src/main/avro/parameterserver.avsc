@@ -38,7 +38,7 @@
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
-  "name": "ReplyMsg",
+  "name": "PullResultMsg",
   "fields":
   [
     {"name": "key", "type": "bytes"},
@@ -144,11 +144,11 @@
      "type":
        {"type": "enum",
         "name": "Type",
-        "symbols": ["PushMsg", "PullMsg", "ReplyMsg", "PushRejectMsg", "PullRejectMsg",
+        "symbols": ["PushMsg", "PullMsg", "PullResultMsg", "PushRejectMsg", "PullRejectMsg",
          "WorkerRegisterMsg", "WorkerRegisterReplyMsg", "RoutingTableUpdateMsg", "WorkerDeregisterMsg"]}},
     {"name": "pushMsg", "type": ["null", "PushMsg"], "default": null},
     {"name": "pullMsg", "type": ["null", "PullMsg"], "default": null},
-    {"name": "replyMsg", "type": ["null", "ReplyMsg"], "default": null},
+    {"name": "pullResultMsg", "type": ["null", "PullResultMsg"], "default": null},
     {"name": "pushRejectMsg", "type": ["null", "PushRejectMsg"], "default": null},
     {"name": "pullRejectMsg", "type": ["null", "PullRejectMsg"], "default": null},
     {"name": "workerRegisterMsg", "type": ["null", "WorkerRegisterMsg"], "default": null},
