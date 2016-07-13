@@ -108,7 +108,7 @@ public final class NetworkContextRegister {
 
     @Override
     public void onNext(final ContextStop contextStop) {
-      LOG.log(Level.FINE, "Wait {0} milliseconds at maximum for the PS worker to be closed", CLOSE_TIMEOUT_MS);
+      LOG.log(Level.FINE, "Wait at most {0} milliseconds for the PS worker to be closed", CLOSE_TIMEOUT_MS);
       try {
         parameterWorker.close(CLOSE_TIMEOUT_MS);
         LOG.fine("Succeed to close PS worker cleanly");

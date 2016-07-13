@@ -354,7 +354,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   /**
-   * Close the server by rejecting and sending back all the queued operations to sender workers.
+   * Close the server. All the queued operations are rejected, and sent back to the worker who send the requests.
    */
   @Override
   public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
@@ -613,7 +613,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     }
 
     /**
-     * Close the run thread.
+     * Start closing the thread.
      */
     public void close() {
       close = true;
@@ -627,7 +627,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     }
 
     /**
-     * Wait for shutdown confirmation (clean close has finished).
+     * Wait until thread closes successfully.
      */
     public void waitForShutdown() {
       while (!shutdown.get()) {

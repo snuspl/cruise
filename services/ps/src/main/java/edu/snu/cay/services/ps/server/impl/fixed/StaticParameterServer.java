@@ -561,7 +561,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     }
 
     /**
-     * Close the run thread.
+     * Start closing the thread.
      */
     public void close() {
       close = true;
@@ -575,7 +575,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     }
 
     /**
-     * Wait for shutdown confirmation (clean close has finished).
+     * Wait until thread closes successfully.
      */
     public void waitForShutdown() {
       while (!shutdown.get()) {

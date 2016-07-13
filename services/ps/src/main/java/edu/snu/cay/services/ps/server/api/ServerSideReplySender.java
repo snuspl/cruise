@@ -29,7 +29,7 @@ public interface ServerSideReplySender<K, P, V> {
   void sendReplyMsg(String destId, K key, V value);
 
   /**
-   * Send a reject msg for push operation to the worker who had requested.
+   * Send a reject msg for push operation to the worker who requested.
    * @param destId the destination's network address
    * @param key key object that {@code preValue} is associated with
    * @param preValue preValue sent from the worker
@@ -37,7 +37,7 @@ public interface ServerSideReplySender<K, P, V> {
   void sendPushRejectMsg(String destId, K key, P preValue);
 
   /**
-   * Send a reject msg for pull operation to the worker who had requested.
+   * Send a reject msg for pull operation to the worker who requested.
    * @param destId the destination's network address
    * @param key key object that the requested {@code value} is associated with
    */

@@ -63,7 +63,7 @@ public interface ParameterServer<K, P, V> {
   int opsPending();
 
   /**
-   * Close the server, after waiting a maximum of {@code timeoutMs} milliseconds
+   * Close the server, after waiting at most {@code timeoutMs} milliseconds
    * for queued messages to be handled.
    */
   void close(long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException;

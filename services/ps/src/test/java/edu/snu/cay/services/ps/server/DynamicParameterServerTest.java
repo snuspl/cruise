@@ -70,6 +70,8 @@ public final class DynamicParameterServerTest {
 
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
+  private static final String WORKER_ID = "WORKER";
+
   private DynamicParameterServer<Integer, Integer, Integer> server;
   private ServerSideReplySender<Integer, Integer, Integer> mockSender;
 
@@ -142,7 +144,7 @@ public final class DynamicParameterServerTest {
           for (int index = 0; index < numPushes; index++) {
             // each thread increments the server's value by 1 per push
             final int key = threadId;
-            server.push(key, 1, "", key); // Just use key as hash for this test.
+            server.push(key, 1, WORKER_ID, key); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -156,7 +158,7 @@ public final class DynamicParameterServerTest {
         public void run() {
           for (int index = 0; index < numPulls; index++) {
             final int key = threadId;
-            server.pull(key, "", key); // Just use key as hash for this test.
+            server.pull(key, WORKER_ID, key); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -182,7 +184,7 @@ public final class DynamicParameterServerTest {
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
-      server.pull(key, "", key); // Just use key as hash for this test.
+      server.pull(key, WORKER_ID, key); // Just use key as hash for this test.
 
       waitForOps();
       while (!replayValue.isMarked()) {
@@ -230,7 +232,7 @@ public final class DynamicParameterServerTest {
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
-      server.pull(key, "", key);
+      server.pull(key, WORKER_ID, key);
     }
 
     // closing server should reject all the remaining queued operations, if time allows
@@ -241,7 +243,7 @@ public final class DynamicParameterServerTest {
     assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
 
     // server should not process further operations after being closed
-    server.pull(0, "", 0);
+    server.pull(0, WORKER_ID, 0);
     assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
   }
 }
