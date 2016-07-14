@@ -54,7 +54,7 @@ public final class SampleOptimizer implements Optimizer {
 
   /**
    * Builds a plan that deletes one eval from {@code srcNamespace} and adds one to {@code destNamespace},
-   * based on the {@code evalParamsMap},
+   * based on the {@code evalParamsMap}.
    * @param srcNamespace a source namespace
    * @param destNamespace a destination namespace
    * @param evalParamsMap all currently active evaluators and their parameters associated with the namespace
