@@ -129,9 +129,9 @@ public final class OptimizationOrchestrator {
     evaluatorParameters.put(NAMESPACE_SERVER, latestServerMetrics);
     evaluatorParameters.put(NAMESPACE_WORKER, latestWorkerMetrics);
 
-    final Future future = optimizationThreadPool.submit(new Callable<Object>() {
+    final Future future = optimizationThreadPool.submit(new Runnable() {
       @Override
-      public Object call() throws Exception {
+      public void run() {
         LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan");
 
         // 3) Calculate the optimal plan with the metrics
@@ -141,7 +141,7 @@ public final class OptimizationOrchestrator {
           LOG.log(Level.INFO, "Calculating the optimal plan is finished. Start executing plan: {0}", plan);
         } catch (final RuntimeException e) {
           LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
-          return null;
+          return;
         }
 
         // 4) Execute the obtained plan
@@ -160,8 +160,6 @@ public final class OptimizationOrchestrator {
         } finally {
           isPlanExecuting.set(false);
         }
-
-        return null;
       }
     });
 
