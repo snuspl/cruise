@@ -134,7 +134,6 @@ public final class OptimizationOrchestrator {
       public Object call() throws Exception {
         LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan");
 
-
         // 3) Calculate the optimal plan with the metrics
         final Plan plan;
         try {
@@ -165,7 +164,6 @@ public final class OptimizationOrchestrator {
         return null;
       }
     });
-
 
     // 5) Wait for the optimization to be completed
     try {
