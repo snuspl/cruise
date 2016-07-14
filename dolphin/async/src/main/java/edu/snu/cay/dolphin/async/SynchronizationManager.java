@@ -150,7 +150,7 @@ final class SynchronizationManager {
   /**
    * @return true if all workers are running their main iterations
    */
-  boolean areTasksRunning() {
+  boolean allWorkersRunning() {
     return globalStateMachine.getCurrentState().equals(STATE_RUN);
   }
 
