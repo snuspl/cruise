@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
-import edu.snu.cay.dolphin.async.metric.MetricKeys;
+import edu.snu.cay.dolphin.async.metric.WorkerConstants;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -24,6 +24,7 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
+import edu.snu.cay.services.ps.metric.ServerConstants;
 import org.apache.reef.io.network.util.Pair;
 
 import javax.inject.Inject;
@@ -73,19 +74,27 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         }
       };
 
+  /**
+   *
+   * @param evalParamsMap all currently active evaluators and their parameters associated with the namespace.
+   * @param availableEvaluators the total number of evaluators available for optimization.
+   *     If availableEvaluators < activeEvaluators.size(), the optimized plan must delete evaluators.
+   *     If availableEvaluators > activeEvaluators.size(), the optimized plan may add evaluators.
+   * @return
+   */
   @Override
   public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair = sortNodes(serverParams, availableEvaluators,
-        param -> param.getMetrics().get(MetricKeys.SERVER_PROCESSING_TIME_PER_REQUEST),
+        param -> param.getMetrics().get(ServerConstants.KEY_SERVER_PROCESSING_UNIT),
         NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> servers = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
 
     final Pair<List<EvaluatorSummary>, Integer> workerPair = sortNodes(workerParams, availableEvaluators,
-        param -> param.getMetrics().get(MetricKeys.WORKER_COMPUTE_TIME) / param.getDataInfo().getNumBlocks(),
+        param -> param.getMetrics().get(WorkerConstants.KEY_WORKER_COMPUTE_TIME) / param.getDataInfo().getNumBlocks(),
         NEW_WORKER_ID_PREFIX);
     final List<EvaluatorSummary> workers = workerPair.getFirst();
     final int numDataBlocks = workerPair.getSecond();
@@ -158,6 +167,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     return planBuilder.build();
   }
 
+  /**
+   *
+   * @param params
+   * @param availableEvaluators
+   * @param unitCostFunc
+   * @param newNodeIdPrefix
+   * @return
+   */
   private static Pair<List<EvaluatorSummary>, Integer> sortNodes(
       final List<EvaluatorParameters> params,
       final int availableEvaluators,
@@ -188,6 +205,16 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     return new Pair<>(nodes, numBlocksTotal);
   }
 
+  /**
+   *
+   * @param numWorker
+   * @param numDataBlocks
+   * @param numModelBlocks
+   * @param availableEvaluators
+   * @param workers
+   * @param servers
+   * @return
+   */
   private static double totalCost(final int numWorker, final int numDataBlocks, final int numModelBlocks,
                                   final int availableEvaluators,
                                   final List<EvaluatorSummary> workers,
@@ -205,6 +232,12 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     return compCost + commCost;
   }
 
+  /**
+   *
+   * @param namespace
+   * @param evaluatorSummaries
+   * @param builder
+   */
   private static void generateTransferSteps(final String namespace,
                                             final Collection<EvaluatorSummary> evaluatorSummaries,
                                             final PlanImpl.Builder builder) {
@@ -238,6 +271,13 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     }
   }
 
+  /**
+   * Creates a {@link TransferStep} by calculating the number of blocks to be moved from an evaluator to another.
+   *
+   * @param sender {@link EvaluatorSummary} of the sending evaluator
+   * @param receiver {@link EvaluatorSummary} of the receiving evaluator
+   * @return A {@link TransferStep} from sender to receiver with number of blocks to move calculated
+   */
   private static TransferStep generateTransferStep(final EvaluatorSummary sender,
                                                    final EvaluatorSummary receiver) {
     final int numToSend = sender.getNumBlocks() - sender.getNumOptimalBlocks();
@@ -247,9 +287,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     return new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove));
   }
 
+  /**
+   * A summary of the number of data blocks at an evaluator and the number of optimal blocks.
+   */
   private static final class EvaluatorSummary {
     private final String id;
     private final DataInfo dataInfo;
+
+    //
     private final double unitCostInv;
     private int numOptimalBlocks;
 
