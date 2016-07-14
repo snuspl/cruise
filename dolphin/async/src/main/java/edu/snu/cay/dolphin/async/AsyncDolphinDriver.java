@@ -266,8 +266,9 @@ public final class AsyncDolphinDriver {
   private final long optimizationIntervalMs;
 
   /**
-   * Triggers optimization. After waiting an initial delay,
-   * optimization is performed periodically for now (See {@link StartHandler}).
+   * Triggers optimization. Optimization is performed only when workers are running their main iterations.
+   * Every optimization is triggered after {@link OptimizationIntervalMs} from the previous optimization.
+   * See {@link StartHandler}.
    */
   private final ExecutorService optimizerExecutor = Executors.newSingleThreadExecutor();
 
@@ -388,17 +389,24 @@ public final class AsyncDolphinDriver {
       serverEMWrapper.getNetworkSetup().registerConnectionFactory(driverId);
       psNetworkSetup.registerConnectionFactory(driverId);
 
-      optimizerExecutor.submit(new Callable<Void>() {
+      optimizerExecutor.execute(new Runnable() {
         @Override
-        public Void call() throws Exception {
-          synchronizationManager.waitInitialization();
-          LOG.info("Worker tasks are initialized. Start triggering optimization.");
+        public void run() {
+          try {
+            synchronizationManager.waitInitialization();
+            LOG.info("Worker tasks are initialized. Start triggering optimization.");
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for the worker initialization", e);
+          }
 
           while (synchronizationManager.allWorkersRunning()) {
             optimizationOrchestrator.run();
-            Thread.sleep(optimizationIntervalMs);
+            try {
+              Thread.sleep(optimizationIntervalMs);
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while running the optimization", e);
+            }
           }
-          return null;
         }
       });
     }
