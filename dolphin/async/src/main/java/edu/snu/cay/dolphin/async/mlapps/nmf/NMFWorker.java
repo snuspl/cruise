@@ -144,17 +144,9 @@ final class NMFWorker implements Worker {
 
     memoryStore.putList(dataKeys, dataValues);
 
-    final Set<Integer> keys = new HashSet<>();
-    // aggregate column indices
-    for (final NMFData datum : dataValues) {
-      for (final Pair<Integer, Double> column : datum.getColumns()) {
-        keys.add(column.getFirst());
-      }
-    }
-
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Batch size = {0}", batchSize);
-    LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
+    LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues));
     LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
   }
 
