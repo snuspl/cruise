@@ -110,7 +110,6 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .getFirst();
     final int optimalNumServers = availableEvaluators - optimalNumWorkers;
 
-
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
     // assign optimal number of blocks for each worker using unitCostInv
@@ -134,9 +133,9 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     // unassign blocks from excess workers if necessary
     for (int workerIndex = optimalNumWorkers; workerIndex < workerParams.size(); ++workerIndex) {
       final EvaluatorSummary worker = workers.get(workerIndex);
+      planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_WORKER, worker.id);
       worker.setNumOptimalBlocks(0);
     }
-
 
     // assign optimal number of blocks for each server using unitCostInv
     final double serverUnitCostInvSum = servers.subList(0, optimalNumServers).stream()
@@ -153,15 +152,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         numAssignedModelBlocks += numOptimalBlocks;
         server.setNumOptimalBlocks(numOptimalBlocks);
       }
-
     }
 
     // unassign blocks from excess servers if necessary
     for (int serverIndex = optimalNumServers; serverIndex < serverParams.size(); ++serverIndex) {
       final EvaluatorSummary server = servers.get(serverIndex);
+      planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_SERVER, server.id);
       server.setNumOptimalBlocks(0);
     }
-
 
     generateTransferSteps(OptimizationOrchestrator.NAMESPACE_SERVER,
         servers.subList(0, Math.max(optimalNumServers, serverParams.size())),
@@ -244,7 +242,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   /**
    * Generates the move() operation plan according to the optimal block assignments contained in evaluatorSummaries.
    *
-   * @param namespace namesapce for the evaluator family
+   * @param namespace namespace for the evaluator family
    * @param evaluatorSummaries summary of the evaluators in the system under optimization
    * @param builder a builder for the optimization plan
    */

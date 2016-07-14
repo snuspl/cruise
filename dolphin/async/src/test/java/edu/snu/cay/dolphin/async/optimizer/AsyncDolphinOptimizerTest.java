@@ -61,7 +61,6 @@ public final class AsyncDolphinOptimizerTest {
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(OptimizationOrchestrator.NAMESPACE_SERVER, serverEvaluatorParameters);
     map.put(OptimizationOrchestrator.NAMESPACE_WORKER, workerEvaluatorParameters);
-    optimizer.optimize(map, 12);
   }
 
   private List<EvaluatorParameters> generateServerEvaluatorParameters(final int[] numModelsArray,
