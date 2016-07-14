@@ -17,13 +17,11 @@ package edu.snu.cay.dolphin.bsp.core.metric;
 
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
+import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
-import edu.snu.cay.dolphin.bsp.core.metric.avro.ComputeMsg;
-import edu.snu.cay.dolphin.bsp.core.metric.avro.ControllerMsg;
 import edu.snu.cay.dolphin.bsp.core.metric.avro.MetricsMessage;
-import edu.snu.cay.dolphin.bsp.core.metric.avro.SrcType;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,61 +29,39 @@ import java.util.logging.Logger;
 /**
  * A MetricsHandler implementation that sends a MetricsMessage via Aggregation Service.
  * The metrics are set via MetricsHandler. The other message parts must be
- * set via the setters for each Dolphin iteration. The MetricsMessage is
- * built when sending the network message. As it builds the message incrementally,
- * this class is *not* thread-safe.
+ * set at Task code via the setters for each Dolphin iteration.
+ * The built MetricsMessage is passed through {@code send()} when sending the network message.
  */
-public final class MetricsMessageSender implements MetricsHandler {
+@NotThreadSafe
+public final class MetricsMessageSender implements MetricsHandler, MetricsMsgSender<MetricsMessage> {
   private static final Logger LOG = Logger.getLogger(MetricsMessageSender.class.getName());
 
   private final MetricsMessageCodec metricsMessageCodec;
-  private MetricsMessage.Builder metricsMessageBuilder;
   private final AggregationSlave aggregationSlave;
+  private Metrics metrics;
 
   @Inject
   private MetricsMessageSender(final MetricsMessageCodec metricsMessageCodec,
                                final AggregationSlave aggregationSlave) {
     this.metricsMessageCodec = metricsMessageCodec;
-    this.metricsMessageBuilder = MetricsMessage.newBuilder();
     this.aggregationSlave = aggregationSlave;
   }
 
-  public MetricsMessageSender setComputeMsg(final ComputeMsg computeMsg) {
-    metricsMessageBuilder
-        .setSrcType(SrcType.Compute)
-        .setComputeMsg(computeMsg);
-    return this;
-  }
-
-  public MetricsMessageSender setControllerMsg(final ControllerMsg controllerMsg) {
-    metricsMessageBuilder
-        .setSrcType(SrcType.Controller)
-        .setControllerMsg(controllerMsg);
-    return this;
-  }
-
-  public MetricsMessageSender setIterationInfo(final IterationInfo iterationInfo) {
-    metricsMessageBuilder
-        .setIterationInfo(iterationInfo);
-    return this;
-  }
-
-  public void send() {
-    LOG.entering(MetricsMessageSender.class.getSimpleName(), "send");
-    aggregationSlave.send(MetricsMessageSender.class.getName(), getMessage());
-    LOG.exiting(MetricsMessageSender.class.getSimpleName(), "send");
+  @Override
+  public void onNext(final Metrics metricsParam) {
+    this.metrics = metricsParam;
   }
 
   @Override
-  public void onNext(final Metrics metrics) {
-    metricsMessageBuilder.setMetrics(metrics);
+  public Metrics getMetrics() {
+    return metrics;
   }
 
-  private byte[] getMessage() {
-    final MetricsMessage metricsMessage = metricsMessageBuilder.build();
-    metricsMessageBuilder = MetricsMessage.newBuilder();
-    LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
-
-    return metricsMessageCodec.encode(metricsMessage);
+  @Override
+  public void send(final MetricsMessage message) {
+    LOG.log(Level.INFO, "Sending metricsMessage {0}", message);
+    LOG.entering(MetricsMessageSender.class.getSimpleName(), "send");
+    aggregationSlave.send(MetricsMessageSender.class.getName(), metricsMessageCodec.encode(message));
+    LOG.exiting(MetricsMessageSender.class.getSimpleName(), "send");
   }
 }

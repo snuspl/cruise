@@ -13,20 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.metric;
-
 /**
- * Keys to identify metrics that come from Async-Dolphin.
+ * Common serialization classes for ml apps in dolphin-async.
  */
-public final class MetricKeys {
-
-  /**
-   * Should not be instantiated.
-   */
-  private MetricKeys() {
-  }
-
-  // Keys to get/set the metrics in the worker.
-  public static final String WORKER_COMPUTE_TIME =
-      "METRIC_WORKER_COMPUTE_TIME";
-}
+package edu.snu.cay.dolphin.async.mlapps.serialization;

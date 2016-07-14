@@ -16,7 +16,8 @@
 package edu.snu.cay.dolphin.bsp.core;
 
 import edu.snu.cay.common.metric.*;
-import edu.snu.cay.dolphin.bsp.core.metric.MetricsMessageSender;
+import edu.snu.cay.dolphin.bsp.core.metric.avro.MetricsMessage;
+import edu.snu.cay.dolphin.bsp.core.metric.avro.SrcType;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.*;
 import edu.snu.cay.dolphin.bsp.groupcomm.names.*;
 import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
@@ -56,7 +57,8 @@ public final class ControllerTask implements Task {
   private final MetricsCollector metricsCollector;
   private final Set<MetricTracker> metricTrackerSet;
   private final InsertableMetricTracker insertableMetricTracker;
-  private final MetricsMessageSender metricsMessageSender;
+  private final MetricsHandler metricsHandler;
+  private final MetricsMsgSender<MetricsMessage> metricsMsgSender;
   private final HTraceInfoCodec hTraceInfoCodec;
   private final UserTaskTrace userTaskTrace;
 
@@ -71,7 +73,8 @@ public final class ControllerTask implements Task {
                         final MetricsCollector metricsCollector,
                         @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
                         final InsertableMetricTracker insertableMetricTracker,
-                        final MetricsMessageSender metricsMessageSender,
+                        final MetricsHandler metricsHandler,
+                        final MetricsMsgSender<MetricsMessage> metricsMsgSender,
                         final HTraceInfoCodec hTraceInfoCodec,
                         final UserTaskTrace userTaskTrace) throws ClassNotFoundException {
     this.commGroup =
@@ -83,7 +86,8 @@ public final class ControllerTask implements Task {
     this.metricsCollector = metricsCollector;
     this.metricTrackerSet = metricTrackerSet;
     this.insertableMetricTracker = insertableMetricTracker;
-    this.metricsMessageSender = metricsMessageSender;
+    this.metricsHandler = metricsHandler;
+    this.metricsMsgSender = metricsMsgSender;
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.userTaskTrace = userTaskTrace;
   }
@@ -181,10 +185,13 @@ public final class ControllerTask implements Task {
   }
 
   private void sendMetrics() {
-    metricsMessageSender
+    final MetricsMessage message = MetricsMessage.newBuilder()
+        .setSrcType(SrcType.Controller)
+        .setMetrics(metricsHandler.getMetrics())
         .setIterationInfo(getIterationInfo())
         .setControllerMsg(getControllerMsg())
-        .send();
+        .build();
+    metricsMsgSender.send(message);
   }
 
   private IterationInfo getIterationInfo() {
