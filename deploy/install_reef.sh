@@ -26,6 +26,8 @@ function install_essential {
   # SSH key
   ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
   cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+  
+  echo "Essential packages installed" >> $LOG_FILE
 }
 
 function install_protobuf {
@@ -38,6 +40,8 @@ function install_protobuf {
   sudo make
   sudo make install
   sudo ldconfig
+  
+  echo "Protobuf installed" >> $LOG_FILE
 }
 
 # Let's go with HotSpot, as OpenJDK has an issue (http://stackoverflow.com/questions/8375423/missing-artifact-com-suntoolsjar). Note that keyboard interrupt is required while installation (Choose <OK>, then <YES>).
@@ -47,6 +51,8 @@ function install_java {
   sudo apt-get install -y oracle-java8-installer
   export JAVA_HOME=/usr/lib/jvm/java-8-oracle/
   echo "export JAVA_HOME=$JAVA_HOME" >> ~/.profile
+  
+  echo "Java installed" >> $LOG_FILE
 }
 
 # Install hadoop on $HOME/hadoop
@@ -64,6 +70,8 @@ function install_hadoop {
   echo "export YARN_HOME=\$HADOOP_HOME" >> ~/.profile
   echo "export YARN_CONF_DIR=\$HADOOP_HOME/etc/hadoop" >> ~/.profile
   echo "export PATH=\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin:\$PATH" >> ~/.profile
+  
+  echo "Hadoop installed" >> $LOG_FILE
 }
 
 function install_reef {
@@ -82,6 +90,8 @@ function install_cay {
   git clone https://github.com/cmssnu/cay # Username/password is required
   cd cay
   mvn clean -TC1 install -DskipTests -Dcheckstyle.skip=true -Dfindbugs.skip=true
+  
+  echo "REEF installed" >> $LOG_FILE
 }
 
 # Start installation
@@ -89,19 +99,10 @@ export LC_ALL="en_US.UTF-8"
 echo "Install start: $(date)" > $LOG_FILE
 
 install_essential
-echo "Essential packages installed" >> $LOG_FILE
-
 install_protobuf
-echo "Protobuf installed" >> $LOG_FILE
-
 install_java
-echo "Java installed" >> $LOG_FILE
-
 install_hadoop
-echo "Hadoop installed" >> $LOG_FILE
-
 install_reef
-echo "REEF installed" >> $LOG_FILE
 
 # install_cay #  Comment out this line only when you want to build cay on your machine
 # echo "Cay installed" >> $LOG_FILE
