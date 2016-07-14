@@ -176,10 +176,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for servers.
    */
   private final class ServerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMOperation completeOp;
+    private final EMOperation completedAddOp;
 
-    private ServerContextActiveHandler(final EMOperation completeOp) {
-      this.completeOp = completeOp;
+    private ServerContextActiveHandler(final EMOperation completedAddOp) {
+      this.completedAddOp = completedAddOp;
     }
 
     @Override
@@ -188,8 +188,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForServer().onNext(context);
-      executingPlan.addServerEvaluatorIdsToContexts(context.getEvaluatorId(), context);
-      onOperationComplete(completeOp);
+      executingPlan.putAddedServerContext(completedAddOp.getEvalId().get(), context);
+      onOperationComplete(completedAddOp);
     }
   }
 
@@ -197,10 +197,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for workers.
    */
   private final class WorkerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMOperation completeOp;
+    private final EMOperation completedAddOp;
 
-    private WorkerContextActiveHandler(final EMOperation completeOp) {
-      this.completeOp = completeOp;
+    private WorkerContextActiveHandler(final EMOperation completedAddOp) {
+      this.completedAddOp = completedAddOp;
     }
     @Override
     public void onNext(final ActiveContext context) {
@@ -208,11 +208,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker().onNext(context);
-      executingPlan.addWorkerEvaluatorIdsToContexts(context.getEvaluatorId(), context);
-      onOperationComplete(completeOp);
+      executingPlan.putAddedWorkerContext(completedAddOp.getEvalId().get(), context);
+      onOperationComplete(completedAddOp);
     }
   }
-
 
   /**
    * This handler is registered as the second callback to ElasticMemory.move().
@@ -282,7 +281,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       executeOperations(nextOpsToExecute);
     }
   }
-
 
   /**
    * Executes the EM operations by distinguishing each OpType as well as namespace.
@@ -374,8 +372,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * When all operations are complete, control is given back to the main plan executor's call().
    */
   private static final class ExecutingPlan {
-    private final ConcurrentMap<String, ActiveContext> serverEvalIdToCtx;
-    private final ConcurrentMap<String, ActiveContext> workerEvalIdToCtx;
+
+
+    // In order to keep track of context mappings to evaluator IDs, we store the mappings when contexts are activated.
+    private final ConcurrentMap<String, ActiveContext> ctxIddToAddedServerCtx;
+    private final ConcurrentMap<String, ActiveContext> ctxIdToAddedWorkerCtx;
 
     /**
      * emOperationsRequested: A map of EM operations requested and the execution state (in_progress/complete).
@@ -393,24 +394,31 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     private final CountDownLatch planExecutionLatch;
 
     private ExecutingPlan(final Plan plan) {
-      this.serverEvalIdToCtx = new ConcurrentHashMap<>();
-      this.workerEvalIdToCtx = new ConcurrentHashMap<>();
+      this.ctxIddToAddedServerCtx = new ConcurrentHashMap<>();
+      this.ctxIdToAddedWorkerCtx = new ConcurrentHashMap<>();
       this.emOperationsRequested = new ConcurrentHashMap<>();
       this.planExecutionLatch = new CountDownLatch(plan.getPlanSize());
       this.plan = plan;
     }
 
     /**
-     * In order to keep track of context mappings to evaluator IDs, we store the mappings when contexts are activated.
-     * @param evaluatorId
+     * Put added context to keep track of them.
      * @param context ActiveContext from the event handler
      */
-    void addServerEvaluatorIdsToContexts(final String evaluatorId, final ActiveContext context) {
-      serverEvalIdToCtx.put(evaluatorId, context);
+    void putAddedServerContext(final String planContextId, final ActiveContext context) {
+      ctxIddToAddedServerCtx.put(planContextId, context);
     }
 
-    void addWorkerEvaluatorIdsToContexts(final String evaluatorId, final ActiveContext context) {
-      workerEvalIdToCtx.put(evaluatorId, context);
+    void putAddedWorkerContext(final String planContextId, final ActiveContext context) {
+      ctxIdToAddedWorkerCtx.put(planContextId, context);
+    }
+
+    void getAddedServerContext(final String contextId) {
+      ctxIddToAddedServerCtx.get(contextId);
+    }
+
+    void getAddedWorkerContext(final String contextId) {
+      ctxIddToAddedServerCtx.get(contextId);
     }
 
     /**
@@ -476,13 +484,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @return an addressable context ID
      */
     String getServerActualContextId(final String planContextId) {
-      return serverEvalIdToCtx.containsKey(planContextId) ?
-          serverEvalIdToCtx.get(planContextId).getId() : planContextId;
+      return ctxIddToAddedServerCtx.containsKey(planContextId) ?
+          ctxIddToAddedServerCtx.get(planContextId).getId() : planContextId;
     }
 
     String getWorkerActualContextId(final String planContextId) {
-      return workerEvalIdToCtx.containsKey(planContextId) ?
-          workerEvalIdToCtx.get(planContextId).getId() : planContextId;
+      return ctxIdToAddedWorkerCtx.containsKey(planContextId) ?
+          ctxIdToAddedWorkerCtx.get(planContextId).getId() : planContextId;
     }
 
     /**
