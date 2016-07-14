@@ -413,14 +413,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       ctxIdToAddedWorkerCtx.put(planContextId, context);
     }
 
-    void getAddedServerContext(final String contextId) {
-      ctxIddToAddedServerCtx.get(contextId);
-    }
-
-    void getAddedWorkerContext(final String contextId) {
-      ctxIddToAddedServerCtx.get(contextId);
-    }
-
     /**
      * Get a set of operations in the plan that can be executed next.
      * @return the set of operations
