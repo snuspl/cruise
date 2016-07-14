@@ -1,0 +1,213 @@
+batch_size: 256
+step_size: 0.01 #TODO we need to decrease it every 100,000 iterations (about 20 epochs)
+input_shape {
+	dim: 256
+	dim: 256
+}
+#1
+layer {
+  type: "Convolutional"
+  convolutional_param {
+    kernel_height: 11
+    kernel_width: 11
+    padding_height: 0
+    padding_width: 0
+    stride_height: 4
+    stride_width: 4
+    init_weight: 0.01
+    init_bias: 0
+    random_seed: #
+    num_output: 96
+  }
+}
+layer {
+  type: "Activation"
+  activation_param {
+    activation_function: "relu"
+  }
+}
+layer {
+  #TODO: normalization layer
+}
+layer {
+	type: "Pooling"
+	pooling_param {
+	  pooling_type: "MAX"
+	  padding_height: 2
+	  padding_width: 2
+	  stride_height: 2
+	  stride_width: 2
+	  kernel_height: 3
+	  kernel_width: 3
+	}
+}
+#2
+layer {
+  type: "Convolutional"
+  convolutional_param {
+    kernel_height: 5
+    kernel_width: 5
+    padding_height: 2
+    padding_width: 2
+    stride_height: 1
+    stride_width: 1
+    init_weight: 0.01
+    init_bias: 0.1
+    random_seed: #
+    num_output: 256
+  }
+}
+layer {
+  type: "Activation"
+  activation_param {
+    activation_function: "relu"
+  }
+}
+layer {
+  #TODO: normalization layer
+}
+layer {
+	type: "Pooling"
+	pooling_param {
+	  pooling_type: "MAX"
+	  padding_height: 0
+	  padding_width: 0
+	  stride_height: 2
+	  stride_width: 2
+	  kernel_height: 3
+	  kernel_width: 3
+	}
+}
+#3
+layer {
+  type: "Convolutional"
+  convolutional_param {
+    kernel_height: 3
+    kernel_width: 3
+    padding_height: 1
+    padding_width: 1
+    stride_height: 1
+    stride_width: 1
+    init_weight: 0.01
+    init_bias: 0
+    random_seed: #
+    num_output: 384
+  }
+}
+layer {
+  type: "Activation"
+  activation_param {
+    activation_function: "relu"
+  }
+}
+#4
+layer {
+  type: "Convolutional"
+  convolutional_param {
+    kernel_height: 3
+    kernel_width: 3
+    padding_height: 1
+    padding_width: 1
+    stride_height: 1
+    stride_width: 1
+    init_weight: 0.01
+    init_bias: 0.1
+    random_seed: #
+    num_output: 384
+  }
+}
+layer {
+  type: "Activation"
+  activation_param {
+    activation_function: "relu"
+  }
+}
+#5
+layer {
+  type: "Convolutional"
+  convolutional_param {
+    kernel_height: 3
+    kernel_width: 3
+    padding_height: 1
+    padding_width: 1
+    stride_height: 1
+    stride_width: 1
+    init_weight: 0.01
+    init_bias: 0.1
+    random_seed: #
+    num_output: 256
+  }
+}
+layer {
+  type: "Activation"
+  activation_param {
+    activation_function: "relu"
+  }
+}
+layer {
+	type: "Pooling"
+	pooling_param {
+	  pooling_type: "MAX"
+	  padding_height: 0
+	  padding_width: 0
+	  stride_height: 2
+	  stride_width: 2
+	  kernel_height: 3
+	  kernel_width: 3
+	}
+}
+#6
+layer {
+  type: "FullyConnected"
+  fully_connected_param {
+    init_weight: 0.005
+    init_bias: 0.1
+    random_seed: #
+    num_output: 4096
+  }
+}
+layer {
+  type: "Activation"
+  activation_param {
+    activation_function: "relu"
+  }
+}
+layer {
+	#TODO: dropout layer
+}
+#7
+layer {
+  type: "FullyConnected"
+  fully_connected_param {
+    init_weight: 0.005
+    init_bias: 0.1
+    random_seed: #
+    num_output: 4096
+  }
+}
+layer {
+  type: "Activation"
+  activation_param {
+    activation_function: "relu"
+  }
+}
+layer {
+	#TODO: dropout layer
+}
+# 8
+layer {
+  type: "FullyConnected"
+  fully_connected_param {
+    init_weight: 0.01
+    init_bias: 0
+    random_seed: #
+    num_output: 1000
+  }
+}
+layer {
+  type: "ActivationWithLoss"
+  activation_with_loss_param {
+    activation_function: "softmax"
+    loss_function: "crossEntropy"
+  }
+}
