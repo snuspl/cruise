@@ -394,7 +394,7 @@ public final class AsyncDolphinDriver {
           synchronizationManager.waitInitialization();
           LOG.info("Worker tasks are initialized. Start triggering optimization.");
 
-          while (synchronizationManager.getCurrentState().equals(SynchronizationManager.STATE_RUN)) {
+          while (synchronizationManager.areTasksRunning()) {
             optimizationOrchestrator.run();
             Thread.sleep(optimizationIntervalMs);
           }

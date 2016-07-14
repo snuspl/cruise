@@ -148,16 +148,15 @@ final class SynchronizationManager {
   }
 
   /**
-   * @return the current global state
+   * @return true if all workers are running their main iterations
    */
-  String getCurrentState() {
-    return globalStateMachine.getCurrentState();
+  boolean areTasksRunning() {
+    return globalStateMachine.getCurrentState().equals(STATE_RUN);
   }
 
   private synchronized void tryReleaseWorkers() {
     if (blockedWorkerIds.size() == numWorkersToSync) {
       LOG.log(Level.INFO, "{0} workers are blocked. Sending response messages to awake them", numWorkersToSync);
-
 
       transitState(globalStateMachine);
       // wake threads waiting initialization in waitInitialization()
