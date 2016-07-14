@@ -160,21 +160,23 @@ final class NMFWorker implements Worker {
 
   /**
    * @param dataValues Dataset assigned to this worker
-   * @return Keys to send pull requests, which are determined by ratings of NMFData.
+   * @return Keys to send pull requests, which are determined by existing columns in NMFData.
    */
   private List<Integer> getKeys(final Collection<NMFData> dataValues) {
-    final List<Integer> keys = new ArrayList<>();
+    final ArrayList<Integer> keys = new ArrayList<>();
     final Set<Integer> keySet = Sets.newTreeSet();
     // aggregate column indices
     for (final NMFData datum : dataValues) {
       keySet.addAll(
           datum.getColumns()
               .stream()
+              .distinct()
               .map(Pair::getFirst)
               .collect(Collectors.toList()));
     }
+    keys.ensureCapacity(keySet.size());
+    keys.addAll(keySet);
     return keys;
-
   }
 
   private void saveRMatrixGradient(final int key, final Vector newGrad) {
