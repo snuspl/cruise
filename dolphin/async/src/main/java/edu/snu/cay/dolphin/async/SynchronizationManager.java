@@ -29,12 +29,14 @@ import javax.inject.Inject;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * A driver-side component that coordinates synchronization messages between the driver and workers.
- * It is used to synchronize workers in two points: after initialization and before cleanup.
+ * It is used to synchronize workers in two points: after initialization (STATE_INIT -> STATE_RUN)
+ * and before cleanup (STATE_RUN -> STATE CLEANUP).
  * To achieve this, it maintains a global state that all workers should match with their own local states.
  * Workers added by EM can bypass barriers if their state is behind the global state.
  */
@@ -56,6 +58,8 @@ final class SynchronizationManager {
   private final Codec<String> codec;
 
   private final StateMachine globalStateMachine;
+
+  private final CountDownLatch initLatch = new CountDownLatch(1);
 
   /**
    * The total number of workers to sync.
@@ -122,9 +126,11 @@ final class SynchronizationManager {
     switch (currentState) {
     case STATE_INIT:
       stateMachine.setState(STATE_RUN);
+      LOG.fine("State transition: STATE_INIT -> STATE_RUN");
       break;
     case STATE_RUN:
       stateMachine.setState(STATE_CLEANUP);
+      LOG.fine("State transition: STATE_RUN -> STATE_CLEANUP");
       break;
     case STATE_CLEANUP:
       throw new RuntimeException("No more transition is allowed after STATE_CLEANUP state");
@@ -133,11 +139,31 @@ final class SynchronizationManager {
     }
   }
 
+  /**
+   * Wait until all the worker tasks are initialized.
+   * @throws InterruptedException
+   */
+  void waitInitialization() throws InterruptedException {
+    initLatch.await();
+  }
+
+  /**
+   * @return the current global state
+   */
+  String getCurrentState() {
+    return globalStateMachine.getCurrentState();
+  }
+
   private synchronized void tryReleaseWorkers() {
     if (blockedWorkerIds.size() == numWorkersToSync) {
       LOG.log(Level.INFO, "{0} workers are blocked. Sending response messages to awake them", numWorkersToSync);
 
+
       transitState(globalStateMachine);
+      // wake threads waiting initialization in waitInitialization()
+      if (globalStateMachine.getCurrentState().equals(STATE_RUN)) {
+        initLatch.countDown();
+      }
 
       // broadcast responses to blocked workers
       for (final String workerId : blockedWorkerIds) {

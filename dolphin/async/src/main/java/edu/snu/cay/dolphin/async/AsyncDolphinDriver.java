@@ -389,13 +389,12 @@ public final class AsyncDolphinDriver {
       psNetworkSetup.registerConnectionFactory(driverId);
 
       optimizerExecutor.submit(new Callable<Void>() {
-        private static final long INIT_DELAY = 10000;
-
         @Override
         public Void call() throws Exception {
-          // TODO #538: check actual timing of system init
-          Thread.sleep(INIT_DELAY);
-          while (jobStateMachine.getCurrentState().equals(STATE_RUNNING)) {
+          synchronizationManager.waitInitialization();
+          LOG.info("Worker tasks are initialized. Start triggering optimization.");
+
+          while (synchronizationManager.getCurrentState().equals(SynchronizationManager.STATE_RUN)) {
             optimizationOrchestrator.run();
             Thread.sleep(optimizationIntervalMs);
           }
