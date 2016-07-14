@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,36 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.bsp.core.metric;
+package edu.snu.cay.services.ps.metric;
 
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.dolphin.bsp.core.metric.avro.MetricsMessage;
+import edu.snu.cay.services.ps.metric.avro.ServerMetricsMsg;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A MetricsHandler implementation that sends a MetricsMessage via Aggregation Service.
+ * A MetricsHandler implementation that sends a ServerMetricsMsg via Aggregation Service.
  * The metrics are set via MetricsHandler. The other message parts must be
- * set at Task code via the setters for each Dolphin iteration.
+ * set via the setters for each worker iteration or server window.
  * The built MetricsMessage is passed through {@code send()} when sending the network message.
  */
 @NotThreadSafe
-public final class MetricsMessageSender implements MetricsHandler, MetricsMsgSender<MetricsMessage> {
-  private static final Logger LOG = Logger.getLogger(MetricsMessageSender.class.getName());
+public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgSender<ServerMetricsMsg> {
+  private static final Logger LOG = Logger.getLogger(ServerMetricsMsgSender.class.getName());
 
-  private final MetricsMessageCodec metricsMessageCodec;
-  private final AggregationSlave aggregationSlave;
+  private final ServerMetricsMsgCodec metricsMessageCodec;
   private Metrics metrics;
+  private final AggregationSlave aggregationSlave;
 
   @Inject
-  private MetricsMessageSender(final MetricsMessageCodec metricsMessageCodec,
-                               final AggregationSlave aggregationSlave) {
+  private ServerMetricsMsgSender(final ServerMetricsMsgCodec metricsMessageCodec,
+                                 final AggregationSlave aggregationSlave) {
     this.metricsMessageCodec = metricsMessageCodec;
     this.aggregationSlave = aggregationSlave;
   }
@@ -58,10 +57,9 @@ public final class MetricsMessageSender implements MetricsHandler, MetricsMsgSen
   }
 
   @Override
-  public void send(final MetricsMessage message) {
-    LOG.log(Level.INFO, "Sending metricsMessage {0}", message);
-    LOG.entering(MetricsMessageSender.class.getSimpleName(), "send");
-    aggregationSlave.send(MetricsMessageSender.class.getName(), metricsMessageCodec.encode(message));
-    LOG.exiting(MetricsMessageSender.class.getSimpleName(), "send");
+  public void send(final ServerMetricsMsg message) {
+    LOG.entering(ServerMetricsMsgSender.class.getSimpleName(), "send");
+    aggregationSlave.send(ServerConstants.AGGREGATION_CLIENT_NAME, metricsMessageCodec.encode(message));
+    LOG.exiting(ServerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }
