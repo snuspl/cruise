@@ -41,14 +41,12 @@ public final class FullyConnectedLayerParameterInitializer implements LayerParam
   private final int numOutput;
   private final float initWeight;
   private final float initBias;
-  private final long randomSeed;
 
   /**
    * @param matrixFactory the factory to create new matrices
    * @param index the index of this layer
    * @param inputShape the shape of input data
    * @param numOutput the number of output neurons
-   * @param randomSeed the seed for generating random initial parameters
    * @param initWeight the standard deviation that is used to initialize the weights from a Gaussian distribution
    *                   with mean {@code 0.0}
    * @param initBias constant value with which the biases of this layer are initialized
@@ -58,12 +56,10 @@ public final class FullyConnectedLayerParameterInitializer implements LayerParam
                                                  @Parameter(LayerIndex.class) final int index,
                                                  @Parameter(LayerInputShape.class) final String inputShape,
                                                  @Parameter(NumberOfOutput.class) final int numOutput,
-                                                 @Parameter(RandomSeed.class) final long randomSeed,
                                                  @Parameter(InitialWeight.class) final float initWeight,
                                                  @Parameter(InitialBias.class) final float initBias) {
     this.matrixFactory = matrixFactory;
     this.index = index;
-    this.randomSeed = randomSeed;
     this.numInput = getShapeLength(shapeFromString(inputShape));
     this.numOutput = numOutput;
     this.initWeight = initWeight;
@@ -73,7 +69,7 @@ public final class FullyConnectedLayerParameterInitializer implements LayerParam
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateInitialParameter() {
-    final Matrix weight = matrixFactory.randn(numOutput, numInput, randomSeed);
+    final Matrix weight = matrixFactory.randn(numOutput, numInput);
     final Matrix bias = matrixFactory.create(numOutput).fill(initBias);
 
     weight.muli(initWeight); // multiply by standard deviation.

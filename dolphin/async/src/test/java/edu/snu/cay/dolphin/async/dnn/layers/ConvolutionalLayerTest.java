@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.layers;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.RandomSeed;
 import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.*;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
@@ -168,12 +169,14 @@ public class ConvolutionalLayerTest {
     final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
         .bindNamedParameter(LayerInputShape.class, "3,3")
+        .bindNamedParameter(RandomSeed.class, String.valueOf(10))
         .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
         .build();
 
     final Configuration layerConf3D = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
         .bindNamedParameter(LayerInputShape.class, "2,2,3")
+        .bindNamedParameter(RandomSeed.class, String.valueOf(10))
         .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
         .build();
 
@@ -181,7 +184,6 @@ public class ConvolutionalLayerTest {
         .newConfigurationBuilder()
         .setInitWeight(0.2f)
         .setInitBias(0)
-        .setRandomSeed(10)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
@@ -192,7 +194,6 @@ public class ConvolutionalLayerTest {
         .newConfigurationBuilder()
         .setInitWeight(0.2f)
         .setInitBias(0)
-        .setRandomSeed(10)
         .setPaddingHeight(1)
         .setPaddingWidth(1)
         .setKernelHeight(2)
@@ -205,7 +206,6 @@ public class ConvolutionalLayerTest {
         .newConfigurationBuilder()
         .setInitWeight(0.2f)
         .setInitBias(0)
-        .setRandomSeed(10)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)

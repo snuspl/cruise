@@ -17,8 +17,10 @@ package edu.snu.cay.dolphin.async.dnn.blas.jblas;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.RandomSeed;
 import org.apache.commons.math3.random.MersenneTwister;
 import org.apache.commons.math3.random.SynchronizedRandomGenerator;
+import org.apache.reef.tang.annotations.Parameter;
 import org.jblas.FloatMatrix;
 
 import javax.inject.Inject;
@@ -28,10 +30,12 @@ import javax.inject.Inject;
  */
 public final class MatrixJBLASFactory implements MatrixFactory {
 
-  private static final SynchronizedRandomGenerator RANDOM = new SynchronizedRandomGenerator(new MersenneTwister());
+  private final SynchronizedRandomGenerator randomGenerator;
 
   @Inject
-  private MatrixJBLASFactory() {
+  private MatrixJBLASFactory(@Parameter(RandomSeed.class) final String seed) {
+    this.randomGenerator = new SynchronizedRandomGenerator(
+        (seed.isEmpty()) ? new MersenneTwister() : new MersenneTwister(Long.parseLong(seed)));
   }
 
   @Override
@@ -81,7 +85,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
 
   @Override
   public Matrix rand(final int length) {
-    return rand(length);
+    return rand(length, 1);
   }
 
   @Override
@@ -90,7 +94,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
     final float[] data = new float[length];
 
     for (int i = 0; i < length; ++i) {
-      data[i] = RANDOM.nextFloat();
+      data[i] = randomGenerator.nextFloat();
     }
 
     return create(data, rows, columns);
@@ -98,7 +102,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
 
   @Override
   public Matrix rand(final int rows, final int columns, final long seed) {
-    RANDOM.setSeed(seed);
+    randomGenerator.setSeed(seed);
     return rand(rows, columns);
   }
 
@@ -113,7 +117,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
     final float[] data = new float[length];
 
     for (int i = 0; i < length; ++i) {
-      data[i] = (float) RANDOM.nextGaussian();
+      data[i] = (float) randomGenerator.nextGaussian();
     }
 
     return create(data, rows, columns);
@@ -121,7 +125,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
 
   @Override
   public Matrix randn(final int rows, final int columns, final long seed) {
-    RANDOM.setSeed(seed);
+    randomGenerator.setSeed(seed);
     return randn(rows, columns);
   }
 

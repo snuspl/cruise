@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn.conf;
 
+import edu.snu.cay.dolphin.async.dnn.blas.RandomSeed;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.*;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.JavaConfigurationBuilder;
@@ -41,6 +42,7 @@ public final class NeuralNetworkConfigurationBuilder implements Builder<Configur
   private float stepSize = 1e-2f;
   private String inputShape;
   private int batchSize = 1;
+  private String randomSeed = "";
 
   public static NeuralNetworkConfigurationBuilder newConfigurationBuilder() {
     return new NeuralNetworkConfigurationBuilder();
@@ -71,6 +73,11 @@ public final class NeuralNetworkConfigurationBuilder implements Builder<Configur
     return this;
   }
 
+  public synchronized NeuralNetworkConfigurationBuilder setRandomSeed(final long randomSeed) {
+    this.randomSeed = String.valueOf(randomSeed);
+    return this;
+  }
+
   @Override
   public synchronized Configuration build() {
     final JavaConfigurationBuilder jb = Tang.Factory.getTang().newConfigurationBuilder();
@@ -88,6 +95,7 @@ public final class NeuralNetworkConfigurationBuilder implements Builder<Configur
     jb.bindNamedParameter(StepSize.class, String.valueOf(stepSize));
     jb.bindNamedParameter(InputShape.class, inputShape);
     jb.bindNamedParameter(BatchSize.class, String.valueOf(batchSize));
+    jb.bindNamedParameter(RandomSeed.class, randomSeed);
 
     return jb.build();
   }
