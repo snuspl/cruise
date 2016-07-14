@@ -195,13 +195,13 @@ final class NMFWorker implements Worker {
     gradients.clear();
   }
 
-  private void pullRMatrix(final List<Integer> pKeys) {
+  private void pullRMatrix(final List<Integer> keys) {
     pullTracer.startTimer();
-    final List<Vector> vectors = parameterWorker.pull(pKeys);
-    for (int i = 0; i < pKeys.size(); ++i) {
-      rMatrix.put(pKeys.get(i), vectors.get(i));
+    final List<Vector> vectors = parameterWorker.pull(keys);
+    for (int i = 0; i < keys.size(); ++i) {
+      rMatrix.put(keys.get(i), vectors.get(i));
     }
-    pullTracer.recordTime(pKeys.size());
+    pullTracer.recordTime(keys.size());
   }
 
   private void resetTracers() {
