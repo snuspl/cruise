@@ -1,5 +1,5 @@
 batch_size: 256
-step_size: 0.01 #TODO we need to decrease it every 100,000 iterations (about 20 epochs)
+step_size: 0.01 #TODO #646: we need to decrease it every 100,000 iterations (about 20 epochs)
 input_shape {
 	dim: 256
 	dim: 256
@@ -16,7 +16,7 @@ layer {
     stride_width: 4
     init_weight: 0.01
     init_bias: 0
-    random_seed: #
+    random_seed: 0
     num_output: 96
   }
 }
@@ -27,7 +27,7 @@ layer {
   }
 }
 layer {
-  #TODO: normalization layer
+  #TODO #644: normalization layer
 }
 layer {
 	type: "Pooling"
@@ -53,7 +53,7 @@ layer {
     stride_width: 1
     init_weight: 0.01
     init_bias: 0.1
-    random_seed: #
+    random_seed: 0
     num_output: 256
   }
 }
@@ -64,7 +64,7 @@ layer {
   }
 }
 layer {
-  #TODO: normalization layer
+  #TODO #644: normalization layer
 }
 layer {
 	type: "Pooling"
@@ -90,7 +90,7 @@ layer {
     stride_width: 1
     init_weight: 0.01
     init_bias: 0
-    random_seed: #
+    random_seed: 0
     num_output: 384
   }
 }
@@ -112,7 +112,7 @@ layer {
     stride_width: 1
     init_weight: 0.01
     init_bias: 0.1
-    random_seed: #
+    random_seed: 0
     num_output: 384
   }
 }
@@ -162,7 +162,7 @@ layer {
   fully_connected_param {
     init_weight: 0.005
     init_bias: 0.1
-    random_seed: #
+    random_seed: 0
     num_output: 4096
   }
 }
@@ -173,7 +173,7 @@ layer {
   }
 }
 layer {
-	#TODO: dropout layer
+	#TODO #583: dropout layer
 }
 #7
 layer {
@@ -181,7 +181,7 @@ layer {
   fully_connected_param {
     init_weight: 0.005
     init_bias: 0.1
-    random_seed: #
+    random_seed: 0
     num_output: 4096
   }
 }
@@ -192,7 +192,7 @@ layer {
   }
 }
 layer {
-	#TODO: dropout layer
+	#TODO #583: dropout layer
 }
 # 8
 layer {
@@ -200,7 +200,7 @@ layer {
   fully_connected_param {
     init_weight: 0.01
     init_bias: 0
-    random_seed: #
+    random_seed: 0
     num_output: 1000
   }
 }
