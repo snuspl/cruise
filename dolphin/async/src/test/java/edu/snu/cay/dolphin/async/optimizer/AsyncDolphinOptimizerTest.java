@@ -15,11 +15,12 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
-import edu.snu.cay.dolphin.async.metric.MetricKeys;
+import edu.snu.cay.dolphin.async.metric.WorkerConstants;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
+import edu.snu.cay.services.ps.metric.ServerConstants;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -70,7 +71,7 @@ public final class AsyncDolphinOptimizerTest {
     for (int index = 0; index < numModelsArray.length; ++index) {
       final DataInfo dataInfo = new DataInfoImpl(numModelsArray[index]);
       final Map<String, Double> serverMetrics = new HashMap<>();
-      serverMetrics.put(MetricKeys.SERVER_PROCESSING_TIME_PER_REQUEST, processingTimeArray[index]);
+      serverMetrics.put(ServerConstants.KEY_SERVER_PROCESSING_UNIT, processingTimeArray[index]);
 
       evalParamList.add(new EvaluatorParametersImpl(SERVER_PREFIX + index, dataInfo, serverMetrics));
     }
@@ -85,7 +86,7 @@ public final class AsyncDolphinOptimizerTest {
     for (int index = 0; index < dataArray.length; ++index) {
       final DataInfo dataInfo = new DataInfoImpl(dataArray[index]);
       final Map<String, Double> workerMetrics = new HashMap<>();
-      workerMetrics.put(MetricKeys.WORKER_COMPUTE_TIME, elapsedTimeArray[index]);
+      workerMetrics.put(WorkerConstants.KEY_WORKER_COMPUTE_TIME, elapsedTimeArray[index]);
 
       evalParamList.add(new EvaluatorParametersImpl(WORKER_PREFIX + index, dataInfo, workerMetrics));
     }

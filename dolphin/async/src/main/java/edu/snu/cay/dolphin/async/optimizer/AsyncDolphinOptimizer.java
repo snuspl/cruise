@@ -74,14 +74,6 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         }
       };
 
-  /**
-   *
-   * @param evalParamsMap all currently active evaluators and their parameters associated with the namespace.
-   * @param availableEvaluators the total number of evaluators available for optimization.
-   *     If availableEvaluators < activeEvaluators.size(), the optimized plan must delete evaluators.
-   *     If availableEvaluators > activeEvaluators.size(), the optimized plan may add evaluators.
-   * @return
-   */
   @Override
   public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
@@ -99,6 +91,15 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final List<EvaluatorSummary> workers = workerPair.getFirst();
     final int numDataBlocks = workerPair.getSecond();
 
+    /**
+     * 1. for each possible number of workers, check and filter:
+     * a) total number of data blocks on worker side should be greater than the number of workers
+     * b) total number of model blocks on server side should be greater than the number of servers
+     *
+     * 2. for each possible number of workers after 1, calculate cost with current metrics according to the model
+     * 3. compare the total costs for each possible number of workers
+     * 4. set optimalNumWorkers to be one that has the minimum total cost     *
+     */
     final int optimalNumWorkers = IntStream.range(1, availableEvaluators)
         .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
         .mapToObj(numWorkers ->
@@ -112,10 +113,12 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
+    // assign optimal number of blocks for each worker using unitCostInv
     final double workerUnitCostInvSum = workers.subList(0, optimalNumWorkers).stream()
         .mapToDouble(worker -> worker.unitCostInv)
         .sum();
     int numAssignedDataBlocks = 0;
+
     for (int workerIndex = 0; workerIndex < optimalNumWorkers; ++workerIndex) {
       final EvaluatorSummary worker = workers.get(workerIndex);
       if (workerIndex == optimalNumWorkers - 1) {
@@ -128,12 +131,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       }
     }
 
+    // unassign blocks from excess workers if necessary
     for (int workerIndex = optimalNumWorkers; workerIndex < workerParams.size(); ++workerIndex) {
       final EvaluatorSummary worker = workers.get(workerIndex);
       worker.setNumOptimalBlocks(0);
     }
 
 
+    // assign optimal number of blocks for each server using unitCostInv
     final double serverUnitCostInvSum = servers.subList(0, optimalNumServers).stream()
         .mapToDouble(server -> server.unitCostInv)
         .sum();
@@ -151,6 +156,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     }
 
+    // unassign blocks from excess servers if necessary
     for (int serverIndex = optimalNumServers; serverIndex < serverParams.size(); ++serverIndex) {
       final EvaluatorSummary server = servers.get(serverIndex);
       server.setNumOptimalBlocks(0);
@@ -168,12 +174,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   }
 
   /**
+   * Sorts the evaluator nodes according to the unit cost comparator and generates a list of each evaluator's summary.
+   * Append {@link EvaluatorSummary} for nodes that can be added for the extra room.
    *
-   * @param params
-   * @param availableEvaluators
-   * @param unitCostFunc
-   * @param newNodeIdPrefix
-   * @return
+   * @param params parameters related to an evaluator
+   * @param availableEvaluators number of total evaluators in the system
+   * @param unitCostFunc (e.g., server - pull processing unit / worker - computation time per data block
+   * @param newNodeIdPrefix prefix for the new nodes that can be added
+   * @return {@link EvaluatorSummary} list sorted according to the unitCostInv
    */
   private static Pair<List<EvaluatorSummary>, Integer> sortNodes(
       final List<EvaluatorParameters> params,
@@ -206,14 +214,15 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   }
 
   /**
+   * Calculates total cost (computation cost and communication cost) of the system under optimization.
    *
-   * @param numWorker
-   * @param numDataBlocks
-   * @param numModelBlocks
-   * @param availableEvaluators
-   * @param workers
-   * @param servers
-   * @return
+   * @param numWorker current number of workers
+   * @param numDataBlocks total number of data blocks
+   * @param numModelBlocks total number of model blocks
+   * @param availableEvaluators number of evaluators available
+   * @param workers list of worker {@link EvaluatorSummary}
+   * @param servers list of server {@link EvaluatorSummary}
+   * @return total cost for a given number of workers using the current metrics of the system
    */
   private static double totalCost(final int numWorker, final int numDataBlocks, final int numModelBlocks,
                                   final int availableEvaluators,
@@ -233,10 +242,11 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   }
 
   /**
+   * Generates the move() operation plan according to the optimal block assignments contained in evaluatorSummaries.
    *
-   * @param namespace
-   * @param evaluatorSummaries
-   * @param builder
+   * @param namespace namesapce for the evaluator family
+   * @param evaluatorSummaries summary of the evaluators in the system under optimization
+   * @param builder a builder for the optimization plan
    */
   private static void generateTransferSteps(final String namespace,
                                             final Collection<EvaluatorSummary> evaluatorSummaries,
