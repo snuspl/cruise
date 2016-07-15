@@ -80,8 +80,8 @@ public final class OptimizationOrchestrator {
 
   /**
    * Runs optimization based on the metrics from {@link MetricsHub} as following steps.
-   * 1) Checks the metric state whether it's enough for the optimization.
-   * 2) Process the metrics
+   * 1) Checks the metrics have been prepared for the optimization
+   * 2) Process the metrics (e.g., extract the latest metrics only)
    * 3) Calculate the optimal plan with the metrics
    * 4) Execute the obtained plan
    * 5) Wait for the plan execution to be completed
