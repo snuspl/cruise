@@ -65,9 +65,10 @@ import static org.powermock.api.mockito.PowerMockito.*;
 public final class AsyncDolphinPlanExecutorTest {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinPlanExecutorTest.class.getName());
 
+  private static final String EVAL_PREFIX = "EVAL";
+
   private static PlanExecutor planExecutor;
 
-  private static final String EVAL_PREFIX = "EVAL";
 
   @Before
   public void setUp() throws InjectionException {

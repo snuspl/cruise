@@ -35,9 +35,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -66,9 +64,21 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   private final ExecutorService mainExecutor = Executors.newSingleThreadExecutor();
 
-  private ExecutingPlan executingPlan;
+  /**
+   * Object for representing the state of plan in execution.
+   * It's volatile for the scope of {@link #execute(Plan)}.
+   */
+  private volatile ExecutingPlan executingPlan;
 
+  /**
+   * An id counter to allocate new evaluators.
+   */
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
+
+  /**
+   * Set of operations ready to be executed.
+   */
+  private final BlockingQueue<Set<EMOperation>> nextOpsToExecuteInParallel = new LinkedBlockingQueue<>();
 
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
@@ -92,17 +102,47 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * @return execution result
    */
   @Override
-  public Future<PlanResult> execute(final Plan plan) {
+  public synchronized Future<PlanResult> execute(final Plan plan) {
+    executingPlan = new ExecutingPlan(plan);
+
+    final Set<EMOperation> initialEMOperations = executingPlan.getNextOpsToExecute();
+    try {
+      nextOpsToExecuteInParallel.put(initialEMOperations);
+    } catch (final InterruptedException e) {
+      LOG.log(Level.WARNING, "Interrupted while putting ops into the queue", e);
+    }
+
+    final int numTotalOps = plan.getPlanSize();
+
     return mainExecutor.submit(new Callable<PlanResult>() {
+
+      private static final int QUEUE_SIZE = 10;
+      private static final long TIMEOUT_SEC = 10;
+
+      private final AtomicInteger numExecutedOps = new AtomicInteger(0);
+      private Collection<Set<EMOperation>> drainedOpSets = new ArrayList<>(QUEUE_SIZE);
+
       @Override
       public PlanResult call() throws Exception {
-        executingPlan = new ExecutingPlan(plan);
 
-        final Set<EMOperation> initialOperationsToExecute = executingPlan.getNextOpsToExecute();
+        while (true) {
+          final Set<EMOperation> nextOps = nextOpsToExecuteInParallel.poll(TIMEOUT_SEC, TimeUnit.SECONDS);
 
-        executeOperations(initialOperationsToExecute);
+          // execute multiple sets in the queue at once, because they have no dependency
+          nextOpsToExecuteInParallel.drainTo(drainedOpSets, QUEUE_SIZE);
+          drainedOpSets.forEach(nextOps::addAll);
+          drainedOpSets.clear();
 
-        executingPlan.awaitPlanExecutionComplete();
+          if (!nextOps.isEmpty()) {
+            executeOperations(nextOps);
+            numExecutedOps.getAndAdd(nextOps.size());
+
+            // check whether it executes all the operations in the plan
+            if (numExecutedOps.get() >= numTotalOps) {
+              break;
+            }
+          }
+        }
 
         final ConcurrentMap<EMOperation, OpExecutionStatus> planExecutionResult =
                 executingPlan.getPlanExecutionStatus();
@@ -264,21 +304,17 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    */
   private void onOperationComplete(final EMOperation completeOp) {
     final Set<EMOperation> nextOpsToExecute = executingPlan.markOperationComplete(completeOp);
-    LOG.log(Level.INFO, "Operation marked complete: {0}", completeOp);
+    LOG.log(Level.FINEST, "Operation marked complete: {0}", completeOp);
 
-    if (nextOpsToExecute.isEmpty()) {
-      final Set<EMOperation> checkRemainingOps = executingPlan.getNextOpsToExecute();
-      if (checkRemainingOps.isEmpty()) {
-        LOG.log(Level.INFO, "There are no more operations to be executed. " +
-            "CompleteOp: {0}", completeOp);
-      } else {
-        LOG.log(Level.INFO, "There are no independent operations that can be executed at the moment." +
-            " CompleteOp: {0}", completeOp);
-      }
-    } else {
+    if (!nextOpsToExecute.isEmpty()) {
       LOG.log(Level.INFO, "Executing the next set of independent operations. " +
           "CompleteOp: {0}", completeOp);
-      executeOperations(nextOpsToExecute);
+
+      try {
+        nextOpsToExecuteInParallel.put(nextOpsToExecute);
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while putting ops into the queue", e);
+      }
     }
   }
 
@@ -375,7 +411,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
 
     // In order to keep track of context mappings to evaluator IDs, we store the mappings when contexts are activated.
-    private final ConcurrentMap<String, ActiveContext> ctxIddToAddedServerCtx;
+    private final ConcurrentMap<String, ActiveContext> ctxIdToAddedServerCtx;
     private final ConcurrentMap<String, ActiveContext> ctxIdToAddedWorkerCtx;
 
     /**
@@ -388,16 +424,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      */
     private final Plan plan;
 
-    /**
-     * planExecutionLatch: set as the number of ops included in the initial plan.
-     */
-    private final CountDownLatch planExecutionLatch;
-
     private ExecutingPlan(final Plan plan) {
-      this.ctxIddToAddedServerCtx = new ConcurrentHashMap<>();
+      this.ctxIdToAddedServerCtx = new ConcurrentHashMap<>();
       this.ctxIdToAddedWorkerCtx = new ConcurrentHashMap<>();
       this.emOperationsRequested = new ConcurrentHashMap<>();
-      this.planExecutionLatch = new CountDownLatch(plan.getPlanSize());
       this.plan = plan;
     }
 
@@ -406,7 +436,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @param context ActiveContext from the event handler
      */
     void putAddedServerContext(final String planContextId, final ActiveContext context) {
-      ctxIddToAddedServerCtx.put(planContextId, context);
+      ctxIdToAddedServerCtx.put(planContextId, context);
     }
 
     void putAddedWorkerContext(final String planContextId, final ActiveContext context) {
@@ -429,7 +459,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      *        false if the operation mapping already exists - i.e. is in progress or already complete.
      */
     boolean markOperationRequested(final EMOperation operation) {
-      LOG.log(Level.INFO, "Operation requested: {0}", operation);
+      LOG.log(Level.FINEST, "Operation requested: {0}", operation);
       return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.IN_PROGRESS) == null;
     }
 
@@ -449,20 +479,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("The operation " + op + " was never in the request queue");
       }
 
-      planExecutionLatch.countDown();
       return plan.onComplete(op);
-    }
-
-    /**
-     * Initiates a latch on the entire plan composed of EM operations to be executed.
-     */
-    void awaitPlanExecutionComplete() {
-      try {
-        planExecutionLatch.await();
-      } catch (final InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-      LOG.info("All EM operations included in the plan are complete!");
     }
 
     /**
@@ -476,8 +493,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @return an addressable context ID
      */
     String getServerActualContextId(final String planContextId) {
-      return ctxIddToAddedServerCtx.containsKey(planContextId) ?
-          ctxIddToAddedServerCtx.get(planContextId).getId() : planContextId;
+      return ctxIdToAddedServerCtx.containsKey(planContextId) ?
+          ctxIdToAddedServerCtx.get(planContextId).getId() : planContextId;
     }
 
     String getWorkerActualContextId(final String planContextId) {
