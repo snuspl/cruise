@@ -235,6 +235,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);
     basicParameterClassList.add(JVMHeapSlack.class);
+    basicParameterClassList.add(MiniBatches.class);
 
     // add ps parameters
     basicParameterClassList.add(NumServers.class);
