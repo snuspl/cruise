@@ -91,14 +91,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final List<EvaluatorSummary> workers = workerPair.getFirst();
     final int numDataBlocks = workerPair.getSecond();
 
-    /**
+    /*
      * 1. for each possible number of workers, check and filter:
      * a) total number of data blocks on worker side should be greater than the number of workers
      * b) total number of model blocks on server side should be greater than the number of servers
      *
-     * 2. for each possible number of workers after 1, calculate cost with current metrics according to the model
+     * 2. for each possible number of workers after 1, calculate cost with current metrics (avg) according to the model
      * 3. compare the total costs for each possible number of workers
-     * 4. set optimalNumWorkers to be one that has the minimum total cost     *
+     * 4. set optimalNumWorkers to be one that has the minimum total cost
      */
     final int optimalNumWorkers = IntStream.range(1, availableEvaluators)
         .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
@@ -130,7 +130,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       }
     }
 
-    // unassign blocks from excess workers if necessary
+    // unassign blocks in the case of excess workers
     for (int workerIndex = optimalNumWorkers; workerIndex < workerParams.size(); ++workerIndex) {
       final EvaluatorSummary worker = workers.get(workerIndex);
       planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_WORKER, worker.id);
@@ -154,13 +154,26 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       }
     }
 
-    // unassign blocks from excess servers if necessary
+    // unassign blocks in the case of excess servers
     for (int serverIndex = optimalNumServers; serverIndex < serverParams.size(); ++serverIndex) {
       final EvaluatorSummary server = servers.get(serverIndex);
       planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_SERVER, server.id);
       server.setNumOptimalBlocks(0);
     }
 
+    // add workers if necessary
+    for (int workerIndex = workerParams.size(); workerIndex < optimalNumWorkers; ++workerIndex) {
+      final EvaluatorSummary worker = workers.get(workerIndex);
+      planBuilder.addEvaluatorToAdd(OptimizationOrchestrator.NAMESPACE_WORKER, worker.id);
+    }
+
+    // add servers if necessary
+    for (int serverIndex = serverParams.size(); serverIndex < optimalNumServers; ++serverIndex) {
+      final EvaluatorSummary server = servers.get(serverIndex);
+      planBuilder.addEvaluatorToAdd(OptimizationOrchestrator.NAMESPACE_SERVER, server.id);
+    }
+
+    // generate a plan
     generateTransferSteps(OptimizationOrchestrator.NAMESPACE_SERVER,
         servers.subList(0, Math.max(optimalNumServers, serverParams.size())),
         planBuilder);
@@ -177,7 +190,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    *
    * @param params parameters related to an evaluator
    * @param availableEvaluators number of total evaluators in the system
-   * @param unitCostFunc (e.g., server - pull processing unit / worker - computation time per data block
+   * @param unitCostFunc (e.g., server - processing time per pull / worker - computation time per data block)
    * @param newNodeIdPrefix prefix for the new nodes that can be added
    * @return {@link EvaluatorSummary} list sorted according to the unitCostInv
    */
@@ -195,15 +208,18 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .mapToDouble(unitCostFunc)
         .sum();
 
+    // unitCostInv = server : processable pull per unit time / worker : processable data blocks per unit time
     final List<EvaluatorSummary> nodes = params.stream()
         .map(param -> new EvaluatorSummary(param.getId(), param.getDataInfo(), 1 / unitCostFunc.applyAsDouble(param)))
         .collect(Collectors.toList());
 
+    // sorted in the order of high throughput
     Collections.sort(nodes, UNIT_COST_INV_COMPARATOR);
 
     final double unitCostAvg = unitCostSum / params.size();
     final double unitCostAvgInv = 1 / unitCostAvg;
 
+    // -1 for assigning at least 1 server or 1 worker in either namespace
     for (int index = 0; index < availableEvaluators - params.size() - 1; ++index) {
       nodes.add(new EvaluatorSummary(newNodeIdPrefix + index, new DataInfoImpl(), unitCostAvgInv));
     }
@@ -226,15 +242,17 @@ public final class AsyncDolphinOptimizer implements Optimizer {
                                   final int availableEvaluators,
                                   final List<EvaluatorSummary> workers,
                                   final List<EvaluatorSummary> servers) {
+    // Calculating compCost based on avg: (avgNumBlockPerWorker / avgThroughput)
     final double workerUnitCostInvSum = workers.subList(0, numWorker).stream()
         .mapToDouble(worker -> worker.unitCostInv)
         .sum();
     final double compCost = numDataBlocks / workerUnitCostInvSum;
 
+    // Calculating commCost based on avg: (avgNumBlockPerServer / avgThroughput)
     final double serverUnitCostInvSum = servers.subList(0, availableEvaluators - numWorker).stream()
         .mapToDouble(server -> server.unitCostInv)
         .sum();
-    final double commCost = numModelBlocks * numWorker / serverUnitCostInvSum;
+    final double commCost = numModelBlocks / serverUnitCostInvSum * numWorker;
 
     return compCost + commCost;
   }
