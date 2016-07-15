@@ -17,10 +17,8 @@ package edu.snu.cay.dolphin.async.dnn.blas.jblas;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
-import edu.snu.cay.dolphin.async.dnn.blas.RandomSeed;
 import org.apache.commons.math3.random.MersenneTwister;
 import org.apache.commons.math3.random.SynchronizedRandomGenerator;
-import org.apache.reef.tang.annotations.Parameter;
 import org.jblas.FloatMatrix;
 
 import javax.inject.Inject;
@@ -33,9 +31,8 @@ public final class MatrixJBLASFactory implements MatrixFactory {
   private final SynchronizedRandomGenerator randomGenerator;
 
   @Inject
-  private MatrixJBLASFactory(@Parameter(RandomSeed.class) final String seed) {
-    this.randomGenerator = new SynchronizedRandomGenerator(
-        (seed.isEmpty()) ? new MersenneTwister() : new MersenneTwister(Long.parseLong(seed)));
+  private MatrixJBLASFactory() {
+    this.randomGenerator = new SynchronizedRandomGenerator(new MersenneTwister());
   }
 
   @Override
@@ -81,6 +78,11 @@ public final class MatrixJBLASFactory implements MatrixFactory {
   @Override
   public Matrix zeros(final int rows, final int columns) {
     return new MatrixJBLASImpl(FloatMatrix.zeros(rows, columns));
+  }
+
+  @Override
+  public void setRandomSeed(final long seed) {
+    randomGenerator.setSeed(seed);
   }
 
   @Override

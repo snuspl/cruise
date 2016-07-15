@@ -89,6 +89,13 @@ public interface MatrixFactory {
    */
   Matrix zeros(int rows, int columns);
 
+
+  /**
+   * Sets the seed of the random generator using a new seed.
+   * @param seed the random seed
+   */
+  void setRandomSeed(long seed);
+
   /**
    * Creates a column vector with random values uniformly distributed in 0..1.
    * @param length the length of a column vector
