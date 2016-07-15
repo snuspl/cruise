@@ -15,17 +15,18 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.WorkerConstants;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
-import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import edu.snu.cay.services.ps.metric.ServerConstants;
 import org.apache.reef.io.network.util.Pair;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -37,8 +38,11 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
+  private static int numMiniBatchPerItr;
+
   @Inject
-  private AsyncDolphinOptimizer() {
+  private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerItr) {
+    this.numMiniBatchPerItr = numMiniBatchPerItr;
   }
 
   /**
@@ -130,7 +134,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       }
     }
 
-    // unassign blocks in the case of excess workers
+    // unassign blocks and delete excess workers
     for (int workerIndex = optimalNumWorkers; workerIndex < workerParams.size(); ++workerIndex) {
       final EvaluatorSummary worker = workers.get(workerIndex);
       planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_WORKER, worker.id);
@@ -154,26 +158,26 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       }
     }
 
-    // unassign blocks in the case of excess servers
+    // unassign blocks and delete excess server evaluators
     for (int serverIndex = optimalNumServers; serverIndex < serverParams.size(); ++serverIndex) {
       final EvaluatorSummary server = servers.get(serverIndex);
       planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_SERVER, server.id);
       server.setNumOptimalBlocks(0);
     }
 
-    // add workers if necessary
+    // add worker evaluators if necessary
     for (int workerIndex = workerParams.size(); workerIndex < optimalNumWorkers; ++workerIndex) {
       final EvaluatorSummary worker = workers.get(workerIndex);
       planBuilder.addEvaluatorToAdd(OptimizationOrchestrator.NAMESPACE_WORKER, worker.id);
     }
 
-    // add servers if necessary
+    // add server evaluators if necessary
     for (int serverIndex = serverParams.size(); serverIndex < optimalNumServers; ++serverIndex) {
       final EvaluatorSummary server = servers.get(serverIndex);
       planBuilder.addEvaluatorToAdd(OptimizationOrchestrator.NAMESPACE_SERVER, server.id);
     }
 
-    // generate a plan
+    // generate a plan for moving blocks between evaluators
     generateTransferSteps(OptimizationOrchestrator.NAMESPACE_SERVER,
         servers.subList(0, Math.max(optimalNumServers, serverParams.size())),
         planBuilder);
@@ -208,12 +212,12 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .mapToDouble(unitCostFunc)
         .sum();
 
-    // unitCostInv = server : processable pull per unit time / worker : processable data blocks per unit time
+    // unitCostInv = server: processable pull per unit time | worker: processable data blocks per unit time
     final List<EvaluatorSummary> nodes = params.stream()
         .map(param -> new EvaluatorSummary(param.getId(), param.getDataInfo(), 1 / unitCostFunc.applyAsDouble(param)))
         .collect(Collectors.toList());
 
-    // sorted in the order of high throughput
+    // sorted in the order of high "throughput"
     Collections.sort(nodes, UNIT_COST_INV_COMPARATOR);
 
     final double unitCostAvg = unitCostSum / params.size();
@@ -254,7 +258,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .sum();
     final double commCost = numModelBlocks / serverUnitCostInvSum * numWorker;
 
-    return compCost + commCost;
+    return compCost + (commCost * numMiniBatchPerItr);
   }
 
   /**
@@ -281,36 +285,25 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     }
 
     // greedy search for generating transfer steps
-    while (senderPriorityQueue.size() > 0) {
+    while (!senderPriorityQueue.isEmpty()) {
       // pick the compute task that has the biggest amount of data blocks to send to be the sender
       final EvaluatorSummary sender = senderPriorityQueue.poll();
-      while (sender.getNumBlocks() > sender.getNumOptimalBlocks()) {
-        // pick the compute task that has the biggest amount of data blocks to receive to be the receiver
-        final EvaluatorSummary receiver = receiverPriorityQueue.poll();
-        final TransferStep transferStep = generateTransferStep(sender, receiver);
-        builder.addTransferStep(namespace, transferStep);
-        if (receiver.getNumBlocks() < receiver.getNumOptimalBlocks()) {
-          receiverPriorityQueue.add(receiver);
-          break;
-        }
+      final EvaluatorSummary receiver = receiverPriorityQueue.poll();
+
+      final int numToSend = sender.getNumBlocks() - sender.getNumOptimalBlocks();
+      final int numToReceive = receiver.getNumOptimalBlocks() - receiver.getNumBlocks();
+      final int numToMove = Math.min(numToSend, numToReceive);
+
+      if (numToMove == numToSend) {
+        receiver.setNumOptimalBlocks(receiver.getNumOptimalBlocks() - numToMove);
+        receiverPriorityQueue.add(receiver);
+      } else if (numToMove == numToReceive) {
+        sender.setNumOptimalBlocks(sender.getNumOptimalBlocks() + numToMove);
+        senderPriorityQueue.add(sender);
       }
+
+      builder.addTransferStep(namespace, new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove)));
     }
-  }
-
-  /**
-   * Creates a {@link TransferStep} by calculating the number of blocks to be moved from an evaluator to another.
-   *
-   * @param sender {@link EvaluatorSummary} of the sending evaluator
-   * @param receiver {@link EvaluatorSummary} of the receiving evaluator
-   * @return A {@link TransferStep} from sender to receiver with number of blocks to move calculated
-   */
-  private static TransferStep generateTransferStep(final EvaluatorSummary sender,
-                                                   final EvaluatorSummary receiver) {
-    final int numToSend = sender.getNumBlocks() - sender.getNumOptimalBlocks();
-    final int numToReceive = receiver.getNumOptimalBlocks() - receiver.getNumBlocks();
-    final int numToMove = Math.min(numToSend, numToReceive);
-
-    return new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove));
   }
 
   /**
@@ -319,8 +312,6 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   private static final class EvaluatorSummary {
     private final String id;
     private final DataInfo dataInfo;
-
-    //
     private final double unitCostInv;
     private int numOptimalBlocks;
 
