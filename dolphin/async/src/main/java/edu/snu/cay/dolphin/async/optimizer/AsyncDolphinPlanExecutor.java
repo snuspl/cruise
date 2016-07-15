@@ -128,12 +128,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         while (true) {
           final Set<EMOperation> nextOps = nextOpsToExecuteInParallel.poll(TIMEOUT_SEC, TimeUnit.SECONDS);
 
-          // execute multiple sets in the queue at once, because they have no dependency
-          nextOpsToExecuteInParallel.drainTo(drainedOpSets, QUEUE_SIZE);
-          drainedOpSets.forEach(nextOps::addAll);
-          drainedOpSets.clear();
+          if (nextOps != null) {
+            // execute multiple sets in the queue at once, because they have no dependency
+            nextOpsToExecuteInParallel.drainTo(drainedOpSets, QUEUE_SIZE);
+            drainedOpSets.forEach(nextOps::addAll);
 
-          if (!nextOps.isEmpty()) {
             executeOperations(nextOps);
             numExecutedOps.getAndAdd(nextOps.size());
 
@@ -141,6 +140,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
             if (numExecutedOps.get() >= numTotalOps) {
               break;
             }
+
+            drainedOpSets.clear();
           }
         }
 
