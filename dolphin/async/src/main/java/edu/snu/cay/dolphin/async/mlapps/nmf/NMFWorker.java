@@ -19,6 +19,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
@@ -60,7 +61,7 @@ final class NMFWorker implements Worker {
    * Mini-batch size used for mini-batch gradient descent.
    * If less than {@code 1}, a standard gradient descent method is used.
    */
-  private final int batchSize;
+  private final int numMiniBatchPerIter;
   private final boolean printMatrices;
   private final int logPeriod;
   private final NMFModelGenerator modelGenerator;
@@ -92,7 +93,7 @@ final class NMFWorker implements Worker {
                     @Parameter(Rank.class) final int rank,
                     @Parameter(StepSize.class) final double stepSize,
                     @Parameter(Lambda.class) final double lambda,
-                    @Parameter(BatchSize.class) final int batchSize,
+                    @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     @Parameter(PrintMatrices.class) final boolean printMatrices,
                     @Parameter(LogPeriod.class) final int logPeriod,
                     final NMFModelGenerator modelGenerator,
@@ -108,7 +109,7 @@ final class NMFWorker implements Worker {
     this.rank = rank;
     this.stepSize = stepSize;
     this.lambda = lambda;
-    this.batchSize = batchSize;
+    this.numMiniBatchPerIter = numMiniBatchPerIter;
     this.printMatrices = printMatrices;
     this.logPeriod = logPeriod;
     this.modelGenerator = modelGenerator;
@@ -145,7 +146,7 @@ final class NMFWorker implements Worker {
     memoryStore.putList(dataKeys, dataValues);
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Batch size = {0}", batchSize);
+    LOG.log(Level.INFO, "Batch size = {0}", numMiniBatchPerIter);
     LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues));
     LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
   }
@@ -269,13 +270,9 @@ final class NMFWorker implements Worker {
         // rGrad = 2 * e * L_{i, *}'
         final Vector lGrad;
         final Vector rGrad;
-        if (batchSize > 0) {
-          lGrad = rVec.scale(2.0D * error / batchSize);
-          rGrad = lVec.scale(2.0D * error / batchSize);
-        } else {
-          lGrad = rVec.scale(2.0D * error);
-          rGrad = lVec.scale(2.0D * error);
-        }
+
+        lGrad = rVec.scale(2.0D * error / numMiniBatchPerIter);
+        rGrad = lVec.scale(2.0D * error / numMiniBatchPerIter);
 
         // aggregate L matrix gradients
         lGradSum.addi(lGrad);
@@ -294,7 +291,7 @@ final class NMFWorker implements Worker {
       ++rowCount;
       computeTracer.recordTime(datum.getColumns().size());
 
-      if (batchSize > 0 && rowCount % batchSize == 0) {
+      if (numMiniBatchPerIter > 1 && rowCount % numMiniBatchPerIter == 0) {
         pushAndClearGradients();
         pullRMatrix(getKeys(workload));
       }

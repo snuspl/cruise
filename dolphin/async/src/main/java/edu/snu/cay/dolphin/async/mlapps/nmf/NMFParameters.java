@@ -47,10 +47,6 @@ final class NMFParameters {
   static final class InitialMin implements Name<Double> {
   }
 
-  @NamedParameter(doc = "size of mini-batch", short_name = "batch_size", default_value = "1")
-  static final class BatchSize implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "whether generated matrices are printed or not at the end", short_name = "print_mat",
                   default_value = "false")
   static final class PrintMatrices implements Name<Boolean> {
