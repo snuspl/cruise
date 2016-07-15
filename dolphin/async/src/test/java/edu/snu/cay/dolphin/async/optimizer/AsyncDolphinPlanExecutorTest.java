@@ -50,6 +50,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -61,6 +63,7 @@ import static org.powermock.api.mockito.PowerMockito.*;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(AsyncDolphinDriver.class)
 public final class AsyncDolphinPlanExecutorTest {
+  private static final Logger LOG = Logger.getLogger(AsyncDolphinPlanExecutorTest.class.getName());
 
   private static PlanExecutor planExecutor;
 
@@ -171,7 +174,7 @@ public final class AsyncDolphinPlanExecutorTest {
     final int planSize = plan.getPlanSize();
 
     try {
-      final PlanResult summary = result.get(10, TimeUnit.SECONDS);
+      final PlanResult summary = result.get(20, TimeUnit.SECONDS);
       assertEquals(planSize, summary.getNumExecutedOps());
     } catch (final TimeoutException e) {
       fail("Failed to execute the plan. Timeout occurred.");
@@ -184,17 +187,16 @@ public final class AsyncDolphinPlanExecutorTest {
 
   private final class MockElasticMemory implements ElasticMemory {
 
-    private final ConcurrentLinkedQueue<EventHandler<AvroElasticMemoryMessage>> deleteHandlerQueue;
-    private final ConcurrentLinkedQueue<Tuple2<EventHandler<AllocatedEvaluator>,
-            List<EventHandler<ActiveContext>>>> addHandlerQueue;
-    private final ConcurrentLinkedQueue<EventHandler<AvroElasticMemoryMessage>> moveHandlerQueue;
+    private final BlockingQueue<EventHandler<AvroElasticMemoryMessage>> deleteHandlerQueue
+        = new LinkedBlockingQueue<>();
+    private final BlockingQueue<Tuple2<EventHandler<AllocatedEvaluator>,
+            List<EventHandler<ActiveContext>>>> addHandlerQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<EventHandler<AvroElasticMemoryMessage>> moveHandlerQueue = new LinkedBlockingQueue<>();
 
-    private final AtomicInteger idInt = new AtomicInteger();
+    private final AtomicInteger idCounter = new AtomicInteger();
+    private final AtomicInteger numAvailableEvals = new AtomicInteger(0);
 
     private MockElasticMemory() {
-      deleteHandlerQueue = new ConcurrentLinkedQueue<>();
-      addHandlerQueue = new ConcurrentLinkedQueue<>();
-      moveHandlerQueue = new ConcurrentLinkedQueue<>();
       initDeleteThread();
       initAddThread();
       initMoveThread();
@@ -210,9 +212,13 @@ public final class AsyncDolphinPlanExecutorTest {
         @Override
         public void run() {
           while (true) {
-            final EventHandler<AvroElasticMemoryMessage> deleteHandler = deleteHandlerQueue.poll();
-            if (deleteHandler != null) {
+            try {
+              numAvailableEvals.getAndIncrement();
+
+              final EventHandler<AvroElasticMemoryMessage> deleteHandler = deleteHandlerQueue.take();
               deleteHandler.onNext(msg);
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while executing Delete", e);
             }
           }
         }
@@ -224,11 +230,11 @@ public final class AsyncDolphinPlanExecutorTest {
 
       final AllocatedEvaluator evaluator = mock(AllocatedEvaluator.class);
 
-      when(evaluator.getId()).thenReturn("instance" + idInt.getAndIncrement());
+      when(evaluator.getId()).thenReturn("instance" + idCounter.getAndIncrement());
 
       final ActiveContext context = mock(ActiveContext.class);
       final String evalId = evaluator.getId();
-      when(context.getId()).thenReturn(Integer.toString(idInt.getAndIncrement()));
+      when(context.getId()).thenReturn(Integer.toString(idCounter.getAndIncrement()));
       when(context.getEvaluatorId()).thenReturn(evalId);
       doNothing().when(context).submitContextAndService(mock(Configuration.class), mock(Configuration.class));
 
@@ -236,12 +242,12 @@ public final class AsyncDolphinPlanExecutorTest {
         @Override
         public void run() {
           while (true) {
-            final Tuple2 addHandlers = addHandlerQueue.poll();
-            if (addHandlers != null) {
+            try {
+              final Tuple2 addHandlers = addHandlerQueue.take();
               final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler
-                      = (EventHandler<AllocatedEvaluator>) addHandlers.getT1();
+                  = (EventHandler<AllocatedEvaluator>) addHandlers.getT1();
               final List<EventHandler<ActiveContext>> ctxHandlerList
-                      = (List<EventHandler<ActiveContext>>) addHandlers.getT2();
+                  = (List<EventHandler<ActiveContext>>) addHandlers.getT2();
 
               final Answer todo = new Answer() {
                 @Override
@@ -254,7 +260,13 @@ public final class AsyncDolphinPlanExecutorTest {
               };
               doAnswer(todo).when(evaluator).submitContext(Mockito.any(Configuration.class));
 
+              if (numAvailableEvals.decrementAndGet() < 0) {
+                throw new RuntimeException("Trying to use evaluators beyond the resource limit");
+              }
+
               evaluatorAllocatedHandler.onNext(evaluator);
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while executing Add", e);
             }
           }
         }
@@ -272,9 +284,11 @@ public final class AsyncDolphinPlanExecutorTest {
         @Override
         public void run() {
           while (true) {
-            final EventHandler<AvroElasticMemoryMessage> moveHandler = moveHandlerQueue.poll();
-            if (moveHandler != null) {
+            try {
+              final EventHandler<AvroElasticMemoryMessage> moveHandler = moveHandlerQueue.take();
               moveHandler.onNext(msg);
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while executing Move", e);
             }
           }
         }
@@ -286,12 +300,20 @@ public final class AsyncDolphinPlanExecutorTest {
     public void add(final int number, final int megaBytes, final int cores,
                     final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                     final List<EventHandler <ActiveContext>> contextActiveHandlerList) {
-      addHandlerQueue.add(new Tuple2<>(evaluatorAllocatedHandler, contextActiveHandlerList));
+      try {
+        addHandlerQueue.put(new Tuple2<>(evaluatorAllocatedHandler, contextActiveHandlerList));
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while putting Add to queue", e);
+      }
     }
 
     @Override
     public void delete(final String evalId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
-      deleteHandlerQueue.add(callback);
+      try {
+        deleteHandlerQueue.put(callback);
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while putting Delete to queue", e);
+      }
     }
 
     @Override
@@ -302,7 +324,11 @@ public final class AsyncDolphinPlanExecutorTest {
     @Override
     public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
                      @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-      moveHandlerQueue.add(finishedCallback);
+      try {
+        moveHandlerQueue.put(finishedCallback);
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while putting Move to queue", e);
+      }
     }
 
     @Override
