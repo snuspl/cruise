@@ -1,8 +1,8 @@
 batch_size: 256
 step_size: 0.01 #TODO #646: we need to decrease it every 100,000 iterations (about 20 epochs)
 input_shape {
-	dim: 256
-	dim: 256
+  dim: 256
+  dim: 256
 }
 #1
 layer {
@@ -16,7 +16,6 @@ layer {
     stride_width: 4
     init_weight: 0.01
     init_bias: 0
-    random_seed: 0
     num_output: 96
   }
 }
@@ -30,16 +29,16 @@ layer {
   #TODO #644: normalization layer
 }
 layer {
-	type: "Pooling"
-	pooling_param {
-	  pooling_type: "MAX"
-	  padding_height: 2
-	  padding_width: 2
-	  stride_height: 2
-	  stride_width: 2
-	  kernel_height: 3
-	  kernel_width: 3
-	}
+  type: "Pooling"
+  pooling_param {
+    pooling_type: "MAX"
+    padding_height: 2
+    padding_width: 2
+    stride_height: 2
+    stride_width: 2
+    kernel_height: 3
+    kernel_width: 3
+  }
 }
 #2
 layer {
@@ -53,7 +52,6 @@ layer {
     stride_width: 1
     init_weight: 0.01
     init_bias: 0.1
-    random_seed: 0
     num_output: 256
   }
 }
@@ -67,16 +65,16 @@ layer {
   #TODO #644: normalization layer
 }
 layer {
-	type: "Pooling"
-	pooling_param {
-	  pooling_type: "MAX"
-	  padding_height: 0
-	  padding_width: 0
-	  stride_height: 2
-	  stride_width: 2
-	  kernel_height: 3
-	  kernel_width: 3
-	}
+  type: "Pooling"
+  pooling_param {
+    pooling_type: "MAX"
+    padding_height: 0
+    padding_width: 0
+    stride_height: 2
+    stride_width: 2
+    kernel_height: 3
+    kernel_width: 3
+  }
 }
 #3
 layer {
@@ -90,7 +88,6 @@ layer {
     stride_width: 1
     init_weight: 0.01
     init_bias: 0
-    random_seed: 0
     num_output: 384
   }
 }
@@ -112,7 +109,6 @@ layer {
     stride_width: 1
     init_weight: 0.01
     init_bias: 0.1
-    random_seed: 0
     num_output: 384
   }
 }
@@ -134,7 +130,6 @@ layer {
     stride_width: 1
     init_weight: 0.01
     init_bias: 0.1
-    random_seed: 0
     num_output: 256
   }
 }
@@ -145,16 +140,16 @@ layer {
   }
 }
 layer {
-	type: "Pooling"
-	pooling_param {
-	  pooling_type: "MAX"
-	  padding_height: 0
-	  padding_width: 0
-	  stride_height: 2
-	  stride_width: 2
-	  kernel_height: 3
-	  kernel_width: 3
-	}
+  type: "Pooling"
+  pooling_param {
+    pooling_type: "MAX"
+    padding_height: 0
+    padding_width: 0
+    stride_height: 2
+    stride_width: 2
+    kernel_height: 3
+    kernel_width: 3
+  }
 }
 #6
 layer {
@@ -162,7 +157,6 @@ layer {
   fully_connected_param {
     init_weight: 0.005
     init_bias: 0.1
-    random_seed: 0
     num_output: 4096
   }
 }
@@ -173,7 +167,7 @@ layer {
   }
 }
 layer {
-	#TODO #583: dropout layer
+  #TODO #583: dropout layer
 }
 #7
 layer {
@@ -181,7 +175,6 @@ layer {
   fully_connected_param {
     init_weight: 0.005
     init_bias: 0.1
-    random_seed: 0
     num_output: 4096
   }
 }
@@ -192,15 +185,14 @@ layer {
   }
 }
 layer {
-	#TODO #583: dropout layer
+  #TODO #583: dropout layer
 }
-# 8
+#8
 layer {
   type: "FullyConnected"
   fully_connected_param {
     init_weight: 0.01
     init_bias: 0
-    random_seed: 0
     num_output: 1000
   }
 }
