@@ -134,7 +134,7 @@ layer {
     stride_width: 1
     init_weight: 0.01
     init_bias: 0.1
-    random_seed: #
+    random_seed: 0
     num_output: 256
   }
 }
