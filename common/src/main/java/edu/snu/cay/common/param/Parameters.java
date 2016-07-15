@@ -74,4 +74,10 @@ public final class Parameters {
                   default_value = "0.0")
   public final class JVMHeapSlack implements Name<Double> {
   }
+
+  @NamedParameter(doc = "Number of mini-batches",
+      short_name = "num_mini_batch",
+      default_value = "1")
+  public final class MiniBatches implements Name<Integer> {
+  }
 }

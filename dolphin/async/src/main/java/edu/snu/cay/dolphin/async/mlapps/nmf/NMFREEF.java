@@ -44,7 +44,6 @@ public final class NMFREEF {
         .addParameterClass(Rank.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
-        .addParameterClass(BatchSize.class)
         .addParameterClass(PrintMatrices.class)
         .addParameterClass(LogPeriod.class)
         .build());
