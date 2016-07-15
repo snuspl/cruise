@@ -75,7 +75,7 @@ final class MLRWorker implements Worker {
   /**
    * Number of batches per iteration.
    */
-  private final int numMiniBatchPerItr;
+  private final int numMiniBatchPerIter;
 
   /**
    * Size of each step taken during gradient descent.
@@ -158,7 +158,7 @@ final class MLRWorker implements Worker {
                     @Parameter(DecayPeriod.class) final int decayPeriod,
                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
                     @Parameter(NumBatchPerLossLog.class) final int numBatchPerLossLog,
-                    @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerItr,
+                    @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
                     final MetricsCollector metricsCollector,
@@ -174,7 +174,7 @@ final class MLRWorker implements Worker {
       throw new RuntimeException("Uneven model partitions");
     }
     this.numPartitionsPerClass = numFeatures / numFeaturesPerPartition;
-    this.numMiniBatchPerItr = numMiniBatchPerItr;
+    this.numMiniBatchPerIter = numMiniBatchPerIter;
     this.stepSize = initStepSize;
     this.lambda = lambda;
     this.statusLogPeriod = statusLogPeriod;
@@ -231,7 +231,7 @@ final class MLRWorker implements Worker {
     }
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerItr);
+    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerIter);
     LOG.log(Level.INFO, "Total number of samples = {0}", dataValues.size());
     if (dataValues.size() < trainErrorDatasetSize) {
       LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDatasetSize);
@@ -267,8 +267,8 @@ final class MLRWorker implements Worker {
 
     int numInstances = 0;
     int numBatch = 0;
-    int batchCount = workload.size() / numMiniBatchPerItr;
-    batchCount += workload.size() % numMiniBatchPerItr == 0 ? 0 : 1;
+    int batchCount = workload.size() / numMiniBatchPerIter;
+    batchCount += workload.size() % numMiniBatchPerIter == 0 ? 0 : 1;
     computeTracer.startTimer();
     for (final Pair<Vector, Integer> entry : workload) {
       if (numInstances >= batchCount) {
@@ -286,8 +286,8 @@ final class MLRWorker implements Worker {
         }
 
         numInstances = 0;
-        batchCount = workload.size() / numMiniBatchPerItr;
-        batchCount += workload.size() % numMiniBatchPerItr <= numBatch ? 0 : 1;
+        batchCount = workload.size() / numMiniBatchPerIter;
+        batchCount += workload.size() % numMiniBatchPerIter <= numBatch ? 0 : 1;
       }
 
       final Vector features = entry.getFirst();
