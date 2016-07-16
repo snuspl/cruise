@@ -52,7 +52,6 @@ public final class MLRREEF {
         .addParameterClass(DecayRate.class)
         .addParameterClass(TrainErrorDatasetSize.class)
         .addParameterClass(NumBatchPerLossLog.class)
-        .addParameterClass(NumBatchPerIter.class)
         .build());
   }
 
@@ -107,10 +106,5 @@ public final class MLRREEF {
   @NamedParameter(doc = "log the current loss after this many mini-batches",
                   short_name = "num_batch_per_loss_log")
   final class NumBatchPerLossLog implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "number of mini-batches per iteration",
-                  short_name = "num_batch_per_iter")
-  final class NumBatchPerIter implements Name<Integer> {
   }
 }
