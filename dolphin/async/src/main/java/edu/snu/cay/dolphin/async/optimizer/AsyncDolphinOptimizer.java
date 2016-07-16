@@ -303,15 +303,17 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       final int numToReceive = receiver.getNumOptimalBlocks() - receiver.getNumBlocks();
       final int numToMove = Math.min(numToSend, numToReceive);
 
-      if (numToMove == numToSend) {
+      builder.addTransferStep(namespace, new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove)));
+
+      if (numToSend == numToReceive) {
+        continue;
+      } else if (numToMove == numToSend) {
         receiver.setNumOptimalBlocks(receiver.getNumOptimalBlocks() - numToMove);
         receiverPriorityQueue.add(receiver);
-      } else if (numToMove == numToReceive) {
+      } else { // if (numToMove == numToReceive)
         sender.setNumOptimalBlocks(sender.getNumOptimalBlocks() + numToMove);
         senderPriorityQueue.add(sender);
       }
-
-      builder.addTransferStep(namespace, new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove)));
     }
   }
 
