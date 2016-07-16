@@ -187,14 +187,18 @@ public final class AsyncDolphinPlanExecutorTest {
   }
 
   private final class MockElasticMemory implements ElasticMemory {
-
     private final BlockingQueue<EventHandler<AvroElasticMemoryMessage>> deleteHandlerQueue
         = new LinkedBlockingQueue<>();
     private final BlockingQueue<Tuple2<EventHandler<AllocatedEvaluator>,
             List<EventHandler<ActiveContext>>>> addHandlerQueue = new LinkedBlockingQueue<>();
     private final BlockingQueue<EventHandler<AvroElasticMemoryMessage>> moveHandlerQueue = new LinkedBlockingQueue<>();
 
-    private final AtomicInteger idCounter = new AtomicInteger();
+    private final AtomicInteger idCounter = new AtomicInteger(0);
+
+    /**
+     * The number of available evaluators.
+     * It's initially zero, because this test assumes that the job starts using all available resources.
+     */
     private final AtomicInteger numAvailableEvals = new AtomicInteger(0);
 
     private MockElasticMemory() {
@@ -231,7 +235,7 @@ public final class AsyncDolphinPlanExecutorTest {
 
       final AllocatedEvaluator evaluator = mock(AllocatedEvaluator.class);
 
-      when(evaluator.getId()).thenReturn("instance" + idCounter.getAndIncrement());
+      when(evaluator.getId()).thenReturn(EVAL_PREFIX + idCounter.getAndIncrement());
 
       final ActiveContext context = mock(ActiveContext.class);
       final String evalId = evaluator.getId();

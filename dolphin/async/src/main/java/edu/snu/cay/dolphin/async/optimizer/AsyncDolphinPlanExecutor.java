@@ -66,7 +66,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   /**
    * Object for representing the state of plan in execution.
-   * It's volatile for the scope of {@link #execute(Plan)}.
+   * It's lifecycle is same with the scope of {@link #execute(Plan)}.
    */
   private volatile ExecutingPlan executingPlan;
 
@@ -117,7 +117,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     return mainExecutor.submit(new Callable<PlanResult>() {
 
       private static final int QUEUE_SIZE = 10;
-      private static final long TIMEOUT_SEC = 10;
+      private static final long POLLING_TIMEOUT_SEC = 10;
 
       private final AtomicInteger numExecutedOps = new AtomicInteger(0);
       private Collection<Set<EMOperation>> drainedOpSets = new ArrayList<>(QUEUE_SIZE);
@@ -126,10 +126,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       public PlanResult call() throws Exception {
 
         while (true) {
-          final Set<EMOperation> nextOps = nextOpsToExecuteInParallel.poll(TIMEOUT_SEC, TimeUnit.SECONDS);
+          final Set<EMOperation> nextOps = nextOpsToExecuteInParallel.poll(POLLING_TIMEOUT_SEC, TimeUnit.SECONDS);
 
           if (nextOps != null) {
-            // execute multiple sets in the queue at once, because they have no dependency
+            // execute existing sets in the queue at once, because they have no dependency
             nextOpsToExecuteInParallel.drainTo(drainedOpSets, QUEUE_SIZE);
             drainedOpSets.forEach(nextOps::addAll);
 
@@ -180,8 +180,12 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
       final int workerIndex = addedEvalCounter.getAndIncrement();
+
+      // note that it is temporarily used in the plan, actual id will be assigned when it is actually allocated
+      final String workerId = "WORKER_ADDED_EVAL" + workerIndex;
+
       final Configuration idConfiguration = ContextConfiguration.CONF
-          .set(ContextConfiguration.IDENTIFIER, "WORKER_ADDED_EVAL" + workerIndex)
+          .set(ContextConfiguration.IDENTIFIER, workerId)
           .build();
       allocatedEvaluator.submitContext(idConfiguration);
     }
