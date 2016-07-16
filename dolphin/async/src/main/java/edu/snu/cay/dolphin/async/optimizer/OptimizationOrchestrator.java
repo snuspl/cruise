@@ -167,7 +167,7 @@ public final class OptimizationOrchestrator {
     try {
       future.get();
     } catch (final InterruptedException | ExecutionException e) {
-      LOG.log(Level.SEVERE, "Exception while executing optimization");
+      LOG.log(Level.SEVERE, "Exception while executing optimization", e);
     }
   }
 
