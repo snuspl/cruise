@@ -30,7 +30,7 @@ public interface AsyncWorkerHandler<K, P, V> {
    * @param key key object representing what was sent
    * @param value value sent from the server
    */
-  void processPullResult(K key, V value);
+  void processPullReply(K key, V value);
 
   /**
    * Notify the reject of Pull operation to the waiting worker thread.

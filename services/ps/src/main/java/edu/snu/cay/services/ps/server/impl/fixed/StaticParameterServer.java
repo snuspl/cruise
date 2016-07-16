@@ -290,11 +290,11 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       public void run() {
         // Close all threads
         for (final ServerThread thread : threads.values()) {
-          thread.close();
+          thread.startClose();
         }
-        // Wait for shutdown to complete on all threads
+        // Wait for close to complete on all threads
         for (final ServerThread thread : threads.values()) {
-          thread.waitForShutdown();
+          thread.waitForClose();
         }
       }
     });
@@ -456,7 +456,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         kvStore.put(key, parameterUpdater.initValue(key));
       }
 
-      sender.sendPullResultMsg(srcId, key, kvStore.get(key));
+      sender.sendPullReplyMsg(srcId, key, kvStore.get(key));
 
       final long processEndTime = ticker.read();
       final long processingTime = processEndTime - waitEndTime;
@@ -535,7 +535,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     @Override
     public void run() {
       while (!close || !queue.isEmpty()) {
-        // First, poll and apply. The timeout allows the run thread to shutdown cleanly within timeout ms.
+        // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (op == null) {
@@ -557,17 +557,17 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         localOps.clear();
       }
 
-      shutdown();
+      finishClose();
     }
 
     /**
      * Start closing the thread.
      */
-    public void close() {
+    public void startClose() {
       close = true;
     }
 
-    private void shutdown() {
+    private void finishClose() {
       shutdown.set(true);
       synchronized (shutdown) {
         shutdown.notifyAll();
@@ -577,7 +577,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     /**
      * Wait until thread closes successfully.
      */
-    public void waitForShutdown() {
+    public void waitForClose() {
       while (!shutdown.get()) {
         try {
           synchronized (shutdown) {

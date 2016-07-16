@@ -26,7 +26,7 @@ public interface ServerSideReplySender<K, P, V> {
    * @param key key, to be serialized immediately
    * @param value value, to be serialized immediately
    */
-  void sendPullResultMsg(String destId, K key, V value);
+  void sendPullReplyMsg(String destId, K key, V value);
 
   /**
    * Send a reject msg for push operation to the worker who requested.

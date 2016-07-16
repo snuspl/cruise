@@ -78,7 +78,7 @@ public final class NetworkContextRegister {
         parameterServer.close(CLOSE_TIMEOUT_MS);
         LOG.fine("Succeed to close PS server cleanly");
       } catch (InterruptedException | TimeoutException | ExecutionException e) {
-        LOG.log(Level.INFO, "Fail to close PS server cleanly", e);
+        LOG.log(Level.WARNING, "Fail to close PS server cleanly", e);
       }
 
       psNetworkSetup.unregisterConnectionFactory();

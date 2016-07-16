@@ -28,13 +28,13 @@ public final class AsyncWorkerHandlerImpl<K, P, V> implements AsyncWorkerHandler
   }
 
   @Override
-  public void processPullResult(final K key, final V value) {
+  public void processPullReply(final K key, final V value) {
     parameterWorker.processPullReply(key, value);
   }
 
   @Override
   public void processPullReject(final K key) {
-    parameterWorker.processPullReply(key, null);
+    parameterWorker.processPullReject(key);
   }
 
   @Override

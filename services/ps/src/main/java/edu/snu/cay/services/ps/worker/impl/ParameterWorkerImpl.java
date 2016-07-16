@@ -31,7 +31,6 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
@@ -255,11 +254,11 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       public void run() {
         // Close all threads
         for (int i = 0; i < numThreads; i++) {
-          threads[i].close();
+          threads[i].startClose();
         }
         // Wait for shutdown to complete on all threads
         for (int i = 0; i < numThreads; i++) {
-          threads[i].waitForShutdown();
+          threads[i].waitForClose();
         }
       }
     });
@@ -269,17 +268,30 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
   /**
    * Handles incoming pull replies, by setting the value of the future.
-   * This will notify the Partition's (synchronous) CacheLoader method to continue.
-   * Called by {@link AsyncWorkerHandlerImpl#processPullResult}.
+   * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
+   * Called by {@link AsyncWorkerHandlerImpl#processPullReply}.
    */
-  public void processPullReply(final K key, @Nullable final V value) {
+  public void processPullReply(final K key, final V value) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
-      if (value == null) {
-        future.reject();
-      } else {
-        future.setValue(value);
-      }
+      future.setValue(value);
+
+    } else {
+      // Because we use partitions, there can be at most one active pendingPull for a key.
+      // Thus, a null value should never appear.
+      throw new RuntimeException(String.format("Pending pull was not found for key %s", key));
+    }
+  }
+
+  /**
+   * Handles incoming pull rejects, by rejecting the future.
+   * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
+   * Called by {@link AsyncWorkerHandlerImpl#processPullReject}.
+   */
+  public void processPullReject(final K key) {
+    final PullFuture<V> future = pendingPulls.get(key);
+    if (future != null) {
+      future.reject();
 
     } else {
       // Because we use partitions, there can be at most one active pendingPull for a key.
@@ -639,17 +651,17 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
         localOps.clear();
       }
 
-      shutdown();
+      finishClose();
     }
 
     /**
      * Close the run thread.
      */
-    public void close() {
+    public void startClose() {
       close = true;
     }
 
-    private void shutdown() {
+    private void finishClose() {
       shutdown.set(true);
       synchronized (shutdown) {
         shutdown.notifyAll();
@@ -659,7 +671,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     /**
      * Wait for shutdown confirmation (clean close has finished).
      */
-    public void waitForShutdown() {
+    public void waitForClose() {
       while (!shutdown.get()) {
         try {
           synchronized (shutdown) {

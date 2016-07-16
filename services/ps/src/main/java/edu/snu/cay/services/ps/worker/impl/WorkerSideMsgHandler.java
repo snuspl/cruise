@@ -85,8 +85,8 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
 
     final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-    case PullResultMsg:
-      onPullResultMsg(innerMsg.getPullResultMsg());
+    case PullReplyMsg:Msg:
+      onPullReplyMsg(innerMsg.getPullReplyMsg());
       break;
 
     case PushRejectMsg:
@@ -138,10 +138,10 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockIds));
   }
 
-  private void onPullResultMsg(final PullResultMsg pullResultMsg) {
-    final K key = keyCodec.decode(pullResultMsg.getKey().array());
-    final V value = valueCodec.decode(pullResultMsg.getValue().array());
-    asyncWorkerHandler.processPullResult(key, value);
+  private void onPullReplyMsg(final PullReplyMsg pullReplyMsg) {
+    final K key = keyCodec.decode(pullReplyMsg.getKey().array());
+    final V value = valueCodec.decode(pullReplyMsg.getValue().array());
+    asyncWorkerHandler.processPullReply(key, value);
   }
 
   private void onPushRejectMsg(final PushRejectMsg pushRejectMsg) {

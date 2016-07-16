@@ -75,7 +75,7 @@ public final class ParameterWorkerImplTest {
     // pull messages should return values s.t. key == value
     doAnswer(invocationOnMock -> {
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        handler.processPullResult(encodedKey.getKey(), encodedKey.getKey());
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
@@ -253,7 +253,7 @@ public final class ParameterWorkerImplTest {
         if (count < numReject) {
           handler.processPullReject(encodedKey.getKey());
         } else {
-          handler.processPullResult(encodedKey.getKey(), encodedKey.getKey());
+          handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
         }
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
@@ -281,7 +281,6 @@ public final class ParameterWorkerImplTest {
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
     verify(mockSender, times(numPullPerThread * numPullThreads + numReject)).sendPullMsg(anyString(), anyObject());
   }
-
 
   /**
    * Test that the {@link ParameterWorkerImpl#invalidateAll()} method invalidates all caches
