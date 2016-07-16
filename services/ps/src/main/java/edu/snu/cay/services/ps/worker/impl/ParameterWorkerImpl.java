@@ -25,6 +25,7 @@ import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.Statistics;
+import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
@@ -35,7 +36,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -178,7 +178,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     }
   }
 
-  public void push(final EncodedKey<K> encodedKey, final P preValue) {
+  void push(final EncodedKey<K> encodedKey, final P preValue) {
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
     threads[threadId].enqueue(new PushOp(encodedKey, preValue, threadId));
@@ -193,7 +193,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     }
   }
 
-  public V pull(final EncodedKey<K> encodedKey) {
+  V pull(final EncodedKey<K> encodedKey) {
     final PullOp pullOp = new PullOp(encodedKey);
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
@@ -216,7 +216,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     return pullEncodedKeys(encodedKeys);
   }
 
-  public List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
+  List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
     final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
     for (final EncodedKey<K> encodedKey : encodedKeys) {
       final PullOp pullOp = new PullOp(encodedKey);
@@ -256,7 +256,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
         for (int i = 0; i < numThreads; i++) {
           threads[i].startClose();
         }
-        // Wait for shutdown to complete on all threads
+        // Wait for close to complete on all threads
         for (int i = 0; i < numThreads; i++) {
           threads[i].waitForClose();
         }
@@ -271,7 +271,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
    * Called by {@link AsyncWorkerHandlerImpl#processPullReply}.
    */
-  public void processPullReply(final K key, final V value) {
+  void processPullReply(final K key, final V value) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);
@@ -288,7 +288,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
    * Called by {@link AsyncWorkerHandlerImpl#processPullReject}.
    */
-  public void processPullReject(final K key) {
+  void processPullReject(final K key) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.reject();
@@ -313,7 +313,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      * It returns null when it fails to get the value.
      * @return the value
      */
-    public synchronized V getValue() {
+    synchronized V getValue() {
       if (value == null && !rejected) {
         try {
           wait();
@@ -336,7 +336,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     /**
      * Wake up the waiting thread without setting a value, in order to retry.
      */
-    public synchronized void reject() {
+    synchronized void reject() {
       rejected = true;
       notify();
     }
@@ -377,15 +377,15 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private static class Wrapped<V> {
     private V value;
 
-    public Wrapped(final V value) {
+    Wrapped(final V value) {
       this.value = value;
     }
 
-    public V getValue() {
+    V getValue() {
       return value;
     }
 
-    public void setValue(final V value) {
+    void setValue(final V value) {
       this.value = value;
     }
   }
@@ -400,7 +400,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final P preValue;
     private final int threadId;
 
-    public PushOp(final EncodedKey<K> encodedKey, final P preValue, final int threadId) {
+    PushOp(final EncodedKey<K> encodedKey, final P preValue, final int threadId) {
       this.encodedKey = encodedKey;
       this.preValue = preValue;
       this.threadId = threadId;
@@ -469,7 +469,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final EncodedKey<K> encodedKey;
     private V value;
 
-    public PullOp(final EncodedKey<K> encodedKey) {
+    PullOp(final EncodedKey<K> encodedKey) {
       this.encodedKey = encodedKey;
     }
 
@@ -527,6 +527,9 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private static class WorkerThread<K, P, V> implements Runnable {
     private static final int MAX_RETRY_COUNT = 10;
     private static final long QUEUE_TIMEOUT_MS = 3000;
+    private static final String STATE_RUNNING = "RUNNING";
+    private static final String STATE_CLOSING = "CLOSING";
+    private static final String STATE_CLOSED = "CLOSED";
 
     private final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache;
     private final BlockingQueue<Op<K, V>> queue;
@@ -534,16 +537,27 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final int drainSize; // Max number of operations to drain per iteration.
     private final Ticker ticker = Ticker.systemTicker();
 
-    private volatile boolean close = false;
-    private final AtomicBoolean shutdown = new AtomicBoolean(false);
+    private final StateMachine stateMachine;
 
-    public WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
-                        final ServerResolver serverResolver,
-                        final InjectionFuture<WorkerMsgSender<K, P>> sender,
-                        final int queueSize,
-                        final long expireTimeout,
-                        final Statistics pullStat) {
-      kvCache = CacheBuilder.newBuilder()
+    WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
+                 final ServerResolver serverResolver,
+                 final InjectionFuture<WorkerMsgSender<K, P>> sender,
+                 final int queueSize,
+                 final long expireTimeout,
+                 final Statistics pullStat) {
+      this.kvCache = initCache(pendingPulls, serverResolver, sender, expireTimeout, pullStat);
+      this.queue = new ArrayBlockingQueue<>(queueSize);
+      this.drainSize = queueSize / 10;
+      this.localOps = new ArrayList<>(drainSize);
+      this.stateMachine = initStateMachine();
+    }
+
+    private LoadingCache<EncodedKey<K>, Wrapped<V>> initCache(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
+                                                              final ServerResolver serverResolver,
+                                                              final InjectionFuture<WorkerMsgSender<K, P>> sender,
+                                                              final long expireTimeout,
+                                                              final Statistics pullStat) {
+      return CacheBuilder.newBuilder()
           .concurrencyLevel(1)
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
           .build(new CacheLoader<EncodedKey<K>, Wrapped<V>>() {
@@ -576,7 +590,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                   continue;
                 }
 
-                // returns null when rejected by server future and then pull is retried in the while loop
+                // returns null when rejected by server and then the pull is retried in the while loop
                 value = future.getValue();
               }
 
@@ -584,9 +598,17 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
               return new Wrapped<>(value);
             }
           });
-      queue = new ArrayBlockingQueue<>(queueSize);
-      this.drainSize = queueSize / 10;
-      this.localOps = new ArrayList<>(drainSize);
+    }
+
+    private StateMachine initStateMachine() {
+      return StateMachine.newBuilder()
+          .addState(STATE_RUNNING, "Server thread is running. It executes operations in the queue.")
+          .addState(STATE_CLOSING, "Server thread is closing. It will be closed after processing whole remaining ops.")
+          .addState(STATE_CLOSED, "Server thread is closed. It finished processing whole remaining operations.")
+          .addTransition(STATE_RUNNING, STATE_CLOSING, "Time to close the thread.")
+          .addTransition(STATE_CLOSING, STATE_CLOSED, "Closing the thread is done.")
+          .setInitialState(STATE_RUNNING)
+          .build();
     }
 
     /**
@@ -596,19 +618,18 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      *
      * @param op the operation to enqueue
      */
-    public void enqueue(final Op<K, V> op) {
+    void enqueue(final Op<K, V> op) {
       try {
         queue.put(op);
       } catch (final InterruptedException e) {
         LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
-        return;
       }
     }
 
     /**
      * Invalidate all cached pulls.
      */
-    public void invalidateAll() {
+    void invalidateAll() {
       kvCache.invalidateAll();
     }
 
@@ -628,7 +649,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      */
     @Override
     public void run() {
-      while (!close || !queue.isEmpty()) {
+      while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
         // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -655,28 +676,29 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     }
 
     /**
-     * Close the run thread.
+     * Start closing the thread.
+     * The thread will be closed after processing for all pending operations.
      */
-    public void startClose() {
-      close = true;
-    }
-
-    private void finishClose() {
-      shutdown.set(true);
-      synchronized (shutdown) {
-        shutdown.notifyAll();
-      }
+    void startClose() {
+      stateMachine.setState(STATE_CLOSING);
     }
 
     /**
-     * Wait for shutdown confirmation (clean close has finished).
+     * Notify that the thread is closed successfully.
+     * It wakes up threads waiting in {@link #waitForClose()}.
      */
-    public void waitForClose() {
-      while (!shutdown.get()) {
+    private void finishClose() {
+      stateMachine.setState(STATE_CLOSED);
+      notifyAll();
+    }
+
+    /**
+     * Wait until thread is closed successfully.
+     */
+    void waitForClose() {
+      while (stateMachine.getCurrentState().equals(STATE_CLOSING)) {
         try {
-          synchronized (shutdown) {
-            shutdown.wait();
-          }
+          wait();
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
         }

@@ -30,13 +30,13 @@ import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
+import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -536,17 +536,32 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
    */
   private static class ServerThread<K, V> implements Runnable {
     private static final long QUEUE_TIMEOUT_MS = 3000;
+    private static final String STATE_RUNNING = "RUNNING";
+    private static final String STATE_CLOSING = "CLOSING";
+    private static final String STATE_CLOSED = "CLOSED";
+
     private final BlockingQueue<Op<K, V>> queue;
     private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
     private final int drainSize; // Max number of operations to drain per iteration.
 
-    private volatile boolean close = false;
-    private final AtomicBoolean shutdown = new AtomicBoolean(false);
+    private final StateMachine stateMachine;
 
     ServerThread(final int queueSize) {
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
       this.localOps = new ArrayList<>(drainSize);
+      this.stateMachine = initStateMachine();
+    }
+
+    private StateMachine initStateMachine() {
+      return StateMachine.newBuilder()
+          .addState(STATE_RUNNING, "Server thread is running. It executes operations in the queue.")
+          .addState(STATE_CLOSING, "Server thread is closing. It will be closed after rejecting whole remaining ops.")
+          .addState(STATE_CLOSED, "Server thread is closed. It finished rejecting whole remaining operations.")
+          .addTransition(STATE_RUNNING, STATE_CLOSING, "Time to close the thread.")
+          .addTransition(STATE_CLOSING, STATE_CLOSED, "Closing the thread is done.")
+          .setInitialState(STATE_RUNNING)
+          .build();
     }
 
     /**
@@ -577,7 +592,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     @Override
     public void run() {
-      while (!close) {
+      while (stateMachine.getCurrentState().equals(STATE_RUNNING)) {
         // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -594,18 +609,14 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         // Calling drainTo does not block if queue is empty, which is why we poll first.
         // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
         queue.drainTo(localOps, drainSize);
-        for (final Op<K, V> op : localOps) {
-          op.apply();
-        }
+        localOps.forEach(Op::apply);
         localOps.clear();
       }
 
       // reject all operations in the queue before exit
       while (!queue.isEmpty()) {
         queue.drainTo(localOps, drainSize);
-        for (final Op<K, V> op : localOps) {
-          op.reject();
-        }
+        localOps.forEach(Op::reject);
         localOps.clear();
       }
 
@@ -614,27 +625,28 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     /**
      * Start closing the thread.
+     * The thread will be closed after sending reject messages for all pending operations.
      */
-    public void startClose() {
-      close = true;
-    }
-
-    private void finishClose() {
-      shutdown.set(true);
-      synchronized (shutdown) {
-        shutdown.notifyAll();
-      }
+    void startClose() {
+      stateMachine.setState(STATE_CLOSING);
     }
 
     /**
-     * Wait until thread closes successfully.
+     * Notify that the thread is closed successfully.
+     * It wakes up threads waiting in {@link #waitForClose()}.
      */
-    public void waitForClose() {
-      while (!shutdown.get()) {
+    private void finishClose() {
+      stateMachine.setState(STATE_CLOSED);
+      notifyAll();
+    }
+
+    /**
+     * Wait until thread is closed successfully.
+     */
+    void waitForClose() {
+      while (stateMachine.getCurrentState().equals(STATE_CLOSING)) {
         try {
-          synchronized (shutdown) {
-            shutdown.wait();
-          }
+          wait();
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
         }
