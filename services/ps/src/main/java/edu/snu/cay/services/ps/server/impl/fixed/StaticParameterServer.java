@@ -297,7 +297,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
 
         // After time has elapsed as long as a windowIndex, get the collected metrics and build a MetricsMessage.
         final double processingUnit = getProcessingUnit();
-        insertableMetricTracker.put(ServerConstants.KEY_SERVER_PROCESSING_UNIT, processingUnit);
+        insertableMetricTracker.put(ServerConstants.SERVER_PROCESSING_TIME, processingUnit);
         metricsCollector.stop();
 
         // Send meaningful metrics only (i.e., infinity processing time implies that no data has been processed yet).

@@ -33,7 +33,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Class for testing {@link AsyncDolphinOptimizer}'s behavior.
+ * Tests {@link AsyncDolphinOptimizer}'s plan generation according to the cost model described in the class's javadoc.
+ *
+ * Sample computation time and communication time with data/model block distributions can be assigned to
+ * workers and servers respectively to test that the optimizer generates a plan.
  */
 public final class AsyncDolphinOptimizerTest {
   private static final String WORKER_PREFIX = "Worker-";
@@ -47,7 +50,7 @@ public final class AsyncDolphinOptimizerTest {
   }
 
   @Test
-  public void testAnything() {
+  public void testSimpleOptimization() {
     final int[] dataArray = new int[]{30, 20, 40, 10, 50};
     final double[] elapsedTimeArray = new double[]{30, 60, 24, 8, 60};
     final List<EvaluatorParameters> workerEvaluatorParameters =
@@ -61,7 +64,7 @@ public final class AsyncDolphinOptimizerTest {
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(OptimizationOrchestrator.NAMESPACE_SERVER, serverEvaluatorParameters);
     map.put(OptimizationOrchestrator.NAMESPACE_WORKER, workerEvaluatorParameters);
-    optimizer.optimize(map, 10);
+    optimizer.optimize(map, 12);
   }
 
   private List<EvaluatorParameters> generateServerEvaluatorParameters(final int[] numModelsArray,
@@ -71,7 +74,7 @@ public final class AsyncDolphinOptimizerTest {
     for (int index = 0; index < numModelsArray.length; ++index) {
       final DataInfo dataInfo = new DataInfoImpl(numModelsArray[index]);
       final Map<String, Double> serverMetrics = new HashMap<>();
-      serverMetrics.put(ServerConstants.KEY_SERVER_PROCESSING_UNIT, processingTimeArray[index]);
+      serverMetrics.put(ServerConstants.SERVER_PROCESSING_TIME, processingTimeArray[index]);
 
       evalParamList.add(new EvaluatorParametersImpl(SERVER_PREFIX + index, dataInfo, serverMetrics));
     }
@@ -86,7 +89,7 @@ public final class AsyncDolphinOptimizerTest {
     for (int index = 0; index < dataArray.length; ++index) {
       final DataInfo dataInfo = new DataInfoImpl(dataArray[index]);
       final Map<String, Double> workerMetrics = new HashMap<>();
-      workerMetrics.put(WorkerConstants.KEY_WORKER_COMPUTE_TIME, elapsedTimeArray[index]);
+      workerMetrics.put(WorkerConstants.WORKER_COMPUTE_TIME, elapsedTimeArray[index]);
 
       evalParamList.add(new EvaluatorParametersImpl(WORKER_PREFIX + index, dataInfo, workerMetrics));
     }

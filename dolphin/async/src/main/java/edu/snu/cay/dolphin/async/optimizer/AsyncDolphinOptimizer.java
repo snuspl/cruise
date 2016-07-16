@@ -34,11 +34,19 @@ import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+/**
+ * Uses metrics collected from workers and servers to estimate the cost associated with iteration time.
+ * It generates an optimization plan for the system that minimizes the cost.
+ *
+ * The cost model is based on computation cost + communication cost where:
+ * computation cost = workers' computation time averaged
+ * communication cost = servers' pull processing time averaged
+ */
 public final class AsyncDolphinOptimizer implements Optimizer {
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
-  private static int numMiniBatchPerItr;
+  private final int numMiniBatchPerItr;
 
   @Inject
   private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerItr) {
@@ -84,13 +92,13 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair = sortNodes(serverParams, availableEvaluators,
-        param -> param.getMetrics().get(ServerConstants.KEY_SERVER_PROCESSING_UNIT),
+        param -> param.getMetrics().get(ServerConstants.SERVER_PROCESSING_TIME),
         NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> servers = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
 
     final Pair<List<EvaluatorSummary>, Integer> workerPair = sortNodes(workerParams, availableEvaluators,
-        param -> param.getMetrics().get(WorkerConstants.KEY_WORKER_COMPUTE_TIME) / param.getDataInfo().getNumBlocks(),
+        param -> param.getMetrics().get(WorkerConstants.WORKER_COMPUTE_TIME) / param.getDataInfo().getNumBlocks(),
         NEW_WORKER_ID_PREFIX);
     final List<EvaluatorSummary> workers = workerPair.getFirst();
     final int numDataBlocks = workerPair.getSecond();
@@ -134,7 +142,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       }
     }
 
-    // unassign blocks and delete excess workers
+    // delete excess workers and un-assign blocks
     for (int workerIndex = optimalNumWorkers; workerIndex < workerParams.size(); ++workerIndex) {
       final EvaluatorSummary worker = workers.get(workerIndex);
       planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_WORKER, worker.id);
@@ -158,7 +166,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       }
     }
 
-    // unassign blocks and delete excess server evaluators
+    // delete excess servers and un-assign blocks
     for (int serverIndex = optimalNumServers; serverIndex < serverParams.size(); ++serverIndex) {
       final EvaluatorSummary server = servers.get(serverIndex);
       planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_SERVER, server.id);
@@ -198,7 +206,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    * @param newNodeIdPrefix prefix for the new nodes that can be added
    * @return {@link EvaluatorSummary} list sorted according to the unitCostInv
    */
-  private static Pair<List<EvaluatorSummary>, Integer> sortNodes(
+  private Pair<List<EvaluatorSummary>, Integer> sortNodes(
       final List<EvaluatorParameters> params,
       final int availableEvaluators,
       final ToDoubleFunction<EvaluatorParameters> unitCostFunc,
@@ -223,7 +231,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final double unitCostAvg = unitCostSum / params.size();
     final double unitCostAvgInv = 1 / unitCostAvg;
 
-    // -1 for assigning at least 1 server or 1 worker in either namespace
+    // We can use up to (availableEvaluators - runningEvaluators - 1) evaluators in each namespace,
+    // and reserve at least one evaluator for the other namespace.
     for (int index = 0; index < availableEvaluators - params.size() - 1; ++index) {
       nodes.add(new EvaluatorSummary(newNodeIdPrefix + index, new DataInfoImpl(), unitCostAvgInv));
     }
@@ -235,14 +244,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    * Calculates total cost (computation cost and communication cost) of the system under optimization.
    *
    * @param numWorker current number of workers
-   * @param numDataBlocks total number of data blocks
-   * @param numModelBlocks total number of model blocks
+   * @param numDataBlocks total number of data blocks across workers
+   * @param numModelBlocks total number of model blocks across servers
    * @param availableEvaluators number of evaluators available
    * @param workers list of worker {@link EvaluatorSummary}
    * @param servers list of server {@link EvaluatorSummary}
    * @return total cost for a given number of workers using the current metrics of the system
    */
-  private static double totalCost(final int numWorker, final int numDataBlocks, final int numModelBlocks,
+  private double totalCost(final int numWorker, final int numDataBlocks, final int numModelBlocks,
                                   final int availableEvaluators,
                                   final List<EvaluatorSummary> workers,
                                   final List<EvaluatorSummary> servers) {
