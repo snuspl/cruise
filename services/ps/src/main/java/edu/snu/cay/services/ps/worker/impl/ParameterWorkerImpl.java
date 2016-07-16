@@ -687,7 +687,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      * Notify that the thread is closed successfully.
      * It wakes up threads waiting in {@link #waitForClose()}.
      */
-    private void finishClose() {
+    private synchronized void finishClose() {
       stateMachine.setState(STATE_CLOSED);
       notifyAll();
     }
@@ -695,7 +695,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     /**
      * Wait until thread is closed successfully.
      */
-    void waitForClose() {
+    synchronized void waitForClose() {
       while (stateMachine.getCurrentState().equals(STATE_CLOSING)) {
         try {
           wait();
