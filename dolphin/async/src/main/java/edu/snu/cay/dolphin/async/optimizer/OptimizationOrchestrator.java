@@ -78,7 +78,16 @@ public final class OptimizationOrchestrator {
     this.maxNumEvals = maxNumEvals;
   }
 
-  public void run() {
+  /**
+   * Runs optimization based on the metrics from {@link MetricsHub} as following steps.
+   * 1) Checks the metrics have been prepared for the optimization
+   * 2) Process the metrics (e.g., extract the latest metrics only)
+   * 3) Calculate the optimal plan with the metrics
+   * 4) Execute the obtained plan
+   * 5) Wait for the plan execution to be completed
+   */
+  public synchronized void run() {
+    // 1) Checks the metric state whether it's enough for the optimization.
     serverParameters.addAll(metricsHub.drainServerMetrics());
     workerParameters.addAll(metricsHub.drainWorkerMetrics());
 
@@ -108,45 +117,58 @@ public final class OptimizationOrchestrator {
       return;
     }
 
-    if (!isPlanExecuting.compareAndSet(false, true)) {
-      LOG.log(Level.INFO, "Skipping Optimization, because it is already under optimization process");
-      return;
-    }
+    // 2) Process metrics before starting optimization
+    final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
 
-    optimizationThreadPool.submit(new Runnable() {
+    // use only one latest metric of each evaluator
+    final List<EvaluatorParameters> latestServerMetrics = filterLatestParams(serverParameters);
+    final List<EvaluatorParameters> latestWorkerMetrics = filterLatestParams(workerParameters);
+    serverParameters.clear();
+    workerParameters.clear();
+
+    evaluatorParameters.put(NAMESPACE_SERVER, latestServerMetrics);
+    evaluatorParameters.put(NAMESPACE_WORKER, latestWorkerMetrics);
+
+    final Future future = optimizationThreadPool.submit(new Runnable() {
       @Override
       public void run() {
         LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan");
 
-        final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
-
-        // use only one latest metric of each evaluator
-        final List<EvaluatorParameters> latestServerMetrics = filterLatestParams(serverParameters);
-        final List<EvaluatorParameters> latestWorkerMetrics = filterLatestParams(workerParameters);
-        serverParameters.clear();
-        workerParameters.clear();
-
-        evaluatorParameters.put(NAMESPACE_SERVER, latestServerMetrics);
-        evaluatorParameters.put(NAMESPACE_WORKER, latestWorkerMetrics);
-
-        final Plan plan = optimizer.optimize(evaluatorParameters, maxNumEvals);
-        LOG.log(Level.INFO, "Calculating the optimal plan is finished. Start executing plan: {0}", plan);
-
-        final Future<PlanResult> planExecutionResultFuture = planExecutor.execute(plan);
+        // 3) Calculate the optimal plan with the metrics
+        final Plan plan;
         try {
-          final PlanResult planResult = planExecutionResultFuture.get();
-          LOG.log(Level.INFO, "Result of plan execution: {0}", planResult);
-
-          // TODO #343: Optimization trigger component
-          Thread.sleep(delayAfterOptimizationMs); // sleep for the system to be stable
-        } catch (final InterruptedException | ExecutionException e) {
-          LOG.log(Level.WARNING, "Exception while waiting for the plan execution to be completed", e);
+          plan = optimizer.optimize(evaluatorParameters, maxNumEvals);
+          LOG.log(Level.INFO, "Calculating the optimal plan is finished. Start executing plan: {0}", plan);
+        } catch (final RuntimeException e) {
+          LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
+          return;
         }
 
-        // make another optimization can go after the optimization is completely finished
-        isPlanExecuting.set(false);
+        // 4) Execute the obtained plan
+        isPlanExecuting.set(true);
+        try {
+          final Future<PlanResult> planExecutionResultFuture = planExecutor.execute(plan);
+          try {
+            final PlanResult planResult = planExecutionResultFuture.get();
+            LOG.log(Level.INFO, "Result of plan execution: {0}", planResult);
+
+            Thread.sleep(delayAfterOptimizationMs); // sleep for the system to be stable
+          } catch (final InterruptedException | ExecutionException e) {
+            LOG.log(Level.WARNING, "Exception while waiting for the plan execution to be completed", e);
+          }
+
+        } finally {
+          isPlanExecuting.set(false);
+        }
       }
     });
+
+    // 5) Wait for the optimization to be completed
+    try {
+      future.get();
+    } catch (final InterruptedException | ExecutionException e) {
+      LOG.log(Level.SEVERE, "Exception while executing optimization", e);
+    }
   }
 
   /**
