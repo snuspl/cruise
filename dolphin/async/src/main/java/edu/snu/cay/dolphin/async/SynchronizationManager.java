@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -61,6 +62,8 @@ final class SynchronizationManager {
 
   private final AggregationMaster aggregationMaster;
 
+  private final OptimizationOrchestrator optimizationOrchestrator;
+
   private final Codec<String> codec;
 
   private final StateMachine globalStateMachine;
@@ -79,8 +82,10 @@ final class SynchronizationManager {
 
   @Inject
   private SynchronizationManager(final AggregationMaster aggregationMaster,
+                                 final OptimizationOrchestrator optimizationOrchestrator,
                                  final SerializableCodec<String> codec) {
     this.aggregationMaster = aggregationMaster;
+    this.optimizationOrchestrator = optimizationOrchestrator;
     this.codec = codec;
     this.globalStateMachine = initStateMachine();
   }
@@ -172,9 +177,21 @@ final class SynchronizationManager {
       LOG.log(Level.INFO, "Send response messages to wake up {0} workers that have been blocked", numWorkersToSync);
 
       transitState(globalStateMachine);
+
       // wake threads waiting initialization in waitInitialization()
       if (globalStateMachine.getCurrentState().equals(STATE_RUN)) {
         initLatch.countDown();
+
+      // Let workers enter the cleanup state after assuring that there's no ongoing optimization.
+      // Note that once the global state becomes STATE_CLEANUP, orchestrator will not trigger further optimization.
+      } else if (globalStateMachine.getCurrentState().equals(STATE_CLEANUP)) {
+        while (optimizationOrchestrator.isOptimizationOngoing()) {
+          try {
+            optimizationOrchestrator.waitOptimization();
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for the optimization to be done", e);
+          }
+        }
       }
 
       // broadcast responses to blocked workers
