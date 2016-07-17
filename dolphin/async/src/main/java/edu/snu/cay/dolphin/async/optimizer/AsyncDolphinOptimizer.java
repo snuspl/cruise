@@ -91,22 +91,22 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
 
-    final Pair<List<EvaluatorSummary>, Integer> serverPair = sortNodes(serverParams, availableEvaluators,
+    final Pair<List<EvaluatorSummary>, Integer> serverPair = sortEvaluatorsByUnitCost(serverParams, availableEvaluators,
         param -> param.getMetrics().get(ServerConstants.SERVER_PROCESSING_TIME),
         NEW_SERVER_ID_PREFIX);
-    final List<EvaluatorSummary> servers = serverPair.getFirst();
+    final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
 
-    final Pair<List<EvaluatorSummary>, Integer> workerPair = sortNodes(workerParams, availableEvaluators,
+    final Pair<List<EvaluatorSummary>, Integer> workerPair = sortEvaluatorsByUnitCost(workerParams, availableEvaluators,
         param -> param.getMetrics().get(WorkerConstants.WORKER_COMPUTE_TIME) / param.getDataInfo().getNumBlocks(),
         NEW_WORKER_ID_PREFIX);
-    final List<EvaluatorSummary> workers = workerPair.getFirst();
+    final List<EvaluatorSummary> workerSummaries = workerPair.getFirst();
     final int numDataBlocks = workerPair.getSecond();
 
     /*
      * 1. for each possible number of workers, check and filter:
-     * a) total number of data blocks on worker side should be greater than the number of workers
-     * b) total number of model blocks on server side should be greater than the number of servers
+     * a) total number of data blocks on worker side should be greater than or equal to the number of workers
+     * b) total number of model blocks on server side should be greater than or equal to the number of servers
      *
      * 2. for each possible number of workers after 1, calculate cost with current metrics (avg) according to the model
      * 3. compare the total costs for each possible number of workers
@@ -116,7 +116,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
         .mapToObj(numWorkers ->
             new Pair<>(numWorkers,
-                totalCost(numWorkers, numDataBlocks, numModelBlocks, availableEvaluators, workers, servers)))
+                totalCost(numWorkers, numDataBlocks, numModelBlocks,
+                    availableEvaluators, workerSummaries, serverSummaries)))
         .reduce((p1, p2) -> p1.getSecond() > p2.getSecond() ? p2 : p1)
         .get()
         .getFirst();
@@ -124,76 +125,69 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    // assign optimal number of blocks for each worker using unitCostInv
-    final double workerUnitCostInvSum = workers.subList(0, optimalNumWorkers).stream()
-        .mapToDouble(worker -> worker.unitCostInv)
-        .sum();
-    int numAssignedDataBlocks = 0;
-
-    for (int workerIndex = 0; workerIndex < optimalNumWorkers; ++workerIndex) {
-      final EvaluatorSummary worker = workers.get(workerIndex);
-      if (workerIndex == optimalNumWorkers - 1) {
-        worker.setNumOptimalBlocks(numDataBlocks - numAssignedDataBlocks);
-
-      } else {
-        final int numOptimalBlocks = (int) Math.round(numDataBlocks * worker.getUnitCostInv() / workerUnitCostInvSum);
-        numAssignedDataBlocks += numOptimalBlocks;
-        worker.setNumOptimalBlocks(numOptimalBlocks);
-      }
-    }
-
-    // delete excess workers and un-assign blocks
-    for (int workerIndex = optimalNumWorkers; workerIndex < workerParams.size(); ++workerIndex) {
-      final EvaluatorSummary worker = workers.get(workerIndex);
-      planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_WORKER, worker.id);
-      worker.setNumOptimalBlocks(0);
-    }
-
-    // assign optimal number of blocks for each server using unitCostInv
-    final double serverUnitCostInvSum = servers.subList(0, optimalNumServers).stream()
-        .mapToDouble(server -> server.unitCostInv)
-        .sum();
-    int numAssignedModelBlocks = 0;
-    for (int serverIndex = 0; serverIndex < optimalNumServers; ++serverIndex) {
-      final EvaluatorSummary server = servers.get(serverIndex);
-      if (serverIndex == optimalNumServers - 1) {
-        server.setNumOptimalBlocks(numModelBlocks - numAssignedModelBlocks);
-
-      } else {
-        final int numOptimalBlocks = (int) Math.round(numModelBlocks * server.getUnitCostInv() / serverUnitCostInvSum);
-        numAssignedModelBlocks += numOptimalBlocks;
-        server.setNumOptimalBlocks(numOptimalBlocks);
-      }
-    }
-
-    // delete excess servers and un-assign blocks
-    for (int serverIndex = optimalNumServers; serverIndex < serverParams.size(); ++serverIndex) {
-      final EvaluatorSummary server = servers.get(serverIndex);
-      planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_SERVER, server.id);
-      server.setNumOptimalBlocks(0);
-    }
-
-    // add worker evaluators if necessary
-    for (int workerIndex = workerParams.size(); workerIndex < optimalNumWorkers; ++workerIndex) {
-      final EvaluatorSummary worker = workers.get(workerIndex);
-      planBuilder.addEvaluatorToAdd(OptimizationOrchestrator.NAMESPACE_WORKER, worker.id);
-    }
-
-    // add server evaluators if necessary
-    for (int serverIndex = serverParams.size(); serverIndex < optimalNumServers; ++serverIndex) {
-      final EvaluatorSummary server = servers.get(serverIndex);
-      planBuilder.addEvaluatorToAdd(OptimizationOrchestrator.NAMESPACE_SERVER, server.id);
-    }
-
-    // generate a plan for moving blocks between evaluators
-    generateTransferSteps(OptimizationOrchestrator.NAMESPACE_SERVER,
-        servers.subList(0, Math.max(optimalNumServers, serverParams.size())),
-        planBuilder);
-    generateTransferSteps(OptimizationOrchestrator.NAMESPACE_WORKER,
-        workers.subList(0, Math.max(optimalNumWorkers, workerParams.size())),
-        planBuilder);
+    generatePlanForOptimalConfig(OptimizationOrchestrator.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
+        serverParams.size(), numModelBlocks, planBuilder);
+    generatePlanForOptimalConfig(OptimizationOrchestrator.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
+        workerParams.size(), numDataBlocks, planBuilder);
 
     return planBuilder.build();
+  }
+
+  /**
+   * Generates an execution plan given the optimal number of evaluators for a particular namespace.
+   *
+   * @param namespace SERVER | WORKER
+   * @param evaluatorSummaries {@link EvaluatorSummary} for the namespace
+   * @param optimalEvalForNamespace optimal number of evaluators for the namespace
+   * @param activeEvalForNamespace number of evaluators currently running in the namespace
+   * @param totalBlocksInNamespace total number of blocks in the namespace (data for workers, model for servers)
+   * @param planBuilder a builder for the optimization plan
+   */
+  private void generatePlanForOptimalConfig(
+      final String namespace,
+      final List<EvaluatorSummary> evaluatorSummaries,
+      final int optimalEvalForNamespace,
+      final int activeEvalForNamespace,
+      final int totalBlocksInNamespace,
+      final PlanImpl.Builder planBuilder) {
+
+    // assign optimal number of blocks for each evaluator using unitCostInv
+    final double unitCostInvSum = evaluatorSummaries.subList(0, optimalEvalForNamespace).stream()
+        .mapToDouble(evaluator -> evaluator.unitCostInv)
+        .sum();
+    int numAssignedBlocks = 0;
+
+    for (int evalIndex = 0; evalIndex < optimalEvalForNamespace; ++evalIndex) {
+      final EvaluatorSummary evaluator = evaluatorSummaries.get(evalIndex);
+      if (evalIndex == optimalEvalForNamespace - 1) {
+        evaluator.setNumOptimalBlocks(totalBlocksInNamespace - numAssignedBlocks);
+
+      } else {
+        final int numOptimalBlocks =
+            (int) Math.round(totalBlocksInNamespace * evaluator.getUnitCostInv() / unitCostInvSum);
+        numAssignedBlocks += numOptimalBlocks;
+        evaluator.setNumOptimalBlocks(numOptimalBlocks);
+      }
+    }
+
+    if (activeEvalForNamespace > optimalEvalForNamespace) {
+      // delete excess evaluators and un-assign blocks so that data migration plan can be generated accordingly
+      for (int evalIndex = optimalEvalForNamespace; evalIndex < activeEvalForNamespace; ++evalIndex) {
+        final EvaluatorSummary evaluator = evaluatorSummaries.get(evalIndex);
+        planBuilder.addEvaluatorToDelete(namespace, evaluator.getId());
+        evaluator.setNumOptimalBlocks(0);
+      }
+    } else if (activeEvalForNamespace < optimalEvalForNamespace) {
+      // add evaluators if necessary
+      for (int evalIndex = activeEvalForNamespace; evalIndex < optimalEvalForNamespace; ++evalIndex) {
+        final EvaluatorSummary evaluator = evaluatorSummaries.get(evalIndex);
+        planBuilder.addEvaluatorToAdd(namespace, evaluator.getId());
+      }
+    }
+
+    generateTransferSteps(namespace,
+        evaluatorSummaries.subList(0, Math.max(optimalEvalForNamespace, activeEvalForNamespace)),
+        planBuilder);
   }
 
   /**
@@ -206,7 +200,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    * @param newNodeIdPrefix prefix for the new nodes that can be added
    * @return {@link EvaluatorSummary} list sorted according to the unitCostInv
    */
-  private Pair<List<EvaluatorSummary>, Integer> sortNodes(
+  private Pair<List<EvaluatorSummary>, Integer> sortEvaluatorsByUnitCost(
       final List<EvaluatorParameters> params,
       final int availableEvaluators,
       final ToDoubleFunction<EvaluatorParameters> unitCostFunc,
@@ -303,15 +297,16 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       final int numToReceive = receiver.getNumOptimalBlocks() - receiver.getNumBlocks();
       final int numToMove = Math.min(numToSend, numToReceive);
 
-      builder.addTransferStep(namespace, new TransferStepImpl(sender.id, receiver.id, new DataInfoImpl(numToMove)));
+      builder.addTransferStep(namespace, new TransferStepImpl(sender.getId(),
+          receiver.getId(), new DataInfoImpl(numToMove)));
 
       if (numToSend == numToReceive) {
         continue;
       } else if (numToMove == numToSend) {
-        receiver.setNumOptimalBlocks(receiver.getNumOptimalBlocks() - numToMove);
+        receiver.setNumBlocks(receiver.getNumBlocks() + numToMove);
         receiverPriorityQueue.add(receiver);
       } else { // if (numToMove == numToReceive)
-        sender.setNumOptimalBlocks(sender.getNumOptimalBlocks() + numToMove);
+        sender.setNumBlocks(sender.getNumBlocks() - numToMove);
         senderPriorityQueue.add(sender);
       }
     }
@@ -332,12 +327,20 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       this.dataInfo = dataInfo;
     }
 
+    public String getId() {
+      return id;
+    }
+
     private void setNumOptimalBlocks(final int numOptimalBlocks) {
       this.numOptimalBlocks = numOptimalBlocks;
     }
 
     public int getNumBlocks() {
       return dataInfo.getNumBlocks();
+    }
+
+    public void setNumBlocks(final int numBlocks) {
+      dataInfo.setNumBlocks(numBlocks);
     }
 
     public double getUnitCostInv() {
