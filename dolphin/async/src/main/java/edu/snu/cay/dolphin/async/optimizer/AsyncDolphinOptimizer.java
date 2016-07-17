@@ -54,17 +54,17 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   }
 
   /**
-   * Comparator to sort {@link EvaluatorSummary}s put in a priority queue, by their inverse computation unit costs.
-   * {@link EvaluatorSummary}s with greater inverse computation unit costs (i.e. quicker evaluators)
+   * Comparator to sort {@link EvaluatorSummary}s put in a priority queue, by the evaluators' throughput.
+   * {@link EvaluatorSummary}s with greater throughput (i.e. quicker evaluators)
    * are put at the front (descending order).
    */
-  private static final Comparator<EvaluatorSummary> UNIT_COST_INV_COMPARATOR =
+  private static final Comparator<EvaluatorSummary> THROUGHPUT_COMPARATOR =
       new Comparator<EvaluatorSummary>() {
         @Override
         public int compare(final EvaluatorSummary o1, final EvaluatorSummary o2) {
-          if (o1.getUnitCostInv() < o2.getUnitCostInv()) {
+          if (o1.getThroughput() < o2.getThroughput()) {
             return 1;
-          } else if (o1.getUnitCostInv() > o2.getUnitCostInv()) {
+          } else if (o1.getThroughput() > o2.getThroughput()) {
             return -1;
           } else {
             return 0;
@@ -91,13 +91,13 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
 
-    final Pair<List<EvaluatorSummary>, Integer> serverPair = sortEvaluatorsByUnitCost(serverParams, availableEvaluators,
+    final Pair<List<EvaluatorSummary>, Integer> serverPair = sortEvaluatorsByThroughput(serverParams, availableEvaluators,
         param -> param.getMetrics().get(ServerConstants.SERVER_PROCESSING_TIME),
         NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
 
-    final Pair<List<EvaluatorSummary>, Integer> workerPair = sortEvaluatorsByUnitCost(workerParams, availableEvaluators,
+    final Pair<List<EvaluatorSummary>, Integer> workerPair = sortEvaluatorsByThroughput(workerParams, availableEvaluators,
         param -> param.getMetrics().get(WorkerConstants.WORKER_COMPUTE_TIME) / param.getDataInfo().getNumBlocks(),
         NEW_WORKER_ID_PREFIX);
     final List<EvaluatorSummary> workerSummaries = workerPair.getFirst();
@@ -151,20 +151,22 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       final int totalBlocksInNamespace,
       final PlanImpl.Builder planBuilder) {
 
-    // assign optimal number of blocks for each evaluator using unitCostInv
-    final double unitCostInvSum = evaluatorSummaries.subList(0, optimalEvalForNamespace).stream()
-        .mapToDouble(evaluator -> evaluator.unitCostInv)
+    // assign optimal number of blocks for each evaluator using throughput
+    final double throughputSum = evaluatorSummaries.subList(0, optimalEvalForNamespace).stream()
+        .mapToDouble(evaluator -> evaluator.throughput)
         .sum();
     int numAssignedBlocks = 0;
 
     for (int evalIndex = 0; evalIndex < optimalEvalForNamespace; ++evalIndex) {
       final EvaluatorSummary evaluator = evaluatorSummaries.get(evalIndex);
+
+      // the last evaluator takes all remaining blocks
       if (evalIndex == optimalEvalForNamespace - 1) {
         evaluator.setNumOptimalBlocks(totalBlocksInNamespace - numAssignedBlocks);
 
       } else {
         final int numOptimalBlocks =
-            (int) Math.round(totalBlocksInNamespace * evaluator.getUnitCostInv() / unitCostInvSum);
+            (int) Math.round(totalBlocksInNamespace * evaluator.getThroughput() / throughputSum);
         numAssignedBlocks += numOptimalBlocks;
         evaluator.setNumOptimalBlocks(numOptimalBlocks);
       }
@@ -191,16 +193,16 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   }
 
   /**
-   * Sorts the evaluator nodes according to the unit cost comparator and generates a list of each evaluator's summary.
+   * Sorts the evaluator nodes according to the throughput comparator and generates a list of each evaluator's summary.
    * Append {@link EvaluatorSummary} for nodes that can be added for the extra room.
    *
    * @param params parameters related to an evaluator
    * @param availableEvaluators number of total evaluators in the system
    * @param unitCostFunc (e.g., server - processing time per pull / worker - computation time per data block)
    * @param newNodeIdPrefix prefix for the new nodes that can be added
-   * @return {@link EvaluatorSummary} list sorted according to the unitCostInv
+   * @return {@link EvaluatorSummary} list sorted according to the throughput
    */
-  private Pair<List<EvaluatorSummary>, Integer> sortEvaluatorsByUnitCost(
+  private Pair<List<EvaluatorSummary>, Integer> sortEvaluatorsByThroughput(
       final List<EvaluatorParameters> params,
       final int availableEvaluators,
       final ToDoubleFunction<EvaluatorParameters> unitCostFunc,
@@ -214,21 +216,21 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .mapToDouble(unitCostFunc)
         .sum();
 
-    // unitCostInv = server: processable pull per unit time | worker: processable data blocks per unit time
+    // throughput = server: processable pull per unit time | worker: processable data blocks per unit time
     final List<EvaluatorSummary> nodes = params.stream()
         .map(param -> new EvaluatorSummary(param.getId(), param.getDataInfo(), 1 / unitCostFunc.applyAsDouble(param)))
         .collect(Collectors.toList());
 
     // sorted in the order of high "throughput"
-    Collections.sort(nodes, UNIT_COST_INV_COMPARATOR);
+    Collections.sort(nodes, THROUGHPUT_COMPARATOR);
 
     final double unitCostAvg = unitCostSum / params.size();
-    final double unitCostAvgInv = 1 / unitCostAvg;
+    final double throughput = 1 / unitCostAvg;
 
-    // We can use up to (availableEvaluators - runningEvaluators - 1) evaluators in each namespace,
+    // We can add up to (availableEvaluators - runningEvaluators - 1) evaluators in each namespace,
     // and reserve at least one evaluator for the other namespace.
     for (int index = 0; index < availableEvaluators - params.size() - 1; ++index) {
-      nodes.add(new EvaluatorSummary(newNodeIdPrefix + index, new DataInfoImpl(), unitCostAvgInv));
+      nodes.add(new EvaluatorSummary(newNodeIdPrefix + index, new DataInfoImpl(), throughput));
     }
 
     return new Pair<>(nodes, numBlocksTotal);
@@ -250,16 +252,16 @@ public final class AsyncDolphinOptimizer implements Optimizer {
                                   final List<EvaluatorSummary> workers,
                                   final List<EvaluatorSummary> servers) {
     // Calculating compCost based on avg: (avgNumBlockPerWorker / avgThroughput)
-    final double workerUnitCostInvSum = workers.subList(0, numWorker).stream()
-        .mapToDouble(worker -> worker.unitCostInv)
+    final double workerThroughputSum = workers.subList(0, numWorker).stream()
+        .mapToDouble(worker -> worker.throughput)
         .sum();
-    final double compCost = numDataBlocks / workerUnitCostInvSum;
+    final double compCost = numDataBlocks / workerThroughputSum;
 
     // Calculating commCost based on avg: (avgNumBlockPerServer / avgThroughput)
-    final double serverUnitCostInvSum = servers.subList(0, availableEvaluators - numWorker).stream()
-        .mapToDouble(server -> server.unitCostInv)
+    final double serverThroughputSum = servers.subList(0, availableEvaluators - numWorker).stream()
+        .mapToDouble(server -> server.throughput)
         .sum();
-    final double commCost = numModelBlocks / serverUnitCostInvSum * numWorker;
+    final double commCost = numModelBlocks / serverThroughputSum * numWorker;
 
     return compCost + (commCost * numMiniBatchPerItr);
   }
@@ -300,6 +302,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       builder.addTransferStep(namespace, new TransferStepImpl(sender.getId(),
           receiver.getId(), new DataInfoImpl(numToMove)));
 
+      // if there are more blocks to be sent/received,
+      // the sending/receiving evaluator is added back to the PQ with updated numBlocks.
       if (numToSend == numToReceive) {
         continue;
       } else if (numToMove == numToSend) {
@@ -318,12 +322,12 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   private static final class EvaluatorSummary {
     private final String id;
     private final DataInfo dataInfo;
-    private final double unitCostInv;
+    private final double throughput;
     private int numOptimalBlocks;
 
-    private EvaluatorSummary(final String id, final DataInfo dataInfo, final double unitCostInv) {
+    private EvaluatorSummary(final String id, final DataInfo dataInfo, final double throughput) {
       this.id = id;
-      this.unitCostInv = unitCostInv;
+      this.throughput = throughput;
       this.dataInfo = dataInfo;
     }
 
@@ -343,8 +347,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       dataInfo.setNumBlocks(numBlocks);
     }
 
-    public double getUnitCostInv() {
-      return this.unitCostInv;
+    public double getThroughput() {
+      return this.throughput;
     }
 
     public int getNumOptimalBlocks() {
@@ -357,8 +361,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
           .append(id)
           .append(", numBlocks=")
           .append(getNumBlocks())
-          .append(", unitCostInv=")
-          .append(unitCostInv)
+          .append(", throughput=")
+          .append(throughput)
           .append(", numOptimalBlocks=")
           .append(numOptimalBlocks)
           .append("]");
