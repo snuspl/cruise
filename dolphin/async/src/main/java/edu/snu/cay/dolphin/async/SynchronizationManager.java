@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -26,10 +25,10 @@ import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
+import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -56,36 +55,43 @@ final class SynchronizationManager {
   static final String STATE_CLEANUP = "CLEANUP";
 
   /**
-   * A boolean flag that becomes true when at least one worker finishes its main iterations.
+   * A latch that releases waiting threads when workers finish initialization.
    */
-  private AtomicBoolean cleanupStarted = new AtomicBoolean(false);
+  private final CountDownLatch initLatch = new CountDownLatch(1);
+
+  /**
+   * A boolean flag that becomes true when at least one worker finishes its main iterations
+   * and is waiting for response to progress to the cleanup state.
+   */
+  private AtomicBoolean waitingCleanup = new AtomicBoolean(false);
+
+  /**
+   * A latch that releases waiting threads when workers become able to start cleanup.
+   */
+  private CountDownLatch allowCleanupLatch = new CountDownLatch(1);
 
   private final AggregationMaster aggregationMaster;
-
-  private final OptimizationOrchestrator optimizationOrchestrator;
 
   private final Codec<String> codec;
 
   private final StateMachine globalStateMachine;
 
-  private final CountDownLatch initLatch = new CountDownLatch(1);
-
   /**
    * The total number of workers to sync.
    */
+  @GuardedBy("this")
   private int numWorkersToSync = 0;
 
   /**
    * A set that maintains workers that have sent a sync msg for the current barrier.
    */
-  private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  @GuardedBy("this")
+  private final Set<String> blockedWorkerIds = new HashSet<>();
 
   @Inject
   private SynchronizationManager(final AggregationMaster aggregationMaster,
-                                 final OptimizationOrchestrator optimizationOrchestrator,
                                  final SerializableCodec<String> codec) {
     this.aggregationMaster = aggregationMaster;
-    this.optimizationOrchestrator = optimizationOrchestrator;
     this.codec = codec;
     this.globalStateMachine = initStateMachine();
   }
@@ -166,10 +172,17 @@ final class SynchronizationManager {
   }
 
   /**
-   * @return true if at least one worker enters the cleanup state
+   * Allow sending response to workers to start the cleanup stage.
    */
-  boolean cleanupStarted() {
-    return cleanupStarted.get();
+  void allowWorkersCleanup() {
+    allowCleanupLatch.countDown();
+  }
+
+  /**
+   * @return true if at least one worker is waiting for response to progress to the cleanup state
+   */
+  boolean waitingCleanup() {
+    return waitingCleanup.get();
   }
 
   private synchronized void tryReleaseWorkers() {
@@ -183,14 +196,12 @@ final class SynchronizationManager {
         initLatch.countDown();
 
       // Let workers enter the cleanup state after assuring that there's no ongoing optimization.
-      // Note that once the global state becomes STATE_CLEANUP, orchestrator will not trigger further optimization.
+      // Note that in the STATE_CLEANUP state, orchestrator never trigger further optimization.
       } else if (globalStateMachine.getCurrentState().equals(STATE_CLEANUP)) {
-        while (optimizationOrchestrator.isOptimizationOngoing()) {
-          try {
-            optimizationOrchestrator.waitOptimization();
-          } catch (final InterruptedException e) {
-            LOG.log(Level.WARNING, "Interrupted while waiting for the optimization to be done", e);
-          }
+        try {
+          allowCleanupLatch.await();
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "Interrupted while waiting for the optimization to be done", e);
         }
       }
 
@@ -245,7 +256,7 @@ final class SynchronizationManager {
           return;
         case STATE_RUN:
           // worker finishes their main iteration and is waiting for response to enter the cleanup stage
-          cleanupStarted.set(true);
+          waitingCleanup.set(true);
           break;
         case STATE_CLEANUP:
         default:

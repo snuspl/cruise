@@ -392,6 +392,7 @@ public final class AsyncDolphinDriver {
       optimizerExecutor.execute(new Runnable() {
         @Override
         public void run() {
+          // 1. wait until all workers finish initialization
           while (synchronizationManager.workersInitializing()) {
             try {
               synchronizationManager.waitInitialization();
@@ -401,14 +402,18 @@ public final class AsyncDolphinDriver {
             }
           }
 
-          while (!synchronizationManager.cleanupStarted()) {
+          // 2. trigger optimization during all workers are running their main iterations
+          while (!synchronizationManager.waitingCleanup()) {
             optimizationOrchestrator.run();
             try {
               Thread.sleep(optimizationIntervalMs);
             } catch (final InterruptedException e) {
-              LOG.log(Level.WARNING, "Interrupted while running the optimization", e);
+              LOG.log(Level.WARNING, "Interrupted while sleeping between optimizations", e);
             }
           }
+
+          // 3. allow workers to do cleanup, after finishing optimization entirely
+          synchronizationManager.allowWorkersCleanup();
         }
       });
     }
