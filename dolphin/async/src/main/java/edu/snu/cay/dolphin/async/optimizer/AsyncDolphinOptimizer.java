@@ -91,13 +91,15 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
 
-    final Pair<List<EvaluatorSummary>, Integer> serverPair = sortEvaluatorsByThroughput(serverParams, availableEvaluators,
+    final Pair<List<EvaluatorSummary>, Integer> serverPair =
+        sortEvaluatorsByThroughput(serverParams, availableEvaluators,
         param -> param.getMetrics().get(ServerConstants.SERVER_PROCESSING_TIME),
         NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
 
-    final Pair<List<EvaluatorSummary>, Integer> workerPair = sortEvaluatorsByThroughput(workerParams, availableEvaluators,
+    final Pair<List<EvaluatorSummary>, Integer> workerPair =
+        sortEvaluatorsByThroughput(workerParams, availableEvaluators,
         param -> param.getMetrics().get(WorkerConstants.WORKER_COMPUTE_TIME) / param.getDataInfo().getNumBlocks(),
         NEW_WORKER_ID_PREFIX);
     final List<EvaluatorSummary> workerSummaries = workerPair.getFirst();
