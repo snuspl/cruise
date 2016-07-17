@@ -15,11 +15,11 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
@@ -37,6 +37,7 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import static edu.snu.cay.dolphin.async.metric.WorkerConstants.KEY_WORKER_COMPUTE_TIME;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
@@ -60,11 +61,10 @@ final class NMFWorker implements Worker {
    * Mini-batch size used for mini-batch gradient descent.
    * If less than {@code 1}, a standard gradient descent method is used.
    */
-  private final int batchSize;
+  private final int numMiniBatchPerIter;
   private final boolean printMatrices;
   private final int logPeriod;
   private final NMFModelGenerator modelGenerator;
-  private final ArrayList<Integer> keys;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
 
@@ -93,7 +93,7 @@ final class NMFWorker implements Worker {
                     @Parameter(Rank.class) final int rank,
                     @Parameter(StepSize.class) final double stepSize,
                     @Parameter(Lambda.class) final double lambda,
-                    @Parameter(BatchSize.class) final int batchSize,
+                    @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     @Parameter(PrintMatrices.class) final boolean printMatrices,
                     @Parameter(LogPeriod.class) final int logPeriod,
                     final NMFModelGenerator modelGenerator,
@@ -109,7 +109,7 @@ final class NMFWorker implements Worker {
     this.rank = rank;
     this.stepSize = stepSize;
     this.lambda = lambda;
-    this.batchSize = batchSize;
+    this.numMiniBatchPerIter = numMiniBatchPerIter;
     this.printMatrices = printMatrices;
     this.logPeriod = logPeriod;
     this.modelGenerator = modelGenerator;
@@ -120,7 +120,6 @@ final class NMFWorker implements Worker {
     this.metricsHandler = metricsHandler;
     this.metricsMsgSender = metricsMsgSender;
 
-    this.keys = Lists.newArrayList();
     this.rMatrix = Maps.newHashMap();
     this.gradients = Maps.newHashMap();
 
@@ -146,20 +145,31 @@ final class NMFWorker implements Worker {
 
     memoryStore.putList(dataKeys, dataValues);
 
+    LOG.log(Level.INFO, "Step size = {0}", stepSize);
+    LOG.log(Level.INFO, "Batch size = {0}", numMiniBatchPerIter);
+    LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues));
+    LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
+  }
+
+  /**
+   * @param dataValues Dataset assigned to this worker
+   * @return Keys to send pull requests, which are determined by existing columns in NMFData.
+   */
+  private List<Integer> getKeys(final Collection<NMFData> dataValues) {
+    final ArrayList<Integer> keys = new ArrayList<>();
     final Set<Integer> keySet = Sets.newTreeSet();
     // aggregate column indices
     for (final NMFData datum : dataValues) {
-      for (final Pair<Integer, Double> column : datum.getColumns()) {
-        keySet.add(column.getFirst());
-      }
+      keySet.addAll(
+          datum.getColumns()
+              .stream()
+              .distinct()
+              .map(Pair::getFirst)
+              .collect(Collectors.toList()));
     }
     keys.ensureCapacity(keySet.size());
     keys.addAll(keySet);
-
-    LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Batch size = {0}", batchSize);
-    LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
-    LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
+    return keys;
   }
 
   private void saveRMatrixGradient(final int key, final Vector newGrad) {
@@ -186,7 +196,7 @@ final class NMFWorker implements Worker {
     gradients.clear();
   }
 
-  private void pullRMatrix() {
+  private void pullRMatrix(final List<Integer> keys) {
     pullTracer.startTimer();
     final List<Vector> vectors = parameterWorker.pull(keys);
     for (int i = 0; i < keys.size(); ++i) {
@@ -237,7 +247,7 @@ final class NMFWorker implements Worker {
     final Map<Long, NMFData> workloadMap = memoryStore.getAll();
     final Collection<NMFData> workload = workloadMap.values();
 
-    pullRMatrix();
+    pullRMatrix(getKeys(workload));
 
     for (final NMFData datum : workload) {
       computeTracer.startTimer();
@@ -260,13 +270,9 @@ final class NMFWorker implements Worker {
         // rGrad = 2 * e * L_{i, *}'
         final Vector lGrad;
         final Vector rGrad;
-        if (batchSize > 0) {
-          lGrad = rVec.scale(2.0D * error / batchSize);
-          rGrad = lVec.scale(2.0D * error / batchSize);
-        } else {
-          lGrad = rVec.scale(2.0D * error);
-          rGrad = lVec.scale(2.0D * error);
-        }
+
+        lGrad = rVec.scale(2.0D * error / numMiniBatchPerIter);
+        rGrad = lVec.scale(2.0D * error / numMiniBatchPerIter);
 
         // aggregate L matrix gradients
         lGradSum.addi(lGrad);
@@ -285,9 +291,9 @@ final class NMFWorker implements Worker {
       ++rowCount;
       computeTracer.recordTime(datum.getColumns().size());
 
-      if (batchSize > 0 && rowCount % batchSize == 0) {
+      if (numMiniBatchPerIter > 1 && rowCount % numMiniBatchPerIter == 0) {
         pushAndClearGradients();
-        pullRMatrix();
+        pullRMatrix(getKeys(workload));
       }
 
       if (logPeriod > 0 && rowCount % logPeriod == 0) {
@@ -344,7 +350,7 @@ final class NMFWorker implements Worker {
     LOG.log(Level.INFO, lsb.toString());
 
     // print transposed R matrix
-    pullRMatrix();
+    pullRMatrix(getKeys(workload));
     final StringBuilder rsb = new StringBuilder();
     for (final Map.Entry<Integer, Vector> entry : rMatrix.entrySet()) {
       rsb.append(String.format("R(*, %d):", entry.getKey()));
