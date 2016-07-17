@@ -115,24 +115,15 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     final int numTotalOps = plan.getPlanSize();
 
     return mainExecutor.submit(new Callable<PlanResult>() {
-
-      private static final int QUEUE_SIZE = 10;
-      private static final long POLLING_TIMEOUT_SEC = 10;
-
       private final AtomicInteger numExecutedOps = new AtomicInteger(0);
-      private Collection<Set<EMOperation>> drainedOpSets = new ArrayList<>(QUEUE_SIZE);
 
       @Override
       public PlanResult call() throws Exception {
 
         while (true) {
-          final Set<EMOperation> nextOps = nextOpsToExecuteInParallel.poll(POLLING_TIMEOUT_SEC, TimeUnit.SECONDS);
+          final Set<EMOperation> nextOps = nextOpsToExecuteInParallel.take();
 
           if (nextOps != null) {
-            // execute existing sets in the queue at once, because they have no dependency
-            nextOpsToExecuteInParallel.drainTo(drainedOpSets, QUEUE_SIZE);
-            drainedOpSets.forEach(nextOps::addAll);
-
             executeOperations(nextOps);
             numExecutedOps.getAndAdd(nextOps.size());
 
@@ -140,8 +131,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
             if (numExecutedOps.get() >= numTotalOps) {
               break;
             }
-
-            drainedOpSets.clear();
           }
         }
 
