@@ -392,14 +392,16 @@ public final class AsyncDolphinDriver {
       optimizerExecutor.execute(new Runnable() {
         @Override
         public void run() {
-          try {
-            synchronizationManager.waitInitialization();
-            LOG.info("Worker tasks are initialized. Start triggering optimization.");
-          } catch (final InterruptedException e) {
-            LOG.log(Level.WARNING, "Interrupted while waiting for the worker initialization", e);
+          while (synchronizationManager.workersInitializing()) {
+            try {
+              synchronizationManager.waitInitialization();
+              LOG.info("Worker tasks are initialized. Start triggering optimization.");
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while waiting for the worker initialization", e);
+            }
           }
 
-          while (synchronizationManager.allWorkersRunning()) {
+          while (!synchronizationManager.cleanupStarted()) {
             optimizationOrchestrator.run();
             try {
               Thread.sleep(optimizationIntervalMs);

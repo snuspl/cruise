@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,6 +53,11 @@ final class SynchronizationManager {
   static final String STATE_INIT = "INIT";
   static final String STATE_RUN = "RUN";
   static final String STATE_CLEANUP = "CLEANUP";
+
+  /**
+   * A boolean flag that becomes true when at least one worker finishes its main iterations.
+   */
+  private AtomicBoolean cleanupStarted = new AtomicBoolean(false);
 
   private final AggregationMaster aggregationMaster;
 
@@ -148,15 +154,22 @@ final class SynchronizationManager {
   }
 
   /**
-   * @return true if all workers are running their main iterations
+   * @return true if workers are in the initialization state
    */
-  boolean allWorkersRunning() {
-    return globalStateMachine.getCurrentState().equals(STATE_RUN);
+  boolean workersInitializing() {
+    return globalStateMachine.getCurrentState().equals(STATE_INIT);
+  }
+
+  /**
+   * @return true if at least one worker enters the cleanup state
+   */
+  boolean cleanupStarted() {
+    return cleanupStarted.get();
   }
 
   private synchronized void tryReleaseWorkers() {
     if (blockedWorkerIds.size() == numWorkersToSync) {
-      LOG.log(Level.INFO, "{0} workers are blocked. Sending response messages to awake them", numWorkersToSync);
+      LOG.log(Level.INFO, "Send response messages to wake up {0} workers that have been blocked", numWorkersToSync);
 
       transitState(globalStateMachine);
       // wake threads waiting initialization in waitInitialization()
@@ -208,13 +221,19 @@ final class SynchronizationManager {
         }
         break;
       case STATE_RUN:
-        if (localState.equals(STATE_INIT)) { // let added evaluators skip the initial barriers
+        switch (localState) {
+        case STATE_INIT:
+          // let added evaluators skip the initial barriers
           sendResponseMessage(workerId, EMPTY_DATA);
           return;
-        } else if (!localState.equals(STATE_RUN)) {
+        case STATE_RUN:
+          // worker finishes their main iteration and is waiting for response to enter the cleanup stage
+          cleanupStarted.set(true);
+          break;
+        case STATE_CLEANUP:
+        default:
           throw new RuntimeException("Individual workers cannot overtake the global state");
         }
-        break;
       case STATE_CLEANUP:
         throw new RuntimeException("Workers never call the global barrier in STATE_CLEANUP state");
       default:
