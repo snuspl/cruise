@@ -152,6 +152,10 @@ public final class NeuralNetworkREEF {
         .setInputShape(neuralNetConf.getInputShape().getDimList())
         .setBatchSize(neuralNetConf.getBatchSize());
 
+    if (neuralNetConf.hasRandomSeed()) {
+      neuralNetConfBuilder.setRandomSeed(neuralNetConf.getRandomSeed());
+    }
+
     // Adds the configuration of each layer.
     for (final LayerConfiguration layerConf : neuralNetConf.getLayerList()) {
       neuralNetConfBuilder.addLayerConfiguration(createLayerConfiguration(layerConf));

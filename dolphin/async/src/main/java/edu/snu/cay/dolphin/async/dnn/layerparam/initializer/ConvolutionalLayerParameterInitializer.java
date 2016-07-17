@@ -47,7 +47,6 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
   private final int kernelWidth;
   private final float initWeight;
   private final float initBias;
-  private final long randomSeed;
   private final int numOutput;
   private final int inputHeight;
   private final int inputWidth;
@@ -63,7 +62,6 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
    * @param strideWidth the horizontal intervals at which to apply the filters to the input images
    * @param kernelHeight the height of the filters
    * @param kernelWidth the width of the filters
-   * @param randomSeed the seed for generating random initial parameters
    * @param initWeight the standard deviation that is used to initialize the weights from a Gaussian distribution
    *                   with mean {@code 0.0}
    * @param initBias constant value with which the biases of this layer are initialized
@@ -79,7 +77,6 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
                                                  @Parameter(StrideWidth.class) final int strideWidth,
                                                  @Parameter(KernelHeight.class) final int kernelHeight,
                                                  @Parameter(KernelWidth.class) final int kernelWidth,
-                                                 @Parameter(RandomSeed.class) final long randomSeed,
                                                  @Parameter(InitialWeight.class) final float initWeight,
                                                  @Parameter(InitialBias.class) final float initBias,
                                                  @Parameter(NumberOfOutput.class) final int numOutput) {
@@ -93,7 +90,6 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
     this.kernelHeight = kernelHeight;
     this.kernelWidth = kernelWidth;
     this.numOutput = numOutput;
-    this.randomSeed = randomSeed;
     this.initWeight = initWeight;
     this.initBias = initBias;
 
@@ -113,7 +109,7 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
    * @return the initial parameter of the layer.
    */
   public LayerParameter generateInitialParameter() {
-    final Matrix weight = matrixFactory.randn(kernelHeight * kernelWidth * inputChannel, numOutput, randomSeed);
+    final Matrix weight = matrixFactory.randn(kernelHeight * kernelWidth * inputChannel, numOutput);
     final Matrix bias = matrixFactory.create(outputShape[1] * outputShape[2] * numOutput, 1).fill(initBias);
 
     weight.muli(initWeight); // multiply by standard deviation.

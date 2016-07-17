@@ -19,8 +19,7 @@ option java_outer_classname = "NeuralNetworkProtos";
 message FullyConnectedLayerConfiguration {
   required float init_bias = 1;
   required float init_weight = 2;
-  optional uint32 random_seed = 3;
-  required uint32 num_output = 4;
+  required uint32 num_output = 3;
 }
 
 message ConvolutionalLayerConfiguration {
@@ -32,8 +31,7 @@ message ConvolutionalLayerConfiguration {
   optional uint32 stride_width = 6 [default = 1];
   required float init_bias = 7;
   required float init_weight = 8;
-  optional uint32 random_seed = 9;
-  required uint32 num_output = 10;
+  required uint32 num_output = 9;
 }
 
 message PoolingLayerConfiguration {
@@ -73,4 +71,5 @@ message NeuralNetworkConfiguration {
   optional uint32 batch_size = 2;
   optional float step_size = 3;
   required Shape input_shape = 4;
+  optional uint32 random_seed = 5;
 }
