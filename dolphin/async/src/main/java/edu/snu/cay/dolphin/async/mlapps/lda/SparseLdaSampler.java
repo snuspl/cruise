@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -52,9 +53,12 @@ final class SparseLdaSampler {
     this.batchWorker = batchWorker;
   }
 
-  void sample(final Document document) {
+  void sample(final Document document, final Tracer pullTracer, final Tracer pushTracer) {
+    pullTracer.startTimer();
     // numVocabs-th row represents the total word-topic assignment count vector
     final int[] globalWordCountByTopics = parameterWorker.pull(numVocabs);
+    pullTracer.recordTime(1);
+
     double sumS = 0.0;
     double sumR = 0.0;
     double sumQ = 0.0;
@@ -108,7 +112,9 @@ final class SparseLdaSampler {
 
       document.removeWordAtIndex(wordIndex);
 
+      pullTracer.startTimer();
       final int[] wordTopicCount = parameterWorker.pull(word);
+      pullTracer.recordTime(1);
 
       // Calculate q terms
       nonZeroQTermIndices.clear();
@@ -170,7 +176,7 @@ final class SparseLdaSampler {
       }
     }
 
-    batchWorker.pushAndClear();
+    batchWorker.pushAndClear(pushTracer);
   }
 
   private int sampleFromTerms(final double randomVar, final double[] terms) {
