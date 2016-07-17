@@ -66,12 +66,12 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   /**
    * Object for representing the state of plan in execution.
-   * It's lifecycle is same with the scope of {@link #execute(Plan)}.
+   * Its lifecycle is same with the scope of {@link #execute(Plan)}.
    */
   private volatile ExecutingPlan executingPlan;
 
   /**
-   * An id counter to allocate new evaluators.
+   * A counter to assign ids when allocating new Evaluators
    */
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
 
@@ -115,22 +115,18 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     final int numTotalOps = plan.getPlanSize();
 
     return mainExecutor.submit(new Callable<PlanResult>() {
-      private final AtomicInteger numExecutedOps = new AtomicInteger(0);
+      private final AtomicInteger numStartedOps = new AtomicInteger(0);
 
       @Override
       public PlanResult call() throws Exception {
 
-        while (true) {
+        // check whether it starts all the operations in the plan
+        while (numStartedOps.get() < numTotalOps) {
           final Set<EMOperation> nextOps = nextOpsToExecuteInParallel.take();
 
           if (nextOps != null) {
             executeOperations(nextOps);
-            numExecutedOps.getAndAdd(nextOps.size());
-
-            // check whether it executes all the operations in the plan
-            if (numExecutedOps.get() >= numTotalOps) {
-              break;
-            }
+            numStartedOps.getAndAdd(nextOps.size());
           }
         }
 
@@ -210,10 +206,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for servers.
    */
   private final class ServerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMOperation completedAddOp;
+    private final EMOperation completedOp;
 
-    private ServerContextActiveHandler(final EMOperation completedAddOp) {
-      this.completedAddOp = completedAddOp;
+    private ServerContextActiveHandler(final EMOperation completedOp) {
+      this.completedOp = completedOp;
     }
 
     @Override
@@ -222,8 +218,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForServer().onNext(context);
-      executingPlan.putAddedServerContext(completedAddOp.getEvalId().get(), context);
-      onOperationComplete(completedAddOp);
+      executingPlan.putAddedServerContext(completedOp.getEvalId().get(), context);
+      onOperationComplete(completedOp);
     }
   }
 
@@ -231,10 +227,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for workers.
    */
   private final class WorkerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMOperation completedAddOp;
+    private final EMOperation completedOp;
 
-    private WorkerContextActiveHandler(final EMOperation completedAddOp) {
-      this.completedAddOp = completedAddOp;
+    private WorkerContextActiveHandler(final EMOperation completedOp) {
+      this.completedOp = completedOp;
     }
     @Override
     public void onNext(final ActiveContext context) {
@@ -242,8 +238,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker().onNext(context);
-      executingPlan.putAddedWorkerContext(completedAddOp.getEvalId().get(), context);
-      onOperationComplete(completedAddOp);
+      executingPlan.putAddedWorkerContext(completedOp.getEvalId().get(), context);
+      onOperationComplete(completedOp);
     }
   }
 
@@ -323,66 +319,20 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     try {
       for (final EMOperation operation : operationsToExecute) {
         final EMOperation.OpType opType = operation.getOpType();
-        final String namespace = operation.getNamespace();
 
         if (!executingPlan.markOperationRequested(operation)) {
           continue;
         }
-        switch (opType) {
 
+        switch (opType) {
         case ADD:
-          switch (namespace) {
-          case NAMESPACE_SERVER:
-            LOG.log(Level.FINE, "Adding server {0}", operation.getEvalId());
-            serverEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
-                getAllocatedEvalHandler(NAMESPACE_SERVER),
-                getActiveContextHandler(NAMESPACE_SERVER, operation));
-            break;
-          case NAMESPACE_WORKER:
-            LOG.log(Level.FINE, "Adding worker {0}", operation.getEvalId());
-            workerEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
-                getAllocatedEvalHandler(NAMESPACE_WORKER),
-                getActiveContextHandler(NAMESPACE_WORKER, operation));
-            break;
-          default:
-            throw new RuntimeException("Unsupported namespace");
-          }
+          executeAddOperation(operation);
           break;
         case DEL:
-          final String evaluatorId = operation.getEvalId().get();
-          switch (namespace) {
-          case NAMESPACE_SERVER:
-            LOG.log(Level.FINE, "Deleting server {0}", evaluatorId);
-            serverEM.delete(evaluatorId, new DeletedHandler(operation));
-            break;
-          case NAMESPACE_WORKER:
-            LOG.log(Level.FINE, "Deleting worker {0}", evaluatorId);
-            workerEM.delete(evaluatorId, new DeletedHandler(operation));
-            break;
-          default:
-            throw new RuntimeException("Unsupported namespace");
-          }
+          executeDelOperation(operation);
           break;
         case MOVE:
-          final TransferStep transferStep = operation.getTransferStep().get();
-          switch (namespace) {
-          case NAMESPACE_SERVER:
-            serverEM.move(
-                transferStep.getDataInfo().getNumBlocks(),
-                transferStep.getSrcId(),
-                executingPlan.getServerActualContextId(transferStep.getDstId()),
-                new MovedHandler(operation));
-            break;
-          case NAMESPACE_WORKER:
-            workerEM.move(
-                transferStep.getDataInfo().getNumBlocks(),
-                transferStep.getSrcId(),
-                executingPlan.getWorkerActualContextId(transferStep.getDstId()),
-                new MovedHandler(operation));
-            break;
-          default:
-            throw new RuntimeException("Unsupported namespace");
-          }
+          executeMoveOperation(operation);
           break;
         default:
           throw new RuntimeException("Unsupported EM operation type");
@@ -390,6 +340,69 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       }
     } catch (Exception e) {
       LOG.log(Level.WARNING, "Caught Exception, closing Evaluators.", e);
+    }
+  }
+
+  private void executeAddOperation(final EMOperation operation) {
+    final String namespace = operation.getNamespace();
+
+    switch (namespace) {
+    case NAMESPACE_SERVER:
+      LOG.log(Level.FINE, "Adding server {0}", operation.getEvalId());
+      serverEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+          getAllocatedEvalHandler(NAMESPACE_SERVER),
+          getActiveContextHandler(NAMESPACE_SERVER, operation));
+      break;
+    case NAMESPACE_WORKER:
+      LOG.log(Level.FINE, "Adding worker {0}", operation.getEvalId());
+      workerEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+          getAllocatedEvalHandler(NAMESPACE_WORKER),
+          getActiveContextHandler(NAMESPACE_WORKER, operation));
+      break;
+    default:
+      throw new RuntimeException("Unsupported namespace");
+    }
+  }
+
+  private void executeDelOperation(final EMOperation operation) {
+    final String namespace = operation.getNamespace();
+    final String evaluatorId = operation.getEvalId().get();
+
+    switch (namespace) {
+    case NAMESPACE_SERVER:
+      LOG.log(Level.FINE, "Deleting server {0}", evaluatorId);
+      serverEM.delete(evaluatorId, new DeletedHandler(operation));
+      break;
+    case NAMESPACE_WORKER:
+      LOG.log(Level.FINE, "Deleting worker {0}", evaluatorId);
+      workerEM.delete(evaluatorId, new DeletedHandler(operation));
+      break;
+    default:
+      throw new RuntimeException("Unsupported namespace");
+    }
+  }
+
+  private void executeMoveOperation(final EMOperation operation) {
+    final String namespace = operation.getNamespace();
+    final TransferStep transferStep = operation.getTransferStep().get();
+
+    switch (namespace) {
+    case NAMESPACE_SERVER:
+      serverEM.move(
+          transferStep.getDataInfo().getNumBlocks(),
+          transferStep.getSrcId(),
+          executingPlan.getServerActualContextId(transferStep.getDstId()),
+          new MovedHandler(operation));
+      break;
+    case NAMESPACE_WORKER:
+      workerEM.move(
+          transferStep.getDataInfo().getNumBlocks(),
+          transferStep.getSrcId(),
+          executingPlan.getWorkerActualContextId(transferStep.getDstId()),
+          new MovedHandler(operation));
+      break;
+    default:
+      throw new RuntimeException("Unsupported namespace");
     }
   }
 
