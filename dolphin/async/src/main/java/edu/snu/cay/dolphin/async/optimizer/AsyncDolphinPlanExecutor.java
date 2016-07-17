@@ -71,7 +71,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private volatile ExecutingPlan executingPlan;
 
   /**
-   * A counter to assign ids when allocating new Evaluators
+   * A counter to assign ids when allocating new Evaluators.
    */
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
 
@@ -129,6 +129,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
             numStartedOps.getAndAdd(nextOps.size());
           }
         }
+
+        // wait until all the started operations are finished
+        executingPlan.waitPlanExecution();
 
         final ConcurrentMap<EMOperation, OpExecutionStatus> planExecutionResult =
                 executingPlan.getPlanExecutionStatus();
@@ -431,23 +434,42 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      */
     private final Plan plan;
 
+    /**
+     * A countdown latch that releases waiting threads when the whole plan is finished.
+     * It is counted down by {@link #markOperationComplete(EMOperation)}.
+     */
+    private final CountDownLatch planExecutionLatch;
+
     private ExecutingPlan(final Plan plan) {
       this.ctxIdToAddedServerCtx = new ConcurrentHashMap<>();
       this.ctxIdToAddedWorkerCtx = new ConcurrentHashMap<>();
       this.emOperationsRequested = new ConcurrentHashMap<>();
       this.plan = plan;
+      this.planExecutionLatch = new CountDownLatch(plan.getPlanSize());
     }
 
     /**
-     * Put added context to keep track of them.
+     * Put added server context to keep track of them.
      * @param context ActiveContext from the event handler
      */
     void putAddedServerContext(final String planContextId, final ActiveContext context) {
       ctxIdToAddedServerCtx.put(planContextId, context);
     }
 
+    /**
+     * Put added worker context to keep track of them.
+     * @param context ActiveContext from the event handler
+     */
     void putAddedWorkerContext(final String planContextId, final ActiveContext context) {
       ctxIdToAddedWorkerCtx.put(planContextId, context);
+    }
+
+    /**
+     * Wait until the plan is completely executed.
+     * @throws InterruptedException
+     */
+    void waitPlanExecution() throws InterruptedException {
+      planExecutionLatch.await();
     }
 
     /**
@@ -479,6 +501,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @return the set of operations that can be executed after op's completion
      */
     Set<EMOperation> markOperationComplete(final EMOperation op) {
+      planExecutionLatch.countDown();
       final boolean wasInProgress = emOperationsRequested.replace(op,
               OpExecutionStatus.IN_PROGRESS, OpExecutionStatus.COMPLETE);
 
