@@ -696,7 +696,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      * Wait until thread is closed successfully.
      */
     synchronized void waitForClose() {
-      while (stateMachine.getCurrentState().equals(STATE_CLOSING)) {
+      while (!stateMachine.getCurrentState().equals(STATE_CLOSED)) {
         try {
           wait();
         } catch (final InterruptedException e) {

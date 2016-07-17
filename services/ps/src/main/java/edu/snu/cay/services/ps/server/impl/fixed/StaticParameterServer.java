@@ -595,7 +595,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
      * Wait until thread is closed successfully.
      */
     synchronized void waitForClose() {
-      while (stateMachine.getCurrentState().equals(STATE_CLOSING)) {
+      while (!stateMachine.getCurrentState().equals(STATE_CLOSED)) {
         try {
           wait();
         } catch (final InterruptedException e) {
