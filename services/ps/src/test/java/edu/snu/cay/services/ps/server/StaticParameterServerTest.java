@@ -51,6 +51,8 @@ public final class StaticParameterServerTest {
   private static final long CLOSE_TIMEOUT = 10000;
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
+  private static final String WORKER_ID = "WORKER";
+
   private StaticParameterServer<Integer, Integer, Integer> server;
   private ServerSideReplySender<Integer, Integer, Integer> mockSender;
 
@@ -112,7 +114,7 @@ public final class StaticParameterServerTest {
           for (int index = 0; index < numPushes; index++) {
             // each thread increments the server's value by 1 per push
             final int key = threadId;
-            server.push(key, 1, "", key); // Just use key as hash for this test.
+            server.push(key, 1, WORKER_ID, key); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -126,7 +128,7 @@ public final class StaticParameterServerTest {
         public void run() {
           for (int index = 0; index < numPulls; index++) {
             final int key = threadId;
-            server.pull(key, "", key); // Just use key as hash for this test.
+            server.pull(key, WORKER_ID, key); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -152,7 +154,7 @@ public final class StaticParameterServerTest {
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
-      server.pull(key, "", key); // Just use key as hash for this test.
+      server.pull(key, WORKER_ID, key); // Just use key as hash for this test.
 
       waitForOps();
       while (!replayValue.isMarked()) {
@@ -185,7 +187,7 @@ public final class StaticParameterServerTest {
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
-      server.pull(key, "", key);
+      server.pull(key, WORKER_ID, key);
     }
 
     // closing server should guarantee all the queued operations to be processed, if time allows
@@ -193,7 +195,7 @@ public final class StaticParameterServerTest {
     verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt());
 
     // server should not process further operations after being closed
-    server.pull(0, "", 0);
+    server.pull(0, WORKER_ID, 0);
     verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt());
   }
 }
