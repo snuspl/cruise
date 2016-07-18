@@ -30,15 +30,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A sample optimizer that creates plan one of below two.
- * 1) Add one server and Delete one worker.
- * 2) Delete one server and Add one worker.
- *
+ * An optimizer implementation that exchange evaluators between server and worker namespaces.
+ * More specifically, an evaluator is deleted from one namespace, and added on the other at a time.
  * Of course each Delete and Add accompany Move in its own namespace.
  * These plans never changes the total number of evaluators participating in the job.
+ * The purpose of this optimizer is to consider where the amount of resources are constrained.
  */
-public final class SampleOptimizer implements Optimizer {
-  private static final Logger LOG = Logger.getLogger(SampleOptimizer.class.getName());
+public final class ExchangeOneOptimizer implements Optimizer {
+  private static final Logger LOG = Logger.getLogger(ExchangeOneOptimizer.class.getName());
 
   private static final int MAX_CALLS_TO_MAKE = 3;
   private static final String EVAL_PREFIX = "NEW-";
@@ -48,7 +47,7 @@ public final class SampleOptimizer implements Optimizer {
   private int callsMade = 0;
 
   @Inject
-  private SampleOptimizer() {
+  private ExchangeOneOptimizer() {
 
   }
 
@@ -73,6 +72,8 @@ public final class SampleOptimizer implements Optimizer {
       LOG.log(Level.INFO, "There's no parameters for source namespace: {0}", srcNamespace);
       return planBuilder.build();
     }
+
+    // pick the very first evaluator that has any data block in it to be the evaluator to be deleted
     for (final EvaluatorParameters srcNSEvalParams : srcNSEvalParamsList) {
       final int numBlocks = srcNSEvalParams.getDataInfo().getNumBlocks();
       if (numBlocks > 0) {
@@ -88,10 +89,10 @@ public final class SampleOptimizer implements Optimizer {
       return planBuilder.build();
     }
 
-    // find eval to which move the data from eval to be deleted
+    // pick the next eval to move data into
     final String srcNSEvalToMove;
     if (srcNSEvalParamsList.isEmpty()) {
-      LOG.warning("Fail to find eval to move data from eval to be deleted");
+      LOG.warning("Fail to find eval to move data into");
       return planBuilder.build();
     }
     srcNSEvalToMove = srcNSEvalParamsList.get(0).getId();
