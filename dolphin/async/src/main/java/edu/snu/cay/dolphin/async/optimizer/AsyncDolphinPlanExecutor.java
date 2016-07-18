@@ -87,6 +87,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     this.asyncDolphinDriver = asyncDolphinDriver;
     this.serverEM = serverEM;
     this.workerEM = workerEM;
+    serverEM.addGroup("server");
+    workerEM.addGroup("worker");
   }
 
   /**
@@ -354,13 +356,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     switch (namespace) {
     case NAMESPACE_SERVER:
       LOG.log(Level.FINE, "Adding server {0}", operation.getEvalId());
-      serverEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+      serverEM.add("server", 1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
           getAllocatedEvalHandler(NAMESPACE_SERVER),
           getActiveContextHandler(NAMESPACE_SERVER, operation));
       break;
     case NAMESPACE_WORKER:
       LOG.log(Level.FINE, "Adding worker {0}", operation.getEvalId());
-      workerEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+      workerEM.add("worker", 1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
           getAllocatedEvalHandler(NAMESPACE_WORKER),
           getActiveContextHandler(NAMESPACE_WORKER, operation));
       break;

@@ -36,14 +36,21 @@ import java.util.Set;
 public interface ElasticMemory {
 
   /**
+   * Add new evaluator group.
+   * @param groupId identifier of the new group
+   */
+  void addGroup(String groupId);
+
+  /**
    * Add new evaluators as specified.
+   * @param groupId identifier of the group which evaluators belong to
    * @param number number of evaluators to add
    * @param megaBytes memory size of each new evaluator in MB
    * @param cores number of cores of each new evaluator
    * @param evaluatorAllocatedHandler callback which handles {@link AllocatedEvaluator} event
    * @param contextActiveHandlerList callbacks which handle {@link ActiveContext} events, executed in sequence
    */
-  void add(int number, int megaBytes, int cores,
+  void add(String groupId, int number, int megaBytes, int cores,
            EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
            List<EventHandler<ActiveContext>> contextActiveHandlerList);
 

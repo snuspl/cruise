@@ -64,6 +64,7 @@ final class AddTestHandlers {
     this.allocationCounter = new CountDownLatch(numAdd);
     this.callbackCounter = new CountDownLatch(numAdd);
     this.activeContextSet  = Collections.newSetFromMap(new ConcurrentHashMap<ActiveContext, Boolean>());
+    elasticMemory.addGroup("default");
   }
 
   /**
@@ -165,7 +166,7 @@ final class AddTestHandlers {
           }
         });
 
-        elasticMemory.add(addsPerThread, 128, 1, evaluatorAllocatedHandler, contextActiveHandlers);
+        elasticMemory.add("default", addsPerThread, 128, 1, evaluatorAllocatedHandler, contextActiveHandlers);
       }
     }
   }

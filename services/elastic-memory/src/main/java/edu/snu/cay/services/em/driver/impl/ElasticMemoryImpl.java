@@ -76,6 +76,11 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     this.blockManager = blockManager;
   }
 
+  @Override
+  public void addGroup(final String groupId) {
+    blockManager.addGroup(groupId);
+  }
+
   /**
    * Request for evaluators and remember passed callback.
    * Currently assumes that every request has same memory size and cores.
@@ -83,7 +88,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
    * TODO #188: Support heterogeneous evaluator requests
    */
   @Override
-  public void add(final int number, final int megaBytes, final int cores,
+  public void add(final String groupId, final int number, final int megaBytes, final int cores,
                   final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                   final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
     if (number == 0) {

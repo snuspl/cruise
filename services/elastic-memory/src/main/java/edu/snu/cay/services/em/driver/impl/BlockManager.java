@@ -71,12 +71,29 @@ public final class BlockManager {
    */
   private final int numTotalBlocks;
 
+  /**
+   * A mapping that maintains which group has which evaluators.
+   */
+  private final Map<String, Set<String>> groupIdToEvalIds;
+
   @Inject
   private BlockManager(@Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
     this.storeIdToBlockIds = new HashMap<>();
     this.blockIdToStoreId = new HashMap<>();
     this.movingBlocks = new HashSet<>(numTotalBlocks);
     this.numTotalBlocks = numTotalBlocks;
+    this.groupIdToEvalIds = new HashMap<>();
+  }
+
+  /**
+   * Add new evaluator group.
+   * @param groupId identifier of the new group
+   */
+  public synchronized void addGroup(final String groupId) {
+    if (groupIdToEvalIds.containsKey(groupId)) {
+      throw new RuntimeException("Group identifier already exists: " + groupId);
+    }
+    groupIdToEvalIds.put(groupId, new HashSet<>());
   }
 
   /**

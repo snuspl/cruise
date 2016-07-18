@@ -85,6 +85,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
     this.driverSync = driverSync;
     this.dolphinDriver = dolphinDriver;
     this.evalSize = evalSize;
+    elasticMemory.addGroup("default");
   }
 
   /**
@@ -122,7 +123,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         contextActiveHandlers.add(new ContextActiveHandler());
         for (final String evaluatorToAdd : plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP)) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
-          elasticMemory.add(1, evalSize, 1, evaluatorAllocatedHandler, contextActiveHandlers);
+          elasticMemory.add("default", 1, evalSize, 1, evaluatorAllocatedHandler, contextActiveHandlers);
         }
         executingPlan.awaitActiveContexts();
 
