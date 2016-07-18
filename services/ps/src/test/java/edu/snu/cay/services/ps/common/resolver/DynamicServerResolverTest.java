@@ -46,12 +46,12 @@ import java.util.concurrent.CountDownLatch;
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({WorkerMsgSender.class, NameClient.class})
 /**
  * Tests for DynamicServerResolver.
  * It checks whether DynamicServerResolver is initialized and updated correctly, and resolves the correct server.
  */
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({WorkerMsgSender.class, NameClient.class})
 public class DynamicServerResolverTest {
   private static final String SERVER_ID_PREFIX = "SERVER-";
   private static final int NUM_SERVERS = 5;
