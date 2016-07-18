@@ -53,12 +53,13 @@ final class SparseLdaSampler {
     this.batchWorker = batchWorker;
   }
 
-  void sample(final Document document, final Tracer pullTracer, final Tracer pushTracer) {
+  void sample(final Document document, final Tracer computeTracer, final Tracer pullTracer, final Tracer pushTracer) {
     pullTracer.startTimer();
     // numVocabs-th row represents the total word-topic assignment count vector
     final int[] globalWordCountByTopics = parameterWorker.pull(numVocabs);
     pullTracer.recordTime(1);
 
+    computeTracer.startTimer();
     double sumS = 0.0;
     double sumR = 0.0;
     double sumQ = 0.0;
@@ -86,11 +87,18 @@ final class SparseLdaSampler {
         sumR += rTerms[i];
       }
     }
+    computeTracer.recordTime(numTopics);
 
     for (int wordIndex = 0; wordIndex < document.size(); wordIndex++) {
       final int word = document.getWord(wordIndex);
       final int oldTopic = document.getAssignment(wordIndex);
       final int oldTopicCount = document.getTopicCount(oldTopic);
+
+      pullTracer.startTimer();
+      final int[] wordTopicCount = parameterWorker.pull(word);
+      pullTracer.recordTime(1);
+
+      computeTracer.startTimer();
 
       // Remove the current word from the document and update terms.
       final double denom = (globalWordCountByTopics[oldTopic] - 1) + beta * numVocabs;
@@ -111,10 +119,6 @@ final class SparseLdaSampler {
       qCoefficients[oldTopic] = (alpha + oldTopicCount - 1) / denom;
 
       document.removeWordAtIndex(wordIndex);
-
-      pullTracer.startTimer();
-      final int[] wordTopicCount = parameterWorker.pull(word);
-      pullTracer.recordTime(1);
 
       // Calculate q terms
       nonZeroQTermIndices.clear();
@@ -174,8 +178,8 @@ final class SparseLdaSampler {
         batchWorker.addTopicChange(numVocabs, oldTopic, -1);
         batchWorker.addTopicChange(numVocabs, newTopic, 1);
       }
+      computeTracer.recordTime(1);
     }
-
     batchWorker.pushAndClear(pushTracer);
   }
 

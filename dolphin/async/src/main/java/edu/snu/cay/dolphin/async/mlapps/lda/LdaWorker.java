@@ -62,7 +62,7 @@ final class LdaWorker implements Worker {
   /**
    * Number of iterations.
    */
-  private int numItr = 0;
+  private int numItr;
 
   @Inject
   private LdaWorker(final LdaDataParser dataParser,
@@ -89,6 +89,8 @@ final class LdaWorker implements Worker {
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
+
+    this.numItr = 0;
   }
 
   @Override
@@ -131,6 +133,7 @@ final class LdaWorker implements Worker {
 
     LOG.log(Level.INFO, "Iteration Started");
     ++numItr;
+    final long itrBeginTimestamp = System.currentTimeMillis();
     resetTracers();
 
     final Map<Long, Document> workloadMap = memoryStore.getAll();
@@ -141,14 +144,24 @@ final class LdaWorker implements Worker {
     int numSampledDocuments = 0;
 
     for (final Document document : workload) {
-      computeTracer.startTimer();
-      sampler.sample(document, pullTracer, pushTracer);
+      sampler.sample(document, computeTracer, pullTracer, pushTracer);
       numSampledDocuments++;
 
       if (numSampledDocuments % countForLogging == 0) {
         LOG.log(Level.INFO, "{0}/{1} documents are sampled", new Object[]{numSampledDocuments, numDocuments});
       }
     }
+
+    final double elapsedTime = (System.currentTimeMillis() - itrBeginTimestamp) / 1000.0D;
+    LOG.log(Level.INFO, "End Iteration: {0}, Document Count: {1}, " +
+            "Avg Comp Per Row: {2}, Sum Comp: {3}, " +
+            "Avg Pull: {4}, Sum Pull: {5}, " +
+            "Avg Push: {6}, Sum Push: {7}, Elapsed Time: {8}",
+        new Object[]{numItr, numDocuments,
+            computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(),
+            pullTracer.avgTimePerRecord(), pullTracer.totalElapsedTime(),
+            pushTracer.avgTimePerRecord(), pushTracer.totalElapsedTime(),
+            elapsedTime});
 
     sendMetrics(memoryStore.getNumBlocks());
     LOG.log(Level.INFO, "Iteration Ended");
