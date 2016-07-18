@@ -37,6 +37,7 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -100,7 +101,16 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     } else if (cores <= 0) {
       throw new RuntimeException("The CPU cores of evaluators must be positive, but requested: " + cores);
     } else {
-      evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlerList);
+      final ArrayList<EventHandler<ActiveContext>> contextActiveHandlers = new ArrayList<>();
+      EventHandler<ActiveContext> nextHandler;
+      try {
+        nextHandler = contextActiveHandlerList.get(0);
+      } catch (IndexOutOfBoundsException e) {
+        nextHandler = null;
+      }
+      contextActiveHandlers.add(new EvaluatorGroupRegister(groupId, nextHandler));
+      contextActiveHandlers.addAll(contextActiveHandlerList);
+      evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlers);
     }
   }
 
@@ -180,5 +190,25 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
     return blockManager.getStoreIdToBlockIds();
+  }
+
+  /**
+   * ActiveContext event handler for registering new evaluator to the group.
+   */
+  private final class EvaluatorGroupRegister implements EventHandler<ActiveContext> {
+    private final String groupId;
+    private final EventHandler<ActiveContext> nextHandler;
+
+    public EvaluatorGroupRegister(final String groupId, final EventHandler<ActiveContext> nextHandler) {
+      this.groupId = groupId;
+      this.nextHandler = nextHandler;
+    }
+
+    @Override
+    public void onNext(final ActiveContext activeContext) {
+      if (nextHandler != null) {
+        nextHandler.onNext(activeContext);
+      }
+    }
   }
 }
