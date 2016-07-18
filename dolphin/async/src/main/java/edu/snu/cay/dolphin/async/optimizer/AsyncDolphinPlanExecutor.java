@@ -115,18 +115,19 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     final int numTotalOps = plan.getPlanSize();
 
     return mainExecutor.submit(new Callable<PlanResult>() {
-      private final AtomicInteger numStartedOps = new AtomicInteger(0);
 
       @Override
       public PlanResult call() throws Exception {
 
+        int numStartedOps = 0;
+
         // check whether it starts all the operations in the plan
-        while (numStartedOps.get() < numTotalOps) {
+        while (numStartedOps < numTotalOps) {
           final Set<EMOperation> nextOps = nextOpsToExecuteInParallel.take();
 
           if (nextOps != null) {
             executeOperations(nextOps);
-            numStartedOps.getAndAdd(nextOps.size());
+            numStartedOps += nextOps.size();
           }
         }
 
