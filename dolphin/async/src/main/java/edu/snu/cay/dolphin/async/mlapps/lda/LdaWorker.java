@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.metric.WorkerConstants.KEY_WORKER_COMPUTE_TIME;
+import static edu.snu.cay.dolphin.async.metric.WorkerConstants.WORKER_COMPUTE_TIME;
 
 /**
  * Assign a random topic to each word in all documents and block on a global barrier to make sure
@@ -158,7 +158,7 @@ final class LdaWorker implements Worker {
             "Avg Pull: {4}, Sum Pull: {5}, " +
             "Avg Push: {6}, Sum Push: {7}, Elapsed Time: {8}",
         new Object[]{numItr, numDocuments,
-            computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(),
+            computeTracer.avgTimePerElem(), computeTracer.totalElapsedTime(),
             pullTracer.avgTimePerRecord(), pullTracer.totalElapsedTime(),
             pushTracer.avgTimePerRecord(), pushTracer.totalElapsedTime(),
             elapsedTime});
@@ -178,7 +178,7 @@ final class LdaWorker implements Worker {
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(KEY_WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
       final Metrics metrics = metricsHandler.getMetrics();
       final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()
