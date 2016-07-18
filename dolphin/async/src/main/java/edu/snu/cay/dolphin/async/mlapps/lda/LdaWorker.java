@@ -158,7 +158,7 @@ final class LdaWorker implements Worker {
             "Avg Pull: {4}, Sum Pull: {5}, " +
             "Avg Push: {6}, Sum Push: {7}, Elapsed Time: {8}",
         new Object[]{numItr, numDocuments,
-            computeTracer.avgTimePerElem(), computeTracer.totalElapsedTime(),
+            computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(),
             pullTracer.avgTimePerRecord(), pullTracer.totalElapsedTime(),
             pushTracer.avgTimePerRecord(), pushTracer.totalElapsedTime(),
             elapsedTime});
