@@ -37,7 +37,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.metric.WorkerConstants.KEY_WORKER_COMPUTE_TIME;
+import static edu.snu.cay.dolphin.async.metric.WorkerConstants.WORKER_COMPUTE_TIME;
 
 /**
  * {@link Worker} class for the MLRREEF application.
@@ -514,7 +514,7 @@ final class MLRWorker implements Worker {
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(KEY_WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
 
       final Metrics metrics = metricsHandler.getMetrics();
