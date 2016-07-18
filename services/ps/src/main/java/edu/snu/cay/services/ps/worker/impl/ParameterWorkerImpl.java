@@ -612,10 +612,11 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                 // PullFuture returns null,
                 // 1) when the msg is rejected by server,
                 // 2) or when the server does not respond within RETRY_INTERVAL_MS
-                // 2-1) the server is overloaded
-                // 2-2) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
+                // The case 2) can be divided into three reasons:
+                // 2-1) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
+                // 2-2) the server is overloaded
                 // 2-3) the msg is missing due to network or other problems
-                // we should adjust timeout to be large enough to avoid 2-2 and not to worsen 2-1,
+                // we should adjust timeout to be large enough to avoid 2-1 and not to worsen 2-2,
                 // but small enough to quickly recover from 2-3.
                 value = future.getValue(pullRetryTimeoutMs);
               }
