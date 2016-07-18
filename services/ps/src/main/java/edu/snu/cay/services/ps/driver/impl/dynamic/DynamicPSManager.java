@@ -69,6 +69,7 @@ public final class DynamicPSManager implements PSManager {
   private final int workerQueueSize;
   private final int serverQueueSize;
   private final long workerExpireTimeout;
+  private final long pullRetryTimeoutMs;
   private final int workerKeyCacheSize;
   private final long workerLogPeriod;
   private final long serverLogPeriod;
@@ -82,6 +83,7 @@ public final class DynamicPSManager implements PSManager {
                            @Parameter(WorkerQueueSize.class) final int workerQueueSize,
                            @Parameter(ServerQueueSize.class) final int serverQueueSize,
                            @Parameter(WorkerExpireTimeout.class) final long workerExpireTimeout,
+                           @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
                            @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize,
                            @Parameter(ServerMetricsWindowMs.class) final long serverMetricsWindowMs,
                            @Parameter(ServerLogPeriod.class) final long serverLogPeriod,
@@ -93,6 +95,7 @@ public final class DynamicPSManager implements PSManager {
     this.workerQueueSize = workerQueueSize;
     this.serverQueueSize = serverQueueSize;
     this.workerExpireTimeout = workerExpireTimeout;
+    this.pullRetryTimeoutMs = pullRetryTimeoutMs;
     this.workerKeyCacheSize = workerKeyCacheSize;
     this.workerLogPeriod = workerLogPeriod;
     this.serverLogPeriod = serverLogPeriod;
@@ -120,6 +123,7 @@ public final class DynamicPSManager implements PSManager {
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(workerNumThreads))
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
+        .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(pullRetryTimeoutMs))
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
         .build();

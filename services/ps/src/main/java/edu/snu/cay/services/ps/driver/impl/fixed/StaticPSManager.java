@@ -35,11 +35,7 @@ import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.resolver.StaticServerResolver;
-import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
-import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
-import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
-import edu.snu.cay.services.ps.worker.parameters.WorkerLogPeriod;
+import edu.snu.cay.services.ps.worker.parameters.*;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -66,6 +62,7 @@ public final class StaticPSManager implements PSManager {
   private final int workerQueueSize;
   private final int serverQueueSize;
   private final long workerExpireTimeout;
+  private final long pullRetryTimeoutMs;
   private final int workerKeyCacheSize;
   private final long workerLogPeriod;
   private final long serverLogPeriod;
@@ -79,6 +76,7 @@ public final class StaticPSManager implements PSManager {
                           @Parameter(WorkerQueueSize.class) final int workerQueueSize,
                           @Parameter(ServerQueueSize.class) final int serverQueueSize,
                           @Parameter(WorkerExpireTimeout.class) final long workerExpireTimeout,
+                          @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
                           @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize,
                           @Parameter(ServerMetricsWindowMs.class) final long serverMetricsWindowMs,
                           @Parameter(ServerLogPeriod.class) final long serverLogPeriod,
@@ -90,6 +88,7 @@ public final class StaticPSManager implements PSManager {
     this.workerQueueSize = workerQueueSize;
     this.serverQueueSize = serverQueueSize;
     this.workerExpireTimeout = workerExpireTimeout;
+    this.pullRetryTimeoutMs = pullRetryTimeoutMs;
     this.workerKeyCacheSize = workerKeyCacheSize;
     this.workerLogPeriod = workerLogPeriod;
     this.serverLogPeriod = serverLogPeriod;
@@ -115,6 +114,7 @@ public final class StaticPSManager implements PSManager {
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(workerNumThreads))
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
+        .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(pullRetryTimeoutMs))
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
         .build();
