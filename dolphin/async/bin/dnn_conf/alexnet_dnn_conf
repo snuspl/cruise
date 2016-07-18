@@ -25,9 +25,7 @@ layer {
     activation_function: "relu"
   }
 }
-layer {
-  #TODO #644: normalization layer
-}
+#TODO #644: normalization layer
 layer {
   type: "Pooling"
   pooling_param {
@@ -61,9 +59,7 @@ layer {
     activation_function: "relu"
   }
 }
-layer {
-  #TODO #644: normalization layer
-}
+#TODO #644: normalization layer
 layer {
   type: "Pooling"
   pooling_param {
@@ -166,9 +162,7 @@ layer {
     activation_function: "relu"
   }
 }
-layer {
-  #TODO #583: dropout layer
-}
+#TODO #583: dropout layer
 #7
 layer {
   type: "FullyConnected"
@@ -184,9 +178,7 @@ layer {
     activation_function: "relu"
   }
 }
-layer {
-  #TODO #583: dropout layer
-}
+#TODO #583: dropout layer
 #8
 layer {
   type: "FullyConnected"
