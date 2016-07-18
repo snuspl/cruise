@@ -31,6 +31,9 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -45,6 +48,8 @@ import static org.mockito.Mockito.*;
 /**
  * Tests for {@link ParameterWorkerImpl}.
  */
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(WorkerMsgSender.class)
 public final class ParameterWorkerImplTest {
   private static final long CLOSE_TIMEOUT = 5000;
   private static final int WORKER_QUEUE_SIZE = 2500;
