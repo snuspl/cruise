@@ -206,6 +206,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
     @Override
     public void onNext(final ActiveContext activeContext) {
+      blockManager.addEvaluatorToGroup(activeContext.getId(), groupId);
       if (nextHandler != null) {
         nextHandler.onNext(activeContext);
       }

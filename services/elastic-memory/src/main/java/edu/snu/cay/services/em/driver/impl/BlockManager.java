@@ -76,6 +76,11 @@ public final class BlockManager {
    */
   private final Map<String, Set<String>> groupIdToEvalIds;
 
+  /**
+   * A mapping that maintains which evaluator belongs to which group.
+   */
+  private final Map<String, String> evalIdToGroupId;
+
   @Inject
   private BlockManager(@Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
     this.storeIdToBlockIds = new HashMap<>();
@@ -83,6 +88,7 @@ public final class BlockManager {
     this.movingBlocks = new HashSet<>(numTotalBlocks);
     this.numTotalBlocks = numTotalBlocks;
     this.groupIdToEvalIds = new HashMap<>();
+    this.evalIdToGroupId = new HashMap<>();
   }
 
   /**
@@ -139,6 +145,18 @@ public final class BlockManager {
   }
 
   /**
+   * Add an evaluator to a group.
+   */
+  public synchronized void addEvaluatorToGroup(final String contextId, final String groupId) {
+    if (groupIdToEvalIds.get(groupId) == null) {
+      throw new RuntimeException("Group identifier not found: " + groupId);
+    }
+    groupIdToEvalIds.get(groupId).add(contextId);
+    evalIdToGroupId.put(contextId, groupId);
+    LOG.log(Level.INFO, "Evaluator {0} was added to group {1}", new Object[]{contextId, groupId});
+  }
+
+  /**
    * Deregister an evaluator.
    * It should be called after all blocks in the store of the evaluator are completely moved out.
    * @param contextId an id of context
@@ -156,6 +174,15 @@ public final class BlockManager {
     }
 
     storeIdToBlockIds.remove(memoryStoreId);
+
+    final String groupId = evalIdToGroupId.get(contextId);
+    if (groupId != null) {
+      groupIdToEvalIds.get(groupId).remove(contextId);
+      evalIdToGroupId.remove(contextId);
+      LOG.log(Level.INFO, "Evaluator {0} was removed from group {1}", new Object[]{contextId, groupId});
+    } else {
+      LOG.log(Level.WARNING, "Evaluator {0} did not belong to any group.", contextId);
+    }
   }
 
   /**
