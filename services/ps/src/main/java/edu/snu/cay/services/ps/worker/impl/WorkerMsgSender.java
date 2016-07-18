@@ -113,7 +113,6 @@ public class WorkerMsgSender<K, P> {
 
     final PullMsg pullMsg = PullMsg.newBuilder()
         .setKey(ByteBuffer.wrap(key.getEncoded()))
-        .setSrcId(localEndPointId.toString())
         .build();
 
     send(destId,
