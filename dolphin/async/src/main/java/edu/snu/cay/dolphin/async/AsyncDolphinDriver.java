@@ -403,6 +403,7 @@ public final class AsyncDolphinDriver {
           }
 
           // 2. trigger optimization during all workers are running their main iterations
+          // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iterations
           while (!synchronizationManager.waitingCleanup()) {
             optimizationOrchestrator.run();
             try {

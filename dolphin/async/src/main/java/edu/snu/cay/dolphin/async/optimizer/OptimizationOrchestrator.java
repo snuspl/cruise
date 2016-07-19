@@ -108,7 +108,7 @@ public final class OptimizationOrchestrator {
       workerParameters.clear();
       return;
 
-      // Case2. If there are missing metrics
+    // Case2. If there are missing metrics
     } else if (numServerMetricSources < numRunningServers || numWorkerMetricSources < numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because there are missing metrics." +
               " The existing metrics will be kept and reused in the next optimization try." +
