@@ -56,7 +56,7 @@ public final class NeuralNetworkTest {
 
   private final Matrix input = matrixFactory.create(new float[]{77, 57, 30, 26, 75, 74, 87, 75});
   private final Matrix expectedOutput =
-      matrixFactory.create(new float[]{5.96001906923e-01f, 5.54388444438e-01f, 4.88766051614e-01f});
+      matrixFactory.create(new float[]{6.99425825888e-01f, 5.71492261161e-01f, 5.79580557810e-01f});
   private final Matrix label = matrixFactory.create(new float[]{0, 1, 0});
   private final int numHiddenUnits = 5;
 
@@ -66,18 +66,18 @@ public final class NeuralNetworkTest {
       matrixFactory.create(new float[]{
           5.03440835342e-01f, 5.05097234742e-01f, 5.02210400517e-01f, 5.07340068673e-01f, 4.98231862419e-01f}),
       matrixFactory.create(new float[]{
-          3.88833708754e-01f, 2.18417983427e-01f, -4.49433571251e-02f}),
+          8.44565190562e-01f, 2.87942143690e-01f, 3.21051780914e-01f}),
       expectedOutput};
 
   private final Configuration neuralNetworkConfiguration = NeuralNetworkConfigurationBuilder.newConfigurationBuilder()
       .setInputShape(input.getLength())
       .setStepSize(1e-2f)
+      .setRandomSeed(10)
       .addLayerConfiguration(
           FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
               .setNumOutput(numHiddenUnits)
               .setInitWeight(0.0001f)
               .setInitBias(0.0002f)
-              .setRandomSeed(10)
               .build())
       .addLayerConfiguration(
           ActivationLayerConfigurationBuilder.newConfigurationBuilder()
@@ -88,7 +88,6 @@ public final class NeuralNetworkTest {
               .setNumOutput(expectedOutput.getLength())
               .setInitWeight(0.2f)
               .setInitBias(0.3f)
-              .setRandomSeed(10)
               .build())
       .addLayerConfiguration(ActivationWithLossLayerConfigurationBuilder.newConfigurationBuilder()
           .setActivationFunction("sigmoid")
@@ -104,10 +103,10 @@ public final class NeuralNetworkTest {
 
   private final Matrix[] expectedErrors = new Matrix[] {
       matrixFactory.create(new float[]{
-          -1.10814502938e-02f, 4.75458121280e-02f, 2.79511566348e-02f, -3.76325213356e-02f, -6.66430044053e-02f}),
+          3.54067743975e-02f, 3.91411779548e-02f, -1.28313456911e-02f, 5.27789222833e-02f, 8.35465482582e-02f}),
       matrixFactory.create(new float[]{
-          -4.43279004290e-02f, 1.90203015780e-01f, 1.11806811634e-01f, -1.50562532537e-01f, -2.66575351211e-01f}),
-      matrixFactory.create(new float[]{5.96001906923e-01f, -4.45611555562e-01f, 4.88766051614e-01f})};
+          1.41633804997e-01f, 1.56580984844e-01f, -5.13263858606e-02f, 2.11161195729e-01f, 3.34190372164e-01f}),
+      matrixFactory.create(new float[]{6.99425825888e-01f, -4.28507738839e-01f, 5.79580557810e-01f})};
 
   @Before
   public void buildNeuralNetwork() throws InjectionException {
@@ -146,9 +145,9 @@ public final class NeuralNetworkTest {
       68, 85, 4, 50, 19, 3, 5, 18}, input.getLength(), numBatch);
 
   private final Matrix expectedBatchOutput = matrixFactory.create(new float[]{
-      5.96001906923e-01f, 5.54388444438e-01f, 4.88766051614e-01f,
-      5.95962765220e-01f, 5.54549180394e-01f, 4.88787332887e-01f,
-      5.95960592285e-01f, 5.54529568429e-01f, 4.88781434177e-01f}, expectedOutput.getLength(), numBatch);
+      6.99425825888e-01f, 5.71492261161e-01f, 5.79580557810e-01f,
+      6.98681281603e-01f, 5.71393771362e-01f, 5.79682345726e-01f,
+      6.98732123516e-01f, 5.71416319005e-01f, 5.79628523069e-01f}, expectedOutput.getLength(), numBatch);
 
   private final Matrix labels = matrixFactory.create(new float[]{
       0, 1, 0,
@@ -167,27 +166,27 @@ public final class NeuralNetworkTest {
           4.97699500651e-01f, 5.00631798797e-01f, 5.00782845763e-01f, 5.03585230258e-01f, 4.98748148448e-01f},
           numHiddenUnits, numBatch),
       matrixFactory.create(new float[]{
-          3.88833708754e-01f, 2.18417983427e-01f, -4.49433571251e-02f,
-          3.88671151640e-01f, 2.19068648969e-01f, -4.48581891244e-02f,
-          3.88662127499e-01f, 2.18989256483e-01f, -4.48817958414e-02f},
+          8.44565190562e-01f, 2.87942143690e-01f, 3.21051780914e-01f,
+          8.41026105227e-01f, 2.87539973621e-01f, 3.21469528616e-01f,
+          8.41267616553e-01f, 2.87632041900e-01f, 3.21248631631e-01f},
           expectedOutput.getLength(), numBatch),
       expectedBatchOutput};
 
   private final Matrix[] expectedBatchErrors = new Matrix[] {
       matrixFactory.create(new float[]{
-          -1.10814502938e-02f, 4.75458121280e-02f, 2.79511566348e-02f, -3.76325213356e-02f, -6.66430044053e-02f,
-          -5.15000730878e-02f, 2.29721560018e-02f, -8.00065487467e-05f, 4.90593973619e-02f, 7.12180587144e-02f,
-          1.49417896767e-02f, -4.67279048839e-02f, 3.37442108292e-03f, -8.35931344072e-03f, -8.79247789398e-02f},
+          3.54067743975e-02f, 3.91411779548e-02f, -1.28313456911e-02f, 5.27789222833e-02f, 8.35465482582e-02f,
+          4.08958273398e-02f, -1.59106512616e-03f, 8.42229824251e-02f, 7.54984157076e-02f, -1.84734459806e-02f,
+          2.76812889594e-03f, -3.03565626334e-02f, -4.35256740938e-02f, -1.28061956655e-02f, 5.23646752384e-03f},
           numHiddenUnits, numBatch),
       matrixFactory.create(new float[]{
-          -4.43279004290e-02f, 1.90203015780e-01f, 1.11806811634e-01f, -1.50562532537e-01f, -2.66575351211e-01f,
-          -2.06005828612e-01f, 9.18889102737e-02f, -3.20026418031e-04f, 1.96249815425e-01f, 2.84875384962e-01f,
-          5.97684239558e-02f, -1.86911917974e-01f, 1.34977174198e-02f, -3.34389730445e-02f, -3.51701320409e-01f},
+          1.41633804997e-01f, 1.56580984844e-01f, -5.13263858606e-02f, 2.11161195729e-01f, 3.34190372164e-01f,
+          1.63587705663e-01f, -6.36428033164e-03f, 3.36892164500e-01f, 3.02012477614e-01f, -7.38946010364e-02f,
+          1.10727499849e-02f, -1.21426444413e-01f, -1.74103123170e-01f, -5.12274165454e-02f, 2.09460013960e-02f},
           numHiddenUnits, numBatch),
       matrixFactory.create(new float[]{
-          5.96001906923e-01f, -4.45611555562e-01f, 4.88766051614e-01f,
-          5.95962765220e-01f, 5.54549180394e-01f, -5.11212667113e-01f,
-          -4.04039407715e-01f, 5.54529568429e-01f, 4.88781434177e-01f},
+          6.99425825888e-01f, -4.28507738839e-01f, 5.79580557810e-01f,
+          6.98681281603e-01f, 5.71393771362e-01f, -4.20317654274e-01f,
+          -3.01267876484e-01f, 5.71416319005e-01f, 5.79628523069e-01f},
           expectedOutput.getLength(), numBatch)};
 
   /**

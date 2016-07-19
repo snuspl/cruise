@@ -15,20 +15,17 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import edu.snu.cay.dolphin.async.metric.MetricsMessageSender;
+import edu.snu.cay.common.metric.*;
+import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.WorkerSynchronizer;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.common.metric.InsertableMetricTracker;
-import edu.snu.cay.common.metric.MetricException;
-import edu.snu.cay.common.metric.MetricTracker;
-import edu.snu.cay.common.metric.MetricsCollector;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -40,8 +37,9 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
-import static edu.snu.cay.dolphin.async.metric.MetricKeys.WORKER_COMPUTE_TIME;
+import static edu.snu.cay.dolphin.async.metric.WorkerConstants.WORKER_COMPUTE_TIME;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
 /**
@@ -54,7 +52,6 @@ final class NMFWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(NMFWorker.class.getName());
 
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
-  private final WorkerSynchronizer workerSynchronizer;
   private final VectorFactory vectorFactory;
   private final NMFDataParser dataParser;
   private final int rank;
@@ -64,11 +61,10 @@ final class NMFWorker implements Worker {
    * Mini-batch size used for mini-batch gradient descent.
    * If less than {@code 1}, a standard gradient descent method is used.
    */
-  private final int batchSize;
+  private final int numMiniBatchPerIter;
   private final boolean printMatrices;
   private final int logPeriod;
   private final NMFModelGenerator modelGenerator;
-  private final ArrayList<Integer> keys;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
 
@@ -78,7 +74,9 @@ final class NMFWorker implements Worker {
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsCollector metricsCollector;
   private final InsertableMetricTracker insertableMetricTracker;
-  private final MetricsMessageSender metricsMessageSender;
+  private final MetricsHandler metricsHandler;
+  private final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender;
+
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -91,12 +89,11 @@ final class NMFWorker implements Worker {
   @Inject
   private NMFWorker(final NMFDataParser dataParser,
                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
-                    final WorkerSynchronizer workerSynchronizer,
                     final VectorFactory vectorFactory,
                     @Parameter(Rank.class) final int rank,
                     @Parameter(StepSize.class) final double stepSize,
                     @Parameter(Lambda.class) final double lambda,
-                    @Parameter(BatchSize.class) final int batchSize,
+                    @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     @Parameter(PrintMatrices.class) final boolean printMatrices,
                     @Parameter(LogPeriod.class) final int logPeriod,
                     final NMFModelGenerator modelGenerator,
@@ -104,15 +101,15 @@ final class NMFWorker implements Worker {
                     final MemoryStore<Long> memoryStore,
                     final MetricsCollector metricsCollector,
                     final InsertableMetricTracker insertableMetricTracker,
-                    final MetricsMessageSender metricsMessageSender) {
+                    final MetricsHandler metricsHandler,
+                    final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
-    this.workerSynchronizer = workerSynchronizer;
     this.vectorFactory = vectorFactory;
     this.dataParser = dataParser;
     this.rank = rank;
     this.stepSize = stepSize;
     this.lambda = lambda;
-    this.batchSize = batchSize;
+    this.numMiniBatchPerIter = numMiniBatchPerIter;
     this.printMatrices = printMatrices;
     this.logPeriod = logPeriod;
     this.modelGenerator = modelGenerator;
@@ -120,9 +117,9 @@ final class NMFWorker implements Worker {
     this.memoryStore = memoryStore;
     this.metricsCollector = metricsCollector;
     this.insertableMetricTracker = insertableMetricTracker;
-    this.metricsMessageSender = metricsMessageSender;
+    this.metricsHandler = metricsHandler;
+    this.metricsMsgSender = metricsMsgSender;
 
-    this.keys = Lists.newArrayList();
     this.rMatrix = Maps.newHashMap();
     this.gradients = Maps.newHashMap();
 
@@ -148,22 +145,31 @@ final class NMFWorker implements Worker {
 
     memoryStore.putList(dataKeys, dataValues);
 
+    LOG.log(Level.INFO, "Step size = {0}", stepSize);
+    LOG.log(Level.INFO, "Batch size = {0}", numMiniBatchPerIter);
+    LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues));
+    LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
+  }
+
+  /**
+   * @param dataValues Dataset assigned to this worker
+   * @return Keys to send pull requests, which are determined by existing columns in NMFData.
+   */
+  private List<Integer> getKeys(final Collection<NMFData> dataValues) {
+    final ArrayList<Integer> keys = new ArrayList<>();
     final Set<Integer> keySet = Sets.newTreeSet();
     // aggregate column indices
     for (final NMFData datum : dataValues) {
-      for (final Pair<Integer, Double> column : datum.getColumns()) {
-        keySet.add(column.getFirst());
-      }
+      keySet.addAll(
+          datum.getColumns()
+              .stream()
+              .distinct()
+              .map(Pair::getFirst)
+              .collect(Collectors.toList()));
     }
     keys.ensureCapacity(keySet.size());
     keys.addAll(keySet);
-
-    LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Batch size = {0}", batchSize);
-    LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
-    LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
-
-    workerSynchronizer.globalBarrier();
+    return keys;
   }
 
   private void saveRMatrixGradient(final int key, final Vector newGrad) {
@@ -181,46 +187,46 @@ final class NMFWorker implements Worker {
 
   private void pushAndClearGradients() {
     // push gradients
-    pushTracer.start();
+    pushTracer.startTimer();
     for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
       parameterWorker.push(entry.getKey(), entry.getValue());
     }
-    pushTracer.end(gradients.size());
+    pushTracer.recordTime(gradients.size());
     // clear gradients
     gradients.clear();
   }
 
-  private void pullRMatrix() {
-    pullTracer.start();
+  private void pullRMatrix(final List<Integer> keys) {
+    pullTracer.startTimer();
     final List<Vector> vectors = parameterWorker.pull(keys);
     for (int i = 0; i < keys.size(); ++i) {
       rMatrix.put(keys.get(i), vectors.get(i));
     }
-    pullTracer.end(keys.size());
+    pullTracer.recordTime(keys.size());
   }
 
   private void resetTracers() {
-    pushTracer.reset();
-    pullTracer.reset();
-    computeTracer.reset();
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
   }
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.sum());
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
+      final Metrics metrics = metricsHandler.getMetrics();
+      final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()
+          .setMetrics(metrics)
+          .setIteration(iteration)
+          .setNumDataBlocks(numDataBlocks)
+          .build();
+      LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+
+      metricsMsgSender.send(metricsMessage);
     } catch (final MetricException e) {
       throw new RuntimeException(e);
     }
-    metricsMessageSender.setWorkerMsg(getWorkerMsg(numDataBlocks)).send();
-  }
-
-  private WorkerMsg getWorkerMsg(final int numDataBlocks) {
-    final WorkerMsg workerMsg = WorkerMsg.newBuilder()
-        .setIteration(iteration)
-        .setNumDataBlocks(numDataBlocks)
-        .build();
-    return workerMsg;
   }
 
   @Override
@@ -241,10 +247,10 @@ final class NMFWorker implements Worker {
     final Map<Long, NMFData> workloadMap = memoryStore.getAll();
     final Collection<NMFData> workload = workloadMap.values();
 
-    pullRMatrix();
+    pullRMatrix(getKeys(workload));
 
     for (final NMFData datum : workload) {
-      computeTracer.start();
+      computeTracer.startTimer();
       final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
       final Vector lGradSum;
       if (lambda != 0.0D) {
@@ -264,13 +270,9 @@ final class NMFWorker implements Worker {
         // rGrad = 2 * e * L_{i, *}'
         final Vector lGrad;
         final Vector rGrad;
-        if (batchSize > 0) {
-          lGrad = rVec.scale(2.0D * error / batchSize);
-          rGrad = lVec.scale(2.0D * error / batchSize);
-        } else {
-          lGrad = rVec.scale(2.0D * error);
-          rGrad = lVec.scale(2.0D * error);
-        }
+
+        lGrad = rVec.scale(2.0D * error / numMiniBatchPerIter);
+        rGrad = lVec.scale(2.0D * error / numMiniBatchPerIter);
 
         // aggregate L matrix gradients
         lGradSum.addi(lGrad);
@@ -287,11 +289,11 @@ final class NMFWorker implements Worker {
       modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
 
       ++rowCount;
-      computeTracer.end(datum.getColumns().size());
+      computeTracer.recordTime(datum.getColumns().size());
 
-      if (batchSize > 0 && rowCount % batchSize == 0) {
+      if (numMiniBatchPerIter > 1 && rowCount % numMiniBatchPerIter == 0) {
         pushAndClearGradients();
-        pullRMatrix();
+        pullRMatrix(getKeys(workload));
       }
 
       if (logPeriod > 0 && rowCount % logPeriod == 0) {
@@ -300,8 +302,9 @@ final class NMFWorker implements Worker {
             "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
             "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
             new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
-                computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
-                pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
+                computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(), pullTracer.avgTimePerRecord(),
+                pullTracer.totalElapsedTime(), pushTracer.avgTimePerRecord(),
+                pushTracer.totalElapsedTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
       }
     }
 
@@ -312,8 +315,9 @@ final class NMFWorker implements Worker {
             "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
             "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
         new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
-            computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
-            pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
+            computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(), pullTracer.avgTimePerRecord(),
+            pullTracer.totalElapsedTime(), pushTracer.avgTimePerRecord(),
+            pushTracer.totalElapsedTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
 
     sendMetrics(memoryStore.getNumBlocks());
   }
@@ -346,7 +350,7 @@ final class NMFWorker implements Worker {
     LOG.log(Level.INFO, lsb.toString());
 
     // print transposed R matrix
-    pullRMatrix();
+    pullRMatrix(getKeys(workload));
     final StringBuilder rsb = new StringBuilder();
     for (final Map.Entry<Integer, Vector> entry : rMatrix.entrySet()) {
       rsb.append(String.format("R(*, %d):", entry.getKey()));

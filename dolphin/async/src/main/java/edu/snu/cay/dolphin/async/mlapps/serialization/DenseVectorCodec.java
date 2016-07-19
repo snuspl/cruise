@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.nmf;
+package edu.snu.cay.dolphin.async.mlapps.serialization;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
@@ -26,7 +26,6 @@ import java.util.logging.Logger;
 
 /**
  * Codec for dense vector.
- * TODO #402: Remove this duplicate of {@code DenseVectorCodec} in dolphin submodule.
  */
 public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vector> {
   private static final Logger LOG = Logger.getLogger(DenseVectorCodec.class.getName());

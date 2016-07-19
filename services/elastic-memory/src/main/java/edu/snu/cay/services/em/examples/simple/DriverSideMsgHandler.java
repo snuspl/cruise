@@ -22,6 +22,7 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.examples.simple.parameters.NumMoves;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
@@ -223,8 +224,12 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
         }
 
         LOG.log(Level.INFO, "Sending the result ({0}) to {1}", new Object[]{numChangedBlocks, evalId});
-        aggregationMaster.send(SimpleEMDriver.AGGREGATION_CLIENT_ID, evalId,
-            codec.encode(Long.toString(numChangedBlocks)));
+        try {
+          aggregationMaster.send(SimpleEMDriver.AGGREGATION_CLIENT_ID, evalId,
+              codec.encode(Long.toString(numChangedBlocks)));
+        } catch (final NetworkException e) {
+          throw new RuntimeException(e);
+        }
       }
     }
 
@@ -234,7 +239,11 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
     private void sendResponseToEvals() {
       LOG.log(Level.INFO, "Sending response to all evals: {0}", evalIds);
       for (final String evalId : evalIds) {
-        aggregationMaster.send(SimpleEMDriver.AGGREGATION_CLIENT_ID, evalId, codec.encode(Long.toString(0)));
+        try {
+          aggregationMaster.send(SimpleEMDriver.AGGREGATION_CLIENT_ID, evalId, codec.encode(Long.toString(0)));
+        } catch (final NetworkException e) {
+          throw new RuntimeException(e);
+        }
       }
     }
 

@@ -58,7 +58,7 @@ public final class SimpleEMREEF {
   }
 
   @NamedParameter(doc = "Whether or not to support range in MemoryStore",
-                  short_name = "rangeSupport",
+                  short_name = "range_support",
                   default_value = "false")
   private static final class RangeSupportName implements Name<Boolean> {
   }

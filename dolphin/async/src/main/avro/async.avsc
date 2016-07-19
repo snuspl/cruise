@@ -15,49 +15,18 @@
  */
 [
 /**
- * Worker specific information.
+ * A message containing worker-side metrics and other Task-specific information.
  */
 {
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
-  "name": "WorkerMsg",
+  "name": "WorkerMetricsMsg",
   "fields":
   [
+    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
+    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
     {"name": "iteration", "type": "int"},
     {"name": "numDataBlocks", "type": "int"}
-  ]
-},
-
-/**
- * Server specific information.
- */
-{
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
-  "type": "record",
-  "name": "ServerMsg",
-  "fields":
-  [
-    {"name": "window", "type": "int"},
-    {"name": "numPartitionBlocks", "type": "int"}
-  ]
-},
-
-/**
- * A message containing metrics and other Task-specific information.
- * A message with srcType Worker contains a workerMsg,
- * while a message with srcType Server contains a serverMsg.
- */
-{
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
-  "type": "record",
-  "name": "MetricsMessage",
-  "fields":
-  [
-    {"name": "srcType", "type": {"type": "enum", "name": "SrcType",
-        "symbols": ["Worker", "Server"]}},
-    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
-    {"name": "workerMsg", "type": ["null", "WorkerMsg"], "default": null},
-    {"name": "serverMsg", "type": ["null", "ServerMsg"], "default": null}
   ]
 }
 ]

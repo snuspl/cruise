@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
 
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
@@ -37,10 +39,11 @@ public final class NMFREEF {
         .setUpdaterClass(NMFUpdater.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
+        .setServerSerializerClass(DenseVectorSerializer.class)
+        .setWorkerSerializerClass(NMFDataSerializer.class)
         .addParameterClass(Rank.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
-        .addParameterClass(BatchSize.class)
         .addParameterClass(PrintMatrices.class)
         .addParameterClass(LogPeriod.class)
         .build());

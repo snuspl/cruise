@@ -13,13 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer.parameters;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Delay for added MemoryStore to be initialized (e.g., routing table)",
-                short_name = "memoryStoreInitDelayMs",
-                default_value = "1000")
-public class MemoryStoreInitDelayMs implements Name<Long> {
-}
+/**
+ * Common serialization classes for ml apps in dolphin-async.
+ */
+package edu.snu.cay.dolphin.async.mlapps.serialization;

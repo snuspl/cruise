@@ -15,10 +15,12 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.common.metric.MetricsCollectionServiceConf;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher.*;
+import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgCodec;
+import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
-import edu.snu.cay.dolphin.async.metric.MetricsCollectionService;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
@@ -37,6 +39,8 @@ import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
+import edu.snu.cay.services.ps.metric.ServerMetricsMsgCodec;
+import edu.snu.cay.services.ps.metric.ServerMetricsMsgSender;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import edu.snu.cay.utils.StateMachine;
@@ -115,6 +119,11 @@ public final class AsyncDolphinDriver {
    * query the number of initial evaluators.
    */
   private final DataLoadingService dataLoadingService;
+
+  /**
+   * Synchronize workers by exchanging messages.
+   */
+  private final SynchronizationManager synchronizationManager;
 
   /**
    * Exchange messages between the driver and evaluators.
@@ -257,21 +266,24 @@ public final class AsyncDolphinDriver {
   private final long optimizationIntervalMs;
 
   /**
-   * Triggers optimization. After waiting an initial delay,
-   * optimization is performed periodically for now (See {@link StartHandler}).
+   * Triggers optimization. Optimization is performed only when workers are running their main iterations.
+   * Every optimization is triggered after {@link OptimizationIntervalMs} from the previous optimization.
+   * See {@link StartHandler}.
    */
   private final ExecutorService optimizerExecutor = Executors.newSingleThreadExecutor();
 
   /**
    * Injectable constructor.
    *
-   * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestrator} and
-   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandler} hold references to the same
+   * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestrator},
+   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForWorker}, and
+   * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForServer} hold references to the same
    * {@link MetricsHub} instance.
    */
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
+                             final SynchronizationManager synchronizationManager,
                              final Injector injector,
                              final IdentifierFactory identifierFactory,
                              @Parameter(DriverIdentifier.class) final String driverIdStr,
@@ -293,6 +305,7 @@ public final class AsyncDolphinDriver {
     hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
     this.dataLoadingService = dataLoadingService;
+    this.synchronizationManager = synchronizationManager;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.initServerCount = numServers;
     this.identifierFactory = identifierFactory;
@@ -376,18 +389,32 @@ public final class AsyncDolphinDriver {
       serverEMWrapper.getNetworkSetup().registerConnectionFactory(driverId);
       psNetworkSetup.registerConnectionFactory(driverId);
 
-      optimizerExecutor.submit(new Callable<Void>() {
-        private static final long INIT_DELAY = 10000;
-
+      optimizerExecutor.execute(new Runnable() {
         @Override
-        public Void call() throws Exception {
-          // TODO #538: check actual timing of system init
-          Thread.sleep(INIT_DELAY);
-          while (jobStateMachine.getCurrentState().equals(STATE_RUNNING)) {
-            optimizationOrchestrator.run();
-            Thread.sleep(optimizationIntervalMs);
+        public void run() {
+          // 1. wait until all workers finish initialization
+          while (synchronizationManager.workersInitializing()) {
+            try {
+              synchronizationManager.waitInitialization();
+              LOG.info("Worker tasks are initialized. Start triggering optimization.");
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while waiting for the worker initialization", e);
+            }
           }
-          return null;
+
+          // 2. trigger optimization during all workers are running their main iterations
+          // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iterations
+          while (!synchronizationManager.waitingCleanup()) {
+            optimizationOrchestrator.run();
+            try {
+              Thread.sleep(optimizationIntervalMs);
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while sleeping between optimizations", e);
+            }
+          }
+
+          // 3. allow workers to do cleanup, after finishing optimization entirely
+          synchronizationManager.allowWorkersCleanup();
         }
       });
     }
@@ -462,13 +489,16 @@ public final class AsyncDolphinDriver {
                 .set(ContextConfiguration.IDENTIFIER, contextId)
                 .build(),
             psDriver.getServerContextConfiguration(),
-            serverEMWrapper.getConf().getContextConfiguration());
+            serverEMWrapper.getConf().getContextConfiguration(),
+            aggregationManager.getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getServerServiceConfiguration(contextId),
             Tang.Factory.getTang().newConfigurationBuilder(
                 serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
-                .build());
+                .build(),
+            aggregationManager.getServiceConfigurationWithoutNameResolver(),
+            getMetricsCollectionServiceConfForServer());
 
         final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
         try {
@@ -525,7 +555,7 @@ public final class AsyncDolphinDriver {
             psDriver.getWorkerServiceConfiguration(contextId),
             getEMServiceConfForWorker(contextId, addedEval),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
-            MetricsCollectionService.getServiceConfiguration());
+            getMetricsCollectionServiceConfForWorker());
         final Configuration traceConf = traceParameters.getConfiguration();
 
         final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -536,6 +566,30 @@ public final class AsyncDolphinDriver {
             Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, workerConf, emWorkerClientConf));
       }
     };
+  }
+
+  /**
+   * Returns server-side Configuration for MetricsCollectionService by binding required parameters.
+   */
+  private Configuration getMetricsCollectionServiceConfForServer() {
+    final MetricsCollectionServiceConf conf = MetricsCollectionServiceConf.newBuilder()
+        .setMetricsHandlerClass(ServerMetricsMsgSender.class)
+        .setMetricsMsgSenderClass(ServerMetricsMsgSender.class)
+        .setMetricsMsgCodecClass(ServerMetricsMsgCodec.class)
+        .build();
+    return conf.getConfiguration();
+  }
+
+  /**
+   * Returns worker-side Configuration for MetricsCollectionService by binding required parameters.
+   */
+  private Configuration getMetricsCollectionServiceConfForWorker() {
+    final MetricsCollectionServiceConf conf = MetricsCollectionServiceConf.newBuilder()
+        .setMetricsHandlerClass(WorkerMetricsMsgSender.class)
+        .setMetricsMsgSenderClass(WorkerMetricsMsgSender.class)
+        .setMetricsMsgCodecClass(WorkerMetricsMsgCodec.class)
+        .build();
+    return conf.getConfiguration();
   }
 
   /**
@@ -565,6 +619,9 @@ public final class AsyncDolphinDriver {
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
         contextIdToWorkerContexts.put(activeContext.getId(), activeContext);
+
+        // notify SyncManager about the addition of worker
+        synchronizationManager.onWorkerAdded();
 
         final int workerIndex = getWorkerIndex(activeContext.getId());
         final Configuration taskConf = TaskConfiguration.CONF
@@ -729,17 +786,26 @@ public final class AsyncDolphinDriver {
       // for tracking contexts
       LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
 
-    // case4. worker/server context is finished by EM's delete
-    } else if (deletedWorkerContextIds.remove(contextId) || deletedServerContextIds.remove(contextId)) {
-      LOG.log(Level.INFO, "The context {0} is closed by EM's Delete.", contextId);
-      // the deleted worker/server context was running on the root context, a data loading context.
-      // we should close the root context to completely release the evaluator on which the deleted worker/server has run
+    // case4-1. worker context is finished by EM's delete
+    } else if (deletedWorkerContextIds.remove(contextId)) {
+      LOG.log(Level.INFO, "The worker context {0} is closed by EM's Delete.", contextId);
+
+      // notify SyncManager about the deletion of worker
+      synchronizationManager.onWorkerDeleted(contextId);
+
       if (!parentContext.isPresent()) {
-        throw new RuntimeException("Root context of the deleted worker/server context does not exist");
+        throw new RuntimeException("Root context of the deleted worker context does not exist");
       }
-      final String rootContextId = parentContext.get().getId();
-      final ActiveContext rootContext = contextIdToRootContexts.remove(rootContextId);
-      rootContext.close();
+      closeParentRootContext(parentContext.get());
+
+    // case4-2. server context is finished by EM's delete
+    } else if (deletedServerContextIds.remove(contextId)) {
+      LOG.log(Level.INFO, "The server context {0} is closed by EM's Delete.", contextId);
+
+      if (!parentContext.isPresent()) {
+        throw new RuntimeException("Root context of the deleted server context does not exist");
+      }
+      closeParentRootContext(parentContext.get());
 
     // case5. untracked context is finished
     } else {
@@ -750,6 +816,14 @@ public final class AsyncDolphinDriver {
         parentContext.get().close();
       }
     }
+  }
+
+  private void closeParentRootContext(final ActiveContext parentContext) {
+    // the deleted worker/server context was running on the root context, a data loading context.
+    // we should close the root context to completely release the evaluator on which the deleted worker/server has run
+    final String rootContextId = parentContext.getId();
+    final ActiveContext rootContext = contextIdToRootContexts.remove(rootContextId);
+    rootContext.close();
   }
 
   final class FailedTaskHandler implements EventHandler<FailedTask> {

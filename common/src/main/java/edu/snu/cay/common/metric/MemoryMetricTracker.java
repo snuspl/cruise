@@ -40,7 +40,7 @@ public final class MemoryMetricTracker implements MetricTracker {
    * time interval between two measurements of memory usage (millisecond).
    */
   @NamedParameter(doc = "Time interval between two measurements of memory usage (millisecond)",
-      short_name = "memoryMeasureInterval", default_value = "100")
+      short_name = "memory_measure_interval", default_value = "100")
   public class MeasureInterval implements Name<Long> {
   }
 

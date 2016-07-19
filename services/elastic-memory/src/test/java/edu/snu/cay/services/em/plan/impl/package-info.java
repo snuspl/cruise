@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Integration tests for dolphin-async.
+ * Tests for the Plan implementation.
  */
-package edu.snu.cay.dolphin.async.integration;
+package edu.snu.cay.services.em.plan.impl;

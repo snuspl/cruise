@@ -18,6 +18,6 @@ package edu.snu.cay.services.ps.examples.add.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of workers to run updater tasks on", default_value = "1", short_name = "numWorkers")
+@NamedParameter(doc = "Number of workers to run updater tasks on", default_value = "1", short_name = "num_workers")
 public final class NumWorkers implements Name<Integer> {
 }

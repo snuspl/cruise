@@ -19,7 +19,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Damping factor value for PageRank algorithm",
-                short_name = "dampingFactor",
+                short_name = "damping_factor",
                 default_value = "0.85")
 public final class DampingFactor implements Name<Double> {
 }

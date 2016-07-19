@@ -49,7 +49,7 @@ public final class RemoteEMREEF {
   private static final int TIMEOUT = 100000;
   private static final Tang TANG = Tang.Factory.getTang();
 
-  @NamedParameter(doc = "Whether or not to run on the local runtime", short_name = "onLocal", default_value = "true")
+  @NamedParameter(doc = "Whether or not to run on the local runtime", short_name = "on_local", default_value = "true")
   public static final class OnLocal implements Name<Boolean> {
   }
 

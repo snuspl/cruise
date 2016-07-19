@@ -18,17 +18,30 @@ package edu.snu.cay.services.ps.worker.api;
 import org.apache.reef.annotations.audience.Private;
 
 /**
- * Process a pull reply message received from the server.
+ * Process response messages received from the server.
  * This is an internal interface, to be used to connect the
  * {@link edu.snu.cay.services.ps.worker.impl.WorkerSideMsgHandler}
  * to a {@link edu.snu.cay.services.ps.worker.api.ParameterWorker}.
  */
 @Private
-public interface AsyncWorkerHandler<K, V> {
+public interface AsyncWorkerHandler<K, P, V> {
   /**
-   * Reply to the worker with a {@code value} that was previously requested by {@code pull}.
+   * Reply to the worker with a {@code value} that was previously requested by {@link ParameterWorker#pull(Object)}.
    * @param key key object representing what was sent
    * @param value value sent from the server
    */
-  void processReply(K key, V value);
+  void processPullReply(K key, V value);
+
+  /**
+   * Notify the reject of Pull operation to the waiting worker thread.
+   * @param key key object representing what was sent
+   */
+  void processPullReject(K key);
+
+  /**
+   * Retry the rejected Push operation.
+   * @param key key object representing what was sent
+   * @param preValue value to push to the servers
+   */
+  void processPushReject(K key, P preValue);
 }

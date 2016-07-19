@@ -24,7 +24,9 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
 import java.io.ByteArrayInputStream;
@@ -48,17 +50,21 @@ public final class NeuralNetworkDataParser {
   private List<NeuralNetworkData> result;
 
   /**
-   * @param matrixFactory the factory to create new matrices
+   * @param injector the injector having the matrix factory configuration
    * @param dataSet the set of unparsed input data
    * @param delimiter the delimiter used in the input file
    * @param batchSize the size of input batch
    */
   @Inject
-  private NeuralNetworkDataParser(final MatrixFactory matrixFactory,
+  private NeuralNetworkDataParser(final Injector injector,
                                   final DataSet<LongWritable, Text> dataSet,
                                   @Parameter(Delimiter.class) final String delimiter,
                                   @Parameter(BatchSize.class) final int batchSize) {
-    this.matrixFactory = matrixFactory;
+    try {
+      this.matrixFactory = injector.forkInjector().getInstance(MatrixFactory.class);
+    } catch (final InjectionException ie) {
+      throw new RuntimeException("InjectException occurred while injecting a matrix factory", ie);
+    }
     this.dataSet = dataSet;
     this.delimiter = delimiter;
     this.batchSize = batchSize;

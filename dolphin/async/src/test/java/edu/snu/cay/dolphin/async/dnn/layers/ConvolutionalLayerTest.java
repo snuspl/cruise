@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.*;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -36,13 +37,13 @@ public class ConvolutionalLayerTest {
 
   private static MatrixFactory matrixFactory;
   private static final float TOLERANCE = 1e-4f;
+  private static final Configuration MATRIX_CONF = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
+      .build();
 
   static {
-    final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
-        .build();
     try {
-      matrixFactory = Tang.Factory.getTang().newInjector(configuration).getInstance(MatrixFactory.class);
+      matrixFactory = Tang.Factory.getTang().newInjector(MATRIX_CONF).getInstance(MatrixFactory.class);
     } catch (final InjectionException e) {
       throw new RuntimeException("InjectionException while injecting a matrix factory: " + e);
     }
@@ -168,20 +169,17 @@ public class ConvolutionalLayerTest {
     final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
         .bindNamedParameter(LayerInputShape.class, "3,3")
-        .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
         .build();
 
     final Configuration layerConf3D = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
         .bindNamedParameter(LayerInputShape.class, "2,2,3")
-        .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
         .build();
 
     final ConvolutionalLayerConfigurationBuilder builder = ConvolutionalLayerConfigurationBuilder
         .newConfigurationBuilder()
         .setInitWeight(0.2f)
         .setInitBias(0)
-        .setRandomSeed(10)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
@@ -192,7 +190,6 @@ public class ConvolutionalLayerTest {
         .newConfigurationBuilder()
         .setInitWeight(0.2f)
         .setInitBias(0)
-        .setRandomSeed(10)
         .setPaddingHeight(1)
         .setPaddingWidth(1)
         .setKernelHeight(2)
@@ -205,7 +202,6 @@ public class ConvolutionalLayerTest {
         .newConfigurationBuilder()
         .setInitWeight(0.2f)
         .setInitBias(0)
-        .setRandomSeed(10)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
@@ -213,16 +209,19 @@ public class ConvolutionalLayerTest {
         .setPaddingWidth(1)
         .setNumOutput(2);
 
-    this.convolutionalLayer =
-        Tang.Factory.getTang().newInjector(layerConf, builder.build())
+    final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
+    final MatrixFactory matrixFactoryForLayer = injector.getInstance(MatrixFactory.class);
+
+    matrixFactoryForLayer.setRandomSeed(10);
+    this.convolutionalLayer = injector.forkInjector(layerConf, builder.build())
         .getInstance(LayerBase.class);
 
-    this.convolutionalWithPaddingLayer =
-        Tang.Factory.getTang().newInjector(layerConf, builderWithPadding.build())
+    matrixFactoryForLayer.setRandomSeed(10);
+    this.convolutionalWithPaddingLayer = injector.forkInjector(layerConf, builderWithPadding.build())
         .getInstance(LayerBase.class);
 
-    this.convolutional3DLayer =
-        Tang.Factory.getTang().newInjector(layerConf3D, builder3D.build())
+    matrixFactoryForLayer.setRandomSeed(10);
+    this.convolutional3DLayer = injector.forkInjector(layerConf3D, builder3D.build())
         .getInstance(LayerBase.class);
   }
 

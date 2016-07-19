@@ -24,7 +24,7 @@ import org.apache.reef.tang.annotations.NamedParameter;
 public final class Parameters {
 
   @NamedParameter(doc = "Desired memory size for each evaluator (MBs)",
-                  short_name = "evalSize",
+                  short_name = "eval_size",
                   default_value = "128")
   public final class EvaluatorSize implements Name<Integer> {
   }
@@ -53,25 +53,31 @@ public final class Parameters {
   }
 
   @NamedParameter(doc = "Maximum number of local runtime evaluators, must be at least Data Loading Splits + 1",
-                  short_name = "maxNumEvalLocal",
+                  short_name = "max_num_eval_local",
                   default_value = "2")
   public final class LocalRuntimeMaxNumEvaluators implements Name<Integer> {
   }
 
   @NamedParameter(doc = "Maximum number of iterations to run before termination",
-                  short_name = "maxIter")
+                  short_name = "max_iter")
   public final class Iterations implements Name<Integer> {
   }
 
   @NamedParameter(doc = "Number of computation threads for each worker",
-                  short_name = "numWorkerThreads",
+                  short_name = "num_worker_threads",
                   default_value = "2")
   public final class NumWorkerThreads implements Name<Integer> {
   }
 
   @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap",
-                  short_name = "heapSlack",
+                  short_name = "heap_slack",
                   default_value = "0.0")
   public final class JVMHeapSlack implements Name<Double> {
+  }
+
+  @NamedParameter(doc = "Number of mini-batches",
+      short_name = "num_mini_batch",
+      default_value = "1")
+  public final class MiniBatches implements Name<Integer> {
   }
 }

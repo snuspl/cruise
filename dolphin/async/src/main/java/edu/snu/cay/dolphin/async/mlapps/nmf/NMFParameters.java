@@ -27,7 +27,7 @@ final class NMFParameters {
   static final class Rank implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "step size for stochastic gradient descent", short_name = "stepSize")
+  @NamedParameter(doc = "step size for stochastic gradient descent", short_name = "step_size")
   static final class StepSize implements Name<Double> {
   }
 
@@ -35,28 +35,24 @@ final class NMFParameters {
   static final class Lambda implements Name<Double> {
   }
 
-  @NamedParameter(doc = "maximum value for each element", short_name = "maxVal", default_value = "1e6")
+  @NamedParameter(doc = "maximum value for each element", short_name = "max_val", default_value = "1e6")
   static final class MaxValue implements Name<Double> {
   }
 
-  @NamedParameter(doc = "maximum value for initial elements", short_name = "initMax", default_value = "1.0")
+  @NamedParameter(doc = "maximum value for initial elements", short_name = "init_max", default_value = "1.0")
   static final class InitialMax implements Name<Double> {
   }
 
-  @NamedParameter(doc = "minimum value for initial elements", short_name = "initMin", default_value = "0.0")
+  @NamedParameter(doc = "minimum value for initial elements", short_name = "init_min", default_value = "0.0")
   static final class InitialMin implements Name<Double> {
   }
 
-  @NamedParameter(doc = "size of mini-batch", short_name = "batchSize", default_value = "1")
-  static final class BatchSize implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "whether generated matrices are printed or not at the end", short_name = "printMat",
+  @NamedParameter(doc = "whether generated matrices are printed or not at the end", short_name = "print_mat",
                   default_value = "false")
   static final class PrintMatrices implements Name<Boolean> {
   }
 
-  @NamedParameter(doc = "minimum number of input rows when logging execution status", short_name = "logPeriod",
+  @NamedParameter(doc = "minimum number of input rows when logging execution status", short_name = "log_period",
                   default_value = "0")
   static final class LogPeriod implements Name<Integer> {
   }

@@ -15,12 +15,9 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
-import edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandler;
-import edu.snu.cay.dolphin.async.metric.EvalSideMetricsMsgHandler;
-import edu.snu.cay.dolphin.async.metric.MetricsCollectionService;
-import edu.snu.cay.dolphin.async.optimizer.parameters.MemoryStoreInitDelayMs;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
@@ -38,12 +35,12 @@ import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.driver.impl.dynamic.DynamicPSManager;
 import edu.snu.cay.services.ps.driver.impl.fixed.StaticPSManager;
+import edu.snu.cay.services.ps.metric.ServerConstants;
+import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
-import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
-import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
-import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
+import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.parameters.ReceiverHost;
 import edu.snu.cay.utils.trace.parameters.ReceiverPort;
@@ -201,6 +198,10 @@ public final class AsyncDolphinLauncher {
     } catch (final Exception e) {
       final LauncherStatus status = LauncherStatus.failed(e);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
+
+      // This log is for giving more detailed info about failure, which status object does not show
+      LOG.log(Level.WARNING, "Exception occurred", e);
+
       return status;
     }
   }
@@ -224,7 +225,7 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(26);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(28);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -234,17 +235,21 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);
     basicParameterClassList.add(JVMHeapSlack.class);
+    basicParameterClassList.add(MiniBatches.class);
 
     // add ps parameters
     basicParameterClassList.add(NumServers.class);
     basicParameterClassList.add(NumPartitions.class);
     basicParameterClassList.add(ServerNumThreads.class);
     basicParameterClassList.add(ServerQueueSize.class);
+    basicParameterClassList.add(ServerLogPeriod.class);
     basicParameterClassList.add(ParameterWorkerNumThreads.class);
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
     basicParameterClassList.add(WorkerKeyCacheSize.class);
+    basicParameterClassList.add(WorkerLogPeriod.class);
     basicParameterClassList.add(Dynamic.class);
+    basicParameterClassList.add(ServerMetricsWindowMs.class);
 
     // add em parameters
     basicParameterClassList.add(OptimizerClass.class);
@@ -257,7 +262,6 @@ public final class AsyncDolphinLauncher {
 
     // add optimizer parameters
     basicParameterClassList.add(OptimizationIntervalMs.class);
-    basicParameterClassList.add(MemoryStoreInitDelayMs.class);
     basicParameterClassList.add(DelayAfterOptimizationMs.class);
 
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {
@@ -336,9 +340,12 @@ public final class AsyncDolphinLauncher {
         .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
             SynchronizationManager.MessageHandler.class,
             WorkerSynchronizer.MessageHandler.class)
-        .addAggregationClient(MetricsCollectionService.AGGREGATION_CLIENT_NAME,
-            DriverSideMetricsMsgHandler.class,
-            EvalSideMetricsMsgHandler.class)
+        .addAggregationClient(WorkerConstants.AGGREGATION_CLIENT_NAME,
+            DriverSideMetricsMsgHandlerForWorker.class,
+            EvalSideMetricsMsgHandlerForWorker.class)
+        .addAggregationClient(ServerConstants.AGGREGATION_CLIENT_NAME,
+            DriverSideMetricsMsgHandlerForServer.class,
+            EvalSideMetricsMsgHandlerForServer.class)
         .build();
 
     // set up an optimizer configuration

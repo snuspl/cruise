@@ -13,43 +13,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.nmf;
+package edu.snu.cay.services.ps.common;
 
 /**
- * Class for tracing elapsed time and calculating statistics.
- * Time unit used in this class is the second.
+ * Class calculating statistics such as average and sum.
  */
-public class Tracer {
-  private long begin;
+public final class Statistics {
   private long sum = 0;
-  private long count = 0;
-  private long elemCount = 0;
+  private int count = 0;
+
+  private Statistics() {
+  }
+
+  public void put(final long value) {
+    sum += value;
+    ++count;
+  }
 
   public void reset() {
     sum = 0;
     count = 0;
-    elemCount = 0;
-  }
-
-  public void start() {
-    begin = System.currentTimeMillis();
-  }
-
-  public void end(final int processedElemCount) {
-    sum += System.currentTimeMillis() - begin;
-    ++count;
-    elemCount += processedElemCount;
-  }
-
-  public double sum() {
-    return sum / 1000.0D;
   }
 
   public double avg() {
-    return sum / count / 1000.0D;
+    return sum() / count;
   }
 
-  public double avgElement() {
-    return sum / elemCount / 1000.0D;
+  public double sum() {
+    return sum / 1e9D;
+  }
+
+  public double count() {
+    return count;
+  }
+
+  public static Statistics newInstance() {
+    return new Statistics();
+  }
+
+  public static Statistics[] newInstances(final int count) {
+    final Statistics[] instances = new Statistics[count];
+    for (int i = 0; i < count; ++i) {
+      instances[i] = new Statistics();
+    }
+    return instances;
   }
 }

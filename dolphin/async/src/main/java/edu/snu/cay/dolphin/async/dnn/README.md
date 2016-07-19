@@ -28,6 +28,7 @@ To create a neural network model, you must define the architecture of your neura
 * `batch_size`: the number of training inputs used per parameter update.
 * `step_size`: step size (learning rate) for stochastic gradient descent.
 * <a name=configuration-input_shape>`input_shape`</a>: the shape of input data.
+* `random_seed`[default=initial seed]: the seed for generating random initial parameters.
 
 ### Layers
 
@@ -36,7 +37,6 @@ To create a neural network model, you must define the architecture of your neura
 * Parameters (`FullyConnectedLayerConfiguration fully_connected_param`)
 	* `init_weight`: the standard deviation that is used to initialize the weights in this layer from a Gaussian distribution with mean 0.
 	* `init_bias`: constant value with which the biases of this layer are initialized.
-	* `random_seed`: the seed for generating random initial parameters.
 	* `num_output`: the number of outputs for this layer.
 
 ##### Pooling Layer
@@ -61,7 +61,6 @@ To create a neural network model, you must define the architecture of your neura
     * `stride_width`[default = 1]: the interval at which convolutional layers apply filters to inputs.
     * `init_weight`: the standard deviation that is used to initialize the weights in this layer from a Gaussian distribution with mean 0.
     * `init_bias`: constant value with which the biases of this layer are initialized.
-    * `random_seed`: the seed for generating random initial parameters.
     * `num_output`: the number of outputs for this layer.
 
 ##### Activation Layer
@@ -95,7 +94,7 @@ You can run a network of the given example on REEF local runtime environment by
 
 ```bash
 cd $DOLPHIN_ASYNC_HOME/bin
-./run_dnn.sh -local true -maxIter 100 -conf sample_dnn_conf -input sample_dnn_data -split 2 -maxNumEvalLocal 3 -numWorkerThreads 1 -timeout 800000 -dynamic false
+./run_dnn.sh -local true -max_iter 100 -conf sample_dnn_conf -input sample_dnn_data -split 2 -max_num_eval_local 3 -num_worker_threads 1 -timeout 800000 -dynamic false
 ```
 
 #### Command line parameters
@@ -105,7 +104,7 @@ cd $DOLPHIN_ASYNC_HOME/bin
 	* `conf`: path of the protocol buffer definition file to use.
 * Optional
 	* `local`[default=false]: a boolean value that indicates whether to use REEF local runtime environment or not. If `false`, the neural network will run on YARN environment.
-	* `maxIter`[default=20]: the maximum number of allowed iterations before the neural network training stops.
+	* `max_iter`[default=20]: the maximum number of allowed iterations before the neural network training stops.
 	* <a name="parameter-delim">`delim`</a>\[default=,\]: the delimiter that is used for separating elements of input data.
 	* `timeout`[default=100000]: allowed time until neural network training ends. (unit: milliseconds)
 
@@ -115,7 +114,7 @@ The following is the example of a protocol buffer definition file for the MNIST 
 
 ```
 batch_size: 10
-stepsize: 1e-3
+step_size: 1e-3
 input_shape {
   dim: 28
   dim: 28

@@ -19,6 +19,6 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "The number of moves to execute between evaluators",
-    default_value = "1", short_name = "numMoves")
+    default_value = "1", short_name = "num_moves")
 public final class NumMoves implements Name<Integer> {
 }

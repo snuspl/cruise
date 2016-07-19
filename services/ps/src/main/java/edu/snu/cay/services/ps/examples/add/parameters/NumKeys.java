@@ -20,6 +20,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Number of keys to apply updates on: updates are done on [KeyStart, KeyStart + NumKeys)",
                 default_value = "8",
-                short_name = "numKeys")
+                short_name = "num_keys")
 public final class NumKeys implements Name<Integer> {
 }
