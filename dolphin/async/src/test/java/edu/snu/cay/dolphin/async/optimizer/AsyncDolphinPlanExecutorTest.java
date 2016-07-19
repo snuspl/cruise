@@ -78,7 +78,6 @@ public final class AsyncDolphinPlanExecutorTest {
 
   private static PlanExecutor planExecutor;
 
-
   @Before
   public void setUp() throws InjectionException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
