@@ -43,7 +43,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.*;
 
 /**
@@ -275,8 +274,6 @@ public final class ParameterWorkerImplTest {
 
           } catch (final InterruptedException e) {
             break; // it's an intended InterruptedException to quit the thread
-          } catch (final RuntimeException e) {
-            fail("RuntimeException while processing reply");
           }
         }
       }
