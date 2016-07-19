@@ -144,6 +144,9 @@ public class DynamicServerResolverTest {
       assertTrue(blockSet.contains(blockId));
     }
 
+    // When serverResolver.requestRoutingTable() is called,
+    // workers internally register themselves to subscribe the updates
+    // in routing table to driver via sendWorkerRegisterMsg()
     verify(msgSender, times(1)).sendWorkerRegisterMsg();
   }
 
@@ -166,6 +169,8 @@ public class DynamicServerResolverTest {
       assertTrue(blockSet.contains(blockId));
     }
 
+    // When serverResolver.resolveServer() is called,
+    // it internally invokes serverResolver.requestRoutingTable() when it's not initialized yet.
     verify(msgSender, times(1)).sendWorkerRegisterMsg();
   }
 
