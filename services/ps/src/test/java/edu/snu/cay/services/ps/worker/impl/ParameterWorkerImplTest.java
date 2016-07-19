@@ -34,13 +34,16 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.*;
 
 /**
@@ -238,23 +241,53 @@ public final class ParameterWorkerImplTest {
   public void testPullReject()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPullThreads = 8;
-    final int numPullPerThread = 100;
-    final int numReject = 100;
+    final int numPullPerThread = 1000;
+    final int numRejectPerKey = 3; // should be smaller than MAX_RETRY_COUNT in ParameterWorkerImpl
+
+    final Map<Integer, AtomicInteger> keyToNumPullCounter = new HashMap<>();
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
     final Runnable[] threads = new Runnable[numPullThreads];
     final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
 
-    final AtomicInteger counter = new AtomicInteger(0);
-    // pull messages should return values s.t. key == value
+    final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
+
+    // start a thread that process pull requests from the pullKeyToReplyQueue
+    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    executorService.execute(new Runnable() {
+      @Override
+      public void run() {
+        while (true) {
+          try {
+            final EncodedKey<Integer> encodedKey = pullKeyToReplyQueue.take();
+
+            if (!keyToNumPullCounter.containsKey(encodedKey.getKey())) {
+              keyToNumPullCounter.put(encodedKey.getKey(), new AtomicInteger(0));
+            }
+
+            final int numAnswerForTheKey = keyToNumPullCounter.get(encodedKey.getKey()).getAndIncrement();
+
+            if (numAnswerForTheKey < numRejectPerKey) {
+              handler.processPullReject(encodedKey.getKey());
+            } else {
+              // pull messages should return values s.t. key == value
+              handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+            }
+
+          } catch (final InterruptedException e) {
+            break; // it's an intended InterruptedException to quit the thread
+          } catch (final RuntimeException e) {
+            fail("RuntimeException while processing reply");
+          }
+        }
+      }
+    });
+
+    // put key of pull msgs into pullKeyToReplyQueue
     doAnswer(invocationOnMock -> {
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
 
-        final int count = counter.getAndIncrement();
-        if (count < numReject) {
-          handler.processPullReject(encodedKey.getKey());
-        } else {
-          handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
-        }
+        pullKeyToReplyQueue.put(encodedKey);
+
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
@@ -277,9 +310,12 @@ public final class ParameterWorkerImplTest {
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
     worker.close(CLOSE_TIMEOUT);
 
+    executorService.shutdownNow(); // it will interrupt all running threads
+
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
-    verify(mockSender, times(numPullPerThread * numPullThreads + numReject)).sendPullMsg(anyString(), anyObject());
+    verify(mockSender, times(numPullPerThread * numPullThreads * (numRejectPerKey + 1)))
+        .sendPullMsg(anyString(), anyObject());
   }
 
   /**
