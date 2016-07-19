@@ -28,7 +28,7 @@ To create a neural network model, you must define the architecture of your neura
 * `batch_size`: the number of training inputs used per parameter update.
 * `step_size`: step size (learning rate) for stochastic gradient descent.
 * <a name=configuration-input_shape>`input_shape`</a>: the shape of input data.
-* `random_seed`: the seed for generating random initial parameters.
+* `random_seed`[default=initial seed]: the seed for generating random initial parameters.
 
 ### Layers
 
