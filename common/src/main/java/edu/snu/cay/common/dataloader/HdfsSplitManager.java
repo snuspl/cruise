@@ -18,13 +18,13 @@ package edu.snu.cay.common.dataloader;
 import org.apache.reef.annotations.audience.DriverSide;
 
 /**
- * Used in Driver to get splits of a HDFS file.
+ * Used in Driver to get splits of a HDFS directory/file.
  */
 @DriverSide
 interface HdfsSplitManager {
   /**
-   * @param path of a HDFS file
-   * @param numOfSplits of the file
+   * @param path of a HDFS directory/file
+   * @param numOfSplits of the directory/file
    * @return an array of HDFS split representations
    */
   HdfsSplitInfo[] getSplits(String path, int numOfSplits);
