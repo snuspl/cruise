@@ -89,7 +89,7 @@ public final class DynamicServerResolver implements ServerResolver {
   }
 
   private synchronized void retryInitialization() {
-    // check after locking
+    // check within synchronization method
     if (initialized) {
       return;
     }
