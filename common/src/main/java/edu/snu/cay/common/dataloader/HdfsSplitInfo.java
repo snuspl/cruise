@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,17 @@
  */
 package edu.snu.cay.common.dataloader;
 
+import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.annotations.audience.EvaluatorSide;
+
 import java.io.Serializable;
 
+/**
+ * Contains information to fetch a split from HDFS.
+ * It should be created in Driver and used in Evaluator.
+ * @param <T> type of the split.
+ */
+@DriverSide
+@EvaluatorSide
 interface HdfsSplitInfo<T> extends Serializable {
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,19 @@
  */
 package edu.snu.cay.common.dataloader;
 
+import org.apache.reef.annotations.audience.EvaluatorSide;
+
 import java.util.List;
 
+/**
+ * Used in Evaluator to fetch a split data from HDFS.
+ */
+@EvaluatorSide
 interface HdfsSplitFetcher {
-  <T> List<T> fetchData(final HdfsSplitInfo<T> hdfsSplitInfo);
+  /**
+   * @param hdfsSplitInfo information of a split
+   * @param <T> type of the split
+   * @return the split data
+   */
+  <T> List<T> fetchData(HdfsSplitInfo<T> hdfsSplitInfo);
 }

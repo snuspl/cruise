@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,17 @@
  */
 package edu.snu.cay.common.dataloader;
 
+import org.apache.reef.annotations.audience.DriverSide;
+
+/**
+ * Used in Driver to get splits of a HDFS file.
+ */
+@DriverSide
 interface HdfsSplitManager {
-  HdfsSplitInfo[] getSplits(final String path, final int numOfSplits);
+  /**
+   * @param path of a HDFS file
+   * @param numOfSplits of the file
+   * @return an array of HDFS split representations
+   */
+  HdfsSplitInfo[] getSplits(String path, int numOfSplits);
 }
