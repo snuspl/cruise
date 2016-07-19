@@ -142,7 +142,7 @@ public final class AsyncDolphinPlanExecutorTest {
   }
 
   /**
-   * The plan to be tested:
+   * The plan to be tested is as follows.
    * (1) D(W, E0), (2) A(W, E1), (3) A(S, E2), (4) D(S, E3), (5) M(S, E4->E2)
    *
    * Dependency chain: [(1), (4)] => [(2) | (3)] => [(5)] ((5) only depends on (3)
@@ -173,7 +173,7 @@ public final class AsyncDolphinPlanExecutorTest {
   }
 
   /**
-   * The plan to be tested:
+   * The plan to be tested is as follows.
    * (1) D(S, E1), (2) D(S, E2), (3) D(W, E3),
    * (4) M(W, E4->E5), (5) A(S, E6), (6) A(W, E7), (7) A(W, E8),
    * (8) M(S, E9->E6)
