@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
-import edu.snu.cay.dolphin.async.optimizer.parameters.MemoryStoreInitDelayMs;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
@@ -264,7 +263,6 @@ public final class AsyncDolphinLauncher {
 
     // add optimizer parameters
     basicParameterClassList.add(OptimizationIntervalMs.class);
-    basicParameterClassList.add(MemoryStoreInitDelayMs.class);
     basicParameterClassList.add(DelayAfterOptimizationMs.class);
 
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {

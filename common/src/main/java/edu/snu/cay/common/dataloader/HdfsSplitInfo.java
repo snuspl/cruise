@@ -13,7 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.common.dataloader;
+
+import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.annotations.audience.EvaluatorSide;
+
+import java.io.Serializable;
+
 /**
- * Optimizer tests for dolphin-async.
+ * Contains information to fetch a split from HDFS.
+ * It should be created in Driver and used in Evaluator.
+ * @param <T> type of the split
  */
-package edu.snu.cay.dolphin.async.optimizer;
+@DriverSide
+@EvaluatorSide
+interface HdfsSplitInfo<T> extends Serializable {
+}

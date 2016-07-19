@@ -44,6 +44,7 @@ public final class OptimizationOrchestrator {
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
   private final MetricsHub metricsHub;
+
   private final AtomicBoolean isPlanExecuting = new AtomicBoolean(false);
 
   private final ExecutorService optimizationThreadPool = Executors.newSingleThreadExecutor();
@@ -99,9 +100,9 @@ public final class OptimizationOrchestrator {
     // Case1. If there are metrics from dead nodes
     if (numServerMetricSources > numRunningServers || numWorkerMetricSources > numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because the collected metrics include ones from dead nodes." +
-          "The current metrics will be dumped to prevent them from being used in the next optimization try." +
-          " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
-          new Object[] {numServerMetricSources, numRunningServers, numWorkerMetricSources, numRunningWorkers});
+              "The current metrics will be dumped to prevent them from being used in the next optimization try." +
+              " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
+          new Object[]{numServerMetricSources, numRunningServers, numWorkerMetricSources, numRunningWorkers});
       // Dump all the collected metrics
       serverParameters.clear();
       workerParameters.clear();
@@ -172,9 +173,8 @@ public final class OptimizationOrchestrator {
   }
 
   /**
-   * Checks whether the optimization is being performed, specifically whether the
-   * plan is being executed.
-   * @return True if the generated plan is on execution.
+   * Checks whether the plan is being executed.
+   * @return True if the generated plan is on execution
    */
   public boolean isPlanExecuting() {
     return isPlanExecuting.get();
