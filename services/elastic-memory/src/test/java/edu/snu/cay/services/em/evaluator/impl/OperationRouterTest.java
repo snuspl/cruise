@@ -57,11 +57,13 @@ public class OperationRouterTest {
   private static final String EVAL_ID_PREFIX = "EVAL-";
 
   private ElasticMemoryMsgSender evalMsgSender;
+  private CountDownLatch initLatch = new CountDownLatch(1);
 
   private OperationRouter newOperationRouter(final int numInitialEvals,
                                              final int numTotalBlocks,
                                              final int memoryStoreId,
                                              final boolean addedEval) throws InjectionException {
+    // 1. setup eval-side components that is common for static and dynamic routers
     final Configuration evalConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(numInitialEvals))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
@@ -98,6 +100,7 @@ public class OperationRouterTest {
 
       final IdentifierFactory identifierFactory = driverInjector.getInstance(StringIdentifierFactory.class);
 
+      // dummy ids to generate a network message
       final String driverId = "driver";
       final String evalId = "eval";
       final Identifier evalIdentifier = identifierFactory.getNewInstance(evalId);
@@ -129,6 +132,7 @@ public class OperationRouterTest {
         public Object answer(final InvocationOnMock invocation) throws Throwable {
           final List<Integer> blockLocations = invocation.getArgumentAt(1, List.class);
           router.initialize(blockLocations);
+          initLatch.countDown();
           return null;
         }
       }).when(driverMsgSender).sendRoutingTableInitMsg(anyString(), anyList(), any(TraceInfo.class));
@@ -262,8 +266,11 @@ public class OperationRouterTest {
     }
   }
 
+  /**
+   * Tests router after explicitly initializing the routing table.
+   */
   @Test
-  public void testDynamicRouterWithExplicitInit() throws InjectionException, InterruptedException {
+  public void testDynamicRouterAfterExplicitInit() throws InjectionException, InterruptedException {
     final int numTotalBlocks = 1024;
     final int numInitialMemoryStores = 4;
     final int numThreads = 8;
@@ -271,7 +278,7 @@ public class OperationRouterTest {
     final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
     final int initStoreId0 = 0;
-    final int addedStoreId4 = 4; // It should be larger than the maximum index of initial stores
+    final int addedStoreId4 = 4; // It should be larger than the largest index of initial stores
 
     final OperationRouter<?> staticRouter
         = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId0, false);
@@ -279,8 +286,10 @@ public class OperationRouterTest {
         = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId4, true);
 
     staticRouter.initialize(EVAL_ID_PREFIX + initStoreId0);
-    dynamicRouter.initialize(EVAL_ID_PREFIX + addedStoreId4);
-    // dynamic router requests the routing table to driver via ElasticMemoryMsgSender
+    dynamicRouter.initialize(EVAL_ID_PREFIX + addedStoreId4); // It requests the routing table to driver
+
+    // confirm that the router is initialized
+    assertTrue(initLatch.await(10, TimeUnit.SECONDS));
 
     final Runnable[] threads = new Runnable[numThreads];
 
@@ -311,6 +320,10 @@ public class OperationRouterTest {
     verify(evalMsgSender, times(1)).sendRoutingTableInitReqMsg(any(TraceInfo.class));
   }
 
+  /**
+   * Tests resolver without explicit initialization of the routing table.
+   * The routing table will be initialized automatically by {@link OperationRouter#resolveEval(int)}.
+   */
   @Test
   public void testDynamicRouterWithoutExplicitInit() throws InjectionException, InterruptedException {
     final int numTotalBlocks = 1024;
@@ -320,7 +333,7 @@ public class OperationRouterTest {
     final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
     final int initStoreId0 = 0;
-    final int addedStoreId4 = 4; // It should be larger than the maximum index of initial stores
+    final int addedStoreId4 = 4; // It should be larger than the largest index of initial stores
 
     final OperationRouter<?> staticRouter
         = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId0, false);
@@ -329,7 +342,9 @@ public class OperationRouterTest {
 
     final Runnable[] threads = new Runnable[numThreads];
 
-    // we need an eval prefix that starts with 'null', because we don't initialize routers
+    // We need an eval prefix that starts with 'null', because we don't explicitly initialize routers.
+    // So the router works with this null prefix
+    // TODO #509: EM assumes that the eval prefix has "-" at the end
     final String evalIdPrefix = null + "-";
 
     for (int idx = 0; idx < numThreads; idx++) {
@@ -356,6 +371,10 @@ public class OperationRouterTest {
     ThreadUtils.runConcurrently(threads);
     assertTrue(threadLatch.await(30, TimeUnit.SECONDS));
 
+    // When router.resolveEval() is called and the router is not initialized yet,
+    // it internally invokes router.retryInitialization()
+    // that finally invokes router.requestRoutingTable().
+    // Because retryInitialization() is a synchronized method, requesting the routing table should be done only once.
     verify(evalMsgSender, times(1)).sendRoutingTableInitReqMsg(any(TraceInfo.class));
   }
 }

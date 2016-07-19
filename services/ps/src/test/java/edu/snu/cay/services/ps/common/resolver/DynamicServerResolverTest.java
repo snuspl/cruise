@@ -43,6 +43,7 @@ import org.junit.Test;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
@@ -136,7 +137,8 @@ public class DynamicServerResolverTest {
 
     serverResolver.requestRoutingTable();
 
-    initLatch.await();
+    // confirm that the resolver is initialized
+    assertTrue(initLatch.await(10, TimeUnit.SECONDS));
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
 
@@ -160,7 +162,7 @@ public class DynamicServerResolverTest {
     }
 
     ThreadUtils.runConcurrently(threads);
-    threadLatch.await();
+    threadLatch.await(30, TimeUnit.SECONDS);
 
     // When serverResolver.requestRoutingTable() is called,
     // workers internally register themselves to subscribe the updates
@@ -201,10 +203,12 @@ public class DynamicServerResolverTest {
     }
 
     ThreadUtils.runConcurrently(threads);
-    threadLatch.await();
+    threadLatch.await(30, TimeUnit.SECONDS);
 
-    // When serverResolver.resolveServer() is called,
-    // it internally invokes serverResolver.requestRoutingTable() when it's not initialized yet.
+    // When serverResolver.resolveServer() is called and the resolver is not initialized yet,
+    // it internally invokes serverResolver.retryInitialization()
+    // that finally invokes serverResolver.requestRoutingTable().
+    // Because retryInitialization() is a synchronized method, requesting the routing table should be done only once.
     verify(msgSender, times(1)).sendWorkerRegisterMsg();
   }
 
