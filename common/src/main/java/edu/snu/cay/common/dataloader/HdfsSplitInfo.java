@@ -23,7 +23,7 @@ import java.io.Serializable;
 /**
  * Contains information to fetch a split from HDFS.
  * It should be created in Driver and used in Evaluator.
- * @param <T> type of the split.
+ * @param <T> type of the split
  */
 @DriverSide
 @EvaluatorSide
