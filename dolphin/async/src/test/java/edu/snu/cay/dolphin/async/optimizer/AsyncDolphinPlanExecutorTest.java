@@ -45,6 +45,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import javax.annotation.Nullable;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,6 +60,14 @@ import static org.powermock.api.mockito.PowerMockito.*;
 
 /**
  * Unit tests for async dolphin plan executor.
+ *
+ * The tests when run automatically, are only able to validate that
+ * all of the operations in the given plan are executed.
+ *
+ * In order to test the execution regarding specific dependencies,
+ * the internals of {@link edu.snu.cay.dolphin.async.optimizer.AsyncDolphinPlanExecutor.ExecutingPlan} must be
+ * exposed such that the status during the stages of concurrent plan execution are accessible.
+ * Otherwise, the tests can be only run manually and concurrency according to the dependency must be checked with logs.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(AsyncDolphinDriver.class)
@@ -132,6 +141,12 @@ public final class AsyncDolphinPlanExecutorTest {
     }
   }
 
+  /**
+   * The plan to be tested:
+   * (1) D(W, E0), (2) A(W, E1), (3) A(S, E2), (4) D(S, E3), (5) M(S, E4->E2)
+   *
+   * Dependency chain: [(1), (4)] => [(2) | (3)] => [(5)] ((5) only depends on (3)
+   */
   @Test
   public void simplePlanExecutionTest() {
     final Plan plan = PlanImpl.newBuilder()
@@ -157,6 +172,14 @@ public final class AsyncDolphinPlanExecutorTest {
     }
   }
 
+  /**
+   * The plan to be tested:
+   * (1) D(S, E1), (2) D(S, E2), (3) D(W, E3),
+   * (4) M(W, E4->E5), (5) A(S, E6), (6) A(W, E7), (7) A(W, E8),
+   * (8) M(S, E9->E6)
+   *
+   * Dependency chain: [(1), (2), (3), (4)] => [(5) | (6) | (7)] => [(8)] ((8) only depends on (5)
+   */
   @Test
   public void complexDependencyPlanExecutionTest() {
     // The plan below is composed of operations in the order of dependency
@@ -186,6 +209,12 @@ public final class AsyncDolphinPlanExecutorTest {
     }
   }
 
+  /**
+   * Mocks EM for testing purposes.
+   * It initiates threads for executing add/move/delete operations.
+   * In each operation, the resources are actually unchanged but appropriate callbacks are invoked such that
+   * AsyncDolphinPlanExecutor runs the next set of operations.
+   */
   private final class MockElasticMemory implements ElasticMemory {
     private final BlockingQueue<EventHandler<AvroElasticMemoryMessage>> deleteHandlerQueue
         = new LinkedBlockingQueue<>();
@@ -354,9 +383,7 @@ public final class AsyncDolphinPlanExecutorTest {
 
     @Override
     public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
-      return null;
+      return Collections.emptyMap();
     }
-
   }
-
 }
