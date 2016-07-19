@@ -15,22 +15,37 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.RoutingTableInitReqMsg;
+import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.driver.impl.BlockManager;
+import edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.utils.ThreadUtils;
+import org.apache.reef.io.network.impl.NSMessage;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.util.Optional;
+import org.apache.reef.wake.Identifier;
+import org.apache.reef.wake.IdentifierFactory;
+import org.htrace.TraceInfo;
 import org.junit.Test;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
@@ -39,26 +54,87 @@ import static org.junit.Assert.*;
  * Tests to check whether OperationRouter is initialized correctly, and routes operations to the correct target.
  */
 public class OperationRouterTest {
+  private static final String EVAL_ID_PREFIX = "EVAL-";
+
+  private ElasticMemoryMsgSender evalMsgSender;
+
   private OperationRouter newOperationRouter(final int numInitialEvals,
                                              final int numTotalBlocks,
                                              final int memoryStoreId,
-                                             final boolean addedEval) {
-    final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
+                                             final boolean addedEval) throws InjectionException {
+    final Configuration evalConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(numInitialEvals))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(memoryStoreId))
         .bindNamedParameter(AddedEval.class, Boolean.toString(addedEval))
         .build();
-    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
+    final Injector evalInjector = Tang.Factory.getTang().newInjector(evalConf);
 
-    final ElasticMemoryMsgSender msgSender = mock(ElasticMemoryMsgSender.class);
-    injector.bindVolatileInstance(ElasticMemoryMsgSender.class, msgSender);
+    evalMsgSender = mock(ElasticMemoryMsgSender.class);
+    evalInjector.bindVolatileInstance(ElasticMemoryMsgSender.class, evalMsgSender);
+    final OperationRouter router = evalInjector.getInstance(OperationRouter.class);
 
-    try {
-      return injector.getInstance(OperationRouter.class);
-    } catch (InjectionException e) {
-      throw new RuntimeException("InjectionException while getting router instance");
+    // 2. If it is a dynamic router, setup eval-side msg sender and driver-side msg sender/handler and block manager
+    if (addedEval) {
+      final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
+          .bindNamedParameter(AddedEval.class, Boolean.toString(addedEval))
+          .bindNamedParameter(MemoryStoreId.class, Integer.toString(memoryStoreId))
+          .build();
+
+      final Injector driverInjector = Tang.Factory.getTang().newInjector(driverConf);
+      final BlockManager blockManager = driverInjector.getInstance(BlockManager.class);
+
+      // Register all eval to block manager, now dynamic router can obtain the correct routing table
+      for (int evalIdx = 0; evalIdx < numInitialEvals; evalIdx++) {
+        final String endpointId = EVAL_ID_PREFIX + evalIdx;
+        blockManager.registerEvaluator(endpointId, numInitialEvals);
+      }
+
+      final ElasticMemoryMsgSender driverMsgSender = mock(ElasticMemoryMsgSender.class);
+      driverInjector.bindVolatileInstance(ElasticMemoryMsgSender.class, driverMsgSender);
+
+      final ElasticMemoryMsgHandler driverMsgHandler = driverInjector.getInstance(ElasticMemoryMsgHandler.class);
+
+      final IdentifierFactory identifierFactory = driverInjector.getInstance(StringIdentifierFactory.class);
+
+      final String driverId = "driver";
+      final String evalId = "eval";
+      final Identifier evalIdentifier = identifierFactory.getNewInstance(evalId);
+      final Identifier driverIdentifier = identifierFactory.getNewInstance(driverId);
+
+      doAnswer(new Answer() {
+        @Override
+        public Object answer(final InvocationOnMock invocation) throws Throwable {
+          Thread.sleep(1000); // delay for fetching the routing table from driver
+
+          final RoutingTableInitReqMsg routingTableInitReqMsg = RoutingTableInitReqMsg.newBuilder()
+              .build();
+
+          final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.RoutingTableInitReqMsg)
+              .setSrcId(evalId)
+              .setDestId(driverId)
+              .setRoutingTableInitReqMsg(routingTableInitReqMsg)
+              .build();
+
+          driverMsgHandler.onNext(new NSMessage<>(evalIdentifier, driverIdentifier, msg));
+          return null;
+        }
+      }).when(evalMsgSender).sendRoutingTableInitReqMsg(any(TraceInfo.class));
+
+      // driverMsgHander.onNext will invoke driverMsgSender.sendRoutingTableInitMsg with the routine table
+      doAnswer(new Answer() {
+        @Override
+        public Object answer(final InvocationOnMock invocation) throws Throwable {
+          final List<Integer> blockLocations = invocation.getArgumentAt(1, List.class);
+          router.initialize(blockLocations);
+          return null;
+        }
+      }).when(driverMsgSender).sendRoutingTableInitMsg(anyString(), anyList(), any(TraceInfo.class));
     }
+
+    return router;
   }
 
   /**
@@ -66,7 +142,7 @@ public class OperationRouterTest {
    * and the local blocks acquired from getInitialLocalBlockIds() are routed to the local MemoryStore.
    */
   @Test
-  public void testRoutingLocalBlocks() {
+  public void testRoutingLocalBlocks() throws InjectionException {
     final int numTotalBlocks = 1024;
     final int numMemoryStores = 4;
 
@@ -92,7 +168,7 @@ public class OperationRouterTest {
    * Checks whether MemoryStores share the same routing table initially.
    */
   @Test
-  public void testMultipleRouters() {
+  public void testMultipleRouters() throws InjectionException {
     final int numTotalBlocks = 1024;
     final int numMemoryStores = 4;
 
@@ -139,7 +215,7 @@ public class OperationRouterTest {
    * Tests whether routers are correctly updated by {@link OperationRouter#updateOwnership(int, int, int)}.
    */
   @Test
-  public void testUpdatingOwnership() {
+  public void testUpdatingOwnership() throws InjectionException {
     final int numTotalBlocks = 1024;
     final int numInitialMemoryStores = 4;
 
@@ -184,5 +260,102 @@ public class OperationRouterTest {
       assertFalse("This block should have been moved out from source router", srcCurrentBlocks.contains(blockId));
       assertTrue("This block should have been moved into destination router", destCurrentBlocks.contains(blockId));
     }
+  }
+
+  @Test
+  public void testDynamicRouterWithExplicitInit() throws InjectionException, InterruptedException {
+    final int numTotalBlocks = 1024;
+    final int numInitialMemoryStores = 4;
+    final int numThreads = 8;
+
+    final CountDownLatch threadLatch = new CountDownLatch(numThreads);
+
+    final int initStoreId0 = 0;
+    final int addedStoreId4 = 4; // It should be larger than the maximum index of initial stores
+
+    final OperationRouter<?> staticRouter
+        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId0, false);
+    final OperationRouter<?> dynamicRouter
+        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId4, true);
+
+    staticRouter.initialize(EVAL_ID_PREFIX + initStoreId0);
+    dynamicRouter.initialize(EVAL_ID_PREFIX + addedStoreId4);
+    // dynamic router requests the routing table to driver via ElasticMemoryMsgSender
+
+    final Runnable[] threads = new Runnable[numThreads];
+
+    for (int idx = 0; idx < numThreads; idx++) {
+      threads[idx] = new Runnable() {
+        @Override
+        public void run() {
+          for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
+            final Optional<String> evalIdFromStaticRouter = staticRouter.resolveEval(blockId);
+            final Optional<String> evalIdFromDynamicRouter = dynamicRouter.resolveEval(blockId);
+
+            if (!evalIdFromStaticRouter.isPresent()) { // staticRouter is local
+              assertEquals(EVAL_ID_PREFIX + initStoreId0, evalIdFromDynamicRouter.get());
+            } else if (!evalIdFromDynamicRouter.isPresent()) { // dynamicRouter is local
+              assertEquals(EVAL_ID_PREFIX + addedStoreId4, evalIdFromStaticRouter.get());
+            } else {
+              assertEquals(evalIdFromStaticRouter.get(), evalIdFromDynamicRouter.get());
+            }
+          }
+          threadLatch.countDown();
+        }
+      };
+    }
+
+    ThreadUtils.runConcurrently(threads);
+    assertTrue(threadLatch.await(30, TimeUnit.SECONDS));
+
+    verify(evalMsgSender, times(1)).sendRoutingTableInitReqMsg(any(TraceInfo.class));
+  }
+
+  @Test
+  public void testDynamicRouterWithoutExplicitInit() throws InjectionException, InterruptedException {
+    final int numTotalBlocks = 1024;
+    final int numInitialMemoryStores = 4;
+    final int numThreads = 8;
+
+    final CountDownLatch threadLatch = new CountDownLatch(numThreads);
+
+    final int initStoreId0 = 0;
+    final int addedStoreId4 = 4; // It should be larger than the maximum index of initial stores
+
+    final OperationRouter<?> staticRouter
+        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId0, false);
+    final OperationRouter<?> dynamicRouter
+        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId4, true);
+
+    final Runnable[] threads = new Runnable[numThreads];
+
+    // we need an eval prefix that starts with 'null', because we don't initialize routers
+    final String evalIdPrefix = null + "-";
+
+    for (int idx = 0; idx < numThreads; idx++) {
+      threads[idx] = new Runnable() {
+        @Override
+        public void run() {
+          for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
+            final Optional<String> evalIdFromStaticRouter = staticRouter.resolveEval(blockId);
+            final Optional<String> evalIdFromDynamicRouter = dynamicRouter.resolveEval(blockId);
+
+            if (!evalIdFromStaticRouter.isPresent()) { // staticRouter is local
+              assertEquals(evalIdPrefix + initStoreId0, evalIdFromDynamicRouter.get());
+            } else if (!evalIdFromDynamicRouter.isPresent()) { // dynamicRouter is local
+              assertEquals(evalIdPrefix + addedStoreId4, evalIdFromStaticRouter.get());
+            } else {
+              assertEquals(evalIdFromStaticRouter.get(), evalIdFromDynamicRouter.get());
+            }
+          }
+          threadLatch.countDown();
+        }
+      };
+    }
+
+    ThreadUtils.runConcurrently(threads);
+    assertTrue(threadLatch.await(30, TimeUnit.SECONDS));
+
+    verify(evalMsgSender, times(1)).sendRoutingTableInitReqMsg(any(TraceInfo.class));
   }
 }

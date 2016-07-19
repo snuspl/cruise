@@ -26,6 +26,7 @@ import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.worker.impl.WorkerMsgSender;
+import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.io.network.naming.NameClient;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -114,6 +115,7 @@ public class DynamicServerResolverTest {
     doAnswer(new Answer() {
       @Override
       public Object answer(final InvocationOnMock invocation) throws Throwable {
+        Thread.sleep(1000); // delay for fetching the routing table from driver
 
         serverResolver.initRoutingTable(initRoutingTable);
         initLatch.countDown();
@@ -128,6 +130,9 @@ public class DynamicServerResolverTest {
   @Test
   public void testResolveAfterExplicitInit() throws InterruptedException {
     final int numKey = 1000;
+    final int numThreads = 10;
+
+    final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
     serverResolver.requestRoutingTable();
 
@@ -135,14 +140,27 @@ public class DynamicServerResolverTest {
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
 
-    for (int hash = 0; hash < numKey; hash++) {
-      final int blockId = getBlockId(hash);
+    final Runnable[] threads = new Runnable[numThreads];
 
-      final String serverEndpointId = serverResolver.resolveServer(hash);
-      final int storeId = storeIdToEndpointIdBiMap.inverse().get(serverEndpointId);
-      final Set<Integer> blockSet = storeIdToBlockIds.get(storeId);
-      assertTrue(blockSet.contains(blockId));
+    for (int idx = 0; idx < numThreads; idx++) {
+      threads[idx] = new Runnable() {
+        @Override
+        public void run() {
+          for (int hash = 0; hash < numKey; hash++) {
+            final String serverEndpointId = serverResolver.resolveServer(hash);
+            final int storeId = storeIdToEndpointIdBiMap.inverse().get(serverEndpointId);
+            final Set<Integer> blockSet = storeIdToBlockIds.get(storeId);
+
+            final int blockId = hash % NUM_TOTAL_BLOCKS;
+            assertTrue(blockSet.contains(blockId));
+          }
+          threadLatch.countDown();
+        }
+      };
     }
+
+    ThreadUtils.runConcurrently(threads);
+    threadLatch.await();
 
     // When serverResolver.requestRoutingTable() is called,
     // workers internally register themselves to subscribe the updates
@@ -155,19 +173,35 @@ public class DynamicServerResolverTest {
    * The routing table will be initialized automatically by {@link DynamicServerResolver#resolveServer(int)}.
    */
   @Test
-  public void testResolveWithoutExplicitInit() {
+  public void testResolveWithoutExplicitInit() throws InterruptedException {
     final int numKey = 1000;
+    final int numThreads = 10;
+
+    final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
 
-    for (int hash = 0; hash < numKey; hash++) {
-      final int blockId = hash % NUM_TOTAL_BLOCKS;
+    final Runnable[] threads = new Runnable[numThreads];
 
-      final String serverEndpointId = serverResolver.resolveServer(hash);
-      final int storeId = storeIdToEndpointIdBiMap.inverse().get(serverEndpointId);
-      final Set<Integer> blockSet = storeIdToBlockIds.get(storeId);
-      assertTrue(blockSet.contains(blockId));
+    for (int idx = 0; idx < numThreads; idx++) {
+      threads[idx] = new Runnable() {
+        @Override
+        public void run() {
+          for (int hash = 0; hash < numKey; hash++) {
+            final String serverEndpointId = serverResolver.resolveServer(hash);
+            final int storeId = storeIdToEndpointIdBiMap.inverse().get(serverEndpointId);
+            final Set<Integer> blockSet = storeIdToBlockIds.get(storeId);
+
+            final int blockId = hash % NUM_TOTAL_BLOCKS;
+            assertTrue(blockSet.contains(blockId));
+          }
+          threadLatch.countDown();
+        }
+      };
     }
+
+    ThreadUtils.runConcurrently(threads);
+    threadLatch.await();
 
     // When serverResolver.resolveServer() is called,
     // it internally invokes serverResolver.requestRoutingTable() when it's not initialized yet.
