@@ -181,10 +181,12 @@ public final class PlanImplTest {
     final Set<EMOperation> executingPlans = new HashSet<>();
 
     // a single Add step can be executed after completing each Del step
+
     for (final EMOperation operation : firstOpsToExec) {
       final Set<EMOperation> nextOpsToExec = plan.onComplete(operation);
       assertEquals(1, nextOpsToExec.size());
       final EMOperation nextOpToExec = nextOpsToExec.iterator().next();
+
       assertEquals(EMOperation.OpType.ADD, nextOpToExec.getOpType());
 
       executingPlans.add(nextOpToExec);
@@ -217,6 +219,7 @@ public final class PlanImplTest {
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 0, EVAL_PREFIX + 2, new DataInfoImpl(1)))
+
         // the second set of dependencies comprised of one Delete and two moves
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .addTransferStep(NAMESPACE_PREFIX,
@@ -280,6 +283,7 @@ public final class PlanImplTest {
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addTransferStep(NAMESPACE_PREFIX,
             new TransferStepImpl(EVAL_PREFIX + 2, EVAL_PREFIX + 0, new DataInfoImpl(1)))
+
         // the second set of dependencies comprised of one Add and two moves
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .addTransferStep(NAMESPACE_PREFIX,
