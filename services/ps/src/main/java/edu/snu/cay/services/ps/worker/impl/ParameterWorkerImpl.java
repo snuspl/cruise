@@ -314,9 +314,11 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       future.reject();
 
     } else {
-      // Because we use partitions, there can be at most one active pendingPull for a key.
-      // Thus, a null value should never appear.
-      throw new RuntimeException(String.format("Pending pull was not found for key %s", key));
+      // Because we assign each key to a dedicated thread, there can be at most one active pendingPull for a key.
+      // But occasionally, multiple responses for a single pendingPull may arrive
+      // if the worker retried due to the late response from the target server.
+      LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
+          " It may be fulfilled by another earlier response from the server", key);
     }
   }
 
@@ -349,7 +351,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      * Set the value and unblock all waiting gets.
      * @param value the value
      */
-    public synchronized void setValue(final V value) {
+    synchronized void setValue(final V value) {
       this.value = value;
       notify();
     }
@@ -360,6 +362,18 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     synchronized void reject() {
       rejected = true;
       notify();
+    }
+
+    /**
+     * Reset pull future for the next retry.
+     * The rejected field should be reset, because it's valid only for current try.
+     * We don't need to reset the value field, because the value obtained from
+     * the previous request is also valid for the next retries.
+     * It may happen if the response from the previous request arrives
+     * after cleanup the current try and before the response from the next request.
+     */
+    synchronized void reset() {
+      rejected = false;
     }
   }
 
@@ -449,6 +463,10 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       // Send to remote PS
       int resendCount = 0;
       while (true) {
+        if (resendCount++ > MAX_RESEND_COUNT) {
+          throw new RuntimeException("Fail to send a push message");
+        }
+
         // re-resolve server for every retry
         // since an operation may throw NetworkException when routing table is obsolete
         final String serverId = serverResolver.resolveServer(encodedKey.getHash());
@@ -470,11 +488,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           break;
         } catch (final NetworkException e) {
           LOG.log(Level.FINE, "NetworkException while sending push msg. Do retry", e);
-        }
-
-        // prepare for resend
-        if (resendCount++ > MAX_RESEND_COUNT) {
-          throw new RuntimeException("Fail to send a push message");
         }
 
         LOG.log(Level.INFO, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
@@ -596,10 +609,10 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
               final PullFuture<V> future = new PullFuture<>();
               pendingPulls.put(encodedKey.getKey(), future);
 
-              V value = null;
+              V value;
 
               int retryCount = 0;
-              while (value == null) {
+              while (true) {
                 if (retryCount++ > MAX_RETRY_COUNT) {
                   throw new RuntimeException("Fail to load a value for pull");
                 }
@@ -619,6 +632,12 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                 // we should adjust timeout to be large enough to avoid 2-1 and not to worsen 2-2,
                 // but small enough to quickly recover from 2-3.
                 value = future.getValue(pullRetryTimeoutMs);
+
+                if (value != null) {
+                  break;
+                } else {
+                  future.reset();
+                }
               }
 
               pendingPulls.remove(encodedKey.getKey());
@@ -633,6 +652,10 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
             private void sendPullMsg(final EncodedKey<K> encodedKey) {
               int resendCount = 0;
               while (true) {
+                if (resendCount++ > MAX_RESEND_COUNT) {
+                  throw new RuntimeException("Fail to send a pull msg");
+                }
+
                 // re-resolve server for every retry,
                 // because msg sender throws NetworkException
                 // when routing table is obsolete and indicates non-existing server
@@ -647,11 +670,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                   break;
                 } catch (final NetworkException e) {
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
-                }
-
-                // prepare for resend
-                if (resendCount++ > MAX_RESEND_COUNT) {
-                  throw new RuntimeException("Fail to send a pull msg");
                 }
 
                 LOG.log(Level.INFO, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
