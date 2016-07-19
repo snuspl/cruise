@@ -189,10 +189,8 @@ public final class OperationRouter<K> {
     initialized = true;
 
     LOG.log(Level.FINE, "Operation router is initialized");
-    synchronized (this) {
-      // wake up all waiting threads
-      this.notifyAll();
-    }
+    // wake up all waiting threads
+    this.notifyAll();
   }
 
   /**
@@ -222,9 +220,7 @@ public final class OperationRouter<K> {
 
       LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
       try {
-        synchronized (this) {
-          this.wait(INIT_WAIT_TIMEOUT_MS);
-        }
+        this.wait(INIT_WAIT_TIMEOUT_MS);
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
       }
