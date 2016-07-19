@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# EXAMPLE USAGE 
-# ./run_dnn.sh -local true -max_iter 100 -conf sample_dnn_conf -input sample_dnn_data -split 2 -max_num_eval_local 3 -num_worker_threads 1 -timeout 800000 -dynamic false -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
+# EXAMPLE USAGE
+# ./run_dnn.sh -local true -max_iter 100 -conf dnn_conf/sample_dnn_conf -input sample_dnn_data -split 2 -max_num_eval_local 3 -num_worker_threads 1 -timeout 800000 -dynamic false -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
