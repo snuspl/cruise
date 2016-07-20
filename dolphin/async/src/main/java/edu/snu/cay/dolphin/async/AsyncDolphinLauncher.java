@@ -121,6 +121,27 @@ public final class AsyncDolphinLauncher {
                                       final String[] args,
                                       final AsyncDolphinConfiguration asyncDolphinConfiguration,
                                       final Configuration customDriverConfiguration) {
+
+    System.out.println("Now launching");
+    try {
+      final String currentPath = System.getProperty("user.dir");
+      System.out.println(currentPath);
+      final int index = currentPath.indexOf("cay");
+      //if (index < 0) ; //throw exception
+      final String resourcePath = currentPath.substring(0, index + 3) + "/dolphin/async/dashboard/dashboard.py";
+      System.out.println(resourcePath);
+      final ProcessBuilder pb = new ProcessBuilder("python", resourcePath).inheritIO();
+      final Process p = pb.start();
+      Runtime.getRuntime().addShutdownHook(new Thread() {
+        @Override
+        public void run() {
+          p.destroy();
+        }
+      });
+    } catch (final Exception e) {
+      System.out.println("My Exception" + e);
+    }
+
     try {
       // parse command line arguments, separate them into basic & user parameters
       final Tuple2<Configuration, Configuration> configurations

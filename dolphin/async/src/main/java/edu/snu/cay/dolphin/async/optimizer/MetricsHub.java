@@ -21,6 +21,11 @@ import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 
 import javax.inject.Inject;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -54,6 +59,33 @@ public final class MetricsHub {
     final DataInfo dataInfo = new DataInfoImpl(numDataBlocks);
     final EvaluatorParameters evaluatorParameters = new EvaluatorParametersImpl(workerId, dataInfo, metrics);
     workerEvalParams.add(evaluatorParameters);
+    try {
+      final URL obj = new URL("http://127.0.0.1:5000/metrics/");
+      final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+      con.setRequestMethod("POST");
+      con.setDoOutput(true);
+      con.setDoInput(true);
+      con.connect();
+      // request
+      final OutputStream os = con.getOutputStream();
+      final String param = "serverid=-1&workerid=" + workerId;
+      System.out.println("request with " + param);
+      os.write((param).getBytes());
+      os.flush();
+      os.close();
+      // response
+      final BufferedReader in = new BufferedReader(
+          new InputStreamReader(con.getInputStream())
+      );
+      String inputLine;
+      final StringBuffer response = new StringBuffer();
+      while ((inputLine = in.readLine()) != null) {
+        response.append(inputLine);
+      }
+      in.close();
+    } catch (Exception e) {
+      System.out.println(e);
+    }
   }
 
   /**
@@ -66,6 +98,33 @@ public final class MetricsHub {
     final DataInfo dataInfo = new DataInfoImpl(numPartitionBlocks);
     final EvaluatorParameters evaluatorParameters = new EvaluatorParametersImpl(serverId, dataInfo, metrics);
     serverEvalParams.add(evaluatorParameters);
+    try {
+      final URL obj = new URL("http://127.0.0.1:5000/metrics/");
+      final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+      con.setRequestMethod("POST");
+      con.setDoOutput(true);
+      con.setDoInput(true);
+      con.connect();
+      // request
+      final OutputStream os = con.getOutputStream();
+      final String param = "workerid=-1&serverid=" + serverId;
+      System.out.println("request with " + param);
+      os.write((param).getBytes());
+      os.flush();
+      os.close();
+      // response
+      final BufferedReader in = new BufferedReader(
+          new InputStreamReader(con.getInputStream())
+      );
+      String inputLine;
+      final StringBuffer response = new StringBuffer();
+      while ((inputLine = in.readLine()) != null) {
+        response.append(inputLine);
+      }
+      in.close();
+    } catch (Exception e) {
+      System.out.println(e);
+    }
   }
 
   /**
