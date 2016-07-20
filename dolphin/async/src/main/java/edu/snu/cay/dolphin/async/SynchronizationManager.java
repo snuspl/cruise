@@ -247,21 +247,23 @@ final class SynchronizationManager {
         if (!localState.equals(STATE_INIT)) {
           throw new RuntimeException("Individual workers cannot overtake the global state");
         }
+
         break;
       case STATE_RUN:
-        switch (localState) {
-        case STATE_INIT:
+        if (localState.equals(STATE_INIT)) {
           // let added evaluators skip the initial barriers
           sendResponseMessage(workerId, EMPTY_DATA);
           return;
-        case STATE_RUN:
+
+        } else if (localState.equals(STATE_RUN)) {
           // worker finishes their main iteration and is waiting for response to enter the cleanup stage
           waitingCleanup.set(true);
           break;
-        case STATE_CLEANUP:
-        default:
+
+        } else {
           throw new RuntimeException("Individual workers cannot overtake the global state");
         }
+
       case STATE_CLEANUP:
         throw new RuntimeException("Workers never call the global barrier in STATE_CLEANUP state");
       default:
