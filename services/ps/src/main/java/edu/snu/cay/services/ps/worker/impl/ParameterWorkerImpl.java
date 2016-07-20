@@ -311,6 +311,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   void processPullReject(final K key) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
+      LOG.log(Level.INFO, "Pull operation for key {0} is rejected." +
+          " It means that the corresponding server is closing or already closed.", key);
       future.reject();
 
     } else {
