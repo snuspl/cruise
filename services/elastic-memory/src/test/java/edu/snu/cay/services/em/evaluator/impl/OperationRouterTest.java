@@ -65,7 +65,7 @@ public class OperationRouterTest {
    * @param numInitialEvals the number of initial evaluators
    * @param numTotalBlocks the number of total blocks
    * @param memoryStoreId the local memory store id
-   * @param addedEval a boolean representing whether or not an evaluator added by EM.add()
+   * @param addedEval a boolean representing whether or not an evaluator is added by EM.add()
    * @return an instance of OperationRouter
    * @throws InjectionException
    */
@@ -101,6 +101,9 @@ public class OperationRouterTest {
       // Register all eval to block manager, now dynamic router can obtain the complete routing table
       for (int evalIdx = 0; evalIdx < numInitialEvals; evalIdx++) {
         final String endpointId = EVAL_ID_PREFIX + evalIdx;
+
+        // we assume that BlockManager.registerEvaluator() assigns store ids in the increasing order,
+        // so the index of evaluator endpoint is equal to the store id
         blockManager.registerEvaluator(endpointId, numInitialEvals);
       }
 
@@ -305,8 +308,13 @@ public class OperationRouterTest {
     final OperationRouter<?> routerInAddedStoreId4
         = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId4, true);
 
-    routerInInitStoreId0.initialize(EVAL_ID_PREFIX + initStoreId0);
-    routerInAddedStoreId4.initialize(EVAL_ID_PREFIX + addedStoreId4); // It requests the routing table to driver
+    // we assume that store ids are assigned in the increasing order,
+    // so the index of evaluator endpoint is equal to the store id
+    final String endpointId0 = EVAL_ID_PREFIX + initStoreId0;
+    final String endpointId4 = EVAL_ID_PREFIX + addedStoreId4;
+
+    routerInInitStoreId0.initialize(endpointId0);
+    routerInAddedStoreId4.initialize(endpointId4); // It requests the routing table to driver
 
     // confirm that the router is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
@@ -324,9 +332,9 @@ public class OperationRouterTest {
             final Optional<String> evalIdFromRouter4 = routerInAddedStoreId4.resolveEval(blockId);
 
             if (!evalIdFromRouter0.isPresent()) { // routerInInitStoreId0 is local
-              assertEquals(EVAL_ID_PREFIX + initStoreId0, evalIdFromRouter4.get());
+              assertEquals(endpointId0, evalIdFromRouter4.get());
             } else if (!evalIdFromRouter4.isPresent()) { // routerInAddedStoreId4 is local
-              assertEquals(EVAL_ID_PREFIX + addedStoreId4, evalIdFromRouter0.get());
+              assertEquals(endpointId4, evalIdFromRouter0.get());
             } else {
               assertEquals(evalIdFromRouter0.get(), evalIdFromRouter4.get());
             }
@@ -375,6 +383,11 @@ public class OperationRouterTest {
     // TODO #509: EM assumes that the eval prefix has "-" at the end
     final String evalIdPrefix = null + "-";
 
+    // we assume that store ids are assigned in the increasing order,
+    // so the index of evaluator endpoint is equal to the store id
+    final String endpointId0 = evalIdPrefix + initStoreId0;
+    final String endpointId4 = evalIdPrefix + addedStoreId4;
+
     // though router0 is statically initialized and router4 is dynamically initialized,
     // because there were no changes in the routing table their views should be equal
     for (int idx = 0; idx < numThreads; idx++) {
@@ -386,9 +399,9 @@ public class OperationRouterTest {
             final Optional<String> evalIdFromRouter4 = routerInAddedStoreId4.resolveEval(blockId);
 
             if (!evalIdFromRouter0.isPresent()) { // routerInInitStoreId0 is local
-              assertEquals(evalIdPrefix + initStoreId0, evalIdFromRouter4.get());
+              assertEquals(endpointId0, evalIdFromRouter4.get());
             } else if (!evalIdFromRouter4.isPresent()) { // routerInAddedStoreId4 is local
-              assertEquals(evalIdPrefix + addedStoreId4, evalIdFromRouter0.get());
+              assertEquals(endpointId4, evalIdFromRouter0.get());
             } else {
               assertEquals(evalIdFromRouter0.get(), evalIdFromRouter4.get());
             }
