@@ -145,6 +145,14 @@ public interface MatrixFactory {
   Matrix randn(int rows, int columns, long seed);
 
   /**
+   * @param rows the number of rows
+   * @param columns the number of columns
+   * @param prob probability
+   * @return a generated matrix
+   */
+  Matrix bernoulli(int rows, int columns, float prob);
+
+  /**
    * Concatenates two matrices horizontally.
    */
   Matrix concatHorizontally(Matrix a, Matrix b);

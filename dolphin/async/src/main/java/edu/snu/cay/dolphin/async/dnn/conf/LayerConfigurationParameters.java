@@ -61,6 +61,13 @@ public final class LayerConfigurationParameters {
   }
 
   /**
+   * For dropout layers.
+   */
+  @NamedParameter(doc = "bernoulli ratio/probability of dropout layer")
+  public static final class DropoutRatio implements Name<Float> {
+  }
+
+  /**
    * For pooling / convolutional layers.
    */
   @NamedParameter(doc = "pooling type of pooling layer")
