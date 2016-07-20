@@ -60,6 +60,15 @@ public class OperationRouterTest {
   private ElasticMemoryMsgSender evalMsgSender;
   private CountDownLatch initLatch;
 
+  /**
+   * Creates an instance of OperationRouter based on the input parameters.
+   * @param numInitialEvals the number of initial evaluators
+   * @param numTotalBlocks the number of total blocks
+   * @param memoryStoreId the local memory store id
+   * @param addedEval a boolean representing whether or not an evaluator added by EM.add()
+   * @return an instance of OperationRouter
+   * @throws InjectionException
+   */
   private OperationRouter newOperationRouter(final int numInitialEvals,
                                              final int numTotalBlocks,
                                              final int memoryStoreId,
@@ -77,7 +86,8 @@ public class OperationRouterTest {
     evalInjector.bindVolatileInstance(ElasticMemoryMsgSender.class, evalMsgSender);
     final OperationRouter router = evalInjector.getInstance(OperationRouter.class);
 
-    // 2. If it is a dynamic router, setup eval-side msg sender and driver-side msg sender/handler and block manager
+    // 2. If it is a dynamic router, setup eval-side msg sender and driver-side msg sender/handler and block manager.
+    // By mocking msg sender and handler in both side, we can simulate more realistic system behavior
     if (addedEval) {
       final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
@@ -88,7 +98,7 @@ public class OperationRouterTest {
       final Injector driverInjector = Tang.Factory.getTang().newInjector(driverConf);
       final BlockManager blockManager = driverInjector.getInstance(BlockManager.class);
 
-      // Register all eval to block manager, now dynamic router can obtain the correct routing table
+      // Register all eval to block manager, now dynamic router can obtain the complete routing table
       for (int evalIdx = 0; evalIdx < numInitialEvals; evalIdx++) {
         final String endpointId = EVAL_ID_PREFIX + evalIdx;
         blockManager.registerEvaluator(endpointId, numInitialEvals);
