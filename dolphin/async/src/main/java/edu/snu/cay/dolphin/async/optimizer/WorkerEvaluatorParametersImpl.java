@@ -13,24 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.optimizer.impl;
+package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 
-import java.util.Map;
-
 /**
- * A plain-old-data implementation of EvaluatorParameters.
+ * An implementation of EvaluatorParameters for workers.
+ * A separate class for workers is needed in order to send {@link WorkerMetrics}
  */
-public final class EvaluatorParametersImpl implements EvaluatorParameters {
+public final class WorkerEvaluatorParametersImpl implements EvaluatorParameters {
   private final String id;
   private final DataInfo dataInfo;
-  private final Map<String, Double> metrics;
+  private final WorkerMetrics metrics;
 
-  public EvaluatorParametersImpl(final String id,
-                                 final DataInfo dataInfo,
-                                 final Map<String, Double> metrics) {
+  public WorkerEvaluatorParametersImpl(final String id,
+                                       final DataInfo dataInfo,
+                                       final WorkerMetrics metrics) {
     this.id = id;
     this.dataInfo = dataInfo;
     this.metrics = metrics;
@@ -46,7 +46,7 @@ public final class EvaluatorParametersImpl implements EvaluatorParameters {
     return dataInfo;
   }
 
-  public Map<String, Double> getMetrics() {
+  public WorkerMetrics getMetrics() {
     return metrics;
   }
 }

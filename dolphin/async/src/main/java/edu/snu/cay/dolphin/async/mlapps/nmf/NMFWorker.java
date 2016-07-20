@@ -25,7 +25,7 @@ import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -39,7 +39,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import static edu.snu.cay.dolphin.async.metric.WorkerConstants.WORKER_COMPUTE_TIME;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
 /**
@@ -75,7 +74,7 @@ final class NMFWorker implements Worker {
   private final MetricsCollector metricsCollector;
   private final InsertableMetricTracker insertableMetricTracker;
   private final MetricsHandler metricsHandler;
-  private final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender;
+  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
 
   private final Tracer pushTracer;
   private final Tracer pullTracer;
@@ -102,7 +101,7 @@ final class NMFWorker implements Worker {
                     final MetricsCollector metricsCollector,
                     final InsertableMetricTracker insertableMetricTracker,
                     final MetricsHandler metricsHandler,
-                    final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender) {
+                    final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.vectorFactory = vectorFactory;
     this.dataParser = dataParser;
@@ -211,15 +210,22 @@ final class NMFWorker implements Worker {
     computeTracer.resetTrace();
   }
 
-  private void sendMetrics(final int numDataBlocks) {
+  private void sendMetrics(final int numDataBlocks, final int processedDataItemCount, final double totalElapsedTime) {
     try {
-      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
       final Metrics metrics = metricsHandler.getMetrics();
-      final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()
+      final WorkerMetrics metricsMessage = WorkerMetrics.newBuilder()
           .setMetrics(metrics)
-          .setIteration(iteration)
+          .setItrIdx(iteration)
+          .setNumMiniBatchPerItr(numMiniBatchPerIter)
           .setNumDataBlocks(numDataBlocks)
+          .setProcessedDataItemCount(processedDataItemCount)
+          .setTotalTime(totalElapsedTime)
+          .setTotalCompTime(computeTracer.totalElapsedTime())
+          .setTotalPullTime(pullTracer.totalElapsedTime())
+          .setAvgPullTime(pullTracer.avgTimePerRecord())
+          .setTotalPushTime(pushTracer.totalElapsedTime())
+          .setAvgPushTime(pushTracer.avgTimePerRecord())
           .build();
       LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
 
@@ -319,7 +325,16 @@ final class NMFWorker implements Worker {
             pullTracer.totalElapsedTime(), pushTracer.avgTimePerRecord(),
             pushTracer.totalElapsedTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
 
-    sendMetrics(memoryStore.getNumBlocks());
+    try {
+      insertableMetricTracker.put(NMFParameters.AVG_LOSS, lossSum / elemCount);
+      insertableMetricTracker.put(NMFParameters.SUM_LOSS, lossSum);
+      insertableMetricTracker.put(NMFParameters.DVT, elemCount / elapsedTime);
+      insertableMetricTracker.put(NMFParameters.RVT, rowCount / elapsedTime);
+    } catch (MetricException e) {
+      e.printStackTrace();
+    }
+
+    sendMetrics(memoryStore.getNumBlocks(), rowCount, elapsedTime);
   }
 
   @Override

@@ -19,8 +19,7 @@ import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.services.ps.metric.avro.ServerMetricsMsg;
-
+import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.logging.Logger;
@@ -32,7 +31,7 @@ import java.util.logging.Logger;
  * The built MetricsMessage is passed through {@code send()} when sending the network message.
  */
 @NotThreadSafe
-public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgSender<ServerMetricsMsg> {
+public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgSender<ServerMetrics> {
   private static final Logger LOG = Logger.getLogger(ServerMetricsMsgSender.class.getName());
 
   private final ServerMetricsMsgCodec metricsMessageCodec;
@@ -57,7 +56,7 @@ public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   }
 
   @Override
-  public void send(final ServerMetricsMsg message) {
+  public void send(final ServerMetrics message) {
     LOG.entering(ServerMetricsMsgSender.class.getSimpleName(), "send");
     aggregationSlave.send(ServerConstants.AGGREGATION_CLIENT_NAME, metricsMessageCodec.encode(message));
     LOG.exiting(ServerMetricsMsgSender.class.getSimpleName(), "send");

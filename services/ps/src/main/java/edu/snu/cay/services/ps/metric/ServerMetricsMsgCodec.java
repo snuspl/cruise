@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.metric;
 
-import edu.snu.cay.services.ps.metric.avro.ServerMetricsMsg;
+import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 
@@ -25,19 +25,19 @@ import javax.inject.Inject;
  * Codec for server-side Metrics Message.
  * Simply uses AvroUtils to encode and decode messages.
  */
-public final class ServerMetricsMsgCodec implements Codec<ServerMetricsMsg> {
+public final class ServerMetricsMsgCodec implements Codec<ServerMetrics> {
 
   @Inject
   private ServerMetricsMsgCodec() {
   }
 
   @Override
-  public byte[] encode(final ServerMetricsMsg msg) {
-    return AvroUtils.toBytes(msg, ServerMetricsMsg.class);
+  public byte[] encode(final ServerMetrics msg) {
+    return AvroUtils.toBytes(msg, ServerMetrics.class);
   }
 
   @Override
-  public ServerMetricsMsg decode(final byte[] data) {
-    return AvroUtils.fromBytes(data, ServerMetricsMsg.class);
+  public ServerMetrics decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, ServerMetrics.class);
   }
 }

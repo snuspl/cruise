@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
 import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.*;
 import edu.snu.cay.dolphin.async.Worker;
@@ -140,7 +141,7 @@ final class MLRWorker implements Worker {
   private final MetricsCollector metricsCollector;
   private final InsertableMetricTracker insertableMetricTracker;
   private final MetricsHandler metricsHandler;
-  private final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender;
+  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -164,7 +165,7 @@ final class MLRWorker implements Worker {
                     final MetricsCollector metricsCollector,
                     final InsertableMetricTracker insertableMetricTracker,
                     final MetricsHandler metricsHandler,
-                    final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender,
+                    final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                     final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
     this.worker = worker;
@@ -333,6 +334,7 @@ final class MLRWorker implements Worker {
               computeTracer.avgTimePerElem(), computeTracer.totalElapsedTime(), pullTracer.avgTimePerElem(),
               pullTracer.totalElapsedTime(), pushTracer.avgTimePerElem(),
               pushTracer.totalElapsedTime(), workload.size() / elapsedTime, elapsedTime});
+
     }
 
     if (iteration % decayPeriod == 0) {
@@ -341,6 +343,7 @@ final class MLRWorker implements Worker {
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
+    insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
 
     sendMetrics(memoryStore.getNumBlocks());
   }
@@ -514,13 +517,12 @@ final class MLRWorker implements Worker {
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
 
       final Metrics metrics = metricsHandler.getMetrics();
-      final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()
+      final WorkerMetrics metricsMessage = WorkerMetrics.newBuilder()
           .setMetrics(metrics)
-          .setIteration(iteration)
+          .setItrIdx(iteration)
           .setNumDataBlocks(numDataBlocks)
           .build();
       LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);

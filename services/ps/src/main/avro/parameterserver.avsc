@@ -166,13 +166,42 @@
 {
   "namespace": "edu.snu.cay.services.ps.metric.avro",
   "type": "record",
-  "name": "ServerMetricsMsg",
+  "name": "ServerThreadMetrics",
+  "fields":
+  [
+    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
+    {"name": "totalTime", "type": "double"},
+    {"name": "pullCount", "type": "int"},
+    {"name": "totalPullTime", "type": "double"},
+    {"name": "avgPullTime", "type": "double"},
+    {"name": "totalPullWaitTime", "type": "double"},
+    {"name": "avgPullWaitTime", "type": "double"},
+    {"name": "pushCount", "type": "int"},
+    {"name": "totalPushTime", "type": "double"},
+    {"name": "avgPushTime", "type": "double"},
+    {"name": "totalPushWaitTime", "type": "double"},
+    {"name": "avgPushWaitTime", "type": "double"}
+  ]
+},
+
+/**
+ * A message containing metrics and other server-specific information.
+ * Since Server does not have iteration as workers, metrics are collected and
+ * sent in a fixed time unit, which is called window.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.metric.avro",
+  "type": "record",
+  "name": "ServerMetrics",
   "fields":
   [
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
     {"name": "windowIndex", "type": "int"},
-    {"name": "numPartitionBlocks", "type": "int"}
+    {"name": "numPartitionBlocks", "type": "int"},
+    {"name": "metricWindowMs", "type": "long"},
+    {"name": "avgProcessingTime", "type": "double"},
+    {"name": "threadMetrics", "type": ["null", "ServerThreadMetrics"], "default": null}
   ]
 }
 ]

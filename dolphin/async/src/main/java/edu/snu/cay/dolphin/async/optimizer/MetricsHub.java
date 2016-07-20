@@ -15,10 +15,11 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
-import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
+import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -49,10 +50,9 @@ public final class MetricsHub {
    * This method does not override existing metrics with the same {@code workerId}.
    * Instead, a new {@link EvaluatorParameters} object is allocated for each call.
    */
-  public void storeWorkerMetrics(final String workerId, final int numDataBlocks,
-                                 final Map<String, Double> metrics) {
-    final DataInfo dataInfo = new DataInfoImpl(numDataBlocks);
-    final EvaluatorParameters evaluatorParameters = new EvaluatorParametersImpl(workerId, dataInfo, metrics);
+  public void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
+    final DataInfo dataInfo = new DataInfoImpl(metrics.getNumDataBlocks());
+    final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParametersImpl(workerId, dataInfo, metrics);
     workerEvalParams.add(evaluatorParameters);
   }
 
@@ -61,10 +61,9 @@ public final class MetricsHub {
    * This method does not override existing metrics with the same {@code serverId}.
    * Instead, a new {@link EvaluatorParameters} object is allocated for each call.
    */
-  public void storeServerMetrics(final String serverId, final int numPartitionBlocks,
-                                 final Map<String, Double> metrics) {
-    final DataInfo dataInfo = new DataInfoImpl(numPartitionBlocks);
-    final EvaluatorParameters evaluatorParameters = new EvaluatorParametersImpl(serverId, dataInfo, metrics);
+  public void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
+    final DataInfo dataInfo = new DataInfoImpl(metrics.getNumPartitionBlocks());
+    final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParametersImpl(serverId, dataInfo, metrics);
     serverEvalParams.add(evaluatorParameters);
   }
 

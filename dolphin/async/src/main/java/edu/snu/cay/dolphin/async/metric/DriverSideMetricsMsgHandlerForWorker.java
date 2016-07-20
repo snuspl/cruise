@@ -16,15 +16,12 @@
 package edu.snu.cay.dolphin.async.metric;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.MetricsHub;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -49,26 +46,14 @@ public final class DriverSideMetricsMsgHandlerForWorker implements EventHandler<
   @Override
   public void onNext(final AggregationMessage msg) {
     LOG.entering(DriverSideMetricsMsgHandlerForWorker.class.getSimpleName(), "onNext");
-    final WorkerMetricsMsg metricsMessage = metricsMsgCodec.decode(msg.getData().array());
+    final WorkerMetrics metricsMessage = metricsMsgCodec.decode(msg.getData().array());
 
     final String workerId = msg.getSourceId().toString();
-    final int iteration = metricsMessage.getIteration();
-    final int numDataBlocks = metricsMessage.getNumDataBlocks();
 
-    final Map<String, Double> workerMetrics = getMetricsFromAvro(metricsMessage.getMetrics());
-
-    LOG.log(Level.FINE, "Metric from worker: {0}, iteration: {1}, metrics: {2}",
-        new Object[]{workerId, iteration, workerMetrics});
-    metricsHub.storeWorkerMetrics(workerId, numDataBlocks, workerMetrics);
+    LOG.log(Level.FINE, "Metric from worker {0}: {1}",
+        new Object[]{workerId, metricsMessage});
+    metricsHub.storeWorkerMetrics(workerId, metricsMessage);
 
     LOG.exiting(DriverSideMetricsMsgHandlerForWorker.class.getSimpleName(), "onNext");
-  }
-
-  private Map<String, Double> getMetricsFromAvro(final Metrics avroMetrics) {
-    final Map<String, Double> metrics = new HashMap<>(avroMetrics.getData().size());
-    for (final Map.Entry<CharSequence, Double> metric : avroMetrics.getData().entrySet()) {
-      metrics.put(metric.getKey().toString(), metric.getValue());
-    }
-    return metrics;
   }
 }
