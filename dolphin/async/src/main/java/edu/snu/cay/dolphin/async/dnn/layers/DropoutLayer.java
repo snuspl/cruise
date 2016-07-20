@@ -39,6 +39,7 @@ public final class DropoutLayer extends LayerBase {
    * @param index the index of this layer
    * @param inputShape the shape of input data
    * @param dropoutRatio the probability for bernoulli matrix
+   * @param matrixFactory the factory to create new matrices
    */
   @Inject
   private DropoutLayer(@Parameter(LayerIndex.class) final int index,

@@ -27,7 +27,7 @@ import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.shapeFromStr
 /**
  * Dropout Layer parameter initializer.
  *
- * This class initializes
+ * This initializer is for dropout layers which do not have layer parameters.
  */
 public class DropoutLayerParameterInitializer implements LayerParameterInitializer {
 
