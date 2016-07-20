@@ -52,7 +52,7 @@
     <maven-checkstyle-plugin.version>2.15</maven-checkstyle-plugin.version>
     <checkstyle.version>6.6</checkstyle.version>
     <mockito.version>1.10.19</mockito.version>
-    <powermock.version>1.6.1</powermock.version>
+    <powermock.version>1.6.5</powermock.version>
     <ojalgo.version>37.1</ojalgo.version>
     <breeze.version>0.12</breeze.version>
     <guava.version>11.0.2</guava.version>
