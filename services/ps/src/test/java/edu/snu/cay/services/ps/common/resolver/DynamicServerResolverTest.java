@@ -27,7 +27,6 @@ import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.worker.impl.WorkerMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
-import org.apache.reef.io.network.naming.NameClient;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -53,7 +52,7 @@ import static org.junit.Assert.*;
  * It checks whether DynamicServerResolver is initialized and updated correctly, and resolves the correct server.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({WorkerMsgSender.class, NameClient.class})
+@PrepareForTest(WorkerMsgSender.class)
 public class DynamicServerResolverTest {
   private static final String SERVER_ID_PREFIX = "SERVER-";
   private static final int NUM_SERVERS = 5;
@@ -103,7 +102,6 @@ public class DynamicServerResolverTest {
         .build();
 
     final Injector workerInjector = Tang.Factory.getTang().newInjector(workerConf);
-    workerInjector.bindVolatileInstance(NameClient.class, mock(NameClient.class));
 
     msgSender = mock(WorkerMsgSender.class);
     workerInjector.bindVolatileInstance(WorkerMsgSender.class, msgSender);
