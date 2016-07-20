@@ -54,6 +54,11 @@ public interface ParameterWorker<K, P, V> {
   List<V> pull(List<K> keys);
 
   /**
+   * Update worker clock(iteration count) and send the clock to the driver.
+   */
+  void clock();
+
+  /**
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
    * for queued messages to be sent.
    */

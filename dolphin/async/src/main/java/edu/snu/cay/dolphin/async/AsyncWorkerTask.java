@@ -19,6 +19,7 @@ import  edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
@@ -98,6 +99,7 @@ final class AsyncWorkerTask implements Task {
       forkedInjector.bindVolatileInstance(DataSet.class, asyncWorkerDataSets[index]);
 
       final Worker worker = forkedInjector.getInstance(Worker.class);
+      final ParameterWorker parameterWorker = forkedInjector.getInstance(ParameterWorker.class);
       futures[index] = executorService.submit(new Runnable() {
         @Override
         public void run() {
@@ -113,6 +115,7 @@ final class AsyncWorkerTask implements Task {
               return;
             }
             worker.run();
+            parameterWorker.clock();
           }
 
           // Synchronize all workers before cleanup for workers
