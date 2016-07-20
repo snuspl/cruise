@@ -13,24 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.metric;
+package edu.snu.cay.common.dataloader;
+
+import org.apache.reef.annotations.audience.DriverSide;
 
 /**
- * Constants for PS metrics, which consists of client name of AggregationService and
- * Keys to identify metrics.
+ * Used in Driver to get splits of a HDFS directory/file.
  */
-public final class ServerConstants {
-
+@DriverSide
+interface HdfsSplitManager {
   /**
-   * Should not be instantiated.
+   * @param path of a HDFS directory/file
+   * @param numOfSplits of the directory/file
+   * @return an array of HDFS split representations
    */
-  private ServerConstants() {
-  }
-
-  public static final String AGGREGATION_CLIENT_NAME =
-      "METRIC_COLLECTION_SERVICE_FOR_SERVER";
-
-  // Keys to get/set the metrics in the server.
-  public static final String SERVER_PROCESSING_TIME =
-      "METRIC_SERVER_PROCESSING_TIME";
+  HdfsSplitInfo[] getSplits(String path, int numOfSplits);
 }

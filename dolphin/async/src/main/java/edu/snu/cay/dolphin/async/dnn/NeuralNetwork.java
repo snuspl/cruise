@@ -25,6 +25,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
 import javax.inject.Inject;
@@ -74,7 +75,6 @@ public final class NeuralNetwork {
   private final List<Integer> learnableLayerIndices;
 
   /**
-   * @param matrixFactory the matrix factory to create matrices
    * @param configurationSerializer the serializer to deserialize Tang configurations for layers
    * @param serializedLayerConfSets the set of Tang configurations used to inject layer instances
    * @param inputShape the shape of input data
@@ -83,17 +83,29 @@ public final class NeuralNetwork {
    */
   @Inject
   private NeuralNetwork(
-      final MatrixFactory matrixFactory,
       final ConfigurationSerializer configurationSerializer,
       @Parameter(SerializedLayerConfigurationSet.class) final Set<String> serializedLayerConfSets,
       @Parameter(InputShape.class) final String inputShape,
+      @Parameter(RandomSeed.class) final long randomSeed,
       final ParameterWorker<Integer, LayerParameter, LayerParameter> parameterWorker,
       final Injector injector) {
-    this.matrixFactory = matrixFactory;
+    // assumes that a matrix factory instance has never been injected by the passed injector.
+    // If the matrix factory instance has been injected, we cannot get multiple copies of it.
+
+    // The injector is forked in order for neural network models in the same evaluator
+    // to have their own matrix factory instances,
+    // which enables the models to initialize parameters with the same sequence of random values.
+    final Injector forkedInjector = injector.forkInjector();
+    try {
+      this.matrixFactory = forkedInjector.getInstance(MatrixFactory.class);
+      matrixFactory.setRandomSeed(randomSeed);
+    } catch (final InjectionException ie) {
+      throw new RuntimeException("Failed to inject a matrix factory instance", ie);
+    }
     this.parameterWorker = parameterWorker;
     final Configuration[] layerConfs =
         deserializeLayerConfSetToArray(configurationSerializer, serializedLayerConfSets);
-    this.layers = getLayerInstances(injector, layerConfs, inputShape);
+    this.layers = getLayerInstances(forkedInjector, layerConfs, inputShape);
     this.emptyMatrix = matrixFactory.create(0);
     this.emptyLayerParam = LayerParameter.newEmptyInstance(matrixFactory);
     this.learnableLayerIndices = getLearnableLayerIndices();

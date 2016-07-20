@@ -30,6 +30,7 @@ import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
+import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -81,7 +82,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   /**
    * Sender that sends pull responses.
    */
-  private final ServerSideReplySender<K, V> sender;
+  private final ServerSideReplySender<K, P, V> sender;
 
   /**
    * MemoryStore instance to access the data.
@@ -181,7 +182,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
                                  final MetricsHandler metricsHandler,
                                  final MetricsMsgSender<ServerMetricsMsg> metricsMsgSender,
                                  final ParameterUpdater<K, P, V> parameterUpdater,
-                                 final ServerSideReplySender<K, V> sender) {
+                                 final ServerSideReplySender<K, P, V> sender) {
     this.memoryStore = memoryStore;
     this.blockResolver = blockResolver;
     this.queueSize = queueSize;
@@ -220,7 +221,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
     for (int threadIndex = 0; threadIndex < numThreads; threadIndex++) {
-      final ServerThread<K, V> thread = new ServerThread<>(queueSize, memoryStore);
+      final ServerThread<K, V> thread = new ServerThread<>(queueSize);
       initialized.put(threadIndex, thread);
       threadPool.submit(thread);
     }
@@ -228,13 +229,13 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   @Override
-  public void push(final K key, final P preValue, final int keyHash) {
+  public void push(final K key, final P preValue, final String srcId, final int keyHash) {
     final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
     final int blockId = blockResolver.resolveBlock(hashedKey);
     final int threadId = threadResolver.resolveThread(blockId);
     LOG.log(Level.FINEST, "Enqueue push request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
         new Object[] {key, blockId, threadId, keyHash});
-    threads.get(threadId).enqueue(new PushOp(hashedKey, preValue, threadId));
+    threads.get(threadId).enqueue(new PushOp(hashedKey, preValue, srcId, threadId));
   }
 
   @Override
@@ -304,7 +305,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
         // After time has elapsed as long as a windowIndex, get the collected metrics and build a MetricsMessage.
         final double processingUnit = getProcessingUnit();
-        insertableMetricTracker.put(ServerConstants.KEY_SERVER_PROCESSING_UNIT, processingUnit);
+        insertableMetricTracker.put(ServerConstants.SERVER_PROCESSING_TIME, processingUnit);
         metricsCollector.stop();
 
         // Send meaningful metrics only (i.e., infinity processing time implies that no data has been processed yet).
@@ -353,13 +354,43 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   /**
-   * A generic operation; operations are queued at each Partition.
+   * Close the server. All the queued operations are rejected, and sent back to the worker who send the requests.
+   */
+  @Override
+  public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
+
+    final Future result = Executors.newSingleThreadExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        // Close all threads
+        for (final ServerThread thread : threads.values()) {
+          thread.startClose();
+        }
+
+        // Wait for close to complete on all threads
+        for (final ServerThread thread : threads.values()) {
+          thread.waitForClose();
+        }
+      }
+    });
+
+    result.get(timeoutMs, TimeUnit.MILLISECONDS);
+  }
+
+  /**
+   * A generic operation; operations are queued at each ServerThread.
    */
   private interface Op<K, V> {
+
     /**
-     * Method to apply when dequeued by the Partition.
+     * Method to apply when dequeued by the ServerThread.
      */
     void apply();
+
+    /**
+     * Method to reject the operation when closing the ServerThread.
+     */
+    void reject();
   }
 
   /**
@@ -368,12 +399,14 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private class PushOp implements Op<K, V> {
     private final HashedKey<K> hashedKey;
     private final P preValue;
+    private final String srcId;
     private final long timestamp;
     private final int threadId;
 
-    PushOp(final HashedKey<K> hashedKey, final P preValue, final int threadId) {
+    PushOp(final HashedKey<K> hashedKey, final P preValue, final String srcId, final int threadId) {
       this.hashedKey = hashedKey;
       this.preValue = preValue;
+      this.srcId = srcId;
       this.timestamp = ticker.read();
       this.threadId = threadId;
     }
@@ -419,6 +452,11 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
     }
+
+    @Override
+    public void reject() {
+      sender.sendPushRejectMsg(srcId, hashedKey.getKey(), preValue);
+    }
   }
 
   /**
@@ -461,7 +499,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         } else {
           value = kvPair.getSecond();
         }
-        sender.sendReplyMsg(srcId, hashedKey.getKey(), value);
+        sender.sendPullReplyMsg(srcId, hashedKey.getKey(), value);
         final long processEndTime = ticker.read();
         final long processingTime = processEndTime - waitEndTime;
         pullStats[threadId].put(processingTime);
@@ -474,6 +512,11 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
+    }
+
+    @Override
+    public void reject() {
+      sender.sendPullRejectMsg(srcId, hashedKey.getKey());
     }
   }
 
@@ -493,18 +536,32 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
    */
   private static class ServerThread<K, V> implements Runnable {
     private static final long QUEUE_TIMEOUT_MS = 3000;
+    private static final String STATE_RUNNING = "RUNNING";
+    private static final String STATE_CLOSING = "CLOSING";
+    private static final String STATE_CLOSED = "CLOSED";
+
     private final BlockingQueue<Op<K, V>> queue;
     private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
     private final int drainSize; // Max number of operations to drain per iteration.
-    private final MemoryStore<HashedKey<K>> memoryStore;
 
-    private volatile boolean shutdown = false;
+    private final StateMachine stateMachine;
 
-    ServerThread(final int queueSize, final MemoryStore<HashedKey<K>> memoryStore) {
+    ServerThread(final int queueSize) {
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
       this.localOps = new ArrayList<>(drainSize);
-      this.memoryStore = memoryStore;
+      this.stateMachine = initStateMachine();
+    }
+
+    private StateMachine initStateMachine() {
+      return StateMachine.newBuilder()
+          .addState(STATE_RUNNING, "Server thread is running. It executes operations in the queue.")
+          .addState(STATE_CLOSING, "Server thread is closing. It will be closed after rejecting whole remaining ops.")
+          .addState(STATE_CLOSED, "Server thread is closed. It finished rejecting whole remaining operations.")
+          .addTransition(STATE_RUNNING, STATE_CLOSING, "Time to close the thread.")
+          .addTransition(STATE_CLOSING, STATE_CLOSED, "Closing the thread is done.")
+          .setInitialState(STATE_RUNNING)
+          .build();
     }
 
     /**
@@ -535,8 +592,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     @Override
     public void run() {
-      while (!shutdown) {
-        // First, poll and apply. The timeout allows the run thread to shutdown cleanly within timeout ms.
+      while (stateMachine.getCurrentState().equals(STATE_RUNNING)) {
+        // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (op == null) {
@@ -552,18 +609,48 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         // Calling drainTo does not block if queue is empty, which is why we poll first.
         // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
         queue.drainTo(localOps, drainSize);
-        for (final Op<K, V> op : localOps) {
-          op.apply();
-        }
+        localOps.forEach(Op::apply);
         localOps.clear();
       }
+
+      // reject all operations in the queue before exit
+      while (!queue.isEmpty()) {
+        queue.drainTo(localOps, drainSize);
+        localOps.forEach(Op::reject);
+        localOps.clear();
+      }
+
+      finishClose();
     }
 
     /**
-     * Cleanly shutdown the run thread.
+     * Start closing the thread.
+     * The thread will be closed after sending reject messages for all pending operations.
      */
-    public void shutdown() {
-      shutdown = true;
+    void startClose() {
+      stateMachine.setState(STATE_CLOSING);
+    }
+
+    /**
+     * Notify that the thread is closed successfully.
+     * It wakes up threads waiting in {@link #waitForClose()}.
+     */
+    private synchronized void finishClose() {
+      stateMachine.setState(STATE_CLOSED);
+      notifyAll();
+    }
+
+    /**
+     * Wait until thread is closed successfully.
+     */
+    synchronized void waitForClose() {
+      while (!stateMachine.getCurrentState().equals(STATE_CLOSED)) {
+        try {
+          wait();
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
+        }
+      }
     }
   }
 

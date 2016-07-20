@@ -43,7 +43,6 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
   private int strideWidth = 1;
   private int kernelHeight;
   private int kernelWidth;
-  private long randomSeed = System.currentTimeMillis();
   private float initWeight;
   private float initBias;
   private int numOutput;
@@ -78,11 +77,6 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
     return this;
   }
 
-  public synchronized ConvolutionalLayerConfigurationBuilder setRandomSeed(final long randomSeed) {
-    this.randomSeed = randomSeed;
-    return this;
-  }
-
   public synchronized ConvolutionalLayerConfigurationBuilder setInitWeight(final float initWeight) {
     this.initWeight = initWeight;
     return this;
@@ -107,9 +101,6 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
     strideWidth = protoConf.getConvolutionalParam().getStrideWidth();
     kernelHeight = protoConf.getConvolutionalParam().getKernelHeight();
     kernelWidth = protoConf.getConvolutionalParam().getKernelWidth();
-    if (protoConf.getConvolutionalParam().hasRandomSeed()) {
-      randomSeed = protoConf.getConvolutionalParam().getRandomSeed();
-    }
     initWeight = protoConf.getConvolutionalParam().getInitWeight();
     initBias = protoConf.getConvolutionalParam().getInitBias();
     numOutput = protoConf.getConvolutionalParam().getNumOutput();
@@ -125,7 +116,6 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
         .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
         .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
         .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
-        .bindNamedParameter(LayerConfigurationParameters.RandomSeed.class, String.valueOf(randomSeed))
         .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
         .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
         .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))

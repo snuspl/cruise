@@ -17,7 +17,11 @@ package edu.snu.cay.services.em.plan.api;
 
 /**
  * The result of the applied plan.
- * This interface should be expanded to return a summary of plan execution's result.
  */
 public interface PlanResult {
+  /**
+   * Aggregates the number of operations executed when a plan is executed.
+   * @return the number of operations executed in the plan
+   */
+  int getNumExecutedOps();
 }

@@ -25,6 +25,7 @@ import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.Statistics;
+import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
@@ -35,7 +36,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -178,7 +178,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     }
   }
 
-  public void push(final EncodedKey<K> encodedKey, final P preValue) {
+  void push(final EncodedKey<K> encodedKey, final P preValue) {
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
     threads[threadId].enqueue(new PushOp(encodedKey, preValue, threadId));
@@ -193,7 +193,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     }
   }
 
-  public V pull(final EncodedKey<K> encodedKey) {
+  V pull(final EncodedKey<K> encodedKey) {
     final PullOp pullOp = new PullOp(encodedKey);
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
@@ -216,7 +216,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     return pullEncodedKeys(encodedKeys);
   }
 
-  public List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
+  List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
     final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
     for (final EncodedKey<K> encodedKey : encodedKeys) {
       final PullOp pullOp = new PullOp(encodedKey);
@@ -254,11 +254,11 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       public void run() {
         // Close all threads
         for (int i = 0; i < numThreads; i++) {
-          threads[i].close();
+          threads[i].startClose();
         }
-        // Wait for shutdown to complete on all threads
+        // Wait for close to complete on all threads
         for (int i = 0; i < numThreads; i++) {
-          threads[i].waitForShutdown();
+          threads[i].waitForClose();
         }
       }
     });
@@ -268,13 +268,31 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
   /**
    * Handles incoming pull replies, by setting the value of the future.
-   * This will notify the Partition's (synchronous) CacheLoader method to continue.
-   * Called by {@link AsyncWorkerHandlerImpl#processReply}.
+   * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
+   * Called by {@link AsyncWorkerHandlerImpl#processPullReply}.
    */
-  public void processReply(final K key, final V value) {
+  void processPullReply(final K key, final V value) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);
+
+    } else {
+      // Because we use partitions, there can be at most one active pendingPull for a key.
+      // Thus, a null value should never appear.
+      throw new RuntimeException(String.format("Pending pull was not found for key %s", key));
+    }
+  }
+
+  /**
+   * Handles incoming pull rejects, by rejecting the future.
+   * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
+   * Called by {@link AsyncWorkerHandlerImpl#processPullReject}.
+   */
+  void processPullReject(final K key) {
+    final PullFuture<V> future = pendingPulls.get(key);
+    if (future != null) {
+      future.reject();
+
     } else {
       // Because we use partitions, there can be at most one active pendingPull for a key.
       // Thus, a null value should never appear.
@@ -287,18 +305,18 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * We do not implement a true Future, because this is simpler.
    */
   private static final class PullFuture<V> {
+    private boolean rejected = false;
     private V value = null;
 
     /**
-     * Block until a value is set or the maximum waiting time elapses.
-     * It returns null when it fails to get the value in given timeout.
-     * @param timeout the maximum time to wait in milliseconds
+     * Block until a value is set.
+     * It returns null when it fails to get the value.
      * @return the value
      */
-    public synchronized V getValue(final long timeout) {
-      if (value == null) {
+    synchronized V getValue() {
+      if (value == null && !rejected) {
         try {
-          wait(timeout);
+          wait();
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "InterruptedException on wait", e);
         }
@@ -312,6 +330,14 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      */
     public synchronized void setValue(final V value) {
       this.value = value;
+      notify();
+    }
+
+    /**
+     * Wake up the waiting thread without setting a value, in order to retry.
+     */
+    synchronized void reject() {
+      rejected = true;
       notify();
     }
   }
@@ -351,15 +377,15 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private static class Wrapped<V> {
     private V value;
 
-    public Wrapped(final V value) {
+    Wrapped(final V value) {
       this.value = value;
     }
 
-    public V getValue() {
+    V getValue() {
       return value;
     }
 
-    public void setValue(final V value) {
+    void setValue(final V value) {
       this.value = value;
     }
   }
@@ -374,7 +400,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final P preValue;
     private final int threadId;
 
-    public PushOp(final EncodedKey<K> encodedKey, final P preValue, final int threadId) {
+    PushOp(final EncodedKey<K> encodedKey, final P preValue, final int threadId) {
       this.encodedKey = encodedKey;
       this.preValue = preValue;
       this.threadId = threadId;
@@ -443,7 +469,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final EncodedKey<K> encodedKey;
     private V value;
 
-    public PullOp(final EncodedKey<K> encodedKey) {
+    PullOp(final EncodedKey<K> encodedKey) {
       this.encodedKey = encodedKey;
     }
 
@@ -501,6 +527,9 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private static class WorkerThread<K, P, V> implements Runnable {
     private static final int MAX_RETRY_COUNT = 10;
     private static final long QUEUE_TIMEOUT_MS = 3000;
+    private static final String STATE_RUNNING = "RUNNING";
+    private static final String STATE_CLOSING = "CLOSING";
+    private static final String STATE_CLOSED = "CLOSED";
 
     private final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache;
     private final BlockingQueue<Op<K, V>> queue;
@@ -508,21 +537,30 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private final int drainSize; // Max number of operations to drain per iteration.
     private final Ticker ticker = Ticker.systemTicker();
 
-    private volatile boolean close = false;
-    private final AtomicBoolean shutdown = new AtomicBoolean(false);
+    private final StateMachine stateMachine;
 
-    public WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
-                        final ServerResolver serverResolver,
-                        final InjectionFuture<WorkerMsgSender<K, P>> sender,
-                        final int queueSize,
-                        final long expireTimeout,
-                        final Statistics pullStat) {
-      kvCache = CacheBuilder.newBuilder()
+    WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
+                 final ServerResolver serverResolver,
+                 final InjectionFuture<WorkerMsgSender<K, P>> sender,
+                 final int queueSize,
+                 final long expireTimeout,
+                 final Statistics pullStat) {
+      this.kvCache = initCache(pendingPulls, serverResolver, sender, expireTimeout, pullStat);
+      this.queue = new ArrayBlockingQueue<>(queueSize);
+      this.drainSize = queueSize / 10;
+      this.localOps = new ArrayList<>(drainSize);
+      this.stateMachine = initStateMachine();
+    }
+
+    private LoadingCache<EncodedKey<K>, Wrapped<V>> initCache(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
+                                                              final ServerResolver serverResolver,
+                                                              final InjectionFuture<WorkerMsgSender<K, P>> sender,
+                                                              final long expireTimeout,
+                                                              final Statistics pullStat) {
+      return CacheBuilder.newBuilder()
           .concurrencyLevel(1)
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
           .build(new CacheLoader<EncodedKey<K>, Wrapped<V>>() {
-            private static final long RETRY_INTERVAL_MS = 5000;
-
             @Override
             public Wrapped<V> load(final EncodedKey<K> encodedKey) {
               final PullFuture<V> future = new PullFuture<>();
@@ -532,8 +570,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
               int retryCount = 0;
               while (value == null) {
-                if (++retryCount > MAX_RETRY_COUNT) {
-                  throw new RuntimeException("Fail to load a value for pull");
+                if (retryCount > MAX_RETRY_COUNT) {
+                  throw new RuntimeException("Fail to send a value for pull");
                 }
 
                 // re-resolve server for every retry
@@ -548,20 +586,29 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                   pullStat.put(ticker.read() - beginTick);
                 } catch (final NetworkException e) {
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
+                  retryCount++;
                   continue;
                 }
 
-                // if failed, future returns null and pull is retried in the while loop
-                value = future.getValue(RETRY_INTERVAL_MS);
+                // returns null when rejected by server and then the pull is retried in the while loop
+                value = future.getValue();
               }
 
               pendingPulls.remove(encodedKey.getKey());
               return new Wrapped<>(value);
             }
           });
-      queue = new ArrayBlockingQueue<>(queueSize);
-      this.drainSize = queueSize / 10;
-      this.localOps = new ArrayList<>(drainSize);
+    }
+
+    private StateMachine initStateMachine() {
+      return StateMachine.newBuilder()
+          .addState(STATE_RUNNING, "Server thread is running. It executes operations in the queue.")
+          .addState(STATE_CLOSING, "Server thread is closing. It will be closed after processing whole remaining ops.")
+          .addState(STATE_CLOSED, "Server thread is closed. It finished processing whole remaining operations.")
+          .addTransition(STATE_RUNNING, STATE_CLOSING, "Time to close the thread.")
+          .addTransition(STATE_CLOSING, STATE_CLOSED, "Closing the thread is done.")
+          .setInitialState(STATE_RUNNING)
+          .build();
     }
 
     /**
@@ -571,19 +618,18 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      *
      * @param op the operation to enqueue
      */
-    public void enqueue(final Op<K, V> op) {
+    void enqueue(final Op<K, V> op) {
       try {
         queue.put(op);
       } catch (final InterruptedException e) {
         LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
-        return;
       }
     }
 
     /**
      * Invalidate all cached pulls.
      */
-    public void invalidateAll() {
+    void invalidateAll() {
       kvCache.invalidateAll();
     }
 
@@ -603,7 +649,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      */
     @Override
     public void run() {
-      while (!close || !queue.isEmpty()) {
+      while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
         // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -626,32 +672,33 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
         localOps.clear();
       }
 
-      shutdown();
+      finishClose();
     }
 
     /**
-     * Close the run thread.
+     * Start closing the thread.
+     * The thread will be closed after processing for all pending operations.
      */
-    public void close() {
-      close = true;
-    }
-
-    private void shutdown() {
-      shutdown.set(true);
-      synchronized (shutdown) {
-        shutdown.notifyAll();
-      }
+    void startClose() {
+      stateMachine.setState(STATE_CLOSING);
     }
 
     /**
-     * Wait for shutdown confirmation (clean close has finished).
+     * Notify that the thread is closed successfully.
+     * It wakes up threads waiting in {@link #waitForClose()}.
      */
-    public void waitForShutdown() {
-      while (!shutdown.get()) {
+    private synchronized void finishClose() {
+      stateMachine.setState(STATE_CLOSED);
+      notifyAll();
+    }
+
+    /**
+     * Wait until thread is closed successfully.
+     */
+    synchronized void waitForClose() {
+      while (!stateMachine.getCurrentState().equals(STATE_CLOSED)) {
         try {
-          synchronized (shutdown) {
-            shutdown.wait();
-          }
+          wait();
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
         }

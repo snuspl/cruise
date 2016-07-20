@@ -47,4 +47,8 @@ public final class NeuralNetworkConfigurationParameters {
   @NamedParameter(doc = "the shape of input data")
   public static final class InputShape implements Name<String> {
   }
+
+  @NamedParameter(doc = "random seed that is used to generate random values")
+  public static final class RandomSeed implements Name<Long> {
+  }
 }

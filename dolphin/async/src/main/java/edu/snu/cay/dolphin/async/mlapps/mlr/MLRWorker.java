@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
 import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.*;
 import edu.snu.cay.dolphin.async.Worker;
@@ -36,7 +37,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.metric.WorkerConstants.KEY_WORKER_COMPUTE_TIME;
+import static edu.snu.cay.dolphin.async.metric.WorkerConstants.WORKER_COMPUTE_TIME;
 
 /**
  * {@link Worker} class for the MLRREEF application.
@@ -74,7 +75,7 @@ final class MLRWorker implements Worker {
   /**
    * Number of batches per iteration.
    */
-  private final int numBatchPerIter;
+  private final int numMiniBatchPerIter;
 
   /**
    * Size of each step taken during gradient descent.
@@ -157,7 +158,7 @@ final class MLRWorker implements Worker {
                     @Parameter(DecayPeriod.class) final int decayPeriod,
                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
                     @Parameter(NumBatchPerLossLog.class) final int numBatchPerLossLog,
-                    @Parameter(NumBatchPerIter.class) final int numBatchPerIter,
+                    @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
                     final MetricsCollector metricsCollector,
@@ -173,7 +174,7 @@ final class MLRWorker implements Worker {
       throw new RuntimeException("Uneven model partitions");
     }
     this.numPartitionsPerClass = numFeatures / numFeaturesPerPartition;
-    this.numBatchPerIter = numBatchPerIter;
+    this.numMiniBatchPerIter = numMiniBatchPerIter;
     this.stepSize = initStepSize;
     this.lambda = lambda;
     this.statusLogPeriod = statusLogPeriod;
@@ -230,7 +231,7 @@ final class MLRWorker implements Worker {
     }
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numBatchPerIter);
+    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerIter);
     LOG.log(Level.INFO, "Total number of samples = {0}", dataValues.size());
     if (dataValues.size() < trainErrorDatasetSize) {
       LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDatasetSize);
@@ -266,8 +267,8 @@ final class MLRWorker implements Worker {
 
     int numInstances = 0;
     int numBatch = 0;
-    int batchCount = workload.size() / numBatchPerIter;
-    batchCount += workload.size() % numBatchPerIter == 0 ? 0 : 1;
+    int batchCount = workload.size() / numMiniBatchPerIter;
+    batchCount += workload.size() % numMiniBatchPerIter == 0 ? 0 : 1;
     computeTracer.startTimer();
     for (final Pair<Vector, Integer> entry : workload) {
       if (numInstances >= batchCount) {
@@ -285,8 +286,8 @@ final class MLRWorker implements Worker {
         }
 
         numInstances = 0;
-        batchCount = workload.size() / numBatchPerIter;
-        batchCount += workload.size() % numBatchPerIter <= numBatch ? 0 : 1;
+        batchCount = workload.size() / numMiniBatchPerIter;
+        batchCount += workload.size() % numMiniBatchPerIter <= numBatch ? 0 : 1;
       }
 
       final Vector features = entry.getFirst();
@@ -513,7 +514,7 @@ final class MLRWorker implements Worker {
 
   private void sendMetrics(final int numDataBlocks) {
     try {
-      insertableMetricTracker.put(KEY_WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
       metricsCollector.stop();
 
       final Metrics metrics = metricsHandler.getMetrics();

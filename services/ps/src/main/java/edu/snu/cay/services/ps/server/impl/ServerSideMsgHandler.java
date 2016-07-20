@@ -79,11 +79,11 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
     final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
     case PushMsg:
-      onPushMsg(innerMsg.getPushMsg());
+      onPushMsg(msg.getSrcId().toString(), innerMsg.getPushMsg());
       break;
 
     case PullMsg:
-      onPullMsg(innerMsg.getPullMsg());
+      onPullMsg(msg.getSrcId().toString(), innerMsg.getPullMsg());
       break;
 
     default:
@@ -93,15 +93,14 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
     LOG.exiting(ServerSideMsgHandler.class.getSimpleName(), "onNext");
   }
 
-  private void onPushMsg(final PushMsg pushMsg) {
+  private void onPushMsg(final String srcId, final PushMsg pushMsg) {
     final K key = keyCodec.decode(pushMsg.getKey().array());
     final P preValue = preValueCodec.decode(pushMsg.getPreValue().array());
     final int keyHash = hash(pushMsg.getKey().array());
-    parameterServer.push(key, preValue, keyHash);
+    parameterServer.push(key, preValue, srcId, keyHash);
   }
 
-  private void onPullMsg(final PullMsg pullMsg) {
-    final String srcId = pullMsg.getSrcId().toString();
+  private void onPullMsg(final String srcId, final PullMsg pullMsg) {
     final K key = keyCodec.decode(pullMsg.getKey().array());
     final int keyHash = hash(pullMsg.getKey().array());
     parameterServer.pull(key, srcId, keyHash);

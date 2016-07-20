@@ -31,19 +31,39 @@
   "name": "PullMsg",
   "fields":
   [
-    {"name": "key", "type": "bytes"},
-    {"name": "srcId", "type": "string"}
+    {"name": "key", "type": "bytes"}
   ]
 },
 
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
-  "name": "ReplyMsg",
+  "name": "PullReplyMsg",
   "fields":
   [
     {"name": "key", "type": "bytes"},
     {"name": "value", "type": "bytes"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "PushRejectMsg",
+  "fields":
+  [
+    {"name": "key", "type": "bytes"},
+    {"name": "preValue", "type": "bytes"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "PullRejectMsg",
+  "fields":
+  [
+    {"name": "key", "type": "bytes"}
   ]
 },
 
@@ -124,11 +144,13 @@
      "type":
        {"type": "enum",
         "name": "Type",
-        "symbols": ["PushMsg", "PullMsg", "ReplyMsg",
+        "symbols": ["PushMsg", "PullMsg", "PullReplyMsg", "PushRejectMsg", "PullRejectMsg",
          "WorkerRegisterMsg", "WorkerRegisterReplyMsg", "RoutingTableUpdateMsg", "WorkerDeregisterMsg"]}},
     {"name": "pushMsg", "type": ["null", "PushMsg"], "default": null},
     {"name": "pullMsg", "type": ["null", "PullMsg"], "default": null},
-    {"name": "replyMsg", "type": ["null", "ReplyMsg"], "default": null},
+    {"name": "pullReplyMsg", "type": ["null", "PullReplyMsg"], "default": null},
+    {"name": "pushRejectMsg", "type": ["null", "PushRejectMsg"], "default": null},
+    {"name": "pullRejectMsg", "type": ["null", "PullRejectMsg"], "default": null},
     {"name": "workerRegisterMsg", "type": ["null", "WorkerRegisterMsg"], "default": null},
     {"name": "workerRegisterReplyMsg", "type": ["null", "WorkerRegisterReplyMsg"], "default": null},
     {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},

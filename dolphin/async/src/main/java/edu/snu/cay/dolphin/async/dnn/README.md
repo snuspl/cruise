@@ -28,6 +28,7 @@ To create a neural network model, you must define the architecture of your neura
 * `batch_size`: the number of training inputs used per parameter update.
 * `step_size`: step size (learning rate) for stochastic gradient descent.
 * <a name=configuration-input_shape>`input_shape`</a>: the shape of input data.
+* `random_seed`[default=initial seed]: the seed for generating random initial parameters.
 
 ### Layers
 
@@ -36,7 +37,6 @@ To create a neural network model, you must define the architecture of your neura
 * Parameters (`FullyConnectedLayerConfiguration fully_connected_param`)
 	* `init_weight`: the standard deviation that is used to initialize the weights in this layer from a Gaussian distribution with mean 0.
 	* `init_bias`: constant value with which the biases of this layer are initialized.
-	* `random_seed`: the seed for generating random initial parameters.
 	* `num_output`: the number of outputs for this layer.
 
 ##### Pooling Layer
@@ -61,7 +61,6 @@ To create a neural network model, you must define the architecture of your neura
     * `stride_width`[default = 1]: the interval at which convolutional layers apply filters to inputs.
     * `init_weight`: the standard deviation that is used to initialize the weights in this layer from a Gaussian distribution with mean 0.
     * `init_bias`: constant value with which the biases of this layer are initialized.
-    * `random_seed`: the seed for generating random initial parameters.
     * `num_output`: the number of outputs for this layer.
 
 ##### Activation Layer

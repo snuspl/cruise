@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Tests for classes that apply EM optimization and plan execution to the Dolphin-async runtime.
+ * Optimizer tests for dolphin-async.
  */
 package edu.snu.cay.dolphin.async.optimizer;
