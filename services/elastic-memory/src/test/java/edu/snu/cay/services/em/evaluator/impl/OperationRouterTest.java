@@ -54,10 +54,11 @@ import static org.junit.Assert.*;
  * Tests to check whether OperationRouter is initialized correctly, and routes operations to the correct target.
  */
 public class OperationRouterTest {
+  // TODO #509: EM assumes that the eval prefix has "-" at the end
   private static final String EVAL_ID_PREFIX = "EVAL-";
 
   private ElasticMemoryMsgSender evalMsgSender;
-  private CountDownLatch initLatch = new CountDownLatch(1);
+  private CountDownLatch initLatch;
 
   private OperationRouter newOperationRouter(final int numInitialEvals,
                                              final int numTotalBlocks,
@@ -125,6 +126,9 @@ public class OperationRouterTest {
           return null;
         }
       }).when(evalMsgSender).sendRoutingTableInitReqMsg(any(TraceInfo.class));
+
+      // reset initLatch
+      initLatch = new CountDownLatch(1);
 
       // driverMsgHander.onNext will invoke driverMsgSender.sendRoutingTableInitMsg with the routine table
       doAnswer(new Answer() {
