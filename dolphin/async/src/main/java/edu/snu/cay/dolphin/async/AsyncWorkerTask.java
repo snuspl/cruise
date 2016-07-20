@@ -19,6 +19,7 @@ import  edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.ps.worker.api.ParameterAccessor;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -58,6 +59,7 @@ final class AsyncWorkerTask implements Task {
   private final WorkerSynchronizer synchronizer;
   private final Injector injector;
   private final DataSet<LongWritable, Text> dataSet;
+  private final ParameterWorker parameterWorker;
 
   /**
    * A boolean flag shared among all worker threads.
@@ -73,7 +75,8 @@ final class AsyncWorkerTask implements Task {
                           final Injector injector,
                           final DataIdFactory<Long> idFactory,
                           final OperationRouter<Long> router,
-                          final DataSet<LongWritable, Text> dataSet) {
+                          final DataSet<LongWritable, Text> dataSet,
+                          final ParameterWorker parameterWorker) {
     // inject DataIdFactory and OperationRouter here to make spawning threads share the same instances
     this.taskId = taskId;
     this.maxIterations = maxIterations;
@@ -81,6 +84,7 @@ final class AsyncWorkerTask implements Task {
     this.synchronizer = synchronizer;
     this.injector = injector;
     this.dataSet = dataSet;
+    this.parameterWorker = parameterWorker;
   }
 
   @Override
@@ -90,7 +94,6 @@ final class AsyncWorkerTask implements Task {
     final AsyncWorkerDataSet[] asyncWorkerDataSets = divideDataSets();
     final ExecutorService executorService = Executors.newFixedThreadPool(numWorkerThreads);
     final Future[] futures = new Future[numWorkerThreads];
-    final ParameterWorker parameterWorker = injector.getInstance(ParameterWorker.class);
 
     LOG.log(Level.INFO, "Initializing {0} worker threads", numWorkerThreads);
     for (int index = 0; index < numWorkerThreads; index++) {
@@ -100,6 +103,8 @@ final class AsyncWorkerTask implements Task {
       forkedInjector.bindVolatileInstance(DataSet.class, asyncWorkerDataSets[index]);
 
       final Worker worker = forkedInjector.getInstance(Worker.class);
+      // create ParameterAccessor instance for each thread
+      final ParameterAccessor parameterAccessor = forkedInjector.getInstance(ParameterAccessor.class);
       futures[index] = executorService.submit(new Runnable() {
         @Override
         public void run() {

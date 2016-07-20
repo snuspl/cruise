@@ -18,7 +18,7 @@ package edu.snu.cay.services.ps.worker.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "staleness for SSP, possible value is a positive number",
+@NamedParameter(doc = "staleness for SSP, a number which is greater or equal than 0",
     default_value = "-1", short_name = "staleness")
 public final class Staleness implements Name<Long> {
 }
