@@ -90,6 +90,7 @@ final class AsyncWorkerTask implements Task {
     final AsyncWorkerDataSet[] asyncWorkerDataSets = divideDataSets();
     final ExecutorService executorService = Executors.newFixedThreadPool(numWorkerThreads);
     final Future[] futures = new Future[numWorkerThreads];
+    final ParameterWorker parameterWorker = injector.getInstance(ParameterWorker.class);
 
     LOG.log(Level.INFO, "Initializing {0} worker threads", numWorkerThreads);
     for (int index = 0; index < numWorkerThreads; index++) {
@@ -99,7 +100,6 @@ final class AsyncWorkerTask implements Task {
       forkedInjector.bindVolatileInstance(DataSet.class, asyncWorkerDataSets[index]);
 
       final Worker worker = forkedInjector.getInstance(Worker.class);
-      final ParameterWorker parameterWorker = forkedInjector.getInstance(ParameterWorker.class);
       futures[index] = executorService.submit(new Runnable() {
         @Override
         public void run() {
