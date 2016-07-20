@@ -113,7 +113,7 @@ final class SynchronizationManager {
   synchronized void onWorkerAdded() {
     // increase the number of workers to block
     numWorkersToSync++;
-    LOG.log(Level.FINE, "Total number of workers participating in the synchronization = {0}", numWorkersToSync);
+    LOG.log(Level.INFO, "Total number of workers participating in the synchronization = {0}", numWorkersToSync);
   }
 
   /**
@@ -121,14 +121,14 @@ final class SynchronizationManager {
    * @param workerId an id of worker
    */
   synchronized void onWorkerDeleted(final String workerId) {
+    numWorkersToSync--;
+    LOG.log(Level.INFO, "Total number of workers participating in the synchronization = {0}", numWorkersToSync);
     // when deleted worker already has sent a sync msg
     if (blockedWorkerIds.contains(workerId)) {
-      numWorkersToSync--;
       blockedWorkerIds.remove(workerId);
 
     // when deleted worker did not send a sync msg yet
     } else {
-      numWorkersToSync--;
       tryReleaseWorkers();
     }
   }
@@ -143,11 +143,11 @@ final class SynchronizationManager {
     switch (currentState) {
     case STATE_INIT:
       stateMachine.setState(STATE_RUN);
-      LOG.fine("State transition: STATE_INIT -> STATE_RUN");
+      LOG.log(Level.INFO, "State transition: STATE_INIT -> STATE_RUN");
       break;
     case STATE_RUN:
       stateMachine.setState(STATE_CLEANUP);
-      LOG.fine("State transition: STATE_RUN -> STATE_CLEANUP");
+      LOG.log(Level.INFO, "State transition: STATE_RUN -> STATE_CLEANUP");
       break;
     case STATE_CLEANUP:
       throw new RuntimeException("No more transition is allowed after STATE_CLEANUP state");
@@ -225,7 +225,7 @@ final class SynchronizationManager {
   private synchronized void blockWorker(final String workerId) {
 
     blockedWorkerIds.add(workerId);
-    LOG.log(Level.FINE, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
+    LOG.log(Level.INFO, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
         new Object[]{workerId, blockedWorkerIds.size(), numWorkersToSync});
 
     tryReleaseWorkers();
