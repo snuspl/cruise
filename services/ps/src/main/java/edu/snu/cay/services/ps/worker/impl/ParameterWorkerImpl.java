@@ -490,7 +490,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           LOG.log(Level.FINE, "NetworkException while sending push msg. Do retry", e);
         }
 
-        LOG.log(Level.INFO, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
+        LOG.log(Level.FINE, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
         try {
           Thread.sleep(RESEND_INTERVAL_MS);
         } catch (final InterruptedException e) {
@@ -672,7 +672,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
                 }
 
-                LOG.log(Level.INFO, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
+                LOG.log(Level.FINE, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
                 try {
                   Thread.sleep(RESEND_INTERVAL_MS);
                 } catch (final InterruptedException e) {
@@ -741,7 +741,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           }
           op.apply(kvCache);
         } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+          LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
           continue;
         }
 
