@@ -13,24 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.ssp;
+package edu.snu.cay.services.ps.worker.api;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 /**
- * A Parameter accessor for a single worker thread.
+ * A Parameter accessor for a worker thread.
  * This interacts with local caches(thread, worker) and the servers to provide or fetch parameters.
- * This is used to connect the {@link edu.snu.cay.dolphin.async.Worker}
+ * This is used to connect the a worker thread
  * to a {@link edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl}.
  *
  * @param <K> class type of parameter keys
  * @param <P> class type of parameter values before they are processed at the servers
  * @param <V> class type of parameter values after they are processed at the servers
  */
-public final class SSPParameterAccessor<K, P, V> {
-
+public interface ParameterAccessor<K, P, V> {
   /**
    * Update a {@code preValue} associated with a certain {@code key} to the thread cache.
    * Each {@code preValue} of same {@code key} is accumulated and sent to servers on {@code flush()} call.
@@ -38,16 +37,12 @@ public final class SSPParameterAccessor<K, P, V> {
    * @param key      key object representing what is being updated
    * @param preValue value to push to the thread cache
    */
-  void push(final K key, final P preValue) {
-
-  }
+  void push(final K key, final P preValue);
 
   /**
    * Send cached keys and accumulated values in the thread cache to the servers.
    */
-  void flush() {
-
-  }
+  void flush();
 
   /**
    * Fetch a value associated with a certain {@code key} from the servers or local caches(thread, worker).
@@ -56,9 +51,7 @@ public final class SSPParameterAccessor<K, P, V> {
    * @param key key object representing the expected value
    * @return value specified by the {@code key}, or {@code null} if something unexpected happens (see implementation)
    */
-  V pull(final K key) {
-    return null;
-  }
+  V pull(final K key);
 
   /**
    * Fetch values associated with certain {@code keys} from the servers or local caches(thread, worker).
@@ -69,15 +62,11 @@ public final class SSPParameterAccessor<K, P, V> {
    * @return a list of values specified by the given {@code keys}. Some positions can be {@code null}
    * if something unexpected happens. (see implementation)
    */
-  List<V> pull(final List<K> keys) {
-    return null;
-  }
+  List<V> pull(final List<K> keys);
 
   /**
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
    * for queued messages to be sent.
    */
-  void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
-
-  }
+  void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException;
 }

@@ -33,8 +33,11 @@ import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
+import edu.snu.cay.services.ps.worker.api.ParameterAccessor;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.impl.ParameterAccessorImpl;
 import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
+import edu.snu.cay.services.ps.worker.impl.SSPParameterAccessorImpl;
 import edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
 import edu.snu.cay.services.ps.common.resolver.DynamicServerResolver;
@@ -112,12 +115,14 @@ public final class DynamicPSManager implements PSManager {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES,
-                staleness > 0 ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
+                staleness < 0 ? ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
             .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
             .set(ServiceConfiguration.ON_TASK_STOP, TaskStopHandler.class)
             .build())
+        .bindImplementation(ParameterAccessor.class,
+            staleness < 0 ? ParameterAccessorImpl.class : SSPParameterAccessorImpl.class)
         .bindImplementation(ParameterWorker.class,
-            staleness > 0 ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
+            staleness < 0 ? ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
         .bindImplementation(ServerResolver.class, DynamicServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
