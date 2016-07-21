@@ -330,7 +330,11 @@ public final class AsyncDolphinPlanExecutorTest {
     }
 
     @Override
-    public void add(final int number, final int megaBytes, final int cores,
+    public void addGroup(final String groupId) {
+    }
+
+    @Override
+    public void add(final String groupId, final int number, final int megaBytes, final int cores,
                     final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                     final List<EventHandler <ActiveContext>> contextActiveHandlerList) {
       try {
