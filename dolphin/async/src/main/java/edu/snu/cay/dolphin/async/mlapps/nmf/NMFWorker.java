@@ -210,29 +210,29 @@ final class NMFWorker implements Worker {
     computeTracer.resetTrace();
   }
 
-  private void sendMetrics(final int numDataBlocks, final int processedDataItemCount, final double totalElapsedTime) {
-    try {
-      metricsCollector.stop();
-      final Metrics metrics = metricsHandler.getMetrics();
-      final WorkerMetrics metricsMessage = WorkerMetrics.newBuilder()
-          .setMetrics(metrics)
-          .setItrIdx(iteration)
-          .setNumMiniBatchPerItr(numMiniBatchPerIter)
-          .setNumDataBlocks(numDataBlocks)
-          .setProcessedDataItemCount(processedDataItemCount)
-          .setTotalTime(totalElapsedTime)
-          .setTotalCompTime(computeTracer.totalElapsedTime())
-          .setTotalPullTime(pullTracer.totalElapsedTime())
-          .setAvgPullTime(pullTracer.avgTimePerRecord())
-          .setTotalPushTime(pushTracer.totalElapsedTime())
-          .setAvgPushTime(pushTracer.avgTimePerRecord())
-          .build();
-      LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+  private void sendMetrics(final WorkerMetrics workerMetrics) {
+      LOG.log(Level.INFO, "Sending metricsMessage {0}", workerMetrics);
 
-      metricsMsgSender.send(metricsMessage);
-    } catch (final MetricException e) {
-      throw new RuntimeException(e);
-    }
+      metricsMsgSender.send(workerMetrics);
+  }
+
+  private WorkerMetrics buildMetricsMsg(final Metrics appMetrics, final int numDataBlocks,
+                                                final int numProcessedDataItemCount, final double elapsedTime) {
+    final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+        .setMetrics(appMetrics)
+        .setItrIdx(iteration)
+        .setNumMiniBatchPerItr(numMiniBatchPerIter)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerRecord())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPushTime(pushTracer.avgTimePerRecord())
+        .build();
+
+    return workerMetrics;
   }
 
   @Override
@@ -304,37 +304,42 @@ final class NMFWorker implements Worker {
 
       if (logPeriod > 0 && rowCount % logPeriod == 0) {
         final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-        LOG.log(Level.INFO, "Iteration: {0}, Row Count: {1}, Avg Loss: {2}, Sum Loss : {3}, " +
-            "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
-            "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
-            new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
-                computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(), pullTracer.avgTimePerRecord(),
-                pullTracer.totalElapsedTime(), pushTracer.avgTimePerRecord(),
-                pushTracer.totalElapsedTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
+        final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+        appMetricMap.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
+        appMetricMap.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
+        appMetricMap.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
+        appMetricMap.put(NMFParameters.MetricKeys.RVT, rowCount / elapsedTime);
+
+        final Metrics appMetrics = Metrics.newBuilder()
+            .setData(appMetricMap)
+            .build();
+
+        final WorkerMetrics workerMetrics =
+            buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), rowCount, elapsedTime);
+
+        LOG.log(Level.INFO, "Iteration: {0}", new Object[]{workerMetrics});
       }
     }
 
     pushAndClearGradients();
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    LOG.log(Level.INFO, "End Iteration: {0}, Row Count: {1}, Avg Loss: {2}, Sum Loss : {3}, " +
-            "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
-            "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
-        new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
-            computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(), pullTracer.avgTimePerRecord(),
-            pullTracer.totalElapsedTime(), pushTracer.avgTimePerRecord(),
-            pushTracer.totalElapsedTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
-
     try {
-      insertableMetricTracker.put(NMFParameters.AVG_LOSS, lossSum / elemCount);
-      insertableMetricTracker.put(NMFParameters.SUM_LOSS, lossSum);
-      insertableMetricTracker.put(NMFParameters.DVT, elemCount / elapsedTime);
-      insertableMetricTracker.put(NMFParameters.RVT, rowCount / elapsedTime);
-    } catch (MetricException e) {
+      insertableMetricTracker.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
+      insertableMetricTracker.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
+      insertableMetricTracker.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
+      insertableMetricTracker.put(NMFParameters.MetricKeys.RVT, rowCount / elapsedTime);
+      metricsCollector.close();
+    } catch (Exception e) {
       e.printStackTrace();
     }
+    final Metrics appMetrics = metricsHandler.getMetrics();
 
-    sendMetrics(memoryStore.getNumBlocks(), rowCount, elapsedTime);
+    final WorkerMetrics workerMetrics = buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), rowCount, elapsedTime);
+
+    LOG.log(Level.INFO, "End Iteration: {0}", new Object[]{workerMetrics});
+
+    sendMetrics(workerMetrics);
   }
 
   @Override

@@ -44,8 +44,8 @@ final class MLRParser {
   @Inject
   private MLRParser(final DataSet<LongWritable, Text> dataSet,
                     final VectorFactory vectorFactory,
-                    @Parameter(MLRREEF.NumClasses.class)final int numClasses,
-                    @Parameter(MLRREEF.NumFeatures.class) final int numFeatures) {
+                    @Parameter(MLRParameters.NumClasses.class)final int numClasses,
+                    @Parameter(MLRParameters.NumFeatures.class) final int numFeatures) {
     this.dataSet = dataSet;
     this.vectorFactory = vectorFactory;
     this.numClasses = numClasses;

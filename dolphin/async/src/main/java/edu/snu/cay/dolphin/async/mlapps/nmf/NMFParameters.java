@@ -23,22 +23,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
  */
 final class NMFParameters {
 
-  // The key denoting avg loss for an iteration.
-  static final String AVG_LOSS =
-      "NMF_WORKER_AVG_LOSS";
-
-  // The key denoting loss sum for an iteration.
-  static final String SUM_LOSS =
-      "NMF_WORKER_SUM_LOSS";
-
-  // The key denoting DvT for an iteration.
-  static final String DVT =
-      "NMF_WORKER_DVT";
-
-  // The key denoting RvT for an iteration.
-  static final String RVT =
-      "NMF_WORKER_RVT";
-
   @NamedParameter(doc = "rank of matrix factorization.", short_name = "rank")
   static final class Rank implements Name<Integer> {
   }
@@ -71,5 +55,23 @@ final class NMFParameters {
   @NamedParameter(doc = "minimum number of input rows when logging execution status", short_name = "log_period",
                   default_value = "0")
   static final class LogPeriod implements Name<Integer> {
+  }
+
+  static final class MetricKeys {
+    // The key denoting avg loss for an iteration.
+    static final String AVG_LOSS =
+        "NMF_WORKER_AVG_LOSS";
+
+    // The key denoting loss sum for an iteration.
+    static final String SUM_LOSS =
+        "NMF_WORKER_SUM_LOSS";
+
+    // The key denoting DvT for an iteration.
+    static final String DVT =
+        "NMF_WORKER_DVT";
+
+    // The key denoting RvT for an iteration.
+    static final String RVT =
+        "NMF_WORKER_RVT";
   }
 }

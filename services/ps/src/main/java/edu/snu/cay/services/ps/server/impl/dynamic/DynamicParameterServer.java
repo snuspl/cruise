@@ -245,7 +245,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     final Statistics pushWaitStat = pushWaitStats[threadId];
     final Statistics pullWaitStat = pullWaitStats[threadId];
 
-    ServerThreadMetrics threadMetrics = ServerThreadMetrics.newBuilder()
+    final ServerThreadMetrics threadMetrics = ServerThreadMetrics.newBuilder()
         .setTotalTime(elapsedTime / 1e9D)
         .setPullCount((int)pullStat.count())
         .setTotalPullTime(pullStat.sum())

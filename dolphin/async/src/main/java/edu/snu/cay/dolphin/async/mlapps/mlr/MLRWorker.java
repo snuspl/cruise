@@ -19,7 +19,6 @@ import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
 import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.*;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.metric.Tracer;
@@ -38,7 +37,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.metric.WorkerConstants.WORKER_COMPUTE_TIME;
+import static com.sun.tools.doclint.Entity.Lambda;
 
 /**
  * {@link Worker} class for the MLRREEF application.
@@ -149,16 +148,16 @@ final class MLRWorker implements Worker {
   @Inject
   private MLRWorker(final MLRParser mlrParser,
                     final ParameterWorker<Integer, Vector, Vector> worker,
-                    @Parameter(NumClasses.class) final int numClasses,
-                    @Parameter(NumFeatures.class) final int numFeatures,
-                    @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                    @Parameter(InitialStepSize.class) final double initStepSize,
-                    @Parameter(Lambda.class) final double lambda,
-                    @Parameter(StatusLogPeriod.class) final int statusLogPeriod,
-                    @Parameter(DecayRate.class) final double decayRate,
-                    @Parameter(DecayPeriod.class) final int decayPeriod,
-                    @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
-                    @Parameter(NumBatchPerLossLog.class) final int numBatchPerLossLog,
+                    @Parameter(MLRParameters.NumClasses.class) final int numClasses,
+                    @Parameter(MLRParameters.NumFeatures.class) final int numFeatures,
+                    @Parameter(MLRParameters.NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
+                    @Parameter(MLRParameters.InitialStepSize.class) final double initStepSize,
+                    @Parameter(MLRParameters.Lambda.class) final double lambda,
+                    @Parameter(MLRParameters.StatusLogPeriod.class) final int statusLogPeriod,
+                    @Parameter(MLRParameters.DecayRate.class) final double decayRate,
+                    @Parameter(MLRParameters.DecayPeriod.class) final int decayPeriod,
+                    @Parameter(MLRParameters.TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
+                    @Parameter(MLRParameters.NumBatchPerLossLog.class) final int numBatchPerLossLog,
                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
@@ -326,7 +325,20 @@ final class MLRWorker implements Worker {
     ++iteration;
     if (statusLogPeriod > 0 && iteration % statusLogPeriod == 0) {
       final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
+      final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+      appMetricMap.put(MLRParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
+      appMetricMap.put(MLRParameters.MetricKeys.SUM_LOSS, lossSum);
+      appMetricMap.put(MLRParameters.MetricKeys.DVT, elemCount / elapsedTime);
+      appMetricMap.put(MLRParameters.MetricKeys.RVT, rowCount / elapsedTime);
 
+      final Metrics appMetrics = Metrics.newBuilder()
+          .setData(appMetricMap)
+          .build();
+
+      final WorkerMetrics workerMetrics =
+          buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), workload.size(), elapsedTime);
+
+      LOG.log(Level.INFO, "Iteration: {0}", new Object[]{workerMetrics});
       LOG.log(Level.INFO, "Iteration: {0}, Sample Count: {1}, " +
               "Avg Comp Per Row: {2}, Sum Comp: {3}, Avg Pull: {4}, Sum Pull: {5}, Avg Push: {6}, " +
               "Sum Push: {7}, DvT: {8}, Elapsed Time: {9}",
@@ -343,8 +355,9 @@ final class MLRWorker implements Worker {
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
-    insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
+//    insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
 
+    metricsCollector.close();
     sendMetrics(memoryStore.getNumBlocks());
   }
 
@@ -515,21 +528,29 @@ final class MLRWorker implements Worker {
     return new Pair<>(maxIndex, maxValue);
   }
 
-  private void sendMetrics(final int numDataBlocks) {
-    try {
-      metricsCollector.stop();
+  private void sendMetrics(final WorkerMetrics workerMetrics) {
+    LOG.log(Level.INFO, "Sending metricsMessage {0}", workerMetrics);
 
-      final Metrics metrics = metricsHandler.getMetrics();
-      final WorkerMetrics metricsMessage = WorkerMetrics.newBuilder()
-          .setMetrics(metrics)
-          .setItrIdx(iteration)
-          .setNumDataBlocks(numDataBlocks)
-          .build();
-      LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
-
-      metricsMsgSender.send(metricsMessage);
-    } catch (final MetricException e) {
-      throw new RuntimeException(e);
-    }
+    metricsMsgSender.send(workerMetrics);
   }
+
+  private WorkerMetrics buildMetricsMsg(final Metrics appMetrics, final int numDataBlocks,
+                                        final int numProcessedDataItemCount, final double elapsedTime) {
+    final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+        .setMetrics(appMetrics)
+        .setItrIdx(iteration)
+        .setNumMiniBatchPerItr(numMiniBatchPerIter)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .build();
+
+    return workerMetrics;
+  }
+
 }
