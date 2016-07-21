@@ -15,18 +15,22 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.common.metric.*;
+import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.metric.Tracer;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.dolphin.async.metric.WorkerConstants.WORKER_COMPUTE_TIME;
 
 /**
  * Assign a random topic to each word in all documents and block on a global barrier to make sure
@@ -45,23 +49,56 @@ final class LdaWorker implements Worker {
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
+  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+  private final MetricsCollector metricsCollector;
+  private final InsertableMetricTracker insertableMetricTracker;
+  private final MetricsHandler metricsHandler;
+  private final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender;
+
+  private final Tracer pushTracer;
+  private final Tracer pullTracer;
+  private final Tracer computeTracer;
+
+  /**
+   * Number of iterations.
+   */
+  private int numItr;
+
   @Inject
   private LdaWorker(final LdaDataParser dataParser,
                     final LdaBatchParameterWorker batchWorker,
                     final SparseLdaSampler sampler,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
-                    @Parameter(LdaREEF.NumVocabs.class) final int numVocabs) {
+                    @Parameter(LdaREEF.NumVocabs.class) final int numVocabs,
+                    final MetricsCollector metricsCollector,
+                    final InsertableMetricTracker insertableMetricTracker,
+                    final MetricsHandler metricsHandler,
+                    final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender) {
     this.dataParser = dataParser;
     this.batchWorker = batchWorker;
     this.sampler = sampler;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.numVocabs = numVocabs;
+    this.metricsCollector = metricsCollector;
+    this.insertableMetricTracker = insertableMetricTracker;
+    this.metricsHandler = metricsHandler;
+    this.metricsMsgSender = metricsMsgSender;
+
+    this.pushTracer = new Tracer();
+    this.pullTracer = new Tracer();
+    this.computeTracer = new Tracer();
+
+    this.numItr = 0;
   }
 
   @Override
   public void initialize() {
+    final Set<MetricTracker> metricTrackerSet = new HashSet<>(1);
+    metricTrackerSet.add(insertableMetricTracker);
+    metricsCollector.registerTrackers(metricTrackerSet);
+
     final List<Document> documents = dataParser.parse();
     final List<Long> dataKeys;
 
@@ -80,7 +117,7 @@ final class LdaWorker implements Worker {
         // numVocabs-th row represents the total word-topic assignment count vector
         batchWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
       }
-      batchWorker.pushAndClear();
+      batchWorker.pushAndClear(pushTracer);
     }
 
     LOG.log(Level.INFO, "All random topic assignments are updated");
@@ -88,7 +125,16 @@ final class LdaWorker implements Worker {
 
   @Override
   public void run() {
+    try {
+      metricsCollector.start();
+    } catch (final MetricException e) {
+      throw new RuntimeException(e);
+    }
+
     LOG.log(Level.INFO, "Iteration Started");
+    ++numItr;
+    final long itrBeginTimestamp = System.currentTimeMillis();
+    resetTracers();
 
     final Map<Long, Document> workloadMap = memoryStore.getAll();
     final Collection<Document> workload = workloadMap.values();
@@ -98,7 +144,7 @@ final class LdaWorker implements Worker {
     int numSampledDocuments = 0;
 
     for (final Document document : workload) {
-      sampler.sample(document);
+      sampler.sample(document, computeTracer, pullTracer, pushTracer);
       numSampledDocuments++;
 
       if (numSampledDocuments % countForLogging == 0) {
@@ -106,10 +152,51 @@ final class LdaWorker implements Worker {
       }
     }
 
+    final double elapsedTime = (System.currentTimeMillis() - itrBeginTimestamp) / 1000.0D;
+    LOG.log(Level.INFO, "End Iteration: {0}, Document Count: {1}, " +
+            "Avg Comp Per Row: {2}, Sum Comp: {3}, " +
+            "Avg Pull: {4}, Sum Pull: {5}, " +
+            "Avg Push: {6}, Sum Push: {7}, Elapsed Time: {8}",
+        new Object[]{numItr, numDocuments,
+            computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(),
+            pullTracer.avgTimePerRecord(), pullTracer.totalElapsedTime(),
+            pushTracer.avgTimePerRecord(), pushTracer.totalElapsedTime(),
+            elapsedTime});
+
+    sendMetrics(memoryStore.getNumBlocks());
     LOG.log(Level.INFO, "Iteration Ended");
   }
 
   @Override
   public void cleanup() {
+    try {
+      metricsCollector.close();
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void sendMetrics(final int numDataBlocks) {
+    try {
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
+      metricsCollector.stop();
+      final Metrics metrics = metricsHandler.getMetrics();
+      final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()
+          .setMetrics(metrics)
+          .setIteration(numItr)
+          .setNumDataBlocks(numDataBlocks)
+          .build();
+      LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+
+      metricsMsgSender.send(metricsMessage);
+    } catch (final MetricException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void resetTracers() {
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
   }
 }
