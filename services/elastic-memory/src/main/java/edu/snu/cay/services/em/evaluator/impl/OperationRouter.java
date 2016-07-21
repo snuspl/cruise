@@ -146,6 +146,7 @@ public final class OperationRouter<K> {
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
 
     if (addedEval) {
+      // TODO #565: call triggerInitialization() within a separate thread, which will not block caller's progress
       requestRoutingTable();
     }
   }
