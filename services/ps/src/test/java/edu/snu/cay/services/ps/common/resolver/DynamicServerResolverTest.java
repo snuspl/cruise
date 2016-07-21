@@ -125,6 +125,8 @@ public class DynamicServerResolverTest {
 
   /**
    * Tests resolver after explicitly initializing the routing table.
+   * The test the runs multiple threads using resolver to check
+   * whether it gives correct result and perform initialization only once.
    */
   @Test
   public void testResolveAfterExplicitInit() throws InterruptedException {
@@ -138,8 +140,14 @@ public class DynamicServerResolverTest {
     // confirm that the resolver is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
 
+    // When serverResolver.requestRoutingTable() is called,
+    // workers internally register themselves to subscribe the updates
+    // in routing table to driver via sendWorkerRegisterMsg()
+    verify(msgSender, times(1)).sendWorkerRegisterMsg();
+
     final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
 
+    // While multiple threads use router, the initialization never be triggered because it's already initialized.
     final Runnable[] threads = new Runnable[numThreads];
 
     for (int idx = 0; idx < numThreads; idx++) {
@@ -162,15 +170,15 @@ public class DynamicServerResolverTest {
     ThreadUtils.runConcurrently(threads);
     threadLatch.await(30, TimeUnit.SECONDS);
 
-    // When serverResolver.requestRoutingTable() is called,
-    // workers internally register themselves to subscribe the updates
-    // in routing table to driver via sendWorkerRegisterMsg()
+    // initialization should be done only once
     verify(msgSender, times(1)).sendWorkerRegisterMsg();
   }
 
   /**
    * Tests resolver without explicit initialization of the routing table.
-   * The routing table will be initialized automatically by {@link DynamicServerResolver#resolveServer(int)}.
+   * The initialization of routers will be triggered by {@link DynamicServerResolver#resolveServer(int)}.
+   * The test the runs multiple threads using resolver to check
+   * whether it gives correct result and perform initialization only once.
    */
   @Test
   public void testResolveWithoutExplicitInit() throws InterruptedException {
@@ -181,6 +189,8 @@ public class DynamicServerResolverTest {
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
 
+    // Initialization would be done while resolving server.
+    // While multiple threads use resolver, the initialization should be done only once.
     final Runnable[] threads = new Runnable[numThreads];
 
     for (int idx = 0; idx < numThreads; idx++) {
@@ -204,9 +214,9 @@ public class DynamicServerResolverTest {
     threadLatch.await(30, TimeUnit.SECONDS);
 
     // When serverResolver.resolveServer() is called and the resolver is not initialized yet,
-    // it internally invokes serverResolver.retryInitialization()
+    // it internally invokes serverResolver.triggerInitialization()
     // that finally invokes serverResolver.requestRoutingTable().
-    // Because retryInitialization() is a synchronized method, requesting the routing table should be done only once.
+    // Because triggerInitialization() is a synchronized method, requesting the routing table should be done only once.
     verify(msgSender, times(1)).sendWorkerRegisterMsg();
   }
 

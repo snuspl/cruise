@@ -285,8 +285,10 @@ public class OperationRouterTest {
 
   /**
    * Tests router after explicitly initializing the routing table.
-   * Router initialization can be done statically or dynamically according to
-   * whether the router is for initial store or added store.
+   * Stores in initial evaluators are initialized by communicating with the driver,
+   * and stores in added evaluators are initialized by itself without any communication.
+   * The test the runs multiple threads using router to check
+   * whether it gives correct result and perform initialization only once.
    */
   @Test
   public void testRouterInAddedEvalAfterExplicitInit() throws InjectionException, InterruptedException {
@@ -298,45 +300,47 @@ public class OperationRouterTest {
 
     // because we compare the whole set of routers in other tests,
     // this test focus on comparing only two routers initialized in different ways
-    final int initStoreId0 = 0;
-    final int addedStoreId4 = 4; // It should be larger than the largest index of initial stores
+    final int initStoreId = 0;
+    final int addedStoreId = 4; // It should be larger than the largest index of initial stores
 
     // router in initStore will be initialized statically
-    final OperationRouter<?> routerInInitStoreId0
-        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId0, false);
+    final OperationRouter<?> routerInInitStore
+        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId, false);
     // router in addedStore will be initialized dynamically
-    final OperationRouter<?> routerInAddedStoreId4
-        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId4, true);
+    final OperationRouter<?> routerInAddedStore
+        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId, true);
 
     // we assume that store ids are assigned in the increasing order,
     // so the index of evaluator endpoint is equal to the store id
-    final String endpointId0 = EVAL_ID_PREFIX + initStoreId0;
-    final String endpointId4 = EVAL_ID_PREFIX + addedStoreId4;
+    final String endpointIdForInitEval = EVAL_ID_PREFIX + initStoreId;
+    final String endpointIdForAddedEval = EVAL_ID_PREFIX + addedStoreId;
 
-    routerInInitStoreId0.initialize(endpointId0);
-    routerInAddedStoreId4.initialize(endpointId4); // It requests the routing table to driver
+    routerInInitStore.initialize(endpointIdForInitEval);
+    routerInAddedStore.initialize(endpointIdForAddedEval); // It requests the routing table to driver
 
     // confirm that the router is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
+    verify(evalMsgSender, times(1)).sendRoutingTableInitReqMsg(any(TraceInfo.class));
 
+    // While multiple threads use router, the initialization never be triggered because it's already initialized.
     final Runnable[] threads = new Runnable[numThreads];
 
-    // though router0 is statically initialized and router4 is dynamically initialized,
+    // though init router is statically initialized and added router is dynamically initialized,
     // because there were no changes in the routing table their views should be equal
     for (int idx = 0; idx < numThreads; idx++) {
       threads[idx] = new Runnable() {
         @Override
         public void run() {
           for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-            final Optional<String> evalIdFromRouter0 = routerInInitStoreId0.resolveEval(blockId);
-            final Optional<String> evalIdFromRouter4 = routerInAddedStoreId4.resolveEval(blockId);
+            final Optional<String> evalIdFromInitRouter = routerInInitStore.resolveEval(blockId);
+            final Optional<String> evalIdFromAddedRouter = routerInAddedStore.resolveEval(blockId);
 
-            if (!evalIdFromRouter0.isPresent()) { // routerInInitStoreId0 is local
-              assertEquals(endpointId0, evalIdFromRouter4.get());
-            } else if (!evalIdFromRouter4.isPresent()) { // routerInAddedStoreId4 is local
-              assertEquals(endpointId4, evalIdFromRouter0.get());
+            if (!evalIdFromInitRouter.isPresent()) { // routerInInitStore is local
+              assertEquals(endpointIdForInitEval, evalIdFromAddedRouter.get());
+            } else if (!evalIdFromAddedRouter.isPresent()) { // routerInAddedStore is local
+              assertEquals(endpointIdForAddedEval, evalIdFromInitRouter.get());
             } else {
-              assertEquals(evalIdFromRouter0.get(), evalIdFromRouter4.get());
+              assertEquals(evalIdFromInitRouter.get(), evalIdFromAddedRouter.get());
             }
           }
           threadLatch.countDown();
@@ -352,9 +356,12 @@ public class OperationRouterTest {
 
   /**
    * Tests router without explicit initialization of the routing table.
-   * The routing table will be initialized automatically by {@link OperationRouter#resolveEval(int)}.
-   * Router initialization can be done statically or dynamically according to
-   * whether the router is for initial store or added store.
+   * Stores in initial evaluators are initialized by communicating with the driver,
+   * and stores in added evaluators are initialized by itself without any communication.
+   * More specifically, the initialization of routers in added evaluators
+   * will be triggered by {@link OperationRouter#resolveEval(int)}.
+   * The test the runs multiple threads using router to check
+   * whether it gives correct result and perform initialization only once.
    */
   @Test
   public void testRouterInAddedEvalWithoutExplicitInit() throws InjectionException, InterruptedException {
@@ -366,44 +373,46 @@ public class OperationRouterTest {
 
     // because we compare the whole set of routers in other tests,
     // this test focus on comparing only two routers initialized in different ways
-    final int initStoreId0 = 0;
-    final int addedStoreId4 = 4; // It should be larger than the largest index of initial stores
+    final int initStoreId = 0;
+    final int addedStoreId = 4; // It should be larger than the largest index of initial stores
 
     // router in initStore will be initialized statically
-    final OperationRouter<?> routerInInitStoreId0
-        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId0, false);
+    final OperationRouter<?> routerInInitStore
+        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId, false);
     // router in addedStore will be initialized dynamically
-    final OperationRouter<?> routerInAddedStoreId4
-        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId4, true);
+    final OperationRouter<?> routerInAddedStore
+        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId, true);
 
+    // Initialization would be done while resolving eval.
+    // While multiple threads use router, the initialization should be done only once.
     final Runnable[] threads = new Runnable[numThreads];
 
     // We need an eval prefix that starts with 'null', because we don't explicitly initialize routers.
-    // So the router works with this null prefix
+    // So the router works with this null prefix.
     // TODO #509: EM assumes that the eval prefix has "-" at the end
     final String evalIdPrefix = null + "-";
 
     // we assume that store ids are assigned in the increasing order,
     // so the index of evaluator endpoint is equal to the store id
-    final String endpointId0 = evalIdPrefix + initStoreId0;
-    final String endpointId4 = evalIdPrefix + addedStoreId4;
+    final String endpointIdForInitEval = evalIdPrefix + initStoreId;
+    final String endpointIdForAddedEval = evalIdPrefix + addedStoreId;
 
-    // though router0 is statically initialized and router4 is dynamically initialized,
+    // though init router is statically initialized and added router is dynamically initialized,
     // because there were no changes in the routing table their views should be equal
     for (int idx = 0; idx < numThreads; idx++) {
       threads[idx] = new Runnable() {
         @Override
         public void run() {
           for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-            final Optional<String> evalIdFromRouter0 = routerInInitStoreId0.resolveEval(blockId);
-            final Optional<String> evalIdFromRouter4 = routerInAddedStoreId4.resolveEval(blockId);
+            final Optional<String> evalIdFromInitRouter = routerInInitStore.resolveEval(blockId);
+            final Optional<String> evalIdFromAddedRouter = routerInAddedStore.resolveEval(blockId);
 
-            if (!evalIdFromRouter0.isPresent()) { // routerInInitStoreId0 is local
-              assertEquals(endpointId0, evalIdFromRouter4.get());
-            } else if (!evalIdFromRouter4.isPresent()) { // routerInAddedStoreId4 is local
-              assertEquals(endpointId4, evalIdFromRouter0.get());
+            if (!evalIdFromInitRouter.isPresent()) { // routerInInitStore is local
+              assertEquals(endpointIdForInitEval, evalIdFromAddedRouter.get());
+            } else if (!evalIdFromAddedRouter.isPresent()) { // routerInAddedStore is local
+              assertEquals(endpointIdForAddedEval, evalIdFromInitRouter.get());
             } else {
-              assertEquals(evalIdFromRouter0.get(), evalIdFromRouter4.get());
+              assertEquals(evalIdFromInitRouter.get(), evalIdFromAddedRouter.get());
             }
           }
           threadLatch.countDown();

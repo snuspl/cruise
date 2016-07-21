@@ -205,10 +205,10 @@ public final class OperationRouter<K> {
       return;
     }
 
-    retryInitialization();
+    triggerInitialization();
   }
 
-  private synchronized void retryInitialization() {
+  private synchronized void triggerInitialization() {
     // check within synchronization method
     if (initialized) {
       return;
