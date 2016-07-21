@@ -52,6 +52,9 @@ function install_java {
   export JAVA_HOME=/usr/lib/jvm/java-8-oracle/
   echo "export JAVA_HOME=$JAVA_HOME" >> ~/.profile
   
+  # Register the variable to SSH Environment so that they can be accessed even via SSH connection
+  echo "JAVA_HOME=$JAVA_HOME" >> ~/.ssh/environment
+
   echo "Java installed" >> $LOG_FILE
 }
 
@@ -66,10 +69,17 @@ function install_hadoop {
   export YARN_HOME=$HADOOP_HOME
   export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
   export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
+  
+  # Register variables to profile
   echo "export HADOOP_HOME=$HADOOP_HOME" >> ~/.profile
   echo "export YARN_HOME=\$HADOOP_HOME" >> ~/.profile
   echo "export YARN_CONF_DIR=\$HADOOP_HOME/etc/hadoop" >> ~/.profile
   echo "export PATH=\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin:\$PATH" >> ~/.profile
+  
+  # Register variables to SSH Environment so that they can be accessed even via SSH connection
+  echo "HADOOP_HOME=$HOME/hadoop" >> ~/.ssh/environment
+  echo "YARN_HOME=$HADOOP_HOME" >> ~/.ssh/environment
+  echo "YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop" >> ~/.ssh/environment
   
   echo "Hadoop installed" >> $LOG_FILE
 }
@@ -106,5 +116,8 @@ install_reef
 
 # install_cay #  Comment out this line only when you want to build cay on your machine
 # echo "Cay installed" >> $LOG_FILE
+
+# Wrapping up
+sudo /etc/init.d/ssh restart
 
 echo "Done: $(date)" >> $LOG_FILE
