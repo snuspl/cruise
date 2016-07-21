@@ -119,5 +119,6 @@ install_reef
 
 # Wrapping up
 sudo /etc/init.d/ssh restart
+source ~/.profile
 
 echo "Done: $(date)" >> $LOG_FILE
