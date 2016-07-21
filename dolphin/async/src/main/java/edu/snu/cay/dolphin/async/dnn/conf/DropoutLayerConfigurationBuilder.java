@@ -36,7 +36,7 @@ public final class DropoutLayerConfigurationBuilder implements Builder<Configura
     return new DropoutLayerConfigurationBuilder();
   }
 
-  private float dropoutRatio;
+  private float dropoutRatio = 0.5f;
 
   public synchronized DropoutLayerConfigurationBuilder setDropoutRatio(final float dropoutRatio) {
     this.dropoutRatio = dropoutRatio;

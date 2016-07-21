@@ -31,8 +31,10 @@ import javax.inject.Inject;
 
 public final class DropoutLayer extends LayerBase {
 
-  private final float dropoutRatio;
   private final MatrixFactory matrixFactory;
+  private final float dropoutRatio;
+  private final int inputHeight;
+  private final int inputWidth;
   private Matrix bernoulliMatrix;
 
   /**
@@ -49,7 +51,14 @@ public final class DropoutLayer extends LayerBase {
     super(index, inputShape);
     this.dropoutRatio = dropoutRatio;
     this.matrixFactory = matrixFactory;
-    this.bernoulliMatrix = matrixFactory.bernoulli(getInputShape()[0], getInputShape()[0], dropoutRatio);
+
+    if (getInputShape().length == 2) {
+      this.inputHeight = getInputShape()[0];
+      this.inputWidth = getInputShape()[1];
+    } else {
+      this.inputHeight = getInputShape()[1];
+      this.inputWidth = getInputShape()[2];
+    }
   }
 
   @Override
@@ -70,8 +79,8 @@ public final class DropoutLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    this.bernoulliMatrix = matrixFactory.bernoulli(getInputShape()[0], getInputShape()[0], dropoutRatio);
-    return bernoulliMatrix.mmul(input);
+    this.bernoulliMatrix = matrixFactory.bernoulli(inputHeight, inputWidth, dropoutRatio);
+    return bernoulliMatrix.mul(input);
   }
 
   /**
@@ -84,7 +93,7 @@ public final class DropoutLayer extends LayerBase {
   public Matrix backPropagate(final Matrix input,
                               final Matrix activation,
                               final Matrix nextError) {
-    return bernoulliMatrix.mmul(nextError);
+    return bernoulliMatrix.mul(nextError);
   }
 
   /** {@inheritDoc} */

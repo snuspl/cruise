@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn.layerparam.initializer;
 
+import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
@@ -31,20 +32,39 @@ import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.shapeFromStr
  */
 public class DropoutLayerParameterInitializer implements LayerParameterInitializer {
 
+  private final MatrixFactory matrixFactory;
   private final int index;
   private final int[] inputShape;
+  private final int[] outputShape;
   private final float dropoutRatio;
-  private final LayerParameter emptyLayerParam;
+  final LayerParameter emptyLayerParam;
+  private Matrix bernoulliMatrix;
+  private final int inputHeight;
+  private final int inputWidth;
+  private final int inputChannel;
 
   @Inject
   public DropoutLayerParameterInitializer(final MatrixFactory matrixFactory,
                                           @Parameter(LayerIndex.class) final int index,
                                           @Parameter(LayerInputShape.class) final String inputShape,
                                           @Parameter(DropoutRatio.class) final float dropoutRatio) {
+    this.matrixFactory = matrixFactory;
     this.index = index;
     this.inputShape = shapeFromString(inputShape);
+    this.outputShape = this.inputShape;
     this.dropoutRatio = dropoutRatio;
     this.emptyLayerParam = LayerParameter.newEmptyInstance(matrixFactory);
+
+    if (this.inputShape.length == 2) {
+      this.inputChannel = 1;
+      this.inputHeight = this.inputShape[0];
+      this.inputWidth = this.inputShape[1];
+    } else {
+      this.inputChannel = this.inputShape[0];
+      this.inputHeight = this.inputShape[1];
+      this.inputWidth = this.inputShape[2];
+    }
+    this.bernoulliMatrix = matrixFactory.bernoulli(this.inputHeight, this.inputWidth, dropoutRatio);
   }
 
   /**
@@ -74,6 +94,6 @@ public class DropoutLayerParameterInitializer implements LayerParameterInitializ
    */
   @Override
   public int[] getOutputShape() {
-    return inputShape;
+    return outputShape;
   }
 }
