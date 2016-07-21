@@ -37,7 +37,7 @@ public class DropoutLayerParameterInitializer implements LayerParameterInitializ
   private final int[] inputShape;
   private final int[] outputShape;
   private final float dropoutRatio;
-  final LayerParameter emptyLayerParam;
+  private final LayerParameter emptyLayerParam;
   private Matrix bernoulliMatrix;
   private final int inputHeight;
   private final int inputWidth;
