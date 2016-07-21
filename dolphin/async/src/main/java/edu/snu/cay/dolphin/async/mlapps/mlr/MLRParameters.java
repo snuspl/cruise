@@ -76,20 +76,20 @@ final class MLRParameters {
   final class NumBatchPerLossLog implements Name<Integer> {
   }
   static final class MetricKeys {
-    // The key denoting avg loss for an iteration.
-    static final String AVG_LOSS =
-        "NMF_WORKER_AVG_LOSS";
+    // The key denoting sample avg loss.
+    static final String SAMPLE_LOSS_AVG =
+        "MLR_WORKER_SAMPLE_LOSS_AVG";
 
-    // The key denoting loss sum for an iteration.
-    static final String SUM_LOSS =
-        "NMF_WORKER_SUM_LOSS";
+    // The key denoting reg avg loss.
+    static final String REG_LOSS_AVG =
+        "MLR_WORKER_REG_LOSS_AVG";
 
-    // The key denoting DvT for an iteration.
+    // The key denoting DvT.
     static final String DVT =
-        "NMF_WORKER_DVT";
+        "MLR_WORKER_DVT";
 
-    // The key denoting RvT for an iteration.
-    static final String RVT =
-        "NMF_WORKER_RVT";
+    // The key denoting accuracy.
+    static final String ACCURACY =
+        "MLR_WORKER_ACCURACY";
   }
 }

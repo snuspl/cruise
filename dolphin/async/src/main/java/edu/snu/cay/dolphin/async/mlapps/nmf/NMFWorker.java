@@ -211,9 +211,9 @@ final class NMFWorker implements Worker {
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
-      LOG.log(Level.INFO, "Sending metricsMessage {0}", workerMetrics);
+    LOG.log(Level.INFO, "Sending metricsMessage {0}", new Object[]{workerMetrics});
 
-      metricsMsgSender.send(workerMetrics);
+    metricsMsgSender.send(workerMetrics);
   }
 
   private WorkerMetrics buildMetricsMsg(final Metrics appMetrics, final int numDataBlocks,
@@ -329,7 +329,7 @@ final class NMFWorker implements Worker {
       insertableMetricTracker.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
       insertableMetricTracker.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
       insertableMetricTracker.put(NMFParameters.MetricKeys.RVT, rowCount / elapsedTime);
-      metricsCollector.close();
+      metricsCollector.stop();
     } catch (Exception e) {
       e.printStackTrace();
     }

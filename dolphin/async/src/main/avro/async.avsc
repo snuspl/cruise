@@ -25,17 +25,17 @@
   [
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // "metric" should contain app-specific metrics.
-    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
-    {"name": "itrIdx", "type": "int"},
-    {"name": "numDataBlocks", "type": "int"},
-    {"name": "processedDataItemCount", "type": "int"},
-    {"name": "numMiniBatchPerItr", "type": "int"},
-    {"name": "totalTime", "type": "double"},
-    {"name": "totalCompTime", "type": "double"},
-    {"name": "totalPushTime", "type": "double"},
-    {"name": "totalPullTime", "type": "double"},
-    {"name": "avgPushTime", "type": "double"},
-    {"name": "avgPullTime", "type": "double"}
+    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default":null},
+    {"name": "itrIdx", "type": "int", "default":0},
+    {"name": "numDataBlocks", "type": "int", "default":0},
+    {"name": "processedDataItemCount", "type": "int", "default":0},
+    {"name": "numMiniBatchPerItr", "type": "int", "default":0},
+    {"name": "totalTime", "type": "double", "default":0.0},
+    {"name": "totalCompTime", "type": "double", "default":0.0},
+    {"name": "totalPushTime", "type": "double", "default":0.0},
+    {"name": "totalPullTime", "type": "double", "default":0.0},
+    {"name": "avgPushTime", "type": "double", "default":0.0},
+    {"name": "avgPullTime", "type": "double", "default":0.0}
   ]
 }
 ]

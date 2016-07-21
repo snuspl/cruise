@@ -15,12 +15,12 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
-import edu.snu.cay.dolphin.async.metric.WorkerConstants;
+
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
-import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
-import edu.snu.cay.services.ps.metric.ServerConstants;
+import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -73,10 +73,10 @@ public final class AsyncDolphinOptimizerTest {
 
     for (int index = 0; index < numModelsArray.length; ++index) {
       final DataInfo dataInfo = new DataInfoImpl(numModelsArray[index]);
-      final Map<String, Double> serverMetrics = new HashMap<>();
-      serverMetrics.put(ServerConstants.SERVER_PROCESSING_TIME, processingTimeArray[index]);
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
+          .setAvgProcessingTime(processingTimeArray[index]).build();
 
-      evalParamList.add(new EvaluatorParametersImpl(SERVER_PREFIX + index, dataInfo, serverMetrics));
+      evalParamList.add(new ServerEvaluatorParametersImpl(SERVER_PREFIX + index, dataInfo, serverMetrics));
     }
 
     return evalParamList;
@@ -88,10 +88,10 @@ public final class AsyncDolphinOptimizerTest {
 
     for (int index = 0; index < dataArray.length; ++index) {
       final DataInfo dataInfo = new DataInfoImpl(dataArray[index]);
-      final Map<String, Double> workerMetrics = new HashMap<>();
-      workerMetrics.put(WorkerConstants.WORKER_COMPUTE_TIME, elapsedTimeArray[index]);
+      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+          .setTotalCompTime(elapsedTimeArray[index]).build();
 
-      evalParamList.add(new EvaluatorParametersImpl(WORKER_PREFIX + index, dataInfo, workerMetrics));
+      evalParamList.add(new WorkerEvaluatorParametersImpl(WORKER_PREFIX + index, dataInfo, workerMetrics));
     }
 
     return evalParamList;
