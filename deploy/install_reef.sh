@@ -89,6 +89,8 @@ function install_reef {
   git clone https://github.com/apache/reef
   cd reef
   mvn clean -TC1 install -DskipTests -Dcheckstyle.skip=true -Dfindbugs.skip=true
+  
+  echo "REEF installed" >> $LOG_FILE
 }
 
 # Normally we don't have to build cay in all machines.
@@ -101,7 +103,7 @@ function install_cay {
   cd cay
   mvn clean -TC1 install -DskipTests -Dcheckstyle.skip=true -Dfindbugs.skip=true
   
-  echo "REEF installed" >> $LOG_FILE
+  echo "Cay installed" >> $LOG_FILE
 }
 
 # Start installation
@@ -115,7 +117,6 @@ install_hadoop
 install_reef
 
 # install_cay #  Comment out this line only when you want to build cay on your machine
-# echo "Cay installed" >> $LOG_FILE
 
 # Wrapping up
 sudo /etc/init.d/ssh restart
