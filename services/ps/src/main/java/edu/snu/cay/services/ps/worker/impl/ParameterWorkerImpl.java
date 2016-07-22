@@ -58,20 +58,20 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * The maximum number to resend push/pull requests
    * when {@link NetworkException} occurred while sending requests.
    */
-  private static final int MAX_RESEND_COUNT = 10;
+  static final int MAX_RESEND_COUNT = 10;
 
   /**
    * An interval between the time to resend push/pull requests
    * when {@link NetworkException} occurred while sending requests.
    */
-  private static final long RESEND_INTERVAL_MS = 100;
+  static final long RESEND_INTERVAL_MS = 100;
 
   /**
    * The maximum number to restart pull requests from the beginning
    * when the pull reply do not arrive within timeout {@link PullRetryTimeoutMs},
    * or the pull request is rejected by server.
    */
-  private static final int MAX_PULL_RETRY_COUNT = 10;
+  static final int MAX_PULL_RETRY_COUNT = 10;
 
   /**
    * Object for processing preValues and applying updates to existing values.
