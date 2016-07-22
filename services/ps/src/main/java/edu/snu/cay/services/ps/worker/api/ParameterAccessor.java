@@ -20,7 +20,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 /**
- * A Parameter accessor for a worker thread.
+ * A Parameter accessor for a worker(task) thread.
  * This interacts with local caches(thread, worker) and the servers to provide or fetch parameters.
  * This is used to connect the a worker thread
  * to a {@link edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl}.
@@ -32,7 +32,8 @@ import java.util.concurrent.TimeoutException;
 public interface ParameterAccessor<K, P, V> {
   /**
    * Update a {@code preValue} associated with a certain {@code key} to the thread cache.
-   * Each {@code preValue} of same {@code key} is accumulated and sent to servers on {@code flush()} call.
+   * Each {@code preValue} of same {@code key} is accumulated and sent to worker cache
+   * and servers on {@code flush()} call.
    *
    * @param key      key object representing what is being updated
    * @param preValue value to push to the thread cache
