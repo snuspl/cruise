@@ -41,26 +41,26 @@ public final class ParameterAccessorImpl<K, P, V> implements ParameterAccessor<K
 
   @Override
   public void push(final K key, final P preValue) {
-
+    throw new UnsupportedOperationException("Not Implemented");
   }
 
   @Override
   public void flush() {
-
+    throw new UnsupportedOperationException("Not Implemented");
   }
 
   @Override
   public V pull(final K key) {
-    return null;
+    throw new UnsupportedOperationException("Not Implemented");
   }
 
   @Override
   public List<V> pull(final List<K> keys) {
-    return null;
+    throw new UnsupportedOperationException("Not Implemented");
   }
 
   @Override
   public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
-
+    throw new UnsupportedOperationException("Not Implemented");
   }
 }
