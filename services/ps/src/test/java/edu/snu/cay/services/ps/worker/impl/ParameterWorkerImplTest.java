@@ -330,7 +330,7 @@ public final class ParameterWorkerImplTest {
   @Test
   public void testPullNetworkExceptionAndResend() throws NetworkException, InterruptedException {
     final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_RESEND_COUNT);
-    final long gracePeriodMs = 2000;
+    final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
 
     // throw exception when worker sends a pull msg
     doAnswer(invocationOnMock -> {
@@ -344,9 +344,11 @@ public final class ParameterWorkerImplTest {
         worker.pull(key);
       }).start();
 
-    assertTrue(sendLatch.await(ParameterWorkerImpl.RESEND_INTERVAL_MS * ParameterWorkerImpl.MAX_RESEND_COUNT
-        + gracePeriodMs, TimeUnit.MILLISECONDS));
+    assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriodMs)
+        * ParameterWorkerImpl.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
 
+    // Check whether the expected number of pull requests have been made
+    // (1 initial attempt + MAX_RESEND_COUNT resend).
     verify(mockSender, times(1 + ParameterWorkerImpl.MAX_RESEND_COUNT)).sendPullMsg(anyString(), any(EncodedKey.class));
   }
 
@@ -356,7 +358,7 @@ public final class ParameterWorkerImplTest {
   @Test
   public void testPushNetworkExceptionAndResend() throws NetworkException, InterruptedException {
     final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_RESEND_COUNT);
-    final long gracePeriod = 100;
+    final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
 
     // throw exception when worker sends a push msg
     doAnswer(invocationOnMock -> {
@@ -370,9 +372,11 @@ public final class ParameterWorkerImplTest {
         worker.push(key, key);
       }).start();
 
-    assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriod)
+    assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriodMs)
         * ParameterWorkerImpl.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
 
+    // Check whether the expected number of push requests have been made
+    // (1 initial attempt + MAX_RESEND_COUNT resend).
     verify(mockSender, times(1 + ParameterWorkerImpl.MAX_RESEND_COUNT)).sendPushMsg(anyString(), any(EncodedKey.class),
         anyObject());
   }
@@ -383,7 +387,7 @@ public final class ParameterWorkerImplTest {
   @Test
   public void testPullTimeoutAndRetry() throws NetworkException, InterruptedException {
     final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT);
-    final long gracePeriod = 100;
+    final long gracePeriodMs = 100; // a time period to make sure all retry requests have been sent.
 
     final int key = 0;
 
@@ -397,9 +401,11 @@ public final class ParameterWorkerImplTest {
         worker.pull(key);
       }).start();
 
-    assertTrue(sendLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriod) * ParameterWorkerImpl.MAX_PULL_RETRY_COUNT,
+    assertTrue(sendLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriodMs) * ParameterWorkerImpl.MAX_PULL_RETRY_COUNT,
         TimeUnit.MILLISECONDS));
 
+    // Check whether the expected number of pull requests have been made
+    // (1 initial attempt + MAX_PULL_RETRY_COUNT retry).
     verify(mockSender, times(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT)).sendPullMsg(anyString(),
         any(EncodedKey.class));
   }
