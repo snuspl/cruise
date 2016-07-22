@@ -285,10 +285,10 @@ public class OperationRouterTest {
 
   /**
    * Tests router after explicitly initializing the routing table.
-   * Stores in initial evaluators are initialized by communicating with the driver,
-   * and stores in added evaluators are initialized by itself without any communication.
-   * The test the runs multiple threads using router to check
-   * whether it gives correct result and perform initialization only once.
+   * Stores in added evaluators are initialized by communicating with the driver,
+   * and stores in initial evaluators are initialized by itself without any communication.
+   * The test runs multiple threads using router to check
+   * whether the correct result is given, and whether initialization is performed only once or not.
    */
   @Test
   public void testRouterInAddedEvalAfterExplicitInit() throws InjectionException, InterruptedException {
@@ -356,12 +356,12 @@ public class OperationRouterTest {
 
   /**
    * Tests router without explicit initialization of the routing table.
-   * Stores in initial evaluators are initialized by communicating with the driver,
-   * and stores in added evaluators are initialized by itself without any communication.
-   * More specifically, the initialization of routers in added evaluators
-   * will be triggered by {@link OperationRouter#resolveEval(int)}.
-   * The test the runs multiple threads using router to check
-   * whether it gives correct result and perform initialization only once.
+   * Stores in added evaluators are initialized by communicating with the driver,
+   * and stores in initial evaluators are initialized by itself without any communication.
+   * When a router in an added evaluator is not initialized at the beginning,
+   * its initialization will be triggered by {@link OperationRouter#resolveEval(int)}.
+   * The test runs multiple threads using router to check
+   * whether the correct result is given, and whether initialization is performed only once or not.
    */
   @Test
   public void testRouterInAddedEvalWithoutExplicitInit() throws InjectionException, InterruptedException {
