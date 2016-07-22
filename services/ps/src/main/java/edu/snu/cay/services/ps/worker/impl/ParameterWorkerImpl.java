@@ -55,17 +55,26 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private static final Logger LOG = Logger.getLogger(ParameterWorkerImpl.class.getName());
 
   /**
-   * The maximum number of resends for push/pull operations when there's {@link NetworkException}.
+   * The maximum number to resend push/pull requests
+   * when {@link NetworkException} occurred while sending requests.
    */
   private static final int MAX_RESEND_COUNT = 10;
 
   /**
-   * A resend interval of push/pull operations when there's {@link NetworkException}.
+   * An interval between the time to resend push/pull requests
+   * when {@link NetworkException} occurred while sending requests.
    */
   private static final long RESEND_INTERVAL_MS = 100;
 
   /**
-   * A retry interval of pull operations when there's no response from server.
+   * The maximum number to restart pull requests from the beginning
+   * when the pull reply do not arrive within timeout {@link PullRetryTimeoutMs},
+   * or the pull request is rejected by server.
+   */
+  private static final int MAX_PULL_RETRY_COUNT = 10;
+
+  /**
+   * Timeout to retry pull requests when there is no response from server.
    */
   private final long pullRetryTimeoutMs;
 
@@ -299,7 +308,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       // But occasionally, multiple responses for a single pendingPull may arrive
       // if the worker retried due to the late response from the target server.
       LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
-          " It may be fulfilled by another earlier response from the server", key);
+          " Response for the key may have arrived earlier from another server", key);
     }
   }
 
@@ -320,7 +329,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       // But occasionally, multiple responses for a single pendingPull may arrive
       // if the worker retried due to the late response from the target server.
       LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
-          " It may be fulfilled by another earlier response from the server", key);
+          " Response for the key may have arrived earlier from another server", key);
     }
   }
 
@@ -334,9 +343,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
     /**
      * Block until a value is set or the maximum waiting time elapses.
-     * It returns null when it fails to get the value in given timeout.
      * @param timeout the maximum time to wait in milliseconds
-     * @return the value
+     * @return the value, or null when it fails to get the value in given timeout
      */
     synchronized V getValue(final long timeout) {
       if (value == null && !rejected) {
@@ -384,8 +392,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     final Statistics encodeStat = encodeStats[threadId];
     final Statistics pullStat = pullStats[threadId];
     LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Worker Thread Id: {1}, PS Worker Push Avg: {2}, " +
-        "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
-        "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
+            "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
+            "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
         new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
             String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
             String.format("%g", encodeStat.sum()), String.format("%g", pullStat.avg()),
@@ -604,8 +612,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
           .build(new CacheLoader<EncodedKey<K>, Wrapped<V>>() {
 
-            private static final int MAX_RETRY_COUNT = 10;
-
             @Override
             public Wrapped<V> load(final EncodedKey<K> encodedKey) {
               final PullFuture<V> future = new PullFuture<>();
@@ -615,7 +621,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
               int retryCount = 0;
               while (true) {
-                if (retryCount++ > MAX_RETRY_COUNT) {
+                if (retryCount++ > MAX_PULL_RETRY_COUNT) {
                   throw new RuntimeException("Fail to load a value for pull");
                 }
 
@@ -628,9 +634,9 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                 // 1) when the msg is rejected by server,
                 // 2) or when the server does not respond within RETRY_INTERVAL_MS
                 // The case 2) can be divided into three reasons:
-                // 2-1) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
-                // 2-2) the server is overloaded
-                // 2-3) the msg is missing due to network or other problems
+                // 2A) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
+                // 2B) the server is overloaded
+                // 2C) the msg is missing due to network or other problems
                 // we should adjust timeout to be large enough to avoid 2-1 and not to worsen 2-2,
                 // but small enough to quickly recover from 2-3.
                 value = future.getValue(pullRetryTimeoutMs);
@@ -649,7 +655,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
             /**
              * Sends a pull msg for the {@code encodedKey} to the target server.
              * @param encodedKey encoded key
-             * @return target server id
              */
             private void sendPullMsg(final EncodedKey<K> encodedKey) {
               int resendCount = 0;
@@ -658,9 +663,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                   throw new RuntimeException("Fail to send a pull msg");
                 }
 
-                // re-resolve server for every retry,
-                // because msg sender throws NetworkException
-                // when routing table is obsolete and indicates non-existing server
+                // Re-resolve server for every retry, because msg sender throws NetworkException
+                // when routing table is obsolete and indicates non-existing server.
                 final String serverId = serverResolver.resolveServer(encodedKey.getHash());
                 LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
                     new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
