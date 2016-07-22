@@ -622,8 +622,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                 // 2A) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
                 // 2B) the server is overloaded
                 // 2C) the msg is missing due to network or other problems
-                // we should adjust timeout to be large enough to avoid 2-1 and not to worsen 2-2,
-                // but small enough to quickly recover from 2-3.
+                // we should adjust timeout to be large enough to avoid 2A and not to worsen 2B,
+                // but small enough to quickly recover from 2C.
                 value = future.getValue(pullRetryTimeoutMs);
 
                 if (value != null) {

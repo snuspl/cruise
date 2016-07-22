@@ -249,7 +249,7 @@ public final class ParameterWorkerImplTest {
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPullThreads = 8;
     final int numPullPerThread = 1000;
-    final int numRejectPerKey = 3; // should be smaller than MAX_RETRY_COUNT in ParameterWorkerImpl
+    final int numRejectPerKey = ParameterWorkerImpl.MAX_PULL_RETRY_COUNT / 2;
 
     final Map<Integer, AtomicInteger> keyToNumPullCounter = new HashMap<>();
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
@@ -356,7 +356,7 @@ public final class ParameterWorkerImplTest {
   @Test
   public void testPushNetworkExceptionAndResend() throws NetworkException, InterruptedException {
     final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_RESEND_COUNT);
-    final long gracePeriod = 1000;
+    final long gracePeriod = 100;
 
     // throw exception when worker sends a push msg
     doAnswer(invocationOnMock -> {
@@ -370,8 +370,8 @@ public final class ParameterWorkerImplTest {
         worker.push(key, key);
       }).start();
 
-    assertTrue(sendLatch.await(ParameterWorkerImpl.RESEND_INTERVAL_MS * ParameterWorkerImpl.MAX_RESEND_COUNT
-        + gracePeriod, TimeUnit.MILLISECONDS));
+    assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriod)
+        * ParameterWorkerImpl.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
 
     verify(mockSender, times(1 + ParameterWorkerImpl.MAX_RESEND_COUNT)).sendPushMsg(anyString(), any(EncodedKey.class),
         anyObject());
@@ -383,7 +383,7 @@ public final class ParameterWorkerImplTest {
   @Test
   public void testPullTimeoutAndRetry() throws NetworkException, InterruptedException {
     final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT);
-    final long gracePeriod = 1000;
+    final long gracePeriod = 100;
 
     final int key = 0;
 
@@ -397,7 +397,7 @@ public final class ParameterWorkerImplTest {
         worker.pull(key);
       }).start();
 
-    assertTrue(sendLatch.await(PULL_RETRY_TIMEOUT_MS * ParameterWorkerImpl.MAX_PULL_RETRY_COUNT + gracePeriod,
+    assertTrue(sendLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriod) * ParameterWorkerImpl.MAX_PULL_RETRY_COUNT,
         TimeUnit.MILLISECONDS));
 
     verify(mockSender, times(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT)).sendPullMsg(anyString(),
