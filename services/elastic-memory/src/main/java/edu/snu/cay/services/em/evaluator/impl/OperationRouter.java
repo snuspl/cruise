@@ -65,7 +65,7 @@ public final class OperationRouter<K> {
    * A prefix of evaluator id will be set by {@link #initialize(String)} or {@link #initialize(List)} once,
    * and used by {@link #getEvalId(int)} to make the complete evaluator id.
    */
-  private String evalPrefix;
+  private volatile String evalPrefix;
 
   private final int localStoreId;
 
@@ -146,6 +146,7 @@ public final class OperationRouter<K> {
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
 
     if (addedEval) {
+      // TODO #565: call triggerInitialization() within a separate thread, which will not block caller's progress
       requestRoutingTable();
     }
   }
@@ -189,10 +190,8 @@ public final class OperationRouter<K> {
     initialized = true;
 
     LOG.log(Level.FINE, "Operation router is initialized");
-    synchronized (this) {
-      // wake up all waiting threads
-      this.notifyAll();
-    }
+    // wake up all waiting threads
+    this.notifyAll();
   }
 
   /**
@@ -202,7 +201,17 @@ public final class OperationRouter<K> {
    * It throws RuntimeException, if the table is not initialized til the end.
    */
   private void checkInitialization() {
+    // check without locking
     if (!addedEval || initialized) {
+      return;
+    }
+
+    triggerInitialization();
+  }
+
+  private synchronized void triggerInitialization() {
+    // check within synchronization method
+    if (initialized) {
       return;
     }
 
@@ -212,9 +221,7 @@ public final class OperationRouter<K> {
 
       LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
       try {
-        synchronized (this) {
-          this.wait(INIT_WAIT_TIMEOUT_MS);
-        }
+        this.wait(INIT_WAIT_TIMEOUT_MS);
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
       }

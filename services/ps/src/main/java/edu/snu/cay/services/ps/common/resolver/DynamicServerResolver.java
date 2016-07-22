@@ -50,7 +50,7 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   private final Map<Integer, String> storeIdToEndpointId = new ConcurrentHashMap<>();
 
-  private int numTotalBlocks = 0;
+  private volatile int numTotalBlocks = 0;
 
   /**
    * Volatile boolean representing whether it receives the initial routing table from driver or not.
@@ -80,6 +80,16 @@ public final class DynamicServerResolver implements ServerResolver {
    * It throws RuntimeException, if the table is not initialized til the end.
    */
   private void checkInitialization() {
+    // check without locking
+    if (initialized) {
+      return;
+    }
+
+    retryInitialization();
+  }
+
+  private synchronized void retryInitialization() {
+    // check within synchronization method
     if (initialized) {
       return;
     }
@@ -90,9 +100,7 @@ public final class DynamicServerResolver implements ServerResolver {
 
       LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
       try {
-        synchronized (this) {
-          this.wait(INIT_WAIT_TIMEOUT_MS);
-        }
+        this.wait(INIT_WAIT_TIMEOUT_MS);
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
       }
@@ -108,10 +116,6 @@ public final class DynamicServerResolver implements ServerResolver {
    * Requests a routing table to driver.
    */
   public void requestRoutingTable() {
-    if (initialized) {
-      return;
-    }
-
     LOG.log(Level.FINE, "Sends a request for the routing table");
     msgSender.get().sendWorkerRegisterMsg();
   }
@@ -150,10 +154,8 @@ public final class DynamicServerResolver implements ServerResolver {
     initialized = true;
 
     LOG.log(Level.FINE, "Server resolver is initialized");
-    synchronized (this) {
-      // wake up all waiting threads
-      this.notifyAll();
-    }
+    // wake up all waiting threads
+    this.notifyAll();
   }
 
   @Override
