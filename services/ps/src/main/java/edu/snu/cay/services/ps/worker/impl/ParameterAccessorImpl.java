@@ -23,7 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 /**
- * A Parameter accessor for a worker thread.
+ * A Parameter accessor for a worker(task) thread.
  * This interacts with local caches(thread, worker) and the servers to provide or fetch parameters.
  * This is used to connect the a worker thread
  * to a {@link edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl}.
