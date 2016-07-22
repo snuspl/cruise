@@ -125,8 +125,8 @@ public class DynamicServerResolverTest {
 
   /**
    * Tests resolver after explicitly initializing the routing table.
-   * The test the runs multiple threads using resolver to check
-   * whether it gives correct result and perform initialization only once.
+   * The test runs multiple threads using resolver to check
+   * whether the correct result is given, and whether initialization is performed only once or not.
    */
   @Test
   public void testResolveAfterExplicitInit() throws InterruptedException {
@@ -177,8 +177,8 @@ public class DynamicServerResolverTest {
   /**
    * Tests resolver without explicit initialization of the routing table.
    * The initialization of routers will be triggered by {@link DynamicServerResolver#resolveServer(int)}.
-   * The test the runs multiple threads using resolver to check
-   * whether it gives correct result and perform initialization only once.
+   * The test runs multiple threads using resolver to check
+   * whether the correct result is given, and whether initialization is performed only once or not.
    */
   @Test
   public void testResolveWithoutExplicitInit() throws InterruptedException {

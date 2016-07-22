@@ -73,7 +73,7 @@ public class OperationRouterTest {
                                              final int numTotalBlocks,
                                              final int memoryStoreId,
                                              final boolean addedEval) throws InjectionException {
-    // 1. setup eval-side components that is common for static and dynamic routers
+    // 1. setup eval-side components that is common for all routers
     final Configuration evalConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(numInitialEvals))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
@@ -86,8 +86,9 @@ public class OperationRouterTest {
     evalInjector.bindVolatileInstance(ElasticMemoryMsgSender.class, evalMsgSender);
     final OperationRouter router = evalInjector.getInstance(OperationRouter.class);
 
-    // 2. If it is a dynamic router, setup eval-side msg sender and driver-side msg sender/handler and block manager.
-    // By mocking msg sender and handler in both side, we can simulate more realistic system behavior
+    // 2. If it is a router for a newly added evaluator,
+    // setup eval-side msg sender and driver-side msg sender/handler and block manager.
+    // By mocking msg sender and handler in both side, we can simulate more realistic system behaviors.
     if (addedEval) {
       final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
@@ -98,7 +99,7 @@ public class OperationRouterTest {
       final Injector driverInjector = Tang.Factory.getTang().newInjector(driverConf);
       final BlockManager blockManager = driverInjector.getInstance(BlockManager.class);
 
-      // Register all eval to block manager, now dynamic router can obtain the complete routing table
+      // Register all eval to block manager, now this router can obtain the complete routing table
       for (int evalIdx = 0; evalIdx < numInitialEvals; evalIdx++) {
         final String endpointId = EVAL_ID_PREFIX + evalIdx;
 
