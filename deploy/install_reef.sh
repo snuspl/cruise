@@ -119,6 +119,7 @@ install_reef
 # install_cay #  Comment out this line only when you want to build cay on your machine
 
 # Wrapping up
+sudo ufw disable # Disable firewall which can block Hadoop RPCs
 sudo /etc/init.d/ssh restart
 source ~/.profile
 
