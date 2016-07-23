@@ -106,6 +106,16 @@ function install_cay {
   echo "Cay installed" >> $LOG_FILE
 }
 
+# Hadoop RPCs may fail if IPv6 is enabled.
+# It's recommended to comment IPv6 addresses in /etc/hosts
+function disable_ipv6 {
+  sudo bash -c 'echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf'
+  sudo bash -c 'echo "net.ipv6.conf.default.disable_ipv6 = 1" >> /etc/sysctl.conf'
+  sudo bash -c 'echo "net.ipv6.conf.lo.disable_ipv6 = 1" >> /etc/sysctl.conf'
+  sudo sysctl -p
+  echo "IPv6 disabled" >> $LOG_FILE
+}
+
 # Start installation
 export LC_ALL="en_US.UTF-8"
 echo "Install start: $(date)" > $LOG_FILE
@@ -119,7 +129,8 @@ install_reef
 # install_cay #  Comment out this line only when you want to build cay on your machine
 
 # Wrapping up
-sudo ufw disable # Disable firewall which can block Hadoop RPCs
+disable_ipv6
+sudo ufw disable # Disable firewall which also can block Hadoop RPCs
 sudo /etc/init.d/ssh restart
 source ~/.profile
 
