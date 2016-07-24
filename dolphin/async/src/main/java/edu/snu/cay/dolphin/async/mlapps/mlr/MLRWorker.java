@@ -425,7 +425,9 @@ final class MLRWorker implements Worker {
     double loss = 0;
     int numInstances = 0;
     int correctPredictions = 0;
-    for (final Pair<Vector, Integer> entry : data.subList(0, datasetSize)) {
+
+    final int numDataToCompute = Math.min(datasetSize, data.size());
+    for (final Pair<Vector, Integer> entry : data.subList(0, numDataToCompute)) {
       final Vector features = entry.getFirst();
       final int label = entry.getSecond();
       final Vector predictions = predict(features);
