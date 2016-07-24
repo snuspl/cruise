@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.em.plan.impl;
 
-import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.api.Plan;
+import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.utils.DAG;
 import edu.snu.cay.utils.DAGImpl;
 

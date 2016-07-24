@@ -13,7 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.common.dataloader;
+
+import org.apache.reef.annotations.audience.DriverSide;
+
 /**
- * Optimizer tests for dolphin-async.
+ * Used in Driver to get splits of a HDFS directory/file.
  */
-package edu.snu.cay.dolphin.async.optimizer;
+@DriverSide
+interface HdfsSplitManager {
+  /**
+   * @param path of a HDFS directory/file
+   * @param numOfSplits of the directory/file
+   * @return an array of HDFS split representations
+   */
+  HdfsSplitInfo[] getSplits(String path, int numOfSplits);
+}

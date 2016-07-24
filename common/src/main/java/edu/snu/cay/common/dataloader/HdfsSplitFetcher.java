@@ -13,13 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer.parameters;
+package edu.snu.cay.common.dataloader;
 
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 
-@NamedParameter(doc = "Delay for added MemoryStore to be initialized (e.g., routing table)",
-                short_name = "memory_store_init_delay_ms",
-                default_value = "1000")
-public class MemoryStoreInitDelayMs implements Name<Long> {
+import java.util.List;
+
+/**
+ * Used in Evaluator to fetch a split data from HDFS.
+ */
+@EvaluatorSide
+interface HdfsSplitFetcher {
+  /**
+   * @param hdfsSplitInfo information of a split
+   * @param <T> type of the split
+   * @return the split data
+   */
+  <T> List<T> fetchData(HdfsSplitInfo<T> hdfsSplitInfo);
 }

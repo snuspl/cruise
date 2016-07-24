@@ -266,8 +266,9 @@ public final class AsyncDolphinDriver {
   private final long optimizationIntervalMs;
 
   /**
-   * Triggers optimization. After waiting an initial delay,
-   * optimization is performed periodically for now (See {@link StartHandler}).
+   * Triggers optimization. Optimization is performed only when workers are running their main iterations.
+   * Every optimization is triggered after {@link OptimizationIntervalMs} from the previous optimization.
+   * See {@link StartHandler}.
    */
   private final ExecutorService optimizerExecutor = Executors.newSingleThreadExecutor();
 
@@ -388,18 +389,32 @@ public final class AsyncDolphinDriver {
       serverEMWrapper.getNetworkSetup().registerConnectionFactory(driverId);
       psNetworkSetup.registerConnectionFactory(driverId);
 
-      optimizerExecutor.submit(new Callable<Void>() {
-        private static final long INIT_DELAY = 10000;
-
+      optimizerExecutor.execute(new Runnable() {
         @Override
-        public Void call() throws Exception {
-          // TODO #538: check actual timing of system init
-          Thread.sleep(INIT_DELAY);
-          while (jobStateMachine.getCurrentState().equals(STATE_RUNNING)) {
-            optimizationOrchestrator.run();
-            Thread.sleep(optimizationIntervalMs);
+        public void run() {
+          // 1. wait until all workers finish initialization
+          while (synchronizationManager.workersInitializing()) {
+            try {
+              synchronizationManager.waitInitialization();
+              LOG.info("Worker tasks are initialized. Start triggering optimization.");
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while waiting for the worker initialization", e);
+            }
           }
-          return null;
+
+          // 2. trigger optimization during all workers are running their main iterations
+          // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iterations
+          while (!synchronizationManager.waitingCleanup()) {
+            optimizationOrchestrator.run();
+            try {
+              Thread.sleep(optimizationIntervalMs);
+            } catch (final InterruptedException e) {
+              LOG.log(Level.WARNING, "Interrupted while sleeping between optimizations", e);
+            }
+          }
+
+          // 3. allow workers to do cleanup, after finishing optimization entirely
+          synchronizationManager.allowWorkersCleanup();
         }
       });
     }
