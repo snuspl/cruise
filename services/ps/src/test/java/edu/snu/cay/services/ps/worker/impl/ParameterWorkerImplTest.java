@@ -331,6 +331,7 @@ public final class ParameterWorkerImplTest {
   public void testPullNetworkExceptionAndResend() throws NetworkException, InterruptedException {
     final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_RESEND_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
+    final ExecutorService pool = Executors.newSingleThreadExecutor();
 
     // throw exception when worker sends a pull msg
     doAnswer(invocationOnMock -> {
@@ -340,9 +341,8 @@ public final class ParameterWorkerImplTest {
 
     final int key = 0;
 
-    new Thread(() -> {
-        worker.pull(key);
-      }).start();
+    pool.execute(() -> worker.pull(key));
+    pool.shutdown();
 
     assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriodMs)
         * ParameterWorkerImpl.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
@@ -359,6 +359,7 @@ public final class ParameterWorkerImplTest {
   public void testPushNetworkExceptionAndResend() throws NetworkException, InterruptedException {
     final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_RESEND_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
+    final ExecutorService pool = Executors.newSingleThreadExecutor();
 
     // throw exception when worker sends a push msg
     doAnswer(invocationOnMock -> {
@@ -368,9 +369,8 @@ public final class ParameterWorkerImplTest {
 
     final int key = 0;
 
-    new Thread(() -> {
-        worker.push(key, key);
-      }).start();
+    pool.execute(() -> worker.push(key, key));
+    pool.shutdown();
 
     assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriodMs)
         * ParameterWorkerImpl.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
@@ -388,6 +388,7 @@ public final class ParameterWorkerImplTest {
   public void testPullTimeoutAndRetry() throws NetworkException, InterruptedException {
     final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all retry requests have been sent.
+    final ExecutorService pool = Executors.newSingleThreadExecutor();
 
     final int key = 0;
 
@@ -397,9 +398,8 @@ public final class ParameterWorkerImplTest {
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
-    new Thread(() -> {
-        worker.pull(key);
-      }).start();
+    pool.execute(() -> worker.pull(key));
+    pool.shutdown();
 
     assertTrue(sendLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriodMs) * ParameterWorkerImpl.MAX_PULL_RETRY_COUNT,
         TimeUnit.MILLISECONDS));
