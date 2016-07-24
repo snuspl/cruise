@@ -579,7 +579,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       try {
         queue.put(op);
       } catch (final InterruptedException e) {
-        LOG.log(Level.FINEST, "Enqueue failed with InterruptedException", e);
+        LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
       }
     }
 
@@ -601,7 +601,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
           }
           op.apply();
         } catch (final InterruptedException e) {
-          LOG.log(Level.FINEST, "Poll failed with InterruptedException", e);
+          LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
           continue;
         }
 

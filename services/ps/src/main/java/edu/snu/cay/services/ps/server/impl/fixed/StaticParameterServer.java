@@ -557,7 +557,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
           }
           op.apply(kvStore);
         } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+          LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
           continue;
         }
 
