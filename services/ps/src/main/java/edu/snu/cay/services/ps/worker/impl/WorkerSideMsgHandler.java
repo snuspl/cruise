@@ -81,11 +81,11 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
    */
   @Override 
   public void onNext(final Message<AvroPSMsg> msg) {
-    LOG.entering(WorkerSideMsgHandler.class.getSimpleName(), "onNext");
+    LOG.entering(WorkerSideMsgHandler.class.getSimpleName(), "onNext", msg);
 
     final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-    case PullReplyMsg:Msg:
+    case PullReplyMsg:
       onPullReplyMsg(innerMsg.getPullReplyMsg());
       break;
 
