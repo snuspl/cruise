@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.common.metric.*;
+import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
@@ -27,14 +27,20 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.parameters.WorkerLogPeriod;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 
 /**
  * {@link Worker} class for the MLRREEF application.
@@ -142,16 +148,16 @@ final class MLRWorker implements Worker {
   @Inject
   private MLRWorker(final MLRParser mlrParser,
                     final ParameterWorker<Integer, Vector, Vector> worker,
-                    @Parameter(MLRParameters.NumClasses.class) final int numClasses,
-                    @Parameter(MLRParameters.NumFeatures.class) final int numFeatures,
-                    @Parameter(MLRParameters.NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                    @Parameter(MLRParameters.InitialStepSize.class) final double initStepSize,
-                    @Parameter(MLRParameters.Lambda.class) final double lambda,
-                    @Parameter(MLRParameters.WorkerLogPeriod.class) final int workerLogPeriod,
-                    @Parameter(MLRParameters.DecayRate.class) final double decayRate,
-                    @Parameter(MLRParameters.DecayPeriod.class) final int decayPeriod,
-                    @Parameter(MLRParameters.TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
-                    @Parameter(MLRParameters.NumBatchPerLossLog.class) final int numBatchPerLossLog,
+                    @Parameter(NumClasses.class) final int numClasses,
+                    @Parameter(NumFeatures.class) final int numFeatures,
+                    @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
+                    @Parameter(InitialStepSize.class) final double initStepSize,
+                    @Parameter(Lambda.class) final double lambda,
+                    @Parameter(WorkerLogPeriod.class) final int workerLogPeriod,
+                    @Parameter(DecayRate.class) final double decayRate,
+                    @Parameter(DecayPeriod.class) final int decayPeriod,
+                    @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
+                    @Parameter(NumBatchPerLossLog.class) final int numBatchPerLossLog,
                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
@@ -240,9 +246,9 @@ final class MLRWorker implements Worker {
     Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(trainErrorDatasetSize, workload);
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put("NUM_INSTANCES", (double) trainErrorDatasetSize);
-    appMetricMap.put(MLRParameters.MetricKeys.SAMPLE_LOSS_AVG, lossRegLossAccuracy.getFirst());
-    appMetricMap.put(MLRParameters.MetricKeys.REG_LOSS_AVG, lossRegLossAccuracy.getSecond());
-    appMetricMap.put(MLRParameters.MetricKeys.ACCURACY, (double) lossRegLossAccuracy.getThird());
+    appMetricMap.put(MetricKeys.SAMPLE_LOSS_AVG, lossRegLossAccuracy.getFirst());
+    appMetricMap.put(MetricKeys.REG_LOSS_AVG, lossRegLossAccuracy.getSecond());
+    appMetricMap.put(MetricKeys.ACCURACY, (double) lossRegLossAccuracy.getThird());
 
     Metrics appMetricsLoss = Metrics.newBuilder()
         .setData(appMetricMap)
@@ -267,9 +273,9 @@ final class MLRWorker implements Worker {
           lossRegLossAccuracy = computeLoss(trainErrorDatasetSize, workload);
           appMetricMap.clear();
           appMetricMap.put("NUM_INSTANCES", (double) trainErrorDatasetSize);
-          appMetricMap.put(MLRParameters.MetricKeys.SAMPLE_LOSS_AVG, lossRegLossAccuracy.getFirst());
-          appMetricMap.put(MLRParameters.MetricKeys.REG_LOSS_AVG, lossRegLossAccuracy.getSecond());
-          appMetricMap.put(MLRParameters.MetricKeys.ACCURACY, (double) lossRegLossAccuracy.getThird());
+          appMetricMap.put(MetricKeys.SAMPLE_LOSS_AVG, lossRegLossAccuracy.getFirst());
+          appMetricMap.put(MetricKeys.REG_LOSS_AVG, lossRegLossAccuracy.getSecond());
+          appMetricMap.put(MetricKeys.ACCURACY, (double) lossRegLossAccuracy.getThird());
 
           appMetricsLoss = Metrics.newBuilder()
               .setData(appMetricMap)
@@ -319,7 +325,7 @@ final class MLRWorker implements Worker {
     if (workerLogPeriod > 0 && iteration % workerLogPeriod == 0) {
       final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
       appMetricMap.clear();
-      appMetricMap.put(MLRParameters.MetricKeys.DVT, workload.size() / elapsedTime);
+      appMetricMap.put(MetricKeys.DVT, workload.size() / elapsedTime);
 
       final Metrics appMetrics = Metrics.newBuilder()
           .setData(appMetricMap)

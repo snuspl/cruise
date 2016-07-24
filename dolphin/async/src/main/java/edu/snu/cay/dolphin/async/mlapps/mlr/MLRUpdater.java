@@ -23,6 +23,9 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.Random;
 
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.ModelGaussian;
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumFeaturesPerPartition;
+
 /**
  * {@link ParameterUpdater} for the MLRREEF application.
  * Simply adds delta vectors to the old vectors stored in this server.
@@ -36,8 +39,8 @@ final class MLRUpdater implements ParameterUpdater<Integer, Vector, Vector> {
   private final Random random;
 
   @Inject
-  private MLRUpdater(@Parameter(MLRParameters.NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                     @Parameter(MLRParameters.ModelGaussian.class) final double modelGaussian,
+  private MLRUpdater(@Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
+                     @Parameter(ModelGaussian.class) final double modelGaussian,
                      final VectorFactory vectorFactory) {
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     this.modelGaussian = modelGaussian;

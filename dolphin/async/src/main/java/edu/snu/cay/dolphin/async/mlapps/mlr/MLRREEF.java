@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 
 /**
  * Application launching code for MLRREEF.
@@ -39,17 +40,17 @@ public final class MLRREEF {
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)
         .setWorkerSerializerClass(MLRDataSerializer.class)
-        .addParameterClass(MLRParameters.NumClasses.class)
-        .addParameterClass(MLRParameters.NumFeatures.class)
-        .addParameterClass(MLRParameters.InitialStepSize.class)
-        .addParameterClass(MLRParameters.Lambda.class)
-        .addParameterClass(MLRParameters.WorkerLogPeriod.class)
-        .addParameterClass(MLRParameters.NumFeaturesPerPartition.class)
-        .addParameterClass(MLRParameters.ModelGaussian.class)
-        .addParameterClass(MLRParameters.DecayPeriod.class)
-        .addParameterClass(MLRParameters.DecayRate.class)
-        .addParameterClass(MLRParameters.TrainErrorDatasetSize.class)
-        .addParameterClass(MLRParameters.NumBatchPerLossLog.class)
+        .addParameterClass(NumClasses.class)
+        .addParameterClass(NumFeatures.class)
+        .addParameterClass(InitialStepSize.class)
+        .addParameterClass(Lambda.class)
+        .addParameterClass(WorkerLogPeriod.class)
+        .addParameterClass(NumFeaturesPerPartition.class)
+        .addParameterClass(ModelGaussian.class)
+        .addParameterClass(DecayPeriod.class)
+        .addParameterClass(DecayRate.class)
+        .addParameterClass(TrainErrorDatasetSize.class)
+        .addParameterClass(NumBatchPerLossLog.class)
         .build());
   }
 }

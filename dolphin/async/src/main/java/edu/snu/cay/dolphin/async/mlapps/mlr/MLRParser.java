@@ -27,6 +27,9 @@ import javax.inject.Inject;
 import java.util.LinkedList;
 import java.util.List;
 
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumClasses;
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumFeatures;
+
 /**
  * A data parser for sparse vector classification input.
  * Assumes the following data format.
@@ -44,8 +47,8 @@ final class MLRParser {
   @Inject
   private MLRParser(final DataSet<LongWritable, Text> dataSet,
                     final VectorFactory vectorFactory,
-                    @Parameter(MLRParameters.NumClasses.class)final int numClasses,
-                    @Parameter(MLRParameters.NumFeatures.class) final int numFeatures) {
+                    @Parameter(NumClasses.class)final int numClasses,
+                    @Parameter(NumFeatures.class) final int numFeatures) {
     this.dataSet = dataSet;
     this.vectorFactory = vectorFactory;
     this.numClasses = numClasses;
