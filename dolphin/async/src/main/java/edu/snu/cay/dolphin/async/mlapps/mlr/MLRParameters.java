@@ -40,9 +40,9 @@ final class MLRParameters {
   }
 
   @NamedParameter(doc = "number of iterations to wait until logging the current status",
-      short_name = "status_log_period",
+      short_name = "worker_log_period",
       default_value = "0")
-  final class StatusLogPeriod implements Name<Integer> {
+  final class WorkerLogPeriod implements Name<Integer> {
   }
 
   @NamedParameter(doc = "number of features for each model partition",

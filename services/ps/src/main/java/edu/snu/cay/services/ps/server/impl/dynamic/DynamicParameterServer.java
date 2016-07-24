@@ -246,6 +246,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     final Statistics pullWaitStat = pullWaitStats[threadId];
 
     final ServerThreadMetrics threadMetrics = ServerThreadMetrics.newBuilder()
+        .setThreadId(threadId)
         .setTotalTime(elapsedTime / 1e9D)
         .setPullCount((int)pullStat.count())
         .setTotalPullTime(pullStat.sum())
@@ -259,7 +260,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         .setAvgPushWaitTime(pushWaitStat.avg())
         .build();
 
-    LOG.log(Level.INFO, "ThreadId {0}: {1}", threadMetrics);
+    LOG.log(Level.INFO, threadMetrics.toString());
 
     pushStat.reset();
     pullStat.reset();

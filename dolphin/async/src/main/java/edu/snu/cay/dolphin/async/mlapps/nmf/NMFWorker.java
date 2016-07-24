@@ -62,7 +62,7 @@ final class NMFWorker implements Worker {
    */
   private final int numMiniBatchPerIter;
   private final boolean printMatrices;
-  private final int logPeriod;
+  private final int workerLogPeriod;
   private final NMFModelGenerator modelGenerator;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
@@ -71,9 +71,6 @@ final class NMFWorker implements Worker {
   private final MemoryStore<Long> memoryStore;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final MetricsCollector metricsCollector;
-  private final InsertableMetricTracker insertableMetricTracker;
-  private final MetricsHandler metricsHandler;
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
 
   private final Tracer pushTracer;
@@ -94,13 +91,10 @@ final class NMFWorker implements Worker {
                     @Parameter(Lambda.class) final double lambda,
                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     @Parameter(PrintMatrices.class) final boolean printMatrices,
-                    @Parameter(LogPeriod.class) final int logPeriod,
+                    @Parameter(WorkerLogPeriod.class) final int workerLogPeriod,
                     final NMFModelGenerator modelGenerator,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
-                    final MetricsCollector metricsCollector,
-                    final InsertableMetricTracker insertableMetricTracker,
-                    final MetricsHandler metricsHandler,
                     final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.vectorFactory = vectorFactory;
@@ -110,13 +104,10 @@ final class NMFWorker implements Worker {
     this.lambda = lambda;
     this.numMiniBatchPerIter = numMiniBatchPerIter;
     this.printMatrices = printMatrices;
-    this.logPeriod = logPeriod;
+    this.workerLogPeriod = workerLogPeriod;
     this.modelGenerator = modelGenerator;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
-    this.metricsCollector = metricsCollector;
-    this.insertableMetricTracker = insertableMetricTracker;
-    this.metricsHandler = metricsHandler;
     this.metricsMsgSender = metricsMsgSender;
 
     this.rMatrix = Maps.newHashMap();
@@ -129,10 +120,6 @@ final class NMFWorker implements Worker {
 
   @Override
   public void initialize() {
-    final Set<MetricTracker> metricTrackerSet = new HashSet<>(1);
-    metricTrackerSet.add(insertableMetricTracker);
-    metricsCollector.registerTrackers(metricTrackerSet);
-
     final List<NMFData> dataValues = dataParser.parse();
     final List<Long> dataKeys;
 
@@ -211,7 +198,7 @@ final class NMFWorker implements Worker {
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.INFO, "Sending metricsMessage {0}", new Object[]{workerMetrics});
+    LOG.log(Level.INFO, "Sending metricsMessage {0}", workerMetrics);
 
     metricsMsgSender.send(workerMetrics);
   }
@@ -237,12 +224,6 @@ final class NMFWorker implements Worker {
 
   @Override
   public void run() {
-    try {
-      metricsCollector.start();
-    } catch (final MetricException e) {
-      throw new RuntimeException(e);
-    }
-
     ++iteration;
     final long iterationBegin = System.currentTimeMillis();
     double lossSum = 0.0;
@@ -302,7 +283,7 @@ final class NMFWorker implements Worker {
         pullRMatrix(getKeys(workload));
       }
 
-      if (logPeriod > 0 && rowCount % logPeriod == 0) {
+      if (workerLogPeriod > 0 && rowCount % workerLogPeriod == 0) {
         final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
         final Map<CharSequence, Double> appMetricMap = new HashMap<>();
         appMetricMap.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
@@ -317,39 +298,32 @@ final class NMFWorker implements Worker {
         final WorkerMetrics workerMetrics =
             buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), rowCount, elapsedTime);
 
-        LOG.log(Level.INFO, "Iteration: {0}", new Object[]{workerMetrics});
+        LOG.log(Level.INFO, "Iteration: {0}", workerMetrics);
       }
     }
 
     pushAndClearGradients();
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    try {
-      insertableMetricTracker.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
-      insertableMetricTracker.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
-      insertableMetricTracker.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
-      insertableMetricTracker.put(NMFParameters.MetricKeys.RVT, rowCount / elapsedTime);
-      metricsCollector.stop();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    final Metrics appMetrics = metricsHandler.getMetrics();
+    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+    appMetricMap.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
+    appMetricMap.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
+    appMetricMap.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
+    appMetricMap.put(NMFParameters.MetricKeys.RVT, rowCount / elapsedTime);
+
+    final Metrics appMetrics = Metrics.newBuilder()
+        .setData(appMetricMap)
+        .build();
 
     final WorkerMetrics workerMetrics = buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), rowCount, elapsedTime);
 
-    LOG.log(Level.INFO, "End Iteration: {0}", new Object[]{workerMetrics});
+    LOG.log(Level.INFO, "End Iteration: {0}", workerMetrics);
 
     sendMetrics(workerMetrics);
   }
 
   @Override
   public void cleanup() {
-    try {
-      metricsCollector.close();
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
-
     // print generated matrices
     if (!printMatrices) {
       return;

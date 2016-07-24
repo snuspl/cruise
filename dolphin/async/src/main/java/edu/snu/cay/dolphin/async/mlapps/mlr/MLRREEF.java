@@ -43,7 +43,7 @@ public final class MLRREEF {
         .addParameterClass(MLRParameters.NumFeatures.class)
         .addParameterClass(MLRParameters.InitialStepSize.class)
         .addParameterClass(MLRParameters.Lambda.class)
-        .addParameterClass(MLRParameters.StatusLogPeriod.class)
+        .addParameterClass(MLRParameters.WorkerLogPeriod.class)
         .addParameterClass(MLRParameters.NumFeaturesPerPartition.class)
         .addParameterClass(MLRParameters.ModelGaussian.class)
         .addParameterClass(MLRParameters.DecayPeriod.class)

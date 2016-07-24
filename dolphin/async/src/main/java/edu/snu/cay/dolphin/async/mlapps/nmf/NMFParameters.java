@@ -54,7 +54,7 @@ final class NMFParameters {
 
   @NamedParameter(doc = "minimum number of input rows when logging execution status", short_name = "log_period",
                   default_value = "0")
-  static final class LogPeriod implements Name<Integer> {
+  static final class WorkerLogPeriod implements Name<Integer> {
   }
 
   static final class MetricKeys {

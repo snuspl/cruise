@@ -15,15 +15,14 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
+import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.*;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.metric.Tracer;
-import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -88,7 +87,7 @@ final class MLRWorker implements Worker {
   /**
    * Number of iterations to wait until logging the loss value.
    */
-  private final int statusLogPeriod;
+  private final int workerLogPeriod;
 
   /**
    * Object for creating {@link Vector} instances.
@@ -135,9 +134,6 @@ final class MLRWorker implements Worker {
   private final MemoryStore<Long> memoryStore;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final MetricsCollector metricsCollector;
-  private final InsertableMetricTracker insertableMetricTracker;
-  private final MetricsHandler metricsHandler;
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final Tracer pushTracer;
   private final Tracer pullTracer;
@@ -151,7 +147,7 @@ final class MLRWorker implements Worker {
                     @Parameter(MLRParameters.NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                     @Parameter(MLRParameters.InitialStepSize.class) final double initStepSize,
                     @Parameter(MLRParameters.Lambda.class) final double lambda,
-                    @Parameter(MLRParameters.StatusLogPeriod.class) final int statusLogPeriod,
+                    @Parameter(MLRParameters.WorkerLogPeriod.class) final int workerLogPeriod,
                     @Parameter(MLRParameters.DecayRate.class) final double decayRate,
                     @Parameter(MLRParameters.DecayPeriod.class) final int decayPeriod,
                     @Parameter(MLRParameters.TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
@@ -159,9 +155,6 @@ final class MLRWorker implements Worker {
                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
-                    final MetricsCollector metricsCollector,
-                    final InsertableMetricTracker insertableMetricTracker,
-                    final MetricsHandler metricsHandler,
                     final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                     final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
@@ -175,7 +168,7 @@ final class MLRWorker implements Worker {
     this.numMiniBatchPerIter = numMiniBatchPerIter;
     this.stepSize = initStepSize;
     this.lambda = lambda;
-    this.statusLogPeriod = statusLogPeriod;
+    this.workerLogPeriod = workerLogPeriod;
     this.vectorFactory = vectorFactory;
     this.oldModels = new Vector[numClasses];
     this.newModels = new Vector[numClasses];
@@ -184,9 +177,6 @@ final class MLRWorker implements Worker {
     this.decayPeriod = decayPeriod;
     this.trainErrorDatasetSize = trainErrorDatasetSize;
     this.numBatchPerLossLog = numBatchPerLossLog;
-    this.metricsCollector = metricsCollector;
-    this.insertableMetricTracker = insertableMetricTracker;
-    this.metricsHandler = metricsHandler;
     this.metricsMsgSender = metricsMsgSender;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
@@ -201,10 +191,6 @@ final class MLRWorker implements Worker {
    */
   @Override
   public void initialize() {
-    final Set<MetricTracker> metricTrackerSet = new HashSet<>(1);
-    metricTrackerSet.add(insertableMetricTracker);
-    metricsCollector.registerTrackers(metricTrackerSet);
-
     // The input dataset, given as a list of pairs which are in the form, (input vector, label).
     final List<Pair<Vector, Integer>> dataValues = mlrParser.parse();
 
@@ -244,12 +230,6 @@ final class MLRWorker implements Worker {
 
   @Override
   public void run() {
-    try {
-      metricsCollector.start();
-    } catch (final MetricException e) {
-      throw new RuntimeException(e);
-    }
-
     resetTracers();
     final long iterationBegin = System.currentTimeMillis();
     pullModels();
@@ -257,14 +237,14 @@ final class MLRWorker implements Worker {
     final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
     final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
 
-    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(trainErrorDatasetSize, workload);
+    Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(trainErrorDatasetSize, workload);
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put("NUM_INSTANCES", (double) trainErrorDatasetSize);
     appMetricMap.put(MLRParameters.MetricKeys.SAMPLE_LOSS_AVG, lossRegLossAccuracy.getFirst());
     appMetricMap.put(MLRParameters.MetricKeys.REG_LOSS_AVG, lossRegLossAccuracy.getSecond());
     appMetricMap.put(MLRParameters.MetricKeys.ACCURACY, (double) lossRegLossAccuracy.getThird());
 
-    final Metrics appMetricsLoss = Metrics.newBuilder()
+    Metrics appMetricsLoss = Metrics.newBuilder()
         .setData(appMetricMap)
         .build();
 
@@ -284,18 +264,18 @@ final class MLRWorker implements Worker {
         computeTracer.startTimer();
 
         if (++numBatch % numBatchPerLossLog == 0) {
-          final Tuple3<Double, Double, Float> pair = computeLoss(trainErrorDatasetSize, workload);
+          lossRegLossAccuracy = computeLoss(trainErrorDatasetSize, workload);
           appMetricMap.clear();
           appMetricMap.put("NUM_INSTANCES", (double) trainErrorDatasetSize);
-          appMetricMap.put(MLRParameters.MetricKeys.SAMPLE_LOSS_AVG, pair.getFirst());
-          appMetricMap.put(MLRParameters.MetricKeys.REG_LOSS_AVG, pair.getSecond());
-          appMetricMap.put(MLRParameters.MetricKeys.ACCURACY, (double) pair.getThird());
+          appMetricMap.put(MLRParameters.MetricKeys.SAMPLE_LOSS_AVG, lossRegLossAccuracy.getFirst());
+          appMetricMap.put(MLRParameters.MetricKeys.REG_LOSS_AVG, lossRegLossAccuracy.getSecond());
+          appMetricMap.put(MLRParameters.MetricKeys.ACCURACY, (double) lossRegLossAccuracy.getThird());
 
-          final Metrics appMetricsLoss2 = Metrics.newBuilder()
+          appMetricsLoss = Metrics.newBuilder()
               .setData(appMetricMap)
               .build();
 
-          LOG.log(Level.INFO, "Iteration For Loss {0}: ", new Object[]{appMetricsLoss2});
+          LOG.log(Level.INFO, "Iteration For Loss {0}: ", new Object[]{appMetricsLoss});
         }
 
         numInstances = 0;
@@ -336,7 +316,7 @@ final class MLRWorker implements Worker {
     }
 
     ++iteration;
-    if (statusLogPeriod > 0 && iteration % statusLogPeriod == 0) {
+    if (workerLogPeriod > 0 && iteration % workerLogPeriod == 0) {
       final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
       appMetricMap.clear();
       appMetricMap.put(MLRParameters.MetricKeys.DVT, workload.size() / elapsedTime);
@@ -359,12 +339,10 @@ final class MLRWorker implements Worker {
     }
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    try {
-      metricsCollector.stop();
-    } catch (MetricException e) {
-      e.printStackTrace();
-    }
-    final Metrics appMetrics = metricsHandler.getMetrics();
+
+    // There is no app specific metric to be added at this point.
+    // Avro definition of Metrics allows null values and null values are not included as a part of JSON.
+    final Metrics appMetrics = null;
 
     final WorkerMetrics workerMetrics = buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(),
         workload.size(), elapsedTime);
@@ -565,5 +543,4 @@ final class MLRWorker implements Worker {
 
     return workerMetrics;
   }
-
 }

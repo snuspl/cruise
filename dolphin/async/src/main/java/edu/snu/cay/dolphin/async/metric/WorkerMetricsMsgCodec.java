@@ -22,7 +22,7 @@ import org.apache.reef.wake.remote.Codec;
 import javax.inject.Inject;
 
 /**
- * Codec for WorkerWorkerMetricsMsg.
+ * Codec for WorkerMetricsMsg.
  * Simply uses AvroUtils to encode and decode messages.
  */
 public final class WorkerMetricsMsgCodec implements Codec<WorkerMetrics> {

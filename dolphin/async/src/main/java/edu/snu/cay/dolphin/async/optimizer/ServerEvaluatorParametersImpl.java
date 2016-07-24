@@ -28,6 +28,12 @@ public final class ServerEvaluatorParametersImpl implements EvaluatorParameters 
   private final DataInfo dataInfo;
   private final ServerMetrics metrics;
 
+  /**
+   * Constructs a server evaluator's current status.
+   * @param id the evaluator ID
+   * @param dataInfo {@link DataInfo} representing the number of blocks allocated
+   * @param metrics {@link ServerMetrics} representing the server's iteration execution metrics
+   */
   public ServerEvaluatorParametersImpl(final String id,
                                        final DataInfo dataInfo,
                                        final ServerMetrics metrics) {
@@ -46,6 +52,10 @@ public final class ServerEvaluatorParametersImpl implements EvaluatorParameters 
     return dataInfo;
   }
 
+  /**
+   * Returns this server evaluator's iteration execution metrics.
+   * @return {@link ServerMetrics} representing the server's iteration execution metrics
+   */
   public ServerMetrics getMetrics() {
     return metrics;
   }

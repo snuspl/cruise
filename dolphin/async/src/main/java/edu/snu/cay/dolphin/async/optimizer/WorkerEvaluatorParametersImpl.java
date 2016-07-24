@@ -28,6 +28,12 @@ public final class WorkerEvaluatorParametersImpl implements EvaluatorParameters 
   private final DataInfo dataInfo;
   private final WorkerMetrics metrics;
 
+  /**
+   * Constructs a worker evaluator's current status.
+   * @param id the evaluator ID
+   * @param dataInfo {@link DataInfo} representing the number of blocks allocated
+   * @param metrics {@link WorkerMetrics} representing the worker's iteration execution metrics
+   */
   public WorkerEvaluatorParametersImpl(final String id,
                                        final DataInfo dataInfo,
                                        final WorkerMetrics metrics) {
@@ -46,6 +52,10 @@ public final class WorkerEvaluatorParametersImpl implements EvaluatorParameters 
     return dataInfo;
   }
 
+  /**
+   * Returns this worker evaluator's iteration execution metrics.
+   * @return {@link WorkerMetrics} representing the worker's iteration execution metrics
+   */
   public WorkerMetrics getMetrics() {
     return metrics;
   }
