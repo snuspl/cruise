@@ -15,26 +15,29 @@
  */
 package edu.snu.cay.services.ps.driver.impl.fixed;
 
+import edu.snu.cay.services.ps.common.parameters.NumPartitions;
+import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.services.ps.common.resolver.ServerResolver;
+import edu.snu.cay.services.ps.common.resolver.StaticServerResolver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
-import edu.snu.cay.services.ps.common.parameters.NumServers;
-import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
-import edu.snu.cay.services.ps.server.impl.fixed.StaticParameterServer;
 import edu.snu.cay.services.ps.server.impl.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.impl.ServerSideReplySenderImpl;
+import edu.snu.cay.services.ps.server.impl.fixed.StaticParameterServer;
+import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
-import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
+import edu.snu.cay.services.ps.worker.api.ParameterAccessor;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
-import edu.snu.cay.services.ps.common.resolver.ServerResolver;
-import edu.snu.cay.services.ps.common.resolver.StaticServerResolver;
+import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
+import edu.snu.cay.services.ps.worker.impl.SSPParameterAccessorImpl;
+import edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
@@ -67,6 +70,7 @@ public final class StaticPSManager implements PSManager {
   private final long workerLogPeriod;
   private final long serverLogPeriod;
   private final long serverMetricsWindowMs;
+  private final long staleness;
 
   @Inject
   private StaticPSManager(@Parameter(NumServers.class) final int numServers,
@@ -80,7 +84,8 @@ public final class StaticPSManager implements PSManager {
                           @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize,
                           @Parameter(ServerMetricsWindowMs.class) final long serverMetricsWindowMs,
                           @Parameter(ServerLogPeriod.class) final long serverLogPeriod,
-                          @Parameter(WorkerLogPeriod.class) final long workerLogPeriod) {
+                          @Parameter(WorkerLogPeriod.class) final long workerLogPeriod,
+                          @Parameter(Staleness.class) final long staleness) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.workerNumThreads = workerNumThrs;
@@ -93,19 +98,27 @@ public final class StaticPSManager implements PSManager {
     this.workerLogPeriod = workerLogPeriod;
     this.serverLogPeriod = serverLogPeriod;
     this.serverMetricsWindowMs = serverMetricsWindowMs;
+    this.staleness = staleness;
   }
 
   /**
    * Returns worker-side service configuration.
-   * Sets {@link ParameterWorkerImpl} as the {@link ParameterWorker} class.
+   * Sets {@link ParameterWorkerImpl} or {@link SSPParameterWorkerImpl} as the {@link ParameterWorker} class.
+   * The implementation of {@link ParameterWorker} is determined by {@link Staleness}
+   * between {@link SSPParameterWorkerImpl} if staleness >= 0 and
+   * {@link ParameterWorkerImpl}(fully-asynchronous) otherwise.
+   * Sets {@SSPParameterAccesssorImpl} as the {@link ParameterAccessor} class if staleness >= 0.
    */
   @Override
   public Configuration getWorkerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
-            .set(ServiceConfiguration.SERVICES, ParameterWorkerImpl.class)
+            .set(ServiceConfiguration.SERVICES,
+                staleness < 0 ?  ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
             .build())
-        .bindImplementation(ParameterWorker.class, ParameterWorkerImpl.class)
+        .bindImplementation(ParameterAccessor.class, SSPParameterAccessorImpl.class)
+        .bindImplementation(ParameterWorker.class,
+            staleness < 0 ?  ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))

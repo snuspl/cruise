@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,36 +22,53 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 /**
- * A Parameter Server worker (client) that interacts with the servers to provide or fetch parameters.
- * Works as a set with {@link edu.snu.cay.services.ps.server.api.ParameterServer}.
+ * A Parameter accessor for a worker.
+ * This interacts with worker cache and the servers to provide or fetch parameters.
+ * This is used to connect the a worker
+ * to a {@link edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl}.
+ *
  * @param <K> class type of parameter keys
  * @param <P> class type of parameter values before they are processed at the servers
  * @param <V> class type of parameter values after they are processed at the servers
  */
 @EvaluatorSide
-public interface ParameterWorker<K, P, V> {
+public interface ParameterAccessor<K, P, V> {
 
   /**
-   * Send a {@code preValue} associated with a certain {@code key} to the servers.
-   * @param key key object representing what is being sent
-   * @param preValue value to push to the servers
+   * Update a {@code preValue} associated with a certain {@code key} to the worker cache.
+   * Each {@code preValue} of same {@code key} is accumulated and sent to
+   * servers on {@code flush()} call.
+   *
+   * @param key      key object representing what is being updated
+   * @param preValue value to push to the worker cache
    */
-  void push(K key, P preValue);
+  void push(final K key, final P preValue);
 
   /**
-   * Fetch a value associated with a certain {@code key} from the servers.
+   * Send cached keys and accumulated values in the worker cache to the servers.
+   */
+  void flush();
+
+  /**
+   * Fetch a value associated with a certain {@code key} from the servers or the worker cache.
+   * Update the worker cache with {@code key}, value and global minimum clock
+   * when the value is fetched from the servers.
+   *
    * @param key key object representing the expected value
    * @return value specified by the {@code key}, or {@code null} if something unexpected happens (see implementation)
    */
-  V pull(K key);
+  V pull(final K key);
 
   /**
-   * Fetch values associated with certain {@code keys} from the servers.
+   * Fetch values associated with certain {@code keys} from the servers or the worker cache.
+   * Update the worker cache with each key of {@code keys},
+   * value and global minimum clock when values are fetched from the servers.
+   *
    * @param keys a list of key objects representing the expected values
    * @return a list of values specified by the given {@code keys}. Some positions can be {@code null}
-   *         if something unexpected happens. (see implementation)
+   * if something unexpected happens. (see implementation)
    */
-  List<V> pull(List<K> keys);
+  List<V> pull(final List<K> keys);
 
   /**
    * Tick the worker clock(iteration count) and send the clock to the driver.
@@ -62,5 +79,5 @@ public interface ParameterWorker<K, P, V> {
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
    * for queued messages to be sent.
    */
-  void close(long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException;
+  void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException;
 }

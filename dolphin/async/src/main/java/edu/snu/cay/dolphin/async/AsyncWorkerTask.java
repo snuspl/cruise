@@ -19,6 +19,8 @@ import  edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.ps.worker.api.ParameterAccessor;
+import edu.snu.cay.services.ps.worker.parameters.Staleness;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
@@ -54,9 +56,11 @@ final class AsyncWorkerTask implements Task {
   private final String taskId;
   private final int maxIterations;
   private final int numWorkerThreads;
+  private final int staleness;
   private final WorkerSynchronizer synchronizer;
   private final Injector injector;
   private final DataSet<LongWritable, Text> dataSet;
+  private final ParameterAccessor parameterAccessor;
 
   /**
    * A boolean flag shared among all worker threads.
@@ -68,11 +72,13 @@ final class AsyncWorkerTask implements Task {
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
                           @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
+                          @Parameter(Staleness.class) final int staleness,
                           final WorkerSynchronizer synchronizer,
                           final Injector injector,
                           final DataIdFactory<Long> idFactory,
                           final OperationRouter<Long> router,
-                          final DataSet<LongWritable, Text> dataSet) {
+                          final DataSet<LongWritable, Text> dataSet,
+                          final ParameterAccessor parameterAccessor) {
     // inject DataIdFactory and OperationRouter here to make spawning threads share the same instances
     this.taskId = taskId;
     this.maxIterations = maxIterations;
@@ -80,6 +86,8 @@ final class AsyncWorkerTask implements Task {
     this.synchronizer = synchronizer;
     this.injector = injector;
     this.dataSet = dataSet;
+    this.parameterAccessor = parameterAccessor;
+    this.staleness = staleness;
   }
 
   @Override
@@ -113,6 +121,11 @@ final class AsyncWorkerTask implements Task {
               return;
             }
             worker.run();
+
+            // Staleness >=0 means support of SSP model, otherwise asynchronous model is supported
+            if (staleness >= 0) {
+              parameterAccessor.clock();
+            }
           }
 
           // Synchronize all workers before cleanup for workers

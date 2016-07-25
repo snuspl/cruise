@@ -254,6 +254,11 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     return keyHash % numThreads;
   }
 
+  @Override
+  public void clock() {
+    // do nothing
+  }
+
   /**
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
    * for queued messages to be sent.
