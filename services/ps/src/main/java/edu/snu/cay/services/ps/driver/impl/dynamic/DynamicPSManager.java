@@ -118,13 +118,14 @@ public final class DynamicPSManager implements PSManager {
    */
   @Override
   public Configuration getWorkerServiceConfiguration(final String contextId) {
-    final Configuration workerServiceConfiguration = Tang.Factory.getTang()
+    return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES,
                 staleness < 0 ? ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
             .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
             .set(ServiceConfiguration.ON_TASK_STOP, TaskStopHandler.class)
             .build())
+        .bindImplementation(ParameterAccessor.class, SSPParameterAccessorImpl.class)
         .bindImplementation(ParameterWorker.class,
             staleness < 0 ? ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
@@ -139,13 +140,6 @@ public final class DynamicPSManager implements PSManager {
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
         .build();
-    if (staleness < 0) {
-      return workerServiceConfiguration;
-    } else {
-      return Configurations.merge(Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(ParameterAccessor.class, SSPParameterAccessorImpl.class).build(),
-          workerServiceConfiguration);
-    }
   }
 
   /**

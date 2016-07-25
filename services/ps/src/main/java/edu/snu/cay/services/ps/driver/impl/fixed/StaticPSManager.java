@@ -42,7 +42,6 @@ import edu.snu.cay.services.ps.worker.parameters.*;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -112,11 +111,12 @@ public final class StaticPSManager implements PSManager {
    */
   @Override
   public Configuration getWorkerServiceConfiguration(final String contextId) {
-    final Configuration workerServiceConfiguration = Tang.Factory.getTang()
+    return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES,
                 staleness < 0 ?  ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
             .build())
+        .bindImplementation(ParameterAccessor.class, SSPParameterAccessorImpl.class)
         .bindImplementation(ParameterWorker.class,
             staleness < 0 ?  ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
@@ -131,13 +131,6 @@ public final class StaticPSManager implements PSManager {
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
         .build();
-    if (staleness < 0) {
-      return workerServiceConfiguration;
-    } else {
-      return Configurations.merge(Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(ParameterAccessor.class, SSPParameterAccessorImpl.class).build(),
-          workerServiceConfiguration);
-    }
   }
 
   /**
