@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
+import edu.snu.cay.services.em.driver.api.EMResourceSpec;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
@@ -89,9 +90,14 @@ public final class ElasticMemoryImpl implements ElasticMemory {
    * TODO #188: Support heterogeneous evaluator requests
    */
   @Override
-  public void add(final String groupId, final int number, final int megaBytes, final int cores,
-                  final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
-                  final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
+  public void add(final EMResourceSpec spec) {
+    final String tableId = spec.getTableId();
+    final int number = spec.getNumber();
+    final int megaBytes = spec.getMegaBytes();
+    final int cores = spec.getCores();
+    final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler = spec.getEvaluatorAllocatedHandler();
+    final List<EventHandler<ActiveContext>> contextActiveHandlerList = spec.getContextActiveHandlerList();
+
     if (number == 0) {
       LOG.log(Level.WARNING, "Ignore the request for zero evaluator");
     } else if (number < 0) {
@@ -101,15 +107,21 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     } else if (cores <= 0) {
       throw new RuntimeException("The CPU cores of evaluators must be positive, but requested: " + cores);
     } else {
-      final ArrayList<EventHandler<ActiveContext>> contextActiveHandlers = new ArrayList<>();
-      EventHandler<ActiveContext> nextHandler;
-      try {
-        nextHandler = contextActiveHandlerList.get(0);
-      } catch (IndexOutOfBoundsException e) {
-        nextHandler = null;
+      final List<EventHandler<ActiveContext>> contextActiveHandlers;
+      if (tableId == null) {
+        contextActiveHandlers = contextActiveHandlerList;
+      } else {
+        contextActiveHandlers = new ArrayList<>();
+        EventHandler<ActiveContext> nextHandler;
+        try {
+          nextHandler = contextActiveHandlerList.get(0);
+        } catch (IndexOutOfBoundsException e) {
+          nextHandler = null;
+        }
+        contextActiveHandlers.add(new EvaluatorGroupRegister(tableId, nextHandler));
+        contextActiveHandlers.addAll(contextActiveHandlerList);
       }
-      contextActiveHandlers.add(new EvaluatorGroupRegister(groupId, nextHandler));
-      contextActiveHandlers.addAll(contextActiveHandlerList);
+
       evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlers);
     }
   }

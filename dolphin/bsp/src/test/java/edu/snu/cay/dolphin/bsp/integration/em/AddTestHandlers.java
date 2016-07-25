@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.integration.em;
 
+import edu.snu.cay.services.em.driver.api.EMResourceSpec;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.driver.context.ActiveContext;
@@ -64,7 +65,6 @@ final class AddTestHandlers {
     this.allocationCounter = new CountDownLatch(numAdd);
     this.callbackCounter = new CountDownLatch(numAdd);
     this.activeContextSet  = Collections.newSetFromMap(new ConcurrentHashMap<ActiveContext, Boolean>());
-    elasticMemory.addGroup("default");
   }
 
   /**
@@ -166,7 +166,11 @@ final class AddTestHandlers {
           }
         });
 
-        elasticMemory.add("default", addsPerThread, 128, 1, evaluatorAllocatedHandler, contextActiveHandlers);
+        elasticMemory.add(EMResourceSpec.newBuilder()
+            .setNumber(addsPerThread).setMegaBytes(128).setCores(1)
+            .setEvaluatorAllocatedHandler(evaluatorAllocatedHandler)
+            .setContextActiveHandlerList(contextActiveHandlers)
+            .build());
       }
     }
   }

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.examples.group;
 
+import edu.snu.cay.services.em.driver.api.EMResourceSpec;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import org.apache.reef.driver.context.ActiveContext;
@@ -55,7 +56,6 @@ public final class GroupEMDriver {
     this.elasticMemory = elasticMemory;
     this.requestor = requestor;
     this.evaluatorManager = evaluatorManager;
-    elasticMemory.addGroup("default");
     contextIndex = new AtomicInteger(0);
   }
 
@@ -79,7 +79,11 @@ public final class GroupEMDriver {
           activeContext.close();
         }
       });
-      elasticMemory.add("default", 10, 1024, 1, evaluatorAllocatedHandler, contextActiveHandlers);
+      elasticMemory.add(EMResourceSpec.newBuilder()
+          .setNumber(10).setMegaBytes(1024).setCores(1)
+          .setEvaluatorAllocatedHandler(evaluatorAllocatedHandler)
+          .setContextActiveHandlerList(contextActiveHandlers)
+          .build());
     }
   }
 

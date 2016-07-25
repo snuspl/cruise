@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.optimizer;
 import edu.snu.cay.dolphin.async.AsyncDolphinDriver;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.driver.api.EMResourceSpec;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
@@ -356,15 +357,21 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     switch (namespace) {
     case NAMESPACE_SERVER:
       LOG.log(Level.FINE, "Adding server {0}", operation.getEvalId());
-      serverEM.add(NAMESPACE_SERVER, 1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
-          getAllocatedEvalHandler(NAMESPACE_SERVER),
-          getActiveContextHandler(NAMESPACE_SERVER, operation));
+      serverEM.add(EMResourceSpec.newBuilder()
+          .setTableId(NAMESPACE_SERVER)
+          .setNumber(1).setMegaBytes(DEFAULT_EVAL_MEM_SIZE).setCores(DEFAULT_EVAL_NUM_CORES)
+          .setEvaluatorAllocatedHandler(getAllocatedEvalHandler(NAMESPACE_SERVER))
+          .setContextActiveHandlerList(getActiveContextHandler(NAMESPACE_SERVER, operation))
+          .build());
       break;
     case NAMESPACE_WORKER:
       LOG.log(Level.FINE, "Adding worker {0}", operation.getEvalId());
-      workerEM.add(NAMESPACE_WORKER, 1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
-          getAllocatedEvalHandler(NAMESPACE_WORKER),
-          getActiveContextHandler(NAMESPACE_WORKER, operation));
+      workerEM.add(EMResourceSpec.newBuilder()
+          .setTableId(NAMESPACE_WORKER)
+          .setNumber(1).setMegaBytes(DEFAULT_EVAL_MEM_SIZE).setCores(DEFAULT_EVAL_NUM_CORES)
+          .setEvaluatorAllocatedHandler(getAllocatedEvalHandler(NAMESPACE_WORKER))
+          .setContextActiveHandlerList(getActiveContextHandler(NAMESPACE_WORKER, operation))
+          .build());
       break;
     default:
       throw new RuntimeException("Unsupported namespace");
