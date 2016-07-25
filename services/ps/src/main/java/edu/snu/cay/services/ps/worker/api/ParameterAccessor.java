@@ -22,9 +22,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 /**
- * A Parameter accessor for a worker(task) thread.
- * This interacts with local caches(thread, worker) and the servers to provide or fetch parameters.
- * This is used to connect the a worker thread
+ * A Parameter accessor for a worker.
+ * This interacts with worker cache and the servers to provide or fetch parameters.
+ * This is used to connect the a worker
  * to a {@link edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl}.
  *
  * @param <K> class type of parameter keys
@@ -35,23 +35,24 @@ import java.util.concurrent.TimeoutException;
 public interface ParameterAccessor<K, P, V> {
 
   /**
-   * Update a {@code preValue} associated with a certain {@code key} to the thread cache.
-   * Each {@code preValue} of same {@code key} is accumulated and sent to worker cache
-   * and servers on {@code flush()} call.
+   * Update a {@code preValue} associated with a certain {@code key} to the worker cache.
+   * Each {@code preValue} of same {@code key} is accumulated and sent to
+   * servers on {@code flush()} call.
    *
    * @param key      key object representing what is being updated
-   * @param preValue value to push to the thread cache
+   * @param preValue value to push to the worker cache
    */
   void push(final K key, final P preValue);
 
   /**
-   * Send cached keys and accumulated values in the thread cache to the servers.
+   * Send cached keys and accumulated values in the worker cache to the servers.
    */
   void flush();
 
   /**
-   * Fetch a value associated with a certain {@code key} from the servers or local caches(thread, worker).
-   * Update local caches with {@code key}, value and global minimum clock when the value is fetched from the servers.
+   * Fetch a value associated with a certain {@code key} from the servers or the worker cache.
+   * Update the worker cache with {@code key}, value and global minimum clock
+   * when the value is fetched from the servers.
    *
    * @param key key object representing the expected value
    * @return value specified by the {@code key}, or {@code null} if something unexpected happens (see implementation)
@@ -59,8 +60,8 @@ public interface ParameterAccessor<K, P, V> {
   V pull(final K key);
 
   /**
-   * Fetch values associated with certain {@code keys} from the servers or local caches(thread, worker).
-   * Update local caches with each key of {@code keys},
+   * Fetch values associated with certain {@code keys} from the servers or the worker cache.
+   * Update the worker cache with each key of {@code keys},
    * value and global minimum clock when values are fetched from the servers.
    *
    * @param keys a list of key objects representing the expected values
@@ -68,6 +69,11 @@ public interface ParameterAccessor<K, P, V> {
    * if something unexpected happens. (see implementation)
    */
   List<V> pull(final List<K> keys);
+
+  /**
+   * Tick worker clock(iteration count) and send the clock to the driver.
+   */
+  void clock();
 
   /**
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds

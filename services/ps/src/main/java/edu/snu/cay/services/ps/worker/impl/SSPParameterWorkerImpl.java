@@ -53,11 +53,6 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
   }
 
   @Override
-  public void clock() {
-
-  }
-
-  @Override
   public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
     throw new NotImplementedException();
   }

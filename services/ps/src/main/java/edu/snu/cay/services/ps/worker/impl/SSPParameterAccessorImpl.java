@@ -62,6 +62,11 @@ public final class SSPParameterAccessorImpl<K, P, V> implements ParameterAccesso
   }
 
   @Override
+  public void clock() {
+    throw new NotImplementedException();
+  }
+
+  @Override
   public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
     throw new NotImplementedException();
   }

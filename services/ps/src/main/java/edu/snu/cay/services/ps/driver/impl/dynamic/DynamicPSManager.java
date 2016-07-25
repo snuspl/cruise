@@ -19,15 +19,16 @@ import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.services.ps.common.resolver.DynamicServerResolver;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
-import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
 import edu.snu.cay.services.ps.server.impl.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.impl.ServerSideReplySenderImpl;
+import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
@@ -35,13 +36,11 @@ import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterAccessor;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.impl.ParameterAccessorImpl;
+import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
 import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.SSPParameterAccessorImpl;
 import edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
-import edu.snu.cay.services.ps.common.resolver.DynamicServerResolver;
-import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStopHandler;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -115,18 +114,17 @@ public final class DynamicPSManager implements PSManager {
    * The implementation of {@link ParameterWorker} is determined by {@link Staleness}
    * between {@link SSPParameterWorkerImpl} if staleness >= 0 and
    * {@link ParameterWorkerImpl}(fully-asynchronous) otherwise.
+   * Sets {@SSPParameterAccesssorImpl} as the {@link ParameterAccessor} class if staleness >= 0.
    */
   @Override
   public Configuration getWorkerServiceConfiguration(final String contextId) {
-    return Tang.Factory.getTang()
+    final Configuration workerServiceConfiguration = Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES,
                 staleness < 0 ? ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
             .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
             .set(ServiceConfiguration.ON_TASK_STOP, TaskStopHandler.class)
             .build())
-        .bindImplementation(ParameterAccessor.class,
-            staleness < 0 ? ParameterAccessorImpl.class : SSPParameterAccessorImpl.class)
         .bindImplementation(ParameterWorker.class,
             staleness < 0 ? ParameterWorkerImpl.class : SSPParameterWorkerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
@@ -141,6 +139,13 @@ public final class DynamicPSManager implements PSManager {
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
         .build();
+    if (staleness < 0) {
+      return workerServiceConfiguration;
+    } else {
+      return Configurations.merge(Tang.Factory.getTang().newConfigurationBuilder()
+              .bindImplementation(ParameterAccessor.class, SSPParameterAccessorImpl.class).build(),
+          workerServiceConfiguration);
+    }
   }
 
   /**

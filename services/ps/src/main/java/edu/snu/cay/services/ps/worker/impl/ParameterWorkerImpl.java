@@ -254,11 +254,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     return keyHash % numThreads;
   }
 
-  @Override
-  public void clock() {
-    throw new UnsupportedOperationException();
-  }
-
   /**
    * Close the worker, after waiting a maximum of {@code timeoutMs} milliseconds
    * for queued messages to be sent.
