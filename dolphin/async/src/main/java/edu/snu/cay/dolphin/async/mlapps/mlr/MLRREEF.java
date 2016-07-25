@@ -44,13 +44,11 @@ public final class MLRREEF {
         .addParameterClass(NumFeatures.class)
         .addParameterClass(InitialStepSize.class)
         .addParameterClass(Lambda.class)
-        .addParameterClass(WorkerLogPeriod.class)
         .addParameterClass(NumFeaturesPerPartition.class)
         .addParameterClass(ModelGaussian.class)
         .addParameterClass(DecayPeriod.class)
         .addParameterClass(DecayRate.class)
         .addParameterClass(TrainErrorDatasetSize.class)
-        .addParameterClass(NumBatchPerLossLog.class)
         .build());
   }
 }

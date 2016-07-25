@@ -62,7 +62,6 @@ final class NMFWorker implements Worker {
    */
   private final int numMiniBatchPerIter;
   private final boolean printMatrices;
-  private final int workerLogPeriod;
   private final NMFModelGenerator modelGenerator;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
@@ -91,7 +90,6 @@ final class NMFWorker implements Worker {
                     @Parameter(Lambda.class) final double lambda,
                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     @Parameter(PrintMatrices.class) final boolean printMatrices,
-                    @Parameter(WorkerLogPeriod.class) final int workerLogPeriod,
                     final NMFModelGenerator modelGenerator,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
@@ -104,7 +102,6 @@ final class NMFWorker implements Worker {
     this.lambda = lambda;
     this.numMiniBatchPerIter = numMiniBatchPerIter;
     this.printMatrices = printMatrices;
-    this.workerLogPeriod = workerLogPeriod;
     this.modelGenerator = modelGenerator;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
@@ -121,8 +118,8 @@ final class NMFWorker implements Worker {
   @Override
   public void initialize() {
     final List<NMFData> dataValues = dataParser.parse();
-    final List<Long> dataKeys;
 
+    final List<Long> dataKeys;
     try {
       dataKeys = idFactory.getIds(dataValues.size());
     } catch (final IdGenerationException e) {
@@ -132,94 +129,9 @@ final class NMFWorker implements Worker {
     memoryStore.putList(dataKeys, dataValues);
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Batch size = {0}", numMiniBatchPerIter);
-    LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues));
-    LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
-  }
-
-  /**
-   * @param dataValues Dataset assigned to this worker
-   * @return Keys to send pull requests, which are determined by existing columns in NMFData.
-   */
-  private List<Integer> getKeys(final Collection<NMFData> dataValues) {
-    final ArrayList<Integer> keys = new ArrayList<>();
-    final Set<Integer> keySet = Sets.newTreeSet();
-    // aggregate column indices
-    for (final NMFData datum : dataValues) {
-      keySet.addAll(
-          datum.getColumns()
-              .stream()
-              .distinct()
-              .map(Pair::getFirst)
-              .collect(Collectors.toList()));
-    }
-    keys.ensureCapacity(keySet.size());
-    keys.addAll(keySet);
-    return keys;
-  }
-
-  private void saveRMatrixGradient(final int key, final Vector newGrad) {
-    final Vector grad = gradients.get(key);
-    if (grad == null) {
-      // l2 regularization term. 2 * lambda * R_{*, j}
-      if (lambda != 0.0D) {
-        newGrad.axpy(2.0D * lambda, rMatrix.get(key));
-      }
-      gradients.put(key, newGrad);
-    } else {
-      grad.addi(newGrad);
-    }
-  }
-
-  private void pushAndClearGradients() {
-    // push gradients
-    pushTracer.startTimer();
-    for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
-      parameterWorker.push(entry.getKey(), entry.getValue());
-    }
-    pushTracer.recordTime(gradients.size());
-    // clear gradients
-    gradients.clear();
-  }
-
-  private void pullRMatrix(final List<Integer> keys) {
-    pullTracer.startTimer();
-    final List<Vector> vectors = parameterWorker.pull(keys);
-    for (int i = 0; i < keys.size(); ++i) {
-      rMatrix.put(keys.get(i), vectors.get(i));
-    }
-    pullTracer.recordTime(keys.size());
-  }
-
-  private void resetTracers() {
-    pushTracer.resetTrace();
-    pullTracer.resetTrace();
-    computeTracer.resetTrace();
-  }
-
-  private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.INFO, "Sending metricsMessage {0}", workerMetrics);
-
-    metricsMsgSender.send(workerMetrics);
-  }
-
-  private WorkerMetrics buildMetricsMsg(final Metrics appMetrics, final int numDataBlocks,
-                                                final int numProcessedDataItemCount, final double elapsedTime) {
-    final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
-        .setMetrics(appMetrics)
-        .setItrIdx(iteration)
-        .setNumMiniBatchPerItr(numMiniBatchPerIter)
-        .setNumDataBlocks(numDataBlocks)
-        .setProcessedDataItemCount(numProcessedDataItemCount)
-        .setTotalTime(elapsedTime)
-        .setTotalCompTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerRecord())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPushTime(pushTracer.avgTimePerRecord())
-        .build();
-
-    return workerMetrics;
+    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerIter);
+    LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues).size());
+    LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
   }
 
   @Override
@@ -228,7 +140,6 @@ final class NMFWorker implements Worker {
     final long iterationBegin = System.currentTimeMillis();
     double lossSum = 0.0;
     int elemCount = 0;
-    int rowCount = 0;
     resetTracers();
 
     final Map<Long, NMFData> workloadMap = memoryStore.getAll();
@@ -236,8 +147,25 @@ final class NMFWorker implements Worker {
 
     pullRMatrix(getKeys(workload));
 
+    int numInstances = 0;
+    int batchIdx = 0;
+
+    computeTracer.startTimer();
     for (final NMFData datum : workload) {
-      computeTracer.startTimer();
+
+      final int batchSize = workload.size() / numMiniBatchPerIter +
+          ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+
+      if (numInstances >= batchSize) {
+        computeTracer.recordTime(numInstances);
+
+        // push gradients and pull fresh models
+        pushAndResetGradients();
+        pullRMatrix(getKeys(workload));
+
+        numInstances = 0;
+      }
+
       final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
       final Vector lGradSum;
       if (lambda != 0.0D) {
@@ -258,8 +186,8 @@ final class NMFWorker implements Worker {
         final Vector lGrad;
         final Vector rGrad;
 
-        lGrad = rVec.scale(2.0D * error / numMiniBatchPerIter);
-        rGrad = lVec.scale(2.0D * error / numMiniBatchPerIter);
+        lGrad = rVec.scale(2.0D * error / batchSize);
+        rGrad = lVec.scale(2.0D * error / batchSize);
 
         // aggregate L matrix gradients
         lGradSum.addi(lGrad);
@@ -275,50 +203,21 @@ final class NMFWorker implements Worker {
       // update L matrix
       modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
 
-      ++rowCount;
-      computeTracer.recordTime(datum.getColumns().size());
-
-      if (numMiniBatchPerIter > 1 && rowCount % numMiniBatchPerIter == 0) {
-        pushAndClearGradients();
-        pullRMatrix(getKeys(workload));
-      }
-
-      if (workerLogPeriod > 0 && rowCount % workerLogPeriod == 0) {
-        final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-        final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-        appMetricMap.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
-        appMetricMap.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
-        appMetricMap.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
-        appMetricMap.put(NMFParameters.MetricKeys.RVT, rowCount / elapsedTime);
-
-        final Metrics appMetrics = Metrics.newBuilder()
-            .setData(appMetricMap)
-            .build();
-
-        final WorkerMetrics workerMetrics =
-            buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), rowCount, elapsedTime);
-
-        LOG.log(Level.INFO, "Iteration: {0}", workerMetrics);
-      }
+      ++numInstances;
     }
 
-    pushAndClearGradients();
+    computeTracer.recordTime(numInstances);
+    if (numInstances > 0) {
+      // flush gradients for remaining instances to server
+      pushAndResetGradients();
+    }
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
-    appMetricMap.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
-    appMetricMap.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
-    appMetricMap.put(NMFParameters.MetricKeys.RVT, rowCount / elapsedTime);
+    final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, workload.size());
+    final WorkerMetrics workerMetrics =
+        buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), workload.size(), elapsedTime);
 
-    final Metrics appMetrics = Metrics.newBuilder()
-        .setData(appMetricMap)
-        .build();
-
-    final WorkerMetrics workerMetrics = buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), rowCount, elapsedTime);
-
-    LOG.log(Level.INFO, "End Iteration: {0}", workerMetrics);
-
+    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
   }
 
@@ -355,5 +254,101 @@ final class NMFWorker implements Worker {
       rsb.append('\n');
     }
     LOG.log(Level.INFO, rsb.toString());
+  }
+
+  private void pullRMatrix(final List<Integer> keys) {
+    pullTracer.startTimer();
+    final List<Vector> vectors = parameterWorker.pull(keys);
+    for (int i = 0; i < keys.size(); ++i) {
+      rMatrix.put(keys.get(i), vectors.get(i));
+    }
+    pullTracer.recordTime(keys.size());
+  }
+
+  private void pushAndResetGradients() {
+    // push gradients
+    pushTracer.startTimer();
+    for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
+      parameterWorker.push(entry.getKey(), entry.getValue());
+    }
+    pushTracer.recordTime(gradients.size());
+    // clear gradients
+    gradients.clear();
+  }
+
+  /**
+   * @param dataValues Dataset assigned to this worker
+   * @return Keys to send pull requests, which are determined by existing columns in NMFData.
+   */
+  private List<Integer> getKeys(final Collection<NMFData> dataValues) {
+    final ArrayList<Integer> keys = new ArrayList<>();
+    final Set<Integer> keySet = Sets.newTreeSet();
+    // aggregate column indices
+    for (final NMFData datum : dataValues) {
+      keySet.addAll(
+          datum.getColumns()
+              .stream()
+              .distinct()
+              .map(Pair::getFirst)
+              .collect(Collectors.toList()));
+    }
+    keys.ensureCapacity(keySet.size());
+    keys.addAll(keySet);
+    return keys;
+  }
+
+  private void saveRMatrixGradient(final int key, final Vector newGrad) {
+    final Vector grad = gradients.get(key);
+    if (grad == null) {
+      // l2 regularization term. 2 * lambda * R_{*, j}
+      if (lambda != 0.0D) {
+        newGrad.axpy(2.0D * lambda, rMatrix.get(key));
+      }
+      gradients.put(key, newGrad);
+    } else {
+      grad.addi(newGrad);
+    }
+  }
+
+  private void resetTracers() {
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
+  }
+
+  private void sendMetrics(final WorkerMetrics workerMetrics) {
+    LOG.log(Level.FINE, "Sending metricsMessage {0}", workerMetrics);
+
+    metricsMsgSender.send(workerMetrics);
+  }
+
+  private WorkerMetrics buildMetricsMsg(final Metrics appMetrics, final int numDataBlocks,
+                                        final int numProcessedDataItemCount, final double elapsedTime) {
+    return WorkerMetrics.newBuilder()
+        .setMetrics(appMetrics)
+        .setItrIdx(iteration)
+        .setNumMiniBatchPerItr(numMiniBatchPerIter)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerRecord())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPushTime(pushTracer.avgTimePerRecord())
+        .build();
+  }
+
+  private Metrics buildAppMetrics(final double lossSum, final long elemCount, final double elapsedTime,
+                                  final int numInstances) {
+    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+    appMetricMap.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
+    appMetricMap.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
+    appMetricMap.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
+    appMetricMap.put(NMFParameters.MetricKeys.RVT, numInstances / elapsedTime);
+
+    return Metrics.newBuilder()
+        .setData(appMetricMap)
+        .build();
   }
 }

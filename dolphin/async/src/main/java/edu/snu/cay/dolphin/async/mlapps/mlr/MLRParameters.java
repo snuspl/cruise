@@ -39,12 +39,6 @@ final class MLRParameters {
   static final class Lambda implements Name<Double> {
   }
 
-  @NamedParameter(doc = "number of iterations to wait until logging the current status",
-      short_name = "worker_log_period",
-      default_value = "0")
-  static final class WorkerLogPeriod implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "number of features for each model partition",
       short_name = "features_per_partition")
   static final class NumFeaturesPerPartition implements Name<Integer> {
@@ -71,10 +65,6 @@ final class MLRParameters {
   static final class TrainErrorDatasetSize implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "log the current loss after this many mini-batches",
-      short_name = "num_batch_per_loss_log")
-  static final class NumBatchPerLossLog implements Name<Integer> {
-  }
   static final class MetricKeys {
     // The key denoting sample avg loss.
     static final String SAMPLE_LOSS_AVG =

@@ -52,11 +52,6 @@ final class NMFParameters {
   static final class PrintMatrices implements Name<Boolean> {
   }
 
-  @NamedParameter(doc = "minimum number of input rows when logging execution status", short_name = "log_period",
-                  default_value = "0")
-  static final class WorkerLogPeriod implements Name<Integer> {
-  }
-
   static final class MetricKeys {
     // The key denoting avg loss for an iteration.
     static final String AVG_LOSS =
