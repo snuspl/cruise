@@ -71,7 +71,7 @@ public interface ParameterAccessor<K, P, V> {
   List<V> pull(final List<K> keys);
 
   /**
-   * Tick worker clock(iteration count) and send the clock to the driver.
+   * Tick the worker clock(iteration count) and send the clock to the driver.
    */
   void clock();
 

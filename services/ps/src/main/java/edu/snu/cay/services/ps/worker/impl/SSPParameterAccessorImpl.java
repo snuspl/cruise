@@ -26,7 +26,8 @@ import java.util.concurrent.TimeoutException;
 /**
  * A Parameter accessor for a worker thread.
  * This interacts with local caches(thread, worker) and the servers to provide or fetch parameters.
- * The hit condition of local caches depends on the {@link edu.snu.cay.services.ps.worker.parameters.Staleness}.
+ * The hit condition of local caches depends on the {@link edu.snu.cay.services.ps.worker.parameters.Staleness}
+ * and the worker clock compared to the global minimum clock.
  * This is used to connect the a worker thread
  * to a {@link edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl}.
  *
