@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.ps.worker.api;
 
+import org.apache.reef.annotations.audience.EvaluatorSide;
+
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -29,7 +31,9 @@ import java.util.concurrent.TimeoutException;
  * @param <P> class type of parameter values before they are processed at the servers
  * @param <V> class type of parameter values after they are processed at the servers
  */
+@EvaluatorSide
 public interface ParameterAccessor<K, P, V> {
+
   /**
    * Update a {@code preValue} associated with a certain {@code key} to the thread cache.
    * Each {@code preValue} of same {@code key} is accumulated and sent to worker cache

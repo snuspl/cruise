@@ -111,7 +111,10 @@ public final class DynamicPSManager implements PSManager {
 
   /**
    * Returns worker-side service configuration.
-   * Sets {@link ParameterWorkerImpl} or {@link SSPParameterWorkerImpl}as the {@link ParameterWorker} class.
+   * Sets {@link ParameterWorkerImpl} or {@link SSPParameterWorkerImpl} as the {@link ParameterWorker} class.
+   * The implementation of {@link ParameterWorker} is determined by {@link Staleness}
+   * between {@link SSPParameterWorkerImpl} if staleness >= 0 and
+   * {@link ParameterWorkerImpl}(fully-asynchronous) otherwise.
    */
   @Override
   public Configuration getWorkerServiceConfiguration(final String contextId) {

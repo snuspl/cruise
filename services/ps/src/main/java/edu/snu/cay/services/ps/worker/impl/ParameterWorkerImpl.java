@@ -256,7 +256,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
 
   @Override
   public void clock() {
-    // do nothing
+    throw new UnsupportedOperationException();
   }
 
   /**

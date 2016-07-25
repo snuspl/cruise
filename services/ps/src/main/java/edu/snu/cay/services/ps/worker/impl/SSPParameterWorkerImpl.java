@@ -16,6 +16,7 @@
 package edu.snu.cay.services.ps.worker.impl;
 
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;
@@ -24,7 +25,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 /**
- * A SSPParameter Server worker that interacts with servers and the driver.
+ * A SSP Parameter Server worker that interacts with servers and the driver.
  * A single instance of this class can be used by more than one thread safely, if and only if
  * the Codec classes are thread-safe.
  */
@@ -38,17 +39,17 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
 
   @Override
   public void push(final K key, final P preValue) {
-
+    throw new NotImplementedException();
   }
 
   @Override
   public V pull(final K key) {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public List<V> pull(final List<K> keys) {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
@@ -58,6 +59,6 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
 
   @Override
   public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
-
+    throw new NotImplementedException();
   }
 }

@@ -16,6 +16,7 @@
 package edu.snu.cay.services.ps.worker.impl;
 
 import edu.snu.cay.services.ps.worker.api.ParameterAccessor;
+import org.apache.commons.lang.NotImplementedException;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -36,32 +37,32 @@ import java.util.concurrent.TimeoutException;
 public final class SSPParameterAccessorImpl<K, P, V> implements ParameterAccessor<K, P, V> {
 
   @Inject
-  public SSPParameterAccessorImpl() {
+  private SSPParameterAccessorImpl() {
 
   }
 
   @Override
   public void push(final K key, final P preValue) {
-
+    throw new NotImplementedException();
   }
 
   @Override
   public void flush() {
-
+    throw new NotImplementedException();
   }
 
   @Override
   public V pull(final K key) {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public List<V> pull(final List<K> keys) {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
-
+    throw new NotImplementedException();
   }
 }

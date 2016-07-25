@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.ps.worker.api.ParameterAccessor;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.parameters.Staleness;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
@@ -56,6 +57,7 @@ final class AsyncWorkerTask implements Task {
   private final String taskId;
   private final int maxIterations;
   private final int numWorkerThreads;
+  private final int staleness;
   private final WorkerSynchronizer synchronizer;
   private final Injector injector;
   private final DataSet<LongWritable, Text> dataSet;
@@ -71,6 +73,7 @@ final class AsyncWorkerTask implements Task {
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
                           @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
+                          @Parameter(Staleness.class) final int staleness,
                           final WorkerSynchronizer synchronizer,
                           final Injector injector,
                           final DataIdFactory<Long> idFactory,
@@ -85,6 +88,7 @@ final class AsyncWorkerTask implements Task {
     this.injector = injector;
     this.dataSet = dataSet;
     this.parameterWorker = parameterWorker;
+    this.staleness = staleness;
   }
 
   @Override
@@ -120,7 +124,11 @@ final class AsyncWorkerTask implements Task {
               return;
             }
             worker.run();
-            parameterWorker.clock();
+
+            // Staleness >=0 means support of SSP model, otherwise asynchronous model is supported
+            if (staleness >= 0) {
+              parameterWorker.clock();
+            }
           }
 
           // Synchronize all workers before cleanup for workers

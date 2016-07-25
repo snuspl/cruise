@@ -54,7 +54,7 @@ public interface ParameterWorker<K, P, V> {
   List<V> pull(List<K> keys);
 
   /**
-   * Update worker clock(iteration count) and send the clock to the driver.
+   * Tick worker clock(iteration count) and send the clock to the driver.
    */
   void clock();
 

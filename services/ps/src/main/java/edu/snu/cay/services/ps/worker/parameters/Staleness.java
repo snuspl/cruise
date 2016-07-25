@@ -18,8 +18,9 @@ package edu.snu.cay.services.ps.worker.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "A number which is greater or equal than 0 is required for ssp, " +
-    "negative value means no support of ssp but something else(async)",
+@NamedParameter(doc = "The staleness limits the maximum staleness of computational workers, " +
+    "a number greater than or equal to 0 is valid value of SSP, " +
+    "and a negative value means async model support rather than SSP model",
     default_value = "-1", short_name = "staleness")
-public final class Staleness implements Name<Long> {
+public final class Staleness implements Name<Integer> {
 }
