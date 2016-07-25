@@ -137,7 +137,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
     final float[] data = new float[length];
 
     for (int i = 0; i < length; ++i) {
-      if (randomGenerator.nextFloat() > prob) {
+      if (randomGenerator.nextFloat() <= prob) {
         data[i] = 1;
       } else {
         data[i] = 0;

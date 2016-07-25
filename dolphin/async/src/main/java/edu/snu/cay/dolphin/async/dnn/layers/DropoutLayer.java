@@ -25,16 +25,14 @@ import javax.inject.Inject;
 /**
  * Dropout layer.
  *
- * This layer prevents neural networks from overfitting
- * by randomly dropping units (along with their connections) from the neural network during training
+ * This layer prevents neural networks from overfitting,
+ * by randomly dropping units (along with their connections) from the neural network during training.
  */
 
 public final class DropoutLayer extends LayerBase {
 
   private final MatrixFactory matrixFactory;
   private final float dropoutRatio;
-  private final int inputHeight;
-  private final int inputWidth;
   private Matrix bernoulliMatrix;
 
   /**
@@ -51,14 +49,6 @@ public final class DropoutLayer extends LayerBase {
     super(index, inputShape);
     this.dropoutRatio = dropoutRatio;
     this.matrixFactory = matrixFactory;
-
-    if (getInputShape().length == 2) {
-      this.inputHeight = getInputShape()[0];
-      this.inputWidth = getInputShape()[1];
-    } else {
-      this.inputHeight = getInputShape()[1];
-      this.inputWidth = getInputShape()[2];
-    }
   }
 
   @Override
@@ -79,7 +69,7 @@ public final class DropoutLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    this.bernoulliMatrix = matrixFactory.bernoulli(inputHeight, inputWidth, dropoutRatio);
+    this.bernoulliMatrix = matrixFactory.bernoulli(input.getRows(), input.getColumns(), dropoutRatio);
     return bernoulliMatrix.mul(input);
   }
 

@@ -15,8 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.dnn.conf;
 
-import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.DropoutLayerParameterInitializer;
-import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.DropoutLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
@@ -28,7 +26,6 @@ import org.apache.reef.util.Builder;
  * Configuration builder for dropout layer.
  *
  * The configuration that this builder generates is used to create a dropout layer instance.
- * The generated configuration needs to bind the parameter for a layer input shape, to inject a layer instance.
  */
 public final class DropoutLayerConfigurationBuilder implements Builder<Configuration> {
 
@@ -54,7 +51,6 @@ public final class DropoutLayerConfigurationBuilder implements Builder<Configura
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerConfigurationParameters.DropoutRatio.class, String.valueOf(dropoutRatio))
         .bindImplementation(LayerBase.class, DropoutLayer.class)
-        .bindImplementation(LayerParameterInitializer.class, DropoutLayerParameterInitializer.class)
         .build();
   }
 }

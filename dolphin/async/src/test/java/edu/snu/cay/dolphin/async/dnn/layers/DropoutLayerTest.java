@@ -61,16 +61,16 @@ public final class DropoutLayerTest {
       {0.4f, 0.1f}});
 
   private final Matrix expectedDropoutActivation = matrixFactory.create(new float[][] {
-      {0.406522f, 0.0f},
-      {0.0f, -4.5747f},
-      {-0.238702f, 0.0f},
-      {0.0f, 0.0f}});
+      {0, -2.8708f},
+      {-0.059460f, 0},
+      {0, 1.6502f},
+      {-0.760506f, 1.4035f}});
 
   private final Matrix expectedDropoutError = matrixFactory.create(new float[][] {
-      {0.1f, 0},
-      {0, 0.3f},
-      {0.6f, 0},
-      {0, 0}});
+      {0, 0},
+      {0.3f, 0},
+      {0, 0.4f},
+      {0.4f, 0.1f}});
 
   private LayerBase dropoutLayer;
 
