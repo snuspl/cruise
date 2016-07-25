@@ -88,8 +88,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     this.asyncDolphinDriver = asyncDolphinDriver;
     this.serverEM = serverEM;
     this.workerEM = workerEM;
-    serverEM.addGroup(NAMESPACE_SERVER);
-    workerEM.addGroup(NAMESPACE_WORKER);
+    serverEM.addTable(NAMESPACE_SERVER);
+    workerEM.addTable(NAMESPACE_WORKER);
   }
 
   /**

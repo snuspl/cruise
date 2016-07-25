@@ -79,8 +79,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public void addGroup(final String groupId) {
-    blockManager.addGroup(groupId);
+  public void addTable(final String tableId) {
+    blockManager.addTable(tableId);
   }
 
   /**
@@ -118,7 +118,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
         } catch (IndexOutOfBoundsException e) {
           nextHandler = null;
         }
-        contextActiveHandlers.add(new EvaluatorGroupRegister(tableId, nextHandler));
+        contextActiveHandlers.add(new EvaluatorTableRegister(tableId, nextHandler));
         contextActiveHandlers.addAll(contextActiveHandlerList);
       }
 
@@ -205,20 +205,20 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   /**
-   * ActiveContext event handler for registering new evaluator to the group.
+   * ActiveContext event handler for registering new evaluator to the table.
    */
-  private final class EvaluatorGroupRegister implements EventHandler<ActiveContext> {
-    private final String groupId;
+  private final class EvaluatorTableRegister implements EventHandler<ActiveContext> {
+    private final String tableId;
     private final EventHandler<ActiveContext> nextHandler;
 
-    public EvaluatorGroupRegister(final String groupId, final EventHandler<ActiveContext> nextHandler) {
-      this.groupId = groupId;
+    public EvaluatorTableRegister(final String tableId, final EventHandler<ActiveContext> nextHandler) {
+      this.tableId = tableId;
       this.nextHandler = nextHandler;
     }
 
     @Override
     public void onNext(final ActiveContext activeContext) {
-      blockManager.addEvaluatorToGroup(activeContext.getId(), groupId);
+      blockManager.addEvaluatorToTable(activeContext.getId(), tableId);
       if (nextHandler != null) {
         nextHandler.onNext(activeContext);
       }

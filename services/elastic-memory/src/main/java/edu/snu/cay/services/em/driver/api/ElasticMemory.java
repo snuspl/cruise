@@ -33,10 +33,10 @@ import java.util.Set;
 public interface ElasticMemory {
 
   /**
-   * Add new evaluator group.
-   * @param groupId identifier of the new group
+   * Add new evaluator table.
+   * @param tableId identifier of the new table
    */
-  void addGroup(String groupId);
+  void addTable(String tableId);
 
   /**
    * Add new evaluators as specified.

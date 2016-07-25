@@ -331,7 +331,7 @@ public final class AsyncDolphinPlanExecutorTest {
     }
 
     @Override
-    public void addGroup(final String groupId) {
+    public void addTable(final String tableId) {
     }
 
     @Override

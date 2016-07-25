@@ -72,14 +72,14 @@ public final class BlockManager {
   private final int numTotalBlocks;
 
   /**
-   * A mapping that maintains which group has which evaluators.
+   * A mapping that maintains which table has which evaluators.
    */
-  private final Map<String, Set<String>> groupIdToEvalIds;
+  private final Map<String, Set<String>> tableIdToEvalIds;
 
   /**
-   * A mapping that maintains which evaluator belongs to which group.
+   * A mapping that maintains which evaluator belongs to which table.
    */
-  private final Map<String, String> evalIdToGroupId;
+  private final Map<String, String> evalIdToTableId;
 
   @Inject
   private BlockManager(@Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
@@ -87,19 +87,19 @@ public final class BlockManager {
     this.blockIdToStoreId = new HashMap<>();
     this.movingBlocks = new HashSet<>(numTotalBlocks);
     this.numTotalBlocks = numTotalBlocks;
-    this.groupIdToEvalIds = new HashMap<>();
-    this.evalIdToGroupId = new HashMap<>();
+    this.tableIdToEvalIds = new HashMap<>();
+    this.evalIdToTableId = new HashMap<>();
   }
 
   /**
-   * Add new evaluator group.
-   * @param groupId identifier of the new group
+   * Add new evaluator table.
+   * @param tableId identifier of the new table
    */
-  public synchronized void addGroup(final String groupId) {
-    if (groupIdToEvalIds.containsKey(groupId)) {
-      throw new RuntimeException("Group identifier already exists: " + groupId);
+  public synchronized void addTable(final String tableId) {
+    if (tableIdToEvalIds.containsKey(tableId)) {
+      throw new RuntimeException("Table identifier already exists: " + tableId);
     }
-    groupIdToEvalIds.put(groupId, new HashSet<>());
+    tableIdToEvalIds.put(tableId, new HashSet<>());
   }
 
   /**
@@ -145,15 +145,15 @@ public final class BlockManager {
   }
 
   /**
-   * Add an evaluator to a group.
+   * Add an evaluator to a table.
    */
-  public synchronized void addEvaluatorToGroup(final String contextId, final String groupId) {
-    if (groupIdToEvalIds.get(groupId) == null) {
-      throw new RuntimeException("Group identifier not found: " + groupId);
+  public synchronized void addEvaluatorToTable(final String contextId, final String tableId) {
+    if (tableIdToEvalIds.get(tableId) == null) {
+      throw new RuntimeException("Table identifier not found: " + tableId);
     }
-    groupIdToEvalIds.get(groupId).add(contextId);
-    evalIdToGroupId.put(contextId, groupId);
-    LOG.log(Level.INFO, "Evaluator {0} was added to group {1}", new Object[]{contextId, groupId});
+    tableIdToEvalIds.get(tableId).add(contextId);
+    evalIdToTableId.put(contextId, tableId);
+    LOG.log(Level.INFO, "Evaluator {0} was added to table {1}", new Object[]{contextId, tableId});
   }
 
   /**
@@ -175,13 +175,13 @@ public final class BlockManager {
 
     storeIdToBlockIds.remove(memoryStoreId);
 
-    final String groupId = evalIdToGroupId.get(contextId);
-    if (groupId != null) {
-      groupIdToEvalIds.get(groupId).remove(contextId);
-      evalIdToGroupId.remove(contextId);
-      LOG.log(Level.INFO, "Evaluator {0} was removed from group {1}", new Object[]{contextId, groupId});
+    final String tableId = evalIdToTableId.get(contextId);
+    if (tableId != null) {
+      tableIdToEvalIds.get(tableId).remove(contextId);
+      evalIdToTableId.remove(contextId);
+      LOG.log(Level.INFO, "Evaluator {0} was removed from table {1}", new Object[]{contextId, tableId});
     } else {
-      LOG.log(Level.WARNING, "Evaluator {0} did not belong to any group.", contextId);
+      LOG.log(Level.WARNING, "Evaluator {0} did not belong to any table.", contextId);
     }
   }
 
