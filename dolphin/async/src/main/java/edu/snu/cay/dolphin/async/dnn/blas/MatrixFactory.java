@@ -145,6 +145,27 @@ public interface MatrixFactory {
   Matrix randn(int rows, int columns, long seed);
 
   /**
+   * Creates a bernoulli matrix.
+   * Takes the value 1 with success probability of p, value 0 with failure probability of q = 1 − p.
+   * @param rows the number of rows
+   * @param columns the number of columns
+   * @param prob success probability
+   * @return a generated matrix
+   */
+  Matrix bernoulli(int rows, int columns, float prob);
+
+  /**
+   * Creates a bernoulli matrix.
+   * Takes the scale value with success probability of p, value 0 with failure probability of q = 1 − p.
+   * @param rows the number of rows
+   * @param columns the number of columns
+   * @param prob success probability
+   * @param scale value used when success
+   * @return a generated matrix
+   */
+  Matrix bernoulli(int rows, int columns, float prob, float scale);
+
+  /**
    * Concatenates two matrices horizontally.
    */
   Matrix concatHorizontally(Matrix a, Matrix b);
