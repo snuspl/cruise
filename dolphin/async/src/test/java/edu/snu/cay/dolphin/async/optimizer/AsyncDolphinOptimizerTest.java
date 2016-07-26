@@ -76,7 +76,7 @@ public final class AsyncDolphinOptimizerTest {
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setAvgProcessingTime(processingTimeArray[index]).build();
 
-      evalParamList.add(new ServerEvaluatorParametersImpl(SERVER_PREFIX + index, dataInfo, serverMetrics));
+      evalParamList.add(new ServerEvaluatorParameters(SERVER_PREFIX + index, dataInfo, serverMetrics));
     }
 
     return evalParamList;
@@ -91,7 +91,7 @@ public final class AsyncDolphinOptimizerTest {
       final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
           .setTotalCompTime(elapsedTimeArray[index]).build();
 
-      evalParamList.add(new WorkerEvaluatorParametersImpl(WORKER_PREFIX + index, dataInfo, workerMetrics));
+      evalParamList.add(new WorkerEvaluatorParameters(WORKER_PREFIX + index, dataInfo, workerMetrics));
     }
 
     return evalParamList;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
  * An implementation of EvaluatorParameters for workers.
  * A separate class for workers is needed in order to send {@link WorkerMetrics}
  */
-public final class WorkerEvaluatorParametersImpl implements EvaluatorParameters<WorkerMetrics> {
+public final class WorkerEvaluatorParameters implements EvaluatorParameters<WorkerMetrics> {
   private final String id;
   private final DataInfo dataInfo;
   private final WorkerMetrics metrics;
@@ -34,9 +34,9 @@ public final class WorkerEvaluatorParametersImpl implements EvaluatorParameters<
    * @param dataInfo {@link DataInfo} representing the number of blocks allocated
    * @param metrics {@link WorkerMetrics} representing the worker's iteration execution metrics
    */
-  public WorkerEvaluatorParametersImpl(final String id,
-                                       final DataInfo dataInfo,
-                                       final WorkerMetrics metrics) {
+  public WorkerEvaluatorParameters(final String id,
+                                   final DataInfo dataInfo,
+                                   final WorkerMetrics metrics) {
     this.id = id;
     this.dataInfo = dataInfo;
     this.metrics = metrics;

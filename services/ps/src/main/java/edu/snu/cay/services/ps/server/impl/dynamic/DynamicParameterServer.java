@@ -260,7 +260,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         .setAvgPushWaitTime(pushWaitStat.avg())
         .build();
 
-    LOG.log(Level.INFO, threadMetrics.toString());
+    LOG.log(Level.INFO, "ServerThreadMetrics {0}", threadMetrics);
 
     pushStat.reset();
     pullStat.reset();
@@ -294,7 +294,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
               .setAvgProcessingTime(processingUnit)
               .build();
 
-          LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+          LOG.log(Level.INFO, "ServerMetrics {0}", metricsMessage);
           metricsMsgSender.send(metricsMessage);
         }
         windowIndex++;

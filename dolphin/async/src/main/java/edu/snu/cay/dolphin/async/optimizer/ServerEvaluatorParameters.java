@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
  * An implementation of EvaluatorParameters for servers.
  * A separate class for servers is needed in order to send {@link ServerMetrics}
  */
-public final class ServerEvaluatorParametersImpl implements EvaluatorParameters<ServerMetrics> {
+public final class ServerEvaluatorParameters implements EvaluatorParameters<ServerMetrics> {
   private final String id;
   private final DataInfo dataInfo;
   private final ServerMetrics metrics;
@@ -34,9 +34,9 @@ public final class ServerEvaluatorParametersImpl implements EvaluatorParameters<
    * @param dataInfo {@link DataInfo} representing the number of blocks allocated
    * @param metrics {@link ServerMetrics} representing the server's iteration execution metrics
    */
-  public ServerEvaluatorParametersImpl(final String id,
-                                       final DataInfo dataInfo,
-                                       final ServerMetrics metrics) {
+  public ServerEvaluatorParameters(final String id,
+                                   final DataInfo dataInfo,
+                                   final ServerMetrics metrics) {
     this.id = id;
     this.dataInfo = dataInfo;
     this.metrics = metrics;

@@ -52,7 +52,7 @@ public final class MetricsHub {
    */
   public void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
     final DataInfo dataInfo = new DataInfoImpl(metrics.getNumDataBlocks());
-    final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParametersImpl(workerId, dataInfo, metrics);
+    final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
     workerEvalParams.add(evaluatorParameters);
   }
 
@@ -63,7 +63,7 @@ public final class MetricsHub {
    */
   public void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
     final DataInfo dataInfo = new DataInfoImpl(metrics.getNumPartitionBlocks());
-    final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParametersImpl(serverId, dataInfo, metrics);
+    final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
     serverEvalParams.add(evaluatorParameters);
   }
 
