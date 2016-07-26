@@ -68,7 +68,8 @@ public final class DropoutLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    this.bernoulliMatrix = matrixFactory.bernoulli(input.getRows(), input.getColumns(), 1 - dropoutRatio, 1/(1-dropoutRatio));
+    this.bernoulliMatrix = matrixFactory
+        .bernoulli(input.getRows(), input.getColumns(), 1 - dropoutRatio, 1 / (1 - dropoutRatio));
     return bernoulliMatrix.mul(input);
   }
 

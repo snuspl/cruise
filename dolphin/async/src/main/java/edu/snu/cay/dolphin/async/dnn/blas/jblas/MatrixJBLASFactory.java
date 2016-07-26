@@ -132,7 +132,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
   }
 
   @Override
-  public Matrix bernoulli (final int rows, final int columns, final float prob) {
+  public Matrix bernoulli(final int rows, final int columns, final float prob) {
     return bernoulli(rows, columns, prob, 1);
   }
 
