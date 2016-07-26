@@ -273,10 +273,8 @@ final class MLRWorker implements Worker {
     }
 
     computeTracer.recordTime(numInstances);
-    if (numInstances > 0) {
-      // flush gradients for remaining instances to server
-      pushAndResetGradients();
-    }
+
+    pushAndResetGradients();
 
     if (iteration % decayPeriod == 0) {
       final double prevStepSize = stepSize;

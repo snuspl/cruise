@@ -188,8 +188,8 @@ final class NMFWorker implements Worker {
         final Vector lGrad;
         final Vector rGrad;
 
-        lGrad = rVec.scale(2.0D * error / batchSize);
-        rGrad = lVec.scale(2.0D * error / batchSize);
+        lGrad = rVec.scale(2.0D * error);
+        rGrad = lVec.scale(2.0D * error);
 
         // aggregate L matrix gradients
         lGradSum.addi(lGrad);
@@ -209,10 +209,8 @@ final class NMFWorker implements Worker {
     }
 
     computeTracer.recordTime(numInstances);
-    if (numInstances > 0) {
-      // flush gradients for remaining instances to server
-      pushAndResetGradients();
-    }
+
+    pushAndResetGradients();
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, workload.size());
@@ -283,6 +281,7 @@ final class NMFWorker implements Worker {
    * @return Keys to send pull requests, which are determined by existing columns in NMFData.
    */
   private List<Integer> getKeys(final Collection<NMFData> dataValues) {
+    computeTracer.startTimer();
     final ArrayList<Integer> keys = new ArrayList<>();
     final Set<Integer> keySet = Sets.newTreeSet();
     // aggregate column indices
@@ -296,6 +295,7 @@ final class NMFWorker implements Worker {
     }
     keys.ensureCapacity(keySet.size());
     keys.addAll(keySet);
+    computeTracer.recordTime(0);
     return keys;
   }
 
