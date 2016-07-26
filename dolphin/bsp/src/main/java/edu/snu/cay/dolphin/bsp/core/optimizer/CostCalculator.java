@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.bsp.core.optimizer;
 
 import edu.snu.cay.dolphin.bsp.core.DolphinMetricKeys;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
-import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 import org.apache.reef.util.Optional;
 
 import java.util.*;
