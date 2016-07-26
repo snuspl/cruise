@@ -146,7 +146,7 @@ public interface MatrixFactory {
 
   /**
    * Creates a bernoulli matrix.
-   * Takes the value 1 with success probability of p value 0 with failure probability of q = 1 − p.
+   * Takes the value 1 with success probability of p, value 0 with failure probability of q = 1 − p.
    * @param rows the number of rows
    * @param columns the number of columns
    * @param prob success probability
@@ -156,11 +156,11 @@ public interface MatrixFactory {
 
   /**
    * Creates a bernoulli matrix.
-   * Takes the scale value with success probability of p value 0 with failure probability of q = 1 − p.
+   * Takes the scale value with success probability of p, value 0 with failure probability of q = 1 − p.
    * @param rows the number of rows
    * @param columns the number of columns
    * @param prob success probability
-   * @param scale value that we will use instead of 1
+   * @param scale value used when success
    * @return a generated matrix
    */
   Matrix bernoulli(int rows, int columns, float prob, float scale);
