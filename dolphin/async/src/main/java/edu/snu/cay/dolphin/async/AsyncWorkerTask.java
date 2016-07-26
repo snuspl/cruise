@@ -16,6 +16,8 @@
 package edu.snu.cay.dolphin.async;
 
 import  edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.services.ps.worker.impl.SSPClockManager;
+import edu.snu.cay.services.ps.worker.parameters.Staleness;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
@@ -37,8 +39,10 @@ final class AsyncWorkerTask implements Task {
 
   private final String taskId;
   private final int maxIterations;
+  private final boolean isSSPModel;
   private final WorkerSynchronizer synchronizer;
   private final Worker worker;
+  private final SSPClockManager sspClockManager;
 
   /**
    * A boolean flag shared among all worker threads.
@@ -49,12 +53,16 @@ final class AsyncWorkerTask implements Task {
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
+                          @Parameter(Staleness.class) final int staleness,
                           final WorkerSynchronizer synchronizer,
-                          final Worker worker) {
+                          final Worker worker,
+                          final SSPClockManager sspClockManager) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
+    this.isSSPModel = staleness >= 0;
     this.synchronizer = synchronizer;
     this.worker = worker;
+    this.sspClockManager = sspClockManager;
   }
 
   @Override
@@ -68,12 +76,21 @@ final class AsyncWorkerTask implements Task {
     // to avoid meaningless iterations by the workers who started earlier
     synchronizer.globalBarrier();
 
+    if (isSSPModel) {
+      // initialize the worker clock
+      sspClockManager.initialize();
+    }
+
     for (int iteration = 0; iteration < maxIterations; ++iteration) {
       if (aborted) {
         LOG.log(Level.INFO, "Abort a thread to completely close the task");
         return null;
       }
       worker.run();
+
+      if (isSSPModel) {
+        sspClockManager.clock();
+      }
     }
 
     // Synchronize all workers before cleanup for workers

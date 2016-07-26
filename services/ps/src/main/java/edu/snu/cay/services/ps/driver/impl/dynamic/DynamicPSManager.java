@@ -35,6 +35,7 @@ import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
+import edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
 import edu.snu.cay.services.ps.common.resolver.DynamicServerResolver;
 import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
@@ -74,6 +75,7 @@ public final class DynamicPSManager implements PSManager {
   private final long workerLogPeriod;
   private final long serverLogPeriod;
   private final long serverMetricsWindowMs;
+  private final boolean isSSPModel;
 
   @Inject
   private DynamicPSManager(@Parameter(NumServers.class)final int numServers,
@@ -87,7 +89,8 @@ public final class DynamicPSManager implements PSManager {
                            @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize,
                            @Parameter(ServerMetricsWindowMs.class) final long serverMetricsWindowMs,
                            @Parameter(ServerLogPeriod.class) final long serverLogPeriod,
-                           @Parameter(WorkerLogPeriod.class) final long workerLogPeriod) {
+                           @Parameter(WorkerLogPeriod.class) final long workerLogPeriod,
+                           @Parameter(Staleness.class) final int staleness) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.workerNumThreads = workerNumThrs;
@@ -100,6 +103,7 @@ public final class DynamicPSManager implements PSManager {
     this.workerLogPeriod = workerLogPeriod;
     this.serverLogPeriod = serverLogPeriod;
     this.serverMetricsWindowMs = serverMetricsWindowMs;
+    this.isSSPModel = staleness >= 0;
   }
 
   /**
@@ -110,11 +114,13 @@ public final class DynamicPSManager implements PSManager {
   public Configuration getWorkerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
-            .set(ServiceConfiguration.SERVICES, ParameterWorkerImpl.class)
+            .set(ServiceConfiguration.SERVICES,
+                isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
             .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
             .set(ServiceConfiguration.ON_TASK_STOP, TaskStopHandler.class)
             .build())
-        .bindImplementation(ParameterWorker.class, ParameterWorkerImpl.class)
+        .bindImplementation(ParameterWorker.class,
+            isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
         .bindImplementation(ServerResolver.class, DynamicServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
