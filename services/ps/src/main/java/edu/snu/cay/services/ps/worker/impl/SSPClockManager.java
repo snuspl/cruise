@@ -29,10 +29,10 @@ import javax.inject.Inject;
 @EvaluatorSide
 public final class SSPClockManager {
 
-  private long workerClock;
+  private int workerClock;
 
   // The minimum clock of among all worker clocks.
-  private long globalMinimumClock;
+  private int globalMinimumClock;
 
   @Inject
   private SSPClockManager() {
@@ -55,11 +55,11 @@ public final class SSPClockManager {
 
   }
 
-  public long getWorkerClock() {
+  public int getWorkerClock() {
     return workerClock;
   }
 
-  public long getGlobalMinimumClock() {
+  public int getGlobalMinimumClock() {
     return globalMinimumClock;
   }
 }

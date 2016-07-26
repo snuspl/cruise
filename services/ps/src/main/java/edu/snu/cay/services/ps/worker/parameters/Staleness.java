@@ -20,7 +20,7 @@ import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "The staleness limits the maximum staleness of computational workers, " +
     "a number greater than or equal to 0 is valid value of SSP, " +
-    "and a negative value means async model support rather than SSP model",
+    "and a negative value means total asynchronous model support rather than SSP model",
     default_value = "-1", short_name = "staleness")
 public final class Staleness implements Name<Integer> {
 
