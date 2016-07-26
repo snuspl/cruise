@@ -22,10 +22,7 @@ import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
-import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
-import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
-import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.worker.parameters.*;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -62,6 +59,7 @@ public final class PSExampleREEF {
   private final int workerNumPartitions;
   private final int workerQueueSize;
   private final long workerExpireTimeout;
+  private final long pullRetryTimoutMs;
   private final int workerKeyCacheSize;
 
   @Inject
@@ -77,6 +75,7 @@ public final class PSExampleREEF {
                         @Parameter(ParameterWorkerNumThreads.class) final int workerNumPartitions,
                         @Parameter(WorkerQueueSize.class) final int workerQueueSize,
                         @Parameter(WorkerExpireTimeout.class) final long workerExpireTimeout,
+                        @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
                         @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize) {
     this.timeout = timeout;
     this.numWorkers = numWorkers;
@@ -90,6 +89,7 @@ public final class PSExampleREEF {
     this.workerNumPartitions = workerNumPartitions;
     this.workerQueueSize = workerQueueSize;
     this.workerExpireTimeout = workerExpireTimeout;
+    this.pullRetryTimoutMs = pullRetryTimeoutMs;
     this.workerKeyCacheSize = workerKeyCacheSize;
   }
 
@@ -122,6 +122,7 @@ public final class PSExampleREEF {
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(workerNumPartitions))
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
+        .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(pullRetryTimoutMs))
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .build();
 
@@ -165,6 +166,7 @@ public final class PSExampleREEF {
     cl.registerShortNameOfClass(ParameterWorkerNumThreads.class);
     cl.registerShortNameOfClass(WorkerQueueSize.class);
     cl.registerShortNameOfClass(WorkerExpireTimeout.class);
+    cl.registerShortNameOfClass(PullRetryTimeoutMs.class);
     cl.registerShortNameOfClass(WorkerKeyCacheSize.class);
 
     cl.processCommandLine(args);

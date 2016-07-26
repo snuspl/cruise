@@ -227,12 +227,12 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
+    // TODO #681: Need to add configuration for numWorkerThreads after multi-thread worker is enabled
     final List<Class<? extends Name<?>>> basicParameterClassList = new LinkedList<>();
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
     basicParameterClassList.add(Splits.class);
-    basicParameterClassList.add(NumWorkerThreads.class);
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);
@@ -248,6 +248,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(ParameterWorkerNumThreads.class);
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
+    basicParameterClassList.add(PullRetryTimeoutMs.class);
     basicParameterClassList.add(WorkerKeyCacheSize.class);
     basicParameterClassList.add(WorkerLogPeriod.class);
     basicParameterClassList.add(Dynamic.class);

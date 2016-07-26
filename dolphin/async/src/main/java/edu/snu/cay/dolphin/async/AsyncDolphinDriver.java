@@ -22,7 +22,6 @@ import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
-import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
@@ -221,11 +220,6 @@ public final class AsyncDolphinDriver {
   private final Configuration emServerClientConf;
 
   /**
-   * Number of computation threads for each evaluator.
-   */
-  private final int numWorkerThreads;
-
-  /**
    * Factory used when establishing network connection.
    */
   private final IdentifierFactory identifierFactory;
@@ -297,7 +291,6 @@ public final class AsyncDolphinDriver {
                                  final String serializedEMServerClientConf,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
-                             @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
                              @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                              final MetricsHub metricsHub,
                              final HTraceParameters traceParameters,
@@ -317,7 +310,6 @@ public final class AsyncDolphinDriver {
     this.emWorkerClientConf = configurationSerializer.fromString(serializedEMWorkerClientConf);
     this.emServerClientConf = configurationSerializer.fromString(serializedEMServerClientConf);
 
-    this.numWorkerThreads = numWorkerThreads;
     this.traceParameters = traceParameters;
     this.optimizationIntervalMs = optimizationIntervalMs;
 
@@ -558,12 +550,9 @@ public final class AsyncDolphinDriver {
             getMetricsCollectionServiceConfForWorker());
         final Configuration traceConf = traceParameters.getConfiguration();
 
-        final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
-            .build();
-
+        // TODO #681: Need to add configuration for numWorkerThreads after multi-thread worker is enabled
         activeContext.submitContextAndService(contextConf,
-            Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, workerConf, emWorkerClientConf));
+            Configurations.merge(serviceConf, traceConf, paramConf, workerConf, emWorkerClientConf));
       }
     };
   }
@@ -661,10 +650,14 @@ public final class AsyncDolphinDriver {
     }
   }
 
+  /**
+   * Handler for FailedEvaluator, which throws RuntimeException to shutdown the entire job.
+   */
   final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
-      LOG.log(Level.FINE, "FailedEvaluator: {0}", failedEvaluator); // just for logging
+      // TODO #677: Handle failure from Evaluators properly
+      throw new RuntimeException(failedEvaluator.getEvaluatorException());
     }
   }
 
@@ -676,16 +669,13 @@ public final class AsyncDolphinDriver {
   }
 
   /**
-   * Handler for FailedContext.
-   * It treats failed context as a same way of handling closed context by {@link ClosedContextHandler}.
+   * Handler for FailedContext, which throws RuntimeException to shutdown the entire job.
    */
   final class FailedContextHandler implements EventHandler<FailedContext> {
     @Override
     public void onNext(final FailedContext failedContext) {
-      LOG.log(Level.INFO, "Handle FailedContext in the same way as ClosedContext. FailedContext: {0}", failedContext);
-      final String contextId = failedContext.getId();
-
-      handleFinishedContext(contextId, failedContext.getParentContext());
+      // TODO #677: Handle failure from Evaluators properly
+      throw new RuntimeException(failedContext.asError());
     }
   }
 
@@ -826,26 +816,14 @@ public final class AsyncDolphinDriver {
     rootContext.close();
   }
 
+  /**
+   * Handler for FailedTask, which throws RuntimeException to shutdown the entire job.
+   */
   final class FailedTaskHandler implements EventHandler<FailedTask> {
     @Override
     public void onNext(final FailedTask failedTask) {
-      LOG.log(Level.INFO, "Handle FailedTask in the same way as CompletedTask. FailedTask: {0}", failedTask);
-
-      // Close the context promptly when the task is finished by EM's Delete to make the resource reusable
-      // Otherwise do not close the context, because these evaluators still have valid data,
-      // which can be accessed by other running evaluators
-      if (failedTask.getActiveContext().isPresent()) {
-        final ActiveContext context = failedTask.getActiveContext().get();
-        if (deletedWorkerContextIds.contains(context.getId())) {
-          contextIdToWorkerContexts.remove(context.getId());
-
-          // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
-          context.close();
-        }
-      }
-
-      contextIdToWorkerTasks.remove(failedTask.getActiveContext().get().getId());
-      checkShutdown(); // otherwise we may resubmit the task to compensate the fail
+      // TODO #677: Handle failure from Evaluators properly
+      throw new RuntimeException(failedTask.asError());
     }
   }
 

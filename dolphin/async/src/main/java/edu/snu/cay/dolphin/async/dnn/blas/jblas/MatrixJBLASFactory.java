@@ -132,6 +132,26 @@ public final class MatrixJBLASFactory implements MatrixFactory {
   }
 
   @Override
+  public Matrix bernoulli(final int rows, final int columns, final float prob) {
+    return bernoulli(rows, columns, prob, 1);
+  }
+
+  @Override
+  public Matrix bernoulli(final int rows, final int columns, final float prob, final float scale) {
+    final int length = rows * columns;
+    final float[] data = new float[length];
+
+    for (int i = 0; i < length; ++i) {
+      if (randomGenerator.nextFloat() <= prob) {
+        data[i] = scale;
+      } else {
+        data[i] = 0;
+      }
+    }
+    return create(data, rows, columns);
+  }
+
+  @Override
   public Matrix concatHorizontally(final Matrix a, final Matrix b) {
     if (a instanceof MatrixJBLASImpl && b instanceof MatrixJBLASImpl) {
       return MatrixJBLASImpl.concatHorizontally((MatrixJBLASImpl) a, (MatrixJBLASImpl) b);
