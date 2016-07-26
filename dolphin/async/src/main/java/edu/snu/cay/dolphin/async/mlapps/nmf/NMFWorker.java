@@ -164,6 +164,7 @@ final class NMFWorker implements Worker {
         pullRMatrix(getKeys(workload));
 
         numInstances = 0;
+        ++batchIdx;
       }
 
       final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L

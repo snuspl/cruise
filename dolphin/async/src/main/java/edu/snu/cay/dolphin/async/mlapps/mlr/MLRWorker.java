@@ -27,7 +27,6 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.parameters.WorkerLogPeriod;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -242,6 +241,7 @@ final class MLRWorker implements Worker {
         pullModels();
 
         numInstances = 0;
+        ++batchIdx;
       }
 
       final Vector features = entry.getFirst();
