@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.optimizer;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
-import org.apache.hadoop.ipc.Server;
 
 /**
  * An implementation of EvaluatorParameters for servers.

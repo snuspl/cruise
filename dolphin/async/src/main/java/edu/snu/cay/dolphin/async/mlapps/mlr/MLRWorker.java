@@ -289,7 +289,7 @@ final class MLRWorker implements Worker {
     final Metrics appMetrics = buildAppMetrics(lossRegLossAccuracy.getFirst(),
         lossRegLossAccuracy.getSecond(), (double) lossRegLossAccuracy.getThird(), elapsedTime, numInstances);
     final WorkerMetrics workerMetrics =
-       buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), workload.size(), elapsedTime);
+        buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), workload.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
