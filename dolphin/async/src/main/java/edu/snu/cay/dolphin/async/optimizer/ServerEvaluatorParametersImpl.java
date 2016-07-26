@@ -18,12 +18,13 @@ package edu.snu.cay.dolphin.async.optimizer;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import org.apache.hadoop.ipc.Server;
 
 /**
  * An implementation of EvaluatorParameters for servers.
  * A separate class for servers is needed in order to send {@link ServerMetrics}
  */
-public final class ServerEvaluatorParametersImpl implements EvaluatorParameters {
+public final class ServerEvaluatorParametersImpl implements EvaluatorParameters<ServerMetrics> {
   private final String id;
   private final DataInfo dataInfo;
   private final ServerMetrics metrics;
@@ -52,10 +53,7 @@ public final class ServerEvaluatorParametersImpl implements EvaluatorParameters 
     return dataInfo;
   }
 
-  /**
-   * Returns this server evaluator's iteration execution metrics.
-   * @return {@link ServerMetrics} representing the server's iteration execution metrics
-   */
+  @Override
   public ServerMetrics getMetrics() {
     return metrics;
   }

@@ -46,6 +46,7 @@ public final class EvaluatorParametersImpl implements EvaluatorParameters {
     return dataInfo;
   }
 
+  @Override
   public Map<String, Double> getMetrics() {
     return metrics;
   }

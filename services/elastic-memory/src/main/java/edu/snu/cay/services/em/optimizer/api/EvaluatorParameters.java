@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.optimizer.api;
 /**
  * The current state of an evaluator, represented as a set of input parameters for an optimizer.
  */
-public interface EvaluatorParameters {
+public interface EvaluatorParameters<MetricType> {
   /**
    * @return the evaluator's context ID
    */
@@ -28,4 +28,9 @@ public interface EvaluatorParameters {
    * @return information about data on the evaluator
    */
   DataInfo getDataInfo();
+
+  /**
+   * @return Metrics representing the evaluator's iteration execution metrics
+   */
+  MetricType getMetrics();
 }

@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -23,8 +24,10 @@ import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
+import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
+import scala.annotation.meta.param;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -91,14 +94,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> ((ServerEvaluatorParametersImpl) param).getMetrics().getAvgProcessingTime(),
+            param -> ((ServerMetrics) param.getMetrics()).getAvgProcessingTime(),
             NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
 
     final Pair<List<EvaluatorSummary>, Integer> workerPair =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
-            param -> ((WorkerEvaluatorParametersImpl) param).getMetrics().getTotalCompTime()
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()
                 / param.getDataInfo().getNumBlocks(),
             NEW_WORKER_ID_PREFIX);
     final List<EvaluatorSummary> workerSummaries = workerPair.getFirst();

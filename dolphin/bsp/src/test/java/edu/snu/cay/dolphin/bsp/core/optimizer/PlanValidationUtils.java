@@ -142,7 +142,7 @@ final class PlanValidationUtils {
   private static EvaluatorParameters makeCopy(final EvaluatorParameters evaluatorParameters) {
     final DataInfo dataInfoCopy = new DataInfoImpl(evaluatorParameters.getDataInfo().getNumBlocks());
     return new EvaluatorParametersImpl(
-        evaluatorParameters.getId(), dataInfoCopy, ((EvaluatorParametersImpl) evaluatorParameters).getMetrics());
+        evaluatorParameters.getId(), dataInfoCopy, (Map<String, Double>) evaluatorParameters.getMetrics());
   }
 
   /**

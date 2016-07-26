@@ -66,20 +66,25 @@ final class MLRParameters {
   }
 
   static final class MetricKeys {
-    // The key denoting sample avg loss.
+
+    // The key denoting the average of loss computed from the sample of training data instances.
     static final String SAMPLE_LOSS_AVG =
         "MLR_WORKER_SAMPLE_LOSS_AVG";
 
-    // The key denoting reg avg loss.
+    // The key denoting the average of L2-regularized loss computed from the sample of training data instances.
     static final String REG_LOSS_AVG =
         "MLR_WORKER_REG_LOSS_AVG";
 
-    // The key denoting DvT.
+    // The key denoting the number of training data instances processed per unit time.
     static final String DVT =
         "MLR_WORKER_DVT";
 
-    // The key denoting accuracy.
+    // The key denoting accuracy (the number of correct inferences by the model / total number of training data inst).
     static final String ACCURACY =
         "MLR_WORKER_ACCURACY";
+
+    // The key denoting the number of training data instances processed since the last batch.
+    static final String NUM_INSTANCES =
+        "MLR_WORKER_NUM_INSTANCES";
   }
 }

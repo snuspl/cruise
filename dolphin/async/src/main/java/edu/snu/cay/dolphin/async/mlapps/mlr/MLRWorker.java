@@ -28,6 +28,7 @@ import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.Tuple3;
+import org.apache.avro.reflect.Nullable;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -452,12 +453,12 @@ final class MLRWorker implements Worker {
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.INFO, "Sending metricsMessage {0}", new Object[]{workerMetrics});
+    LOG.log(Level.FINE, "Sending metricsMessage {0}", new Object[]{workerMetrics});
 
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final Metrics appMetrics, final int numDataBlocks,
+  private WorkerMetrics buildMetricsMsg(@Nullable final Metrics appMetrics, final int numDataBlocks,
                                         final int numProcessedDataItemCount, final double elapsedTime) {
     final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
         .setMetrics(appMetrics)
@@ -479,7 +480,7 @@ final class MLRWorker implements Worker {
   private Metrics buildAppMetrics(final double sampleLoss, final double regLoss, final double accuracy,
                                   final double elapsedTime, final int numInstances) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put("NUM_INSTANCES", (double) numInstances);
+    appMetricMap.put(MetricKeys.NUM_INSTANCES, (double) numInstances);
     appMetricMap.put(MetricKeys.SAMPLE_LOSS_AVG, sampleLoss);
     appMetricMap.put(MetricKeys.REG_LOSS_AVG, regLoss);
     appMetricMap.put(MetricKeys.ACCURACY, accuracy);

@@ -23,7 +23,7 @@ import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
  * An implementation of EvaluatorParameters for workers.
  * A separate class for workers is needed in order to send {@link WorkerMetrics}
  */
-public final class WorkerEvaluatorParametersImpl implements EvaluatorParameters {
+public final class WorkerEvaluatorParametersImpl implements EvaluatorParameters<WorkerMetrics> {
   private final String id;
   private final DataInfo dataInfo;
   private final WorkerMetrics metrics;
@@ -52,10 +52,7 @@ public final class WorkerEvaluatorParametersImpl implements EvaluatorParameters 
     return dataInfo;
   }
 
-  /**
-   * Returns this worker evaluator's iteration execution metrics.
-   * @return {@link WorkerMetrics} representing the worker's iteration execution metrics
-   */
+  @Override
   public WorkerMetrics getMetrics() {
     return metrics;
   }
