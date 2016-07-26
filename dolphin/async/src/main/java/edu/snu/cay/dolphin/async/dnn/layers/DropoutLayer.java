@@ -28,7 +28,6 @@ import javax.inject.Inject;
  * This layer prevents neural networks from overfitting,
  * by randomly dropping units (along with their connections) from the neural network during training.
  */
-
 public final class DropoutLayer extends LayerBase {
 
   private final MatrixFactory matrixFactory;
@@ -36,10 +35,10 @@ public final class DropoutLayer extends LayerBase {
   private Matrix bernoulliMatrix;
 
   /**
-   * @param index the index of this layer
-   * @param inputShape the shape of input data
-   * @param dropoutRatio the probability for bernoulli matrix
-   * @param matrixFactory the factory to create new matrices
+   * @param index the index of this layer.
+   * @param inputShape the shape of input data.
+   * @param dropoutRatio the success probability for bernoulli matrix.
+   * @param matrixFactory the factory to create bernoulli matrix.
    */
   @Inject
   private DropoutLayer(@Parameter(LayerIndex.class) final int index,
@@ -69,12 +68,13 @@ public final class DropoutLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    this.bernoulliMatrix = matrixFactory.bernoulli(input.getRows(), input.getColumns(), dropoutRatio);
+    this.bernoulliMatrix = matrixFactory.bernoulli(input.getRows(), input.getColumns(), 1 - dropoutRatio, 1/(1-dropoutRatio));
     return bernoulliMatrix.mul(input);
   }
 
   /**
-   * @param input the input values for this layer
+   * Computes errors.
+   * @param input the input values for this layer.
    * @param activation the output values.
    * @param nextError the errors of the next layer - the one closer to the output layer.
    * @return errors for this layer with the specified input value.

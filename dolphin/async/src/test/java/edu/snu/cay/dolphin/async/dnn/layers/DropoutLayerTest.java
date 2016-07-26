@@ -49,10 +49,10 @@ public final class DropoutLayerTest {
   }
 
   private final Matrix input = matrixFactory.create(new float[][]{
-      {0.406522f, -2.8708f},
-      {-0.059460f, -4.5747f},
-      {-0.238702f, 1.6502f},
-      {-0.760506f, 1.4035f}});
+      {0.4f, -2.0f},
+      {-0.5f, -4.5f},
+      {-0.2f, 1.6f},
+      {-0.7f, 1.4f}});
 
   private final Matrix nextError = matrixFactory.create(new float[][]{
       {0.1f, 0},
@@ -61,16 +61,16 @@ public final class DropoutLayerTest {
       {0.4f, 0.1f}});
 
   private final Matrix expectedDropoutActivation = matrixFactory.create(new float[][] {
-      {0, -2.8708f},
-      {-0.059460f, 0},
-      {0, 1.6502f},
-      {-0.760506f, 1.4035f}});
+      {0, -4.0f},
+      {-1.0f, 0},
+      {0, 3.2f},
+      {-1.4f, 2.8f}});
 
   private final Matrix expectedDropoutError = matrixFactory.create(new float[][] {
       {0, 0},
-      {0.3f, 0},
-      {0, 0.4f},
-      {0.4f, 0.1f}});
+      {0.6f, 0},
+      {0, 0.8f},
+      {0.8f, 0.2f}});
 
   private LayerBase dropoutLayer;
 
@@ -94,14 +94,9 @@ public final class DropoutLayerTest {
   }
 
   @Test
-  public void testDropoutActivation() {
+  public void testDropout() {
     final Matrix output = dropoutLayer.feedForward(input);
     assertTrue(expectedDropoutActivation.compare(output, TOLERANCE));
-  }
-
-  @Test
-  public void testDropoutBackPropagate() {
-    testDropoutActivation();
     final Matrix error = dropoutLayer.backPropagate(input, expectedDropoutActivation, nextError);
     assertTrue(expectedDropoutError.compare(error, TOLERANCE));
   }

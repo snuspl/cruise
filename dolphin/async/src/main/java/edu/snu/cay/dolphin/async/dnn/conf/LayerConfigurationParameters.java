@@ -63,7 +63,7 @@ public final class LayerConfigurationParameters {
   /**
    * For dropout layers.
    */
-  @NamedParameter(doc = "bernoulli ratio/probability of dropout layer")
+  @NamedParameter(doc = "probability of dropping neurons at dropout layer")
   public static final class DropoutRatio implements Name<Float> {
   }
 

@@ -155,6 +155,17 @@ public interface MatrixFactory {
   Matrix bernoulli(int rows, int columns, float prob);
 
   /**
+   * Creates a bernoulli matrix.
+   * Takes the scale value with success probability of p value 0 with failure probability of q = 1 − p.
+   * @param rows the number of rows
+   * @param columns the number of columns
+   * @param prob success probability
+   * @param scale value that we will use instead of 1
+   * @return a generated matrix
+   */
+  Matrix bernoulli(int rows, int columns, float prob, float scale);
+
+  /**
    * Concatenates two matrices horizontally.
    */
   Matrix concatHorizontally(Matrix a, Matrix b);
