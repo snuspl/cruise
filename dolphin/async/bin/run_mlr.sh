@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_mlr.sh -split 4 -num_servers 2 -num_partitions 4 -num_worker_threads 1 -local true -input sample_mlr -max_num_eval_local 7 -max_iter 20 -init_step_size 0.1 -classes 10 -features 784 -features_per_partition 392 -model_gaussian 0.001 -num_mini_batch 3 -lambda 0.005 -timeout 200000 -status_log_period 5 -decay_period 5 -decay_rate 0.9 -num_batch_per_loss_log 1 -train_error_dataset_size 30 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.optimizer.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
+# ./run_mlr.sh -split 4 -num_servers 2 -num_partitions 4 -local true -input sample_mlr -max_num_eval_local 7 -max_iter 20 -init_step_size 0.1 -classes 10 -features 784 -features_per_partition 392 -model_gaussian 0.001 -num_mini_batch 3 -lambda 0.005 -timeout 200000 -status_log_period 5 -decay_period 5 -decay_rate 0.9 -num_batch_per_loss_log 1 -train_error_dataset_size 30 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.optimizer.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

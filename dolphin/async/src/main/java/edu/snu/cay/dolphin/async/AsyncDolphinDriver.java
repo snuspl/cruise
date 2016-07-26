@@ -22,7 +22,6 @@ import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
-import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
@@ -221,11 +220,6 @@ public final class AsyncDolphinDriver {
   private final Configuration emServerClientConf;
 
   /**
-   * Number of computation threads for each evaluator.
-   */
-  private final int numWorkerThreads;
-
-  /**
    * Factory used when establishing network connection.
    */
   private final IdentifierFactory identifierFactory;
@@ -297,7 +291,6 @@ public final class AsyncDolphinDriver {
                                  final String serializedEMServerClientConf,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
-                             @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
                              @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                              final MetricsHub metricsHub,
                              final HTraceParameters traceParameters,
@@ -317,7 +310,6 @@ public final class AsyncDolphinDriver {
     this.emWorkerClientConf = configurationSerializer.fromString(serializedEMWorkerClientConf);
     this.emServerClientConf = configurationSerializer.fromString(serializedEMServerClientConf);
 
-    this.numWorkerThreads = numWorkerThreads;
     this.traceParameters = traceParameters;
     this.optimizationIntervalMs = optimizationIntervalMs;
 
@@ -558,12 +550,9 @@ public final class AsyncDolphinDriver {
             getMetricsCollectionServiceConfForWorker());
         final Configuration traceConf = traceParameters.getConfiguration();
 
-        final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
-            .build();
-
+        // TODO #681: Need to add configuration for numWorkerThreads after multi-thread worker is enabled
         activeContext.submitContextAndService(contextConf,
-            Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, workerConf, emWorkerClientConf));
+            Configurations.merge(serviceConf, traceConf, paramConf, workerConf, emWorkerClientConf));
       }
     };
   }

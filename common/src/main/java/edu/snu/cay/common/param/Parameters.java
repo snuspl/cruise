@@ -63,12 +63,6 @@ public final class Parameters {
   public final class Iterations implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Number of computation threads for each worker",
-                  short_name = "num_worker_threads",
-                  default_value = "2")
-  public final class NumWorkerThreads implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap",
                   short_name = "heap_slack",
                   default_value = "0.0")
