@@ -165,6 +165,7 @@ final class NMFWorker implements Worker {
 
         numInstances = 0;
         ++batchIdx;
+        computeTracer.startTimer();
       }
 
       final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L

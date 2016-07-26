@@ -243,6 +243,7 @@ final class MLRWorker implements Worker {
 
         numInstances = 0;
         ++batchIdx;
+        computeTracer.startTimer();
       }
 
       final Vector features = entry.getFirst();
