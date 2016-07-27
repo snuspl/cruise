@@ -1,5 +1,3 @@
-package edu.snu.cay.services.ps.worker.api;
-
 /*
  * Copyright (C) 2016 Seoul National University
  *
@@ -15,6 +13,7 @@ package edu.snu.cay.services.ps.worker.api;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.services.ps.worker.api;
 
 /**
  * A worker clock which ticks on each call of clock().

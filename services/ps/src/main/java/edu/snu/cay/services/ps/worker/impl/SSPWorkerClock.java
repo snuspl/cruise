@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
