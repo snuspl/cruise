@@ -22,7 +22,7 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import javax.inject.Inject;
 
 /**
- * A worker-side clock manager.
+ * A null worker clock(empty implementation).
  */
 @EvaluatorSide
 public final class NullWorkerClock implements WorkerClock {

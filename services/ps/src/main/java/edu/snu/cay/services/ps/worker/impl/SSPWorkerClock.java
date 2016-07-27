@@ -22,10 +22,10 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import javax.inject.Inject;
 
 /**
- * A worker-side clock manager.
+ * A worker clock of SSP model.
  *
  * Receive the global minimum clock from the driver and send the worker clock to the driver.
- * Tick the worker clock after each iteration.
+ * clock() is called once per each iteration.
  */
 @EvaluatorSide
 public final class SSPWorkerClock implements WorkerClock {

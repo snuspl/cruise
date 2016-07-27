@@ -15,6 +15,11 @@ package edu.snu.cay.services.ps.worker.api;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/**
+ * A worker clock which ticks on each call of clock().
+ * It also contains global minimum clock among all workers.
+ */
 public interface WorkerClock {
 
   /**

@@ -40,7 +40,7 @@ final class AsyncWorkerTask implements Task {
   private final int maxIterations;
   private final WorkerSynchronizer synchronizer;
   private final Worker worker;
-  private final WorkerClock clockManager;
+  private final WorkerClock workerClock;
 
   /**
    * A boolean flag shared among all worker threads.
@@ -53,12 +53,12 @@ final class AsyncWorkerTask implements Task {
                           @Parameter(Iterations.class) final int maxIterations,
                           final WorkerSynchronizer synchronizer,
                           final Worker worker,
-                          final WorkerClock clockManager) {
+                          final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
     this.synchronizer = synchronizer;
     this.worker = worker;
-    this.clockManager = clockManager;
+    this.workerClock = workerClock;
   }
 
   @Override
@@ -73,7 +73,7 @@ final class AsyncWorkerTask implements Task {
     synchronizer.globalBarrier();
 
     // initialize the worker clock
-    clockManager.initialize();
+    workerClock.initialize();
 
     for (int iteration = 0; iteration < maxIterations; ++iteration) {
       if (aborted) {
@@ -81,7 +81,7 @@ final class AsyncWorkerTask implements Task {
         return null;
       }
       worker.run();
-      clockManager.clock();
+      workerClock.clock();
     }
 
     // Synchronize all workers before cleanup for workers
