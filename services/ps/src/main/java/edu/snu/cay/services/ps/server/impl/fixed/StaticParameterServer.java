@@ -279,7 +279,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   }
 
   /**
-   * Sends metrics that have been collected within the current window.
+   * Logs metrics that have been collected within the current window.
    */
   private void logMetrics() {
     try {
