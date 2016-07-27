@@ -1,3 +1,5 @@
+package edu.snu.cay.services.ps.worker.api;
+
 /*
  * Copyright (C) 2016 Seoul National University
  *
@@ -13,42 +15,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.impl;
+public interface WorkerClock {
 
+  /**
+   * Set initial worker clock.
+   * initial worker clock =
+   * global minimum clock + ({@link edu.snu.cay.services.ps.worker.parameters.Staleness}/2)
+   */
+  void initialize();
 
-import edu.snu.cay.services.ps.worker.api.WorkerClockHandler;
-import org.apache.reef.annotations.audience.EvaluatorSide;
+  /**
+   * Tick worker clock.
+   */
+  void clock();
 
-import javax.inject.Inject;
+  /**
+   * @return current worker clock
+   */
+  int getWorkerClock();
 
-/**
- * A worker-side clock manager.
- */
-@EvaluatorSide
-public final class ClockManagerImpl implements WorkerClockHandler {
-
-  @Inject
-  private ClockManagerImpl() {
-
-  }
-
-  @Override
-  public void initialize() {
-
-  }
-
-  @Override
-  public void clock() {
-
-  }
-
-  @Override
-  public int getWorkerClock() {
-    return 0;
-  }
-
-  @Override
-  public int getGlobalMinimumClock() {
-    return 0;
-  }
+  /**
+   * @return global minimum clock among all workers
+   */
+  int getGlobalMinimumClock();
 }

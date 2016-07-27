@@ -34,12 +34,12 @@ import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
-import edu.snu.cay.services.ps.worker.api.WorkerClockHandler;
+import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
-import edu.snu.cay.services.ps.worker.impl.ClockManagerImpl;
+import edu.snu.cay.services.ps.worker.impl.NullWorkerClock;
 import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
-import edu.snu.cay.services.ps.worker.impl.SSPClockManagerImpl;
+import edu.snu.cay.services.ps.worker.impl.SSPWorkerClock;
 import edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStopHandler;
@@ -130,8 +130,8 @@ public final class DynamicPSManager implements PSManager {
             .build())
         .bindImplementation(ParameterWorker.class,
             isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
-        .bindImplementation(WorkerClockHandler.class,
-            isSSPModel ? SSPClockManagerImpl.class : ClockManagerImpl.class)
+        .bindImplementation(WorkerClock.class,
+            isSSPModel ? SSPWorkerClock.class : NullWorkerClock.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
         .bindImplementation(ServerResolver.class, DynamicServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))

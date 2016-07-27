@@ -16,27 +16,19 @@
 package edu.snu.cay.services.ps.worker.impl;
 
 
-import edu.snu.cay.services.ps.worker.api.WorkerClockHandler;
+import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;
 
 /**
  * A worker-side clock manager.
- *
- * Receive the global minimum clock from the driver and send the worker clock to the driver.
- * Tick the worker clock after each iteration.
  */
 @EvaluatorSide
-public final class SSPClockManagerImpl implements WorkerClockHandler {
-
-  private int workerClock;
-
-  // The minimum clock of among all worker clocks.
-  private int globalMinimumClock;
+public final class NullWorkerClock implements WorkerClock {
 
   @Inject
-  private SSPClockManagerImpl() {
+  private NullWorkerClock() {
 
   }
 
@@ -52,11 +44,11 @@ public final class SSPClockManagerImpl implements WorkerClockHandler {
 
   @Override
   public int getWorkerClock() {
-    return workerClock;
+    return 0;
   }
 
   @Override
   public int getGlobalMinimumClock() {
-    return globalMinimumClock;
+    return 0;
   }
 }
