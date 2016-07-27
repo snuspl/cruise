@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async;
 
 import  edu.snu.cay.common.param.Parameters.Iterations;
-import edu.snu.cay.services.ps.worker.api.ClockManager;
+import edu.snu.cay.services.ps.worker.api.WorkerClockHandler;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
@@ -40,7 +40,7 @@ final class AsyncWorkerTask implements Task {
   private final int maxIterations;
   private final WorkerSynchronizer synchronizer;
   private final Worker worker;
-  private final ClockManager clockManager;
+  private final WorkerClockHandler clockManager;
 
   /**
    * A boolean flag shared among all worker threads.
@@ -53,7 +53,7 @@ final class AsyncWorkerTask implements Task {
                           @Parameter(Iterations.class) final int maxIterations,
                           final WorkerSynchronizer synchronizer,
                           final Worker worker,
-                          final ClockManager clockManager) {
+                          final WorkerClockHandler clockManager) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
     this.synchronizer = synchronizer;

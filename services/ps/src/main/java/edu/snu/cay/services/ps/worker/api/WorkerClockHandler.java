@@ -15,7 +15,7 @@ package edu.snu.cay.services.ps.worker.api;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public interface ClockManager {
+public interface WorkerClockHandler {
 
   /**
    * Set initial worker clock.

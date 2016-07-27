@@ -16,7 +16,7 @@
 package edu.snu.cay.services.ps.worker.impl;
 
 
-import edu.snu.cay.services.ps.worker.api.ClockManager;
+import edu.snu.cay.services.ps.worker.api.WorkerClockHandler;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;
@@ -25,7 +25,7 @@ import javax.inject.Inject;
  * A worker-side clock manager.
  */
 @EvaluatorSide
-public final class ClockManagerImpl implements ClockManager {
+public final class ClockManagerImpl implements WorkerClockHandler {
 
   @Inject
   private ClockManagerImpl() {

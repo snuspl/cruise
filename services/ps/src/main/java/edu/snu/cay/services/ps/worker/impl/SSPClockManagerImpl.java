@@ -16,7 +16,7 @@
 package edu.snu.cay.services.ps.worker.impl;
 
 
-import edu.snu.cay.services.ps.worker.api.ClockManager;
+import edu.snu.cay.services.ps.worker.api.WorkerClockHandler;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;
@@ -28,7 +28,7 @@ import javax.inject.Inject;
  * Tick the worker clock after each iteration.
  */
 @EvaluatorSide
-public final class SSPClockManagerImpl implements ClockManager {
+public final class SSPClockManagerImpl implements WorkerClockHandler {
 
   private int workerClock;
 

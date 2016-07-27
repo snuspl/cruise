@@ -30,7 +30,7 @@ import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
-import edu.snu.cay.services.ps.worker.api.ClockManager;
+import edu.snu.cay.services.ps.worker.api.WorkerClockHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.resolver.StaticServerResolver;
@@ -121,7 +121,7 @@ public final class StaticPSManager implements PSManager {
             .build())
         .bindImplementation(ParameterWorker.class,
             isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
-        .bindImplementation(ClockManager.class,
+        .bindImplementation(WorkerClockHandler.class,
             isSSPModel ? SSPClockManagerImpl.class : ClockManagerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
