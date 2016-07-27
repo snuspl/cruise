@@ -16,6 +16,7 @@
 package edu.snu.cay.services.ps.worker.impl;
 
 
+import edu.snu.cay.services.ps.worker.api.ClockManager;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;
@@ -27,7 +28,7 @@ import javax.inject.Inject;
  * Tick the worker clock after each iteration.
  */
 @EvaluatorSide
-public final class SSPClockManager {
+public final class SSPClockManagerImpl implements ClockManager {
 
   private int workerClock;
 
@@ -35,30 +36,26 @@ public final class SSPClockManager {
   private int globalMinimumClock;
 
   @Inject
-  private SSPClockManager() {
+  private SSPClockManagerImpl() {
 
   }
 
-  /**
-   * Set initial worker clock.
-   *  initial worker clock =
-   *  global minimum clock + ({@link edu.snu.cay.services.ps.worker.parameters.Staleness}/2)
-   */
+  @Override
   public void initialize() {
 
   }
 
-  /**
-   * Tick worker clock.
-   */
+  @Override
   public void clock() {
 
   }
 
+  @Override
   public int getWorkerClock() {
     return workerClock;
   }
 
+  @Override
   public int getGlobalMinimumClock() {
     return globalMinimumClock;
   }

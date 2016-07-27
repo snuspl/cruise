@@ -30,13 +30,22 @@ import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
+import edu.snu.cay.services.ps.worker.api.ClockManager;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
-import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.resolver.StaticServerResolver;
+import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
+import edu.snu.cay.services.ps.worker.impl.ClockManagerImpl;
+import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
+import edu.snu.cay.services.ps.worker.impl.SSPClockManagerImpl;
 import edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl;
-import edu.snu.cay.services.ps.worker.parameters.*;
+import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
+import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
+import edu.snu.cay.services.ps.worker.parameters.Staleness;
+import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
+import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
+import edu.snu.cay.services.ps.worker.parameters.WorkerLogPeriod;
+import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -112,6 +121,8 @@ public final class StaticPSManager implements PSManager {
             .build())
         .bindImplementation(ParameterWorker.class,
             isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
+        .bindImplementation(ClockManager.class,
+            isSSPModel ? SSPClockManagerImpl.class : ClockManagerImpl.class)
         .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
