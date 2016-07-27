@@ -149,13 +149,11 @@ final class NMFWorker implements Worker {
 
     int numInstances = 0;
     int batchIdx = 0;
+    int batchSize = workload.size() / numMiniBatchPerIter +
+        ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
 
     computeTracer.startTimer();
     for (final NMFData datum : workload) {
-
-      final int batchSize = workload.size() / numMiniBatchPerIter +
-          ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
-
       if (numInstances >= batchSize) {
         computeTracer.recordTime(numInstances);
 
@@ -165,6 +163,10 @@ final class NMFWorker implements Worker {
 
         numInstances = 0;
         ++batchIdx;
+
+        // Recalculate batchSize to take care of the (workload.size() % numMiniBatchPerIter) instances.
+        batchSize = workload.size() / numMiniBatchPerIter +
+            ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
         computeTracer.startTimer();
       }
 
@@ -319,7 +321,7 @@ final class NMFWorker implements Worker {
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.FINE, "Sending metricsMessage {0}", workerMetrics);
+    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", workerMetrics);
 
     metricsMsgSender.send(workerMetrics);
   }

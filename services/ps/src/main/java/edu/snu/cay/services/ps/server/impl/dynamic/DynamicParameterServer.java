@@ -294,7 +294,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
               .setAvgProcessingTime(processingUnit)
               .build();
 
-          LOG.log(Level.INFO, "ServerMetrics {0}", metricsMessage);
+          LOG.log(Level.FINE, "Sending ServerMetrics {0}", metricsMessage);
           metricsMsgSender.send(metricsMessage);
         }
         windowIndex++;

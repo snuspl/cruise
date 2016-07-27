@@ -51,7 +51,7 @@ public final class DriverSideMetricsMsgHandlerForServer implements EventHandler<
 
     final String serverId = msg.getSourceId().toString();
 
-    LOG.log(Level.FINE, "Metric from server {0}: {1}",
+    LOG.log(Level.INFO, "ServerMetrics {0}: {1}",
         new Object[]{serverId, metricsMessage});
     metricsHub.storeServerMetrics(serverId, metricsMessage);
 

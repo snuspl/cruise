@@ -160,8 +160,7 @@
 
 /**
  * A message containing metrics and other server-specific information at thread level.
- * Since Server does not have iteration as workers, metrics are collected and
- * sent in a fixed time unit, which is called window.
+ * This message is for logging purposes of different metrics, not for the metrics aggregation at the driver.
  */
 {
   "namespace": "edu.snu.cay.services.ps.metric.avro",
@@ -169,7 +168,7 @@
   "name": "ServerThreadMetrics",
   "fields":
   [
-    {"name": "threadId", "type": "int", "default": -1},
+    {"name": "threadId", "type": "int"},
     {"name": "totalTime", "type": "double", "default": 0.0},
     {"name": "pullCount", "type": "int", "default": 0},
     {"name": "totalPullTime", "type": "double", "default": 0.0},
@@ -200,8 +199,7 @@
     {"name": "windowIndex", "type": "int", "default":0},
     {"name": "numPartitionBlocks", "type": "int", "default":0},
     {"name": "metricWindowMs", "type": "long", "default":0},
-    {"name": "avgProcessingTime", "type": "double", "default":0.0},
-    {"name": "threadMetrics", "type": ["null", "ServerThreadMetrics"], "default": null}
+    {"name": "avgProcessingTime", "type": "double", "default":0.0}
   ]
 }
 ]

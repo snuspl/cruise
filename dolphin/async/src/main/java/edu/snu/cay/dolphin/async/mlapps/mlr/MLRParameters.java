@@ -82,9 +82,5 @@ final class MLRParameters {
     // The key denoting accuracy (the number of correct inferences by the model / total number of training data inst).
     static final String ACCURACY =
         "MLR_WORKER_ACCURACY";
-
-    // The key denoting the number of training data instances processed since the last batch.
-    static final String NUM_INSTANCES =
-        "MLR_WORKER_NUM_INSTANCES";
   }
 }

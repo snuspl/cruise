@@ -50,7 +50,7 @@ public final class DriverSideMetricsMsgHandlerForWorker implements EventHandler<
 
     final String workerId = msg.getSourceId().toString();
 
-    LOG.log(Level.FINE, "Metric from worker {0}: {1}",
+    LOG.log(Level.INFO, "WorkerMetrics {0}: {1}",
         new Object[]{workerId, metricsMessage});
     metricsHub.storeWorkerMetrics(workerId, metricsMessage);
 

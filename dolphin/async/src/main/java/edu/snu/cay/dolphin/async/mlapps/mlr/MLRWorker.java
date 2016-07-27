@@ -226,13 +226,11 @@ final class MLRWorker implements Worker {
 
     int numInstances = 0;
     int batchIdx = 0;
+    int batchSize = workload.size() / numMiniBatchPerIter +
+        ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
 
     computeTracer.startTimer();
     for (final Pair<Vector, Integer> entry : workload) {
-
-      final int batchSize = workload.size() / numMiniBatchPerIter +
-          ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
-
       if (numInstances >= batchSize) {
         computeTracer.recordTime(numInstances);
 
@@ -242,6 +240,10 @@ final class MLRWorker implements Worker {
 
         numInstances = 0;
         ++batchIdx;
+
+        // Recalculate batchSize to take care of the (workload.size() % numMiniBatchPerIter) instances.
+        batchSize = workload.size() / numMiniBatchPerIter +
+            ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
         computeTracer.startTimer();
       }
 
@@ -267,7 +269,6 @@ final class MLRWorker implements Worker {
           newModels[j].axpy(-predictions.get(j) * stepSize, features);
         }
       }
-
       ++numInstances;
     }
 
@@ -451,7 +452,7 @@ final class MLRWorker implements Worker {
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.FINE, "Sending metricsMessage {0}", new Object[]{workerMetrics});
+    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", new Object[]{workerMetrics});
 
     metricsMsgSender.send(workerMetrics);
   }
