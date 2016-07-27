@@ -264,7 +264,7 @@ public final class AsyncDolphinDriver {
    * Every optimization is triggered after {@link OptimizationIntervalMs} from the previous optimization.
    * See {@link StartHandler}.
    */
-  private final ExecutorService optimizerExecutor = Executors.newSingleThreadExecutor();
+  private final ExecutorService optimizationTriggerExecutor = Executors.newSingleThreadExecutor();
 
   /**
    * Injectable constructor.
@@ -381,32 +381,43 @@ public final class AsyncDolphinDriver {
       serverEMWrapper.getNetworkSetup().registerConnectionFactory(driverId);
       psNetworkSetup.registerConnectionFactory(driverId);
 
-      optimizerExecutor.execute(new Runnable() {
+      optimizationTriggerExecutor.execute(new Runnable() {
         @Override
         public void run() {
-          // 1. wait until all workers finish initialization
-          while (synchronizationManager.workersInitializing()) {
-            try {
-              synchronizationManager.waitInitialization();
-              LOG.info("Worker tasks are initialized. Start triggering optimization.");
-            } catch (final InterruptedException e) {
-              LOG.log(Level.WARNING, "Interrupted while waiting for the worker initialization", e);
+          try {
+            // 1. wait until all workers finish initialization
+            while (synchronizationManager.workersInitializing()) {
+              try {
+                synchronizationManager.waitInitialization();
+              } catch (final InterruptedException e) {
+                LOG.log(Level.WARNING, "Interrupted while waiting for the worker initialization", e);
+              }
             }
-          }
 
-          // 2. trigger optimization during all workers are running their main iterations
-          // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iterations
-          while (!synchronizationManager.waitingCleanup()) {
-            optimizationOrchestrator.run();
-            try {
-              Thread.sleep(optimizationIntervalMs);
-            } catch (final InterruptedException e) {
-              LOG.log(Level.WARNING, "Interrupted while sleeping between optimizations", e);
+            LOG.log(Level.INFO, "Worker tasks are initialized. Start triggering optimization.");
+
+            // 2. trigger optimization during all workers are running their main iterations
+            // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iterations
+            LOG.log(Level.FINE, "Trigger optimization with interval {0} ms", optimizationIntervalMs);
+            while (!synchronizationManager.waitingCleanup()) {
+              optimizationOrchestrator.run();
+              try {
+                Thread.sleep(optimizationIntervalMs);
+              } catch (final InterruptedException e) {
+                LOG.log(Level.WARNING, "Interrupted while sleeping between optimizations", e);
+              }
             }
-          }
 
-          // 3. allow workers to do cleanup, after finishing optimization entirely
-          synchronizationManager.allowWorkersCleanup();
+            LOG.log(Level.INFO, "Stop triggering optimization. Allow workers do cleanup");
+
+          } catch (final RuntimeException e) {
+            LOG.log(Level.INFO, "RuntimeException in optimization triggering thread", e);
+            throw e;
+
+          } finally {
+            // 3. allow workers to do cleanup, after finishing optimization entirely
+            synchronizationManager.allowWorkersCleanup();
+          }
         }
       });
     }
@@ -647,6 +658,7 @@ public final class AsyncDolphinDriver {
     public void onNext(final RunningTask runningTask) {
       LOG.log(Level.INFO, "RunningTask: {0}", runningTask);
       contextIdToWorkerTasks.put(runningTask.getActiveContext().getId(), runningTask);
+      optimizationOrchestrator.onRunningTask(runningTask);
     }
   }
 
@@ -827,23 +839,21 @@ public final class AsyncDolphinDriver {
     }
   }
 
+  /**
+   * Handler for CompletedTask.
+   * It does not close the context right away, because these evaluators still have valid data,
+   * which can be accessed by other running evaluators.
+   * It starts shutting down whole existing contexts and evaluators when there are no running tasks.
+   * See {@link #checkShutdown()}.
+   */
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(final CompletedTask completedTask) {
       LOG.log(Level.INFO, "CompletedTask: {0}", completedTask);
 
-      // Close the context promptly when the task is finished by EM's Delete to make the resource reusable
-      // Otherwise do not close the context, because these evaluators still have valid data,
-      // which can be accessed by other running evaluators
-      final ActiveContext context = completedTask.getActiveContext();
-      if (deletedWorkerContextIds.contains(context.getId())) {
-        contextIdToWorkerContexts.remove(context.getId());
-
-        // after closing this worker context, we can reuse this evaluator for EM.add() or just return it to RM
-        context.close();
-      }
-
       contextIdToWorkerTasks.remove(completedTask.getActiveContext().getId());
+      optimizationOrchestrator.onCompletedTask(completedTask);
+
       checkShutdown();
     }
   }
@@ -973,25 +983,45 @@ public final class AsyncDolphinDriver {
   }
 
   /**
+   * Close the running task on the context whose id is {@code workerContextId}.
+   * PlanExecutor invokes this method to stop task before migrating out existing data.
+   * @param workerContextId a id of worker context, where the task is running on
+   * @return true if succeeds to close
+   */
+  public boolean closeWorkerTask(final String workerContextId) {
+    final RunningTask runningTask = contextIdToWorkerTasks.remove(workerContextId);
+    final boolean isSuccess;
+    if (runningTask == null) {
+      LOG.log(Level.WARNING,
+          "Trying to close running task on {0}, which is not found", workerContextId);
+      isSuccess = false;
+    } else {
+      // context will be closed in WorkerRemover
+      runningTask.close();
+      isSuccess = true;
+    }
+    return isSuccess;
+  }
+
+  /**
    * Deletes Workers by closing active contexts that the Workers are run on.
    * Should be package private (not private), since Tang complains Explicit constructor in @Unit class.
    */
   final class WorkerRemover implements EMDeleteExecutor {
     @Override
     public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
-      final RunningTask runningTask = contextIdToWorkerTasks.remove(activeContextId);
+      final ActiveContext activeContext = contextIdToWorkerContexts.remove(activeContextId);
       final boolean isSuccess;
-      if (runningTask == null) {
+      if (activeContext == null) {
         LOG.log(Level.WARNING,
-            "Trying to close running task on {0}, which is not found", activeContextId);
+            "Trying to remove active context {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
-        runningTask.close();
         deletedWorkerContextIds.add(activeContextId);
 
-        // context will be closed in ClosedTaskHandler, or in FailedTaskHandler when Task accidentally fails
+        activeContext.close();
         LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}",
-            contextIdToWorkerTasks.size());
+            contextIdToWorkerContexts.size());
         isSuccess = true;
       }
       sendCallback(activeContextId, callback, isSuccess);

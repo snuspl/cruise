@@ -132,6 +132,9 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     generatePlanForOptimalConfig(OptimizationOrchestrator.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
         workerParams.size(), numDataBlocks, planBuilder);
 
+    final int numExtraEvals = availableEvaluators - (serverParams.size() + workerParams.size());
+    planBuilder.setNumExtraEvaluators(numExtraEvals);
+
     return planBuilder.build();
   }
 

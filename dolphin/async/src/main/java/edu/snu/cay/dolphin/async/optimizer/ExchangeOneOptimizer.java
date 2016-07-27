@@ -53,24 +53,24 @@ public final class ExchangeOneOptimizer implements Optimizer {
 
   /**
    * Builds a plan that deletes one eval from {@code srcNamespace} and adds one to {@code destNamespace},
-   * based on the {@code evalParamsMap}.
+   * based on the {@code evalParamMap}.
    * @param srcNamespace a source namespace
    * @param destNamespace a destination namespace
-   * @param evalParamsMap all currently active evaluators and their parameters associated with the namespace
+   * @param evalParamMap all currently active evaluators and their parameters associated with the namespace
    */
-  private Plan getPlanSwapEvalBetweenNamespaces(final String srcNamespace,
-                                                final String destNamespace,
-                                                final Map<String, List<EvaluatorParameters>> evalParamsMap) {
+  private PlanImpl.Builder getPlanSwapEvalBetweenNamespaces(final String srcNamespace,
+                                                            final String destNamespace,
+                                                            final Map<String, List<EvaluatorParameters>> evalParamMap) {
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
     // 1. source namespace:  find one eval to delete and one eval to move data into it.
     String srcNSEvalToDel = null;
     int srcNSBlocksToMove = 0;
 
-    final List<EvaluatorParameters> srcNSEvalParamsList = evalParamsMap.get(srcNamespace);
+    final List<EvaluatorParameters> srcNSEvalParamsList = evalParamMap.get(srcNamespace);
     if (srcNSEvalParamsList == null) {
       LOG.log(Level.INFO, "There's no parameters for source namespace: {0}", srcNamespace);
-      return planBuilder.build();
+      return planBuilder;
     }
 
     // pick the very first evaluator that has any data block in it to be the evaluator to be deleted
@@ -86,14 +86,14 @@ public final class ExchangeOneOptimizer implements Optimizer {
 
     if (srcNSEvalToDel == null) {
       LOG.warning("Fail to find eval with some data");
-      return planBuilder.build();
+      return planBuilder;
     }
 
     // pick the next eval to move data into
     final String srcNSEvalToMove;
     if (srcNSEvalParamsList.isEmpty()) {
       LOG.warning("Fail to find eval to move data into");
-      return planBuilder.build();
+      return planBuilder;
     }
     srcNSEvalToMove = srcNSEvalParamsList.get(0).getId();
 
@@ -102,10 +102,10 @@ public final class ExchangeOneOptimizer implements Optimizer {
     String destNSEvalToMove = null;
     int destNSBlocksToMove = 0;
 
-    final List<EvaluatorParameters> destNSEvalParamsList = evalParamsMap.get(destNamespace);
+    final List<EvaluatorParameters> destNSEvalParamsList = evalParamMap.get(destNamespace);
     if (destNSEvalParamsList == null) {
       LOG.log(Level.INFO, "There's no parameters for destination namespace: {0}", destNamespace);
-      return planBuilder.build();
+      return planBuilder;
     }
     for (final EvaluatorParameters destNSEvalParams : destNSEvalParamsList) {
       final int numBlocks = destNSEvalParams.getDataInfo().getNumBlocks();
@@ -118,7 +118,7 @@ public final class ExchangeOneOptimizer implements Optimizer {
 
     if (destNSEvalToMove == null) {
       LOG.warning("Fail to find server to move data from it");
-      return planBuilder.build();
+      return planBuilder;
     }
 
     final String destNSEvalToAdd = EVAL_PREFIX + planContextIdCounter.getAndIncrement();
@@ -129,8 +129,7 @@ public final class ExchangeOneOptimizer implements Optimizer {
             new TransferStepImpl(srcNSEvalToDel, srcNSEvalToMove, new DataInfoImpl(srcNSBlocksToMove)))
         .addEvaluatorToAdd(destNamespace, destNSEvalToAdd)
         .addTransferStep(destNamespace,
-            new TransferStepImpl(destNSEvalToMove, destNSEvalToAdd, new DataInfoImpl(destNSBlocksToMove)))
-        .build();
+            new TransferStepImpl(destNSEvalToMove, destNSEvalToAdd, new DataInfoImpl(destNSBlocksToMove)));
   }
 
   /**
@@ -143,18 +142,24 @@ public final class ExchangeOneOptimizer implements Optimizer {
       return PlanImpl.newBuilder().build();
     }
 
-    final Plan plan;
+    final PlanImpl.Builder planBuilder;
 
     if (callsMade % 2 == 0) {
-      plan = getPlanSwapEvalBetweenNamespaces(OptimizationOrchestrator.NAMESPACE_WORKER,
+      planBuilder = getPlanSwapEvalBetweenNamespaces(OptimizationOrchestrator.NAMESPACE_WORKER,
           OptimizationOrchestrator.NAMESPACE_SERVER,
           evalParamsMap);
     } else {
-      plan = getPlanSwapEvalBetweenNamespaces(OptimizationOrchestrator.NAMESPACE_SERVER,
+      planBuilder = getPlanSwapEvalBetweenNamespaces(OptimizationOrchestrator.NAMESPACE_SERVER,
           OptimizationOrchestrator.NAMESPACE_WORKER,
           evalParamsMap);
     }
 
+    final List<EvaluatorParameters> workerEvalParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
+    final List<EvaluatorParameters> serverEvalParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
+    final int numExtraEvals = availableEvaluators - (workerEvalParams.size() + serverEvalParams.size());
+    planBuilder.setNumExtraEvaluators(numExtraEvals);
+
+    final Plan plan = planBuilder.build();
     callsMade++;
     return plan;
   }

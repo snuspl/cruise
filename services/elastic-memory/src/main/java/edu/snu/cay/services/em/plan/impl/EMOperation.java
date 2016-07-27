@@ -22,12 +22,12 @@ import org.apache.reef.util.Optional;
  * A class representing EM's operation, a fine-grained step of a plan.
  */
 public final class EMOperation {
-  public enum OpType {
-    ADD, DEL, MOVE
-  }
+  public static final String ADD_OP = "ADD";
+  public static final String DEL_OP = "DEL";
+  public static final String MOVE_OP = "MOVE";
 
   private final String namespace;
-  private final OpType opType;
+  private final String opType;
   private final Optional<String> evalId;
   private final Optional<TransferStep> transferStep;
 
@@ -37,7 +37,7 @@ public final class EMOperation {
    * @param opType a type of operation, which is one of ADD or REMOVE
    * @param evalId a target evaluator id
    */
-  public EMOperation(final String namespace, final OpType opType, final String evalId) {
+  public EMOperation(final String namespace, final String opType, final String evalId) {
     this.namespace = namespace;
     this.opType = opType;
     this.evalId = Optional.of(evalId);
@@ -51,7 +51,7 @@ public final class EMOperation {
    */
   public EMOperation(final String namespace, final TransferStep transferStep) {
     this.namespace = namespace;
-    this.opType = OpType.MOVE;
+    this.opType = MOVE_OP;
     this.evalId = Optional.empty();
     this.transferStep = Optional.of(transferStep);
   }
@@ -66,7 +66,7 @@ public final class EMOperation {
   /**
    * @return a type of operation
    */
-  public OpType getOpType() {
+  public String getOpType() {
     return opType;
   }
 

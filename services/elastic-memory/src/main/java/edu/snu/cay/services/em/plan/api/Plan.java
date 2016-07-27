@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.plan.api;
 
 import edu.snu.cay.services.em.plan.impl.EMOperation;
+import edu.snu.cay.utils.DAG;
 
 import java.util.Collection;
 import java.util.Set;
@@ -39,6 +40,13 @@ public interface Plan {
    * @return the number of total number of operations
    */
   int getPlanSize();
+
+  /**
+   * Gets a DAG object whose vertices are operations and edges are dependencies between operations.
+   * Changes on the returned DAG object affect {@link #getReadyOps()} and {@link #onComplete(EMOperation)}.
+   * @return a DAG representing operations with dependency information
+   */
+  DAG<EMOperation> getDAG();
 
   /**
    * Gets ready operations that have no prerequisite operation.

@@ -144,6 +144,7 @@ public final class PlanImplTest {
 
     // 4. case of plan with a cyclic dependency (Add -> Move -> Del -> Add)
     planBuilder = PlanImpl.newBuilder()
+        .setNumExtraEvaluators(0)
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
         .addTransferStep(NAMESPACE_PREFIX,
@@ -165,6 +166,7 @@ public final class PlanImplTest {
   public void testDelAddPlanDependency() {
     // del -> add
     final Plan plan = PlanImpl.newBuilder()
+        .setNumExtraEvaluators(0)
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 2)
@@ -175,7 +177,7 @@ public final class PlanImplTest {
     final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(2, firstOpsToExec.size());
     for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.OpType.DEL, operation.getOpType());
+      assertEquals(EMOperation.DEL_OP, operation.getOpType());
     }
 
     final Set<EMOperation> executingPlans = new HashSet<>();
@@ -187,7 +189,7 @@ public final class PlanImplTest {
       assertEquals(1, nextOpsToExec.size());
       final EMOperation nextOpToExec = nextOpsToExec.iterator().next();
 
-      assertEquals(EMOperation.OpType.ADD, nextOpToExec.getOpType());
+      assertEquals(EMOperation.ADD_OP, nextOpToExec.getOpType());
 
       executingPlans.add(nextOpToExec);
     }
@@ -237,7 +239,7 @@ public final class PlanImplTest {
 
     // after finishing Moves from each evaluator, Dels for the evaluator will be ready
     for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.OpType.MOVE, operation.getOpType());
+      assertEquals(EMOperation.MOVE_OP, operation.getOpType());
 
       if (operation.getTransferStep().get().getSrcId().equals(EVAL_PREFIX + 0)) {
         firstMoveSet.add(operation);
@@ -260,7 +262,7 @@ public final class PlanImplTest {
     assertEquals(2, nextOpsToExec.size());
 
     for (final EMOperation operation : nextOpsToExec) {
-      assertEquals(EMOperation.OpType.DEL, operation.getOpType());
+      assertEquals(EMOperation.DEL_OP, operation.getOpType());
 
       // these Deletes are the final stages of the plan
       assertTrue(plan.onComplete(operation).isEmpty());
@@ -299,7 +301,7 @@ public final class PlanImplTest {
     EMOperation firstAdd = null;
     EMOperation secondAdd = null;
     for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.OpType.ADD, operation.getOpType());
+      assertEquals(EMOperation.ADD_OP, operation.getOpType());
 
       if (operation.getEvalId().get().equals(EVAL_PREFIX + 0)) {
         firstAdd = operation;
@@ -318,7 +320,7 @@ public final class PlanImplTest {
     assertEquals(4, nextOpsToExec.size());
 
     for (final EMOperation operation : nextOpsToExec) {
-      assertEquals(EMOperation.OpType.MOVE, operation.getOpType());
+      assertEquals(EMOperation.MOVE_OP, operation.getOpType());
 
       // these Moves are the final stages of the plan
       assertTrue(plan.onComplete(operation).isEmpty());

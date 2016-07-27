@@ -67,21 +67,27 @@ public final class PlanImpl implements Plan {
   }
 
   @Override
+  public DAG<EMOperation> getDAG() {
+    return dependencyGraph;
+  }
+
+  @Override
   public synchronized Set<EMOperation> getReadyOps() {
     return new HashSet<>(dependencyGraph.getRootVertices());
   }
 
   @Override
   public synchronized Set<EMOperation> onComplete(final EMOperation operation) {
-    final Set<EMOperation> newAvaliableOperations = new HashSet<>(dependencyGraph.getNeighbors(operation));
+    final Set<EMOperation> newAvailableOperations = dependencyGraph.getNeighbors(operation);
+    final Set<EMOperation> nextOpsToExecute = new HashSet<>();
     dependencyGraph.removeVertex(operation);
 
-    for (final EMOperation candidate : newAvaliableOperations) {
-      if (dependencyGraph.getInDegree(candidate) > 0) {
-        newAvaliableOperations.remove(candidate);
+    for (final EMOperation candidate : newAvailableOperations) {
+      if (dependencyGraph.getInDegree(candidate) == 0) {
+        nextOpsToExecute.add(candidate);
       }
     }
-    return newAvaliableOperations;
+    return nextOpsToExecute;
   }
 
   @Override
@@ -142,7 +148,21 @@ public final class PlanImpl implements Plan {
     private final Map<String, Set<String>> evaluatorsToDelete = new HashMap<>();
     private final Map<String, List<TransferStep>> allTransferSteps = new HashMap<>();
 
+    // Optional.empty means that there's no resource limit
+    private Optional<Integer> numExtraEvaluators = Optional.empty();
+
     private Builder() {
+    }
+
+    /**
+     * Sets the limitation on the number of extra evaluators to use in plan execution.
+     * It not specified, it assumes that there's no resource limit.
+     * @param numExtraEvaluators the number of extra evaluators
+     * @return the builder
+     */
+    public Builder setNumExtraEvaluators(final int numExtraEvaluators) {
+      this.numExtraEvaluators = Optional.of(numExtraEvaluators);
+      return this;
     }
 
     public Builder addEvaluatorToAdd(final String namespace, final String evaluatorId) {
@@ -201,6 +221,10 @@ public final class PlanImpl implements Plan {
 
     /**
      * {@inheritDoc}
+     *
+     * Builds a Plan embedding dependencies between operations.
+     * It throws RuntimeException if the plan violates the resource limit.
+     *
      * @return {@inheritDoc}
      * @throws IllegalStateException if a dependency in the plan forms a cycle
      */
@@ -233,7 +257,8 @@ public final class PlanImpl implements Plan {
       }
 
       // build an execution graph considering dependency between steps
-      final DAG<EMOperation> dependencyGraph = constructDAG(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps);
+      final DAG<EMOperation> dependencyGraph =
+          constructDAG(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, numExtraEvaluators);
 
       return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, dependencyGraph);
     }
@@ -244,7 +269,8 @@ public final class PlanImpl implements Plan {
      */
     private DAG<EMOperation> constructDAG(final Map<String, Set<String>> namespaceToEvalsToAdd,
                                           final Map<String, Set<String>> namespaceToEvalsToDel,
-                                          final Map<String, List<TransferStep>> namespaceToTransferSteps) {
+                                          final Map<String, List<TransferStep>> namespaceToTransferSteps,
+                                          final Optional<Integer> numExtraEvals) {
 
       final DAG<EMOperation> dag = new DAGImpl<>();
 
@@ -254,7 +280,7 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToDel = entry.getValue();
         for (final String evalToDel : evalsToDel) {
-          final EMOperation delOperation = new EMOperation(namespace, EMOperation.OpType.DEL, evalToDel);
+          final EMOperation delOperation = new EMOperation(namespace, EMOperation.DEL_OP, evalToDel);
           delOperations.put(evalToDel, delOperation);
           dag.addVertex(delOperation);
         }
@@ -266,7 +292,7 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToAdd = entry.getValue();
         for (final String evalToAdd : evalsToAdd) {
-          final EMOperation addOperation = new EMOperation(namespace, EMOperation.OpType.ADD, evalToAdd);
+          final EMOperation addOperation = new EMOperation(namespace, EMOperation.ADD_OP, evalToAdd);
           addOperations.put(evalToAdd, addOperation);
           dag.addVertex(addOperation);
         }
@@ -288,18 +314,26 @@ public final class PlanImpl implements Plan {
       // add edges representing dependencies between vertices
 
       // 1. del -> add
-      // We need one Add for each Delete, because we assume that the job always use the whole available resources.
+      // We need one Delete for each Add as much as the number of extra evaluators slots
+      // is smaller than the number of evaluators to Add.
       // The current strategy simply maps one Delete and one Add that is not necessarily relevant with.
-      final Iterator<EMOperation> delOperationsIter = delOperations.values().iterator();
-      for (final EMOperation addOperation : addOperations.values()) {
-        if (delOperationsIter.hasNext()) {
-          final EMOperation delOperation = delOperationsIter.next();
+      if (numExtraEvals.isPresent()) {
+        final int numRequiredEvals = addOperations.size() - delOperations.size();
+        if (numRequiredEvals > numExtraEvals.get()) {
+          throw new RuntimeException("Plan is infeasible, because it violates the resource limit");
+        }
+
+        final int numAddsShouldFollowDel = addOperations.size() - numExtraEvals.get();
+        LOG.log(Level.FINE, "{0} Adds should follow Deletes.");
+
+        final Iterator<EMOperation> delOperationsItr = delOperations.values().iterator();
+        final Iterator<EMOperation> addOperationsItr = addOperations.values().iterator();
+
+        // pick each add/del operations with no special ordering
+        for (int i = 0; i < numAddsShouldFollowDel; i++) {
+          final EMOperation addOperation = addOperationsItr.next();
+          final EMOperation delOperation = delOperationsItr.next();
           dag.addEdge(delOperation, addOperation);
-        } else {
-          LOG.log(Level.WARNING, "The number of Adds ({0}) are larger than the one of Deletes ({1})." +
-              " While executing the plan, adding evaluators might be blocked if the resources are smaller" +
-              " than it must be.", new Object[]{addOperations.size(), delOperations.size()});
-          break;
         }
       }
 

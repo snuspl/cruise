@@ -187,8 +187,6 @@ final class SynchronizationManager {
 
   private synchronized void tryReleaseWorkers() {
     if (blockedWorkerIds.size() == numWorkersToSync) {
-      LOG.log(Level.INFO, "Send response messages to wake up {0} workers that have been blocked", numWorkersToSync);
-
       transitState(globalStateMachine);
 
       // wake threads waiting initialization in waitInitialization()
@@ -199,12 +197,16 @@ final class SynchronizationManager {
       // Note that in the STATE_CLEANUP state, orchestrator never trigger further optimization.
       } else if (globalStateMachine.getCurrentState().equals(STATE_CLEANUP)) {
         try {
+          LOG.log(Level.INFO, "Time to let {0} blocked workers do cleanup." +
+              " But wait until driver finishes ongoing optimization.", numWorkersToSync);
           allowCleanupLatch.await();
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "Interrupted while waiting for the optimization to be done", e);
         }
       }
 
+      LOG.log(Level.INFO, "Send response messages to wake up {0} blocked workers: {1}",
+          new Object[]{numWorkersToSync, blockedWorkerIds});
       // broadcast responses to blocked workers
       for (final String workerId : blockedWorkerIds) {
         sendResponseMessage(workerId, EMPTY_DATA);
@@ -254,7 +256,10 @@ final class SynchronizationManager {
       case STATE_RUN:
         if (localState.equals(STATE_RUN)) {
           // worker finishes their main iteration and is waiting for response to enter the cleanup stage
-          waitingCleanup.set(true);
+          if (waitingCleanup.compareAndSet(false, true)) {
+            LOG.log(Level.INFO, "Workers are waiting for cleanup");
+          }
+
           blockWorker(workerId);
         } else if (localState.equals(STATE_INIT)) {
           // let added evaluators skip the initial barriers
