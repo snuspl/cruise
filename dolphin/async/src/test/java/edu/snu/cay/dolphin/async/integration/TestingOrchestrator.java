@@ -25,6 +25,7 @@ import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import edu.snu.cay.services.em.plan.api.TransferStep;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -138,17 +139,35 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
     // 3) run plan from optimizer
     final Optimizer optimizer = optimizers[optimizerIdx];
-    executePlans(evaluatorParameters, optimizer);
+    executePlan(evaluatorParameters, optimizer);
 
     isPlanExecuting.set(false);
 
     callsMade++;
   }
 
-  private void executePlans(final Map<String, List<EvaluatorParameters>> evalParams,
-                            final Optimizer optimizer) {
+  /**
+   * Execute the plan of the chosen optimizer and verify the result.
+   * @param evalParams evaluator parameters
+   * @param optimizer optimizer
+   */
+  private void executePlan(final Map<String, List<EvaluatorParameters>> evalParams,
+                           final Optimizer optimizer) {
     LOG.log(Level.INFO, "Calculate plan from {0}", optimizer.getClass().getName());
     final Plan plan = optimizer.optimize(evalParams, maxNumEvals);
+
+    final Map<Integer, Integer> beforeServerStoreIdToNumBlocks = new HashMap<>();
+    for (final Map.Entry<Integer, Set<Integer>> entry : serverEM.getStoreIdToBlockIds().entrySet()) {
+      final int storeId = entry.getKey();
+      final int numBlocks = entry.getValue().size();
+      beforeServerStoreIdToNumBlocks.put(storeId, numBlocks);
+    }
+    final Map<Integer, Integer> beforeWorkerStoreIdToNumBlocks = new HashMap<>();
+    for (final Map.Entry<Integer, Set<Integer>> entry : workerEM.getStoreIdToBlockIds().entrySet()) {
+      final int storeId = entry.getKey();
+      final int numBlocks = entry.getValue().size();
+      beforeWorkerStoreIdToNumBlocks.put(storeId, numBlocks);
+    }
 
     final Future<PlanResult> planResultFuture = planExecutor.execute(plan);
     try {
@@ -157,13 +176,133 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       LOG.log(Level.INFO, "The number of executed ops: {0}", result.getNumExecutedOps());
 
       if (plan.getPlanSize() != result.getNumExecutedOps()) {
-        throw new RuntimeException("The number of executed operations is different from expectation");
+        throw new RuntimeException("The number of executed operations is different from the expectation");
       }
+
+      final Map<Integer, Integer> afterServerStoreIdToNumBlocks = new HashMap<>();
+      for (final Map.Entry<Integer, Set<Integer>> entry : serverEM.getStoreIdToBlockIds().entrySet()) {
+        final int storeId = entry.getKey();
+        final int numBlocks = entry.getValue().size();
+        afterServerStoreIdToNumBlocks.put(storeId, numBlocks);
+      }
+      final Map<Integer, Integer> afterWorkerStoreIdToNumBlocks = new HashMap<>();
+      for (final Map.Entry<Integer, Set<Integer>> entry : workerEM.getStoreIdToBlockIds().entrySet()) {
+        final int storeId = entry.getKey();
+        final int numBlocks = entry.getValue().size();
+        afterWorkerStoreIdToNumBlocks.put(storeId, numBlocks);
+      }
+
+
+      verifyResult(beforeServerStoreIdToNumBlocks, afterServerStoreIdToNumBlocks, Constants.NAMESPACE_SERVER, plan);
+      verifyResult(beforeWorkerStoreIdToNumBlocks, afterWorkerStoreIdToNumBlocks, Constants.NAMESPACE_WORKER, plan);
 
     } catch (final InterruptedException | ExecutionException e) {
       LOG.log(Level.SEVERE, "Exception while executing plan", e);
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Verify that the plan is executed correctly by comparing the number of blocks in each EM store.
+   * @param beforeStoreIdToNumBlocks block locations before reconfiguration
+   * @param afterStoreIdToNumBlocks block locations after reconfiguration
+   * @param namespace a namespace
+   * @param plan a plan
+   */
+  private void verifyResult(final Map<Integer, Integer> beforeStoreIdToNumBlocks,
+                            final Map<Integer, Integer> afterStoreIdToNumBlocks,
+                            final String namespace,
+                            final Plan plan) {
+
+    // no change in this namespace, so no need to verify
+    if (plan.getPlanSize() == 0) {
+      return;
+    }
+
+    final Collection<String> addedEvals = plan.getEvaluatorsToAdd(namespace);
+    final Collection<String> deletedEvals = plan.getEvaluatorsToDelete(namespace);
+    final Collection<TransferStep> transferredBlocks = plan.getTransferSteps(namespace);
+
+    // maintains the number of blocks in the newly added evaluators
+    final Map<String, Integer> addedEvalIdToNumBlocks = new HashMap<>();
+
+    // update two maps based on Moves in the plan
+    for (final TransferStep transferStep : transferredBlocks) {
+      final String srcEvalId = transferStep.getSrcId();
+      final String destEvalId = transferStep.getDstId();
+      final int numBlocks = transferStep.getDataInfo().getNumBlocks();
+
+      final int srcNumBlocks = beforeStoreIdToNumBlocks.get(getStoreId(srcEvalId));
+      beforeStoreIdToNumBlocks.put(getStoreId(srcEvalId), srcNumBlocks - numBlocks);
+
+      // case 1. destination is added eval
+      if (addedEvals.contains(destEvalId)) {
+        if (addedEvalIdToNumBlocks.containsKey(destEvalId)) {
+          final int destNumBlocks = addedEvalIdToNumBlocks.get(destEvalId);
+          addedEvalIdToNumBlocks.put(destEvalId, destNumBlocks + numBlocks);
+
+        } else {
+          addedEvalIdToNumBlocks.put(destEvalId, numBlocks);
+        }
+
+      // case 2. destination is existing eval
+      } else {
+        final int destNumBlocks = beforeStoreIdToNumBlocks.get(getStoreId(destEvalId));
+        beforeStoreIdToNumBlocks.put(getStoreId(destEvalId), destNumBlocks + numBlocks);
+      }
+    }
+
+    for (final String evalId : deletedEvals) {
+      if (beforeStoreIdToNumBlocks.remove(getStoreId(evalId)) != 0) {
+        throw new RuntimeException("Deleted evaluator has blocks more than 0. Optimizer has made wrong plan.");
+      }
+    }
+
+    // verify that the plan execution is done correctly
+    for (final Map.Entry<Integer, Integer> entry : afterStoreIdToNumBlocks.entrySet()) {
+      final int storeId = entry.getKey();
+      final int numBlocks = entry.getValue();
+
+      // 1. existing eval
+      if (beforeStoreIdToNumBlocks.containsKey(storeId)) {
+        if (beforeStoreIdToNumBlocks.get(storeId) != numBlocks) {
+          throw new RuntimeException("The number of block in the store " + storeId + " is different from expectation");
+        }
+
+      // 2. newly added eval
+      } else {
+        String evalId = null;
+
+        // we don't know which store id the new eval has been assigned
+        // so, remove one that has the same number of expected blocks
+        for (final Map.Entry<String, Integer> innerEntry : addedEvalIdToNumBlocks.entrySet()) {
+          final String addedEvalId = innerEntry.getKey();
+          final int numBlocksForAddedEVal = innerEntry.getValue();
+
+          if (numBlocksForAddedEVal == numBlocks) {
+            evalId = addedEvalId;
+            break;
+          }
+        }
+
+        if (evalId == null) {
+          throw new RuntimeException("There's no new eval that matches with the expected block number");
+
+        } else {
+          // remove matched one
+          addedEvalIdToNumBlocks.remove(evalId);
+        }
+      }
+    }
+
+    if (!addedEvalIdToNumBlocks.isEmpty()) {
+      throw new RuntimeException("Add and Move for the added eval were not correctly done");
+    }
+  }
+
+  // TODO #509: remove the assumption on the format of contextId
+  private int getStoreId(final String evalId) {
+    return Integer.valueOf(evalId.split("-")[1]);
   }
 
   @Override
