@@ -33,7 +33,7 @@ import static org.junit.Assert.assertEquals;
 public class ReconfigurationTest {
 
   @Test
-  public void runRandomOptimizer() {
+  public void testReconfigurationWithSampleOptimizers() {
     final String[] args = getArguments();
 
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -47,7 +47,7 @@ public class ReconfigurationTest {
     final int numWorkers = 3;
     final int numServers = 2;
     final int numTotalEvals = numWorkers + numServers; // do not use more resources
-    final int numServerPartitions = numTotalEvals - 1; // workers can become servers except one
+    final int numServerPartitions = numTotalEvals - 1; // number of servers can go upto 'numTotalEvals - 1'
 
     return new String[]{
         "-split", Integer.toString(numWorkers),
@@ -55,7 +55,7 @@ public class ReconfigurationTest {
         "-num_servers", Integer.toString(numServers),
         "-max_num_eval_local", Integer.toString(numTotalEvals),
         "-num_partitions", Integer.toString(numServerPartitions),
-        "-max_iter", Integer.toString(150),
+        "-max_iter", Integer.toString(100),
         "-delta", Integer.toString(4),
         "-start_key", Integer.toString(100),
         "-num_keys", Integer.toString(100),

@@ -64,7 +64,6 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
                               @Parameter(WorkerEM.class) final ElasticMemory workerEM,
                               @Parameter(ServerEM.class) final ElasticMemory serverEM,
                               @Parameter(LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals,
-                              final AsyncDolphinOptimizer asyncDolphinOptimizer,
                               final AddOneServerOptimizer addOneServerOptimizer,
                               final AddOneWorkerOptimizer addOneWorkerOptimizer,
                               final DeleteOneServerOptimizer deleteOneServerOptimizer,
@@ -79,7 +78,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     this.optimizers = new Optimizer[]{
         deleteOneWorkerOptimizer, addOneWorkerOptimizer,
         deleteOneServerOptimizer, addOneServerOptimizer,
-        exchangeOneOptimizer, asyncDolphinOptimizer};
+        exchangeOneOptimizer};
   }
 
   private int callsMade = 0;
