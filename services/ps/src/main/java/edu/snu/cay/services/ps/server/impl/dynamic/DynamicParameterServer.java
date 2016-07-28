@@ -100,7 +100,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   /**
    * Number of threads working in the server.
    */
-  private int numThreads;
+  private final int numThreads;
 
   /**
    * Statistics of the processing time of push operation.
@@ -172,10 +172,10 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     this.blockResolver = blockResolver;
     this.queueSize = queueSize;
     this.threadPool = Executors.newFixedThreadPool(numThreads);
+    this.numThreads = numThreads;
     this.threads = initThreads();
     this.parameterUpdater = parameterUpdater;
     this.sender = sender;
-    this.numThreads = numThreads;
     this.threadResolver = new ThreadResolver(numThreads);
     this.pushStats = Statistics.newInstances(numThreads);
     this.pullStats = Statistics.newInstances(numThreads);
