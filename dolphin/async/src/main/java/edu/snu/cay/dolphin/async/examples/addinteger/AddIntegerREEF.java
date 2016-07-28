@@ -35,7 +35,7 @@ public final class AddIntegerREEF {
   }
 
   /**
-   * Runs app with given arguments and configuration.
+   * Runs app with given arguments and custom configuration.
    * @param args command line arguments for running app
    * @param conf a job configuration
    * @return a LauncherStatus
