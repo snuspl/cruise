@@ -98,6 +98,11 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private final ThreadResolver threadResolver;
 
   /**
+   * Number of threads working in the server.
+   */
+  private int numThreads;
+
+  /**
    * Statistics of the processing time of push operation.
    */
   private final Statistics[] pushStats;
@@ -153,6 +158,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
    */
   private int windowIndex = 0;
 
+
   @Inject
   private DynamicParameterServer(final MemoryStore<HashedKey<K>> memoryStore,
                                  final BlockResolver<HashedKey<K>> blockResolver,
@@ -166,9 +172,10 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     this.blockResolver = blockResolver;
     this.queueSize = queueSize;
     this.threadPool = Executors.newFixedThreadPool(numThreads);
-    this.threads = initThreads(numThreads);
+    this.threads = initThreads();
     this.parameterUpdater = parameterUpdater;
     this.sender = sender;
+    this.numThreads = numThreads;
     this.threadResolver = new ThreadResolver(numThreads);
     this.pushStats = Statistics.newInstances(numThreads);
     this.pullStats = Statistics.newInstances(numThreads);
@@ -190,9 +197,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
   /**
    * Call after initializing threadPool.
-   * @param numThreads The number of threads to run operations.
    */
-  private Map<Integer, ServerThread<K, V>> initThreads(final int numThreads) {
+  private Map<Integer, ServerThread<K, V>> initThreads() {
     final Map<Integer, ServerThread<K, V>> initialized = new HashMap<>();
 
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
@@ -290,6 +296,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         final double avgPullTime = getAvgProcTimePerReq(pullStats);
         final double avgPushTime = getAvgProcTimePerReq(pushStats);
         final double avgReqProcTime = getAvgProcTimePerReq(requestStats);
+        resetStats();
 
         // Send meaningful metrics only (i.e., infinity processing time implies that no data has been processed yet).
         if (avgPullTime != Double.POSITIVE_INFINITY && avgPushTime != Double.POSITIVE_INFINITY) {
@@ -326,12 +333,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     double throughputSum = 0D;
 
     synchronized (procTimeStats) {
-      int threadIdx = 0;
       for (final Statistics stat : procTimeStats) {
-        logThreadStats(threadIdx);
         throughputSum += stat.count() / stat.sum();
-        stat.reset();
-        ++threadIdx;
       }
     }
 
@@ -339,6 +342,21 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       return Double.POSITIVE_INFINITY;
     } else {
       return 1.0 / throughputSum;
+    }
+  }
+
+  /**
+   * Resets all {@link Statistics} for the next round of metrics.
+   */
+  private void resetStats() {
+    for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
+      logThreadStats(threadIdx);
+      pullStats[threadIdx].reset();
+      pullWaitStats[threadIdx].reset();
+      pushStats[threadIdx].reset();
+      pushWaitStats[threadIdx].reset();
+      requestStats[threadIdx].reset();
+      requestWaitStats[threadIdx].reset();
     }
   }
 

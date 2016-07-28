@@ -301,6 +301,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         final double avgPullTime = getAvgProcTimePerReq(pullStats);
         final double avgPushTime = getAvgProcTimePerReq(pushStats);
         final double avgReqProcTime = getAvgProcTimePerReq(requestStats);
+        resetStats();
 
         // Send meaningful metrics only (i.e., infinity processing time implies that no data has been processed yet).
         if (avgPullTime != Double.POSITIVE_INFINITY && avgPushTime != Double.POSITIVE_INFINITY) {
@@ -335,12 +336,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     double throughputSum = 0D;
 
     synchronized (procTimeStats) {
-      int threadIdx = 0;
       for (final Statistics stat : procTimeStats) {
-        logThreadStats(threadIdx);
         throughputSum += stat.count() / stat.sum();
-        stat.reset();
-        ++threadIdx;
       }
     }
 
@@ -348,6 +345,21 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       return Double.POSITIVE_INFINITY;
     } else {
       return 1.0 / throughputSum;
+    }
+  }
+
+  /**
+   * Resets all {@link Statistics} for the next round of metrics.
+   */
+  private void resetStats() {
+    for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
+      logThreadStats(threadIdx);
+      pullStats[threadIdx].reset();
+      pullWaitStats[threadIdx].reset();
+      pushStats[threadIdx].reset();
+      pushWaitStats[threadIdx].reset();
+      requestStats[threadIdx].reset();
+      requestWaitStats[threadIdx].reset();
     }
   }
 
