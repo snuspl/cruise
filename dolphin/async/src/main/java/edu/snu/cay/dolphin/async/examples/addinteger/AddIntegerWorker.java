@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -83,15 +82,6 @@ final class AddIntegerWorker implements Worker {
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
 
-  private final Tracer pushTracer = new Tracer();
-  private final Tracer pullTracer = new Tracer();
-  private final Tracer computeTracer = new Tracer();
-
-  /**
-   * Number of iterations.
-   */
-  private int iteration = 0;
-
   @Inject
   private AddIntegerWorker(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
                            @Parameter(AddIntegerREEF.DeltaValue.class) final int delta,
@@ -101,9 +91,6 @@ final class AddIntegerWorker implements Worker {
                            @Parameter(AddIntegerREEF.NumWorkers.class) final int numberOfWorkers,
                            @Parameter(Parameters.Iterations.class) final int numIterations,
                            final MemoryStore<Long> memoryStore,
-                           final MetricsCollector metricsCollector,
-                           final InsertableMetricTracker insertableMetricTracker,
-                           final MetricsHandler metricsHandler,
                            final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
@@ -125,44 +112,25 @@ final class AddIntegerWorker implements Worker {
 
   @Override
   public void run() {
-    iteration++;
-    final long iterationBegin = System.currentTimeMillis();
-
-    resetTracers();
-
     // sleep to simulate computation
-    computeTracer.startTimer();
     try {
       Thread.sleep(DELAY_MS);
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     }
-    computeTracer.recordTime(1);
 
     for (int i = 0; i < numberOfUpdates; i++) {
       for (int j = 0; j < numberOfKeys; j++) {
-        pushTracer.startTimer();
         parameterWorker.push(startKey + j, delta);
-        pushTracer.recordTime(1);
-
-        pullTracer.startTimer();
         final Integer value = parameterWorker.pull(startKey + j);
-        pullTracer.recordTime(1);
         LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{startKey + j, value});
       }
     }
 
-    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(memoryStore.getNumBlocks(), numberOfKeys, elapsedTime);
+        buildMetricsMsg(memoryStore.getNumBlocks());
 
     sendMetrics(workerMetrics);
-  }
-
-  private void resetTracers() {
-    pushTracer.resetTrace();
-    pullTracer.resetTrace();
-    computeTracer.resetTrace();
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
@@ -171,19 +139,9 @@ final class AddIntegerWorker implements Worker {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int numDataBlocks,
-                                        final int numProcessedDataItemCount, final double elapsedTime) {
+  private WorkerMetrics buildMetricsMsg(final int numDataBlocks) {
     return WorkerMetrics.newBuilder()
-        .setItrIdx(iteration)
-        .setNumMiniBatchPerItr(1)
         .setNumDataBlocks(numDataBlocks)
-        .setProcessedDataItemCount(numProcessedDataItemCount)
-        .setTotalTime(elapsedTime)
-        .setTotalCompTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerRecord())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPushTime(pushTracer.avgTimePerRecord())
         .build();
   }
 
