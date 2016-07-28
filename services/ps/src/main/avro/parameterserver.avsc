@@ -169,6 +169,7 @@
   "fields":
   [
     {"name": "threadId", "type": "int"},
+    {"name": "numPendingOps", "type": "int"},
     {"name": "totalTime", "type": "double", "default": 0.0},
     {"name": "pullCount", "type": "int", "default": 0},
     {"name": "totalPullTime", "type": "double", "default": 0.0},
@@ -179,7 +180,12 @@
     {"name": "totalPushTime", "type": "double", "default": 0.0},
     {"name": "avgPushTime", "type": "double", "default": 0.0},
     {"name": "totalPushWaitTime", "type": "double", "default": 0.0},
-    {"name": "avgPushWaitTime", "type": "double", "default": 0.0}
+    {"name": "avgPushWaitTime", "type": "double", "default": 0.0},
+    {"name": "reqCount", "type": "int", "default": 0},
+    {"name": "totalReqTime", "type": "double", "default": 0.0},
+    {"name": "avgReqTime", "type": "double", "default": 0.0},
+    {"name": "totalReqWaitTime", "type": "double", "default": 0.0},
+    {"name": "avgReqWaitTime", "type": "double", "default": 0.0}
   ]
 },
 
@@ -199,7 +205,9 @@
     {"name": "windowIndex", "type": "int", "default":0},
     {"name": "numPartitionBlocks", "type": "int", "default":0},
     {"name": "metricWindowMs", "type": "long", "default":0},
-    {"name": "avgProcessingTime", "type": "double", "default":0.0}
+    {"name": "avgPullProcessingTime", "type": "double", "default":0.0},
+    {"name": "avgPushProcessingTime", "type": "double", "default":0.0},
+    {"name": "avgReqProcessingTime", "type": "double", "default":0.0}
   ]
 }
 ]
