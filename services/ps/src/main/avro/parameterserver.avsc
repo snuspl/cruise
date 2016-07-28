@@ -159,6 +159,37 @@
 },
 
 /**
+ * A message containing metrics and other server-specific information at thread level.
+ * This message is for logging purposes of different metrics, not for the metrics aggregation at the driver.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.metric.avro",
+  "type": "record",
+  "name": "ServerThreadMetrics",
+  "fields":
+  [
+    {"name": "threadId", "type": "int"},
+    {"name": "numPendingOps", "type": "int"},
+    {"name": "totalTime", "type": "double", "default": 0.0},
+    {"name": "pullCount", "type": "int", "default": 0},
+    {"name": "totalPullTime", "type": "double", "default": 0.0},
+    {"name": "avgPullTime", "type": "double", "default": 0.0},
+    {"name": "totalPullWaitTime", "type": "double", "default": 0.0},
+    {"name": "avgPullWaitTime", "type": "double", "default": 0.0},
+    {"name": "pushCount", "type": "int", "default": 0},
+    {"name": "totalPushTime", "type": "double", "default": 0.0},
+    {"name": "avgPushTime", "type": "double", "default": 0.0},
+    {"name": "totalPushWaitTime", "type": "double", "default": 0.0},
+    {"name": "avgPushWaitTime", "type": "double", "default": 0.0},
+    {"name": "reqCount", "type": "int", "default": 0},
+    {"name": "totalReqTime", "type": "double", "default": 0.0},
+    {"name": "avgReqTime", "type": "double", "default": 0.0},
+    {"name": "totalReqWaitTime", "type": "double", "default": 0.0},
+    {"name": "avgReqWaitTime", "type": "double", "default": 0.0}
+  ]
+},
+
+/**
  * A message containing metrics and other server-specific information.
  * Since Server does not have iteration as workers, metrics are collected and
  * sent in a fixed time unit, which is called window.
@@ -166,13 +197,17 @@
 {
   "namespace": "edu.snu.cay.services.ps.metric.avro",
   "type": "record",
-  "name": "ServerMetricsMsg",
+  "name": "ServerMetrics",
   "fields":
   [
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
-    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
-    {"name": "windowIndex", "type": "int"},
-    {"name": "numPartitionBlocks", "type": "int"}
+    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default":null},
+    {"name": "windowIndex", "type": "int", "default":0},
+    {"name": "numPartitionBlocks", "type": "int", "default":0},
+    {"name": "metricWindowMs", "type": "long", "default":0},
+    {"name": "avgPullProcessingTime", "type": "double", "default":0.0},
+    {"name": "avgPushProcessingTime", "type": "double", "default":0.0},
+    {"name": "avgReqProcessingTime", "type": "double", "default":0.0}
   ]
 }
 ]

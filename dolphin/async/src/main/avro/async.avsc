@@ -20,13 +20,42 @@
 {
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
-  "name": "WorkerMetricsMsg",
+  "name": "WorkerMetrics",
   "fields":
   [
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
-    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
-    {"name": "iteration", "type": "int"},
-    {"name": "numDataBlocks", "type": "int"}
+    // "metrics" should contain app-specific metrics. (ex. loss, DvT)
+    {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
+
+    // iteration number
+    {"name": "itrIdx", "type": "int", "default": 0},
+
+    // number of data blocks used for MemoryStore
+    {"name": "numDataBlocks", "type": "int", "default": 0},
+
+    // number of data items (mapped to a key in MemoryStore) processed
+    {"name": "processedDataItemCount", "type": "int", "default": 0},
+
+    // number of mini-batches per iteration
+    {"name": "numMiniBatchPerItr", "type": "int", "default": 0},
+
+    // total elapsed time for this iteration (seconds)
+    {"name": "totalTime", "type": "double", "default": 0.0},
+
+    // total computation time for this iteration (seconds)
+    {"name": "totalCompTime", "type": "double", "default": 0.0},
+
+    // total push time for this iteration (seconds)
+    {"name": "totalPushTime", "type": "double", "default": 0.0},
+
+    // total pull time for this iteration (seconds)
+    {"name": "totalPullTime", "type": "double", "default": 0.0},
+
+    // average push time per trace/element for this iteration (seconds)
+    {"name": "avgPushTime", "type": "double", "default": 0.0},
+
+    // average pull time per trace/element for this iteration (seconds)
+    {"name": "avgPullTime", "type": "double", "default": 0.0}
   ]
 }
 ]

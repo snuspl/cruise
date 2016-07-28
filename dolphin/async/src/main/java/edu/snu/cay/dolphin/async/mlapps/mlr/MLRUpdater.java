@@ -15,8 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
-import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.ModelGaussian;
-import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.NumFeaturesPerPartition;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
@@ -24,6 +22,9 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Random;
+
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.ModelGaussian;
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumFeaturesPerPartition;
 
 /**
  * {@link ParameterUpdater} for the MLRREEF application.

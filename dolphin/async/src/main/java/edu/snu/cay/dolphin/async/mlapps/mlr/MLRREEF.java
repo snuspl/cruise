@@ -15,12 +15,11 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
-import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
+import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 
 /**
  * Application launching code for MLRREEF.
@@ -45,66 +44,11 @@ public final class MLRREEF {
         .addParameterClass(NumFeatures.class)
         .addParameterClass(InitialStepSize.class)
         .addParameterClass(Lambda.class)
-        .addParameterClass(StatusLogPeriod.class)
         .addParameterClass(NumFeaturesPerPartition.class)
         .addParameterClass(ModelGaussian.class)
         .addParameterClass(DecayPeriod.class)
         .addParameterClass(DecayRate.class)
         .addParameterClass(TrainErrorDatasetSize.class)
-        .addParameterClass(NumBatchPerLossLog.class)
         .build());
-  }
-
-  @NamedParameter(doc = "number of classes", short_name = "classes")
-  final class NumClasses implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "input dimension", short_name = "features")
-  final class NumFeatures implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "initial value of the step size", short_name = "init_step_size")
-  final class InitialStepSize implements Name<Double> {
-  }
-
-  @NamedParameter(doc = "regularization constant", short_name = "lambda")
-  final class Lambda implements Name<Double> {
-  }
-
-  @NamedParameter(doc = "number of iterations to wait until logging the current status",
-                  short_name = "status_log_period",
-                  default_value = "0")
-  final class StatusLogPeriod implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "number of features for each model partition",
-                  short_name = "features_per_partition")
-  final class NumFeaturesPerPartition implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "standard deviation of the gaussian distribution used for initializing model parameters",
-                  short_name = "model_gaussian",
-                  default_value = "0.001")
-  final class ModelGaussian implements Name<Double> {
-  }
-
-  @NamedParameter(doc = "number of iterations to wait until learning wait decreases (periodic)",
-                  short_name = "decay_period")
-  final class DecayPeriod implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "ratio which learning rate decreases by (multiplicative)",
-                  short_name = "decay_rate")
-  final class DecayRate implements Name<Double> {
-  }
-
-  @NamedParameter(doc = "size of the dataset used for measuring training loss",
-                  short_name = "train_error_dataset_size")
-  final class TrainErrorDatasetSize implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "log the current loss after this many mini-batches",
-                  short_name = "num_batch_per_loss_log")
-  final class NumBatchPerLossLog implements Name<Integer> {
   }
 }
