@@ -248,7 +248,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   }
 
   /**
-   * logs stats (pull, push, request times and wait times) of a working thread
+   * logs stats (pull, push, request times and wait times) of a working thread.
    * @param threadId of the thread
    */
   private void logThreadStats(final int threadId) {
