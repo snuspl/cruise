@@ -17,6 +17,9 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
+import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
@@ -31,8 +34,14 @@ public final class AddIntegerREEF {
   private AddIntegerREEF() {
   }
 
-  public static void main(final String[] args) {
-    AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
+  /**
+   * Runs app with given arguments and configuration.
+   * @param args command line arguments for running app
+   * @param conf a job configuration
+   * @return a LauncherStatus
+   */
+  public static LauncherStatus runAddInteger(final String[] args, final Configuration conf) {
+    return AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setWorkerClass(AddIntegerWorker.class)
         .setUpdaterClass(AddIntegerUpdater.class)
         .addParameterClass(DeltaValue.class)
@@ -40,7 +49,12 @@ public final class AddIntegerREEF {
         .addParameterClass(NumKeys.class)
         .addParameterClass(NumUpdates.class)
         .addParameterClass(NumWorkers.class)
-        .build());
+        .build(), conf);
+  }
+
+  public static void main(final String[] args) {
+    runAddInteger(args, Tang.Factory.getTang().newConfigurationBuilder().build());
+
   }
 
   @NamedParameter(doc = "All workers will add this integer to the sum", short_name = "delta")

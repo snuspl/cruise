@@ -15,8 +15,12 @@
  */
 package edu.snu.cay.dolphin.async.examples.addinteger;
 
+import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.metric.Tracer;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -74,6 +78,20 @@ final class AddIntegerWorker implements Worker {
    */
   private final int expectedResult;
 
+  private final MemoryStore<Long> memoryStore;
+
+  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+
+  private final Tracer pushTracer = new Tracer();
+  private final Tracer pullTracer = new Tracer();
+  private final Tracer computeTracer = new Tracer();
+
+  /**
+   * Number of iterations.
+   */
+  private int iteration = 0;
+
   @Inject
   private AddIntegerWorker(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
                            @Parameter(AddIntegerREEF.DeltaValue.class) final int delta,
@@ -81,7 +99,12 @@ final class AddIntegerWorker implements Worker {
                            @Parameter(AddIntegerREEF.NumKeys.class) final int numberOfKeys,
                            @Parameter(AddIntegerREEF.NumUpdates.class) final int numberOfUpdates,
                            @Parameter(AddIntegerREEF.NumWorkers.class) final int numberOfWorkers,
-                           @Parameter(Parameters.Iterations.class) final int numIterations) {
+                           @Parameter(Parameters.Iterations.class) final int numIterations,
+                           final MemoryStore<Long> memoryStore,
+                           final MetricsCollector metricsCollector,
+                           final InsertableMetricTracker insertableMetricTracker,
+                           final MetricsHandler metricsHandler,
+                           final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
     this.startKey = startKey;
@@ -91,6 +114,9 @@ final class AddIntegerWorker implements Worker {
     this.expectedResult = delta * numberOfWorkers * numIterations * numberOfUpdates;
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numberOfUpdates:{3}",
         new Object[]{delta, numberOfWorkers, numIterations, numberOfUpdates});
+
+    this.memoryStore = memoryStore;
+    this.metricsMsgSender = metricsMsgSender;
   }
 
   @Override
@@ -99,19 +125,66 @@ final class AddIntegerWorker implements Worker {
 
   @Override
   public void run() {
+    iteration++;
+    final long iterationBegin = System.currentTimeMillis();
+
+    resetTracers();
+
     // sleep to simulate computation
+    computeTracer.startTimer();
     try {
       Thread.sleep(DELAY_MS);
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     }
+    computeTracer.recordTime(1);
+
     for (int i = 0; i < numberOfUpdates; i++) {
       for (int j = 0; j < numberOfKeys; j++) {
+        pushTracer.startTimer();
         parameterWorker.push(startKey + j, delta);
+        pushTracer.recordTime(1);
+
+        pullTracer.startTimer();
         final Integer value = parameterWorker.pull(startKey + j);
+        pullTracer.recordTime(1);
         LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{startKey + j, value});
       }
     }
+
+    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
+    final WorkerMetrics workerMetrics =
+        buildMetricsMsg(memoryStore.getNumBlocks(), numberOfKeys, elapsedTime);
+
+    sendMetrics(workerMetrics);
+  }
+
+  private void resetTracers() {
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
+  }
+
+  private void sendMetrics(final WorkerMetrics workerMetrics) {
+    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", workerMetrics);
+
+    metricsMsgSender.send(workerMetrics);
+  }
+
+  private WorkerMetrics buildMetricsMsg(final int numDataBlocks,
+                                        final int numProcessedDataItemCount, final double elapsedTime) {
+    return WorkerMetrics.newBuilder()
+        .setItrIdx(iteration)
+        .setNumMiniBatchPerItr(1)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerRecord())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPushTime(pushTracer.avgTimePerRecord())
+        .build();
   }
 
   @Override
@@ -130,27 +203,26 @@ final class AddIntegerWorker implements Worker {
       }
     }
 
-    LOG.log(Level.WARNING, "Validation test is failed");
-    throw new RuntimeException();
+    LOG.log(Level.WARNING, "Validation failed");
   }
 
   /**
-   * check the result(total sum) of each key is same with expected result.
+   * Checks the result(total sum) of each key is same with expected result.
    *
    * @return true if all of the values of keys are matched with expected result, otherwise false.
    */
   private boolean validate() {
+    LOG.log(Level.INFO, "Start validation");
+    boolean ret = true;
     for (int i = 0; i < numberOfKeys; i++) {
       final int result = parameterWorker.pull(startKey + i);
 
       if (expectedResult != result) {
         LOG.log(Level.WARNING, "For key {0}, expected value {1} but received {2}",
             new Object[]{startKey + i, expectedResult, result});
-        return false;
-      } else {
-        LOG.log(Level.INFO, "For key {0}, received expected value {1}.", new Object[]{startKey + i, expectedResult});
+        ret = false;
       }
     }
-    return true;
+    return ret;
   }
 }
