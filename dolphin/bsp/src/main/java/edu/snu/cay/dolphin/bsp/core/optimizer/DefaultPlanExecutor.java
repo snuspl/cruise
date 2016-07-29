@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.bsp.core.DolphinDriver;
 import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.driver.api.EMResourceSpec;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
@@ -122,7 +123,11 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         contextActiveHandlers.add(new ContextActiveHandler());
         for (final String evaluatorToAdd : plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP)) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
-          elasticMemory.add(1, evalSize, 1, evaluatorAllocatedHandler, contextActiveHandlers);
+          elasticMemory.add(EMResourceSpec.newBuilder()
+              .setNumber(1).setMegaBytes(evalSize).setCores(1)
+              .setEvaluatorAllocatedHandler(evaluatorAllocatedHandler)
+              .setContextActiveHandlerList(contextActiveHandlers)
+              .build());
         }
         executingPlan.awaitActiveContexts();
 

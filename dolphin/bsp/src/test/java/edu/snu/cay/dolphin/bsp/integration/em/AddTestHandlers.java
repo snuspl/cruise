@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.integration.em;
 
+import edu.snu.cay.services.em.driver.api.EMResourceSpec;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.driver.context.ActiveContext;
@@ -165,7 +166,11 @@ final class AddTestHandlers {
           }
         });
 
-        elasticMemory.add(addsPerThread, 128, 1, evaluatorAllocatedHandler, contextActiveHandlers);
+        elasticMemory.add(EMResourceSpec.newBuilder()
+            .setNumber(addsPerThread).setMegaBytes(128).setCores(1)
+            .setEvaluatorAllocatedHandler(evaluatorAllocatedHandler)
+            .setContextActiveHandlerList(contextActiveHandlers)
+            .build());
       }
     }
   }

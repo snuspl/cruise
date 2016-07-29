@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.AsyncDolphinDriver;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
+import edu.snu.cay.services.em.driver.api.EMResourceSpec;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
@@ -330,11 +331,13 @@ public final class AsyncDolphinPlanExecutorTest {
     }
 
     @Override
-    public void add(final int number, final int megaBytes, final int cores,
-                    final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
-                    final List<EventHandler <ActiveContext>> contextActiveHandlerList) {
+    public void addTable(final String tableId) {
+    }
+
+    @Override
+    public void add(final EMResourceSpec spec) {
       try {
-        addHandlerQueue.put(new Tuple2<>(evaluatorAllocatedHandler, contextActiveHandlerList));
+        addHandlerQueue.put(new Tuple2<>(spec.getEvaluatorAllocatedHandler(), spec.getContextActiveHandlerList()));
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while putting Add to queue", e);
       }

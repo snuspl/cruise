@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
+import edu.snu.cay.services.em.driver.api.EMResourceSpec;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
@@ -37,6 +38,7 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,6 +78,11 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     this.blockManager = blockManager;
   }
 
+  @Override
+  public void addTable(final String tableId) {
+    blockManager.addTable(tableId);
+  }
+
   /**
    * Request for evaluators and remember passed callback.
    * Currently assumes that every request has same memory size and cores.
@@ -83,9 +90,14 @@ public final class ElasticMemoryImpl implements ElasticMemory {
    * TODO #188: Support heterogeneous evaluator requests
    */
   @Override
-  public void add(final int number, final int megaBytes, final int cores,
-                  final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
-                  final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
+  public void add(final EMResourceSpec spec) {
+    final String tableId = spec.getTableId();
+    final int number = spec.getNumber();
+    final int megaBytes = spec.getMegaBytes();
+    final int cores = spec.getCores();
+    final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler = spec.getEvaluatorAllocatedHandler();
+    final List<EventHandler<ActiveContext>> contextActiveHandlerList = spec.getContextActiveHandlerList();
+
     if (number == 0) {
       LOG.log(Level.WARNING, "Ignore the request for zero evaluator");
     } else if (number < 0) {
@@ -95,7 +107,22 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     } else if (cores <= 0) {
       throw new RuntimeException("The CPU cores of evaluators must be positive, but requested: " + cores);
     } else {
-      evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlerList);
+      final List<EventHandler<ActiveContext>> contextActiveHandlers;
+      if (tableId == null) {
+        contextActiveHandlers = contextActiveHandlerList;
+      } else {
+        contextActiveHandlers = new ArrayList<>();
+        EventHandler<ActiveContext> nextHandler;
+        try {
+          nextHandler = contextActiveHandlerList.get(0);
+        } catch (IndexOutOfBoundsException e) {
+          nextHandler = null;
+        }
+        contextActiveHandlers.add(new EvaluatorTableRegister(tableId, nextHandler));
+        contextActiveHandlers.addAll(contextActiveHandlerList);
+      }
+
+      evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlers);
     }
   }
 
@@ -175,5 +202,26 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
     return blockManager.getStoreIdToBlockIds();
+  }
+
+  /**
+   * ActiveContext event handler for registering new evaluator to the table.
+   */
+  private final class EvaluatorTableRegister implements EventHandler<ActiveContext> {
+    private final String tableId;
+    private final EventHandler<ActiveContext> nextHandler;
+
+    public EvaluatorTableRegister(final String tableId, final EventHandler<ActiveContext> nextHandler) {
+      this.tableId = tableId;
+      this.nextHandler = nextHandler;
+    }
+
+    @Override
+    public void onNext(final ActiveContext activeContext) {
+      blockManager.addEvaluatorToTable(activeContext.getId(), tableId);
+      if (nextHandler != null) {
+        nextHandler.onNext(activeContext);
+      }
+    }
   }
 }

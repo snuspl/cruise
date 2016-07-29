@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,12 +71,35 @@ public final class BlockManager {
    */
   private final int numTotalBlocks;
 
+  /**
+   * A mapping that maintains which table has which evaluators.
+   */
+  private final Map<String, Set<String>> tableIdToEvalIds;
+
+  /**
+   * A mapping that maintains which evaluator belongs to which table.
+   */
+  private final Map<String, String> evalIdToTableId;
+
   @Inject
   private BlockManager(@Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
     this.storeIdToBlockIds = new HashMap<>();
     this.blockIdToStoreId = new HashMap<>();
     this.movingBlocks = new HashSet<>(numTotalBlocks);
     this.numTotalBlocks = numTotalBlocks;
+    this.tableIdToEvalIds = new HashMap<>();
+    this.evalIdToTableId = new HashMap<>();
+  }
+
+  /**
+   * Add new evaluator table.
+   * @param tableId identifier of the new table
+   */
+  public synchronized void addTable(final String tableId) {
+    if (tableIdToEvalIds.containsKey(tableId)) {
+      throw new RuntimeException("Table identifier already exists: " + tableId);
+    }
+    tableIdToEvalIds.put(tableId, new HashSet<>());
   }
 
   /**
@@ -122,6 +145,18 @@ public final class BlockManager {
   }
 
   /**
+   * Add an evaluator to a table.
+   */
+  public synchronized void addEvaluatorToTable(final String contextId, final String tableId) {
+    if (tableIdToEvalIds.get(tableId) == null) {
+      throw new RuntimeException("Table identifier not found: " + tableId);
+    }
+    tableIdToEvalIds.get(tableId).add(contextId);
+    evalIdToTableId.put(contextId, tableId);
+    LOG.log(Level.INFO, "Evaluator {0} was added to table {1}", new Object[]{contextId, tableId});
+  }
+
+  /**
    * Deregister an evaluator.
    * It should be called after all blocks in the store of the evaluator are completely moved out.
    * @param contextId an id of context
@@ -139,6 +174,15 @@ public final class BlockManager {
     }
 
     storeIdToBlockIds.remove(memoryStoreId);
+
+    final String tableId = evalIdToTableId.get(contextId);
+    if (tableId != null) {
+      tableIdToEvalIds.get(tableId).remove(contextId);
+      evalIdToTableId.remove(contextId);
+      LOG.log(Level.INFO, "Evaluator {0} was removed from table {1}", new Object[]{contextId, tableId});
+    } else {
+      LOG.log(Level.WARNING, "Evaluator {0} did not belong to any table.", contextId);
+    }
   }
 
   /**

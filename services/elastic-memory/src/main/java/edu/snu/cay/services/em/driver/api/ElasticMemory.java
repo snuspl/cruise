@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,10 @@ package edu.snu.cay.services.em.driver.api;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.impl.ElasticMemoryImpl;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -36,16 +33,15 @@ import java.util.Set;
 public interface ElasticMemory {
 
   /**
-   * Add new evaluators as specified.
-   * @param number number of evaluators to add
-   * @param megaBytes memory size of each new evaluator in MB
-   * @param cores number of cores of each new evaluator
-   * @param evaluatorAllocatedHandler callback which handles {@link AllocatedEvaluator} event
-   * @param contextActiveHandlerList callbacks which handle {@link ActiveContext} events, executed in sequence
+   * Add new evaluator table.
+   * @param tableId identifier of the new table
    */
-  void add(int number, int megaBytes, int cores,
-           EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
-           List<EventHandler<ActiveContext>> contextActiveHandlerList);
+  void addTable(String tableId);
+
+  /**
+   * Add new evaluators as specified.
+   */
+  void add(EMResourceSpec spec);
 
   /**
    * Release the evaluator specified by a given identifier.
