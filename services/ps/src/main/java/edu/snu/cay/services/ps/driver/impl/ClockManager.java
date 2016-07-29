@@ -106,7 +106,7 @@ public final class ClockManager {
     if (minimumClockWorkers.contains(workerId)) {
       minimumClockWorkers.remove(workerId);
       // If the worker is only one worker who has globalMinimumClock,
-      // it's the time to update globalMinimumClock.
+      // it's time to update globalMinimumClock.
       if (minimumClockWorkers.size() == 0) {
         globalMinimumClock = workerClockMap.isEmpty() ? 0 : Collections.min(workerClockMap.values());
         broadcastGlobalMinimumClock();
@@ -137,7 +137,7 @@ public final class ClockManager {
   private synchronized int setInitialWorkerClock(final String workerId) {
     final Integer workerClockVal = workerClockMap.get(workerId);
     // Initial workers(which are not added by EM) have their clocks in workerClockMap already,
-    // its clocks are set on onWorkerAdded() call.
+    // their clocks are set on onWorkerAdded() call.
     if (workerClockVal != null) {
       return workerClockVal.intValue();
     }
@@ -163,7 +163,7 @@ public final class ClockManager {
       minimumClockWorkers.remove(workerId);
 
       // If the worker is only one worker who has globalMinimumClock,
-      // it's the time to update globalMinimumClock.
+      // it's time to update globalMinimumClock.
       if (minimumClockWorkers.size() == 0) {
         globalMinimumClock++;
         broadcastGlobalMinimumClock();
@@ -175,8 +175,7 @@ public final class ClockManager {
 
   /**
    * Broadcast updated global minimum clock to all workers.
-   * All of the workers whose clocks are same with globalMinimumClock are added
-   * to minimumClockWorkers.
+   * All of the workers whose clocks are same with globalMinimumClock are added to minimumClockWorkers.
    */
   private void broadcastGlobalMinimumClock() {
     // minimumClockWorkers must be empty now and filled by this call
