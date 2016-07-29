@@ -15,10 +15,17 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
+import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.io.serialization.SerializableCodec;
+import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * A worker clock of SSP model.
@@ -27,7 +34,12 @@ import javax.inject.Inject;
  * clock() is called once per each iteration.
  */
 @EvaluatorSide
+@Unit
 public final class SSPWorkerClock implements WorkerClock {
+
+  private final AggregationSlave aggregationSlave;
+  private final SerializableCodec<String> codec;
+  private final CountDownLatch latch;
 
   private int workerClock;
 
@@ -35,18 +47,33 @@ public final class SSPWorkerClock implements WorkerClock {
   private int globalMinimumClock;
 
   @Inject
-  private SSPWorkerClock() {
-
+  private SSPWorkerClock(final AggregationSlave aggregationSlave,
+                         final SerializableCodec<String> codec) {
+    this.aggregationSlave = aggregationSlave;
+    this.codec = codec;
+    this.latch = new CountDownLatch(1);
+    this.workerClock = -1;
+    this.globalMinimumClock = -1;
   }
 
   @Override
   public void initialize() {
+    final byte[] data = codec.encode(ClockManager.REQUEST_INITIAL_CLOCK);
+    aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
 
+    // wait until to get current global minimum clock and initial worker clock
+    try {
+      latch.await();
+    } catch (final InterruptedException e) {
+      throw new RuntimeException("Unexpected exception", e);
+    }
   }
 
   @Override
   public void clock() {
-
+    workerClock++;
+    final byte[] data = codec.encode(ClockManager.TICK);
+    aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
   }
 
   @Override
@@ -57,5 +84,24 @@ public final class SSPWorkerClock implements WorkerClock {
   @Override
   public int getGlobalMinimumClock() {
     return globalMinimumClock;
+  }
+
+  public final class MessageHandler implements EventHandler<AggregationMessage> {
+
+    @Override
+    public void onNext(final AggregationMessage aggregationMessage) {
+      final String data = codec.decode(aggregationMessage.getData().array());
+      final String[] msgTokens = data.split("/");
+      switch (msgTokens[0]) {
+      case ClockManager.SET_INITIAL_CLOCK :
+        globalMinimumClock = Integer.parseInt(msgTokens[1]);
+        workerClock = Integer.parseInt(msgTokens[2]);
+        latch.countDown();
+        break;
+      case ClockManager.BROADCAST_GLOBAL_MINIMUM_CLOCK :
+        globalMinimumClock = Integer.parseInt(msgTokens[1]);
+      default:
+      }
+    }
   }
 }

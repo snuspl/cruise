@@ -22,7 +22,7 @@ package edu.snu.cay.services.ps.worker.api;
 public interface WorkerClock {
 
   /**
-   * Set initial worker clock.
+   * Set initial worker clock and receive current global minimum clock.
    * initial worker clock =
    * global minimum clock + ({@link edu.snu.cay.services.ps.worker.parameters.Staleness}/2)
    */

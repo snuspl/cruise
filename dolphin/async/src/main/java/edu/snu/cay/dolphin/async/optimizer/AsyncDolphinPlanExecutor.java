@@ -242,7 +242,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
-      asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker().onNext(context);
+      asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker(true).onNext(context);
       executingPlan.putAddedWorkerContext(completedOp.getEvalId().get(), context);
       onOperationComplete(completedOp);
     }

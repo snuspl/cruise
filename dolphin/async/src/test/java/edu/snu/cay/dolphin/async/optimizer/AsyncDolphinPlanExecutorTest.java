@@ -121,7 +121,7 @@ public final class AsyncDolphinPlanExecutorTest {
                 return;
               }
             });
-    when(driver.getSecondContextActiveHandlerForWorker())
+    when(driver.getSecondContextActiveHandlerForWorker(Mockito.anyBoolean()))
             .thenReturn(new EventHandler<ActiveContext>() {
               @Override
               public void onNext(final ActiveContext activeContext) {
