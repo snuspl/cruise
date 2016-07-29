@@ -149,7 +149,7 @@ public class OperationRouterTest {
         @Override
         public Object answer(final InvocationOnMock invocation) throws Throwable {
           final List<Integer> blockLocations = invocation.getArgumentAt(1, List.class);
-          router.initialize(blockLocations);
+          router.initRoutingTableDynamically(blockLocations);
           initLatch.countDown();
           return null;
         }
@@ -285,14 +285,13 @@ public class OperationRouterTest {
   }
 
   /**
-   * Tests router after explicitly initializing the routing table.
+   * Tests router after initializing the routing table.
    * Stores in added evaluators are initialized by communicating with the driver,
    * and stores in initial evaluators are initialized by itself without any communication.
-   * The test runs multiple threads using router to check
-   * whether the correct result is given, and whether initialization is performed only once or not.
+   * The test runs multiple threads using resolver to check whether the correct result is given.
    */
   @Test
-  public void testRouterInAddedEvalAfterExplicitInit() throws InjectionException, InterruptedException {
+  public void testRouterInAddedEvalAfterInit() throws InjectionException, InterruptedException {
     final int numTotalBlocks = 1024;
     final int numInitialMemoryStores = 4;
     final int numThreads = 8;
@@ -359,13 +358,11 @@ public class OperationRouterTest {
    * Tests router without explicit initialization of the routing table.
    * Stores in added evaluators are initialized by communicating with the driver,
    * and stores in initial evaluators are initialized by itself without any communication.
-   * When a router in an added evaluator is not initialized at the beginning,
-   * its initialization will be triggered by {@link OperationRouter#resolveEval(int)}.
-   * The test runs multiple threads using router to check
-   * whether the correct result is given, and whether initialization is performed only once or not.
+   * The test runs multiple threads using resolver to check
+   * whether the threads are blocked until the initialization and the correct result is given.
    */
   @Test
-  public void testRouterInAddedEvalWithoutExplicitInit() throws InjectionException, InterruptedException {
+  public void testRouterInAddedEvalBeforeInit() throws InjectionException, InterruptedException {
     final int numTotalBlocks = 1024;
     final int numInitialMemoryStores = 4;
     final int numThreads = 8;
@@ -384,19 +381,13 @@ public class OperationRouterTest {
     final OperationRouter<?> routerInAddedStore
         = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId, true);
 
-    // Initialization would be done while resolving eval.
-    // While multiple threads use router, the initialization should be done only once.
-    final Runnable[] threads = new Runnable[numThreads];
-
-    // We need an eval prefix that starts with 'null', because we don't explicitly initialize routers.
-    // So the router works with this null prefix.
-    // TODO #509: EM assumes that the eval prefix has "-" at the end
-    final String evalIdPrefix = null + "-";
-
     // we assume that store ids are assigned in the increasing order,
     // so the index of evaluator endpoint is equal to the store id
-    final String endpointIdForInitEval = evalIdPrefix + initStoreId;
-    final String endpointIdForAddedEval = evalIdPrefix + addedStoreId;
+    final String endpointIdForInitEval = EVAL_ID_PREFIX + initStoreId;
+    final String endpointIdForAddedEval = EVAL_ID_PREFIX + addedStoreId;
+
+    // While multiple threads use router, they will wait until the initialization is done.
+    final Runnable[] threads = new Runnable[numThreads];
 
     // though init router is statically initialized and added router is dynamically initialized,
     // because there were no changes in the routing table their views should be equal
@@ -422,12 +413,22 @@ public class OperationRouterTest {
     }
 
     ThreadUtils.runConcurrently(threads);
-    assertTrue(threadLatch.await(30, TimeUnit.SECONDS));
 
-    // When router.resolveEval() is called and the router is not initialized yet,
-    // it internally invokes router.retryInitialization()
-    // that finally invokes router.requestRoutingTable().
-    // Because retryInitialization() is a synchronized method, requesting the routing table should be done only once.
+    // make threads wait for initialization
+    Thread.sleep(5000);
+    assertEquals("Threads should not progress before initialization", numThreads, threadLatch.getCount());
+
+    // confirm that the router is not initialized yet
+    assertEquals(1, initLatch.getCount());
+    verify(evalMsgSender, never()).sendRoutingTableInitReqMsg(any(TraceInfo.class));
+
+    routerInInitStore.initialize(endpointIdForInitEval);
+    routerInAddedStore.initialize(endpointIdForAddedEval); // It requests the routing table to driver
+
+    // confirm that the router is initialized now
+    assertTrue(initLatch.await(10, TimeUnit.SECONDS));
     verify(evalMsgSender, times(1)).sendRoutingTableInitReqMsg(any(TraceInfo.class));
+
+    assertTrue(threadLatch.await(30, TimeUnit.SECONDS));
   }
 }

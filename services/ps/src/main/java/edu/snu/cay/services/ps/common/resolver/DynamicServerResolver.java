@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -57,6 +59,8 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   private volatile boolean initialized = false;
 
+  private CountDownLatch initLatch = new CountDownLatch(1);
+
   private final InjectionFuture<WorkerMsgSender> msgSender;
 
   @Inject
@@ -75,32 +79,34 @@ public final class DynamicServerResolver implements ServerResolver {
 
   /**
    * Checks the initialization of the routing table.
-   * It returns if the routing table has been initialized,
-   * otherwise requests initial routing table to driver and waits within a bounded time.
-   * It throws RuntimeException, if the table is not initialized til the end.
+   * It returns if the routing table has been initialized.
    */
   private void checkInitialization() {
-    // check without locking
     if (initialized) {
       return;
     }
 
-    retryInitialization();
+    while (!initialized) {
+      try {
+        initLatch.await();
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while waiting for routing table initialization from driver", e);
+      }
+    }
   }
 
-  private synchronized void retryInitialization() {
-    // check within synchronization method
-    if (initialized) {
-      return;
-    }
-
+  /**
+   * Triggers initialization by requesting initial routing table to driver and waits within a bounded time.
+   * It throws RuntimeException, if the table is not initialized til the end.
+   */
+  public void triggerInitialization() {
     // sends init request and waits for several times
     for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
       requestRoutingTable();
 
       LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
       try {
-        this.wait(INIT_WAIT_TIMEOUT_MS);
+        initialized = initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
       }
@@ -115,7 +121,7 @@ public final class DynamicServerResolver implements ServerResolver {
   /**
    * Requests a routing table to driver.
    */
-  public void requestRoutingTable() {
+  private void requestRoutingTable() {
     LOG.log(Level.FINE, "Sends a request for the routing table");
     msgSender.get().sendWorkerRegisterMsg();
   }
@@ -151,7 +157,7 @@ public final class DynamicServerResolver implements ServerResolver {
       }
     }
 
-    initialized = true;
+    initLatch.countDown();
 
     LOG.log(Level.FINE, "Server resolver is initialized");
     // wake up all waiting threads
