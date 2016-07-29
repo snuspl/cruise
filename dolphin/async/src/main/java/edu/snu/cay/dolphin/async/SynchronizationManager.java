@@ -27,8 +27,9 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -80,13 +81,13 @@ final class SynchronizationManager {
    * The total number of workers to sync.
    */
   @GuardedBy("this")
-  private int numWorkersToSync = 0;
+  private volatile int numWorkersToSync = 0;
 
   /**
    * A set that maintains workers that have sent a sync msg for the current barrier.
    */
   @GuardedBy("this")
-  private final Set<String> blockedWorkerIds = new HashSet<>();
+  private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Inject
   private SynchronizationManager(final AggregationMaster aggregationMaster,
@@ -187,24 +188,46 @@ final class SynchronizationManager {
 
   private synchronized void tryReleaseWorkers() {
     if (blockedWorkerIds.size() == numWorkersToSync) {
-      LOG.log(Level.INFO, "Send response messages to wake up {0} workers that have been blocked", numWorkersToSync);
-
-      transitState(globalStateMachine);
+      LOG.log(Level.INFO, "Try releasing {0} blocked workers: {1}", new Object[]{numWorkersToSync, blockedWorkerIds});
 
       // wake threads waiting initialization in waitInitialization()
-      if (globalStateMachine.getCurrentState().equals(STATE_RUN)) {
+      if (globalStateMachine.getCurrentState().equals(STATE_INIT)) {
         initLatch.countDown();
 
       // Let workers enter the cleanup state after assuring that there's no ongoing optimization.
       // Note that in the STATE_CLEANUP state, orchestrator never trigger further optimization.
-      } else if (globalStateMachine.getCurrentState().equals(STATE_CLEANUP)) {
+      } else if (globalStateMachine.getCurrentState().equals(STATE_RUN)) {
         try {
+          final int numWorkersToRelease = numWorkersToSync;
+          LOG.log(Level.INFO, "Wait for driver to allow workers to enter cleanup state");
           allowCleanupLatch.await();
+
+          // More workers are added while waiting for allowCleanupLatch.
+          // It means that the last optimization adds workers.
+          if (numWorkersToRelease < numWorkersToSync) {
+
+            LOG.log(Level.FINE, "{0} more workers are added while waiting for driver to allow cleanup",
+                numWorkersToSync - numWorkersToRelease);
+
+            if (blockedWorkerIds.size() < numWorkersToSync) {
+              LOG.log(Level.INFO, "Cancel releasing workers," +
+                      " because there are {0} workers that do not reach the cleanup barrier",
+                  numWorkersToSync - blockedWorkerIds.size());
+
+              // Cancel releasing workers.
+              // Added workers will invoke this method again when they are going to enter cleanup state.
+              return;
+            }
+          }
+
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "Interrupted while waiting for the optimization to be done", e);
         }
       }
 
+      transitState(globalStateMachine);
+
+      LOG.log(Level.INFO, "Send response message to {0} blocked workers", numWorkersToSync);
       // broadcast responses to blocked workers
       for (final String workerId : blockedWorkerIds) {
         sendResponseMessage(workerId, EMPTY_DATA);
@@ -235,39 +258,43 @@ final class SynchronizationManager {
 
     @Override
     public void onNext(final AggregationMessage aggregationMessage) {
-      final String workerId = aggregationMessage.getSourceId().toString();
-      final String localState = codec.decode(aggregationMessage.getData().array());
-      final String globalState = globalStateMachine.getCurrentState();
+      synchronized (SynchronizationManager.this) {
+        final String workerId = aggregationMessage.getSourceId().toString();
+        final String localState = codec.decode(aggregationMessage.getData().array());
+        final String globalState = globalStateMachine.getCurrentState();
 
-      // In case when a worker's local state is behind the globally synchronized state,
-      // this implies the worker is added by EM.
-      // If so, the worker is replied to continue until it reaches the global state.
-      switch (globalState) {
-      case STATE_INIT:
-        if (localState.equals(STATE_INIT)) {
-          blockWorker(workerId);
-        } else {
-          throw new RuntimeException("Individual workers cannot overtake the global state");
-        }
+        // In case when a worker's local state is behind the globally synchronized state,
+        // this implies the worker is added by EM.
+        // If so, the worker is replied to continue until it reaches the global state.
+        switch (globalState) {
+        case STATE_INIT:
+          if (localState.equals(STATE_INIT)) {
+            blockWorker(workerId);
+          } else {
+            throw new RuntimeException("Individual workers cannot overtake the global state");
+          }
 
-        break;
-      case STATE_RUN:
-        if (localState.equals(STATE_RUN)) {
-          // worker finishes their main iteration and is waiting for response to enter the cleanup stage
-          waitingCleanup.set(true);
-          blockWorker(workerId);
-        } else if (localState.equals(STATE_INIT)) {
-          // let added evaluators skip the initial barriers
+          break;
+        case STATE_RUN:
+          if (localState.equals(STATE_RUN)) {
+            // worker finishes their main iteration and is waiting for response to enter the cleanup stage
+            waitingCleanup.set(true);
+            blockWorker(workerId);
+          } else if (localState.equals(STATE_INIT)) {
+            // let added evaluators skip the initial barriers
+            sendResponseMessage(workerId, EMPTY_DATA);
+          } else {
+            throw new RuntimeException("Individual workers cannot overtake the global state");
+          }
+
+          break;
+        case STATE_CLEANUP:
+          // let added evaluators skip the barriers
           sendResponseMessage(workerId, EMPTY_DATA);
-        } else {
-          throw new RuntimeException("Individual workers cannot overtake the global state");
+          break;
+        default:
+          throw new RuntimeException("Invalid state");
         }
-
-        break;
-      case STATE_CLEANUP:
-        throw new RuntimeException("Workers never call the global barrier in STATE_CLEANUP state");
-      default:
-        throw new RuntimeException("Invalid state");
       }
     }
   }
