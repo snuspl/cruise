@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
@@ -30,7 +29,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * A collection of sample optimizers.
@@ -53,39 +51,38 @@ public final class SampleOptimizers {
   private static final AtomicInteger PLAN_CONTEXT_ID_COUNTER = new AtomicInteger(0);
 
   /**
-   * Get a plan that adds one evaluator and moves half block from other random evaluator.
+   * Get a plan that adds one evaluator and moves half block from other evaluator.
+   * It adds new evaluator with empty blocks and then splits blocks in one existing evaluator
+   * with the most blocks to the new one.
    * @param namespace a namespace
    * @param evalParams a list of evaluator parameters
    * @return a plan
    */
   private static Plan getAddOnePlan(final String namespace, final List<EvaluatorParameters> evalParams) {
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
-    final String evalIdToAdd = NEW_EVAL_PREFIX + PLAN_CONTEXT_ID_COUNTER.getAndIncrement();
 
+    final String evalIdToAdd = NEW_EVAL_PREFIX + PLAN_CONTEXT_ID_COUNTER.getAndIncrement();
     planBuilder.addEvaluatorToAdd(namespace, evalIdToAdd);
 
-    // choose evaluators that have data to move
-    final List<EvaluatorParameters> evalsWithNonzeroBlocks = evalParams.stream()
-        .filter(evaluator -> evaluator.getDataInfo().getNumBlocks() > 0).collect(Collectors.toList());
-
-    // sort evaluators by the number of blocks, to select evaluators with most many blocks
-    Collections.sort(evalsWithNonzeroBlocks,
+    // sort evaluators by the number of blocks in descending order, to select evaluators with the most blocks
+    Collections.sort(evalParams,
         (o1, o2) -> o1.getDataInfo().getNumBlocks() - o2.getDataInfo().getNumBlocks());
 
-    if (!evalsWithNonzeroBlocks.isEmpty()) {
-      final EvaluatorParameters srcEvaluator = evalsWithNonzeroBlocks.get(0);
+    if (!evalParams.isEmpty()) {
+      final EvaluatorParameters srcEvaluator = evalParams.get(0);
 
-      final DataInfo srcDataInfo = srcEvaluator.getDataInfo();
-      final int numBlocksToMove = srcDataInfo.getNumBlocks() / 2;
+      if (srcEvaluator.getDataInfo().getNumBlocks() > 0) {
+        final int numBlocksToMove = srcEvaluator.getDataInfo().getNumBlocks() / 2; // choose half the blocks
 
-      final TransferStep transferStep = new TransferStepImpl(
-          srcEvaluator.getId(), evalIdToAdd, new DataInfoImpl(numBlocksToMove));
+        final TransferStep transferStep = new TransferStepImpl(
+            srcEvaluator.getId(), evalIdToAdd, new DataInfoImpl(numBlocksToMove));
 
-      planBuilder.addTransferStep(namespace, transferStep);
+        planBuilder.addTransferStep(namespace, transferStep);
 
-    } else {
-      // no evaluator has data; a new evaluator will also have no data to work on
-      LOG.log(Level.WARNING, "Cannot choose source evaluator to move its data to new evaluator in {0}", namespace);
+      } else {
+        // no evaluator has data; a new evaluator will also have no data to work on
+        LOG.log(Level.WARNING, "Cannot choose source evaluator to move its data to new evaluator in {0}", namespace);
+      }
     }
 
     return planBuilder.build();
@@ -150,7 +147,8 @@ public final class SampleOptimizers {
   }
 
   /**
-   * Get a plan that deletes one evaluator and moves all the blocks to other random evaluator.
+   * Get a plan that deletes one evaluator and moves all the blocks to other evaluator.
+   * It merges the blocks in two evaluators with the least blocks into one evaluator that has more blocks.
    * @param namespace a namespace
    * @param evalParams a list of evaluator parameters
    * @return a plan
@@ -163,22 +161,14 @@ public final class SampleOptimizers {
       return planBuilder.build();
     }
 
-    // sort evaluators by the number of blocks in the reverse-order, to select evaluators with the least blocks
+    // sort evaluators by the number of blocks in ascending order, to select evaluators with the least blocks
     Collections.sort(evalParams,
         (o1, o2) -> o2.getDataInfo().getNumBlocks() - o1.getDataInfo().getNumBlocks());
 
-    // choose evaluators that have data to move
-    final List<EvaluatorParameters> evalsWithNonzeroBlocks = evalParams.stream()
-        .filter(evaluator -> evaluator.getDataInfo().getNumBlocks() > 0).collect(Collectors.toList());
+    final EvaluatorParameters evalToDel = evalParams.get(0);
+    planBuilder.addEvaluatorToDelete(namespace, evalToDel.getId());
 
-    LOG.log(Level.INFO, "evalParams: {0}", evalParams);
-    LOG.log(Level.INFO, "evalsWithNonzeroblock: {0}", evalsWithNonzeroBlocks);
-
-    final EvaluatorParameters evalToDel;
-
-    if (!evalsWithNonzeroBlocks.isEmpty()) {
-      evalToDel = evalsWithNonzeroBlocks.get(0);
-
+    if (evalToDel.getDataInfo().getNumBlocks() > 0) {
       final EvaluatorParameters dstEvaluator = evalParams.get(1);
 
       // add a transfer step
@@ -191,13 +181,8 @@ public final class SampleOptimizers {
       planBuilder.addTransferStep(namespace, transferStep);
 
     } else {
-      // no evaluator has data
-      LOG.log(Level.WARNING, "Delete empty evaluator in {0}", namespace);
-
-      evalToDel = evalParams.get(0);
+      LOG.log(Level.INFO, "Delete empty evaluator in {0}", namespace);
     }
-
-    planBuilder.addEvaluatorToDelete(namespace, evalToDel.getId());
 
     return planBuilder.build();
   }
