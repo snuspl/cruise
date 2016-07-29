@@ -91,18 +91,10 @@ public class SSPWorkerClockTest {
         final String sendMsg = codec.decode(data);
 
         if (sendMsg.contains(ClockManager.REQUEST_INITIAL_CLOCK)) {
-          final StringBuffer buffer = new StringBuffer();
-          buffer.append(ClockManager.SET_INITIAL_CLOCK)
-              .append("/")
-              .append(initialGlobalMinimumClock)
-              .append("/")
-              .append(initialWorkerClock);
-          final byte[] replyData = codec.encode(buffer.toString());
-          final AggregationMessage aggregationMessage = AggregationMessage.newBuilder()
-              .setSourceId("worker")
-              .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
-              .setData(ByteBuffer.wrap(replyData))
-              .build();
+          final String initClockMsg =
+              ClockManager.getInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
+          final byte[] replyData = codec.encode(initClockMsg);
+          final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
           sspWorkerClockMessageHandler.onNext(aggregationMessage);
         } else if (sendMsg.contains(ClockManager.TICK)) {
           countDownLatch.countDown();
@@ -138,18 +130,10 @@ public class SSPWorkerClockTest {
         final String sendMsg = codec.decode(data);
 
         if (sendMsg.contains(ClockManager.REQUEST_INITIAL_CLOCK)) {
-          final StringBuffer buffer = new StringBuffer();
-          buffer.append(ClockManager.SET_INITIAL_CLOCK)
-              .append("/")
-              .append(initialGlobalMinimumClock)
-              .append("/")
-              .append(initialWorkerClock);
-          final byte[] replyData = codec.encode(buffer.toString());
-          final AggregationMessage aggregationMessage = AggregationMessage.newBuilder()
-              .setSourceId("worker")
-              .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
-              .setData(ByteBuffer.wrap(replyData))
-              .build();
+          final String initClockMsg =
+              ClockManager.getInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
+          final byte[] replyData = codec.encode(initClockMsg);
+          final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
           sspWorkerClockMessageHandler.onNext(aggregationMessage);
         }
         return null;
@@ -161,25 +145,24 @@ public class SSPWorkerClockTest {
 
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(2, byte[].class);
-        final AggregationMessage aggregationMessage = AggregationMessage.newBuilder()
-            .setSourceId("worker")
-            .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
-            .setData(ByteBuffer.wrap(data))
-            .build();
+        final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", data);
         sspWorkerClockMessageHandler.onNext(aggregationMessage);
         return null;
       }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
 
     // broadcast updated global minimum clock
-    final StringBuffer buffer = new StringBuffer();
-    buffer.append(ClockManager.BROADCAST_GLOBAL_MINIMUM_CLOCK)
-        .append("/")
-        .append(updatedGlobalMinimumClock);
-    final byte[] data = codec.encode(buffer.toString());
+    final byte[] data =
+        codec.encode(ClockManager.getBroadcastGlobalMinimumClockMessage(updatedGlobalMinimumClock));
     mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", data);
 
     assertEquals(updatedGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
   }
 
-
+  private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
+    return AggregationMessage.newBuilder()
+        .setSourceId(workerId)
+        .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
+        .setData(ByteBuffer.wrap(data))
+        .build();
+  }
 }

@@ -93,11 +93,7 @@ public final class ClockManagerTest {
     doAnswer(invocation -> {
         final String workerId = invocation.getArgumentAt(0, String.class);
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final AggregationMessage aggregationMessage = AggregationMessage.newBuilder()
-            .setSourceId(workerId)
-            .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
-            .setData(ByteBuffer.wrap(data))
-            .build();
+        final AggregationMessage aggregationMessage = getTestAggregationMessage(workerId, data);
 
         clockMessageHandler.onNext(aggregationMessage);
         countDownLatch.countDown();
@@ -147,11 +143,7 @@ public final class ClockManagerTest {
     doAnswer(invocation -> {
         final String workerId = invocation.getArgumentAt(0, String.class);
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final AggregationMessage aggregationMessage = AggregationMessage.newBuilder()
-            .setSourceId(workerId)
-            .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
-            .setData(ByteBuffer.wrap(data))
-            .build();
+        final AggregationMessage aggregationMessage = getTestAggregationMessage(workerId, data);
 
         clockMessageHandler.onNext(aggregationMessage);
         return null;
@@ -195,7 +187,7 @@ public final class ClockManagerTest {
     final Map<String, Integer> workerClockMap = new HashMap<>();
     // check whether the number of global minimum updates is same with the number of broadcast messages
     // that are sent from ClockManager
-    // Each broadcast is sent to all workers,
+    // each broadcast message is sent to all workers,
     // so the total message count is numberOfMinClockUpdates(=NUM_WORKERS) * NUM_WORKERS
     final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(NUM_WORKERS * NUM_WORKERS);
     int numberOfMinClockUpdates = 0;
@@ -203,11 +195,7 @@ public final class ClockManagerTest {
     doAnswer(invocation -> {
         final String workerId = invocation.getArgumentAt(0, String.class);
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final AggregationMessage aggregationMessage = AggregationMessage.newBuilder()
-            .setSourceId(workerId)
-            .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
-            .setData(ByteBuffer.wrap(data))
-            .build();
+        final AggregationMessage aggregationMessage = getTestAggregationMessage(workerId, data);
 
         clockMessageHandler.onNext(aggregationMessage);
         return null;
@@ -261,5 +249,13 @@ public final class ClockManagerTest {
 
     final int expectedMinimumClock = Collections.min(workerClockMap.values());
     assertEquals(expectedMinimumClock, clockManager.getGlobalMinimumClock());
+  }
+
+  private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
+    return AggregationMessage.newBuilder()
+        .setSourceId(workerId)
+        .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
+        .setData(ByteBuffer.wrap(data))
+        .build();
   }
 }

@@ -37,14 +37,14 @@ import java.util.concurrent.CountDownLatch;
 @Unit
 public final class SSPWorkerClock implements WorkerClock {
 
-  private final AggregationSlave aggregationSlave;
-  private final SerializableCodec<String> codec;
-  private final CountDownLatch latch;
-
   private int workerClock;
 
   // The minimum clock of among all worker clocks.
   private int globalMinimumClock;
+
+  private final AggregationSlave aggregationSlave;
+  private final SerializableCodec<String> codec;
+  private final CountDownLatch latch;
 
   @Inject
   private SSPWorkerClock(final AggregationSlave aggregationSlave,

@@ -57,10 +57,11 @@ public final class ClockManager {
   public static final String SET_INITIAL_CLOCK = "setInitialClock";
   public static final String TICK = "tick";
 
-  private final AggregationMaster aggregationMaster;
-  private final SerializableCodec<String> codec;
+
   private final int staleness;
   private int globalMinimumClock;
+  private final AggregationMaster aggregationMaster;
+  private final SerializableCodec<String> codec;
   private final Map<String, Integer> workerClockMap;
   /**
    * List of workers whose clocks are globalMinimumClock.
@@ -77,6 +78,30 @@ public final class ClockManager {
     this.globalMinimumClock = 0;
     workerClockMap = new HashMap<String, Integer>();
     minimumClockWorkers = new ArrayList<String>();
+  }
+
+  /**
+   * Helper function to create broadcast global minimum clock message.
+   */
+  public static String getBroadcastGlobalMinimumClockMessage(final int globalMinimumClock) {
+    final StringBuffer buffer = new StringBuffer();
+    buffer.append(BROADCAST_GLOBAL_MINIMUM_CLOCK);
+    buffer.append("/");
+    buffer.append(globalMinimumClock);
+    return buffer.toString();
+  }
+
+  /**
+   * Helper function to create initial clock message.
+   */
+  public static String getInitialClockMessage(final int globalMinimumClock, final int workerClock) {
+    final StringBuffer buffer = new StringBuffer();
+    buffer.append(SET_INITIAL_CLOCK)
+        .append("/")
+        .append(globalMinimumClock)
+        .append("/")
+        .append(workerClock);
+    return buffer.toString();
   }
 
   /**
@@ -184,7 +209,7 @@ public final class ClockManager {
     for (final Map.Entry<String, Integer> elem : workerClockMap.entrySet()) {
       final String workerId = elem.getKey();
       try {
-        final byte[] data = codec.encode(getBroadcastGlobalMinimumClockMessage());
+        final byte[] data = codec.encode(getBroadcastGlobalMinimumClockMessage(globalMinimumClock));
         aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
       } catch (final NetworkException e) {
         LOG.log(Level.INFO, "Target worker failed to receive global minimum clock message", e);
@@ -196,24 +221,6 @@ public final class ClockManager {
     }
   }
 
-  private String getBroadcastGlobalMinimumClockMessage() {
-    final StringBuffer buffer = new StringBuffer();
-    buffer.append(BROADCAST_GLOBAL_MINIMUM_CLOCK);
-    buffer.append("/");
-    buffer.append(globalMinimumClock);
-    return buffer.toString();
-  }
-
-  private String getInitialClockMessage(final int workerClock) {
-    final StringBuffer buffer = new StringBuffer();
-    buffer.append(SET_INITIAL_CLOCK)
-        .append("/")
-        .append(globalMinimumClock)
-        .append("/")
-        .append(workerClock);
-    return buffer.toString();
-  }
-
   public final class MessageHandler implements EventHandler<AggregationMessage> {
 
     @Override
@@ -223,7 +230,7 @@ public final class ClockManager {
       switch (rcvMsg) {
       case REQUEST_INITIAL_CLOCK:
         final int workerClock = setInitialWorkerClock(workerId);
-        final byte[] data = codec.encode(getInitialClockMessage(workerClock));
+        final byte[] data = codec.encode(getInitialClockMessage(globalMinimumClock, workerClock));
         try {
           aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
         } catch (final NetworkException e) {
