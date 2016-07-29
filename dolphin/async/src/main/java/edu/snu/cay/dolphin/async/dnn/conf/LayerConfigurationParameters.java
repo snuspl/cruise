@@ -61,6 +61,13 @@ public final class LayerConfigurationParameters {
   }
 
   /**
+   * For dropout layers.
+   */
+  @NamedParameter(doc = "probability of dropping neurons at dropout layer")
+  public static final class DropoutRatio implements Name<Float> {
+  }
+
+  /**
    * For pooling / convolutional layers.
    */
   @NamedParameter(doc = "pooling type of pooling layer")

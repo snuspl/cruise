@@ -13,20 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.metric;
+package edu.snu.cay.services.ps.worker.parameters;
 
-/**
- * Constants for PS metrics, which consists of client name of AggregationService and
- * Keys to identify metrics.
- */
-public final class ServerConstants {
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-  /**
-   * Should not be instantiated.
-   */
-  private ServerConstants() {
-  }
-
-  public static final String AGGREGATION_CLIENT_NAME =
-      "METRIC_COLLECTION_SERVICE_FOR_SERVER";
+@NamedParameter(doc = "Time period in ms for retrying pull operations when there's no response from server",
+    default_value = "5000",
+    short_name = "pull_retry_timeout_ms")
+public final class PullRetryTimeoutMs implements Name<Long> {
 }

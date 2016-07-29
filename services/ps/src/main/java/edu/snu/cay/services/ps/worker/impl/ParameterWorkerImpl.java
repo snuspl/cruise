@@ -55,6 +55,25 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private static final Logger LOG = Logger.getLogger(ParameterWorkerImpl.class.getName());
 
   /**
+   * The maximum number to resend push/pull requests
+   * when {@link NetworkException} occurred while sending requests.
+   */
+  static final int MAX_RESEND_COUNT = 10;
+
+  /**
+   * An interval between the time to resend push/pull requests
+   * when {@link NetworkException} occurred while sending requests.
+   */
+  static final long RESEND_INTERVAL_MS = 100;
+
+  /**
+   * The maximum number to restart pull requests from the beginning
+   * when the pull reply do not arrive within timeout {@link PullRetryTimeoutMs},
+   * or the pull request is rejected by server.
+   */
+  static final int MAX_PULL_RETRY_COUNT = 10;
+
+  /**
    * Object for processing preValues and applying updates to existing values.
    */
   private final ParameterUpdater<K, P, V> parameterUpdater;
@@ -73,16 +92,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * Number of threads.
    */
   private final int numThreads;
-
-  /**
-   * Max size of each partition's queue.
-   */
-  private final int queueSize;
-
-  /**
-   * Duration in ms to keep local entries cached, after which the entries are expired.
-   */
-  private final long expireTimeout;
 
   /**
    * Thread pool, where each thread is submitted.
@@ -116,7 +125,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   @Inject
   private ParameterWorkerImpl(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
                               @Parameter(WorkerQueueSize.class) final int queueSize,
-                              @Parameter(WorkerExpireTimeout.class) final long expireTimeout,
+                              @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
+                              @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
                               @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                               @Parameter(WorkerLogPeriod.class) final long logPeriod,
@@ -124,15 +134,13 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                               final ServerResolver serverResolver,
                               final InjectionFuture<WorkerMsgSender<K, P>> sender) {
     this.numThreads = numThreads;
-    this.queueSize = queueSize;
-    this.expireTimeout = expireTimeout;
     this.parameterUpdater = parameterUpdater;
     this.serverResolver = serverResolver;
     this.sender = sender;
     this.pendingPulls = new ConcurrentHashMap<>();
     this.pullStats = Statistics.newInstances(numThreads);
     this.threadPool = Executors.newFixedThreadPool(numThreads);
-    this.threads = initThreads();
+    this.threads = initThreads(queueSize, cacheExpireTimeout, pullRetryTimeoutMs);
     this.encodedKeyCache = CacheBuilder.newBuilder()
         .maximumSize(keyCacheSize)
         .build(new CacheLoader<K, EncodedKey<K>>() {
@@ -141,6 +149,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
             return new EncodedKey<>(key, keyCodec);
           }
         });
+
     this.logPeriod = TimeUnit.NANOSECONDS.convert(logPeriod, TimeUnit.MILLISECONDS);
     this.pushStats = Statistics.newInstances(numThreads);
     this.encodeStats = Statistics.newInstances(numThreads);
@@ -156,11 +165,14 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * Call after initializing threadPool.
    */
   @SuppressWarnings("unchecked")
-  private WorkerThread<K, P, V>[] initThreads() {
+  private WorkerThread<K, P, V>[] initThreads(final int queueSize,
+                                              final long cacheExpireTimeout,
+                                              final long pullRetryTimeoutMs) {
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
     final WorkerThread<K, P, V>[] initialized = new WorkerThread[numThreads];
     for (int i = 0; i < numThreads; i++) {
-      initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize, expireTimeout, pullStats[i]);
+      initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize,
+          cacheExpireTimeout, pullRetryTimeoutMs, pullStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -277,9 +289,11 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       future.setValue(value);
 
     } else {
-      // Because we use partitions, there can be at most one active pendingPull for a key.
-      // Thus, a null value should never appear.
-      throw new RuntimeException(String.format("Pending pull was not found for key %s", key));
+      // Because we assign each key to a dedicated thread, there can be at most one active pendingPull for a key.
+      // But occasionally, multiple responses for a single pendingPull may arrive
+      // if the worker retried due to the late response from the target server.
+      LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
+          " Response for the key may have arrived earlier from another server", key);
     }
   }
 
@@ -291,12 +305,16 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   void processPullReject(final K key) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
+      LOG.log(Level.INFO, "Pull operation for key {0} is rejected." +
+          " It means that the corresponding server is closing or already closed.", key);
       future.reject();
 
     } else {
-      // Because we use partitions, there can be at most one active pendingPull for a key.
-      // Thus, a null value should never appear.
-      throw new RuntimeException(String.format("Pending pull was not found for key %s", key));
+      // Because we assign each key to a dedicated thread, there can be at most one active pendingPull for a key.
+      // But occasionally, multiple responses for a single pendingPull may arrive
+      // if the worker retried due to the late response from the target server.
+      LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
+          " Response for the key may have arrived earlier from another server", key);
     }
   }
 
@@ -309,14 +327,14 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private V value = null;
 
     /**
-     * Block until a value is set.
-     * It returns null when it fails to get the value.
-     * @return the value
+     * Block until a value is set or the maximum waiting time elapses.
+     * @param timeout the maximum time to wait in milliseconds
+     * @return the value, or null when it fails to get the value in given timeout
      */
-    synchronized V getValue() {
+    synchronized V getValue(final long timeout) {
       if (value == null && !rejected) {
         try {
-          wait();
+          wait(timeout);
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "InterruptedException on wait", e);
         }
@@ -328,7 +346,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
      * Set the value and unblock all waiting gets.
      * @param value the value
      */
-    public synchronized void setValue(final V value) {
+    synchronized void setValue(final V value) {
       this.value = value;
       notify();
     }
@@ -340,6 +358,18 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       rejected = true;
       notify();
     }
+
+    /**
+     * Reset pull future for the next retry.
+     * The rejected field should be reset, because it's valid only for current try.
+     * We don't need to reset the value field, because the value obtained from
+     * the previous request is also valid for the next retries.
+     * It may happen if the response from the previous request arrives
+     * after cleanup the current try and before the response from the next request.
+     */
+    synchronized void reset() {
+      rejected = false;
+    }
   }
 
   private void printStatistics(final int threadId, final long elapsedTime) {
@@ -347,8 +377,8 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     final Statistics encodeStat = encodeStats[threadId];
     final Statistics pullStat = pullStats[threadId];
     LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Worker Thread Id: {1}, PS Worker Push Avg: {2}, " +
-        "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
-        "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
+            "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
+            "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
         new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
             String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
             String.format("%g", encodeStat.sum()), String.format("%g", pullStat.avg()),
@@ -394,8 +424,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * A push operation.
    */
   private class PushOp implements Op<K, V> {
-    private static final int MAX_RETRY_COUNT = 10;
-
     private final EncodedKey<K> encodedKey;
     private final P preValue;
     private final int threadId;
@@ -428,17 +456,17 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       }
 
       // Send to remote PS
-      int retryCount = 0;
+      int resendCount = 0;
       while (true) {
-        if (++retryCount > MAX_RETRY_COUNT) {
-          throw new RuntimeException("Fail to send push message");
+        if (resendCount++ > MAX_RESEND_COUNT) {
+          throw new RuntimeException("Fail to send a push message");
         }
 
         // re-resolve server for every retry
         // since an operation may throw NetworkException when routing table is obsolete
         final String serverId = serverResolver.resolveServer(encodedKey.getHash());
-        LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}",
-            new Object[]{encodedKey.getKey(), encodedKey.getHash()});
+        LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
+            new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
 
         try {
           final long encodeStartTime = ticker.read();
@@ -452,11 +480,17 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           if (logPeriod > 0 && elapsedTime > logPeriod) {
             printStatistics(threadId, elapsedTime);
           }
+          break;
         } catch (final NetworkException e) {
           LOG.log(Level.FINE, "NetworkException while sending push msg. Do retry", e);
-          continue;
         }
-        break;
+
+        LOG.log(Level.FINE, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
+        try {
+          Thread.sleep(RESEND_INTERVAL_MS);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "Interrupted while waiting for routing table to be updated", e);
+        }
       }
     }
   }
@@ -525,7 +559,6 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * We should further explore this trade-off with real ML workloads.
    */
   private static class WorkerThread<K, P, V> implements Runnable {
-    private static final int MAX_RETRY_COUNT = 10;
     private static final long QUEUE_TIMEOUT_MS = 3000;
     private static final String STATE_RUNNING = "RUNNING";
     private static final String STATE_CLOSING = "CLOSING";
@@ -543,9 +576,10 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
                  final ServerResolver serverResolver,
                  final InjectionFuture<WorkerMsgSender<K, P>> sender,
                  final int queueSize,
-                 final long expireTimeout,
+                 final long cacheExpireTimeout,
+                 final long pullRetryTimeoutMs,
                  final Statistics pullStat) {
-      this.kvCache = initCache(pendingPulls, serverResolver, sender, expireTimeout, pullStat);
+      this.kvCache = initCache(pendingPulls, serverResolver, sender, cacheExpireTimeout, pullRetryTimeoutMs, pullStat);
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
       this.localOps = new ArrayList<>(drainSize);
@@ -555,47 +589,87 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     private LoadingCache<EncodedKey<K>, Wrapped<V>> initCache(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
                                                               final ServerResolver serverResolver,
                                                               final InjectionFuture<WorkerMsgSender<K, P>> sender,
-                                                              final long expireTimeout,
+                                                              final long cacheExpireTimeout,
+                                                              final long pullRetryTimeoutMs,
                                                               final Statistics pullStat) {
       return CacheBuilder.newBuilder()
           .concurrencyLevel(1)
-          .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)
+          .expireAfterWrite(cacheExpireTimeout, TimeUnit.MILLISECONDS)
           .build(new CacheLoader<EncodedKey<K>, Wrapped<V>>() {
+
             @Override
             public Wrapped<V> load(final EncodedKey<K> encodedKey) {
               final PullFuture<V> future = new PullFuture<>();
               pendingPulls.put(encodedKey.getKey(), future);
 
-              V value = null;
+              V value;
 
               int retryCount = 0;
-              while (value == null) {
-                if (retryCount > MAX_RETRY_COUNT) {
-                  throw new RuntimeException("Fail to send a value for pull");
+              while (true) {
+                if (retryCount++ > MAX_PULL_RETRY_COUNT) {
+                  throw new RuntimeException("Fail to load a value for pull");
                 }
 
-                // re-resolve server for every retry
-                // since an operation may throw NetworkException when routing table is obsolete
+                // 1. try sending msg to server
+                sendPullMsg(encodedKey);
+
+                // 2. wait the result from the server.
+                //
+                // PullFuture returns null,
+                // 1) when the msg is rejected by server,
+                // 2) or when the server does not respond within RETRY_INTERVAL_MS
+                // The case 2) can be divided into three reasons:
+                // 2A) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
+                // 2B) the server is overloaded
+                // 2C) the msg is missing due to network or other problems
+                // we should adjust timeout to be large enough to avoid 2A and not to worsen 2B,
+                // but small enough to quickly recover from 2C.
+                value = future.getValue(pullRetryTimeoutMs);
+
+                if (value != null) {
+                  break;
+                } else {
+                  future.reset();
+                }
+              }
+
+              pendingPulls.remove(encodedKey.getKey());
+              return new Wrapped<>(value);
+            }
+
+            /**
+             * Sends a pull msg for the {@code encodedKey} to the target server.
+             * @param encodedKey encoded key
+             */
+            private void sendPullMsg(final EncodedKey<K> encodedKey) {
+              int resendCount = 0;
+              while (true) {
+                if (resendCount++ > MAX_RESEND_COUNT) {
+                  throw new RuntimeException("Fail to send a pull msg");
+                }
+
+                // Re-resolve server for every retry, because msg sender throws NetworkException
+                // when routing table is obsolete and indicates non-existing server.
                 final String serverId = serverResolver.resolveServer(encodedKey.getHash());
-                LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}",
-                    new Object[]{encodedKey.getKey(), encodedKey.getHash()});
+                LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
+                    new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
 
                 try {
                   final long beginTick = ticker.read();
                   sender.get().sendPullMsg(serverId, encodedKey);
                   pullStat.put(ticker.read() - beginTick);
+                  break;
                 } catch (final NetworkException e) {
                   LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
-                  retryCount++;
-                  continue;
                 }
 
-                // returns null when rejected by server and then the pull is retried in the while loop
-                value = future.getValue();
+                LOG.log(Level.FINE, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
+                try {
+                  Thread.sleep(RESEND_INTERVAL_MS);
+                } catch (final InterruptedException e) {
+                  LOG.log(Level.WARNING, "Interrupted while waiting for routing table to be updated", e);
+                }
               }
-
-              pendingPulls.remove(encodedKey.getKey());
-              return new Wrapped<>(value);
             }
           });
     }
@@ -658,7 +732,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           }
           op.apply(kvCache);
         } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+          LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
           continue;
         }
 

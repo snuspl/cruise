@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.metric;
 
 import edu.snu.cay.common.metric.MetricsMsgSender;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.avro.Metrics;
@@ -28,11 +28,11 @@ import java.util.logging.Logger;
 /**
  * A MetricsHandler implementation that sends a WorkerMetricsMsg via Aggregation Service.
  * The metrics are set via MetricsHandler. The other message parts must be
- * set via the setters for each worker iteration or server window.
+ * set via the setters for each worker iteration.
  * The built MetricsMessage is passed through {@code send()} when sending the network message.
  */
 @NotThreadSafe
-public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgSender<WorkerMetricsMsg> {
+public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgSender<WorkerMetrics> {
   private static final Logger LOG = Logger.getLogger(WorkerMetricsMsgSender.class.getName());
 
   private final WorkerMetricsMsgCodec workerMetricsMsgCodec;
@@ -57,7 +57,7 @@ public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   }
 
   @Override
-  public void send(final WorkerMetricsMsg message) {
+  public void send(final WorkerMetrics message) {
     LOG.entering(WorkerMetricsMsgSender.class.getSimpleName(), "send");
     aggregationSlave.send(WorkerConstants.AGGREGATION_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
     LOG.exiting(WorkerMetricsMsgSender.class.getSimpleName(), "send");

@@ -113,7 +113,7 @@ final class SynchronizationManager {
   synchronized void onWorkerAdded() {
     // increase the number of workers to block
     numWorkersToSync++;
-    LOG.log(Level.FINE, "Total number of workers participating in the synchronization = {0}", numWorkersToSync);
+    LOG.log(Level.INFO, "Total number of workers participating in the synchronization = {0}", numWorkersToSync);
   }
 
   /**
@@ -121,14 +121,14 @@ final class SynchronizationManager {
    * @param workerId an id of worker
    */
   synchronized void onWorkerDeleted(final String workerId) {
+    numWorkersToSync--;
+    LOG.log(Level.INFO, "Total number of workers participating in the synchronization = {0}", numWorkersToSync);
     // when deleted worker already has sent a sync msg
     if (blockedWorkerIds.contains(workerId)) {
-      numWorkersToSync--;
       blockedWorkerIds.remove(workerId);
 
     // when deleted worker did not send a sync msg yet
     } else {
-      numWorkersToSync--;
       tryReleaseWorkers();
     }
   }
@@ -143,11 +143,11 @@ final class SynchronizationManager {
     switch (currentState) {
     case STATE_INIT:
       stateMachine.setState(STATE_RUN);
-      LOG.fine("State transition: STATE_INIT -> STATE_RUN");
+      LOG.log(Level.INFO, "State transition: STATE_INIT -> STATE_RUN");
       break;
     case STATE_RUN:
       stateMachine.setState(STATE_CLEANUP);
-      LOG.fine("State transition: STATE_RUN -> STATE_CLEANUP");
+      LOG.log(Level.INFO, "State transition: STATE_RUN -> STATE_CLEANUP");
       break;
     case STATE_CLEANUP:
       throw new RuntimeException("No more transition is allowed after STATE_CLEANUP state");
@@ -225,7 +225,7 @@ final class SynchronizationManager {
   private synchronized void blockWorker(final String workerId) {
 
     blockedWorkerIds.add(workerId);
-    LOG.log(Level.FINE, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
+    LOG.log(Level.INFO, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
         new Object[]{workerId, blockedWorkerIds.size(), numWorkersToSync});
 
     tryReleaseWorkers();
@@ -244,31 +244,31 @@ final class SynchronizationManager {
       // If so, the worker is replied to continue until it reaches the global state.
       switch (globalState) {
       case STATE_INIT:
-        if (!localState.equals(STATE_INIT)) {
+        if (localState.equals(STATE_INIT)) {
+          blockWorker(workerId);
+        } else {
           throw new RuntimeException("Individual workers cannot overtake the global state");
         }
+
         break;
       case STATE_RUN:
-        switch (localState) {
-        case STATE_INIT:
-          // let added evaluators skip the initial barriers
-          sendResponseMessage(workerId, EMPTY_DATA);
-          return;
-        case STATE_RUN:
+        if (localState.equals(STATE_RUN)) {
           // worker finishes their main iteration and is waiting for response to enter the cleanup stage
           waitingCleanup.set(true);
-          break;
-        case STATE_CLEANUP:
-        default:
+          blockWorker(workerId);
+        } else if (localState.equals(STATE_INIT)) {
+          // let added evaluators skip the initial barriers
+          sendResponseMessage(workerId, EMPTY_DATA);
+        } else {
           throw new RuntimeException("Individual workers cannot overtake the global state");
         }
+
+        break;
       case STATE_CLEANUP:
         throw new RuntimeException("Workers never call the global barrier in STATE_CLEANUP state");
       default:
         throw new RuntimeException("Invalid state");
       }
-
-      blockWorker(workerId);
     }
   }
 }

@@ -13,20 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.metric;
+package edu.snu.cay.services.ps.worker.api;
 
 /**
- * Constants for PS metrics, which consists of client name of AggregationService and
- * Keys to identify metrics.
+ * A worker clock which ticks on each call of clock().
+ * It also contains global minimum clock among all workers.
  */
-public final class ServerConstants {
+public interface WorkerClock {
 
   /**
-   * Should not be instantiated.
+   * Set initial worker clock.
+   * initial worker clock =
+   * global minimum clock + ({@link edu.snu.cay.services.ps.worker.parameters.Staleness}/2)
    */
-  private ServerConstants() {
-  }
+  void initialize();
 
-  public static final String AGGREGATION_CLIENT_NAME =
-      "METRIC_COLLECTION_SERVICE_FOR_SERVER";
+  /**
+   * Tick worker clock.
+   */
+  void clock();
+
+  /**
+   * @return current worker clock
+   */
+  int getWorkerClock();
+
+  /**
+   * @return global minimum clock among all workers
+   */
+  int getGlobalMinimumClock();
 }

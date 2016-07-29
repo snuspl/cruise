@@ -13,31 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.metric;
+package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
-import edu.snu.cay.utils.AvroUtils;
-import org.apache.reef.wake.remote.Codec;
+import edu.snu.cay.services.ps.worker.api.WorkerClock;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;
 
 /**
- * Codec for server-side Metrics Message.
- * Simply uses AvroUtils to encode and decode messages.
+ * A null worker clock(empty implementation).
  */
-public final class ServerMetricsMsgCodec implements Codec<ServerMetrics> {
+@EvaluatorSide
+public final class NullWorkerClock implements WorkerClock {
 
   @Inject
-  private ServerMetricsMsgCodec() {
+  private NullWorkerClock() {
+
   }
 
   @Override
-  public byte[] encode(final ServerMetrics msg) {
-    return AvroUtils.toBytes(msg, ServerMetrics.class);
+  public void initialize() {
+
   }
 
   @Override
-  public ServerMetrics decode(final byte[] data) {
-    return AvroUtils.fromBytes(data, ServerMetrics.class);
+  public void clock() {
+
+  }
+
+  @Override
+  public int getWorkerClock() {
+    return 0;
+  }
+
+  @Override
+  public int getGlobalMinimumClock() {
+    return 0;
   }
 }

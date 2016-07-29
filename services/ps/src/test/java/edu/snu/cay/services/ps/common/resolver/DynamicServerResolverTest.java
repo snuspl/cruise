@@ -26,7 +26,7 @@ import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.worker.impl.WorkerMsgSender;
-import org.apache.reef.io.network.naming.NameClient;
+import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -42,6 +42,7 @@ import org.junit.Test;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
@@ -51,7 +52,7 @@ import static org.junit.Assert.*;
  * It checks whether DynamicServerResolver is initialized and updated correctly, and resolves the correct server.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({WorkerMsgSender.class, NameClient.class})
+@PrepareForTest(WorkerMsgSender.class)
 public class DynamicServerResolverTest {
   private static final String SERVER_ID_PREFIX = "SERVER-";
   private static final int NUM_SERVERS = 5;
@@ -101,7 +102,6 @@ public class DynamicServerResolverTest {
         .build();
 
     final Injector workerInjector = Tang.Factory.getTang().newInjector(workerConf);
-    workerInjector.bindVolatileInstance(NameClient.class, mock(NameClient.class));
 
     msgSender = mock(WorkerMsgSender.class);
     workerInjector.bindVolatileInstance(WorkerMsgSender.class, msgSender);
@@ -114,6 +114,7 @@ public class DynamicServerResolverTest {
     doAnswer(new Answer() {
       @Override
       public Object answer(final InvocationOnMock invocation) throws Throwable {
+        Thread.sleep(1000); // delay for fetching the routing table from driver
 
         serverResolver.initRoutingTable(initRoutingTable);
         initLatch.countDown();
@@ -124,53 +125,98 @@ public class DynamicServerResolverTest {
 
   /**
    * Tests resolver after explicitly initializing the routing table.
+   * The test runs multiple threads using resolver to check
+   * whether the correct result is given, and whether initialization is performed only once or not.
    */
   @Test
   public void testResolveAfterExplicitInit() throws InterruptedException {
     final int numKey = 1000;
+    final int numThreads = 10;
+
+    final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
     serverResolver.requestRoutingTable();
 
-    initLatch.await();
-
-    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
-
-    for (int hash = 0; hash < numKey; hash++) {
-      final int blockId = getBlockId(hash);
-
-      final String serverEndpointId = serverResolver.resolveServer(hash);
-      final int storeId = storeIdToEndpointIdBiMap.inverse().get(serverEndpointId);
-      final Set<Integer> blockSet = storeIdToBlockIds.get(storeId);
-      assertTrue(blockSet.contains(blockId));
-    }
+    // confirm that the resolver is initialized
+    assertTrue(initLatch.await(10, TimeUnit.SECONDS));
 
     // When serverResolver.requestRoutingTable() is called,
     // workers internally register themselves to subscribe the updates
     // in routing table to driver via sendWorkerRegisterMsg()
     verify(msgSender, times(1)).sendWorkerRegisterMsg();
+
+    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
+
+    // While multiple threads use router, the initialization never be triggered because it's already initialized.
+    final Runnable[] threads = new Runnable[numThreads];
+
+    for (int idx = 0; idx < numThreads; idx++) {
+      threads[idx] = new Runnable() {
+        @Override
+        public void run() {
+          for (int hash = 0; hash < numKey; hash++) {
+            final String serverEndpointId = serverResolver.resolveServer(hash);
+            final int storeId = storeIdToEndpointIdBiMap.inverse().get(serverEndpointId);
+            final Set<Integer> blockSet = storeIdToBlockIds.get(storeId);
+
+            final int blockId = hash % NUM_TOTAL_BLOCKS;
+            assertTrue(blockSet.contains(blockId));
+          }
+          threadLatch.countDown();
+        }
+      };
+    }
+
+    ThreadUtils.runConcurrently(threads);
+    threadLatch.await(30, TimeUnit.SECONDS);
+
+    // initialization should be done only once
+    verify(msgSender, times(1)).sendWorkerRegisterMsg();
   }
 
   /**
    * Tests resolver without explicit initialization of the routing table.
-   * The routing table will be initialized automatically by {@link DynamicServerResolver#resolveServer(int)}.
+   * The initialization of routers will be triggered by {@link DynamicServerResolver#resolveServer(int)}.
+   * The test runs multiple threads using resolver to check
+   * whether the correct result is given, and whether initialization is performed only once or not.
    */
   @Test
-  public void testResolveWithoutExplicitInit() {
+  public void testResolveWithoutExplicitInit() throws InterruptedException {
     final int numKey = 1000;
+    final int numThreads = 10;
+
+    final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
 
-    for (int hash = 0; hash < numKey; hash++) {
-      final int blockId = hash % NUM_TOTAL_BLOCKS;
+    // Initialization would be done while resolving server.
+    // While multiple threads use resolver, the initialization should be done only once.
+    final Runnable[] threads = new Runnable[numThreads];
 
-      final String serverEndpointId = serverResolver.resolveServer(hash);
-      final int storeId = storeIdToEndpointIdBiMap.inverse().get(serverEndpointId);
-      final Set<Integer> blockSet = storeIdToBlockIds.get(storeId);
-      assertTrue(blockSet.contains(blockId));
+    for (int idx = 0; idx < numThreads; idx++) {
+      threads[idx] = new Runnable() {
+        @Override
+        public void run() {
+          for (int hash = 0; hash < numKey; hash++) {
+            final String serverEndpointId = serverResolver.resolveServer(hash);
+            final int storeId = storeIdToEndpointIdBiMap.inverse().get(serverEndpointId);
+            final Set<Integer> blockSet = storeIdToBlockIds.get(storeId);
+
+            final int blockId = hash % NUM_TOTAL_BLOCKS;
+            assertTrue(blockSet.contains(blockId));
+          }
+          threadLatch.countDown();
+        }
+      };
     }
 
-    // When serverResolver.resolveServer() is called,
-    // it internally invokes serverResolver.requestRoutingTable() when it's not initialized yet.
+    ThreadUtils.runConcurrently(threads);
+    threadLatch.await(30, TimeUnit.SECONDS);
+
+    // When serverResolver.resolveServer() is called and the resolver is not initialized yet,
+    // it internally invokes serverResolver.triggerInitialization()
+    // that finally invokes serverResolver.requestRoutingTable().
+    // Because triggerInitialization() is a synchronized method, requesting the routing table should be done only once.
     verify(msgSender, times(1)).sendWorkerRegisterMsg();
   }
 

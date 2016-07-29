@@ -16,15 +16,8 @@
 package edu.snu.cay.dolphin.async;
 
 import  edu.snu.cay.common.param.Parameters.Iterations;
-import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
-import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
+import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
-import org.apache.reef.io.data.loading.api.DataSet;
-import org.apache.reef.io.network.util.Pair;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.task.Task;
@@ -32,19 +25,11 @@ import org.apache.reef.task.events.CloseEvent;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * REEF Task for worker threads of {@code dolphin-async} applications.
- * Spawns several computation threads and runs them using
- * a fixed thread pool ({@link Executors#newFixedThreadPool(int)}.
+ * REEF Task for a worker thread of {@code dolphin-async} applications.
  */
 @Unit
 final class AsyncWorkerTask implements Task {
@@ -53,10 +38,9 @@ final class AsyncWorkerTask implements Task {
 
   private final String taskId;
   private final int maxIterations;
-  private final int numWorkerThreads;
   private final WorkerSynchronizer synchronizer;
-  private final Injector injector;
-  private final DataSet<LongWritable, Text> dataSet;
+  private final Worker worker;
+  private final WorkerClock workerClock;
 
   /**
    * A boolean flag shared among all worker threads.
@@ -67,109 +51,45 @@ final class AsyncWorkerTask implements Task {
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
-                          @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
                           final WorkerSynchronizer synchronizer,
-                          final Injector injector,
-                          final DataIdFactory<Long> idFactory,
-                          final OperationRouter<Long> router,
-                          final DataSet<LongWritable, Text> dataSet) {
-    // inject DataIdFactory and OperationRouter here to make spawning threads share the same instances
+                          final Worker worker,
+                          final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
-    this.numWorkerThreads = numWorkerThreads;
     this.synchronizer = synchronizer;
-    this.injector = injector;
-    this.dataSet = dataSet;
+    this.worker = worker;
+    this.workerClock = workerClock;
   }
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
-    final AsyncWorkerDataSet[] asyncWorkerDataSets = divideDataSets();
-    final ExecutorService executorService = Executors.newFixedThreadPool(numWorkerThreads);
-    final Future[] futures = new Future[numWorkerThreads];
+    // TODO #681: Need to add numWorkerThreads concept after multi-thread worker is enabled
+    worker.initialize();
 
-    LOG.log(Level.INFO, "Initializing {0} worker threads", numWorkerThreads);
-    for (int index = 0; index < numWorkerThreads; index++) {
-      // since a single injector only gives singleton instances,
-      // we need to fork the given injector every time we spawn a new thread
-      final Injector forkedInjector = injector.forkInjector();
-      forkedInjector.bindVolatileInstance(DataSet.class, asyncWorkerDataSets[index]);
+    // synchronize all workers before starting the main iteration
+    // to avoid meaningless iterations by the workers who started earlier
+    synchronizer.globalBarrier();
 
-      final Worker worker = forkedInjector.getInstance(Worker.class);
-      futures[index] = executorService.submit(new Runnable() {
-        @Override
-        public void run() {
-          worker.initialize();
+    // initialize the worker clock
+    workerClock.initialize();
 
-          // synchronize all workers before starting the main iteration
-          // to avoid meaningless iterations by the workers who started earlier
-          synchronizer.globalBarrier();
-
-          for (int iteration = 0; iteration < maxIterations; ++iteration) {
-            if (aborted) {
-              LOG.log(Level.INFO, "Abort a thread to completely close the task");
-              return;
-            }
-            worker.run();
-          }
-
-          // Synchronize all workers before cleanup for workers
-          // to finish with the globally equivalent view of trained model
-          synchronizer.globalBarrier();
-
-          worker.cleanup();
-        }
-      });
+    for (int iteration = 0; iteration < maxIterations; ++iteration) {
+      if (aborted) {
+        LOG.log(Level.INFO, "Abort a thread to completely close the task");
+        return null;
+      }
+      worker.run();
+      workerClock.clock();
     }
 
-    // wait until all threads terminate
-    for (int index = 0; index < numWorkerThreads; index++) {
-      futures[index].get();
-    }
+    // Synchronize all workers before cleanup for workers
+    // to finish with the globally equivalent view of trained model
+    synchronizer.globalBarrier();
 
+    worker.cleanup();
     return null;
-  }
-
-  /**
-   * Split the given dataset across worker computation threads, round-robin fashion.
-   */
-  private AsyncWorkerDataSet[] divideDataSets() {
-    final AsyncWorkerDataSet[] asyncWorkerDataSets = new AsyncWorkerDataSet[numWorkerThreads];
-    for (int index = 0; index < numWorkerThreads; index++) {
-      asyncWorkerDataSets[index] = new AsyncWorkerDataSet();
-    }
-
-    int dataSetIndex = 0;
-    for (final Pair<LongWritable, Text> pair : dataSet) {
-      asyncWorkerDataSets[dataSetIndex].addPair(pair);
-      dataSetIndex = (dataSetIndex + 1) % numWorkerThreads;
-    }
-
-    return asyncWorkerDataSets;
-  }
-
-  /**
-   * {@link DataSet} implementation for worker computation threads.
-   * Internally stores a list of data pairs that are exposed to threads as an {@link Iterator}.
-   */
-  private final class AsyncWorkerDataSet implements DataSet<LongWritable, Text> {
-
-    private final List<Pair<LongWritable, Text>> dataSet;
-
-    AsyncWorkerDataSet() {
-      dataSet = new LinkedList<>();
-    }
-
-    void addPair(final Pair<LongWritable, Text> pair) {
-      dataSet.add(pair);
-    }
-
-    @Override
-    public Iterator<Pair<LongWritable, Text>> iterator() {
-      return dataSet.iterator();
-    }
   }
 
   final class CloseEventHandler implements EventHandler<CloseEvent> {

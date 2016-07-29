@@ -53,6 +53,10 @@ message ActivationWithLossLayerConfiguration {
   required string loss_function = 2;
 }
 
+message DropoutLayerConfiguration {
+  optional float dropout_ratio = 1 [default = 0.5];
+}
+
 message LayerConfiguration {
   required string type = 1;
   optional FullyConnectedLayerConfiguration fully_connected_param = 2;
@@ -60,6 +64,7 @@ message LayerConfiguration {
   optional ActivationWithLossLayerConfiguration activation_with_loss_param = 4;
   optional PoolingLayerConfiguration pooling_param = 5;
   optional ConvolutionalLayerConfiguration convolutional_param = 6;
+  optional DropoutLayerConfiguration dropout_param = 7;
 }
 
 message Shape {

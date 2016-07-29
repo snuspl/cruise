@@ -70,7 +70,7 @@ import org.apache.reef.wake.remote.impl.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -190,6 +190,8 @@ public final class AsyncDolphinLauncher {
           .bindImplementation(Worker.class, asyncDolphinConfiguration.getWorkerClass())
           .bindNamedParameter(Iterations.class,
               Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
+          .bindNamedParameter(MiniBatches.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(MiniBatches.class)))
           .build();
       final Configuration workerConf = Configurations.merge(basicWorkerConf,
           asyncDolphinConfiguration.getWorkerConfiguration());
@@ -253,12 +255,12 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(28);
+    // TODO #681: Need to add configuration for numWorkerThreads after multi-thread worker is enabled
+    final List<Class<? extends Name<?>>> basicParameterClassList = new LinkedList<>();
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
     basicParameterClassList.add(Splits.class);
-    basicParameterClassList.add(NumWorkerThreads.class);
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);
@@ -274,6 +276,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(ParameterWorkerNumThreads.class);
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
+    basicParameterClassList.add(PullRetryTimeoutMs.class);
     basicParameterClassList.add(WorkerKeyCacheSize.class);
     basicParameterClassList.add(WorkerLogPeriod.class);
     basicParameterClassList.add(Dynamic.class);
