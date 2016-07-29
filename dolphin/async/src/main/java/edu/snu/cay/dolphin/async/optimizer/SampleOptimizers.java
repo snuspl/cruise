@@ -66,7 +66,7 @@ public final class SampleOptimizers {
 
     // sort evaluators by the number of blocks in descending order, to select evaluators with the most blocks
     Collections.sort(evalParams,
-        (o1, o2) -> o1.getDataInfo().getNumBlocks() - o2.getDataInfo().getNumBlocks());
+        (o1, o2) -> o2.getDataInfo().getNumBlocks() - o1.getDataInfo().getNumBlocks());
 
     if (!evalParams.isEmpty()) {
       final EvaluatorParameters srcEvaluator = evalParams.get(0);
@@ -163,7 +163,7 @@ public final class SampleOptimizers {
 
     // sort evaluators by the number of blocks in ascending order, to select evaluators with the least blocks
     Collections.sort(evalParams,
-        (o1, o2) -> o2.getDataInfo().getNumBlocks() - o1.getDataInfo().getNumBlocks());
+        (o1, o2) -> o1.getDataInfo().getNumBlocks() - o2.getDataInfo().getNumBlocks());
 
     final EvaluatorParameters evalToDel = evalParams.get(0);
     planBuilder.addEvaluatorToDelete(namespace, evalToDel.getId());
