@@ -60,7 +60,7 @@ public final class MetricsHub {
     final EvaluatorParameters evaluatorParameters = new EvaluatorParametersImpl(workerId, dataInfo, metrics);
     workerEvalParams.add(evaluatorParameters);
     try {
-      final URL obj = new URL("http://localhost:5000/metrics/");
+      final URL obj = new URL("http://localhost:5000/");
       final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
       con.setRequestMethod("POST");
       con.setDoOutput(true);
@@ -99,7 +99,7 @@ public final class MetricsHub {
     final EvaluatorParameters evaluatorParameters = new EvaluatorParametersImpl(serverId, dataInfo, metrics);
     serverEvalParams.add(evaluatorParameters);
     try {
-      final URL obj = new URL("http://localhost:5000/metrics/");
+      final URL obj = new URL("http://localhost:5000/");
       final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
       con.setRequestMethod("POST");
       con.setDoOutput(true);

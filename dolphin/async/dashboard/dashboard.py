@@ -61,27 +61,20 @@ def close_db(error):
 #
 # Urls
 #
-@app.route('/')
-def show_entries():
-    return render_template('hello.html')
-
-@app.route('/metrics/', methods=['POST'])
-def collect_metrics():
+@app.route('/', methods=['GET', 'POST'])
+def main():
     db = get_db()
-    db.execute('insert into entries (workerid, serverid) values (?, ?)',
-            [request.form['serverid'], request.form['workerid']])
-    db.commit()
-    return 'accepted'
+    if request.method == 'POST':
+        db.execute('insert into entries (workerid, serverid) values (?, ?)',
+                [request.form['serverid'], request.form['workerid']])
+        db.commit()
+        return 'accept'
+    else:
+        cur = db.execute('select * from entries')
+        entries = cur.fetchall()
+        print(entries)
+        return render_template('metrics.html', metrics=entries)
 
-@app.route('/show/')
-def show_metrics():
-    db = get_db()
-    cur = db.execute('select * from entries')
-    entries = cur.fetchall()
-    print(entries)
-    return render_template('metrics.html', metrics=entries)
-
-#
 # Main
 #
 if __name__ == "__main__":

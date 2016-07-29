@@ -75,6 +75,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static org.apache.reef.tang.Injector.*;
+
 /**
  * Main entry point for launching a {@code dolphin-async} application.
  * See {@link AsyncDolphinLauncher#launch(String, String[], AsyncDolphinConfiguration)}.
@@ -103,6 +105,10 @@ public final class AsyncDolphinLauncher {
   final class SerializedEMServerClientConfiguration implements Name<String> {
   }
 
+  @NamedParameter(doc = "Enable/disable dashboard", default_value = "true", short_name = "dashboard")
+  public static final class Dashboard implements Name<Boolean> {
+  }
+
   /**
    * Should not be instantiated.
    */
@@ -123,6 +129,7 @@ public final class AsyncDolphinLauncher {
 
     System.out.println("Now launching");
     try {
+      //Injector.getNamedInstance(Dashboard.class);
       final String currentPath = System.getProperty("user.dir");
       System.out.println(currentPath);
       final int index = currentPath.indexOf("cay");
