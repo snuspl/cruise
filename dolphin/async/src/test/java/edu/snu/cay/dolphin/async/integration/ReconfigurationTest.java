@@ -47,14 +47,12 @@ public class ReconfigurationTest {
     final int numWorkers = 3;
     final int numServers = 2;
     final int numTotalEvals = numWorkers + numServers; // do not use more resources
-    final int numServerPartitions = numTotalEvals - 1; // number of servers can go upto 'numTotalEvals - 1'
 
     return new String[]{
         "-split", Integer.toString(numWorkers),
         "-num_workers", Integer.toString(numWorkers),
         "-num_servers", Integer.toString(numServers),
         "-max_num_eval_local", Integer.toString(numTotalEvals),
-        "-num_partitions", Integer.toString(numServerPartitions),
         "-max_iter", Integer.toString(100),
         "-delta", Integer.toString(4),
         "-start_key", Integer.toString(100),

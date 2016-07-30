@@ -223,7 +223,6 @@ public final class SampleOptimizers {
    * It runs until {@link #MAX_CALLS_TO_MAKE} is reached.
    */
   public static final class DeleteOneWorkerOptimizer implements Optimizer {
-    private final int maxCallsToMake = 5;
     private int callsMade = 0;
 
     @Inject
@@ -232,7 +231,7 @@ public final class SampleOptimizers {
 
     @Override
     public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
-      if (callsMade == maxCallsToMake || evalParamsMap.isEmpty()) {
+      if (callsMade == MAX_CALLS_TO_MAKE || evalParamsMap.isEmpty()) {
         return PlanImpl.newBuilder().build();
       }
 

@@ -191,7 +191,6 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
         afterWorkerStoreIdToNumBlocks.put(storeId, numBlocks);
       }
 
-
       verifyResult(beforeServerStoreIdToNumBlocks, afterServerStoreIdToNumBlocks, Constants.NAMESPACE_SERVER, plan);
       verifyResult(beforeWorkerStoreIdToNumBlocks, afterWorkerStoreIdToNumBlocks, Constants.NAMESPACE_WORKER, plan);
 
@@ -220,13 +219,13 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
     final Collection<String> addedEvals = plan.getEvaluatorsToAdd(namespace);
     final Collection<String> deletedEvals = plan.getEvaluatorsToDelete(namespace);
-    final Collection<TransferStep> transferredBlocks = plan.getTransferSteps(namespace);
+    final Collection<TransferStep> transferSteps = plan.getTransferSteps(namespace);
 
     // maintains the number of blocks in the newly added evaluators
     final Map<String, Integer> addedEvalIdToNumBlocks = new HashMap<>();
 
     // update two maps based on Moves in the plan
-    for (final TransferStep transferStep : transferredBlocks) {
+    for (final TransferStep transferStep : transferSteps) {
       final String srcEvalId = transferStep.getSrcId();
       final String destEvalId = transferStep.getDstId();
       final int numBlocks = transferStep.getDataInfo().getNumBlocks();
@@ -268,6 +267,9 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
           throw new RuntimeException("The number of block in the store " + storeId + " is different from expectation");
         }
 
+        // remove the matched store to check that after-state includes all stores in before-state
+        beforeStoreIdToNumBlocks.remove(storeId);
+
       // 2. newly added eval
       } else {
         String evalId = null;
@@ -292,6 +294,10 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
           addedEvalIdToNumBlocks.remove(evalId);
         }
       }
+    }
+
+    if (!beforeStoreIdToNumBlocks.isEmpty()) {
+      throw new RuntimeException("Delete is done to evaluator that should not be");
     }
 
     if (!addedEvalIdToNumBlocks.isEmpty()) {

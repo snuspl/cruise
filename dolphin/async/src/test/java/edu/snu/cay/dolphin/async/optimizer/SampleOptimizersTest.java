@@ -26,6 +26,7 @@ import edu.snu.cay.services.em.plan.api.TransferStep;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.*;
@@ -39,36 +40,38 @@ import static org.junit.Assert.assertTrue;
 public final class SampleOptimizersTest {
 
   private static final String EVAL_PREFIX = "EVAL-";
-  private static final List<EvaluatorParameters> EVAL_PARAMS_LIST = new ArrayList<>(5);
-
-  static {
-    EVAL_PARAMS_LIST.add(new EvaluatorParametersImpl(EVAL_PREFIX + 0, new DataInfoImpl(5), Collections.emptyMap()));
-    EVAL_PARAMS_LIST.add(new EvaluatorParametersImpl(EVAL_PREFIX + 1, new DataInfoImpl(10), Collections.emptyMap()));
-    EVAL_PARAMS_LIST.add(new EvaluatorParametersImpl(EVAL_PREFIX + 2, new DataInfoImpl(15), Collections.emptyMap()));
-    EVAL_PARAMS_LIST.add(new EvaluatorParametersImpl(EVAL_PREFIX + 3, new DataInfoImpl(7), Collections.emptyMap()));
-    EVAL_PARAMS_LIST.add(new EvaluatorParametersImpl(EVAL_PREFIX + 4, new DataInfoImpl(1), Collections.emptyMap()));
-  }
+  private List<EvaluatorParameters> evalParamsList;
 
   private Optimizer getOptimizer(final Class<? extends Optimizer> optimizerClass) throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
     return injector.getInstance(optimizerClass);
   }
 
-  private EvaluatorParameters findEvalWithMostBlocks(final List<EvaluatorParameters> evalParamsList) {
-    evalParamsList.sort((o1, o2) -> o2.getDataInfo().getNumBlocks() - o1.getDataInfo().getNumBlocks());
-    return evalParamsList.get(0);
+  @Before
+  public void setup() {
+    evalParamsList = new ArrayList<>(5);
+    evalParamsList.add(new EvaluatorParametersImpl(EVAL_PREFIX + 0, new DataInfoImpl(5), Collections.emptyMap()));
+    evalParamsList.add(new EvaluatorParametersImpl(EVAL_PREFIX + 1, new DataInfoImpl(10), Collections.emptyMap()));
+    evalParamsList.add(new EvaluatorParametersImpl(EVAL_PREFIX + 2, new DataInfoImpl(15), Collections.emptyMap()));
+    evalParamsList.add(new EvaluatorParametersImpl(EVAL_PREFIX + 3, new DataInfoImpl(7), Collections.emptyMap()));
+    evalParamsList.add(new EvaluatorParametersImpl(EVAL_PREFIX + 4, new DataInfoImpl(1), Collections.emptyMap()));
   }
 
-  private EvaluatorParameters findEvalWithLeastBlocks(final List<EvaluatorParameters> evalParamsList) {
-    evalParamsList.sort((o1, o2) -> o1.getDataInfo().getNumBlocks() - o2.getDataInfo().getNumBlocks());
-    return evalParamsList.get(0);
+  private EvaluatorParameters findEvalWithMostBlocks(final List<EvaluatorParameters> paramsList) {
+    paramsList.sort((o1, o2) -> o2.getDataInfo().getNumBlocks() - o1.getDataInfo().getNumBlocks());
+    return paramsList.get(0);
+  }
+
+  private EvaluatorParameters findEvalWithLeastBlocks(final List<EvaluatorParameters> paramsList) {
+    paramsList.sort((o1, o2) -> o1.getDataInfo().getNumBlocks() - o2.getDataInfo().getNumBlocks());
+    return paramsList.get(0);
   }
 
   private void testAddOneOptimizer(final Optimizer addOneOptimizer, final String namespace) {
     final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>();
-    evalParamsMap.put(namespace, EVAL_PARAMS_LIST);
+    evalParamsMap.put(namespace, evalParamsList);
 
-    final Plan plan = addOneOptimizer.optimize(evalParamsMap, EVAL_PARAMS_LIST.size() + 1);
+    final Plan plan = addOneOptimizer.optimize(evalParamsMap, evalParamsList.size() + 1);
 
     // only one add plan
     final Collection<String> evalsToAdd = plan.getEvaluatorsToAdd(namespace);
@@ -85,7 +88,7 @@ public final class SampleOptimizersTest {
 
     // move half blocks from evaluator with most blocks
     final TransferStep transferStep = transferSteps.iterator().next();
-    final EvaluatorParameters srcEval = findEvalWithMostBlocks(EVAL_PARAMS_LIST);
+    final EvaluatorParameters srcEval = findEvalWithMostBlocks(evalParamsList);
     assertEquals(srcEval.getDataInfo().getNumBlocks() / 2, transferStep.getDataInfo().getNumBlocks());
     assertEquals(srcEval.getId(), transferStep.getSrcId());
     assertEquals(evalToAdd, transferStep.getDstId());
@@ -113,9 +116,9 @@ public final class SampleOptimizersTest {
 
   private void testDeleteOneOptimizer(final Optimizer deleteOneOptimizer, final String namespace) {
     final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>();
-    evalParamsMap.put(namespace, EVAL_PARAMS_LIST);
+    evalParamsMap.put(namespace, evalParamsList);
 
-    final Plan plan = deleteOneOptimizer.optimize(evalParamsMap, EVAL_PARAMS_LIST.size());
+    final Plan plan = deleteOneOptimizer.optimize(evalParamsMap, evalParamsList.size());
 
     // no add plan
     assertTrue(plan.getEvaluatorsToAdd(namespace).isEmpty());
@@ -132,12 +135,12 @@ public final class SampleOptimizersTest {
 
     // delete evaluator with least block and move blocks to evaluator with secondly least blocks
     final TransferStep transferStep = transferSteps.iterator().next();
-    final EvaluatorParameters deleteEvalParams = findEvalWithLeastBlocks(EVAL_PARAMS_LIST);
+    final EvaluatorParameters deleteEvalParams = findEvalWithLeastBlocks(evalParamsList);
     assertEquals(deleteEvalParams.getDataInfo().getNumBlocks(), transferStep.getDataInfo().getNumBlocks());
     assertEquals(evalToDel, transferStep.getSrcId());
 
-    EVAL_PARAMS_LIST.remove(deleteEvalParams);
-    final EvaluatorParameters dstEvalParams = findEvalWithLeastBlocks(EVAL_PARAMS_LIST);
+    evalParamsList.remove(deleteEvalParams);
+    final EvaluatorParameters dstEvalParams = findEvalWithLeastBlocks(evalParamsList);
     assertEquals(dstEvalParams.getId(), transferStep.getDstId());
   }
 
@@ -169,10 +172,10 @@ public final class SampleOptimizersTest {
     final Optimizer exchangeOneOptimizer = getOptimizer(ExchangeOneOptimizer.class);
 
     final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>();
-    evalParamsMap.put(Constants.NAMESPACE_SERVER, EVAL_PARAMS_LIST);
-    evalParamsMap.put(Constants.NAMESPACE_WORKER, EVAL_PARAMS_LIST);
+    evalParamsMap.put(Constants.NAMESPACE_SERVER, evalParamsList);
+    evalParamsMap.put(Constants.NAMESPACE_WORKER, evalParamsList);
 
-    final Plan plan = exchangeOneOptimizer.optimize(evalParamsMap, EVAL_PARAMS_LIST.size() * 2);
+    final Plan plan = exchangeOneOptimizer.optimize(evalParamsMap, evalParamsList.size() * 2);
 
     final Collection<String> serverEvalsToAdd = plan.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER);
     final Collection<String> serverEvalsToDel = plan.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER);
