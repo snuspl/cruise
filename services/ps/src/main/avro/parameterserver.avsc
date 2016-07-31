@@ -205,9 +205,12 @@
     {"name": "windowIndex", "type": "int", "default":0},
     {"name": "numModelParamBlocks", "type": "int", "default":0},
     {"name": "metricWindowMs", "type": "long", "default":0},
-    {"name": "avgPullProcessingTime", "type": "double", "default":0.0},
-    {"name": "avgPushProcessingTime", "type": "double", "default":0.0},
-    {"name": "avgReqProcessingTime", "type": "double", "default":0.0}
+    {"name": "totalPullProcessed", "type": "int", "default":0},
+    {"name": "totalPushProcessed", "type": "int", "default":0},
+    {"name": "totalReqProcessed", "type": "int", "default":0},
+    {"name": "totalPullProcessingTime", "type": "double", "default":0.0},
+    {"name": "totalPushProcessingTime", "type": "double", "default":0.0},
+    {"name": "totalReqProcessingTime", "type": "double", "default":0.0}
   ]
 }
 ]

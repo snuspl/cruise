@@ -37,14 +37,14 @@ public final class MetricManager {
   private final BlockManager blockManager;
 
   /**
-   * Worker-side metrics, each in the form of a {@link EvaluatorParameters} object.
+   * Worker-side metrics, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
    */
-  private final List<EvaluatorParameters> workerEvalParams;
+  private final Map<String, List<EvaluatorParameters>> workerEvalParams;
 
   /**
-   * Server-side metrics, each in the form of a {@link EvaluatorParameters} object.
+   * Server-side metrics, each in the form of (serverId, {@link EvaluatorParameters}) mapping.
    */
-  private final List<EvaluatorParameters> serverEvalParams;
+  private final Map<String, List<EvaluatorParameters>> serverEvalParams;
 
   /**
    * A flag to enable/disable metric collection. It is disabled by default.
@@ -60,8 +60,8 @@ public final class MetricManager {
   @Inject
   private MetricManager(final BlockManager blockManager) {
     this.blockManager = blockManager;
-    this.workerEvalParams = Collections.synchronizedList(new LinkedList<>());
-    this.serverEvalParams = Collections.synchronizedList(new LinkedList<>());
+    this.workerEvalParams = Collections.synchronizedMap(new HashMap<>());
+    this.serverEvalParams = Collections.synchronizedMap(new HashMap<>());
     this.metricCollectionEnabled = false;
     this.numBlockOwnershipByEvalId = null;
   }
@@ -73,17 +73,24 @@ public final class MetricManager {
    */
   public void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
     if (metricCollectionEnabled) {
-      final int numDataBlocksOnWorker = metrics.getNumDataBlocks();
-      final int numDataBlocksOnDriver = numBlockOwnershipByEvalId.get(workerId);
+      try {
+        final int numDataBlocksOnWorker = metrics.getNumDataBlocks();
+        final int numDataBlocksOnDriver = numBlockOwnershipByEvalId.get(workerId);
 
-      if (numDataBlocksOnWorker == numDataBlocksOnDriver) {
-        final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnWorker);
-        final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
-        workerEvalParams.add(evaluatorParameters);
-      } else {
-        LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
-            new Object[]{workerId, numDataBlocksOnWorker, numDataBlocksOnDriver});
+        if (numDataBlocksOnWorker == numDataBlocksOnDriver) {
+          final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnWorker);
+          final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
+          workerEvalParams.computeIfAbsent(workerId, metricList -> new ArrayList<>()).add(evaluatorParameters);
+        } else {
+          LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
+              new Object[]{workerId, numDataBlocksOnWorker, numDataBlocksOnDriver});
+        }
+      } catch (NullPointerException e) {
+        // NullPointerException thrown if {@code numBlockOwnershipByEvalId} does not contain a mapping
+        // i.e. the metric from {@code workerId} is from an unknown evaluator (probably a deleted worker)
+        LOG.log(Level.FINE, "No information about {0}. Dropping metric.", workerId);
       }
+
     } else {
       LOG.log(Level.FINE, "Metric collection disabled. Dropping metric from {0}", workerId);
     }
@@ -96,49 +103,49 @@ public final class MetricManager {
    */
   public void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
     if (metricCollectionEnabled) {
-      final int numDataBlocksOnServer = metrics.getNumModelParamBlocks();
-      final int numDataBlocksOnDriver = numBlockOwnershipByEvalId.get(serverId);
+      try {
+        final int numDataBlocksOnServer = metrics.getNumModelParamBlocks();
+        final int numDataBlocksOnDriver = numBlockOwnershipByEvalId.get(serverId);
 
-      if (numDataBlocksOnServer == numDataBlocksOnDriver) {
-        final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnServer);
-        final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
-        serverEvalParams.add(evaluatorParameters);
-      } else {
-        LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
-            new Object[]{serverId, numDataBlocksOnServer, numDataBlocksOnDriver});
+        if (numDataBlocksOnServer == numDataBlocksOnDriver) {
+          final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnServer);
+          final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
+          serverEvalParams.computeIfAbsent(serverId, metricList -> new ArrayList<>()).add(evaluatorParameters);
+        } else {
+          LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
+              new Object[]{serverId, numDataBlocksOnServer, numDataBlocksOnDriver});
+        }
+      } catch (NullPointerException e) {
+        // NullPointerException thrown if {@code numBlockOwnershipByEvalId} does not contain a mapping
+        // i.e. the metric from {@code serverId} is from an unknown evaluator (probably a deleted server)
+        LOG.log(Level.FINE, "No information about {0}. Dropping metric.", serverId);
       }
     } else {
       LOG.log(Level.FINE, "Metric collection disabled. Dropping metric from {0}", serverId);
     }
   }
 
-  /**
-   * Empty out the current set of worker metrics and return them.
-   */
-  public List<EvaluatorParameters> drainWorkerMetrics() {
+  public Map<String, List<EvaluatorParameters>> getWorkerMetrics() {
     synchronized (workerEvalParams) {
-      final List<EvaluatorParameters> currWorkerMetrics = new ArrayList<>(workerEvalParams);
-      workerEvalParams.clear();
+      final Map<String, List<EvaluatorParameters>> currWorkerMetrics = new HashMap<>(workerEvalParams);
       return currWorkerMetrics;
     }
   }
 
-  /**
-   * Empty out the current set of server metrics and return them.
-   */
-  public List<EvaluatorParameters> drainServerMetrics() {
+  public Map<String, List<EvaluatorParameters>> getServerMetrics() {
     synchronized (serverEvalParams) {
-      final List<EvaluatorParameters> currServerMetrics = new ArrayList<>(serverEvalParams);
-      serverEvalParams.clear();
+      final Map<String, List<EvaluatorParameters>> currServerMetrics = new HashMap<>(serverEvalParams);
       return currServerMetrics;
     }
   }
 
   /**
-   * Stops metric collection.
+   * Stops metric collection and clear metrics collected until this point.
    */
   public void stopMetricCollection() {
     metricCollectionEnabled = false;
+    clearServerMetrics();
+    clearWorkerMetrics();
   }
 
   /**
@@ -147,6 +154,24 @@ public final class MetricManager {
   public void startMetricCollection() {
     metricCollectionEnabled = true;
     loadMetricValidationInfo();
+  }
+
+  /**
+   * Empty out the current set of worker metrics.
+   */
+  private void clearWorkerMetrics() {
+    synchronized (workerEvalParams) {
+      workerEvalParams.clear();
+    }
+  }
+
+  /**
+   * Empty out the current set of server metrics.
+   */
+  private void clearServerMetrics() {
+    synchronized (serverEvalParams) {
+      serverEvalParams.clear();
+    }
   }
 
   /**

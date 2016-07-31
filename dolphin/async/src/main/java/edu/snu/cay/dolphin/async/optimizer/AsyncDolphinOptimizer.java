@@ -27,7 +27,6 @@ import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
-import scala.annotation.meta.param;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -94,7 +93,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> ((ServerMetrics) param.getMetrics()).getAvgPullProcessingTime(),
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTime() /
+                (double) ((ServerMetrics) param.getMetrics()).getTotalPullProcessed(),
             NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
