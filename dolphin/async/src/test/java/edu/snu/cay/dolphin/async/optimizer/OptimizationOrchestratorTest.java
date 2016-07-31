@@ -55,7 +55,7 @@ public final class OptimizationOrchestratorTest {
   private OptimizationOrchestrator orchestrator;
   private Optimizer optimizer;
 
-  private MetricsHub metricsHub;
+  private MetricManager metricManager;
 
   // Key in these storeId maps will represent the actual active evaluators in the system.
   private Map<Integer, Set<Integer>> workerStoreIdMap;
@@ -73,7 +73,7 @@ public final class OptimizationOrchestratorTest {
             .bindNamedParameter(DelayAfterOptimizationMs.class, String.valueOf(OPTIMIZATION_DELAY))
             .build());
 
-    metricsHub = injector.getInstance(MetricsHub.class);
+    metricManager = injector.getInstance(MetricManager.class);
 
     final ElasticMemory workerEM = mock(ElasticMemory.class);
     workerStoreIdMap = new HashMap<>();
@@ -126,13 +126,13 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numServers; i++) {
       serverStoreIdMap.put(i, Collections.emptySet());
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumPartitionBlocks(10).build();
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumModelParamBlocks(10).build();
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
       final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
     }
 
     orchestrator.run();
@@ -157,8 +157,8 @@ public final class OptimizationOrchestratorTest {
     }
 
     for (int i = 0; i < numServers; i++) {
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumPartitionBlocks(10).build();
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumModelParamBlocks(10).build();
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
       orchestrator.run();
 
       waitPlanExecuting();
@@ -167,7 +167,7 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numWorkers; i++) {
       final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
       orchestrator.run();
 
       waitPlanExecuting();
@@ -189,20 +189,20 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numServers; i++) {
       serverStoreIdMap.put(i, Collections.emptySet());
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumPartitionBlocks(10).build();
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumModelParamBlocks(10).build();
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
 
       // put duplicate metrics
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
 
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
       final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
 
       // put duplicate metrics
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
     }
 
     // check whether it can filter the metrics and finally trigger the optimizer with refined metrics
@@ -222,13 +222,13 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numServers; i++) {
       serverStoreIdMap.put(i, Collections.emptySet());
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumPartitionBlocks(10).build();
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumModelParamBlocks(10).build();
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
       final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
     }
 
     // 1. When a server is deleted, metrics become stale

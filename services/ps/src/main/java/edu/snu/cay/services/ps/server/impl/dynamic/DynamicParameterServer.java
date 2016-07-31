@@ -290,6 +290,10 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       Thread.sleep(METRIC_INIT_DELAY_MS);
 
       while (true) {
+        // Record the number of EM data blocks at the beginning of this window
+        // to conservatively filter out stale metrics for optimization
+        final int numEMBlocks = memoryStore.getNumBlocks();
+
         Thread.sleep(metricsWindowMs);
 
         // After time has elapsed as long as a windowIndex, get the collected metrics and build a MetricsMessage.
@@ -300,10 +304,9 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
         // Send meaningful metrics only (i.e., infinity processing time implies that no data has been processed yet).
         if (avgPullTime != Double.POSITIVE_INFINITY && avgPushTime != Double.POSITIVE_INFINITY) {
-          final int numPartitionBlocks = memoryStore.getNumBlocks();
           final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
               .setWindowIndex(windowIndex)
-              .setNumPartitionBlocks(numPartitionBlocks)
+              .setNumModelParamBlocks(numEMBlocks)
               .setMetricWindowMs(metricsWindowMs)
               .setAvgPullProcessingTime(avgPullTime)
               .setAvgPushProcessingTime(avgPushTime)

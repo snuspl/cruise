@@ -307,7 +307,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         if (avgPullTime != Double.POSITIVE_INFINITY && avgPushTime != Double.POSITIVE_INFINITY) {
           final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
               .setWindowIndex(windowIndex)
-              .setNumPartitionBlocks(0) // no block managed by EM as Static PS does not use it.
+              .setNumModelParamBlocks(0) // no block managed by EM as Static PS does not use it.
               .setMetricWindowMs(metricsWindowMs)
               .setAvgPullProcessingTime(avgPullTime)
               .setAvgPushProcessingTime(avgPushTime)

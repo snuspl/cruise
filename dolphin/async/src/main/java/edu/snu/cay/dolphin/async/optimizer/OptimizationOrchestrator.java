@@ -43,7 +43,7 @@ public final class OptimizationOrchestrator {
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
-  private final MetricsHub metricsHub;
+  private final MetricManager metricManager;
 
   private final AtomicBoolean isPlanExecuting = new AtomicBoolean(false);
 
@@ -65,14 +65,14 @@ public final class OptimizationOrchestrator {
   @Inject
   private OptimizationOrchestrator(final Optimizer optimizer,
                                    final PlanExecutor planExecutor,
-                                   final MetricsHub metricsHub,
+                                   final MetricManager metricManager,
                                    @Parameter(WorkerEM.class) final ElasticMemory workerEM,
                                    @Parameter(ServerEM.class) final ElasticMemory serverEM,
                                    @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                    @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
-    this.metricsHub = metricsHub;
+    this.metricManager = metricManager;
     this.workerEM = workerEM;
     this.serverEM = serverEM;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
@@ -80,7 +80,7 @@ public final class OptimizationOrchestrator {
   }
 
   /**
-   * Runs optimization based on the metrics from {@link MetricsHub} as following steps.
+   * Runs optimization based on the metrics from {@link MetricManager} as following steps.
    * 1) Checks the metrics have been prepared for the optimization
    * 2) Process the metrics (e.g., extract the latest metrics only)
    * 3) Calculate the optimal plan with the metrics
@@ -89,8 +89,8 @@ public final class OptimizationOrchestrator {
    */
   public synchronized void run() {
     // 1) Checks the metric state whether it's enough for the optimization.
-    serverParameters.addAll(metricsHub.drainServerMetrics());
-    workerParameters.addAll(metricsHub.drainWorkerMetrics());
+    serverParameters.addAll(metricManager.drainServerMetrics());
+    workerParameters.addAll(metricManager.drainWorkerMetrics());
 
     final int numServerMetricSources = getNumMetricSources(serverParameters);
     final int numWorkerMetricSources = getNumMetricSources(workerParameters);
@@ -147,6 +147,8 @@ public final class OptimizationOrchestrator {
 
         // 4) Execute the obtained plan
         isPlanExecuting.set(true);
+        metricManager.stopMetricCollection();
+
         try {
           final Future<PlanResult> planExecutionResultFuture = planExecutor.execute(plan);
           try {
@@ -160,6 +162,7 @@ public final class OptimizationOrchestrator {
 
         } finally {
           isPlanExecuting.set(false);
+          metricManager.startMetricCollection();
         }
       }
     });

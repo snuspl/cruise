@@ -145,12 +145,16 @@ final class NMFWorker implements Worker {
     final Map<Long, NMFData> workloadMap = memoryStore.getAll();
     final Collection<NMFData> workload = workloadMap.values();
 
-    pullRMatrix(getKeys(workload));
+    // Record the number of EM data blocks at the beginning of this iteration
+    // to filter out stale metrics for optimization
+    final int numEMBlocks = memoryStore.getNumBlocks();
 
     int numInstances = 0;
     int batchIdx = 0;
     int batchSize = workload.size() / numMiniBatchPerIter +
         ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+
+    pullRMatrix(getKeys(workload));
 
     computeTracer.startTimer();
     for (final NMFData datum : workload) {
@@ -217,7 +221,7 @@ final class NMFWorker implements Worker {
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, workload.size());
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), workload.size(), elapsedTime);
+        buildMetricsMsg(appMetrics, numEMBlocks, workload.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
