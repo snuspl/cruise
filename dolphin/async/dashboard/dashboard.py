@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+import sys
+import json
 import sqlite3
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
+from plotly.tools import get_embed
 
 print("building server...")
 
@@ -73,11 +75,29 @@ def main():
         cur = db.execute('select * from entries')
         entries = cur.fetchall()
         print(entries)
-        return render_template('metrics.html', metrics=entries)
+        return render_template('main.html', metrics=entries)
 
+@app.route('/update', methods=['GET'])
+def update():
+    db = get_db()
+    cur = db.execute('select * from entries')
+    entries = cur.fetchall()
+    print(entries)
+    return render_template('main.html', metrics=entries) 
+
+@app.route('/plot', methods=['POST'])
+def plot():
+    # plotly code
+    return get_embed('https://plot.ly/')
+
+#
 # Main
 #
-if __name__ == "__main__":
+if __name__ == '__main__':
     with app.app_context():
         init_db()
-        app.run()
+        try:
+            app.run(port=sys.argv[1])
+        except:
+            print('invalid port number')
+            sys.exit(1)

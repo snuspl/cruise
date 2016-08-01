@@ -15,11 +15,13 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.io.BufferedReader;
@@ -44,10 +46,16 @@ public final class MetricsHub {
    */
   private final List<EvaluatorParameters> serverEvalParams;
 
+  /**
+   * Dolphin dashboard web server port number.
+   */
+  private final String dolphinURL;
+
   @Inject
-  private MetricsHub() {
+  private MetricsHub(@Parameter(Parameters.DashboardPort.class) final int port) {
     this.workerEvalParams = Collections.synchronizedList(new LinkedList<>());
     this.serverEvalParams = Collections.synchronizedList(new LinkedList<>());
+    this.dolphinURL = "http://localhost:" + port + "/";
   }
 
   /**
@@ -60,7 +68,7 @@ public final class MetricsHub {
     final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
     workerEvalParams.add(evaluatorParameters);
     try {
-      final URL obj = new URL("http://localhost:5000/");
+      final URL obj = new URL(this.dolphinURL);
       final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
       con.setRequestMethod("POST");
       con.setDoOutput(true);
@@ -98,7 +106,7 @@ public final class MetricsHub {
     final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
     serverEvalParams.add(evaluatorParameters);
     try {
-      final URL obj = new URL("http://localhost:5000/");
+      final URL obj = new URL(this.dolphinURL);
       final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
       con.setRequestMethod("POST");
       con.setDoOutput(true);

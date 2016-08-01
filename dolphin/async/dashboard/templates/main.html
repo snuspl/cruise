@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <!-- Copyright (C) 2016 Seoul National University
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,23 +14,81 @@
  limitations under the License.
 -->
 
-<!DOCTYPE html>
 <html>
 <head>
-  <title>Dolphin Dashboard</title>
-  <link rel="stylesheet" href="http://www.w3schools.com/lib/w3.css">
-<!--  
-  <link href="style.css" type="text/css" rel="stylesheet">
-  <script src="myscripts.js"></script> 
+    <title>Dolphin Dashboard</title>
+    <link rel="stylesheet" href="http://www.w3schools.com/lib/w3.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<!--
+    <meta http-equiv="refresh" content="1"/>
 -->
-<head>
+</head>
 <body>
-  <div class="w3-container">
-    <h1>Dolphin</h1> 
-  </div>
-  <div class="w3-container w3-sidenav">
-    <a href="">Dashboard</a>
-  </div>
+    <div class="w3-container">
+        <h1>Dolphin</h1> 
+        <div class="w3-btn" id='reload_btn'>Reload data!</div>
+    </div>
+    <div class="w3-row">
+        <div class="w3-third w3-yellow">
+            <div class="w3-btn w3-yellow" id='loss_btn'>Reload graph</div>
+            <div id='graph'></div>
+        </div>
+        <div class="w3-third w3-container w3-red">
+            <p>resource usage</p>
+            <div id='resource'></div>
+        </div>
+        <div class="w3-third w3-container w3-yellow">
+            <p>something...</p>
+        </div>
+    </div>
+    <div class="w3-container">
+        <div class="w3-row w3-light-grey">
+            <div class="w3-col w3-container m3 l2 w3-light-grey" style="line-height:35px">Detail</div>
+            <div class="w3-col w3-dropdown-hover m2 l1 w3-light-grey">
+                <button class="w3-btn w3-light-grey w3-border">Select</button>
+                <div class="w3-dropdown-content w3-border">
+                    <a href="#">Option1</a>
+                    <a href="#">Option2</a>
+                    <a href="#">Option3</a>
+                </div>
+            </div>
+        </div>
+        <div class="w3-container">
+            <!--details-->
+            {% for worker in metrics %}
+                
+            {% endfor %}
+        </div>
+    </div>
+<!--For testing-->
+    <div id=metrics>
+        {% for item in metrics %}
+            {%if item.workerid != -1 %}
+            <div>worker id:     {{item.workerid}}</div>
+            {%endif%}
+            {%if item.serverid != -1 %}
+            <div>server id:     {{item.serverid}}</div>
+            {%endif%}
+        {% endfor %}
+    </div>
+<!--For testing-->
+<script>
+//setInterval{
+    $('#reload_btn').click(function() {
+      $.get("/update", function(data) {
+        $("html").html(data);
+      });
+    });
+//, 1000);
+$('#loss_btn').click(function() {
+  $.get("/plot", function(data) {
+    $("#graph").html(data);
+  });
+});
+function addProcess(container, name){
+    container.append("<div> name </div>");  
+}
+</script>
 </body>
-</html>
 
+</html>

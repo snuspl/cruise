@@ -75,8 +75,6 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static org.apache.reef.tang.Injector.*;
-
 /**
  * Main entry point for launching a {@code dolphin-async} application.
  * See {@link AsyncDolphinLauncher#launch(String, String[], AsyncDolphinConfiguration)}.
@@ -105,10 +103,6 @@ public final class AsyncDolphinLauncher {
   final class SerializedEMServerClientConfiguration implements Name<String> {
   }
 
-  @NamedParameter(doc = "Enable/disable dashboard", default_value = "true", short_name = "dashboard")
-  public static final class Dashboard implements Name<Boolean> {
-  }
-
   /**
    * Should not be instantiated.
    */
@@ -126,28 +120,6 @@ public final class AsyncDolphinLauncher {
                                       final String[] args,
                                       final AsyncDolphinConfiguration asyncDolphinConfiguration,
                                       final Configuration customDriverConfiguration) {
-
-    System.out.println("Now launching");
-    try {
-      //Injector.getNamedInstance(Dashboard.class);
-      final String currentPath = System.getProperty("user.dir");
-      System.out.println(currentPath);
-      final int index = currentPath.indexOf("cay");
-      //if (index < 0) ; //throw exception
-      final String resourcePath = currentPath.substring(0, index + 3) + "/dolphin/async/dashboard/dashboard.py";
-      System.out.println(resourcePath);
-      final ProcessBuilder pb = new ProcessBuilder("python", resourcePath).inheritIO();
-      final Process p = pb.start();
-      Runtime.getRuntime().addShutdownHook(new Thread() {
-        @Override
-        public void run() {
-          p.destroy();
-        }
-      });
-    } catch (final Exception e) {
-      System.out.println("My Exception" + e);
-    }
-
     try {
       // parse command line arguments, separate them into basic & user parameters
       final Tuple2<Configuration, Configuration> configurations
@@ -218,6 +190,26 @@ public final class AsyncDolphinLauncher {
       final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
 
+      // launch dashboard
+      final int port = basicParameterInjector.getNamedInstance(DashboardPort.class);
+      if (port > 0) {
+        System.out.println("Now launching dashboard server");
+        final String currentPath = System.getProperty("user.dir");
+        System.out.println(currentPath);
+        final int index = currentPath.indexOf("cay");
+        //if (index < 0) ; //throw exception
+        final String resourcePath = currentPath.substring(0, index + 3) + "/dolphin/async/dashboard/dashboard.py";
+        System.out.println(resourcePath);
+        final ProcessBuilder pb = new ProcessBuilder("python", resourcePath, String.valueOf(port)).inheritIO();
+        final Process p = pb.start();
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+          @Override
+          public void run() {
+            p.destroy();
+          }
+        });
+      }
+
       final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
           Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
               serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf),
@@ -266,6 +258,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(Iterations.class);
     basicParameterClassList.add(JVMHeapSlack.class);
     basicParameterClassList.add(MiniBatches.class);
+    basicParameterClassList.add(DashboardPort.class);
 
     // add ps parameters
     basicParameterClassList.add(NumServers.class);

@@ -74,4 +74,10 @@ public final class Parameters {
       default_value = "1")
   public final class MiniBatches implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "Port number for Dashboard web server, -1 if not using dashboard",
+      short_name = "dashboard",
+      default_value = "-1")
+  public static final class DashboardPort implements Name<Integer> {
+  }
 }
