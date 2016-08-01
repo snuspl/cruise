@@ -17,10 +17,14 @@ package edu.snu.cay.services.ps.worker.impl;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.services.ps.avro.AvroClockMsg;
+import edu.snu.cay.services.ps.avro.ClockMsgType;
+import edu.snu.cay.services.ps.avro.RequestInitClockMsg;
+import edu.snu.cay.services.ps.avro.TickMsg;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
+import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
@@ -43,12 +47,12 @@ public final class SSPWorkerClock implements WorkerClock {
   private int globalMinimumClock;
 
   private final AggregationSlave aggregationSlave;
-  private final SerializableCodec<String> codec;
+  private final ClockMsgCodec codec;
   private final CountDownLatch latch;
 
   @Inject
   private SSPWorkerClock(final AggregationSlave aggregationSlave,
-                         final SerializableCodec<String> codec) {
+                         final ClockMsgCodec codec) {
     this.aggregationSlave = aggregationSlave;
     this.codec = codec;
     this.latch = new CountDownLatch(1);
@@ -58,7 +62,12 @@ public final class SSPWorkerClock implements WorkerClock {
 
   @Override
   public void initialize() {
-    final byte[] data = codec.encode(ClockManager.REQUEST_INITIAL_CLOCK);
+    final AvroClockMsg avroClockMsg =
+        AvroClockMsg.newBuilder()
+        .setType(ClockMsgType.RequestInitClock)
+        .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
+        .build();
+    final byte[] data = codec.encode(avroClockMsg);
     aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
 
     // wait until to get current global minimum clock and initial worker clock
@@ -72,7 +81,12 @@ public final class SSPWorkerClock implements WorkerClock {
   @Override
   public void clock() {
     workerClock++;
-    final byte[] data = codec.encode(ClockManager.TICK);
+    final AvroClockMsg avroClockMsg =
+        AvroClockMsg.newBuilder()
+            .setType(ClockMsgType.Tick)
+            .setTickMsg(TickMsg.newBuilder().build())
+            .build();
+    final byte[] data = codec.encode(avroClockMsg);
     aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
   }
 
@@ -90,16 +104,15 @@ public final class SSPWorkerClock implements WorkerClock {
 
     @Override
     public void onNext(final AggregationMessage aggregationMessage) {
-      final String data = codec.decode(aggregationMessage.getData().array());
-      final String[] msgTokens = data.split("/");
-      switch (msgTokens[0]) {
-      case ClockManager.SET_INITIAL_CLOCK :
-        globalMinimumClock = Integer.parseInt(msgTokens[1]);
-        workerClock = Integer.parseInt(msgTokens[2]);
+      final AvroClockMsg avroClockMsg = codec.decode(aggregationMessage.getData().array());
+      switch (avroClockMsg.getType()) {
+      case ReplyInitClock:
+        globalMinimumClock = avroClockMsg.getReplyInitClockMsg().getGlobalMinClock();
+        workerClock = avroClockMsg.getReplyInitClockMsg().getInitClock();
         latch.countDown();
         break;
-      case ClockManager.BROADCAST_GLOBAL_MINIMUM_CLOCK :
-        globalMinimumClock = Integer.parseInt(msgTokens[1]);
+      case BroadcastMinClockMsg:
+        globalMinimumClock = avroClockMsg.getBroadcastMinClockMsg().getGlobalMinClock();
       default:
       }
     }

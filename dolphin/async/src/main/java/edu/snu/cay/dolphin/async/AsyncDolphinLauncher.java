@@ -370,7 +370,7 @@ public final class AsyncDolphinLauncher {
             .build());
   }
 
-  private static AggregationConfiguration getAggregationConfigurationDefault() {
+  private static AggregationConfiguration.Builder getAggregationConfigurationDefaultBuilder() {
     return AggregationConfiguration.newBuilder()
         .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
             SynchronizationManager.MessageHandler.class,
@@ -380,27 +380,22 @@ public final class AsyncDolphinLauncher {
             EvalSideMetricsMsgHandlerForWorker.class)
         .addAggregationClient(ServerConstants.AGGREGATION_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForServer.class,
-            EvalSideMetricsMsgHandlerForServer.class)
-        .build();
+            EvalSideMetricsMsgHandlerForServer.class);
+  }
+
+  private static AggregationConfiguration getAggregationConfigurationDefault() {
+    return getAggregationConfigurationDefaultBuilder().build();
+
   }
 
   private static AggregationConfiguration getAggregationConfigurationForSSP() {
-    return AggregationConfiguration.newBuilder()
-        .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
-            SynchronizationManager.MessageHandler.class,
-            WorkerSynchronizer.MessageHandler.class)
-        .addAggregationClient(WorkerConstants.AGGREGATION_CLIENT_NAME,
-            DriverSideMetricsMsgHandlerForWorker.class,
-            EvalSideMetricsMsgHandlerForWorker.class)
-        .addAggregationClient(ServerConstants.AGGREGATION_CLIENT_NAME,
-            DriverSideMetricsMsgHandlerForServer.class,
-            EvalSideMetricsMsgHandlerForServer.class)
+    return getAggregationConfigurationDefaultBuilder()
         .addAggregationClient(ClockManager.AGGREGATION_CLIENT_NAME,
             ClockManager.MessageHandler.class,
             SSPWorkerClock.MessageHandler.class)
         .build();
-
   }
+
   private static String processInputDir(final String inputDir, final Injector injector) throws InjectionException {
     if (!injector.getNamedInstance(OnLocal.class)) {
       return inputDir;

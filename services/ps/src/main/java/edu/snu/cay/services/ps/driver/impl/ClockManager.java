@@ -17,10 +17,14 @@ package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.services.ps.avro.AvroClockMsg;
+import edu.snu.cay.services.ps.avro.BroadcastMinClockMsg;
+import edu.snu.cay.services.ps.avro.ClockMsgType;
+import edu.snu.cay.services.ps.avro.ReplyInitClockMsg;
+import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.Staleness;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -36,46 +40,34 @@ import java.util.logging.Logger;
 
 /**
  * A driver side component to manage worker clocks.
- * Receive all worker clocks and save the updated worker clock to the {@link }
+ * Receive all worker clocks and save the updated worker clock to the {@link ClockManager#workerClockMap}.
  * Broadcast the global minimum clock among all workers when it is changed.
  */
 @DriverSide
 @Unit
 public final class ClockManager {
-  private static final Logger LOG = Logger.getLogger(ClockManager.class.getName());
-
   public static final String AGGREGATION_CLIENT_NAME = ClockManager.class.getName();
-  /**
-   * protocol format : BROADCAST_GLOBAL_MINIMUM_CLOCK/<global_minimum_clock(integer)>.
-   */
-  public static final String BROADCAST_GLOBAL_MINIMUM_CLOCK = "broadcastGlobalMinimumClock";
-  public static final String REQUEST_INITIAL_CLOCK = "requestInitialClock";
-  /**
-   * protocol format :
-   * SET_INITIAL_CLOCK/<global minimum clock(integer)>/<initial worker clock(integer)>.
-   */
-  public static final String SET_INITIAL_CLOCK = "setInitialClock";
-  public static final String TICK = "tick";
-
+  private static final Logger LOG = Logger.getLogger(ClockManager.class.getName());
+  private static final int INITIAL_GLOBAL_MINIMIM_CLOCK = 0;
 
   private final int staleness;
-  private int globalMinimumClock;
   private final AggregationMaster aggregationMaster;
-  private final SerializableCodec<String> codec;
+  private final ClockMsgCodec codec;
   private final Map<String, Integer> workerClockMap;
   /**
-   * List of workers whose clocks are globalMinimumClock.
+   * List of workers whose clocks are {@link ClockManager#globalMinimumClock}.
    */
   private final List<String> minimumClockWorkers;
+  private int globalMinimumClock;
 
   @Inject
   private ClockManager(final AggregationMaster aggregationMaster,
-                       final SerializableCodec<String> codec,
+                       final ClockMsgCodec codec,
                        @Parameter(Staleness.class) final int staleness) {
     this.aggregationMaster = aggregationMaster;
     this.codec = codec;
     this.staleness = staleness;
-    this.globalMinimumClock = 0;
+    this.globalMinimumClock = INITIAL_GLOBAL_MINIMIM_CLOCK;
     workerClockMap = new HashMap<String, Integer>();
     minimumClockWorkers = new ArrayList<String>();
   }
@@ -83,31 +75,32 @@ public final class ClockManager {
   /**
    * Helper function to create broadcast global minimum clock message.
    */
-  public static String getBroadcastGlobalMinimumClockMessage(final int globalMinimumClock) {
-    final StringBuffer buffer = new StringBuffer();
-    buffer.append(BROADCAST_GLOBAL_MINIMUM_CLOCK);
-    buffer.append("/");
-    buffer.append(globalMinimumClock);
-    return buffer.toString();
+  public static AvroClockMsg getBroadcastGlobalMinimumClockMessage(final int globalMinimumClock) {
+    final BroadcastMinClockMsg broadcastMinClockMsg =
+        BroadcastMinClockMsg.newBuilder().setGlobalMinClock(globalMinimumClock).build();
+    return AvroClockMsg.newBuilder()
+        .setType(ClockMsgType.BroadcastMinClockMsg)
+        .setBroadcastMinClockMsg(broadcastMinClockMsg).build();
   }
 
   /**
    * Helper function to create initial clock message.
    */
-  public static String getInitialClockMessage(final int globalMinimumClock, final int workerClock) {
-    final StringBuffer buffer = new StringBuffer();
-    buffer.append(SET_INITIAL_CLOCK)
-        .append("/")
-        .append(globalMinimumClock)
-        .append("/")
-        .append(workerClock);
-    return buffer.toString();
+  public static AvroClockMsg getReplyInitialClockMessage(final int globalMinimumClock, final int workerClock) {
+    final ReplyInitClockMsg replyInitClockMsg =
+        ReplyInitClockMsg.newBuilder()
+            .setGlobalMinClock(globalMinimumClock)
+            .setInitClock(workerClock)
+            .build();
+    return AvroClockMsg.newBuilder()
+        .setType(ClockMsgType.ReplyInitClock)
+        .setReplyInitClockMsg(replyInitClockMsg).build();
   }
 
   /**
    * Set initial clock of new worker which is not added by EM.
    * Worker added by EM should have globalMinimumClock + (staleness/2) as its worker clock
-   * and it is set when worker clock is initialized(not created).
+   * and it is set when the worker requests initialization(not creation time).
    *
    * @param addedEval true means worker is added by EM, otherwise false
    * @param workerId  the id of new worker
@@ -116,24 +109,26 @@ public final class ClockManager {
     if (addedEval) {
       return;
     }
+    // check whether all of initial workers which are not added by EM
+    // are added before {@link ClockManager#globalMinimumClock} is changed
+    if (!addedEval && globalMinimumClock != INITIAL_GLOBAL_MINIMIM_CLOCK) {
+      throw new RuntimeException("initial workers are added after global minimum clock change");
+    }
     workerClockMap.put(workerId, globalMinimumClock);
     minimumClockWorkers.add(workerId);
   }
 
   /**
-   * Remove the entry according to the workerId from workerClockMap.
-   * Update global minimum clock if the worker is the last one of minimumClockWorkers.
-   *
+   * Remove the entry according to the workerId from {@link ClockManager#workerClockMap}.
+   * Update global minimum clock if the worker is the last one of {@link ClockManager#minimumClockWorkers}.
    * @param workerId the worker id to be deleted
    */
   public synchronized void onWorkerDeleted(final String workerId) {
     workerClockMap.remove(workerId);
-    if (minimumClockWorkers.contains(workerId)) {
-      minimumClockWorkers.remove(workerId);
-      // If the worker is only one worker who has globalMinimumClock,
-      // it's time to update globalMinimumClock.
+    if (minimumClockWorkers.remove(workerId)) {
       if (minimumClockWorkers.size() == 0) {
-        globalMinimumClock = workerClockMap.isEmpty() ? 0 : Collections.min(workerClockMap.values());
+        globalMinimumClock = workerClockMap.isEmpty() ?
+            INITIAL_GLOBAL_MINIMIM_CLOCK : Collections.min(workerClockMap.values());
         broadcastGlobalMinimumClock();
       }
     }
@@ -142,29 +137,29 @@ public final class ClockManager {
   /**
    * Used for testing.
    */
-  public int getGlobalMinimumClock() {
+  int getGlobalMinimumClock() {
     return globalMinimumClock;
   }
 
   /**
    * Used for testing.
    */
-  public Integer getClockOf(final String workerId) {
+  Integer getClockOf(final String workerId) {
     return workerClockMap.get(workerId);
   }
 
   /**
-   * Initialize worker clock and put into workerClockMap.
+   * Initialize worker clock and put into {@link ClockManager#workerClockMap}.
    *
    * @param workerId the worker id to initialize
-   * @return the initial worker clock in workerClockMap
+   * @return the initial worker clock in {@link ClockManager#workerClockMap}
    */
-  private synchronized int setInitialWorkerClock(final String workerId) {
+  private synchronized int initializeWorkerClock(final String workerId) {
     final Integer workerClockVal = workerClockMap.get(workerId);
-    // Initial workers(which are not added by EM) have their clocks in workerClockMap already,
+    // initial workers(which are not added by EM) have their clocks in {@link ClockManager#workerClockMap} already,
     // their clocks are set on onWorkerAdded() call.
     if (workerClockVal != null) {
-      return workerClockVal.intValue();
+      return workerClockVal;
     }
     final int workerClock = globalMinimumClock + (staleness / 2);
     workerClockMap.put(workerId, workerClock);
@@ -172,23 +167,23 @@ public final class ClockManager {
   }
 
   /**
-   * Tick the clock of workerId and update globalMinimumClock if it is necessary.
+   * Tick the clock of workerId and update {@link ClockManager#globalMinimumClock} if it is necessary.
+   * When the worker according to the wokrerId is the last one of {@link ClockManager#minimumClockWorkers},
+   * it's time to update {@link ClockManager#globalMinimumClock}.
    *
    * @param workerId the worker id to tick clock
    */
   private synchronized void tickClock(final String workerId) {
-    // clock should be initialized in the workerClockMap before tick
-    assert (workerClockMap.containsKey(workerId));
-    int workerClock = workerClockMap.get(workerId).intValue();
+    Integer workerClock = workerClockMap.get(workerId);
+    // clock should be initialized and stored in the {@link ClockManager#workerClockMap} before tick
+    if (workerClock == null) {
+      throw new RuntimeException("uninitialized worker is ticked");
+    }
     // tick the worker clock
     workerClock++;
     workerClockMap.put(workerId, workerClock);
-    if (minimumClockWorkers.contains(workerId)) {
-      // remove the worker from minimum clock worker list
-      minimumClockWorkers.remove(workerId);
-
-      // If the worker is only one worker who has globalMinimumClock,
-      // it's time to update globalMinimumClock.
+    // remove the worker from {@link ClockManager#minimumClockWorkers}
+    if (minimumClockWorkers.remove(workerId)) {
       if (minimumClockWorkers.size() == 0) {
         globalMinimumClock++;
         broadcastGlobalMinimumClock();
@@ -200,11 +195,14 @@ public final class ClockManager {
 
   /**
    * Broadcast updated global minimum clock to all workers.
-   * All of the workers whose clocks are same with globalMinimumClock are added to minimumClockWorkers.
+   * All of the workers whose clocks are same with {@link ClockManager#globalMinimumClock}
+   * are added to {@link ClockManager#minimumClockWorkers}.
    */
   private void broadcastGlobalMinimumClock() {
-    // minimumClockWorkers must be empty now and filled by this call
-    assert (minimumClockWorkers.isEmpty());
+    // {@link ClockManager#minimumClockWorkers} must be empty now and filled by this call
+    if (!minimumClockWorkers.isEmpty()) {
+      throw new RuntimeException("minimum worker clock list should be empty and updated now");
+    }
 
     for (final Map.Entry<String, Integer> elem : workerClockMap.entrySet()) {
       final String workerId = elem.getKey();
@@ -225,19 +223,19 @@ public final class ClockManager {
 
     @Override
     public void onNext(final AggregationMessage aggregationMessage) {
-      final String rcvMsg = codec.decode(aggregationMessage.getData().array());
+      final AvroClockMsg rcvMsg = codec.decode(aggregationMessage.getData().array());
       final String workerId = aggregationMessage.getSourceId().toString();
-      switch (rcvMsg) {
-      case REQUEST_INITIAL_CLOCK:
-        final int workerClock = setInitialWorkerClock(workerId);
-        final byte[] data = codec.encode(getInitialClockMessage(globalMinimumClock, workerClock));
+      switch (rcvMsg.getType()) {
+      case RequestInitClock:
+        final int workerClock = initializeWorkerClock(workerId);
+        final byte[] data = codec.encode(getReplyInitialClockMessage(globalMinimumClock, workerClock));
         try {
           aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
         } catch (final NetworkException e) {
           LOG.log(Level.INFO, "Target worker failed to receive the initial worker clock message.", e);
         }
         break;
-      case TICK:
+      case Tick:
         tickClock(workerId);
         break;
       default:

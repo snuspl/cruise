@@ -18,12 +18,14 @@ package edu.snu.cay.services.ps.worker.impl;
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.services.ps.avro.AvroClockMsg;
+import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
+import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.Staleness;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
-import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -54,7 +56,7 @@ public class SSPWorkerClockTest {
   private Injector injector;
   private AggregationSlave mockAggregationSlave;
   private AggregationMaster mockAggregationMaster;
-  private SerializableCodec<String> codec;
+  private ClockMsgCodec codec;
   private SSPWorkerClock sspWorkerClock;
   private SSPWorkerClock.MessageHandler sspWorkerClockMessageHandler;
 
@@ -72,7 +74,7 @@ public class SSPWorkerClockTest {
 
     this.sspWorkerClock = injector.getInstance(SSPWorkerClock.class);
     this.sspWorkerClockMessageHandler = injector.getInstance(SSPWorkerClock.MessageHandler.class);
-    this.codec = injector.getInstance(SerializableCodec.class);
+    this.codec = injector.getInstance(ClockMsgCodec.class);
   }
 
   /**
@@ -88,15 +90,15 @@ public class SSPWorkerClockTest {
 
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final String sendMsg = codec.decode(data);
+        final AvroClockMsg sendMsg = codec.decode(data);
 
-        if (sendMsg.contains(ClockManager.REQUEST_INITIAL_CLOCK)) {
-          final String initClockMsg =
-              ClockManager.getInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
+        if (sendMsg.getType() == ClockMsgType.RequestInitClock) {
+          final AvroClockMsg initClockMsg =
+              ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
           final byte[] replyData = codec.encode(initClockMsg);
           final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
           sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        } else if (sendMsg.contains(ClockManager.TICK)) {
+        } else if (sendMsg.getType() == ClockMsgType.Tick) {
           countDownLatch.countDown();
         }
         return null;
@@ -127,11 +129,11 @@ public class SSPWorkerClockTest {
 
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final String sendMsg = codec.decode(data);
+        final AvroClockMsg sendMsg = codec.decode(data);
 
-        if (sendMsg.contains(ClockManager.REQUEST_INITIAL_CLOCK)) {
-          final String initClockMsg =
-              ClockManager.getInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
+        if (sendMsg.getType() == ClockMsgType.RequestInitClock) {
+          final AvroClockMsg initClockMsg =
+              ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
           final byte[] replyData = codec.encode(initClockMsg);
           final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
           sspWorkerClockMessageHandler.onNext(aggregationMessage);
