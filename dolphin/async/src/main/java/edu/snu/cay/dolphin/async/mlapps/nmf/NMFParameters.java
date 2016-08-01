@@ -52,8 +52,21 @@ final class NMFParameters {
   static final class PrintMatrices implements Name<Boolean> {
   }
 
-  @NamedParameter(doc = "minimum number of input rows when logging execution status", short_name = "log_period",
-                  default_value = "0")
-  static final class LogPeriod implements Name<Integer> {
+  static final class MetricKeys {
+    // The key denoting the average of loss computed from training data instances.
+    static final String AVG_LOSS =
+        "NMF_WORKER_AVG_LOSS";
+
+    // The key denoting the total loss computed from training data instances.
+    static final String SUM_LOSS =
+        "NMF_WORKER_SUM_LOSS";
+
+    // The key denoting the number of training data elements (each (row, col) element) processed per unit time.
+    static final String DVT =
+        "NMF_WORKER_DVT";
+
+    // The key denoting the number of training data instances processed per unit time.
+    static final String RVT =
+        "NMF_WORKER_RVT";
   }
 }

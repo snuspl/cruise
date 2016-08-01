@@ -98,7 +98,7 @@ final class CostCalculator {
    * @return The generated compute task cost.
    */
   private static Cost.ComputeTaskCost getComputeTaskCost(final EvaluatorParameters evaluatorParameters) {
-    final Map<String, Double> metrics = evaluatorParameters.getMetrics();
+    final Map<String, Double> metrics = (Map<String, Double>) evaluatorParameters.getMetrics();
     final double cmpCost = metrics.get(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END) -
         metrics.get(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START);
     return new Cost.ComputeTaskCost(evaluatorParameters.getId(), cmpCost, evaluatorParameters.getDataInfo());
@@ -128,8 +128,10 @@ final class CostCalculator {
     final double maxCmpCost = Collections.max(cmpTaskCosts, new CmpCostComparator()).getComputeCost();
 
     // (communication cost) = (reduce end time) - (broadcast start time) - max(compute cost for each compute task)
-    return controllerTaskParameters.getMetrics().get(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END)
-        - controllerTaskParameters.getMetrics().get(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START)
+    return ((Map<String, Double>) controllerTaskParameters.getMetrics())
+        .get(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END)
+        - ((Map<String, Double>)  controllerTaskParameters.getMetrics())
+        .get(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START)
         - maxCmpCost;
   }
 

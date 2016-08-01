@@ -16,11 +16,9 @@
 package edu.snu.cay.services.ps.server.impl.fixed;
 
 import com.google.common.base.Ticker;
-import edu.snu.cay.common.metric.*;
-import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.services.ps.common.Statistics;
-import edu.snu.cay.services.ps.metric.ServerConstants;
-import edu.snu.cay.services.ps.metric.avro.ServerMetricsMsg;
+import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import edu.snu.cay.services.ps.metric.avro.ServerThreadMetrics;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
@@ -29,7 +27,6 @@ import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
-import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.Parameter;
@@ -103,8 +100,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
    */
   private final ServerSideReplySender<K, P, V> sender;
 
-  private final long logPeriod;
-
   /**
    * Statistics of the processing time of push operation.
    */
@@ -131,6 +126,11 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   private final Statistics[] pullWaitStats;
 
   /**
+   * Statistics of the waiting time of push operation.
+   */
+  private final Statistics[] requestWaitStats;
+
+  /**
    * Bookkeeping start time of the processing threads.
    */
   private long[] startTimes;
@@ -139,27 +139,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
    * Ticker to track the time.
    */
   private final Ticker ticker = Ticker.systemTicker();
-
-  /**
-   * Collects metrics within each window.
-   */
-  private final MetricsCollector metricsCollector;
-
-  /**
-   * Records user-defined Metrics (e.g., push-time, pull-time).
-   */
-  private final InsertableMetricTracker insertableMetricTracker;
-
-  /**
-   * Receives the Metrics collected by MetricsCollector.
-   */
-  private final MetricsHandler metricsHandler;
-
-  /**
-   * Sends MetricsMessage that consists of Metrics and additional information
-   * such as windowIndex, and the number of partition blocks in the local MemoryStore.
-   */
-  private final MetricsMsgSender<ServerMetricsMsg> metricsMsgSender;
 
   /**
    * Length of window, which is discrete time period to send metrics (in ms).
@@ -171,41 +150,11 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
    */
   private int windowIndex = 0;
 
-  private void printStats(final int threadId, final long elapsedTime) {
-    final Statistics pullStat = pullStats[threadId];
-    final Statistics pushStat = pushStats[threadId];
-    final Statistics requestStat = requestStats[threadId];
-    final Statistics pushWaitStat = pushWaitStats[threadId];
-    final Statistics pullWaitStat = pullWaitStats[threadId];
-
-    LOG.log(Level.INFO, "PS Elapsed Time (sec): {0}, PS Sum Pull (sec): {1}, PS Avg Pull (sec): {2}, " +
-            "PS Pull Count: {3}, PS Sum Push (sec): {4}, PS Avg Push (sec): {5}, PS Push Count: {6}, " +
-            "PS Avg Request (sec): {7}, PS Sum Request (sec): {8}, PS Request Count: {9}, " +
-            "PS Avg Push Wait (sec): {10}, PS Sum Push Wait (sec): {11}, " +
-            "PS Avg Pull Wait (sec): {12}, PS Sum Pull Wait (sec): {13}",
-        new Object[]{elapsedTime / 1e9D, Double.toString(pullStat.sum()), Double.toString(pullStat.avg()),
-            pullStat.count(), Double.toString(pushStat.sum()), Double.toString(pushStat.avg()), pushStat.count(),
-            Double.toString(requestStat.avg()), Double.toString(requestStat.sum()), requestStat.count(),
-            Double.toString(pushWaitStat.avg()), Double.toString(pushWaitStat.sum()),
-            Double.toString(pullWaitStat.avg()), Double.toString(pullWaitStat.sum())});
-    pushStat.reset();
-    pullStat.reset();
-    requestStat.reset();
-    pushWaitStat.reset();
-    pullWaitStat.reset();
-    startTimes[threadId] = ticker.read();
-  }
-
   @Inject
   private StaticParameterServer(@Parameter(EndpointId.class) final String endpointId,
                                 @Parameter(ServerNumThreads.class) final int numThreads,
                                 @Parameter(ServerQueueSize.class) final int queueSize,
-                                @Parameter(ServerLogPeriod.class) final long logPeriod,
                                 @Parameter(ServerMetricsWindowMs.class) final long metricsWindowMs,
-                                final MetricsCollector metricsCollector,
-                                final InsertableMetricTracker insertableMetricTracker,
-                                final MetricsHandler metricsHandler,
-                                final MetricsMsgSender<ServerMetricsMsg> metricsMsgSender,
                                 final ServerResolver serverResolver,
                                 final ParameterUpdater<K, P, V> parameterUpdater,
                                 final ServerSideReplySender<K, P, V> sender) {
@@ -213,7 +162,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     this.localPartitions = serverResolver.getPartitions(endpointId);
     this.serverResolver = serverResolver;
     this.queueSize = queueSize;
-    this.logPeriod = TimeUnit.NANOSECONDS.convert(logPeriod, TimeUnit.MILLISECONDS);
     this.threadPool = Executors.newFixedThreadPool(numThreads);
     this.threads = initThreads();
     this.parameterUpdater = parameterUpdater;
@@ -223,19 +171,16 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     this.requestStats = Statistics.newInstances(numThreads);
     this.pushWaitStats = Statistics.newInstances(numThreads);
     this.pullWaitStats = Statistics.newInstances(numThreads);
+    this.requestWaitStats = Statistics.newInstances(numThreads);
     this.startTimes = new long[numThreads];
     final long currentTime = ticker.read();
     for (int i = 0; i < numThreads; ++i) {
       this.startTimes[i] = currentTime;
     }
-    this.metricsCollector = metricsCollector;
-    this.insertableMetricTracker = insertableMetricTracker;
-    this.metricsHandler = metricsHandler;
-    this.metricsMsgSender = metricsMsgSender;
     this.metricsWindowMs = metricsWindowMs;
 
     // Execute a thread to send metrics.
-    Executors.newSingleThreadExecutor().submit(this::sendMetrics);
+    Executors.newSingleThreadExecutor().submit(this::logMetrics);
   }
 
   /**
@@ -303,43 +248,77 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   }
 
   /**
-   * Sends metrics that have been collected within the current window.
+   * logs stats (pull, push, request times and wait times) of a working thread.
+   * @param threadId of the thread
    */
-  private void sendMetrics() {
-    try {
-      // Initialize the MetricCollector by registering MetricTrackers.
-      final Set<MetricTracker> metricTrackerSet = new HashSet<>(1);
-      metricTrackerSet.add(insertableMetricTracker);
-      metricsCollector.registerTrackers(metricTrackerSet);
+  private void logThreadStats(final int threadId) {
+    final long timeSinceLastPrintStat = ticker.read() - startTimes[threadId];
+    final Statistics pullStat = pullStats[threadId];
+    final Statistics pushStat = pushStats[threadId];
+    final Statistics requestStat = requestStats[threadId];
+    final Statistics pushWaitStat = pushWaitStats[threadId];
+    final Statistics pullWaitStat = pullWaitStats[threadId];
+    final Statistics requestWaitStat = requestWaitStats[threadId];
 
+    final ServerThreadMetrics threadMetrics = ServerThreadMetrics.newBuilder()
+        .setThreadId(threadId)
+        .setNumPendingOps(threads.get(threadId).opsPending())
+        .setTotalTime(timeSinceLastPrintStat / 1e9D)
+        .setPullCount((int)pullStat.count())
+        .setTotalPullTime(pullStat.sum())
+        .setAvgPullTime(pullStat.avg())
+        .setTotalPullWaitTime(pullWaitStat.sum())
+        .setAvgPullWaitTime(pullWaitStat.avg())
+        .setPushCount((int)pushStat.count())
+        .setTotalPushTime(pushStat.sum())
+        .setAvgPushTime(pushStat.avg())
+        .setTotalPushWaitTime(pushWaitStat.sum())
+        .setAvgPushWaitTime(pushWaitStat.avg())
+        .setReqCount((int)requestStat.count())
+        .setTotalReqTime(requestStat.sum())
+        .setAvgReqTime(requestStat.avg())
+        .setTotalReqWaitTime(requestWaitStat.sum())
+        .setAvgReqWaitTime(requestWaitStat.avg())
+        .build();
+
+    LOG.log(Level.FINE, "ServerThreadMetrics {0}", threadMetrics);
+
+    startTimes[threadId] = ticker.read();
+  }
+
+  /**
+   * Logs metrics that have been collected within the current window.
+   */
+  private void logMetrics() {
+    try {
       // Sleep to skip the initial metrics that have been collected while the server being set up.
       Thread.sleep(METRIC_INIT_DELAY_MS);
 
       while (true) {
-        // Start the MetricTrackers
-        metricsCollector.start();
         Thread.sleep(metricsWindowMs);
 
         // After time has elapsed as long as a windowIndex, get the collected metrics and build a MetricsMessage.
-        final double processingUnit = getProcessingUnit();
-        insertableMetricTracker.put(ServerConstants.SERVER_PROCESSING_TIME, processingUnit);
-        metricsCollector.stop();
+        final double avgPullTime = getAvgProcTimePerReq(pullStats);
+        final double avgPushTime = getAvgProcTimePerReq(pushStats);
+        final double avgReqProcTime = getAvgProcTimePerReq(requestStats);
+        resetStats();
 
         // Send meaningful metrics only (i.e., infinity processing time implies that no data has been processed yet).
-        if (processingUnit != Double.POSITIVE_INFINITY) {
-          final Metrics metrics = metricsHandler.getMetrics();
-          final ServerMetricsMsg metricsMessage = ServerMetricsMsg.newBuilder()
-              .setMetrics(metrics)
+        if (avgPullTime != Double.POSITIVE_INFINITY && avgPushTime != Double.POSITIVE_INFINITY) {
+          final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
               .setWindowIndex(windowIndex)
-              .setNumPartitionBlocks(0) // There is no block managed by EM, as Static PS does not use it.
+              .setNumPartitionBlocks(0) // no block managed by EM as Static PS does not use it.
+              .setMetricWindowMs(metricsWindowMs)
+              .setAvgPullProcessingTime(avgPullTime)
+              .setAvgPushProcessingTime(avgPushTime)
+              .setAvgReqProcessingTime(avgReqProcTime)
               .build();
 
-          LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
-          metricsMsgSender.send(metricsMessage);
+          LOG.log(Level.FINE, "ServerMetrics {0}", metricsMessage);
         }
         windowIndex++;
       }
-    } catch (final MetricException | InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOG.log(Level.SEVERE, "Exception Occurred", e); // Log for the case when the thread swallows the exception
       throw new RuntimeException(e);
     }
@@ -347,25 +326,40 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
 
   /**
    * Computes processing unit (C_s_proc) across all threads in this Server.
+   * It is computed by first calculating the total throughput of this server by adding each thread's throughput
+   * and getting the inverse of the throughput to finally get the time required to process a unit request.
+   *
    * {@code Double.POSITIVE_INFINITY} is returned when all threads
-   * have not processed any pull requests so far.
+   * have not processed any requests so far.
    */
-  private double getProcessingUnit() {
-    double count = 0D;
-    double sum = 0D;
+  private double getAvgProcTimePerReq(final Statistics[] procTimeStats) {
+    double throughputSum = 0D;
 
-    synchronized (pullStats) {
-      for (final Statistics stat : pullStats) {
-        count += stat.count();
-        sum += stat.sum();
-        stat.reset();
+    synchronized (procTimeStats) {
+      for (final Statistics stat : procTimeStats) {
+        throughputSum += stat.count() / stat.sum();
       }
     }
 
-    if (count == 0D) {
+    if (throughputSum == 0D) {
       return Double.POSITIVE_INFINITY;
     } else {
-      return sum / count;
+      return 1.0 / throughputSum;
+    }
+  }
+
+  /**
+   * Resets all {@link Statistics} for the next round of metrics.
+   */
+  private void resetStats() {
+    for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
+      logThreadStats(threadIdx);
+      pullStats[threadIdx].reset();
+      pullWaitStats[threadIdx].reset();
+      pushStats[threadIdx].reset();
+      pushWaitStats[threadIdx].reset();
+      requestStats[threadIdx].reset();
+      requestWaitStats[threadIdx].reset();
     }
   }
 
@@ -402,7 +396,10 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     @Override
     public void apply(final Map<K, V> kvStore) {
       final long waitEndTime = ticker.read();
-      pushWaitStats[threadId].put(waitEndTime - timestamp);
+      final long waitTime = waitEndTime - timestamp;
+      pushWaitStats[threadId].put(waitTime);
+      requestWaitStats[threadId].put(waitTime);
+
       if (!kvStore.containsKey(key)) {
         kvStore.put(key, parameterUpdater.initValue(key));
       }
@@ -419,11 +416,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       final long processingTime = processEndTime - waitEndTime;
       pushStats[threadId].put(processingTime);
       requestStats[threadId].put(processingTime);
-
-      final long elapsedTime = processEndTime - startTimes[threadId];
-      if (logPeriod > 0 && elapsedTime > logPeriod) {
-        printStats(threadId, elapsedTime);
-      }
     }
   }
 
@@ -450,7 +442,9 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     @Override
     public void apply(final Map<K, V> kvStore) {
       final long waitEndTime = ticker.read();
-      pullWaitStats[threadId].put(waitEndTime - timestamp);
+      final long waitTime = waitEndTime - timestamp;
+      pullWaitStats[threadId].put(waitTime);
+      requestWaitStats[threadId].put(waitTime);
 
       if (!kvStore.containsKey(key)) {
         kvStore.put(key, parameterUpdater.initValue(key));
@@ -462,11 +456,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       final long processingTime = processEndTime - waitEndTime;
       pullStats[threadId].put(processingTime);
       requestStats[threadId].put(processingTime);
-
-      final long elapsedTime = processEndTime - startTimes[threadId];
-      if (logPeriod > 0 && elapsedTime > logPeriod) {
-        printStats(threadId, elapsedTime);
-      }
     }
   }
 
