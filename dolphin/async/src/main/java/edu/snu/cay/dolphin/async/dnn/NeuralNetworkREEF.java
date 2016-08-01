@@ -209,8 +209,11 @@ public final class NeuralNetworkREEF {
     case "convolutional":
       return ConvolutionalLayerConfigurationBuilder.newConfigurationBuilder()
           .fromProtoConfiguration(layerConf).build();
-    case "dropout" :
+    case "dropout":
       return  DropoutLayerConfigurationBuilder.newConfigurationBuilder()
+          .fromProtoConfiguration(layerConf).build();
+    case "lrn":
+      return LRNLayerConfigurationBuilder.newConfigurationBuilder()
           .fromProtoConfiguration(layerConf).build();
     default:
       throw new IllegalArgumentException("Illegal layer type: " + layerConf.getType());
