@@ -79,7 +79,8 @@ public final class DynamicServerResolver implements ServerResolver {
 
   /**
    * Checks the initialization of the routing table.
-   * It returns if the routing table has been initialized.
+   * It returns if the routing table has been initialized,
+   * otherwise waits the initialization within a bounded time.
    */
   private void checkInitialization() {
     if (initialized) {

@@ -150,6 +150,7 @@ public final class OperationRouter<K> {
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
 
     if (addedEval) {
+      // do initialization asynchronously
       Executors.newSingleThreadExecutor().execute(this::triggerInitialization);
     }
   }
@@ -199,7 +200,8 @@ public final class OperationRouter<K> {
 
   /**
    * Checks the initialization of the routing table.
-   * It waits until the routing table has been initialized.
+   * It returns if the routing table has been initialized,
+   * otherwise waits the initialization within a bounded time.
    */
   private void checkInitialization() {
     if (!addedEval || initialized) {

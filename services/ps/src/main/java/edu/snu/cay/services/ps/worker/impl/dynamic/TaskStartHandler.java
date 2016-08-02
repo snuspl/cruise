@@ -37,6 +37,7 @@ public final class TaskStartHandler implements EventHandler<TaskStart> {
 
   @Override
   public void onNext(final TaskStart taskStart) {
+    // do initialization asynchronously
     Executors.newSingleThreadExecutor().execute(serverResolver::triggerInitialization);
   }
 }
