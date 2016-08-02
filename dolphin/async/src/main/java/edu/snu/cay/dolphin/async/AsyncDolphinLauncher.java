@@ -31,6 +31,7 @@ import edu.snu.cay.services.ps.PSConfigurationBuilder;
 import edu.snu.cay.services.ps.common.parameters.Dynamic;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.driver.impl.dynamic.DynamicPSManager;
@@ -40,6 +41,7 @@ import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
+import edu.snu.cay.services.ps.worker.impl.SSPWorkerClock;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.parameters.ReceiverHost;
@@ -339,18 +341,10 @@ public final class AsyncDolphinLauncher {
         .setDriverConfigurationModule(driverConf)
         .build();
 
-    final AggregationConfiguration aggregationServiceConf = AggregationConfiguration.newBuilder()
-        .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
-            SynchronizationManager.MessageHandler.class,
-            WorkerSynchronizer.MessageHandler.class)
-        .addAggregationClient(WorkerConstants.AGGREGATION_CLIENT_NAME,
-            DriverSideMetricsMsgHandlerForWorker.class,
-            EvalSideMetricsMsgHandlerForWorker.class)
-        .addAggregationClient(ServerConstants.AGGREGATION_CLIENT_NAME,
-            DriverSideMetricsMsgHandlerForServer.class,
-            EvalSideMetricsMsgHandlerForServer.class)
-        .build();
-
+    final int staleness = injector.getNamedInstance(Staleness.class);
+    final boolean isSSPModel = staleness >= 0;
+    final AggregationConfiguration aggregationServiceConf = isSSPModel ?
+        getAggregationConfigurationForSSP() : getAggregationConfigurationDefault();
     // set up an optimizer configuration
     final Class<? extends Optimizer> optimizerClass;
     final Class<? extends PlanExecutor> executorClass;
@@ -376,6 +370,31 @@ public final class AsyncDolphinLauncher {
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
             .build());
+  }
+
+  private static AggregationConfiguration.Builder getAggregationConfigurationDefaultBuilder() {
+    return AggregationConfiguration.newBuilder()
+        .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
+            SynchronizationManager.MessageHandler.class,
+            WorkerSynchronizer.MessageHandler.class)
+        .addAggregationClient(WorkerConstants.AGGREGATION_CLIENT_NAME,
+            DriverSideMetricsMsgHandlerForWorker.class,
+            EvalSideMetricsMsgHandlerForWorker.class)
+        .addAggregationClient(ServerConstants.AGGREGATION_CLIENT_NAME,
+            DriverSideMetricsMsgHandlerForServer.class,
+            EvalSideMetricsMsgHandlerForServer.class);
+  }
+
+  private static AggregationConfiguration getAggregationConfigurationDefault() {
+    return getAggregationConfigurationDefaultBuilder().build();
+  }
+
+  private static AggregationConfiguration getAggregationConfigurationForSSP() {
+    return getAggregationConfigurationDefaultBuilder()
+        .addAggregationClient(ClockManager.AGGREGATION_CLIENT_NAME,
+            ClockManager.MessageHandler.class,
+            SSPWorkerClock.MessageHandler.class)
+        .build();
   }
 
   private static String processInputDir(final String inputDir, final Injector injector) throws InjectionException {

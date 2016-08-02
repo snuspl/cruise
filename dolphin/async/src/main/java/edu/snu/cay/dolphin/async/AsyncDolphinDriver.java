@@ -36,6 +36,7 @@ import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
 import edu.snu.cay.services.ps.metric.ServerMetricsMsgCodec;
@@ -123,6 +124,11 @@ public final class AsyncDolphinDriver {
    * Synchronize workers by exchanging messages.
    */
   private final SynchronizationManager synchronizationManager;
+
+  /**
+   * Manage worker clocks.
+   */
+  private final ClockManager clockManager;
 
   /**
    * Exchange messages between the driver and evaluators.
@@ -278,6 +284,7 @@ public final class AsyncDolphinDriver {
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
                              final SynchronizationManager synchronizationManager,
+                             final ClockManager clockManager,
                              final Injector injector,
                              final IdentifierFactory identifierFactory,
                              @Parameter(DriverIdentifier.class) final String driverIdStr,
@@ -299,6 +306,7 @@ public final class AsyncDolphinDriver {
     this.evaluatorManager = evaluatorManager;
     this.dataLoadingService = dataLoadingService;
     this.synchronizationManager = synchronizationManager;
+    this.clockManager = clockManager;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.initServerCount = numServers;
     this.identifierFactory = identifierFactory;
@@ -371,7 +379,7 @@ public final class AsyncDolphinDriver {
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = getEvalAllocHandlerForWorker();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForWorker = new ArrayList<>(2);
       contextActiveHandlersForWorker.add(getFirstContextActiveHandlerForWorker(false));
-      contextActiveHandlersForWorker.add(getSecondContextActiveHandlerForWorker());
+      contextActiveHandlersForWorker.add(getSecondContextActiveHandlerForWorker(false));
       evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
           evalAllocHandlerForWorker, contextActiveHandlersForWorker);
 
@@ -613,7 +621,7 @@ public final class AsyncDolphinDriver {
   /**
    * Returns an EventHandler which submits worker task to worker-side evaluator.
    */
-  public EventHandler<ActiveContext> getSecondContextActiveHandlerForWorker() {
+  public EventHandler<ActiveContext> getSecondContextActiveHandlerForWorker(final boolean addedEval) {
     return new EventHandler<ActiveContext>() {
       @Override
       public void onNext(final ActiveContext activeContext) {
@@ -623,6 +631,7 @@ public final class AsyncDolphinDriver {
         // notify SyncManager about the addition of worker
         synchronizationManager.onWorkerAdded();
 
+        clockManager.onWorkerAdded(addedEval, activeContext.getId());
         final int workerIndex = getWorkerIndex(activeContext.getId());
         final Configuration taskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, getWorkerTaskId(workerIndex))
@@ -794,6 +803,9 @@ public final class AsyncDolphinDriver {
 
       // notify SyncManager about the deletion of worker
       synchronizationManager.onWorkerDeleted(contextId);
+
+      // notify ClockManager about the deletion of worker
+      clockManager.onWorkerDeleted(contextId);
 
       if (!parentContext.isPresent()) {
         throw new RuntimeException("Root context of the deleted worker context does not exist");
