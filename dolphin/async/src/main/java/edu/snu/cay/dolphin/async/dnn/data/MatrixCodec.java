@@ -18,6 +18,8 @@ package edu.snu.cay.dolphin.async.dnn.data;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import org.apache.reef.io.network.impl.StreamingCodec;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
 import java.io.*;
@@ -31,8 +33,12 @@ public final class MatrixCodec implements StreamingCodec<Matrix> {
   private final MatrixFactory matrixFactory;
 
   @Inject
-  private MatrixCodec(final MatrixFactory matrixFactory) {
-    this.matrixFactory = matrixFactory;
+  private MatrixCodec(final Injector injector) {
+    try {
+      this.matrixFactory = injector.forkInjector().getInstance(MatrixFactory.class);
+    } catch (final InjectionException ie) {
+      throw new RuntimeException("InjectionException while injecting a matrix factory instance", ie);
+    }
   }
 
   @Override

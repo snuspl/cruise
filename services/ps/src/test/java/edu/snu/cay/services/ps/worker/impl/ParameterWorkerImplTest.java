@@ -21,6 +21,7 @@ import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
+import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -31,36 +32,48 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
  * Tests for {@link ParameterWorkerImpl}.
  */
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(WorkerMsgSender.class)
 public final class ParameterWorkerImplTest {
   private static final long CLOSE_TIMEOUT = 5000;
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
+  private static final long PULL_RETRY_TIMEOUT_MS = 500;
+
   private static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_THREADS_SHOULD_NOT_FINISH = "threads have finished but should not";
   private static final String MSG_RESULT_ASSERTION = "threads received incorrect values";
 
   private ParameterWorkerImpl<Integer, Integer, Integer> worker;
-  private AsyncWorkerHandler<Integer, Integer> handler;
+  private AsyncWorkerHandler<Integer, Integer, Integer> handler;
   private WorkerMsgSender<Integer, Integer> mockSender;
 
   @Before
   public void setup() throws InjectionException, NetworkException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ServerId.class, "ServerId")
+        .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
+        .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
+        .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(PULL_RETRY_TIMEOUT_MS))
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
     mockSender = mock(WorkerMsgSender.class);
@@ -68,13 +81,11 @@ public final class ParameterWorkerImplTest {
     injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
     injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
     injector.bindVolatileParameter(PSParameters.KeyCodecName.class, new IntegerCodec());
-    injector.bindVolatileParameter(WorkerQueueSize.class, WORKER_QUEUE_SIZE);
-    injector.bindVolatileParameter(ParameterWorkerNumThreads.class, WORKER_NUM_THREADS);
 
     // pull messages should return values s.t. key == value
     doAnswer(invocationOnMock -> {
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        handler.processReply(encodedKey.getKey(), encodedKey.getKey());
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
@@ -86,7 +97,7 @@ public final class ParameterWorkerImplTest {
    * Test that {@link ParameterWorkerImpl#close(long)} does indeed block further operations from being processed.
    */
   @Test
-  public void testClose() throws InterruptedException, TimeoutException, ExecutionException {
+  public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
@@ -184,7 +195,8 @@ public final class ParameterWorkerImplTest {
    * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
    */
   @Test
-  public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException, ExecutionException {
+  public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException,
+      ExecutionException, NetworkException {
     final int numPullThreads = 8;
     final int numKeys = 4;
     final int numPullPerThread = 1000;
@@ -222,6 +234,180 @@ public final class ParameterWorkerImplTest {
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
+  }
+
+  /**
+   * Test the correct handling of pull rejects by {@link ParameterWorkerImpl},
+   * creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
+   *
+   * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
+   * To guarantee that {@code sender.sendPullMsg()} should be invoked as many times as {@code worker.pull()} is called,
+   * this test use different keys for each pull.
+   */
+  @Test
+  public void testPullReject()
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+    final int numPullThreads = 8;
+    final int numPullPerThread = 1000;
+    final int numRejectPerKey = ParameterWorkerImpl.MAX_PULL_RETRY_COUNT / 2;
+
+    final Map<Integer, AtomicInteger> keyToNumPullCounter = new HashMap<>();
+    final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
+    final Runnable[] threads = new Runnable[numPullThreads];
+    final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
+
+    final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
+
+    // start a thread that process pull requests from the pullKeyToReplyQueue
+    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    executorService.execute(new Runnable() {
+      @Override
+      public void run() {
+        while (true) {
+          try {
+            // send reject msg immediately to prevent worker from retrying pull operation
+            final EncodedKey<Integer> encodedKey = pullKeyToReplyQueue.take();
+
+            if (!keyToNumPullCounter.containsKey(encodedKey.getKey())) {
+              keyToNumPullCounter.put(encodedKey.getKey(), new AtomicInteger(0));
+            }
+
+            final int numAnswerForTheKey = keyToNumPullCounter.get(encodedKey.getKey()).getAndIncrement();
+
+            if (numAnswerForTheKey < numRejectPerKey) {
+              handler.processPullReject(encodedKey.getKey());
+            } else {
+              // pull messages should return values s.t. key == value
+              handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+            }
+
+          } catch (final InterruptedException e) {
+            break; // it's an intended InterruptedException to quit the thread
+          }
+        }
+      }
+    });
+
+    // put key of pull msgs into pullKeyToReplyQueue
+    doAnswer(invocationOnMock -> {
+        final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
+
+        pullKeyToReplyQueue.put(encodedKey);
+
+        return null;
+      }).when(mockSender).sendPullMsg(anyString(), anyObject());
+
+    for (int index = 0; index < numPullThreads; ++index) {
+      final int baseKey = index * numPullPerThread;
+      threads[index] = () -> {
+        for (int pull = 0; pull < numPullPerThread; pull++) {
+          final int key = baseKey + pull;
+          final Integer val = worker.pull(key);
+          if (val == null || !val.equals(key)) {
+            correctResultReturned.set(false);
+            break;
+          }
+        }
+        countDownLatch.countDown();
+      };
+    }
+
+    ThreadUtils.runConcurrently(threads);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+    worker.close(CLOSE_TIMEOUT);
+
+    executorService.shutdownNow(); // it will interrupt all running threads
+
+    assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
+    assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
+    verify(mockSender, times(numPullPerThread * numPullThreads * (numRejectPerKey + 1)))
+        .sendPullMsg(anyString(), anyObject());
+  }
+
+  /**
+   * Tests whether worker correctly resend the pull operation, when network exception happens.
+   */
+  @Test
+  public void testPullNetworkExceptionAndResend() throws NetworkException, InterruptedException {
+    final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_RESEND_COUNT);
+    final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
+    final ExecutorService pool = Executors.newSingleThreadExecutor();
+
+    // throw exception when worker sends a pull msg
+    doAnswer(invocationOnMock -> {
+        sendLatch.countDown();
+        throw new NetworkException("exception");
+      }).when(mockSender).sendPullMsg(anyString(), any(EncodedKey.class));
+
+    final int key = 0;
+
+    pool.execute(() -> worker.pull(key));
+    pool.shutdown();
+
+    assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriodMs)
+        * ParameterWorkerImpl.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
+
+    // Check whether the expected number of pull requests have been made
+    // (1 initial attempt + MAX_RESEND_COUNT resend).
+    verify(mockSender, times(1 + ParameterWorkerImpl.MAX_RESEND_COUNT)).sendPullMsg(anyString(), any(EncodedKey.class));
+  }
+
+  /**
+   * Tests whether worker correctly resend the push operation, when network exception happens.
+   */
+  @Test
+  public void testPushNetworkExceptionAndResend() throws NetworkException, InterruptedException {
+    final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_RESEND_COUNT);
+    final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
+    final ExecutorService pool = Executors.newSingleThreadExecutor();
+
+    // throw exception when worker sends a push msg
+    doAnswer(invocationOnMock -> {
+        sendLatch.countDown();
+        throw new NetworkException("exception");
+      }).when(mockSender).sendPushMsg(anyString(), any(EncodedKey.class), anyObject());
+
+    final int key = 0;
+
+    pool.execute(() -> worker.push(key, key));
+    pool.shutdown();
+
+    assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriodMs)
+        * ParameterWorkerImpl.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
+
+    // Check whether the expected number of push requests have been made
+    // (1 initial attempt + MAX_RESEND_COUNT resend).
+    verify(mockSender, times(1 + ParameterWorkerImpl.MAX_RESEND_COUNT)).sendPushMsg(anyString(), any(EncodedKey.class),
+        anyObject());
+  }
+
+  /**
+   * Tests whether worker correctly restart the pull operation, when the server does not respond within timeout.
+   */
+  @Test
+  public void testPullTimeoutAndRetry() throws NetworkException, InterruptedException {
+    final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT);
+    final long gracePeriodMs = 100; // a time period to make sure all retry requests have been sent.
+    final ExecutorService pool = Executors.newSingleThreadExecutor();
+
+    final int key = 0;
+
+    // Do noy reply when worker sends a pull msg
+    doAnswer(invocationOnMock -> {
+        sendLatch.countDown();
+        return null;
+      }).when(mockSender).sendPullMsg(anyString(), anyObject());
+
+    pool.execute(() -> worker.pull(key));
+    pool.shutdown();
+
+    assertTrue(sendLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriodMs) * ParameterWorkerImpl.MAX_PULL_RETRY_COUNT,
+        TimeUnit.MILLISECONDS));
+
+    // Check whether the expected number of pull requests have been made
+    // (1 initial attempt + MAX_PULL_RETRY_COUNT retry).
+    verify(mockSender, times(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT)).sendPullMsg(anyString(),
+        any(EncodedKey.class));
   }
 
   /**

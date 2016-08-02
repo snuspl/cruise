@@ -89,6 +89,13 @@ public interface MatrixFactory {
    */
   Matrix zeros(int rows, int columns);
 
+
+  /**
+   * Sets the seed of the random generator using a new seed.
+   * @param seed the random seed
+   */
+  void setRandomSeed(long seed);
+
   /**
    * Creates a column vector with random values uniformly distributed in 0..1.
    * @param length the length of a column vector
@@ -136,6 +143,27 @@ public interface MatrixFactory {
    * @return a generated matrix
    */
   Matrix randn(int rows, int columns, long seed);
+
+  /**
+   * Creates a bernoulli matrix.
+   * Takes the value 1 with success probability of p, value 0 with failure probability of q = 1 − p.
+   * @param rows the number of rows
+   * @param columns the number of columns
+   * @param prob success probability
+   * @return a generated matrix
+   */
+  Matrix bernoulli(int rows, int columns, float prob);
+
+  /**
+   * Creates a bernoulli matrix.
+   * Takes the scale value with success probability of p, value 0 with failure probability of q = 1 − p.
+   * @param rows the number of rows
+   * @param columns the number of columns
+   * @param prob success probability
+   * @param scale value used when success
+   * @return a generated matrix
+   */
+  Matrix bernoulli(int rows, int columns, float prob, float scale);
 
   /**
    * Concatenates two matrices horizontally.

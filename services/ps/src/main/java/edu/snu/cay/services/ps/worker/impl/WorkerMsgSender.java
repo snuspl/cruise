@@ -35,8 +35,7 @@ import java.nio.ByteBuffer;
  * A Msg Sender for ParameterWorker.
  */
 @EvaluatorSide
-@SuppressWarnings("checkstyle:finalclass")
-public class WorkerMsgSender<K, P> {
+public final class WorkerMsgSender<K, P> {
 
   /**
    * Network Connection Service related setup required for a Parameter Server application.
@@ -113,7 +112,6 @@ public class WorkerMsgSender<K, P> {
 
     final PullMsg pullMsg = PullMsg.newBuilder()
         .setKey(ByteBuffer.wrap(key.getEncoded()))
-        .setSrcId(localEndPointId.toString())
         .build();
 
     send(destId,

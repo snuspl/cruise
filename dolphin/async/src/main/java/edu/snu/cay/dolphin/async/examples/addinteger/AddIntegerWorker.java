@@ -81,16 +81,16 @@ final class AddIntegerWorker implements Worker {
                            @Parameter(AddIntegerREEF.NumKeys.class) final int numberOfKeys,
                            @Parameter(AddIntegerREEF.NumUpdates.class) final int numberOfUpdates,
                            @Parameter(AddIntegerREEF.NumWorkers.class) final int numberOfWorkers,
-                           @Parameter(Parameters.NumWorkerThreads.class) final int numWorkerThreads,
                            @Parameter(Parameters.Iterations.class) final int numIterations) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
     this.startKey = startKey;
     this.numberOfKeys = numberOfKeys;
     this.numberOfUpdates = numberOfUpdates;
-    this.expectedResult = delta * numberOfWorkers * numWorkerThreads * numIterations * numberOfUpdates;
-    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numWorkerThreads:{2}, numIterations:{3}, numberOfUpdates:{4}",
-        new Object[]{delta, numberOfWorkers, numWorkerThreads, numIterations, numberOfUpdates});
+    // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
+    this.expectedResult = delta * numberOfWorkers * numIterations * numberOfUpdates;
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numberOfUpdates:{3}",
+        new Object[]{delta, numberOfWorkers, numIterations, numberOfUpdates});
   }
 
   @Override

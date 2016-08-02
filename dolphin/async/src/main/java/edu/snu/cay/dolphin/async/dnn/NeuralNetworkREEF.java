@@ -152,6 +152,10 @@ public final class NeuralNetworkREEF {
         .setInputShape(neuralNetConf.getInputShape().getDimList())
         .setBatchSize(neuralNetConf.getBatchSize());
 
+    if (neuralNetConf.hasRandomSeed()) {
+      neuralNetConfBuilder.setRandomSeed(neuralNetConf.getRandomSeed());
+    }
+
     // Adds the configuration of each layer.
     for (final LayerConfiguration layerConf : neuralNetConf.getLayerList()) {
       neuralNetConfBuilder.addLayerConfiguration(createLayerConfiguration(layerConf));
@@ -204,6 +208,9 @@ public final class NeuralNetworkREEF {
           .fromProtoConfiguration(layerConf).build();
     case "convolutional":
       return ConvolutionalLayerConfigurationBuilder.newConfigurationBuilder()
+          .fromProtoConfiguration(layerConf).build();
+    case "dropout" :
+      return  DropoutLayerConfigurationBuilder.newConfigurationBuilder()
           .fromProtoConfiguration(layerConf).build();
     default:
       throw new IllegalArgumentException("Illegal layer type: " + layerConf.getType());

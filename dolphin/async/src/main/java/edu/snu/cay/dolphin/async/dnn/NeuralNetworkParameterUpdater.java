@@ -15,12 +15,14 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
 import javax.inject.Inject;
@@ -55,11 +57,24 @@ public final class NeuralNetworkParameterUpdater implements ParameterUpdater<Int
       @Parameter(StepSize.class) final float stepSize,
       final ConfigurationSerializer configurationSerializer,
       @Parameter(InputShape.class) final String inputShape,
+      @Parameter(RandomSeed.class) final long randomSeed,
       final Injector injector) {
+    // assumes that a matrix factory instance has never been injected by the passed injector.
+    // If the matrix factory instance has been injected, we cannot get multiple copies of it.
+
+    // The injector is forked in order for neural network models in the same evaluator
+    // to have their own matrix factory instances,
+    // which enables the models to initialize parameters with the same sequence of random values.
+    final Injector forkedInjector = injector.forkInjector();
+    try {
+      forkedInjector.getInstance(MatrixFactory.class).setRandomSeed(randomSeed);
+    } catch (final InjectionException ie) {
+      throw new RuntimeException("Failed to inject a matrix factory instance", ie);
+    }
     final Configuration[] layerInitializerConfigurations =
         deserializeLayerConfSetToArray(configurationSerializer, serializedLayerConfigurationSet);
     this.stepSize = stepSize;
-    this.initialLayerParameters = getInitialLayerParameters(injector, layerInitializerConfigurations, inputShape);
+    this.initialLayerParameters = getInitialLayerParameters(forkedInjector, layerInitializerConfigurations, inputShape);
   }
 
   /**

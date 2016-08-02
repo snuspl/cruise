@@ -17,6 +17,9 @@ package edu.snu.cay.services.ps.server.api;
 
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+
 /**
  * A Parameter Server interface that serves requests using several partitions.
  * Receives push and pull operations from (e.g., from the network) and immediately queues them.
@@ -35,9 +38,10 @@ public interface ParameterServer<K, P, V> {
    *
    * @param key key object that {@code preValue} is associated with
    * @param preValue preValue sent from the worker
+   * @param srcId network Id of the requester
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
-  void push(final K key, final P preValue, final int keyHash);
+  void push(final K key, final P preValue, final String srcId, final int keyHash);
 
   /**
    * Reply to srcId via {@link ServerSideReplySender}
@@ -57,4 +61,10 @@ public interface ParameterServer<K, P, V> {
    * @return number of operations pending, on all queues
    */
   int opsPending();
+
+  /**
+   * Close the server, after waiting at most {@code timeoutMs} milliseconds
+   * for queued messages to be handled.
+   */
+  void close(long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException;
 }

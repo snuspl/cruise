@@ -15,15 +15,14 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
-import edu.snu.cay.common.metric.*;
-import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
-import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.*;
-import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.common.metric.MetricsMsgSender;
+import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.metric.Tracer;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -33,11 +32,14 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.metric.WorkerConstants.KEY_WORKER_COMPUTE_TIME;
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 
 /**
  * {@link Worker} class for the MLRREEF application.
@@ -88,11 +90,6 @@ final class MLRWorker implements Worker {
   private final double lambda;
 
   /**
-   * Number of iterations to wait until logging the loss value.
-   */
-  private final int statusLogPeriod;
-
-  /**
    * Object for creating {@link Vector} instances.
    */
   private final VectorFactory vectorFactory;
@@ -128,19 +125,11 @@ final class MLRWorker implements Worker {
    */
   private final int trainErrorDatasetSize;
 
-  /**
-   * Write loss info to log after {@code numBatchPerLossLog} batches.
-   */
-  private final int numBatchPerLossLog;
-
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final MetricsCollector metricsCollector;
-  private final InsertableMetricTracker insertableMetricTracker;
-  private final MetricsHandler metricsHandler;
-  private final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender;
+  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -153,18 +142,13 @@ final class MLRWorker implements Worker {
                     @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                     @Parameter(InitialStepSize.class) final double initStepSize,
                     @Parameter(Lambda.class) final double lambda,
-                    @Parameter(StatusLogPeriod.class) final int statusLogPeriod,
                     @Parameter(DecayRate.class) final double decayRate,
                     @Parameter(DecayPeriod.class) final int decayPeriod,
                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
-                    @Parameter(NumBatchPerLossLog.class) final int numBatchPerLossLog,
                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,
-                    final MetricsCollector metricsCollector,
-                    final InsertableMetricTracker insertableMetricTracker,
-                    final MetricsHandler metricsHandler,
-                    final MetricsMsgSender<WorkerMetricsMsg> metricsMsgSender,
+                    final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                     final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
     this.worker = worker;
@@ -177,7 +161,6 @@ final class MLRWorker implements Worker {
     this.numMiniBatchPerIter = numMiniBatchPerIter;
     this.stepSize = initStepSize;
     this.lambda = lambda;
-    this.statusLogPeriod = statusLogPeriod;
     this.vectorFactory = vectorFactory;
     this.oldModels = new Vector[numClasses];
     this.newModels = new Vector[numClasses];
@@ -185,10 +168,6 @@ final class MLRWorker implements Worker {
     this.decayRate = decayRate;
     this.decayPeriod = decayPeriod;
     this.trainErrorDatasetSize = trainErrorDatasetSize;
-    this.numBatchPerLossLog = numBatchPerLossLog;
-    this.metricsCollector = metricsCollector;
-    this.insertableMetricTracker = insertableMetricTracker;
-    this.metricsHandler = metricsHandler;
     this.metricsMsgSender = metricsMsgSender;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
@@ -203,15 +182,10 @@ final class MLRWorker implements Worker {
    */
   @Override
   public void initialize() {
-    final Set<MetricTracker> metricTrackerSet = new HashSet<>(1);
-    metricTrackerSet.add(insertableMetricTracker);
-    metricsCollector.registerTrackers(metricTrackerSet);
-
     // The input dataset, given as a list of pairs which are in the form, (input vector, label).
     final List<Pair<Vector, Integer>> dataValues = mlrParser.parse();
 
     final List<Long> dataKeys;
-
     try {
       dataKeys = idFactory.getIds(dataValues.size());
     } catch (final IdGenerationException e) {
@@ -232,62 +206,45 @@ final class MLRWorker implements Worker {
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerIter);
-    LOG.log(Level.INFO, "Total number of samples = {0}", dataValues.size());
+    LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
+    LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
     if (dataValues.size() < trainErrorDatasetSize) {
       LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDatasetSize);
     }
   }
 
-  private void resetTracers() {
-    pushTracer.resetTrace();
-    pullTracer.resetTrace();
-    computeTracer.resetTrace();
-  }
-
   @Override
   public void run() {
-    try {
-      metricsCollector.start();
-    } catch (final MetricException e) {
-      throw new RuntimeException(e);
-    }
-
-    resetTracers();
+    ++iteration;
     final long iterationBegin = System.currentTimeMillis();
-    pullModels();
+    resetTracers();
 
     final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
     final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
 
-    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(trainErrorDatasetSize, workload);
-    LOG.log(Level.INFO,
-        "Iteration For Loss: {0}, NumInstances: {1}, Sample Loss Avg: {2}, Reg Loss Avg: {3}, Accuracy: {4}",
-        new Object[]{iteration, trainErrorDatasetSize, lossRegLossAccuracy.getFirst(), lossRegLossAccuracy.getSecond(),
-            lossRegLossAccuracy.getThird()});
+    pullModels();
 
     int numInstances = 0;
-    int numBatch = 0;
-    int batchCount = workload.size() / numMiniBatchPerIter;
-    batchCount += workload.size() % numMiniBatchPerIter == 0 ? 0 : 1;
+    int batchIdx = 0;
+    int batchSize = workload.size() / numMiniBatchPerIter +
+        ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+
     computeTracer.startTimer();
     for (final Pair<Vector, Integer> entry : workload) {
-      if (numInstances >= batchCount) {
+      if (numInstances >= batchSize) {
         computeTracer.recordTime(numInstances);
 
         // push gradients and pull fresh models
-        refreshModel();
-        computeTracer.startTimer();
-
-        if (++numBatch % numBatchPerLossLog == 0) {
-          final Tuple3<Double, Double, Float> pair = computeLoss(trainErrorDatasetSize, workload);
-          LOG.log(Level.INFO, "Iteration For Loss: {0}, NumInstances: {1}, Sample Loss Avg: {2}, Reg Loss Avg: {3}, " +
-              "Accuracy: {4}",
-              new Object[]{iteration, trainErrorDatasetSize, pair.getFirst(), pair.getSecond(), pair.getThird()});
-        }
+        pushAndResetGradients();
+        pullModels();
 
         numInstances = 0;
-        batchCount = workload.size() / numMiniBatchPerIter;
-        batchCount += workload.size() % numMiniBatchPerIter <= numBatch ? 0 : 1;
+        ++batchIdx;
+
+        // Recalculate batchSize to take care of the (workload.size() % numMiniBatchPerIter) instances.
+        batchSize = workload.size() / numMiniBatchPerIter +
+            ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+        computeTracer.startTimer();
       }
 
       final Vector features = entry.getFirst();
@@ -312,28 +269,12 @@ final class MLRWorker implements Worker {
           newModels[j].axpy(-predictions.get(j) * stepSize, features);
         }
       }
-
       ++numInstances;
     }
 
     computeTracer.recordTime(numInstances);
-    if (numInstances > 0) {
-      // flush gradients for remaining instances to server
-      pushAndResetGradients();
-    }
 
-    ++iteration;
-    if (statusLogPeriod > 0 && iteration % statusLogPeriod == 0) {
-      final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-
-      LOG.log(Level.INFO, "Iteration: {0}, Sample Count: {1}, " +
-              "Avg Comp Per Row: {2}, Sum Comp: {3}, Avg Pull: {4}, Sum Pull: {5}, Avg Push: {6}, " +
-              "Sum Push: {7}, DvT: {8}, Elapsed Time: {9}",
-          new Object[]{iteration, workload.size(),
-              computeTracer.avgTimePerElem(), computeTracer.totalElapsedTime(), pullTracer.avgTimePerElem(),
-              pullTracer.totalElapsedTime(), pushTracer.avgTimePerElem(),
-              pushTracer.totalElapsedTime(), workload.size() / elapsedTime, elapsedTime});
-    }
+    pushAndResetGradients();
 
     if (iteration % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -342,7 +283,15 @@ final class MLRWorker implements Worker {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
-    sendMetrics(memoryStore.getNumBlocks());
+    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
+    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(trainErrorDatasetSize, workload);
+    final Metrics appMetrics = buildAppMetrics(lossRegLossAccuracy.getFirst(),
+        lossRegLossAccuracy.getSecond(), (double) lossRegLossAccuracy.getThird(), elapsedTime, numInstances);
+    final WorkerMetrics workerMetrics =
+        buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), workload.size(), elapsedTime);
+
+    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
+    sendMetrics(workerMetrics);
   }
 
   /**
@@ -350,11 +299,7 @@ final class MLRWorker implements Worker {
    */
   @Override
   public void cleanup() {
-    final float waitStart = System.currentTimeMillis();
-    resetTracers();
-
     pullModels();
-    computeTracer.startTimer();
 
     final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
     final List<Pair<Vector, Integer>> data = new ArrayList<>(workloadMap.values());
@@ -362,17 +307,10 @@ final class MLRWorker implements Worker {
 
     // Compute loss with the entire dataset.
     final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(entireDatasetSize, data);
-
-    computeTracer.recordTime(data.size());
-    final float cleanupEnd = System.currentTimeMillis();
-
-    LOG.log(Level.INFO, "Number of instances: {0}", entireDatasetSize);
-    LOG.log(Level.INFO, "Prediction accuracy on training dataset: {0}", lossRegLossAccuracy.getThird());
-    LOG.log(Level.INFO, "Cleanup Samples: {0}, Avg Comp Per Row: {1}, Sum Comp: {2}, Avg Pull: {3}, Sum Pull: {4}, " +
-            "Elapsed Time: {5}, Sample Loss Avg: {6}",
-        new Object[]{entireDatasetSize, computeTracer.avgTimePerRecord(), computeTracer.totalElapsedTime(),
-            pullTracer.avgTimePerRecord(), pullTracer.totalElapsedTime(),
-            cleanupEnd - waitStart, lossRegLossAccuracy.getFirst()});
+    final Metrics appMetrics =
+        buildAppMetrics(lossRegLossAccuracy.getFirst(), lossRegLossAccuracy.getSecond(), lossRegLossAccuracy.getThird(),
+            0.0, entireDatasetSize);
+    LOG.log(Level.INFO, "[Cleanup] AppMetrics {0}", appMetrics);
   }
 
   private void pullModels() {
@@ -392,11 +330,6 @@ final class MLRWorker implements Worker {
       newModels[classIndex] = oldModels[classIndex].copy();
     }
     computeTracer.recordTime(0);
-  }
-
-  private void refreshModel() {
-    pushAndResetGradients();
-    pullModels();
   }
 
   private void pushAndResetGradients() {
@@ -425,7 +358,9 @@ final class MLRWorker implements Worker {
     double loss = 0;
     int numInstances = 0;
     int correctPredictions = 0;
-    for (final Pair<Vector, Integer> entry : data.subList(0, datasetSize)) {
+
+    final int numDataToCompute = Math.min(datasetSize, data.size());
+    for (final Pair<Vector, Integer> entry : data.subList(0, numDataToCompute)) {
       final Vector features = entry.getFirst();
       final int label = entry.getSecond();
       final Vector predictions = predict(features);
@@ -512,22 +447,47 @@ final class MLRWorker implements Worker {
     return new Pair<>(maxIndex, maxValue);
   }
 
-  private void sendMetrics(final int numDataBlocks) {
-    try {
-      insertableMetricTracker.put(KEY_WORKER_COMPUTE_TIME, computeTracer.totalElapsedTime());
-      metricsCollector.stop();
+  private void resetTracers() {
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
+  }
 
-      final Metrics metrics = metricsHandler.getMetrics();
-      final WorkerMetricsMsg metricsMessage = WorkerMetricsMsg.newBuilder()
-          .setMetrics(metrics)
-          .setIteration(iteration)
-          .setNumDataBlocks(numDataBlocks)
-          .build();
-      LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+  private void sendMetrics(final WorkerMetrics workerMetrics) {
+    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", new Object[]{workerMetrics});
 
-      metricsMsgSender.send(metricsMessage);
-    } catch (final MetricException e) {
-      throw new RuntimeException(e);
-    }
+    metricsMsgSender.send(workerMetrics);
+  }
+
+  private WorkerMetrics buildMetricsMsg(final Metrics appMetrics, final int numDataBlocks,
+                                        final int numProcessedDataItemCount, final double elapsedTime) {
+    final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+        .setMetrics(appMetrics)
+        .setItrIdx(iteration)
+        .setNumMiniBatchPerItr(numMiniBatchPerIter)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .build();
+
+    return workerMetrics;
+  }
+
+  private Metrics buildAppMetrics(final double sampleLoss, final double regLoss, final double accuracy,
+                                  final double elapsedTime, final int numInstances) {
+    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+    appMetricMap.put(MetricKeys.SAMPLE_LOSS_AVG, sampleLoss);
+    appMetricMap.put(MetricKeys.REG_LOSS_AVG, regLoss);
+    appMetricMap.put(MetricKeys.ACCURACY, accuracy);
+    appMetricMap.put(MetricKeys.DVT, numInstances / elapsedTime);
+
+    return Metrics.newBuilder()
+        .setData(appMetricMap)
+        .build();
   }
 }

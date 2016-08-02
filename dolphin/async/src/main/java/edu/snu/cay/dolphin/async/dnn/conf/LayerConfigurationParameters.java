@@ -34,10 +34,6 @@ public final class LayerConfigurationParameters {
   public static final class InitialWeight implements Name<Float> {
   }
 
-  @NamedParameter(doc = "random seed that is used to generate initial weight")
-  public static final class RandomSeed implements Name<Long> {
-  }
-
   @NamedParameter(doc = "index of the layer")
   public static final class LayerIndex implements Name<Integer> {
   }
@@ -62,6 +58,13 @@ public final class LayerConfigurationParameters {
 
   @NamedParameter(doc = "loss function of loss layer")
   public static final class LossFunction implements Name<String> {
+  }
+
+  /**
+   * For dropout layers.
+   */
+  @NamedParameter(doc = "probability of dropping neurons at dropout layer")
+  public static final class DropoutRatio implements Name<Float> {
   }
 
   /**

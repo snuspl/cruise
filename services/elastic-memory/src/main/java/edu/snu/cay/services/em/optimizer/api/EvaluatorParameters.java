@@ -15,12 +15,10 @@
  */
 package edu.snu.cay.services.em.optimizer.api;
 
-import java.util.Map;
-
 /**
  * The current state of an evaluator, represented as a set of input parameters for an optimizer.
  */
-public interface EvaluatorParameters {
+public interface EvaluatorParameters<MetricType> {
   /**
    * @return the evaluator's context ID
    */
@@ -32,7 +30,7 @@ public interface EvaluatorParameters {
   DataInfo getDataInfo();
 
   /**
-   * @return metrics about previous execution on the evaluator
+   * @return Metrics representing the evaluator's iteration execution metrics
    */
-  Map<String, Double> getMetrics();
+  MetricType getMetrics();
 }

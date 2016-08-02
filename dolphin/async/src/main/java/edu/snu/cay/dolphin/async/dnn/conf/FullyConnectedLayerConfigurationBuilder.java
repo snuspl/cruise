@@ -38,17 +38,11 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
   }
 
   private int numOutput;
-  private long randomSeed = System.currentTimeMillis();
   private float initWeight;
   private float initBias;
 
   public synchronized FullyConnectedLayerConfigurationBuilder setNumOutput(final int numOutput) {
     this.numOutput = numOutput;
-    return this;
-  }
-
-  public synchronized FullyConnectedLayerConfigurationBuilder setRandomSeed(final long randomSeed) {
-    this.randomSeed = randomSeed;
     return this;
   }
 
@@ -65,9 +59,6 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
   public synchronized FullyConnectedLayerConfigurationBuilder fromProtoConfiguration(
       final NeuralNetworkProtos.LayerConfiguration protoConf) {
     numOutput = protoConf.getFullyConnectedParam().getNumOutput();
-    if (protoConf.getFullyConnectedParam().hasRandomSeed()) {
-      randomSeed = protoConf.getFullyConnectedParam().getRandomSeed();
-    }
     initWeight = protoConf.getFullyConnectedParam().getInitWeight();
     initBias = protoConf.getFullyConnectedParam().getInitBias();
     return this;
@@ -77,7 +68,6 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
   public synchronized Configuration build() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
-        .bindNamedParameter(LayerConfigurationParameters.RandomSeed.class, String.valueOf(randomSeed))
         .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
         .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
         .bindImplementation(LayerBase.class, FullyConnectedLayer.class)

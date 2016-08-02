@@ -17,12 +17,10 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
-import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
@@ -50,10 +48,10 @@ final class WorkerSynchronizer {
 
   @Inject
   private WorkerSynchronizer(final AggregationSlave aggregationSlave,
-                             final SerializableCodec<String> codec,
-                             @Parameter(NumWorkerThreads.class) final int numWorkerThreads) {
+                             final SerializableCodec<String> codec) {
     this.localStateMachine = SynchronizationManager.initStateMachine();
-    this.cyclicBarrier = new CyclicBarrier(numWorkerThreads, new Runnable() {
+    // TODO #681: Need to add numWorkerThreads concept after multi-thread worker is enabled
+    this.cyclicBarrier = new CyclicBarrier(1, new Runnable() {
       @Override
       public void run() {
         LOG.log(Level.INFO, "Sending a synchronization message to the driver");

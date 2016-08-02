@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer.parameters;
+package edu.snu.cay.services.ps.worker.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Delay for added MemoryStore to be initialized (e.g., routing table)",
-                short_name = "memory_store_init_delay_ms",
-                default_value = "1000")
-public class MemoryStoreInitDelayMs implements Name<Long> {
+@NamedParameter(doc = "The staleness limits the maximum staleness of computational workers, " +
+    "a number greater than or equal to 0 is valid value of SSP, " +
+    "and a negative value means total asynchronous model support rather than SSP model",
+    default_value = "-1", short_name = "staleness")
+public final class Staleness implements Name<Integer> {
+
 }

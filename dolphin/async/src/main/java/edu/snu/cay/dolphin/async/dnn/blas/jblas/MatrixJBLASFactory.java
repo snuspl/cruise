@@ -28,10 +28,11 @@ import javax.inject.Inject;
  */
 public final class MatrixJBLASFactory implements MatrixFactory {
 
-  private static final SynchronizedRandomGenerator RANDOM = new SynchronizedRandomGenerator(new MersenneTwister());
+  private final SynchronizedRandomGenerator randomGenerator;
 
   @Inject
   private MatrixJBLASFactory() {
+    this.randomGenerator = new SynchronizedRandomGenerator(new MersenneTwister());
   }
 
   @Override
@@ -80,8 +81,13 @@ public final class MatrixJBLASFactory implements MatrixFactory {
   }
 
   @Override
+  public void setRandomSeed(final long seed) {
+    randomGenerator.setSeed(seed);
+  }
+
+  @Override
   public Matrix rand(final int length) {
-    return rand(length);
+    return rand(length, 1);
   }
 
   @Override
@@ -90,7 +96,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
     final float[] data = new float[length];
 
     for (int i = 0; i < length; ++i) {
-      data[i] = RANDOM.nextFloat();
+      data[i] = randomGenerator.nextFloat();
     }
 
     return create(data, rows, columns);
@@ -98,7 +104,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
 
   @Override
   public Matrix rand(final int rows, final int columns, final long seed) {
-    RANDOM.setSeed(seed);
+    randomGenerator.setSeed(seed);
     return rand(rows, columns);
   }
 
@@ -113,7 +119,7 @@ public final class MatrixJBLASFactory implements MatrixFactory {
     final float[] data = new float[length];
 
     for (int i = 0; i < length; ++i) {
-      data[i] = (float) RANDOM.nextGaussian();
+      data[i] = (float) randomGenerator.nextGaussian();
     }
 
     return create(data, rows, columns);
@@ -121,8 +127,28 @@ public final class MatrixJBLASFactory implements MatrixFactory {
 
   @Override
   public Matrix randn(final int rows, final int columns, final long seed) {
-    RANDOM.setSeed(seed);
+    randomGenerator.setSeed(seed);
     return randn(rows, columns);
+  }
+
+  @Override
+  public Matrix bernoulli(final int rows, final int columns, final float prob) {
+    return bernoulli(rows, columns, prob, 1);
+  }
+
+  @Override
+  public Matrix bernoulli(final int rows, final int columns, final float prob, final float scale) {
+    final int length = rows * columns;
+    final float[] data = new float[length];
+
+    for (int i = 0; i < length; ++i) {
+      if (randomGenerator.nextFloat() <= prob) {
+        data[i] = scale;
+      } else {
+        data[i] = 0;
+      }
+    }
+    return create(data, rows, columns);
   }
 
   @Override

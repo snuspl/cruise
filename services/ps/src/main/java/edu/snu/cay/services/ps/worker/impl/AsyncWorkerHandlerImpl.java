@@ -19,16 +19,26 @@ import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
 
 import javax.inject.Inject;
 
-public final class AsyncWorkerHandlerImpl<K, V> implements AsyncWorkerHandler<K, V> {
-  private final ParameterWorkerImpl<K, ?, V> parameterWorker;
+public final class AsyncWorkerHandlerImpl<K, P, V> implements AsyncWorkerHandler<K, P, V> {
+  private final ParameterWorkerImpl<K, P, V> parameterWorker;
 
   @Inject
-  private AsyncWorkerHandlerImpl(final ParameterWorkerImpl<K, ?, V> parameterWorker) {
+  private AsyncWorkerHandlerImpl(final ParameterWorkerImpl<K, P, V> parameterWorker) {
     this.parameterWorker = parameterWorker;
   }
 
   @Override
-  public void processReply(final K key, final V value) {
-    parameterWorker.processReply(key, value);
+  public void processPullReply(final K key, final V value) {
+    parameterWorker.processPullReply(key, value);
+  }
+
+  @Override
+  public void processPullReject(final K key) {
+    parameterWorker.processPullReject(key);
+  }
+
+  @Override
+  public void processPushReject(final K key, final P preValue) {
+    parameterWorker.push(key, preValue);
   }
 }
