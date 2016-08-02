@@ -113,6 +113,7 @@ public final class SSPWorkerClock implements WorkerClock {
         break;
       case BroadcastMinClockMsg:
         globalMinimumClock = avroClockMsg.getBroadcastMinClockMsg().getGlobalMinClock();
+        break;
       default:
         throw new RuntimeException("Unexpected message type: " + avroClockMsg.getType().toString());
       }
