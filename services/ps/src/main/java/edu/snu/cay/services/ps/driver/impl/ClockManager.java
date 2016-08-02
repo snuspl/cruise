@@ -121,7 +121,8 @@ public final class ClockManager {
     // check whether all of initial workers which are not added by EM
     // are added before {@link ClockManager#globalMinimumClock} is changed
     if (!addedEval && globalMinimumClock != INITIAL_GLOBAL_MINIMUM_CLOCK) {
-      throw new RuntimeException("initial workers are added after global minimum clock change");
+      throw new RuntimeException(
+          String.format("Initial worker %s is added after global minimum clock changes", workerId));
     }
     workerClockMap.put(workerId, globalMinimumClock);
     minimumClockWorkers.add(workerId);
@@ -184,7 +185,7 @@ public final class ClockManager {
     Integer workerClock = workerClockMap.get(workerId);
     // clock should be initialized and stored in the {@link ClockManager#workerClockMap} before tick
     if (workerClock == null) {
-      throw new RuntimeException("uninitialized worker is ticked");
+      throw new RuntimeException(String.format("Uninitialized worker %s sent tick message", workerId));
     }
     // tick the worker clock
     workerClock++;
@@ -206,7 +207,7 @@ public final class ClockManager {
   private void broadcastGlobalMinimumClock() {
     // {@link ClockManager#minimumClockWorkers} must be empty now and filled by this call
     if (!minimumClockWorkers.isEmpty()) {
-      throw new RuntimeException("minimum worker clock list should be empty and updated now");
+      throw new RuntimeException("Minimum worker clock list should be empty and updated now");
     }
 
     for (final Map.Entry<String, Integer> elem : workerClockMap.entrySet()) {
@@ -215,8 +216,8 @@ public final class ClockManager {
       int retryCount = 0;
       while (true) {
         if (retryCount++ > MAXIMUM_RETRY_COUNTS) {
-          throw new RuntimeException("Sending initialization message to worker" +
-              workerId + "is failed" + MAXIMUM_RETRY_COUNTS + "times");
+          throw new RuntimeException(String.format("Sending global minimum clock message to %s has failed %d times",
+              workerId, MAXIMUM_RETRY_COUNTS + 1));
         }
 
         try {
@@ -224,7 +225,8 @@ public final class ClockManager {
           aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
           break;
         } catch (final NetworkException e) {
-          LOG.log(Level.INFO, "ClockManager failed to send global minimum clock message to worker", e);
+          LOG.log(Level.INFO,
+              String.format("ClockManager failed to send global minimum clock message to %s", workerId), e);
         }
       }
 
@@ -248,15 +250,15 @@ public final class ClockManager {
         int retryCount = 0;
         while (true) {
           if (retryCount++ > MAXIMUM_RETRY_COUNTS) {
-            throw new RuntimeException("Sending initialization message to worker" +
-                workerId + "is failed" + MAXIMUM_RETRY_COUNTS + "times");
+            throw new RuntimeException(String.format("Sending initialization message to %s has failed %d times",
+                workerId, MAXIMUM_RETRY_COUNTS + 1));
           }
 
           try {
             aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
             break;
           } catch (final NetworkException e) {
-            LOG.log(Level.INFO, "ClockManager failed to send initialization message to worker", e);
+            LOG.log(Level.INFO, String.format("ClockManager failed to send initialization message to %s", workerId), e);
           }
         }
         break;
