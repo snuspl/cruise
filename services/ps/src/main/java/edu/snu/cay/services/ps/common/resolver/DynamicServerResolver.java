@@ -59,7 +59,7 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   private volatile boolean initialized = false;
 
-  private CountDownLatch initLatch = new CountDownLatch(1);
+  private final CountDownLatch initLatch = new CountDownLatch(1);
 
   private final InjectionFuture<WorkerMsgSender> msgSender;
 

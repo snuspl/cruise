@@ -59,7 +59,7 @@ public final class OperationRouter<K> {
    */
   private volatile boolean initialized = false;
 
-  private CountDownLatch initLatch = new CountDownLatch(1);
+  private final CountDownLatch initLatch = new CountDownLatch(1);
 
   /**
    * A boolean representing whether the evaluator is added by EM.add().
@@ -136,6 +136,7 @@ public final class OperationRouter<K> {
       blockLocations.set(blockId, storeId);
     }
   }
+
 
   /**
    * Initializes the router to resolve remote evaluators by providing a prefix of evaluator.
