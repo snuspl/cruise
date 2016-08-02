@@ -15,8 +15,11 @@
  */
 package edu.snu.cay.dolphin.async.examples.addinteger;
 
+import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -74,6 +77,11 @@ final class AddIntegerWorker implements Worker {
    */
   private final int expectedResult;
 
+  private final MemoryStore<Long> memoryStore;
+
+  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+
   @Inject
   private AddIntegerWorker(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
                            @Parameter(AddIntegerREEF.DeltaValue.class) final int delta,
@@ -81,7 +89,9 @@ final class AddIntegerWorker implements Worker {
                            @Parameter(AddIntegerREEF.NumKeys.class) final int numberOfKeys,
                            @Parameter(AddIntegerREEF.NumUpdates.class) final int numberOfUpdates,
                            @Parameter(AddIntegerREEF.NumWorkers.class) final int numberOfWorkers,
-                           @Parameter(Parameters.Iterations.class) final int numIterations) {
+                           @Parameter(Parameters.Iterations.class) final int numIterations,
+                           final MemoryStore<Long> memoryStore,
+                           final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
     this.startKey = startKey;
@@ -91,6 +101,9 @@ final class AddIntegerWorker implements Worker {
     this.expectedResult = delta * numberOfWorkers * numIterations * numberOfUpdates;
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numberOfUpdates:{3}",
         new Object[]{delta, numberOfWorkers, numIterations, numberOfUpdates});
+
+    this.memoryStore = memoryStore;
+    this.metricsMsgSender = metricsMsgSender;
   }
 
   @Override
@@ -105,6 +118,7 @@ final class AddIntegerWorker implements Worker {
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     }
+
     for (int i = 0; i < numberOfUpdates; i++) {
       for (int j = 0; j < numberOfKeys; j++) {
         parameterWorker.push(startKey + j, delta);
@@ -112,6 +126,24 @@ final class AddIntegerWorker implements Worker {
         LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{startKey + j, value});
       }
     }
+
+    // send empty metrics to trigger optimization
+    final WorkerMetrics workerMetrics =
+        buildMetricsMsg(memoryStore.getNumBlocks());
+
+    sendMetrics(workerMetrics);
+  }
+
+  private void sendMetrics(final WorkerMetrics workerMetrics) {
+    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", workerMetrics);
+
+    metricsMsgSender.send(workerMetrics);
+  }
+
+  private WorkerMetrics buildMetricsMsg(final int numDataBlocks) {
+    return WorkerMetrics.newBuilder()
+        .setNumDataBlocks(numDataBlocks)
+        .build();
   }
 
   @Override
@@ -130,27 +162,26 @@ final class AddIntegerWorker implements Worker {
       }
     }
 
-    LOG.log(Level.WARNING, "Validation test is failed");
-    throw new RuntimeException();
+    LOG.log(Level.WARNING, "Validation failed");
   }
 
   /**
-   * check the result(total sum) of each key is same with expected result.
+   * Checks the result(total sum) of each key is same with expected result.
    *
    * @return true if all of the values of keys are matched with expected result, otherwise false.
    */
   private boolean validate() {
+    LOG.log(Level.INFO, "Start validation");
+    boolean isSuccess = true;
     for (int i = 0; i < numberOfKeys; i++) {
       final int result = parameterWorker.pull(startKey + i);
 
       if (expectedResult != result) {
         LOG.log(Level.WARNING, "For key {0}, expected value {1} but received {2}",
             new Object[]{startKey + i, expectedResult, result});
-        return false;
-      } else {
-        LOG.log(Level.INFO, "For key {0}, received expected value {1}.", new Object[]{startKey + i, expectedResult});
+        isSuccess = false;
       }
     }
-    return true;
+    return isSuccess;
   }
 }
