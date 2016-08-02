@@ -233,12 +233,11 @@
      "type":
        {"type": "enum",
         "name": "ClockMsgType",
-        "symbols": ["BroadcastMinClockMsg", "RequestInitClock", "ReplyInitClock", "Tick"]}},
+        "symbols": ["BroadcastMinClockMsg", "RequestInitClockMsg", "ReplyInitClockMsg", "TickMsg"]}},
     {"name": "broadcastMinClockMsg", "type": ["null", "BroadcastMinClockMsg"], "default": null},
     {"name": "requestInitClockMsg", "type": ["null", "RequestInitClockMsg"], "default": null},
     {"name": "replyInitClockMsg", "type": ["null", "ReplyInitClockMsg"], "default": null},
     {"name": "tickMsg", "type": ["null", "TickMsg"], "default": null}
   ]
 }
-
 ]

@@ -24,7 +24,6 @@ import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.Staleness;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -38,6 +37,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyObject;
@@ -51,7 +51,9 @@ import static org.mockito.Mockito.mock;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({AggregationSlave.class, AggregationMaster.class})
 public class SSPWorkerClockTest {
-  private static final int STALENESS = 4;
+  private final int staleness = 4;
+  private final int initialWorkerClock = 10;
+  private final int initialGlobalMinimumClock = 10;
 
   private Injector injector;
   private AggregationSlave mockAggregationSlave;
@@ -63,7 +65,7 @@ public class SSPWorkerClockTest {
   @Before
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(Staleness.class, Integer.toString(STALENESS))
+        .bindNamedParameter(Staleness.class, Integer.toString(staleness))
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
     injector = Tang.Factory.getTang().newInjector(conf);
@@ -83,23 +85,21 @@ public class SSPWorkerClockTest {
    */
   @Test
   public void testInitializeAndClock() {
-    final int initialWorkerClock = 10;
-    final int initialGlobalMinimumClock = 30;
-    final int numberOFClockCalls = 3;
-    final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(numberOFClockCalls);
+    final int numberOfClockCalls = 3;
+    final AtomicInteger numberOfTickMsgCalls = new AtomicInteger(0);
 
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
         final AvroClockMsg sendMsg = codec.decode(data);
 
-        if (sendMsg.getType() == ClockMsgType.RequestInitClock) {
+        if (sendMsg.getType() == ClockMsgType.RequestInitClockMsg) {
           final AvroClockMsg initClockMsg =
               ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
           final byte[] replyData = codec.encode(initClockMsg);
           final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
           sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        } else if (sendMsg.getType() == ClockMsgType.Tick) {
-          countDownLatch.countDown();
+        } else if (sendMsg.getType() == ClockMsgType.TickMsg) {
+          numberOfTickMsgCalls.incrementAndGet();
         }
         return null;
       }).when(mockAggregationSlave).send(anyString(), anyObject());
@@ -109,12 +109,13 @@ public class SSPWorkerClockTest {
     assertEquals(initialGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
 
     // call clock()
-    for (int i = 0; i < numberOFClockCalls; i++) {
+    for (int i = 0; i < numberOfClockCalls; i++) {
       assertEquals(initialWorkerClock + i, sspWorkerClock.getWorkerClock());
       sspWorkerClock.clock();
     }
-    countDownLatch.await();
-    assertEquals(initialWorkerClock + numberOFClockCalls, sspWorkerClock.getWorkerClock());
+
+    assertEquals(numberOfClockCalls, numberOfTickMsgCalls.intValue());
+    assertEquals(initialWorkerClock + numberOfClockCalls, sspWorkerClock.getWorkerClock());
     assertEquals(initialGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
   }
 
@@ -123,15 +124,13 @@ public class SSPWorkerClockTest {
    */
   @Test
   public void testUpdateGlobalMinimumClock() throws NetworkException {
-    final int initialWorkerClock = 10;
-    final int initialGlobalMinimumClock = 30;
     final int updatedGlobalMinimumClock = 100;
 
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
         final AvroClockMsg sendMsg = codec.decode(data);
 
-        if (sendMsg.getType() == ClockMsgType.RequestInitClock) {
+        if (sendMsg.getType() == ClockMsgType.RequestInitClockMsg) {
           final AvroClockMsg initClockMsg =
               ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
           final byte[] replyData = codec.encode(initClockMsg);
@@ -154,7 +153,7 @@ public class SSPWorkerClockTest {
 
     // broadcast updated global minimum clock
     final byte[] data =
-        codec.encode(ClockManager.getBroadcastGlobalMinimumClockMessage(updatedGlobalMinimumClock));
+        codec.encode(ClockManager.getBroadcastMinClockMessage(updatedGlobalMinimumClock));
     mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", data);
 
     assertEquals(updatedGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());

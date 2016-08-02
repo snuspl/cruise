@@ -48,16 +48,26 @@ import java.util.logging.Logger;
 public final class ClockManager {
   public static final String AGGREGATION_CLIENT_NAME = ClockManager.class.getName();
   private static final Logger LOG = Logger.getLogger(ClockManager.class.getName());
-  private static final int INITIAL_GLOBAL_MINIMIM_CLOCK = 0;
+  private static final int INITIAL_GLOBAL_MINIMUM_CLOCK = 0;
+  private static final int MAXIMUM_RETRY_COUNTS = 5;
 
   private final int staleness;
   private final AggregationMaster aggregationMaster;
   private final ClockMsgCodec codec;
+
+  /**
+   * Clock table which contains current worker clocks.
+   */
   private final Map<String, Integer> workerClockMap;
+
   /**
    * List of workers whose clocks are {@link ClockManager#globalMinimumClock}.
    */
   private final List<String> minimumClockWorkers;
+
+  /**
+   * The minimum clock among all workers.
+   */
   private int globalMinimumClock;
 
   @Inject
@@ -67,15 +77,15 @@ public final class ClockManager {
     this.aggregationMaster = aggregationMaster;
     this.codec = codec;
     this.staleness = staleness;
-    this.globalMinimumClock = INITIAL_GLOBAL_MINIMIM_CLOCK;
-    workerClockMap = new HashMap<String, Integer>();
-    minimumClockWorkers = new ArrayList<String>();
+    this.globalMinimumClock = INITIAL_GLOBAL_MINIMUM_CLOCK;
+    workerClockMap = new HashMap<>();
+    minimumClockWorkers = new ArrayList<>();
   }
 
   /**
    * Helper function to create broadcast global minimum clock message.
    */
-  public static AvroClockMsg getBroadcastGlobalMinimumClockMessage(final int globalMinimumClock) {
+  public static AvroClockMsg getBroadcastMinClockMessage(final int globalMinimumClock) {
     final BroadcastMinClockMsg broadcastMinClockMsg =
         BroadcastMinClockMsg.newBuilder().setGlobalMinClock(globalMinimumClock).build();
     return AvroClockMsg.newBuilder()
@@ -93,7 +103,7 @@ public final class ClockManager {
             .setInitClock(workerClock)
             .build();
     return AvroClockMsg.newBuilder()
-        .setType(ClockMsgType.ReplyInitClock)
+        .setType(ClockMsgType.ReplyInitClockMsg)
         .setReplyInitClockMsg(replyInitClockMsg).build();
   }
 
@@ -101,7 +111,6 @@ public final class ClockManager {
    * Set initial clock of new worker which is not added by EM.
    * Worker added by EM should have globalMinimumClock + (staleness/2) as its worker clock
    * and it is set when the worker requests initialization(not creation time).
-   *
    * @param addedEval true means worker is added by EM, otherwise false
    * @param workerId  the id of new worker
    */
@@ -111,7 +120,7 @@ public final class ClockManager {
     }
     // check whether all of initial workers which are not added by EM
     // are added before {@link ClockManager#globalMinimumClock} is changed
-    if (!addedEval && globalMinimumClock != INITIAL_GLOBAL_MINIMIM_CLOCK) {
+    if (!addedEval && globalMinimumClock != INITIAL_GLOBAL_MINIMUM_CLOCK) {
       throw new RuntimeException("initial workers are added after global minimum clock change");
     }
     workerClockMap.put(workerId, globalMinimumClock);
@@ -128,7 +137,7 @@ public final class ClockManager {
     if (minimumClockWorkers.remove(workerId)) {
       if (minimumClockWorkers.size() == 0) {
         globalMinimumClock = workerClockMap.isEmpty() ?
-            INITIAL_GLOBAL_MINIMIM_CLOCK : Collections.min(workerClockMap.values());
+            INITIAL_GLOBAL_MINIMUM_CLOCK : Collections.min(workerClockMap.values());
         broadcastGlobalMinimumClock();
       }
     }
@@ -150,7 +159,6 @@ public final class ClockManager {
 
   /**
    * Initialize worker clock and put into {@link ClockManager#workerClockMap}.
-   *
    * @param workerId the worker id to initialize
    * @return the initial worker clock in {@link ClockManager#workerClockMap}
    */
@@ -170,7 +178,6 @@ public final class ClockManager {
    * Tick the clock of workerId and update {@link ClockManager#globalMinimumClock} if it is necessary.
    * When the worker according to the wokrerId is the last one of {@link ClockManager#minimumClockWorkers},
    * it's time to update {@link ClockManager#globalMinimumClock}.
-   *
    * @param workerId the worker id to tick clock
    */
   private synchronized void tickClock(final String workerId) {
@@ -206,11 +213,19 @@ public final class ClockManager {
 
     for (final Map.Entry<String, Integer> elem : workerClockMap.entrySet()) {
       final String workerId = elem.getKey();
-      try {
-        final byte[] data = codec.encode(getBroadcastGlobalMinimumClockMessage(globalMinimumClock));
-        aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
-      } catch (final NetworkException e) {
-        LOG.log(Level.INFO, "Target worker failed to receive global minimum clock message", e);
+
+      int tryCount = 0;
+      while (tryCount++ < MAXIMUM_RETRY_COUNTS) {
+        try {
+          final byte[] data = codec.encode(getBroadcastMinClockMessage(globalMinimumClock));
+          aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
+          break;
+        } catch (final NetworkException e) {
+          LOG.log(Level.INFO, "Target worker failed to receive global minimum clock message", e);
+          if (tryCount == MAXIMUM_RETRY_COUNTS) {
+            throw new RuntimeException(e);
+          }
+        }
       }
 
       if (elem.getValue() == globalMinimumClock) {
@@ -226,19 +241,28 @@ public final class ClockManager {
       final AvroClockMsg rcvMsg = codec.decode(aggregationMessage.getData().array());
       final String workerId = aggregationMessage.getSourceId().toString();
       switch (rcvMsg.getType()) {
-      case RequestInitClock:
+      case RequestInitClockMsg:
         final int workerClock = initializeWorkerClock(workerId);
         final byte[] data = codec.encode(getReplyInitialClockMessage(globalMinimumClock, workerClock));
-        try {
-          aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
-        } catch (final NetworkException e) {
-          LOG.log(Level.INFO, "Target worker failed to receive the initial worker clock message.", e);
+
+        int tryCount = 0;
+        while (tryCount++ < MAXIMUM_RETRY_COUNTS) {
+          try {
+            aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
+            break;
+          } catch (final NetworkException e) {
+            LOG.log(Level.INFO, "Target worker failed to receive the initial worker clock message.", e);
+            if (tryCount == MAXIMUM_RETRY_COUNTS) {
+              throw new RuntimeException(e);
+            }
+          }
         }
         break;
-      case Tick:
+      case TickMsg:
         tickClock(workerId);
         break;
       default:
+        throw new RuntimeException("Unexpected message type: " + rcvMsg.getType().toString());
       }
     }
   }

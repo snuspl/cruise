@@ -64,7 +64,7 @@ public final class SSPWorkerClock implements WorkerClock {
   public void initialize() {
     final AvroClockMsg avroClockMsg =
         AvroClockMsg.newBuilder()
-        .setType(ClockMsgType.RequestInitClock)
+        .setType(ClockMsgType.RequestInitClockMsg)
         .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
         .build();
     final byte[] data = codec.encode(avroClockMsg);
@@ -83,7 +83,7 @@ public final class SSPWorkerClock implements WorkerClock {
     workerClock++;
     final AvroClockMsg avroClockMsg =
         AvroClockMsg.newBuilder()
-            .setType(ClockMsgType.Tick)
+            .setType(ClockMsgType.TickMsg)
             .setTickMsg(TickMsg.newBuilder().build())
             .build();
     final byte[] data = codec.encode(avroClockMsg);
@@ -106,7 +106,7 @@ public final class SSPWorkerClock implements WorkerClock {
     public void onNext(final AggregationMessage aggregationMessage) {
       final AvroClockMsg avroClockMsg = codec.decode(aggregationMessage.getData().array());
       switch (avroClockMsg.getType()) {
-      case ReplyInitClock:
+      case ReplyInitClockMsg:
         globalMinimumClock = avroClockMsg.getReplyInitClockMsg().getGlobalMinClock();
         workerClock = avroClockMsg.getReplyInitClockMsg().getInitClock();
         latch.countDown();
