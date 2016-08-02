@@ -43,7 +43,7 @@ public final class SSPWorkerClock implements WorkerClock {
 
   private int workerClock;
 
-  // The minimum clock of among all worker clocks.
+  // the minimum clock of among all worker clocks.
   private int globalMinimumClock;
 
   private final AggregationSlave aggregationSlave;
@@ -114,6 +114,7 @@ public final class SSPWorkerClock implements WorkerClock {
       case BroadcastMinClockMsg:
         globalMinimumClock = avroClockMsg.getBroadcastMinClockMsg().getGlobalMinClock();
       default:
+        throw new RuntimeException("Unexpected message type: " + avroClockMsg.getType().toString());
       }
     }
   }

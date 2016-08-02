@@ -55,7 +55,6 @@ public class SSPWorkerClockTest {
   private final int initialWorkerClock = 10;
   private final int initialGlobalMinimumClock = 10;
 
-  private Injector injector;
   private AggregationSlave mockAggregationSlave;
   private AggregationMaster mockAggregationMaster;
   private ClockMsgCodec codec;
@@ -68,7 +67,7 @@ public class SSPWorkerClockTest {
         .bindNamedParameter(Staleness.class, Integer.toString(staleness))
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
-    injector = Tang.Factory.getTang().newInjector(conf);
+    final Injector injector = Tang.Factory.getTang().newInjector(conf);
     mockAggregationSlave = mock(AggregationSlave.class);
     injector.bindVolatileInstance(AggregationSlave.class, mockAggregationSlave);
     mockAggregationMaster = mock(AggregationMaster.class);
@@ -80,8 +79,8 @@ public class SSPWorkerClockTest {
   }
 
   /**
-   * Test whether initialize() sets worker clock and global minimum clock according to the reply message.
-   * Test whether clock() ticks its worker clock and sends TICK message.
+   * Tests whether initialize() sets worker clock and global minimum clock according to the reply message.
+   * Tests whether clock() ticks its worker clock and sends TICK message.
    */
   @Test
   public void testInitializeAndClock() {
@@ -120,7 +119,7 @@ public class SSPWorkerClockTest {
   }
 
   /**
-   * Test whether SSPWorkerClock handles BROADCAST_GLOBAL_MINIMUM_CLOCK and updates the global minimum clock.
+   * Tests whether SSPWorkerClock handles BROADCAST_GLOBAL_MINIMUM_CLOCK and updates the global minimum clock.
    */
   @Test
   public void testUpdateGlobalMinimumClock() throws NetworkException {

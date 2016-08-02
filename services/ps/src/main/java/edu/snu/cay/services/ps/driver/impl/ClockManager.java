@@ -108,7 +108,7 @@ public final class ClockManager {
   }
 
   /**
-   * Set initial clock of new worker which is not added by EM.
+   * Sets initial clock of new worker which is not added by EM.
    * Worker added by EM should have globalMinimumClock + (staleness/2) as its worker clock
    * and it is set when the worker requests initialization(not creation time).
    * @param addedEval true means worker is added by EM, otherwise false
@@ -128,7 +128,7 @@ public final class ClockManager {
   }
 
   /**
-   * Remove the entry according to the workerId from {@link ClockManager#workerClockMap}.
+   * Removes the entry according to the workerId from {@link ClockManager#workerClockMap}.
    * Update global minimum clock if the worker is the last one of {@link ClockManager#minimumClockWorkers}.
    * @param workerId the worker id to be deleted
    */
@@ -158,7 +158,7 @@ public final class ClockManager {
   }
 
   /**
-   * Initialize worker clock and put into {@link ClockManager#workerClockMap}.
+   * Initializes worker clock and put into {@link ClockManager#workerClockMap}.
    * @param workerId the worker id to initialize
    * @return the initial worker clock in {@link ClockManager#workerClockMap}
    */
@@ -175,7 +175,7 @@ public final class ClockManager {
   }
 
   /**
-   * Tick the clock of workerId and update {@link ClockManager#globalMinimumClock} if it is necessary.
+   * Ticks the clock of workerId and update {@link ClockManager#globalMinimumClock} if it is necessary.
    * When the worker according to the wokrerId is the last one of {@link ClockManager#minimumClockWorkers},
    * it's time to update {@link ClockManager#globalMinimumClock}.
    * @param workerId the worker id to tick clock
@@ -199,7 +199,7 @@ public final class ClockManager {
   }
 
   /**
-   * Broadcast updated global minimum clock to all workers.
+   * Broadcasts updated global minimum clock to all workers.
    * All of the workers whose clocks are same with {@link ClockManager#globalMinimumClock}
    * are added to {@link ClockManager#minimumClockWorkers}.
    */
@@ -212,17 +212,19 @@ public final class ClockManager {
     for (final Map.Entry<String, Integer> elem : workerClockMap.entrySet()) {
       final String workerId = elem.getKey();
 
-      int tryCount = 0;
-      while (tryCount++ < MAXIMUM_RETRY_COUNTS) {
+      int retryCount = 0;
+      while (true) {
+        if (retryCount++ > MAXIMUM_RETRY_COUNTS) {
+          throw new RuntimeException("Sending initialization message to worker" +
+              workerId + "is failed" + MAXIMUM_RETRY_COUNTS + "times");
+        }
+
         try {
           final byte[] data = codec.encode(getBroadcastMinClockMessage(globalMinimumClock));
           aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
           break;
         } catch (final NetworkException e) {
-          LOG.log(Level.INFO, "Target worker failed to receive global minimum clock message", e);
-          if (tryCount == MAXIMUM_RETRY_COUNTS) {
-            throw new RuntimeException(e);
-          }
+          LOG.log(Level.INFO, "ClockManager failed to send global minimum clock message to worker", e);
         }
       }
 
@@ -243,16 +245,18 @@ public final class ClockManager {
         final int workerClock = initializeWorkerClock(workerId);
         final byte[] data = codec.encode(getReplyInitialClockMessage(globalMinimumClock, workerClock));
 
-        int tryCount = 0;
-        while (tryCount++ < MAXIMUM_RETRY_COUNTS) {
+        int retryCount = 0;
+        while (true) {
+          if (retryCount++ > MAXIMUM_RETRY_COUNTS) {
+            throw new RuntimeException("Sending initialization message to worker" +
+                workerId + "is failed" + MAXIMUM_RETRY_COUNTS + "times");
+          }
+
           try {
             aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
             break;
           } catch (final NetworkException e) {
-            LOG.log(Level.INFO, "Target worker failed to receive the initial worker clock message.", e);
-            if (tryCount == MAXIMUM_RETRY_COUNTS) {
-              throw new RuntimeException(e);
-            }
+            LOG.log(Level.INFO, "ClockManager failed to send initialization message to worker", e);
           }
         }
         break;

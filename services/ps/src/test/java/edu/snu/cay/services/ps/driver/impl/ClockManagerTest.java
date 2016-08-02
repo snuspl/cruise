@@ -58,8 +58,6 @@ public final class ClockManagerTest {
   private final int staleness = 4;
   private final int numWorkers = 10;
 
-  private Injector injector;
-
   private AggregationSlave mockAggregationSlave;
   private AggregationMaster mockAggregationMaster;
   private ClockManager clockManager;
@@ -72,7 +70,7 @@ public final class ClockManagerTest {
         .bindNamedParameter(Staleness.class, Integer.toString(staleness))
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
-    injector = Tang.Factory.getTang().newInjector(conf);
+    final Injector injector = Tang.Factory.getTang().newInjector(conf);
     mockAggregationSlave = mock(AggregationSlave.class);
     injector.bindVolatileInstance(AggregationSlave.class, mockAggregationSlave);
     mockAggregationMaster = mock(AggregationMaster.class);
@@ -93,8 +91,8 @@ public final class ClockManagerTest {
   }
 
   /**
-   * Test whether ClockManager initializes the clock of workers not added by EM with current global minimum clock.
-   * Test whether ClockManager initializes the clock of workers added by EM with global minimum clock + (staleness /2).
+   * Tests whether ClockManager initializes the clock of workers not added by EM with current global minimum clock.
+   * Tests whether ClockManager initializes the clock of workers added by EM with global minimum clock + (staleness /2).
    */
   @Test
   public void testInitializingWorkers() throws InjectionException, NetworkException {
@@ -113,6 +111,8 @@ public final class ClockManagerTest {
               .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
               .build();
       final byte[] data = codec.encode(avroClockMsg);
+      // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
+      // because mockAggregationSlave couldn't send its source id(no network connection).
       mockAggregationSlave.send(workerId, data);
 
       // new clock of worker which is not added by EM equals to globalMinimumClock;
@@ -133,6 +133,8 @@ public final class ClockManagerTest {
               .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
               .build();
       final byte[] data = codec.encode(avroClockMsg);
+      // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
+      // because mockAggregationSlave couldn't send its source id(no network connection).
       mockAggregationSlave.send(workerId, data);
 
       // new clock of worker which is added by EM is globalMinimumClock + staleness / 2 ;
@@ -144,7 +146,7 @@ public final class ClockManagerTest {
   }
 
   /**
-   * Test whether global minimum clock is updated when the minimum clock worker is deleted.
+   * Tests whether global minimum clock is updated when the minimum clock worker is deleted.
    */
   @Test
   public void testDeletionOfMinimumWorkers() {
@@ -166,6 +168,8 @@ public final class ClockManagerTest {
                 .setTickMsg(TickMsg.newBuilder().build())
                 .build();
         final byte[] data = codec.encode(avroClockMsg);
+        // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
+        // because mockAggregationSlave couldn't send its source id(no network connection).
         mockAggregationSlave.send(workerId, data);
       }
       assertEquals(initialGlobalMinimumClock + workerIdx, clockManager.getClockOf(workerId).intValue());
@@ -185,16 +189,16 @@ public final class ClockManagerTest {
   }
 
   /**
-   * Test whether clock manager broadcasts when minimum global clock is updated.
+   * Tests whether clock manager broadcasts when minimum global clock is updated.
    */
   @Test
   public void testBroadcasting() throws NetworkException {
     final int initialGlobalMinimumClock = clockManager.getGlobalMinimumClock();
     final Map<String, Integer> workerClockMap = new HashMap<>();
-    // check whether the number of global minimum updates is same with the number of broadcast messages
-    // that are sent from ClockManager
+    // check whether the number of global minimum updates is same with
+    // the number of broadcast messages that are sent from ClockManager.
     // each broadcast message is sent to all workers,
-    // so the total message count is numberOfMinClockUpdates(=NUM_WORKERS) * NUM_WORKERS
+    // so the total message count is numberOfMinClockUpdates(=NUM_WORKERS) * NUM_WORKERS.
     final int expectedNumberOfBroadcastMessages = numWorkers * numWorkers;
     final AtomicInteger numberOfBroadcastMessages = new AtomicInteger(0);
 
@@ -209,7 +213,7 @@ public final class ClockManagerTest {
         return null;
       }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
 
-    // Add workers first to set same initial clock to all workers
+    // add workers first to set same initial clock to all workers
     for (int workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
       final String workerId = Integer.toString(workerIdx);
       clockManager.onWorkerAdded(false, workerId);
@@ -225,6 +229,8 @@ public final class ClockManagerTest {
                 .setTickMsg(TickMsg.newBuilder().build())
                 .build();
         final byte[] data = codec.encode(avroClockMsg);
+        // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
+        // because mockAggregationSlave couldn't send its source id(no network connection).
         mockAggregationSlave.send(workerId, data);
       }
       workerClockMap.put(workerId, initialGlobalMinimumClock + workerIdx);
@@ -243,6 +249,8 @@ public final class ClockManagerTest {
                 .setTickMsg(TickMsg.newBuilder().build())
                 .build();
         final byte[] data = codec.encode(avroClockMsg);
+        // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
+        // because mockAggregationSlave couldn't send its source id(no network connection).
         mockAggregationSlave.send(workerId, data);
         workerClockMap.put(workerId, currentClock + 1);
       }
