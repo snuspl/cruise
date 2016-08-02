@@ -75,13 +75,14 @@ final class SynchronizationManager {
 
   private final Codec<String> codec;
 
+  @GuardedBy("this")
   private final StateMachine globalStateMachine;
 
   /**
    * The total number of workers to sync.
    */
   @GuardedBy("this")
-  private volatile int numWorkersToSync = 0;
+  private volatile int numWorkers = 0;
 
   /**
    * A set that maintains workers that have sent a sync msg for the current barrier.
@@ -113,8 +114,8 @@ final class SynchronizationManager {
    */
   synchronized void onWorkerAdded() {
     // increase the number of workers to block
-    numWorkersToSync++;
-    LOG.log(Level.INFO, "Total number of workers participating in the synchronization = {0}", numWorkersToSync);
+    numWorkers++;
+    LOG.log(Level.INFO, "Total number of workers participating in the synchronization = {0}", numWorkers);
   }
 
   /**
@@ -122,8 +123,8 @@ final class SynchronizationManager {
    * @param workerId an id of worker
    */
   synchronized void onWorkerDeleted(final String workerId) {
-    numWorkersToSync--;
-    LOG.log(Level.INFO, "Total number of workers participating in the synchronization = {0}", numWorkersToSync);
+    numWorkers--;
+    LOG.log(Level.INFO, "Total number of workers participating in the synchronization = {0}", numWorkers);
     // when deleted worker already has sent a sync msg
     if (blockedWorkerIds.contains(workerId)) {
       blockedWorkerIds.remove(workerId);
@@ -187,8 +188,8 @@ final class SynchronizationManager {
   }
 
   private synchronized void tryReleaseWorkers() {
-    if (blockedWorkerIds.size() == numWorkersToSync) {
-      LOG.log(Level.INFO, "Try releasing {0} blocked workers: {1}", new Object[]{numWorkersToSync, blockedWorkerIds});
+    if (blockedWorkerIds.size() == numWorkers) {
+      LOG.log(Level.INFO, "Try releasing {0} blocked workers: {1}", new Object[]{numWorkers, blockedWorkerIds});
 
       // wake threads waiting initialization in waitInitialization()
       if (globalStateMachine.getCurrentState().equals(STATE_INIT)) {
@@ -198,21 +199,22 @@ final class SynchronizationManager {
       // Note that in the STATE_CLEANUP state, orchestrator never trigger further optimization.
       } else if (globalStateMachine.getCurrentState().equals(STATE_RUN)) {
         try {
-          final int numWorkersToRelease = numWorkersToSync;
+          final int numWorkersBeforeSleep = numWorkers;
           LOG.log(Level.INFO, "Wait for driver to allow workers to enter cleanup state");
           allowCleanupLatch.await();
 
-          // More workers are added while waiting for allowCleanupLatch.
-          // It means that the last optimization adds workers.
-          if (numWorkersToRelease < numWorkersToSync) {
+          final int numAddedWorkers = numWorkers - numWorkersBeforeSleep;
 
-            LOG.log(Level.FINE, "{0} more workers are added while waiting for driver to allow cleanup",
-                numWorkersToSync - numWorkersToRelease);
+          // Some workers were added while waiting for allowCleanupLatch, by the last reconfiguration plan.
+          if (numAddedWorkers > 0) {
 
-            if (blockedWorkerIds.size() < numWorkersToSync) {
-              LOG.log(Level.INFO, "Cancel releasing workers," +
-                      " because there are {0} workers that do not reach the cleanup barrier",
-                  numWorkersToSync - blockedWorkerIds.size());
+            LOG.log(Level.FINE, "{0} more workers were added while waiting for driver to allow cleanup",
+                numAddedWorkers);
+
+            if (blockedWorkerIds.size() < numWorkers) {
+              LOG.log(Level.INFO, "Cancel releasing workers" +
+                  " because we have {0} more workers that have not requested their cleanup barrier.",
+                  numWorkers - blockedWorkerIds.size());
 
               // Cancel releasing workers.
               // Added workers will invoke this method again when they are going to enter cleanup state.
@@ -227,7 +229,8 @@ final class SynchronizationManager {
 
       transitState(globalStateMachine);
 
-      LOG.log(Level.INFO, "Send response message to {0} blocked workers", numWorkersToSync);
+      LOG.log(Level.INFO, "Send response message to {0} blocked workers: {1}",
+          new Object[]{numWorkers, blockedWorkerIds});
       // broadcast responses to blocked workers
       for (final String workerId : blockedWorkerIds) {
         sendResponseMessage(workerId, EMPTY_DATA);
@@ -249,7 +252,7 @@ final class SynchronizationManager {
 
     blockedWorkerIds.add(workerId);
     LOG.log(Level.INFO, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
-        new Object[]{workerId, blockedWorkerIds.size(), numWorkersToSync});
+        new Object[]{workerId, blockedWorkerIds.size(), numWorkers});
 
     tryReleaseWorkers();
   }
@@ -289,7 +292,8 @@ final class SynchronizationManager {
 
           break;
         case STATE_CLEANUP:
-          // let added evaluators skip the barriers
+          // Though workers already exit their barrier before CLEANUP phase,
+          // added workers can request the barrier for cleanup. In this case, we let the workers proceed immediately.
           sendResponseMessage(workerId, EMPTY_DATA);
           break;
         default:
