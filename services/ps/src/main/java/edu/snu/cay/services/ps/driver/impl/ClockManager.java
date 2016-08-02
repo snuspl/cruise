@@ -195,8 +195,6 @@ public final class ClockManager {
         globalMinimumClock++;
         broadcastGlobalMinimumClock();
       }
-    } else if (workerClock == globalMinimumClock) {
-      minimumClockWorkers.add(workerId);
     }
   }
 
