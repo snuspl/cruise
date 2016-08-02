@@ -196,7 +196,12 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
       LOG.log(Level.INFO, "The number of executed ops: {0}", result.getNumExecutedOps());
 
-      if (plan.getPlanSize() != result.getNumExecutedOps()) {
+      final int numWorkerAddOps = plan.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER).size();
+      final int numWorkerDelOps = plan.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER).size();
+
+      final int numWorkerStartStopOps = numWorkerAddOps + numWorkerDelOps;
+
+      if (plan.getPlanSize() + numWorkerStartStopOps != result.getNumExecutedOps()) {
         throw new RuntimeException("The number of executed operations is different from the expectation");
       }
 
