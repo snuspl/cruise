@@ -385,7 +385,6 @@ public final class AsyncDolphinLauncher {
 
   private static AggregationConfiguration getAggregationConfigurationDefault() {
     return getAggregationConfigurationDefaultBuilder().build();
-
   }
 
   private static AggregationConfiguration getAggregationConfigurationForSSP() {

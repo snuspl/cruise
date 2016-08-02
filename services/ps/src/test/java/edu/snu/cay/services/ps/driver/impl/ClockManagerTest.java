@@ -81,13 +81,15 @@ public final class ClockManagerTest {
     this.codec = injector.getInstance(ClockMsgCodec.class);
 
     doAnswer(invocation -> {
-        final String workerId = invocation.getArgumentAt(0, String.class);
-        final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final AggregationMessage aggregationMessage = getTestAggregationMessage(workerId, data);
+      // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
+      // because mockAggregationSlave couldn't send its source id(no network connection).
+      final String workerId = invocation.getArgumentAt(0, String.class);
+      final byte[] data = invocation.getArgumentAt(1, byte[].class);
+      final AggregationMessage aggregationMessage = getTestAggregationMessage(workerId, data);
 
-        clockMessageHandler.onNext(aggregationMessage);
-        return null;
-      }).when(mockAggregationSlave).send(anyString(), anyObject());
+      clockMessageHandler.onNext(aggregationMessage);
+      return null;
+    }).when(mockAggregationSlave).send(anyString(), anyObject());
   }
 
   /**
@@ -111,8 +113,6 @@ public final class ClockManagerTest {
               .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
               .build();
       final byte[] data = codec.encode(avroClockMsg);
-      // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
-      // because mockAggregationSlave couldn't send its source id(no network connection).
       mockAggregationSlave.send(workerId, data);
 
       // new clock of worker which is not added by EM equals to globalMinimumClock;
@@ -133,8 +133,6 @@ public final class ClockManagerTest {
               .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
               .build();
       final byte[] data = codec.encode(avroClockMsg);
-      // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
-      // because mockAggregationSlave couldn't send its source id(no network connection).
       mockAggregationSlave.send(workerId, data);
 
       // new clock of worker which is added by EM is globalMinimumClock + staleness / 2 ;
@@ -168,8 +166,6 @@ public final class ClockManagerTest {
                 .setTickMsg(TickMsg.newBuilder().build())
                 .build();
         final byte[] data = codec.encode(avroClockMsg);
-        // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
-        // because mockAggregationSlave couldn't send its source id(no network connection).
         mockAggregationSlave.send(workerId, data);
       }
       assertEquals(initialGlobalMinimumClock + workerIdx, clockManager.getClockOf(workerId).intValue());
@@ -203,15 +199,15 @@ public final class ClockManagerTest {
     final AtomicInteger numberOfBroadcastMessages = new AtomicInteger(0);
 
     doAnswer(invocation -> {
-        final byte[] data = invocation.getArgumentAt(2, byte[].class);
-        final AvroClockMsg sendMsg = codec.decode(data);
+      final byte[] data = invocation.getArgumentAt(2, byte[].class);
+      final AvroClockMsg sendMsg = codec.decode(data);
 
-        if (sendMsg.getType() == ClockMsgType.BroadcastMinClockMsg) {
-          // check broadcast count is same as number of minimum clock updates
-          numberOfBroadcastMessages.incrementAndGet();
-        }
-        return null;
-      }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
+      if (sendMsg.getType() == ClockMsgType.BroadcastMinClockMsg) {
+        // check broadcast count is same as number of minimum clock updates
+        numberOfBroadcastMessages.incrementAndGet();
+      }
+      return null;
+    }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
 
     // add workers first to set same initial clock to all workers
     for (int workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
@@ -229,8 +225,6 @@ public final class ClockManagerTest {
                 .setTickMsg(TickMsg.newBuilder().build())
                 .build();
         final byte[] data = codec.encode(avroClockMsg);
-        // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
-        // because mockAggregationSlave couldn't send its source id(no network connection).
         mockAggregationSlave.send(workerId, data);
       }
       workerClockMap.put(workerId, initialGlobalMinimumClock + workerIdx);
@@ -238,7 +232,7 @@ public final class ClockManagerTest {
 
     for (int workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
 
-      // tick the minimum worker clocks
+      // tick workers with minimum clock
       for (int i = 0; i <= workerIdx; i++) {
         final String workerId = Integer.toString(i);
         final int currentClock = workerClockMap.get(workerId);
@@ -249,8 +243,6 @@ public final class ClockManagerTest {
                 .setTickMsg(TickMsg.newBuilder().build())
                 .build();
         final byte[] data = codec.encode(avroClockMsg);
-        // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
-        // because mockAggregationSlave couldn't send its source id(no network connection).
         mockAggregationSlave.send(workerId, data);
         workerClockMap.put(workerId, currentClock + 1);
       }

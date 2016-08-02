@@ -88,20 +88,20 @@ public class SSPWorkerClockTest {
     final AtomicInteger numberOfTickMsgCalls = new AtomicInteger(0);
 
     doAnswer(invocation -> {
-        final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final AvroClockMsg sendMsg = codec.decode(data);
+      final byte[] data = invocation.getArgumentAt(1, byte[].class);
+      final AvroClockMsg sendMsg = codec.decode(data);
 
-        if (sendMsg.getType() == ClockMsgType.RequestInitClockMsg) {
-          final AvroClockMsg initClockMsg =
-              ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
-          final byte[] replyData = codec.encode(initClockMsg);
-          final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
-          sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        } else if (sendMsg.getType() == ClockMsgType.TickMsg) {
-          numberOfTickMsgCalls.incrementAndGet();
-        }
-        return null;
-      }).when(mockAggregationSlave).send(anyString(), anyObject());
+      if (sendMsg.getType() == ClockMsgType.RequestInitClockMsg) {
+        final AvroClockMsg initClockMsg =
+            ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
+        final byte[] replyData = codec.encode(initClockMsg);
+        final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
+        sspWorkerClockMessageHandler.onNext(aggregationMessage);
+      } else if (sendMsg.getType() == ClockMsgType.TickMsg) {
+        numberOfTickMsgCalls.incrementAndGet();
+      }
+      return null;
+    }).when(mockAggregationSlave).send(anyString(), anyObject());
 
     sspWorkerClock.initialize();
     assertEquals(initialWorkerClock, sspWorkerClock.getWorkerClock());
@@ -126,29 +126,29 @@ public class SSPWorkerClockTest {
     final int updatedGlobalMinimumClock = 100;
 
     doAnswer(invocation -> {
-        final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final AvroClockMsg sendMsg = codec.decode(data);
+      final byte[] data = invocation.getArgumentAt(1, byte[].class);
+      final AvroClockMsg sendMsg = codec.decode(data);
 
-        if (sendMsg.getType() == ClockMsgType.RequestInitClockMsg) {
-          final AvroClockMsg initClockMsg =
-              ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
-          final byte[] replyData = codec.encode(initClockMsg);
-          final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
-          sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        }
-        return null;
-      }).when(mockAggregationSlave).send(anyString(), anyObject());
+      if (sendMsg.getType() == ClockMsgType.RequestInitClockMsg) {
+        final AvroClockMsg initClockMsg =
+            ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
+        final byte[] replyData = codec.encode(initClockMsg);
+        final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
+        sspWorkerClockMessageHandler.onNext(aggregationMessage);
+      }
+      return null;
+    }).when(mockAggregationSlave).send(anyString(), anyObject());
 
     sspWorkerClock.initialize();
     assertEquals(initialWorkerClock, sspWorkerClock.getWorkerClock());
     assertEquals(initialGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
 
     doAnswer(invocation -> {
-        final byte[] data = invocation.getArgumentAt(2, byte[].class);
-        final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", data);
-        sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        return null;
-      }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
+      final byte[] data = invocation.getArgumentAt(2, byte[].class);
+      final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", data);
+      sspWorkerClockMessageHandler.onNext(aggregationMessage);
+      return null;
+    }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
 
     // broadcast updated global minimum clock
     final byte[] data =
