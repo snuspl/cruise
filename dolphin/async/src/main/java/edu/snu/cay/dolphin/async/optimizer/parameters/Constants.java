@@ -13,20 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.metric;
+package edu.snu.cay.dolphin.async.optimizer.parameters;
 
 /**
- * Constants for PS metrics, which consists of client name of AggregationService and
- * Keys to identify metrics.
+ * Constants used for optimization in driver.
  */
-public final class ServerConstants {
-
+public final class Constants {
   /**
-   * Should not be instantiated.
+   * Empty private constructor to prohibit instantiation of utility class.
    */
-  private ServerConstants() {
+  private Constants() {
   }
 
-  public static final String AGGREGATION_CLIENT_NAME =
-      "METRIC_COLLECTION_SERVICE_FOR_SERVER";
+  public static final String NAMESPACE_SERVER = "SERVER";
+  public static final String NAMESPACE_WORKER = "WORKER";
 }

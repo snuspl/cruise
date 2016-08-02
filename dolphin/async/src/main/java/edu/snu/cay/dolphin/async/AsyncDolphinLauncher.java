@@ -164,6 +164,8 @@ public final class AsyncDolphinLauncher {
           .bindImplementation(Worker.class, asyncDolphinConfiguration.getWorkerClass())
           .bindNamedParameter(Iterations.class,
               Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
+          .bindNamedParameter(MiniBatches.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(MiniBatches.class)))
           .build();
       final Configuration workerConf = Configurations.merge(basicWorkerConf,
           asyncDolphinConfiguration.getWorkerConfiguration());

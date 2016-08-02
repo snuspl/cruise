@@ -16,7 +16,8 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.metric.WorkerConstants;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -24,9 +25,10 @@ import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
-import edu.snu.cay.services.ps.metric.ServerConstants;
+import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
+import scala.annotation.meta.param;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -88,20 +90,21 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
   @Override
   public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
-    final List<EvaluatorParameters> serverParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
-    final List<EvaluatorParameters> workerParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
+    final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
+    final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-        param -> param.getMetrics().get(ServerConstants.SERVER_PROCESSING_TIME),
-        NEW_SERVER_ID_PREFIX);
+            param -> ((ServerMetrics) param.getMetrics()).getAvgPullProcessingTime(),
+            NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
 
     final Pair<List<EvaluatorSummary>, Integer> workerPair =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
-        param -> param.getMetrics().get(WorkerConstants.WORKER_COMPUTE_TIME) / param.getDataInfo().getNumBlocks(),
-        NEW_WORKER_ID_PREFIX);
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()
+                / param.getDataInfo().getNumBlocks(),
+            NEW_WORKER_ID_PREFIX);
     final List<EvaluatorSummary> workerSummaries = workerPair.getFirst();
     final int numDataBlocks = workerPair.getSecond();
 
@@ -127,9 +130,9 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    generatePlanForOptimalConfig(OptimizationOrchestrator.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
+    generatePlanForOptimalConfig(Constants.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
         serverParams.size(), numModelBlocks, planBuilder);
-    generatePlanForOptimalConfig(OptimizationOrchestrator.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
+    generatePlanForOptimalConfig(Constants.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
         workerParams.size(), numDataBlocks, planBuilder);
 
     return planBuilder.build();

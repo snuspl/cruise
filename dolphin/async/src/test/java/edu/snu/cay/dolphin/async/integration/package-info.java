@@ -13,20 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.metric;
-
 /**
- * Constants for PS metrics, which consists of client name of AggregationService and
- * Keys to identify metrics.
+ * Integration test package.
  */
-public final class ServerConstants {
-
-  /**
-   * Should not be instantiated.
-   */
-  private ServerConstants() {
-  }
-
-  public static final String AGGREGATION_CLIENT_NAME =
-      "METRIC_COLLECTION_SERVICE_FOR_SERVER";
-}
+package edu.snu.cay.dolphin.async.integration;

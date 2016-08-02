@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
@@ -23,6 +25,7 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.impl.LoggingPlanExecutor;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
+import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -93,8 +96,8 @@ public final class OptimizationOrchestratorTest {
       @Override
       public Plan answer(final InvocationOnMock invocation) throws Throwable {
         final Map<String, List<EvaluatorParameters>> evalParamsMap = invocation.getArgumentAt(0, Map.class);
-        final List<EvaluatorParameters> serverEvalParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
-        final List<EvaluatorParameters> workerEvalParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
+        final List<EvaluatorParameters> serverEvalParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
+        final List<EvaluatorParameters> workerEvalParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
 
         assertEquals("Optimizer is triggered with incomplete server metrics",
             serverEvalParams.size(), serverStoreIdMap.size());
@@ -124,11 +127,13 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numServers; i++) {
       serverStoreIdMap.put(i, Collections.emptySet());
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumPartitionBlocks(10).build();
+      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
+      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
     }
 
     orchestrator.run();
@@ -153,7 +158,8 @@ public final class OptimizationOrchestratorTest {
     }
 
     for (int i = 0; i < numServers; i++) {
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumPartitionBlocks(10).build();
+      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
       orchestrator.run();
 
       waitPlanExecuting();
@@ -161,7 +167,8 @@ public final class OptimizationOrchestratorTest {
     }
 
     for (int i = 0; i < numWorkers; i++) {
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
+      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
       orchestrator.run();
 
       waitPlanExecuting();
@@ -183,18 +190,20 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numServers; i++) {
       serverStoreIdMap.put(i, Collections.emptySet());
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumPartitionBlocks(10).build();
+      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
 
       // put duplicate metrics
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
 
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
+      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
 
       // put duplicate metrics
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
     }
 
     // check whether it can filter the metrics and finally trigger the optimizer with refined metrics
@@ -214,11 +223,13 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numServers; i++) {
       serverStoreIdMap.put(i, Collections.emptySet());
-      metricsHub.storeServerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumPartitionBlocks(10).build();
+      metricsHub.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
-      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, 10, Collections.emptyMap());
+      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
+      metricsHub.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
     }
 
     // 1. When a server is deleted, metrics become stale

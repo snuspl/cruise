@@ -15,29 +15,29 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetricsMsg;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
 /**
- * Codec for WorkerWorkerMetricsMsg.
+ * Codec for WorkerMetricsMsg.
  * Simply uses AvroUtils to encode and decode messages.
  */
-public final class WorkerMetricsMsgCodec implements Codec<WorkerMetricsMsg> {
+public final class WorkerMetricsMsgCodec implements Codec<WorkerMetrics> {
 
   @Inject
   private WorkerMetricsMsgCodec() {
   }
 
   @Override
-  public byte[] encode(final WorkerMetricsMsg msg) {
-    return AvroUtils.toBytes(msg, WorkerMetricsMsg.class);
+  public byte[] encode(final WorkerMetrics msg) {
+    return AvroUtils.toBytes(msg, WorkerMetrics.class);
   }
 
   @Override
-  public WorkerMetricsMsg decode(final byte[] data) {
-    return AvroUtils.fromBytes(data, WorkerMetricsMsg.class);
+  public WorkerMetrics decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, WorkerMetrics.class);
   }
 }
