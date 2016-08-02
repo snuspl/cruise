@@ -56,6 +56,9 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
   private final List<EvaluatorParameters> serverParameters = new ArrayList<>();
   private final List<EvaluatorParameters> workerParameters = new ArrayList<>();
 
+  /**
+   * Optimizers to use in test.
+   */
   private final Optimizer[] optimizers;
 
   @Inject
@@ -75,6 +78,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     this.serverEM = serverEM;
     this.maxNumEvals = maxNumEvals;
 
+    // simply adding a new optimizer in this array will include the optimizer into testing
+    // note that job configuration (e.g., running time, timeout, available evaluators) should be adapted
     this.optimizers = new Optimizer[]{
         deleteOneWorkerOptimizer, addOneWorkerOptimizer,
         deleteOneServerOptimizer, addOneServerOptimizer,
@@ -83,6 +88,10 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
   private int callsMade = 0;
 
+  /**
+   * Runs optimization with optimizers in {@code optimizers} array.
+   * It uses one optimizer at a time.
+   */
   @Override
   public void run() {
     final int optimizerIdx = callsMade;
@@ -193,8 +202,15 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
         afterWorkerStoreIdToNumBlocks.put(storeId, numBlocks);
       }
 
-      verifyResult(beforeServerStoreIdToNumBlocks, afterServerStoreIdToNumBlocks, Constants.NAMESPACE_SERVER, plan);
-      verifyResult(beforeWorkerStoreIdToNumBlocks, afterWorkerStoreIdToNumBlocks, Constants.NAMESPACE_WORKER, plan);
+      final Map<String, Integer> serverAddedEvalIdToNumBlocks
+          = calculateExpectedResult(beforeServerStoreIdToNumBlocks, Constants.NAMESPACE_SERVER, plan);
+
+
+      final Map<String, Integer> workerAddedEvalIdToNumBlocks
+          = calculateExpectedResult(beforeWorkerStoreIdToNumBlocks, Constants.NAMESPACE_WORKER, plan);
+
+      verifyResult(beforeServerStoreIdToNumBlocks, serverAddedEvalIdToNumBlocks, afterServerStoreIdToNumBlocks);
+      verifyResult(beforeWorkerStoreIdToNumBlocks, workerAddedEvalIdToNumBlocks, afterWorkerStoreIdToNumBlocks);
 
     } catch (final InterruptedException | ExecutionException e) {
       LOG.log(Level.SEVERE, "Exception while executing plan", e);
@@ -203,20 +219,17 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
   }
 
   /**
-   * Verify that the plan is executed correctly by comparing the number of blocks in each EM store.
-   * @param beforeStoreIdToNumBlocks block locations before reconfiguration
-   * @param afterStoreIdToNumBlocks block locations after reconfiguration
-   * @param namespace a namespace
-   * @param plan a plan
+   * Calculated the expected result of plan execution.
+   * It updates the {@code beforeStoreIdToNumBlocks} by applying the plan virtually.
+   * In addition, it returns a separate map representing the number of blocks in each added evaluator,
+   * since we don't which store id has been assigned to added evaluators,
    */
-  private void verifyResult(final Map<Integer, Integer> beforeStoreIdToNumBlocks,
-                            final Map<Integer, Integer> afterStoreIdToNumBlocks,
-                            final String namespace,
-                            final Plan plan) {
-
-    // no change in this namespace, so no need to verify
+  private Map<String, Integer> calculateExpectedResult(final Map<Integer, Integer> beforeStoreIdToNumBlocks,
+                                                       final String namespace,
+                                                       final Plan plan) {
+    // no change in this namespace
     if (plan.getPlanSize() == 0) {
-      return;
+      return Collections.emptyMap();
     }
 
     final Collection<String> addedEvals = plan.getEvaluatorsToAdd(namespace);
@@ -245,7 +258,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
           addedEvalIdToNumBlocks.put(destEvalId, numBlocks);
         }
 
-      // case 2. destination is existing eval
+        // case 2. destination is existing eval
       } else {
         final int destNumBlocks = beforeStoreIdToNumBlocks.get(getStoreId(destEvalId));
         beforeStoreIdToNumBlocks.put(getStoreId(destEvalId), destNumBlocks + numBlocks);
@@ -258,21 +271,30 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       }
     }
 
-    final Map<Integer, Integer> expectedStoreIdToNumBlocks = beforeStoreIdToNumBlocks;
+    return addedEvalIdToNumBlocks;
+  }
 
+  /**
+   * Verify that the plan is executed correctly by comparing the number of blocks in each EM store.
+   * @param expectedExistingStoreIdToNumBlocks block locations before reconfiguration
+   * @param actualStoreIdToNumBlocks block locations after reconfiguration
+   */
+  private void verifyResult(final Map<Integer, Integer> expectedExistingStoreIdToNumBlocks,
+                            final Map<String, Integer> expectedAddedEvalIdToNumBlocks,
+                            final Map<Integer, Integer> actualStoreIdToNumBlocks) {
     // verify that the plan execution is done correctly
-    for (final Map.Entry<Integer, Integer> entry : afterStoreIdToNumBlocks.entrySet()) {
+    for (final Map.Entry<Integer, Integer> entry : actualStoreIdToNumBlocks.entrySet()) {
       final int storeId = entry.getKey();
       final int numBlocks = entry.getValue();
 
       // 1. existing eval
-      if (expectedStoreIdToNumBlocks.containsKey(storeId)) {
-        if (expectedStoreIdToNumBlocks.get(storeId) != numBlocks) {
+      if (expectedExistingStoreIdToNumBlocks.containsKey(storeId)) {
+        if (expectedExistingStoreIdToNumBlocks.get(storeId) != numBlocks) {
           throw new RuntimeException("The number of block in the store " + storeId + " is different from expectation");
         }
 
         // remove the matched store to check that after-state includes all stores in before-state
-        expectedStoreIdToNumBlocks.remove(storeId);
+        expectedExistingStoreIdToNumBlocks.remove(storeId);
 
       // 2. newly added eval
       } else {
@@ -280,7 +302,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
         // we don't know which store id the new eval has been assigned
         // so, remove one that has the same number of expected blocks
-        for (final Map.Entry<String, Integer> innerEntry : addedEvalIdToNumBlocks.entrySet()) {
+        for (final Map.Entry<String, Integer> innerEntry : expectedAddedEvalIdToNumBlocks.entrySet()) {
           final String addedEvalId = innerEntry.getKey();
           final int numBlocksForAddedEVal = innerEntry.getValue();
 
@@ -295,16 +317,16 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
         } else {
           // remove matched one
-          addedEvalIdToNumBlocks.remove(evalId);
+          expectedAddedEvalIdToNumBlocks.remove(evalId);
         }
       }
     }
 
-    if (!expectedStoreIdToNumBlocks.isEmpty()) {
+    if (!expectedExistingStoreIdToNumBlocks.isEmpty()) {
       throw new RuntimeException("Delete is done to evaluator that should not be");
     }
 
-    if (!addedEvalIdToNumBlocks.isEmpty()) {
+    if (!expectedAddedEvalIdToNumBlocks.isEmpty()) {
       throw new RuntimeException("Add and Move for the added eval were not correctly done");
     }
   }

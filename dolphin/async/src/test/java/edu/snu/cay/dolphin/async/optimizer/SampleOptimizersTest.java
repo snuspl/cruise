@@ -166,6 +166,7 @@ public final class SampleOptimizersTest {
 
   /**
    * Tests whether {@link ExchangeOneOptimizer} generates a correct plan with given eval parameters.
+   * Since it randomly choose the evaluators we cannot verify the plan in fine-grained manner.
    */
   @Test
   public void testExchangeOneOptimizer() throws InjectionException {
@@ -179,9 +180,11 @@ public final class SampleOptimizersTest {
 
     final Collection<String> serverEvalsToAdd = plan.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER);
     final Collection<String> serverEvalsToDel = plan.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER);
+    final Collection<TransferStep> serverTransferSteps = plan.getTransferSteps(Constants.NAMESPACE_SERVER);
 
     final Collection<String> workerEvalsToAdd = plan.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER);
     final Collection<String> workerEvalsToDel = plan.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER);
+    final Collection<TransferStep> workerTransferSteps = plan.getTransferSteps(Constants.NAMESPACE_WORKER);
 
     // only one add and del in each namespace
     assertEquals(1, serverEvalsToAdd.size() + workerEvalsToAdd.size());
@@ -190,5 +193,9 @@ public final class SampleOptimizersTest {
     // namespace cannot have both add and del together
     assertEquals(1, serverEvalsToAdd.size() + serverEvalsToDel.size());
     assertEquals(1, workerEvalsToAdd.size() + workerEvalsToDel.size());
+
+    // this optimizer should generate move plans, because in the given eval params there's no empty evals
+    assertEquals(1, serverTransferSteps.size());
+    assertEquals(1, workerTransferSteps.size());
   }
 }

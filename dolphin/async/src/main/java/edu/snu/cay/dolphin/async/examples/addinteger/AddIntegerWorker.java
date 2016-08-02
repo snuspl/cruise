@@ -127,6 +127,7 @@ final class AddIntegerWorker implements Worker {
       }
     }
 
+    // send empty metrics to trigger optimization
     final WorkerMetrics workerMetrics =
         buildMetricsMsg(memoryStore.getNumBlocks());
 
@@ -171,16 +172,16 @@ final class AddIntegerWorker implements Worker {
    */
   private boolean validate() {
     LOG.log(Level.INFO, "Start validation");
-    boolean ret = true;
+    boolean isSuccess = true;
     for (int i = 0; i < numberOfKeys; i++) {
       final int result = parameterWorker.pull(startKey + i);
 
       if (expectedResult != result) {
         LOG.log(Level.WARNING, "For key {0}, expected value {1} but received {2}",
             new Object[]{startKey + i, expectedResult, result});
-        ret = false;
+        isSuccess = false;
       }
     }
-    return ret;
+    return isSuccess;
   }
 }

@@ -40,7 +40,7 @@ public class ReconfigurationTest {
         .bindImplementation(OptimizationOrchestrator.class, TestingOrchestrator.class)
         .build();
 
-    assertEquals(LauncherStatus.COMPLETED, AddIntegerREEF.runAddInteger(args, conf));
+    assertEquals("The job has been failed", LauncherStatus.COMPLETED, AddIntegerREEF.runAddInteger(args, conf));
   }
 
   private String[] getArguments() {

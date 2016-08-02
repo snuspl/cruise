@@ -89,8 +89,8 @@ public final class SampleOptimizers {
   }
 
   /**
-   * An Optimizer that simply adds one new Evaluator for each optimize call.
-   * It then moves half the blocks from the first Evaluator to the new Evaluator.
+   * An Optimizer that simply adds one new server Evaluator for each optimize call.
+   * It then moves half the blocks from the Evaluator with most blocks to the new Evaluator.
    * It runs until {@link #MAX_CALLS_TO_MAKE} is reached.
    * Note that this optimizer does not care about the resource constraint.
    */
@@ -118,8 +118,8 @@ public final class SampleOptimizers {
   }
 
   /**
-   * An Optimizer that simply adds one new Evaluator for each optimize call.
-   * It then moves half the blocks from the first Evaluator to the new Evaluator.
+   * An Optimizer that simply adds one new worker Evaluator for each optimize call.
+   * It then moves half the blocks from the Evaluator with most blocks to the new Evaluator.
    * It runs until {@link #MAX_CALLS_TO_MAKE} is reached.
    * Note that this optimizer does not care about the resource constraint.
    */

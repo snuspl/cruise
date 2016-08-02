@@ -54,7 +54,6 @@ public final class AddIntegerREEF {
 
   public static void main(final String[] args) {
     runAddInteger(args, Tang.Factory.getTang().newConfigurationBuilder().build());
-
   }
 
   @NamedParameter(doc = "All workers will add this integer to the sum", short_name = "delta")
