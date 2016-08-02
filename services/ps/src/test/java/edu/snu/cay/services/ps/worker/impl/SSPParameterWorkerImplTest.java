@@ -37,7 +37,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.nio.ByteBuffer;
 import java.util.concurrent.*;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 /**
@@ -45,13 +45,13 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(WorkerMsgSender.class)
-public final class ParameterWorkerImplTest {
+public final class SSPParameterWorkerImplTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
 
   private ParameterWorkerImplTestUtil testUtil;
-  private ParameterWorkerImpl<Integer, Integer, Integer> parameterWorker;
-  private AsyncWorkerHandlerImpl<Integer, Integer, Integer> workerHandler;
+  private SSPParameterWorkerImpl<Integer, Integer, Integer> parameterWorker;
+  private SSPWorkerHandlerImpl<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
 
   @Before
@@ -80,8 +80,8 @@ public final class ParameterWorkerImplTest {
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
-    parameterWorker = injector.getInstance(ParameterWorkerImpl.class);
-    workerHandler = injector.getInstance(AsyncWorkerHandlerImpl.class);
+    parameterWorker = injector.getInstance(SSPParameterWorkerImpl.class);
+    workerHandler = injector.getInstance(SSPWorkerHandlerImpl.class);
   }
 
   /**
@@ -180,10 +180,10 @@ public final class ParameterWorkerImplTest {
   @Test
   public void testInvalidateAll()
           throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    invalidateAllAsync(parameterWorker);
+    invalidateAllSSP(parameterWorker);
   }
 
-  private void invalidateAllAsync(final ParameterWorkerImpl worker)
+  private void invalidateAllSSP(final SSPParameterWorkerImpl worker)
           throws InterruptedException, ExecutionException, TimeoutException, NetworkException {
     final int numPulls = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(1);

@@ -16,13 +16,14 @@
 package edu.snu.cay.services.ps.worker.impl;
 
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
+
 import javax.inject.Inject;
 
-public final class AsyncWorkerHandlerImpl<K, P, V> implements WorkerHandler<K, P, V> {
-  private final ParameterWorkerImpl<K, P, V> parameterWorker;
+public final class SSPWorkerHandlerImpl<K, P, V> implements WorkerHandler<K, P, V> {
+  private final SSPParameterWorkerImpl<K, P, V> parameterWorker;
 
   @Inject
-  private AsyncWorkerHandlerImpl(final ParameterWorkerImpl<K, P, V> parameterWorker) {
+  private SSPWorkerHandlerImpl(final SSPParameterWorkerImpl<K, P, V> parameterWorker) {
     this.parameterWorker = parameterWorker;
   }
 
