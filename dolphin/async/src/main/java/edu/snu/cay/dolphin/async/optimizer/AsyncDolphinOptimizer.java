@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -89,8 +90,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
   @Override
   public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
-    final List<EvaluatorParameters> serverParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
-    final List<EvaluatorParameters> workerParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
+    final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
+    final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
@@ -129,9 +130,9 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    generatePlanForOptimalConfig(OptimizationOrchestrator.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
+    generatePlanForOptimalConfig(Constants.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
         serverParams.size(), numModelBlocks, planBuilder);
-    generatePlanForOptimalConfig(OptimizationOrchestrator.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
+    generatePlanForOptimalConfig(Constants.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
         workerParams.size(), numDataBlocks, planBuilder);
 
     final int numExtraEvals = availableEvaluators - (serverParams.size() + workerParams.size());

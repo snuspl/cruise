@@ -43,8 +43,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.NAMESPACE_SERVER;
-import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.NAMESPACE_WORKER;
+import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_WORKER;
+import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_SERVER;
 
 /**
  * Implementation of Plan Executor for AsyncDolphin.
@@ -167,14 +167,14 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
     final DAG<EMOperation> dag = plan.getDAG();
 
-    final Collection<String> addOperations = plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_WORKER);
-    final Collection<String> delOperations = plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_WORKER);
-    final Collection<TransferStep> moveOperations = plan.getTransferSteps(OptimizationOrchestrator.NAMESPACE_WORKER);
+    final Collection<String> addOperations = plan.getEvaluatorsToAdd(NAMESPACE_WORKER);
+    final Collection<String> delOperations = plan.getEvaluatorsToDelete(NAMESPACE_WORKER);
+    final Collection<TransferStep> moveOperations = plan.getTransferSteps(NAMESPACE_WORKER);
 
     // add Start vertices
     for (final String evalToAdd : addOperations) {
       final EMOperation startOperation =
-          new EMOperation(OptimizationOrchestrator.NAMESPACE_WORKER, START_WORKER_OP, evalToAdd);
+          new EMOperation(NAMESPACE_WORKER, START_WORKER_OP, evalToAdd);
 
       dag.addVertex(startOperation);
       numInjectedOps++;
@@ -183,7 +183,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     // add Stop vertices
     for (final String evalToDel : delOperations) {
       final EMOperation stopOperation =
-          new EMOperation(OptimizationOrchestrator.NAMESPACE_WORKER, STOP_WORKER_OP, evalToDel);
+          new EMOperation(NAMESPACE_WORKER, STOP_WORKER_OP, evalToDel);
 
       dag.addVertex(stopOperation);
       numInjectedOps++;
@@ -197,9 +197,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       // (Move -> Start), where Move is preceded by Add
       if (addOperations.contains(dstId)) {
         final EMOperation moveOperation =
-            new EMOperation(OptimizationOrchestrator.NAMESPACE_WORKER, transferStep);
+            new EMOperation(NAMESPACE_WORKER, transferStep);
         final EMOperation startOperation =
-            new EMOperation(OptimizationOrchestrator.NAMESPACE_WORKER, START_WORKER_OP, dstId);
+            new EMOperation(NAMESPACE_WORKER, START_WORKER_OP, dstId);
 
         dag.addEdge(moveOperation, startOperation);
       }
@@ -209,9 +209,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       // But here we assume that Moves preceding Del do not have incoming edges. It's valid within our use case.
       if (delOperations.contains(srcId)) {
         final EMOperation moveOperation =
-            new EMOperation(OptimizationOrchestrator.NAMESPACE_WORKER, transferStep);
+            new EMOperation(NAMESPACE_WORKER, transferStep);
         final EMOperation stopOperation =
-            new EMOperation(OptimizationOrchestrator.NAMESPACE_WORKER, STOP_WORKER_OP, srcId);
+            new EMOperation(NAMESPACE_WORKER, STOP_WORKER_OP, srcId);
 
         dag.addEdge(stopOperation, moveOperation);
       }
