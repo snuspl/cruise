@@ -155,6 +155,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     LOG.log(Level.INFO, "Calculate plan from {0}", optimizer.getClass().getName());
     final Plan plan = optimizer.optimize(evalParams, maxNumEvals);
 
+    // obtain the state of EMs, before executing the plan
     final Map<Integer, Integer> beforeServerStoreIdToNumBlocks = new HashMap<>();
     for (final Map.Entry<Integer, Set<Integer>> entry : serverEM.getStoreIdToBlockIds().entrySet()) {
       final int storeId = entry.getKey();
@@ -178,6 +179,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
         throw new RuntimeException("The number of executed operations is different from the expectation");
       }
 
+      // obtain the state of EMs, after executing the plan
       final Map<Integer, Integer> afterServerStoreIdToNumBlocks = new HashMap<>();
       for (final Map.Entry<Integer, Set<Integer>> entry : serverEM.getStoreIdToBlockIds().entrySet()) {
         final int storeId = entry.getKey();
@@ -256,19 +258,21 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       }
     }
 
+    final Map<Integer, Integer> expectedStoreIdToNumBlocks = beforeStoreIdToNumBlocks;
+
     // verify that the plan execution is done correctly
     for (final Map.Entry<Integer, Integer> entry : afterStoreIdToNumBlocks.entrySet()) {
       final int storeId = entry.getKey();
       final int numBlocks = entry.getValue();
 
       // 1. existing eval
-      if (beforeStoreIdToNumBlocks.containsKey(storeId)) {
-        if (beforeStoreIdToNumBlocks.get(storeId) != numBlocks) {
+      if (expectedStoreIdToNumBlocks.containsKey(storeId)) {
+        if (expectedStoreIdToNumBlocks.get(storeId) != numBlocks) {
           throw new RuntimeException("The number of block in the store " + storeId + " is different from expectation");
         }
 
         // remove the matched store to check that after-state includes all stores in before-state
-        beforeStoreIdToNumBlocks.remove(storeId);
+        expectedStoreIdToNumBlocks.remove(storeId);
 
       // 2. newly added eval
       } else {
@@ -296,7 +300,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       }
     }
 
-    if (!beforeStoreIdToNumBlocks.isEmpty()) {
+    if (!expectedStoreIdToNumBlocks.isEmpty()) {
       throw new RuntimeException("Delete is done to evaluator that should not be");
     }
 
