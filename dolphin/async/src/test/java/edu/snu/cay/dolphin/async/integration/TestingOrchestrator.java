@@ -222,7 +222,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
    * Calculated the expected result of plan execution.
    * It updates the {@code beforeStoreIdToNumBlocks} by applying the plan virtually.
    * In addition, it returns a separate map representing the number of blocks in each added evaluator,
-   * since we don't which store id has been assigned to added evaluators,
+   * since we don't know which store id has been assigned to added evaluators.
    */
   private Map<String, Integer> calculateExpectedResult(final Map<Integer, Integer> beforeStoreIdToNumBlocks,
                                                        final String namespace,
