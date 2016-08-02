@@ -20,9 +20,6 @@ function install_essential {
   # SSH, rsync, Git, Maven
   sudo apt-get install -y ssh rsync git maven
 
-  #Install prerequisite for protobuf
-  sudo apt-get install -y automake autoconf g++ make
-
   # SSH key
   ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
   cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
@@ -31,6 +28,9 @@ function install_essential {
 }
 
 function install_protobuf {
+  #Install prerequisite for protobuf
+  sudo apt-get install -y automake autoconf g++ make
+  
   cd /tmp
   wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.bz2
   tar xjf protobuf-2.5.0.tar.bz2
@@ -66,15 +66,13 @@ function install_hadoop {
   mv hadoop-2.7.2 ~/hadoop
 
   export HADOOP_HOME=$HOME/hadoop
-  export YARN_HOME=$HADOOP_HOME
-  export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
-  export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
+  export OLD_PATH=$PATH
   
   # Register variables to profile
   echo "export HADOOP_HOME=$HADOOP_HOME" >> ~/.profile
   echo "export YARN_HOME=\$HADOOP_HOME" >> ~/.profile
   echo "export YARN_CONF_DIR=\$HADOOP_HOME/etc/hadoop" >> ~/.profile
-  echo "export PATH=\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin:\$PATH" >> ~/.profile
+  echo "export PATH=\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin:$OLD_PATH" >> ~/.profile
   
   # Register variables to SSH Environment so that they can be accessed even via SSH connection
   echo "HADOOP_HOME=$HOME/hadoop" >> ~/.ssh/environment
@@ -85,6 +83,7 @@ function install_hadoop {
 }
 
 function install_reef {
+  install_protobuf # Protobuf is needed only when building REEF.
   cd ~
   git clone https://github.com/apache/reef
   cd reef
@@ -121,12 +120,13 @@ export LC_ALL="en_US.UTF-8"
 echo "Install start: $(date)" > $LOG_FILE
 
 install_essential
-install_protobuf
 install_java
 install_hadoop
-install_reef
 
-# install_cay #  Comment out this line only when you want to build cay on your machine
+# REEF and Cay can be built optionally.
+# Comment out this line only when you want to build [REEF|cay] on your machine.
+#install_reef 
+#install_cay
 
 # Wrapping up
 disable_ipv6
