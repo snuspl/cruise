@@ -38,6 +38,7 @@ public final class LRNLayer extends LayerBase {
   private MatrixFactory matrixFactory;
   private int channelSize;
   private int padSize;
+  private Matrix scale;
 
   /**
    * @param index the index of this layer
@@ -84,30 +85,15 @@ public final class LRNLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    Matrix scale = matrixFactory.create(input.getRows(), input.getColumns());
-    final Matrix paddedInput = MatrixFunctions.pow(padder(input), 2).mul(alpha / localSize);
-    // go through images
-    for (int i = 0; i < scale.getColumns(); ++i) {
-      Matrix scaleI = matrixFactory.create(channelSize, scale.getRows() / channelSize);
-      Matrix paddedI = spliter(paddedInput.getColumn(i));
-      //first channel
-      for (int l = 0; l < localSize; ++l) {
-        scaleI.putColumn(0, scaleI.getColumn(0).add(paddedI.getColumn(l)));
-      }
-      //rest of the channels
-      for (int c = 1; c < scale.getRows() / channelSize; ++c) {
-        scaleI.putColumn(c, scaleI.getColumn(c - 1).add(paddedI.getColumn(c + (padSize * 2)))
-                                                   .sub(paddedI.getColumn(c - 1)));
-      }
-      scale.putColumn(i, scaleI.reshape(scale.getRows(), 1));
-    }
-    scale = scale.add(k);
+    scale = matrixFactory.create(input.getRows(), input.getColumns());
+    final Matrix padded = MatrixFunctions.pow(padder(input), 2);
+    scale = summer(scale, padded).mul(alpha / localSize).add(k);
     return input.mul(MatrixFunctions.pow(scale, -beta));
   }
 
   /**
-   * Adds padding, size of ((localSize - 1)/2)*channelSize on both ends of each image vector.
-   * @param input
+   * Adds padding, size of ((localSize - 1) / 2) * channelSize on both ends of each image vector.
+   * @param input input matrix to be padded
    * @return padded matrix
    */
   private Matrix padder(final Matrix input) {
@@ -124,8 +110,27 @@ public final class LRNLayer extends LayerBase {
    * @param vec image vector
    * @return split matrix
    */
-  private Matrix spliter (final Matrix vec) {
-    return vec.reshape(channelSize, vec.getLength()/channelSize);
+  private Matrix splitter(final Matrix vec) {
+    return vec.reshape(channelSize, vec.getLength() / channelSize);
+  }
+
+  private Matrix summer(final Matrix output, final Matrix padded) {
+    // go through images
+    for (int i = 0; i < output.getColumns(); ++i) {
+      final Matrix errorI = matrixFactory.create(channelSize, scale.getRows() / channelSize);
+      final Matrix paddedI = splitter(padded.getColumn(i));
+      //first channel
+      for (int l = 0; l < localSize; ++l) {
+        errorI.putColumn(0, errorI.getColumn(0).add(paddedI.getColumn(l)));
+      }
+      //rest of the channels
+      for (int c = 1; c < output.getRows() / channelSize; ++c) {
+        errorI.putColumn(c, errorI.getColumn(c - 1).add(paddedI.getColumn(c + (padSize * 2)))
+            .sub(paddedI.getColumn(c - 1)));
+      }
+      output.putColumn(i, errorI.reshape(scale.getRows(), 1));
+    }
+    return output;
   }
 
   /**
@@ -138,7 +143,10 @@ public final class LRNLayer extends LayerBase {
   public Matrix backPropagate(final Matrix input,
                               final Matrix activation,
                               final Matrix nextError) {
-    return input;
+    Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
+    final Matrix padded = padder(nextError.mul(activation).div(scale));
+    error = summer(error, padded).mul(input).mul(-2 * alpha * beta / localSize);
+    return error.add(MatrixFunctions.pow(scale, -beta).mul(nextError));
   }
 
   /** {@inheritDoc} */

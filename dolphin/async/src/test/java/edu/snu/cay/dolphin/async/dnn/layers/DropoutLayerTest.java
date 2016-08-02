@@ -100,11 +100,4 @@ public final class DropoutLayerTest {
     final Matrix error = dropoutLayer.backPropagate(input, expectedDropoutActivation, nextError);
     assertTrue(expectedDropoutError.compare(error, TOLERANCE));
   }
-
-  //////////////////////////////////////////////////////////////////////
-  private final Matrix test = matrixFactory.create(2,2);
-  @Test
-  public void test() {
-    System.out.println(test.getColumn(0));
-  }
 }
