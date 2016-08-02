@@ -209,5 +209,70 @@
     {"name": "avgPushProcessingTime", "type": "double", "default":0.0},
     {"name": "avgReqProcessingTime", "type": "double", "default":0.0}
   ]
+},
+
+/**
+ * This message is sent from ClockManager to WorkerClock when the global minimum clock among all workers is changed.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "BroadcastMinClockMsg",
+  "fields":
+  [
+    {"name": "globalMinClock", "type": "int"}
+  ]
+},
+
+/**
+ * This message is sent from WorkerClock to ClockManager to request initial worker clock and current global minimum clock.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "RequestInitClockMsg",
+  "fields": []
+},
+
+/**
+ * A message to reply RequestInitClockMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "ReplyInitClockMsg",
+  "fields":
+  [
+    {"name": "initClock", "type": "int"},
+    {"name": "globalMinClock", "type": "int"}
+  ]
+},
+
+/**
+ * This message is sent from WorkerClock to ClockManager to notify the worker clock is ticked.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "TickMsg",
+  "fields": []
+},
+
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "AvroClockMsg",
+  "fields":
+  [
+    {"name": "type",
+     "type":
+       {"type": "enum",
+        "name": "ClockMsgType",
+        "symbols": ["BroadcastMinClockMsg", "RequestInitClockMsg", "ReplyInitClockMsg", "TickMsg"]}},
+    {"name": "broadcastMinClockMsg", "type": ["null", "BroadcastMinClockMsg"], "default": null},
+    {"name": "requestInitClockMsg", "type": ["null", "RequestInitClockMsg"], "default": null},
+    {"name": "replyInitClockMsg", "type": ["null", "ReplyInitClockMsg"], "default": null},
+    {"name": "tickMsg", "type": ["null", "TickMsg"], "default": null}
+  ]
 }
 ]
