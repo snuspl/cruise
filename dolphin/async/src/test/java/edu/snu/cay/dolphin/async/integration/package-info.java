@@ -13,24 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer;
-
-import org.apache.reef.tang.annotations.DefaultImplementation;
-
 /**
- * Orchestrates the Optimization in Dolphin Async.
+ * Integration test package.
  */
-@DefaultImplementation(OptimizationOrchestratorImpl.class)
-public interface OptimizationOrchestrator {
-
-  /**
-   * Runs optimization.
-   */
-  void run();
-
-  /**
-   * Checks whether the plan is being executed.
-   * @return True if the generated plan is on execution
-   */
-  boolean isPlanExecuting();
-}
+package edu.snu.cay.dolphin.async.integration;
