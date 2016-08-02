@@ -21,13 +21,11 @@ import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.*;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
-import static edu.snu.cay.dolphin.async.dnn.layers.LayerParameterUtils.compare;
 import static org.junit.Assert.assertTrue;
 
 /**
