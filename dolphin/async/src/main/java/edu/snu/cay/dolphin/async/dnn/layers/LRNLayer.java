@@ -85,9 +85,9 @@ public final class LRNLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    scale = matrixFactory.create(input.getRows(), input.getColumns());
+    this.scale = matrixFactory.create(input.getRows(), input.getColumns());
     final Matrix padded = MatrixFunctions.pow(padder(input), 2);
-    scale = summer(scale, padded).mul(alpha / localSize).add(k);
+    this.scale = summer(scale, padded).mul(alpha / localSize).add(k);
     return input.mul(MatrixFunctions.pow(scale, -beta));
   }
 
@@ -97,12 +97,13 @@ public final class LRNLayer extends LayerBase {
    * @return padded matrix
    */
   private Matrix padder(final Matrix input) {
-    final float[] out = new float[(input.getRows() + ((localSize - 1) * channelSize)) * input.getColumns()];
-    final float[] in = input.toFloatArray();
-    for (int i = 0; i < in.length; ++i) {
-      out[padSize + i] = in[i];
+    final Matrix output = matrixFactory.zeros(input.getRows() + (padSize * 2 * channelSize), input.getColumns());
+    for (int i = 0; i < input.getColumns(); ++i) {
+      for (int c = 0; c < input.getRows(); ++c) {
+        output.put(c + (padSize * channelSize), i, input.get(c, i));
+      }
     }
-    return matrixFactory.create(out, input.getRows() + ((localSize - 1) * channelSize), input.getColumns());
+    return output;
   }
 
   /**
