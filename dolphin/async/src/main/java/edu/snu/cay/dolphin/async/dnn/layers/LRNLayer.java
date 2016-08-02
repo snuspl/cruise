@@ -118,18 +118,18 @@ public final class LRNLayer extends LayerBase {
   private Matrix summer(final Matrix output, final Matrix padded) {
     // go through images
     for (int i = 0; i < output.getColumns(); ++i) {
-      final Matrix errorI = matrixFactory.create(channelSize, scale.getRows() / channelSize);
+      final Matrix outputI = matrixFactory.create(channelSize, scale.getRows() / channelSize);
       final Matrix paddedI = splitter(padded.getColumn(i));
       //first channel
       for (int l = 0; l < localSize; ++l) {
-        errorI.putColumn(0, errorI.getColumn(0).add(paddedI.getColumn(l)));
+        outputI.putColumn(0, outputI.getColumn(0).add(paddedI.getColumn(l)));
       }
       //rest of the channels
       for (int c = 1; c < output.getRows() / channelSize; ++c) {
-        errorI.putColumn(c, errorI.getColumn(c - 1).add(paddedI.getColumn(c + (padSize * 2)))
-            .sub(paddedI.getColumn(c - 1)));
+        outputI.putColumn(c, outputI.getColumn(c - 1).add(paddedI.getColumn(c + (padSize * 2)))
+                                                     .sub(paddedI.getColumn(c - 1)));
       }
-      output.putColumn(i, errorI.reshape(scale.getRows(), 1));
+      output.putColumn(i, outputI.reshape(scale.getRows(), 1));
     }
     return output;
   }

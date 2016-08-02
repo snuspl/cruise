@@ -72,16 +72,16 @@ public class LRNLayerTest {
       {0.111111f, 0.111111f}});
 
   private final Matrix expectedLRNErrorVec = matrixFactory.create(new float[][] {
-      {0, 0},
-      {0.6f, 0},
-      {0, 0.8f},
-      {0.8f, 0.2f}});
+      {-0.185185f, -0.185185f},
+      {-0.185185f, -0.185185f},
+      {-0.185185f, -0.185185f},
+      {-0.185185f, -0.185185f}});
 
-  private final Matrix getExpectedLRNError = matrixFactory.create(new float[][] {
-      {0, 0},
-      {0.6f, 0},
-      {0, 0.8f},
-      {0.8f, 0.2f}});
+  private final Matrix expectedLRNError = matrixFactory.create(new float[][] {
+      {-0.099537f, -0.099537f},
+      {-0.210648f, -0.210648f},
+      {-0.210648f, -0.210648f},
+      {-0.099537f, -0.099537f}});
 
   private LayerBase lrnLayer;
   private LayerBase lrnLayerVec;
@@ -120,16 +120,16 @@ public class LRNLayerTest {
   public void testLRNVec() {
     final Matrix activation = lrnLayerVec.feedForward(input);
     assertTrue(expectedLRNActivationVec.compare(activation, TOLERANCE));
-    //test for backPropagate is not implemented yet
-    System.out.println(lrnLayerVec.backPropagate(input, expectedLRNActivationVec, nextError));
-    assertTrue(true);
+    final Matrix error = lrnLayerVec.backPropagate(input, expectedLRNActivationVec, nextError);
+    assertTrue(expectedLRNErrorVec.compare(error, TOLERANCE));
   }
 
   @Test
   public void testLRN() {
     final Matrix activation = lrnLayer.feedForward(input);
     assertTrue(expectedLRNActivation.compare(activation, TOLERANCE));
-    //test for backPropagate is not implemented yet
+    final Matrix error = lrnLayer.backPropagate(input, expectedLRNActivation, nextError);
+    assertTrue(expectedLRNError.compare(error, TOLERANCE));
   }
 
 
