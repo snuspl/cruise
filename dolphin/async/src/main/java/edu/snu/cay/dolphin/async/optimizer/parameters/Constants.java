@@ -13,33 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.api;
+package edu.snu.cay.dolphin.async.optimizer.parameters;
 
 /**
- * A worker clock which ticks on each call of clock().
- * It also contains global minimum clock among all workers.
+ * Constants used for optimization in driver.
  */
-public interface WorkerClock {
-
+public final class Constants {
   /**
-   * Sets initial worker clock and receives current global minimum clock.
-   * initial worker clock =
-   * global minimum clock + ({@link edu.snu.cay.services.ps.worker.parameters.Staleness}/2)
+   * Empty private constructor to prohibit instantiation of utility class.
    */
-  void initialize();
+  private Constants() {
+  }
 
-  /**
-   * Ticks worker clock.
-   */
-  void clock();
-
-  /**
-   * @return current worker clock
-   */
-  int getWorkerClock();
-
-  /**
-   * @return global minimum clock among all workers
-   */
-  int getGlobalMinimumClock();
+  public static final String NAMESPACE_SERVER = "SERVER";
+  public static final String NAMESPACE_WORKER = "WORKER";
 }

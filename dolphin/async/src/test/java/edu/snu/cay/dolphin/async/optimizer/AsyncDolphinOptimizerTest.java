@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
-
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
@@ -62,8 +62,8 @@ public final class AsyncDolphinOptimizerTest {
         generateServerEvaluatorParameters(numModelsArray, processingTimeArray);
 
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
-    map.put(OptimizationOrchestrator.NAMESPACE_SERVER, serverEvaluatorParameters);
-    map.put(OptimizationOrchestrator.NAMESPACE_WORKER, workerEvaluatorParameters);
+    map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
+    map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     optimizer.optimize(map, 12);
   }
 

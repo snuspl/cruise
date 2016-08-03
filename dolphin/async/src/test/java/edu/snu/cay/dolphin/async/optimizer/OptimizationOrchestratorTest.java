@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
@@ -110,8 +111,8 @@ public final class OptimizationOrchestratorTest {
       public Plan answer(final InvocationOnMock invocation) throws Throwable {
         final Map<String, List<EvaluatorParameters>> evalParamsMap = invocation.getArgumentAt(0, Map.class);
 
-        final List<EvaluatorParameters> serverEvalParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
-        final List<EvaluatorParameters> workerEvalParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
+        final List<EvaluatorParameters> serverEvalParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
+        final List<EvaluatorParameters> workerEvalParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
 
         assertEquals("Optimizer is triggered with incomplete server metrics",
             serverEvalParams.size(), serverStoreIdMap.size());
