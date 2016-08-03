@@ -160,9 +160,8 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
    * Call after initializing threadPool.
    */
   @SuppressWarnings("unchecked")
-  private WorkerThread<K, P, V>[] initThreads(final int queueSize,
-                                                                  final long cacheExpireTimeout,
-                                                                  final long pullRetryTimeoutMs) {
+  private WorkerThread<K, P, V>[] initThreads(final int queueSize, final long cacheExpireTimeout,
+                                              final long pullRetryTimeoutMs) {
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
     final WorkerThread<K, P, V>[] initialized
             = new WorkerThread[numThreads];
@@ -206,7 +205,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
     threads[threadId].enqueue(pullOp);
-    return (V)pullOp.get();
+    return pullOp.get();
   }
 
   @Override
@@ -235,7 +234,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     }
     final List<V> values = new ArrayList<>(pullOps.size());
     for (final PullOp pullOp : pullOps) {
-      values.add((V)pullOp.get());
+      values.add(pullOp.get());
     }
     return values;
   }
@@ -409,6 +408,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
   private static class Tagged<V> {
     private V value;
     private int clock;
+
     Tagged(final V value, final int clock) {
       this.value = value;
       this.clock = clock;
@@ -526,14 +526,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     public void apply(final LoadingCache<EncodedKey<K>, Tagged<V>> kvCache) {
       try {
         V loadedValue;
-        while (true) {
-          loadedValue = kvCache.get(encodedKey).getValue();
-          if (false) {
-            kvCache.invalidate(encodedKey);
-          } else {
-            break;
-          }
-        }
+        loadedValue = kvCache.get(encodedKey).getValue();
 
         synchronized (this) {
           this.value = loadedValue;
@@ -548,7 +541,6 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
      * A blocking get.
      * @return the value
      */
-
     public V get() {
       synchronized (this) {
         while (value == null) {
@@ -580,7 +572,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
    * We should further explore this trade-off with real ML workloads.
    */
   private static class WorkerThread<K, P, V> implements Runnable {
-    private static final long QUEUE_TIMEOUT_MS = 3000;
+    private static final long QUEUE_TIMEOUT_MS = 0;
     private static final String STATE_RUNNING = "RUNNING";
     private static final String STATE_CLOSING = "CLOSING";
     private static final String STATE_CLOSED = "CLOSED";

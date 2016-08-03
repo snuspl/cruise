@@ -109,7 +109,7 @@ public final class ParameterWorkerImplTest {
 
   /**
    * Test the thread safety of {@link ParameterWorkerImpl}
-   * by creating multiple threads that try to pull values from the server, using {@link ParameterWorkerImpl}.
+   * by creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
