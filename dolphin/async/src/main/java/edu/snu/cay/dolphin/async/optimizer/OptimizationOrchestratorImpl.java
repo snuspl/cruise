@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
@@ -43,9 +44,6 @@ import java.util.logging.Logger;
  */
 public final class OptimizationOrchestratorImpl implements OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestratorImpl.class.getName());
-
-  public static final String NAMESPACE_SERVER = "SERVER";
-  public static final String NAMESPACE_WORKER = "WORKER";
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
@@ -114,9 +112,9 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
 
     // 2) Process the received metrics (e.g., calculate the EMA of metrics).
     final List<EvaluatorParameters> processedServerMetrics =
-        processMetricsForOptimization(NAMESPACE_SERVER, currentServerMetrics);
+        processMetricsForOptimization(Constants.NAMESPACE_SERVER, currentServerMetrics);
     final List<EvaluatorParameters> processedWorkerMetrics =
-        processMetricsForOptimization(NAMESPACE_WORKER, currentWorkerMetrics);
+        processMetricsForOptimization(Constants.NAMESPACE_WORKER, currentWorkerMetrics);
 
     // 3) Check that the processed metrics suffice to undergo an optimization cycle.
     // processed(*)Metrics of size less that the number of evaluators running in each space implies that
@@ -126,8 +124,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     }
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
-    evaluatorParameters.put(NAMESPACE_SERVER, processedServerMetrics);
-    evaluatorParameters.put(NAMESPACE_WORKER, processedWorkerMetrics);
+    evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
+    evaluatorParameters.put(Constants.NAMESPACE_WORKER, processedWorkerMetrics);
 
     final Future future = optimizationThreadPool.submit(new Runnable() {
       @Override
@@ -194,19 +192,19 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   }
 
   /**
-   * Processes raw metrics to .
+   * Processes raw metrics to extract a representative metric for each evaluator.
    * For servers, the total number of requests and processed times are summed up for average processing time overall.
    * For workers, the average of processing times are to be used.
    * @param namespace
    * @param rawMetrics
    * @return
    */
-  private List<EvaluatorParameters> processMetricsForOptimization(final String namespace,
-                                                                  final Map<String, List<EvaluatorParameters>> rawMetrics) {
+  private List<EvaluatorParameters> processMetricsForOptimization(
+      final String namespace, final Map<String, List<EvaluatorParameters>> rawMetrics) {
     final List<EvaluatorParameters> processedMetrics = new ArrayList<>();
 
     switch (namespace) {
-    case NAMESPACE_SERVER:
+    case Constants.NAMESPACE_SERVER:
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> serverMetric = entry.getValue();
         final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
@@ -241,7 +239,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         }
       }
       break;
-    case NAMESPACE_WORKER:
+    case Constants.NAMESPACE_WORKER:
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
@@ -282,21 +280,5 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       throw new RuntimeException("Unsupported namespace");
     }
     return processedMetrics;
-  }
-
-  /**
-   * Filter the Evaluator Parameters, so that there exist only one latest value per Evaluator.
-   */
-  private List<EvaluatorParameters> filterLatestParams(final List<EvaluatorParameters> params) {
-    final Map<String, EvaluatorParameters> evalIdToParameters = new HashMap<>();
-    final ListIterator<EvaluatorParameters> listIterator = params.listIterator(params.size());
-
-    // iterate from the tail in order to save the latest params
-    while (listIterator.hasPrevious()) {
-      final EvaluatorParameters evalParams = listIterator.previous();
-      evalIdToParameters.putIfAbsent(evalParams.getId(), evalParams);
-    }
-
-    return new ArrayList<>(evalIdToParameters.values());
   }
 }
