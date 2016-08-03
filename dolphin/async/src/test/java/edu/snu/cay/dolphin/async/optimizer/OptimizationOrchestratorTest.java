@@ -61,6 +61,12 @@ public final class OptimizationOrchestratorTest {
   private Map<Integer, Set<Integer>> workerStoreIdMap;
   private Map<Integer, Set<Integer>> serverStoreIdMap;
 
+  // Default number of blocks for the test.
+  private static final int NUM_BLOCKS = 10;
+
+  // Max number of evaluators in each worker and server space.
+  private static final int MAX_EVALS = 10;
+
   /**
    * Setup orchestrator with a fake optimizer and two ElasticMemory instances.
    * ElasticMemory instances are for checking the number of active evaluators running in the system.
@@ -74,6 +80,14 @@ public final class OptimizationOrchestratorTest {
             .build());
 
     metricManager = injector.getInstance(MetricManager.class);
+    final Map<String, Integer> evalIdToNumBlocksMapForWorkers = new HashMap<>();
+    final Map<String, Integer> evalIdToNumBlocksMapForServers = new HashMap<>();
+    for (int i = 0; i < MAX_EVALS; i++) {
+      evalIdToNumBlocksMapForServers.put(EVAL_PREFIX + i, NUM_BLOCKS);
+      evalIdToNumBlocksMapForWorkers.put(EVAL_PREFIX + i, NUM_BLOCKS);
+    }
+    metricManager.startMetricCollection();
+    metricManager.loadMetricValidationInfo(evalIdToNumBlocksMapForServers, evalIdToNumBlocksMapForWorkers);
 
     final ElasticMemory workerEM = mock(ElasticMemory.class);
     workerStoreIdMap = new HashMap<>();
@@ -95,6 +109,7 @@ public final class OptimizationOrchestratorTest {
       @Override
       public Plan answer(final InvocationOnMock invocation) throws Throwable {
         final Map<String, List<EvaluatorParameters>> evalParamsMap = invocation.getArgumentAt(0, Map.class);
+
         final List<EvaluatorParameters> serverEvalParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_SERVER);
         final List<EvaluatorParameters> workerEvalParams = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_WORKER);
 
@@ -126,12 +141,19 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numServers; i++) {
       serverStoreIdMap.put(i, Collections.emptySet());
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumModelParamBlocks(10).build();
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
+          .setNumModelParamBlocks(NUM_BLOCKS)
+          .setTotalPullProcessed(1)
+          .setTotalPullProcessingTime(1.0)
+          .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
-      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
+      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+          .setNumDataBlocks(NUM_BLOCKS)
+          .setTotalCompTime(1.0)
+          .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
     }
 
@@ -157,7 +179,11 @@ public final class OptimizationOrchestratorTest {
     }
 
     for (int i = 0; i < numServers; i++) {
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumModelParamBlocks(10).build();
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
+          .setNumModelParamBlocks(NUM_BLOCKS)
+          .setTotalPullProcessed(1)
+          .setTotalPullProcessingTime(1.0)
+          .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
       orchestrator.run();
 
@@ -166,7 +192,10 @@ public final class OptimizationOrchestratorTest {
     }
 
     for (int i = 0; i < numWorkers; i++) {
-      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
+      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+          .setNumDataBlocks(NUM_BLOCKS)
+          .setTotalCompTime(1.0)
+          .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
       orchestrator.run();
 
@@ -189,7 +218,11 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numServers; i++) {
       serverStoreIdMap.put(i, Collections.emptySet());
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumModelParamBlocks(10).build();
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
+          .setNumModelParamBlocks(NUM_BLOCKS)
+          .setTotalPullProcessed(1)
+          .setTotalPullProcessingTime(1.0)
+          .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
 
       // put duplicate metrics
@@ -198,7 +231,10 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
-      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
+      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+          .setNumDataBlocks(NUM_BLOCKS)
+          .setTotalCompTime(1.0)
+          .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
 
       // put duplicate metrics
@@ -210,45 +246,6 @@ public final class OptimizationOrchestratorTest {
 
     waitPlanExecuting();
     verify(optimizer, times(1)).optimize(anyMap(), anyInt());
-  }
-
-  /**
-   * Test that orchestrator dumps stale metrics and prevents them from being used in the next optimization try.
-   */
-  @Test
-  public void testStaleMetricDumping() {
-    final int numServers = 5;
-    final int numWorkers = 5;
-
-    for (int i = 0; i < numServers; i++) {
-      serverStoreIdMap.put(i, Collections.emptySet());
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder().setNumModelParamBlocks(10).build();
-      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
-    }
-    for (int i = 0; i < numWorkers; i++) {
-      workerStoreIdMap.put(i, Collections.emptySet());
-      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder().setNumDataBlocks(10).build();
-      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
-    }
-
-    // 1. When a server is deleted, metrics become stale
-    serverStoreIdMap.remove(0);
-
-    // so the collected metrics should be dumped in this try
-    orchestrator.run();
-
-    waitPlanExecuting();
-    verify(optimizer, never()).optimize(anyMap(), anyInt());
-
-
-    // 2. Even when the server is restored
-    serverStoreIdMap.put(0, Collections.emptySet());
-
-    // optimization cannot be done, because all metrics are already dumped
-    orchestrator.run();
-
-    waitPlanExecuting();
-    verify(optimizer, never()).optimize(anyMap(), anyInt());
   }
 
   /**

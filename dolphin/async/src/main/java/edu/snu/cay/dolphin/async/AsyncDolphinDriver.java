@@ -400,8 +400,11 @@ public final class AsyncDolphinDriver {
             }
           }
 
-          // 2. Start collecting metrics from evaluators
+          // 2. Start collecting metrics from evaluators.
+          //    Load metric manager's data validation map using ServerEM and WorkerEM, which are initialized by now.
           metricManager.startMetricCollection();
+          metricManager.loadMetricValidationInfo(serverEMWrapper.getInstance().getEvalIdToNumBlocks(),
+              workerEMWrapper.getInstance().getEvalIdToNumBlocks());
 
           // 3. trigger optimization during all workers are running their main iterations
           // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iterations

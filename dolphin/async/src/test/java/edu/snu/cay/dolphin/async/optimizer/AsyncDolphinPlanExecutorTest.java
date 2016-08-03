@@ -384,5 +384,10 @@ public final class AsyncDolphinPlanExecutorTest {
     public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
       return Collections.emptyMap();
     }
+
+    @Override
+    public Map<String, Integer> getEvalIdToNumBlocks() {
+      throw new UnsupportedOperationException();
+    }
   }
 }

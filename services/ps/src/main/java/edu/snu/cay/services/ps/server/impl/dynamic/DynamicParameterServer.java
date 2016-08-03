@@ -331,36 +331,9 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   /**
-   * Computes processing unit (C_s_proc) across all threads in this Server.
-   * It is computed by first calculating the total throughput of this server by adding each thread's throughput
-   * and getting the inverse of the throughput to finally get the time required to process a unit request.
+   * Computes the total number of requests across all threads in this server.
    *
-   * {@code Double.POSITIVE_INFINITY} is returned when all threads
-   * have not processed any requests so far.
-   */
-  private double getAvgProcTimePerReq(final Statistics[] procTimeStats) {
-    double throughputSum = 0D;
-
-    synchronized (procTimeStats) {
-      for (final Statistics stat : procTimeStats) {
-        throughputSum += stat.count() / stat.sum();
-      }
-    }
-
-    if (throughputSum == 0D) {
-      return Double.POSITIVE_INFINITY;
-    } else {
-      return 1.0 / throughputSum;
-    }
-  }
-
-  /**
-   * Computes processing unit (C_s_proc) across all threads in this Server.
-   * It is computed by first calculating the total throughput of this server by adding each thread's throughput
-   * and getting the inverse of the throughput to finally get the time required to process a unit request.
-   *
-   * {@code Double.POSITIVE_INFINITY} is returned when all threads
-   * have not processed any requests so far.
+   * It is used later on used to calculate the processing unit cost for this server (C_s_proc).
    */
   private int getTotalProcCount(final Statistics[] procTimeStats) {
     int processedCount = 0;
@@ -375,12 +348,9 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   /**
-   * Computes processing unit (C_s_proc) across all threads in this Server.
-   * It is computed by first calculating the total throughput of this server by adding each thread's throughput
-   * and getting the inverse of the throughput to finally get the time required to process a unit request.
+   * Computes the time spent on processing {@link #getTotalProcCount(Statistics[])} with the threads in this server.
    *
-   * {@code Double.POSITIVE_INFINITY} is returned when all threads
-   * have not processed any requests so far.
+   * It is used later on used to calculate the processing unit cost for this server (C_s_proc).
    */
   private double getTotalProcTime(final Statistics[] procTimeStats) {
     double procTimeSum = 0D;

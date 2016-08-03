@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
+import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
@@ -131,7 +132,8 @@ public final class OptimizationOrchestrator {
     final Future future = optimizationThreadPool.submit(new Runnable() {
       @Override
       public void run() {
-        LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan");
+        LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan with metrics: {0}",
+            evaluatorParameters);
 
         // 4) Calculate the optimal plan with the metrics
         final Plan plan;
@@ -161,7 +163,9 @@ public final class OptimizationOrchestrator {
         } finally {
           // 7) Once the execution is complete, restart metric collection.
           isPlanExecuting.set(false);
+          metricManager.loadMetricValidationInfo(serverEM.getEvalIdToNumBlocks(), workerEM.getEvalIdToNumBlocks());
           metricManager.startMetricCollection();
+
         }
       }
     });
@@ -186,9 +190,7 @@ public final class OptimizationOrchestrator {
   }
 
   private int getNumMetricSources(final Map<String, List<EvaluatorParameters>> evalParams) {
-    return (int) evalParams.entrySet().stream()
-        .map(param -> param.getKey())
-        .distinct().count();
+    return evalParams.keySet().size();
   }
 
   /**
@@ -207,11 +209,13 @@ public final class OptimizationOrchestrator {
     case NAMESPACE_SERVER:
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> serverMetric = entry.getValue();
-        final ServerEvaluatorParameters firstMetric = (ServerEvaluatorParameters) serverMetric.get(0);
         final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
-        aggregatedMetricBuilder.setWindowIndex(firstMetric.getMetrics().getWindowIndex());
-        aggregatedMetricBuilder.setNumModelParamBlocks(firstMetric.getMetrics().getNumModelParamBlocks());
-        aggregatedMetricBuilder.setMetricWindowMs(firstMetric.getMetrics().getMetricWindowMs());
+        aggregatedMetricBuilder.setWindowIndex((int) serverMetric.stream().mapToInt(
+            param -> ((ServerMetrics) param.getMetrics()).getWindowIndex()).average().getAsDouble());
+        aggregatedMetricBuilder.setNumModelParamBlocks((int) serverMetric.stream().mapToInt(
+            param -> ((ServerMetrics) param.getMetrics()).getNumModelParamBlocks()).average().getAsDouble());
+        aggregatedMetricBuilder.setMetricWindowMs((int) serverMetric.stream().mapToLong(
+            param -> ((ServerMetrics) param.getMetrics()).getMetricWindowMs()).average().getAsDouble());
         aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessed()).sum());
         aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
@@ -232,19 +236,23 @@ public final class OptimizationOrchestrator {
           break;
         } else {
           processedMetrics.add(new ServerEvaluatorParameters(entry.getKey(),
-              firstMetric.getDataInfo(), aggregatedMetric));
+              new DataInfoImpl((int) serverMetric.stream().mapToInt(
+                  param -> param.getDataInfo().getNumBlocks()).average().getAsDouble()), aggregatedMetric));
         }
       }
       break;
     case NAMESPACE_WORKER:
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
-        final WorkerEvaluatorParameters firstMetric = (WorkerEvaluatorParameters) workerMetric.get(0);
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
-        aggregatedMetricBuilder.setItrIdx(firstMetric.getMetrics().getItrIdx());
-        aggregatedMetricBuilder.setNumDataBlocks(firstMetric.getMetrics().getNumDataBlocks());
-        aggregatedMetricBuilder.setNumMiniBatchPerItr(firstMetric.getMetrics().getNumMiniBatchPerItr());
-        aggregatedMetricBuilder.setProcessedDataItemCount(firstMetric.getMetrics().getProcessedDataItemCount());
+        aggregatedMetricBuilder.setItrIdx((int) workerMetric.stream().mapToInt(
+            param -> ((WorkerMetrics) param.getMetrics()).getItrIdx()).average().getAsDouble());
+        aggregatedMetricBuilder.setNumDataBlocks((int) workerMetric.stream().mapToInt(
+            param -> ((WorkerMetrics) param.getMetrics()).getNumDataBlocks()).average().getAsDouble());
+        aggregatedMetricBuilder.setNumMiniBatchPerItr((int) workerMetric.stream().mapToInt(
+            param -> ((WorkerMetrics) param.getMetrics()).getNumMiniBatchPerItr()).average().getAsDouble());
+        aggregatedMetricBuilder.setProcessedDataItemCount((int) workerMetric.stream().mapToInt(
+            param -> ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount()).average().getAsDouble());
         aggregatedMetricBuilder.setTotalTime(workerMetric.stream().mapToDouble(
             param -> ((WorkerMetrics) param.getMetrics()).getTotalTime()).average().getAsDouble());
         aggregatedMetricBuilder.setTotalCompTime(workerMetric.stream().mapToDouble(
@@ -265,7 +273,8 @@ public final class OptimizationOrchestrator {
           break;
         } else {
           processedMetrics.add(new WorkerEvaluatorParameters(entry.getKey(),
-              firstMetric.getDataInfo(), aggregatedMetric));
+              new DataInfoImpl((int) workerMetric.stream().mapToInt(
+                  param -> param.getDataInfo().getNumBlocks()).average().getAsDouble()), aggregatedMetric));
         }
       }
       break;

@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
@@ -34,7 +33,6 @@ import java.util.logging.Logger;
 @DriverSide
 public final class MetricManager {
   private static final Logger LOG = Logger.getLogger(MetricManager.class.getName());
-  private final BlockManager blockManager;
 
   /**
    * Worker-side metrics, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
@@ -55,15 +53,16 @@ public final class MetricManager {
    * A map that contains each evaluator's mapping to the number of blocks it contains.
    * The map is loaded only when metric collection is enabled.
    */
-  private Map<String, Integer> numBlockOwnershipByEvalId;
+  private Map<String, Integer> numBlockOwnershipByEvalIdForServer;
+  private Map<String, Integer> numBlockOwnershipByEvalIdForWorker;
 
   @Inject
-  private MetricManager(final BlockManager blockManager) {
-    this.blockManager = blockManager;
+  private MetricManager() {
     this.workerEvalParams = Collections.synchronizedMap(new HashMap<>());
     this.serverEvalParams = Collections.synchronizedMap(new HashMap<>());
     this.metricCollectionEnabled = false;
-    this.numBlockOwnershipByEvalId = null;
+    this.numBlockOwnershipByEvalIdForServer = null;
+    this.numBlockOwnershipByEvalIdForWorker = null;
   }
 
   /**
@@ -75,7 +74,7 @@ public final class MetricManager {
     if (metricCollectionEnabled) {
       try {
         final int numDataBlocksOnWorker = metrics.getNumDataBlocks();
-        final int numDataBlocksOnDriver = numBlockOwnershipByEvalId.get(workerId);
+        final int numDataBlocksOnDriver = numBlockOwnershipByEvalIdForWorker.get(workerId);
 
         if (numDataBlocksOnWorker == numDataBlocksOnDriver) {
           final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnWorker);
@@ -105,7 +104,7 @@ public final class MetricManager {
     if (metricCollectionEnabled) {
       try {
         final int numDataBlocksOnServer = metrics.getNumModelParamBlocks();
-        final int numDataBlocksOnDriver = numBlockOwnershipByEvalId.get(serverId);
+        final int numDataBlocksOnDriver = numBlockOwnershipByEvalIdForServer.get(serverId);
 
         if (numDataBlocksOnServer == numDataBlocksOnDriver) {
           final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnServer);
@@ -143,6 +142,7 @@ public final class MetricManager {
    * Stops metric collection and clear metrics collected until this point.
    */
   public void stopMetricCollection() {
+    LOG.log(Level.INFO, "Metric collection stopped!");
     metricCollectionEnabled = false;
     clearServerMetrics();
     clearWorkerMetrics();
@@ -152,8 +152,20 @@ public final class MetricManager {
    * Starts metric collection and loads information required for metric validation.
    */
   public void startMetricCollection() {
+    LOG.log(Level.INFO, "Metric collection started!");
     metricCollectionEnabled = true;
-    loadMetricValidationInfo();
+  }
+
+  /**
+   * Loads information required for metric validation when metric collection is enabled.
+   * Any information to be used for metric validation may be added here
+   * and used to filter out invalid incoming metric in
+   * {@link #storeWorkerMetrics(String, WorkerMetrics)} or {@link #storeServerMetrics(String, ServerMetrics)}
+   */
+  public void loadMetricValidationInfo(final Map<String, Integer> numBlockOwnershipForServer,
+                                       final Map<String, Integer> numBlockOwnershipForWorker) {
+    this.numBlockOwnershipByEvalIdForServer = numBlockOwnershipForServer;
+    this.numBlockOwnershipByEvalIdForWorker = numBlockOwnershipForWorker;
   }
 
   /**
@@ -172,15 +184,5 @@ public final class MetricManager {
     synchronized (serverEvalParams) {
       serverEvalParams.clear();
     }
-  }
-
-  /**
-   * Loads information required for metric validation when metric collection is enabled.
-   * Any information to be used for metric validation may be added here
-   * and used to filter out invalid incoming metric in
-   * {@link #storeWorkerMetrics(String, WorkerMetrics)} or {@link #storeServerMetrics(String, ServerMetrics)}
-   */
-  private void loadMetricValidationInfo() {
-    numBlockOwnershipByEvalId = blockManager.getEvalIdToNumBlocks();
   }
 }
