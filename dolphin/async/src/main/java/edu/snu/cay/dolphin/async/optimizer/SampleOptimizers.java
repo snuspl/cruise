@@ -269,7 +269,8 @@ public final class SampleOptimizers {
      */
     private Plan getPlanSwapEvalBetweenNamespaces(final String srcNamespace,
                                                   final String destNamespace,
-                                                  final Map<String, List<EvaluatorParameters>> evalParamsMap) {
+                                                  final Map<String, List<EvaluatorParameters>> evalParamsMap,
+                                                  final int availableEvaluators) {
       final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
       // 1. source namespace: find one eval to delete and one eval to move data into it.
@@ -332,7 +333,9 @@ public final class SampleOptimizers {
 
       final String destNSEvalToAdd = NEW_EVAL_PREFIX + PLAN_CONTEXT_ID_COUNTER.getAndIncrement();
 
+      final int numExtraEvals = availableEvaluators - (srcNSEvalParamsList.size() + destNSEvalParamsList.size());
       return planBuilder
+          .setNumExtraEvaluators(numExtraEvals)
           .addEvaluatorToDelete(srcNamespace, srcNSEvalToDel)
           .addTransferStep(srcNamespace,
               new TransferStepImpl(srcNSEvalToDel, srcNSEvalToMove, new DataInfoImpl(srcNSBlocksToMove)))
@@ -355,13 +358,11 @@ public final class SampleOptimizers {
       final Plan plan;
 
       if (callsMade % 2 == 0) {
-        plan = getPlanSwapEvalBetweenNamespaces(Constants.NAMESPACE_WORKER,
-            Constants.NAMESPACE_SERVER,
-            evalParamsMap);
+        plan = getPlanSwapEvalBetweenNamespaces(Constants.NAMESPACE_WORKER, Constants.NAMESPACE_SERVER,
+            evalParamsMap, availableEvaluators);
       } else {
-        plan = getPlanSwapEvalBetweenNamespaces(Constants.NAMESPACE_SERVER,
-            Constants.NAMESPACE_WORKER,
-            evalParamsMap);
+        plan = getPlanSwapEvalBetweenNamespaces(Constants.NAMESPACE_SERVER, Constants.NAMESPACE_WORKER,
+            evalParamsMap, availableEvaluators);
       }
 
       callsMade++;
