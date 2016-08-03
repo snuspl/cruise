@@ -104,9 +104,8 @@ public final class ParameterWorkerImplTest {
   }
 
   /**
-   * Test the thread safety of {@link ParameterWorkerImpl} by
-   * creating multiple threads that try to pull values from the server
-   * using {@link ParameterWorkerImpl}.
+   * Test the thread safety of {@link ParameterWorkerImpl}
+   * by creating multiple threads that try to pull values from the server, using {@link ParameterWorkerImpl}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
@@ -135,8 +134,7 @@ public final class ParameterWorkerImplTest {
 
   /**
    * Test the correct handling of pull rejects by {@link ParameterWorkerImpl},
-   * creating multiple threads that try to pull values from the server
-   * using {@link ParameterWorkerImpl}.
+   * creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * To guarantee that {@code sender.sendPullMsg()} should be invoked as many times as {@code worker.pull()} is called,
@@ -173,8 +171,7 @@ public final class ParameterWorkerImplTest {
   }
 
   /**
-   * Test that the {@link ParameterWorkerImpl#invalidateAll()}
-   * and {@link SSPParameterWorkerImpl#invalidateAll()} method invalidate all caches
+   * Test that the {@link ParameterWorkerImpl#invalidateAll()} method invalidate all caches
    * so that new pull messages must be issued for each pull request.
    */
   @Test

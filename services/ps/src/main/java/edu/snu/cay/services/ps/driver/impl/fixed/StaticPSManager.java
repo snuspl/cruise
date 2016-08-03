@@ -34,11 +34,7 @@ import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.resolver.StaticServerResolver;
-import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
-import edu.snu.cay.services.ps.worker.impl.NullWorkerClock;
-import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
-import edu.snu.cay.services.ps.worker.impl.SSPWorkerClock;
-import edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl;
+import edu.snu.cay.services.ps.worker.impl.*;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.Staleness;
@@ -123,7 +119,8 @@ public final class StaticPSManager implements PSManager {
             isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
         .bindImplementation(WorkerClock.class,
             isSSPModel ? SSPWorkerClock.class : NullWorkerClock.class)
-        .bindImplementation(WorkerHandler.class, AsyncWorkerHandlerImpl.class)
+        .bindImplementation(WorkerHandler.class,
+            isSSPModel ? SSPWorkerHandlerImpl.class : AsyncWorkerHandlerImpl.class)
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))

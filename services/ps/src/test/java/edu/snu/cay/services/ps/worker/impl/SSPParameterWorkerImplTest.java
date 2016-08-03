@@ -85,15 +85,15 @@ public final class SSPParameterWorkerImplTest {
   }
 
   /**
-   * Test that {@link ParameterWorkerImpl#close(long)} does indeed block further operations from being processed.
+   * Test that {@link SSPParameterWorkerImpl#close(long)} does indeed block further operations from being processed.
    */
   @Test
   public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     testUtil.close(parameterWorker);
   }
   /**
-   * Test the thread safety of {@link ParameterWorkerImpl} by
-   * creating multiple threads that try to push values to the server using {@link ParameterWorkerImpl}.
+   * Test the thread safety of {@link SSPParameterWorkerImpl} by
+   * creating multiple threads that try to push values to the server using {@link SSPParameterWorkerImpl}.
    *
    * {@code numPushThreads} threads are generated, each sending {@code numPushPerThread} pushes.
    */
@@ -104,9 +104,9 @@ public final class SSPParameterWorkerImplTest {
   }
 
   /**
-   * Test the thread safety of {@link ParameterWorkerImpl} by
+   * Test the thread safety of {@link SSPParameterWorkerImpl} by
    * creating multiple threads that try to pull values from the server
-   * using {@link ParameterWorkerImpl}.
+   * using {@link SSPParameterWorkerImpl}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
@@ -120,8 +120,8 @@ public final class SSPParameterWorkerImplTest {
   }
 
   /**
-   * Test the thread safety of {@link ParameterWorkerImpl} by
-   * creating multiple threads that try to pull several values from the server using {@link ParameterWorkerImpl}.
+   * Test the thread safety of {@link SSPParameterWorkerImpl} by
+   * creating multiple threads that try to pull several values from the server using {@link SSPParameterWorkerImpl}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
@@ -134,9 +134,9 @@ public final class SSPParameterWorkerImplTest {
   }
 
   /**
-   * Test the correct handling of pull rejects by {@link ParameterWorkerImpl},
+   * Test the correct handling of pull rejects by {@link SSPParameterWorkerImpl},
    * creating multiple threads that try to pull values from the server
-   * using {@link ParameterWorkerImpl}.
+   * using {@link SSPParameterWorkerImpl}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * To guarantee that {@code sender.sendPullMsg()} should be invoked as many times as {@code worker.pull()} is called,
@@ -173,8 +173,7 @@ public final class SSPParameterWorkerImplTest {
   }
 
   /**
-   * Test that the {@link ParameterWorkerImpl#invalidateAll()}
-   * and {@link SSPParameterWorkerImpl#invalidateAll()} method invalidate all caches
+   * Test that the {@link SSPParameterWorkerImpl#invalidateAll()} method invalidate all caches
    * so that new pull messages must be issued for each pull request.
    */
   @Test
