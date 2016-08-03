@@ -15,18 +15,15 @@
  */
 package edu.snu.cay.services.em.plan.api;
 
-import edu.snu.cay.services.em.plan.impl.EMOperation;
-import edu.snu.cay.utils.DAG;
-
 import java.util.Collection;
 import java.util.Set;
 
 /**
  * A plan to be executed by {@link PlanExecutor}.
- * It also embeds the dependency information between detailed steps, {@link EMOperation)s.
+ * It also embeds the dependency information between detailed steps, {@link PlanOperation)s.
  * {@link PlanExecutor} can execute the plan by following steps.
  *   1. At first, call {@link #getReadyOps()} to obtain operations to execute.
- *   2. When the operation is completed, call {@link #onComplete(EMOperation)} to mark it as completed
+ *   2. When the operation is completed, call {@link #onComplete(PlanOperation)} to mark it as completed
  *    and obtain a set of operations enabled by the completion of the operation.
  *   2-1. Start executing the obtained operations.
  *   2-2. If step 2 returns an empty set, check whether the whole plan is completed,
@@ -42,17 +39,10 @@ public interface Plan {
   int getPlanSize();
 
   /**
-   * Gets a DAG object whose vertices are operations and edges are dependencies between operations.
-   * Changes on the returned DAG object affect {@link #getReadyOps()} and {@link #onComplete(EMOperation)}.
-   * @return a DAG representing operations with dependency information
-   */
-  DAG<EMOperation> getDAG();
-
-  /**
    * Gets ready operations that have no prerequisite operation.
    * @return a set of ready operations
    */
-  Set<EMOperation> getReadyOps();
+  Set<PlanOperation> getReadyOps();
 
   /**
    * Marks the operation complete.
@@ -60,7 +50,7 @@ public interface Plan {
    * @param operation the completed operation
    * @return a set of operations that become ready
    */
-  Set<EMOperation> onComplete(EMOperation operation);
+  Set<PlanOperation> onComplete(PlanOperation operation);
 
   /**
    * Evaluators to be added.

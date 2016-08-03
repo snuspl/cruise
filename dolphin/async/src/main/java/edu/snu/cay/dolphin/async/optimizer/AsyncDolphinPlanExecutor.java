@@ -16,16 +16,13 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinDriver;
+import edu.snu.cay.dolphin.async.plan.DolphinPlanOperation;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
-import edu.snu.cay.services.em.plan.api.Plan;
-import edu.snu.cay.services.em.plan.api.PlanExecutor;
-import edu.snu.cay.services.em.plan.api.PlanResult;
-import edu.snu.cay.services.em.plan.api.TransferStep;
-import edu.snu.cay.services.em.plan.impl.EMOperation;
+import edu.snu.cay.services.em.plan.api.*;
+import edu.snu.cay.services.em.plan.impl.EMPlanOperation;
 import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
-import edu.snu.cay.utils.DAG;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -55,9 +52,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private static final int DEFAULT_EVAL_MEM_SIZE = 1024;
   private static final int DEFAULT_EVAL_NUM_CORES = 1;
 
-  private static final String START_WORKER_OP = "START_WORKER"; // start worker task
-  private static final String STOP_WORKER_OP = "STOP_WORKER"; // stop worker task
-
   private enum OpExecutionStatus {
     IN_PROGRESS, COMPLETE
   }
@@ -83,7 +77,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   /**
    * Set of operations ready to be executed.
    */
-  private final BlockingQueue<Set<EMOperation>> nextOpsToExecuteInParallel = new LinkedBlockingQueue<>();
+  private final BlockingQueue<Set<PlanOperation>> nextOpsToExecuteInParallel = new LinkedBlockingQueue<>();
 
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
@@ -108,20 +102,20 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    */
   @Override
   public synchronized Future<PlanResult> execute(final Plan plan) {
-    final int numInjectedOps = injectWorkerTaskControlOps(plan);
+    LOG.log(Level.INFO, "Start executing the plan: {0}", plan);
 
-    executingPlan = new ExecutingPlan(plan, numInjectedOps);
+    executingPlan = new ExecutingPlan(plan);
 
-    final Set<EMOperation> initialEMOperations = executingPlan.getNextOpsToExecute();
-    LOG.log(Level.INFO, "Start with initial ops: {0}", initialEMOperations);
+    final Set<PlanOperation> initialPlanOperations = executingPlan.getNextOpsToExecute();
+    LOG.log(Level.INFO, "Start with initial ops: {0}", initialPlanOperations);
 
     try {
-      nextOpsToExecuteInParallel.put(initialEMOperations);
+      nextOpsToExecuteInParallel.put(initialPlanOperations);
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while putting ops into the queue", e);
     }
 
-    final int numTotalOps = plan.getPlanSize() + numInjectedOps;
+    final int numTotalOps = plan.getPlanSize();
 
     return mainExecutor.submit(new Callable<PlanResult>() {
 
@@ -132,18 +126,19 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
         // check whether it starts all the operations in the plan
         while (numStartedOps < numTotalOps) {
-          final Set<EMOperation> nextOps = nextOpsToExecuteInParallel.take();
+          final Set<PlanOperation> nextOps = nextOpsToExecuteInParallel.take();
 
           if (nextOps != null) {
             executeOperations(nextOps);
             numStartedOps += nextOps.size();
           }
+          LOG.log(Level.INFO, "numStartedOps: {0}, numTotalOps: {1}", new Object[]{numStartedOps, numTotalOps});
         }
 
         // wait until all the started operations are finished
         executingPlan.waitPlanExecution();
 
-        final ConcurrentMap<EMOperation, OpExecutionStatus> planExecutionResult =
+        final ConcurrentMap<PlanOperation, OpExecutionStatus> planExecutionResult =
                 executingPlan.getPlanExecutionStatus();
 
         executingPlan = null;
@@ -152,72 +147,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
                 planExecutionResult, planExecutionResult.size());
       }
     });
-  }
-
-  /**
-   * Inject following two types of operations with dependencies to control worker tasks
-   * regarding to EM's Add/Del, which always involve Moves.
-   * - Start task on worker added by EM after migrating initial data.
-   * - Stop task on worker being deleted by EM before migrating remaining data.
-   * @param plan the given plan
-   * @return the number of injected operations
-   */
-  private int injectWorkerTaskControlOps(final Plan plan) {
-    int numInjectedOps = 0;
-
-    final DAG<EMOperation> dag = plan.getDAG();
-
-    final Collection<String> addOperations = plan.getEvaluatorsToAdd(NAMESPACE_WORKER);
-    final Collection<String> delOperations = plan.getEvaluatorsToDelete(NAMESPACE_WORKER);
-    final Collection<TransferStep> moveOperations = plan.getTransferSteps(NAMESPACE_WORKER);
-
-    // add Start vertices
-    for (final String evalToAdd : addOperations) {
-      final EMOperation startOperation =
-          new EMOperation(NAMESPACE_WORKER, START_WORKER_OP, evalToAdd);
-
-      dag.addVertex(startOperation);
-      numInjectedOps++;
-    }
-
-    // add Stop vertices
-    for (final String evalToDel : delOperations) {
-      final EMOperation stopOperation =
-          new EMOperation(NAMESPACE_WORKER, STOP_WORKER_OP, evalToDel);
-
-      dag.addVertex(stopOperation);
-      numInjectedOps++;
-    }
-
-    // add edges: (Move -> Start), (Stop -> Move).
-    for (final TransferStep transferStep : moveOperations) {
-      final String srcId = transferStep.getSrcId();
-      final String dstId = transferStep.getDstId();
-
-      // (Move -> Start), where Move is preceded by Add
-      if (addOperations.contains(dstId)) {
-        final EMOperation moveOperation =
-            new EMOperation(NAMESPACE_WORKER, transferStep);
-        final EMOperation startOperation =
-            new EMOperation(NAMESPACE_WORKER, START_WORKER_OP, dstId);
-
-        dag.addEdge(moveOperation, startOperation);
-      }
-
-      // (Stop -> Move), where Move is followed by Del
-      // To prevent Stop from taking a place too early, we should insert Stop, cutting Move and its parent nodes.
-      // But here we assume that Moves preceding Del do not have incoming edges. It's valid within our use case.
-      if (delOperations.contains(srcId)) {
-        final EMOperation moveOperation =
-            new EMOperation(NAMESPACE_WORKER, transferStep);
-        final EMOperation stopOperation =
-            new EMOperation(NAMESPACE_WORKER, STOP_WORKER_OP, srcId);
-
-        dag.addEdge(stopOperation, moveOperation);
-      }
-    }
-
-    return numInjectedOps;
   }
 
   /**
@@ -260,7 +189,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the active context callback of ElasticMemory.add().
    */
   private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace,
-                                                                    final EMOperation operation) {
+                                                                    final EMPlanOperation operation) {
     final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(2);
     switch (namespace) {
     case NAMESPACE_SERVER:
@@ -281,9 +210,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for servers.
    */
   private final class ServerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMOperation completedOp;
+    private final EMPlanOperation completedOp;
 
-    private ServerContextActiveHandler(final EMOperation completedOp) {
+    private ServerContextActiveHandler(final EMPlanOperation completedOp) {
       this.completedOp = completedOp;
     }
 
@@ -302,9 +231,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for workers.
    */
   private final class WorkerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMOperation completedOp;
+    private final EMPlanOperation completedOp;
 
-    private WorkerContextActiveHandler(final EMOperation completedOp) {
+    private WorkerContextActiveHandler(final EMPlanOperation completedOp) {
       this.completedOp = completedOp;
     }
     @Override
@@ -322,9 +251,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the second callback to ElasticMemory.move().
    */
   private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
-    private final EMOperation completeOp;
+    private final EMPlanOperation completeOp;
 
-    MovedHandler(final EMOperation completeOp) {
+    MovedHandler(final EMPlanOperation completeOp) {
       this.completeOp = completeOp;
     }
 
@@ -345,9 +274,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the callback to ElasticMemory.delete().
    */
   private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
-    private final EMOperation completeOp;
+    private final EMPlanOperation completeOp;
 
-    DeletedHandler(final EMOperation completeOp) {
+    DeletedHandler(final EMPlanOperation completeOp) {
       this.completeOp = completeOp;
     }
 
@@ -375,7 +304,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       return;
     }
 
-    final Optional<EMOperation> completedOp = executingPlan.removeWorkerTaskControlOp(task.getActiveContext().getId());
+    final Optional<DolphinPlanOperation> completedOp
+        = executingPlan.removeWorkerTaskControlOp(task.getActiveContext().getId());
     if (completedOp.isPresent()) {
       onOperationComplete(completedOp.get());
     }
@@ -392,7 +322,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       return;
     }
 
-    final Optional<EMOperation> completedOp = executingPlan.removeWorkerTaskControlOp(task.getActiveContext().getId());
+    final Optional<DolphinPlanOperation> completedOp
+        = executingPlan.removeWorkerTaskControlOp(task.getActiveContext().getId());
     if (completedOp.isPresent()) {
       onOperationComplete(completedOp.get());
     }
@@ -401,8 +332,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   /**
    * Refer to the steps explained in {@link Plan}.
    */
-  private void onOperationComplete(final EMOperation completeOp) {
-    final Set<EMOperation> nextOpsToExecute = executingPlan.markOperationComplete(completeOp);
+  private void onOperationComplete(final PlanOperation completeOp) {
+    final Set<PlanOperation> nextOpsToExecute = executingPlan.markOperationComplete(completeOp);
     LOG.log(Level.INFO, "CompleteOp: {0}, NextOps: {1}", new Object[]{completeOp, nextOpsToExecute});
 
     if (!nextOpsToExecute.isEmpty()) {
@@ -421,33 +352,49 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    *
    * @param operationsToExecute a set of EM operations that can be executed independently at the point of trigger
    */
-  private void executeOperations(final Set<EMOperation> operationsToExecute) {
+  private void executeOperations(final Set<PlanOperation> operationsToExecute) {
     try {
-      for (final EMOperation operation : operationsToExecute) {
-        final String opType = operation.getOpType();
-
+      for (final PlanOperation operation : operationsToExecute) {
         if (!executingPlan.markOperationRequested(operation)) {
           continue;
         }
 
-        switch (opType) {
-        case EMOperation.ADD_OP:
-          executeAddOperation(operation);
-          break;
-        case EMOperation.DEL_OP:
-          executeDelOperation(operation);
-          break;
-        case EMOperation.MOVE_OP:
-          executeMoveOperation(operation);
-          break;
-        case START_WORKER_OP:
-          executeStartOperation(operation);
-          break;
-        case STOP_WORKER_OP:
-          executeStopOperation(operation);
-          break;
-        default:
-          throw new RuntimeException("Unsupported EM operation type");
+        if (operation instanceof EMPlanOperation) {
+          final EMPlanOperation emPlanOp = (EMPlanOperation) operation;
+          final EMPlanOperation.OpType opType = emPlanOp.getOpType();
+
+          switch (opType) {
+          case ADD:
+            executeAddOperation(emPlanOp);
+            break;
+          case DEL:
+            executeDelOperation(emPlanOp);
+            break;
+          case MOVE:
+            executeMoveOperation(emPlanOp);
+            break;
+          default:
+            throw new RuntimeException("Unsupported EM operation type");
+          }
+
+        } else if (operation instanceof DolphinPlanOperation) {
+          final DolphinPlanOperation dolphinPlanOp = (DolphinPlanOperation) operation;
+          final DolphinPlanOperation.OpType opType = dolphinPlanOp.getOpType();
+
+          switch (opType) {
+          case START:
+            executeStartOperation(dolphinPlanOp);
+            break;
+          case STOP:
+            executeStopOperation(dolphinPlanOp);
+            break;
+          default:
+            throw new RuntimeException("Unsupported Dolphin operation type");
+          }
+
+        } else {
+          throw new RuntimeException("Unsupported type of operation");
+
         }
       }
     } catch (Exception e) {
@@ -455,7 +402,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeAddOperation(final EMOperation operation) {
+  private void executeAddOperation(final EMPlanOperation operation) {
     final String namespace = operation.getNamespace();
 
     switch (namespace) {
@@ -476,7 +423,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeDelOperation(final EMOperation operation) {
+  private void executeDelOperation(final EMPlanOperation operation) {
     final String namespace = operation.getNamespace();
     final String evaluatorId = operation.getEvalId().get();
 
@@ -494,7 +441,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeMoveOperation(final EMOperation operation) {
+  private void executeMoveOperation(final EMPlanOperation operation) {
     final String namespace = operation.getNamespace();
     final TransferStep transferStep = operation.getTransferStep().get();
 
@@ -526,7 +473,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeStartOperation(final EMOperation startOp) {
+  private void executeStartOperation(final DolphinPlanOperation startOp) {
     final String planContextId = startOp.getEvalId().get();
     final Optional<ActiveContext> context = executingPlan.getAddedWorkerContext(planContextId);
 
@@ -543,7 +490,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeStopOperation(final EMOperation stopOp) {
+  private void executeStopOperation(final DolphinPlanOperation stopOp) {
     final String contextId = stopOp.getEvalId().get();
 
     // put metadata before start closing worker tasks
@@ -575,12 +522,12 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     /**
      * A bookkeeping of ongoing worker task Start/Stop operations.
      */
-    private final ConcurrentMap<String, EMOperation> ongoingWorkerTaskControlOps = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, DolphinPlanOperation> ongoingWorkerTaskControlOps = new ConcurrentHashMap<>();
 
     /**
-     * emOperationsRequested: A map of EM operations requested and the execution state (in_progress/complete).
+     * operationsRequested: A map of EM operations requested and the execution state (IN_PROGRESS/COMPLETE).
      */
-    private final ConcurrentMap<EMOperation, OpExecutionStatus> emOperationsRequested = new ConcurrentHashMap<>();
+    private final ConcurrentMap<PlanOperation, OpExecutionStatus> operationsRequested = new ConcurrentHashMap<>();
 
     /**
      * plan: An execution plan generated by optimizer, which represents dependencies between operations as a DAG.
@@ -589,13 +536,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
     /**
      * A countdown latch that releases waiting threads when the whole plan is finished.
-     * It is counted down by {@link #markOperationComplete(EMOperation)}.
+     * It is counted down by {@link #markOperationComplete(PlanOperation)}.
      */
     private final CountDownLatch planExecutionLatch;
 
-    private ExecutingPlan(final Plan plan, final int numInjectedOps) {
+    private ExecutingPlan(final Plan plan) {
       this.plan = plan;
-      this.planExecutionLatch = new CountDownLatch(plan.getPlanSize() + numInjectedOps);
+      this.planExecutionLatch = new CountDownLatch(plan.getPlanSize());
     }
 
     /**
@@ -625,7 +572,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @param contextId a context id
      * @param operation a Start or Stop operation
      */
-    void putWorkerTaskControlOp(final String contextId, final EMOperation operation) {
+    void putWorkerTaskControlOp(final String contextId, final DolphinPlanOperation operation) {
       ongoingWorkerTaskControlOps.put(contextId, operation);
       LOG.log(Level.INFO, "ongoingWorkerTaskControlOps: {0}, contextId: {1}",
           new Object[]{ongoingWorkerTaskControlOps, contextId});
@@ -634,9 +581,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     /**
      *
      * @param contextId a context id
-     * @return an optional with EMOperation
+     * @return an optional with EMPlanOperation
      */
-    Optional<EMOperation> removeWorkerTaskControlOp(final String contextId) {
+    Optional<DolphinPlanOperation> removeWorkerTaskControlOp(final String contextId) {
       LOG.log(Level.INFO, "ongoingWorkerTaskControlOps: {0}, contextId: {1}",
           new Object[]{ongoingWorkerTaskControlOps, contextId});
       return Optional.ofNullable(ongoingWorkerTaskControlOps.remove(contextId));
@@ -654,7 +601,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * Get a set of operations in the plan that can be executed next.
      * @return the set of operations
      */
-    Set<EMOperation> getNextOpsToExecute() {
+    Set<PlanOperation> getNextOpsToExecute() {
       return plan.getReadyOps();
     }
 
@@ -665,9 +612,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @return true if operation has successfully been put into the <operation, status> map;
      *        false if the operation mapping already exists - i.e. is in progress or already complete.
      */
-    boolean markOperationRequested(final EMOperation operation) {
+    boolean markOperationRequested(final PlanOperation operation) {
       LOG.log(Level.FINEST, "Operation requested: {0}", operation);
-      return emOperationsRequested.putIfAbsent(operation, OpExecutionStatus.IN_PROGRESS) == null;
+      return operationsRequested.putIfAbsent(operation, OpExecutionStatus.IN_PROGRESS) == null;
     }
 
     /**
@@ -678,9 +625,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @param operation the operation that has just been completed
      * @return the set of operations that can be executed after the operation's completion
      */
-    Set<EMOperation> markOperationComplete(final EMOperation operation) {
+    Set<PlanOperation> markOperationComplete(final PlanOperation operation) {
       planExecutionLatch.countDown();
-      final boolean wasInProgress = emOperationsRequested.replace(operation,
+      final boolean wasInProgress = operationsRequested.replace(operation,
               OpExecutionStatus.IN_PROGRESS, OpExecutionStatus.COMPLETE);
 
       if (!wasInProgress) {
@@ -713,8 +660,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     /**
      * @return the map of operations already requested and each operation's status (in progress or complete)
      */
-    ConcurrentMap<EMOperation, OpExecutionStatus> getPlanExecutionStatus() {
-      return emOperationsRequested;
+    ConcurrentMap<PlanOperation, OpExecutionStatus> getPlanExecutionStatus() {
+      return operationsRequested;
     }
   }
 }

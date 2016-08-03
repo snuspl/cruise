@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.plan.impl;
 
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
+import edu.snu.cay.services.em.plan.api.PlanOperation;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import org.junit.Test;
 
@@ -174,32 +175,32 @@ public final class PlanImplTest {
         .build();
 
     // Dels should be executed first to make a room for Adds
-    final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
+    final Set<PlanOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(2, firstOpsToExec.size());
-    for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.DEL_OP, operation.getOpType());
+    for (final PlanOperation operation : firstOpsToExec) {
+      assertEquals(EMPlanOperation.OpType.DEL, ((EMPlanOperation) operation).getOpType());
     }
 
-    final Set<EMOperation> executingPlans = new HashSet<>();
+    final Set<EMPlanOperation> executingPlans = new HashSet<>();
 
     // a single Add step can be executed after completing each Del step
 
-    for (final EMOperation operation : firstOpsToExec) {
-      final Set<EMOperation> nextOpsToExec = plan.onComplete(operation);
+    for (final PlanOperation operation : firstOpsToExec) {
+      final Set<PlanOperation> nextOpsToExec = plan.onComplete(operation);
       assertEquals(1, nextOpsToExec.size());
-      final EMOperation nextOpToExec = nextOpsToExec.iterator().next();
+      final PlanOperation nextOpToExec = nextOpsToExec.iterator().next();
 
-      assertEquals(EMOperation.ADD_OP, nextOpToExec.getOpType());
+      assertEquals(EMPlanOperation.OpType.ADD, ((EMPlanOperation) nextOpToExec).getOpType());
 
-      executingPlans.add(nextOpToExec);
+      executingPlans.add((EMPlanOperation) nextOpToExec);
     }
 
     // as a result of two Dels, two Adds started
     assertEquals(2, executingPlans.size());
 
     // these two Adds are the final stages of the plan
-    for (final EMOperation executingPlan : executingPlans) {
-      final Set<EMOperation> nextOpsToExec = plan.onComplete(executingPlan);
+    for (final EMPlanOperation executingPlan : executingPlans) {
+      final Set<PlanOperation> nextOpsToExec = plan.onComplete(executingPlan);
       assertTrue(nextOpsToExec.isEmpty());
     }
 
@@ -231,38 +232,39 @@ public final class PlanImplTest {
         .build();
 
     // Moves should be executed first
-    final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
+    final Set<PlanOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(4, firstOpsToExec.size());
 
-    final Set<EMOperation> firstMoveSet = new HashSet<>();
-    final Set<EMOperation> secondMoveSet = new HashSet<>();
+    final Set<EMPlanOperation> firstMoveSet = new HashSet<>();
+    final Set<EMPlanOperation> secondMoveSet = new HashSet<>();
 
     // after finishing Moves from each evaluator, Dels for the evaluator will be ready
-    for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.MOVE_OP, operation.getOpType());
+    for (final PlanOperation operation : firstOpsToExec) {
+      final EMPlanOperation emPlanOp = (EMPlanOperation) operation;
+      assertEquals(EMPlanOperation.OpType.MOVE, emPlanOp.getOpType());
 
-      if (operation.getTransferStep().get().getSrcId().equals(EVAL_PREFIX + 0)) {
-        firstMoveSet.add(operation);
+      if (emPlanOp.getTransferStep().get().getSrcId().equals(EVAL_PREFIX + 0)) {
+        firstMoveSet.add(emPlanOp);
       } else {
-        secondMoveSet.add(operation);
+        secondMoveSet.add(emPlanOp);
       }
     }
     assertEquals(2, firstMoveSet.size());
     assertEquals(2, secondMoveSet.size());
 
     // Delete will be ready after finishing all Moves from target evaluator
-    final Iterator<EMOperation> firstMoveSetIter = firstMoveSet.iterator();
+    final Iterator<EMPlanOperation> firstMoveSetIter = firstMoveSet.iterator();
     assertTrue(plan.onComplete(firstMoveSetIter.next()).isEmpty());
-    final Set<EMOperation> nextOpsToExec = plan.onComplete(firstMoveSetIter.next());
+    final Set<PlanOperation> nextOpsToExec = plan.onComplete(firstMoveSetIter.next());
     assertEquals(1, nextOpsToExec.size());
 
-    final Iterator<EMOperation> secondMoveSetIter = secondMoveSet.iterator();
+    final Iterator<EMPlanOperation> secondMoveSetIter = secondMoveSet.iterator();
     assertTrue(plan.onComplete(secondMoveSetIter.next()).isEmpty());
     nextOpsToExec.addAll(plan.onComplete(secondMoveSetIter.next()));
     assertEquals(2, nextOpsToExec.size());
 
-    for (final EMOperation operation : nextOpsToExec) {
-      assertEquals(EMOperation.DEL_OP, operation.getOpType());
+    for (final PlanOperation operation : nextOpsToExec) {
+      assertEquals(EMPlanOperation.OpType.DEL, ((EMPlanOperation) operation).getOpType());
 
       // these Deletes are the final stages of the plan
       assertTrue(plan.onComplete(operation).isEmpty());
@@ -295,32 +297,34 @@ public final class PlanImplTest {
         .build();
 
     // Adds should be executed first
-    final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
+    final Set<PlanOperation> firstOpsToExec = plan.getReadyOps();
     assertEquals(2, firstOpsToExec.size());
 
-    EMOperation firstAdd = null;
-    EMOperation secondAdd = null;
-    for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.ADD_OP, operation.getOpType());
+    EMPlanOperation firstAdd = null;
+    EMPlanOperation secondAdd = null;
+    for (final PlanOperation operation : firstOpsToExec) {
+      final EMPlanOperation emPlanOp = (EMPlanOperation) operation;
 
-      if (operation.getEvalId().get().equals(EVAL_PREFIX + 0)) {
-        firstAdd = operation;
+      assertEquals(EMPlanOperation.OpType.ADD, emPlanOp.getOpType());
+
+      if (emPlanOp.getEvalId().get().equals(EVAL_PREFIX + 0)) {
+        firstAdd = emPlanOp;
       } else {
-        secondAdd = operation;
+        secondAdd = emPlanOp;
       }
     }
     assertNotNull(firstAdd);
     assertNotNull(secondAdd);
 
     // Moves will be ready after finishing Add of destination evaluator
-    final Set<EMOperation> nextOpsToExec = plan.onComplete(firstAdd);
+    final Set<PlanOperation> nextOpsToExec = plan.onComplete(firstAdd);
     assertEquals(2, nextOpsToExec.size());
 
     nextOpsToExec.addAll(plan.onComplete(secondAdd));
     assertEquals(4, nextOpsToExec.size());
 
-    for (final EMOperation operation : nextOpsToExec) {
-      assertEquals(EMOperation.MOVE_OP, operation.getOpType());
+    for (final PlanOperation operation : nextOpsToExec) {
+      assertEquals(EMPlanOperation.OpType.MOVE, ((EMPlanOperation) operation).getOpType());
 
       // these Moves are the final stages of the plan
       assertTrue(plan.onComplete(operation).isEmpty());
