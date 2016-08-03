@@ -120,7 +120,7 @@ public final class StaticPSManager implements PSManager {
         .bindImplementation(WorkerClock.class,
             isSSPModel ? SSPWorkerClock.class : NullWorkerClock.class)
         .bindImplementation(WorkerHandler.class,
-            isSSPModel ? SSPWorkerHandlerImpl.class : AsyncWorkerHandlerImpl.class)
+            isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))

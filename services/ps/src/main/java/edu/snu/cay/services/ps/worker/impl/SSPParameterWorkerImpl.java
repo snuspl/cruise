@@ -24,6 +24,7 @@ import edu.snu.cay.services.ps.common.Statistics;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -45,7 +46,7 @@ import java.util.logging.Logger;
  * the Codec classes are thread-safe.
  */
 @EvaluatorSide
-public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P, V> {
+public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
   private static final Logger LOG = Logger.getLogger(SSPParameterWorkerImpl.class.getName());
 
   /**
@@ -276,9 +277,8 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
   /**
    * Handles incoming pull replies, by setting the value of the future.
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
-   * Called by {@link AsyncWorkerHandlerImpl#processPullReply}.
    */
-  void processPullReply(final K key, final V value) {
+  public void processPullReply(final K key, final V value) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);
@@ -295,9 +295,8 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
   /**
    * Handles incoming pull rejects, by rejecting the future.
    * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
-   * Called by {@link AsyncWorkerHandlerImpl#processPullReject}.
    */
-  void processPullReject(final K key) {
+  public void processPullReject(final K key) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       LOG.log(Level.INFO, "Pull operation for key {0} is rejected." +
@@ -311,6 +310,14 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
       LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
               " Response for the key may have arrived earlier from another server", key);
     }
+  }
+
+  /**
+   * Handles incoming push rejects, but internally it calls {@link SSPParameterWorkerImpl#push}.
+   * This function has been added to this class, that it implements {@link WorkerHandler} interface.
+   */
+  public void processPushReject(final K key, final P preValue) {
+    this.push(key, preValue);
   }
 
   /**

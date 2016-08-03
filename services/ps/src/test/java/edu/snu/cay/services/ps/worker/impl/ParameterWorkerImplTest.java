@@ -22,6 +22,7 @@ import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
@@ -51,7 +52,7 @@ public final class ParameterWorkerImplTest {
 
   private ParameterWorkerImplTestUtil testUtil;
   private ParameterWorkerImpl<Integer, Integer, Integer> parameterWorker;
-  private AsyncWorkerHandlerImpl<Integer, Integer, Integer> workerHandler;
+  private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
 
   @Before
@@ -61,6 +62,7 @@ public final class ParameterWorkerImplTest {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(ParameterWorkerImplTestUtil.PULL_RETRY_TIMEOUT_MS))
+        .bindImplementation(WorkerHandler.class, ParameterWorkerImpl.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
@@ -81,7 +83,7 @@ public final class ParameterWorkerImplTest {
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
     parameterWorker = injector.getInstance(ParameterWorkerImpl.class);
-    workerHandler = injector.getInstance(AsyncWorkerHandlerImpl.class);
+    workerHandler = injector.getInstance(ParameterWorkerImpl.class);
   }
 
   /**
