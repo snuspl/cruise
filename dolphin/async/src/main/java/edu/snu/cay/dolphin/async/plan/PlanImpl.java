@@ -282,7 +282,7 @@ public final class PlanImpl implements Plan {
     private DAG<PlanOperation> constructDAG(final Map<String, Set<String>> namespaceToEvalsToAdd,
                                           final Map<String, Set<String>> namespaceToEvalsToDel,
                                           final Map<String, List<TransferStep>> namespaceToTransferSteps,
-                                          final Optional<Integer> numExtraEvals) {
+                                          final Optional<Integer> numAvailableExtraEvals) {
 
       final DAG<PlanOperation> dag = new DAGImpl<>();
 
@@ -345,14 +345,14 @@ public final class PlanImpl implements Plan {
       // We need one Delete for each Add as much as the number of extra evaluator slots
       // is smaller than the number of evaluators to Add.
       // The current strategy simply maps one Delete and one Add that is not necessarily relevant with.
-      if (numExtraEvals.isPresent()) {
-        final int numRequiredEvals = addOperations.size() - delOperations.size();
-        if (numRequiredEvals > numExtraEvals.get()) {
+      if (numAvailableExtraEvals.isPresent()) {
+        final int numRequiredExtraEvals = addOperations.size() - delOperations.size();
+        if (numRequiredExtraEvals > numAvailableExtraEvals.get()) {
           throw new RuntimeException("Plan is infeasible, because it violates the resource limit");
         }
 
-        final int numAddsShouldFollowDel = addOperations.size() - numExtraEvals.get();
-        LOG.log(Level.FINE, "{0} Adds should follow Deletes.");
+        final int numAddsShouldFollowDel = addOperations.size() - numAvailableExtraEvals.get();
+        LOG.log(Level.INFO, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
 
         final Iterator<EMPlanOperation> delOperationsItr = delOperations.values().iterator();
         final Iterator<EMPlanOperation> addOperationsItr = addOperations.values().iterator();
