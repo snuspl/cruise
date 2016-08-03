@@ -37,9 +37,12 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -60,6 +63,7 @@ public class SSPWorkerClockTest {
   private ClockMsgCodec codec;
   private SSPWorkerClock sspWorkerClock;
   private SSPWorkerClock.MessageHandler sspWorkerClockMessageHandler;
+  private AtomicInteger numberOfTickMsgCalls;
 
   @Before
   public void setup() throws InjectionException {
@@ -76,16 +80,7 @@ public class SSPWorkerClockTest {
     this.sspWorkerClock = injector.getInstance(SSPWorkerClock.class);
     this.sspWorkerClockMessageHandler = injector.getInstance(SSPWorkerClock.MessageHandler.class);
     this.codec = injector.getInstance(ClockMsgCodec.class);
-  }
-
-  /**
-   * Tests whether initialize() sets worker clock and global minimum clock according to the reply message.
-   * Tests whether clock() ticks its worker clock and sends TICK message.
-   */
-  @Test
-  public void testInitializeAndClock() {
-    final int numberOfClockCalls = 3;
-    final AtomicInteger numberOfTickMsgCalls = new AtomicInteger(0);
+    this.numberOfTickMsgCalls = new AtomicInteger(0);
 
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
@@ -102,6 +97,15 @@ public class SSPWorkerClockTest {
         }
         return null;
       }).when(mockAggregationSlave).send(anyString(), anyObject());
+  }
+
+  /**
+   * Tests whether initialize() sets worker clock and global minimum clock according to the reply message.
+   * Tests whether clock() ticks its worker clock and sends TICK message.
+   */
+  @Test
+  public void testInitializeAndClock() {
+    final int numberOfClockCalls = 3;
 
     sspWorkerClock.initialize();
     assertEquals(initialWorkerClock, sspWorkerClock.getWorkerClock());
@@ -125,20 +129,6 @@ public class SSPWorkerClockTest {
   public void testUpdateGlobalMinimumClock() throws NetworkException {
     final int updatedGlobalMinimumClock = 100;
 
-    doAnswer(invocation -> {
-        final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final AvroClockMsg sendMsg = codec.decode(data);
-
-        if (sendMsg.getType() == ClockMsgType.RequestInitClockMsg) {
-          final AvroClockMsg initClockMsg =
-              ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
-          final byte[] replyData = codec.encode(initClockMsg);
-          final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
-          sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        }
-        return null;
-      }).when(mockAggregationSlave).send(anyString(), anyObject());
-
     sspWorkerClock.initialize();
     assertEquals(initialWorkerClock, sspWorkerClock.getWorkerClock());
     assertEquals(initialGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
@@ -158,11 +148,104 @@ public class SSPWorkerClockTest {
     assertEquals(updatedGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
   }
 
+  /**
+   * Tests whether waitIfExceedingStalenessBound() waits if the worker clock exceeds the staleness bound.
+   */
+  @Test
+  public void testWaitIfExceedingStalenessBound() throws InterruptedException {
+    int globalMinimumClock = initialGlobalMinimumClock;
+    final int numOfThreads = 3;
+    final List<Thread> threads = new ArrayList<>();
+
+    sspWorkerClock.initialize();
+
+    // test whether waitIfExceedingStalenessBound() returns immediately when the worker clock is in staleness bound
+    while (sspWorkerClock.getWorkerClock() <= globalMinimumClock + staleness) {
+      for (int i = 0; i < numOfThreads; i++) {
+        final Thread thread = new SSPWorkerClockTestThread();
+        threads.add(thread);
+        thread.start();
+      }
+
+      // wait until the thread calls waitIfExceedingStalenessBound
+      Thread.sleep(500);
+
+      // waitIfExceedingStalenessBound() call is returned immediately,
+      // so the thread would terminate at this moment.
+      for (final Thread thread : threads) {
+        assertEquals(Thread.State.TERMINATED, thread.getState());
+      }
+      threads.clear();
+      sspWorkerClock.clock();
+    }
+
+    sspWorkerClock.clock();
+    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + staleness);
+    for (int i = 0; i < numOfThreads; i++) {
+      final Thread thread = new SSPWorkerClockTestThread();
+      threads.add(thread);
+      thread.start();
+    }
+    // wait until the thread calls waitIfExceedingStalenessBound
+    Thread.sleep(500);
+
+    // waitIfExceedingStalenessBound() call is blocked until the worker clock is within the staleness bound,
+    // so the thread would wait at this moment.
+    for (final Thread thread : threads) {
+      assertEquals(Thread.State.WAITING, thread.getState());
+    }
+
+    globalMinimumClock++;
+    // the worker clock is out of staleness bound even though global minimum clock is ticked.
+    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + staleness);
+
+    // send message with increased global minimum clock
+    final byte[] broadcastClockMsgToKeepWait =
+        codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
+    sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToKeepWait));
+
+    // wait until the above message is handled.
+    Thread.sleep(500);
+
+    // thread is still waiting because the worker clock is still out of the staleness bound
+    for (final Thread thread : threads) {
+      assertEquals(Thread.State.WAITING, thread.getState());
+    }
+
+    globalMinimumClock++;
+    // now, this increased global minimum clock is enough to terminate the thread.
+    assertTrue(sspWorkerClock.getWorkerClock() <= globalMinimumClock + staleness);
+
+    // send message with increased global minimum clock
+    final byte[] broadcastClockMsgToTerminate =
+        codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
+    sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToTerminate));
+
+    // wait until the above message is handled.
+    Thread.sleep(500);
+
+    // thread is now terminated because the worker clock is within the staleness bound
+    for (final Thread thread : threads) {
+      assertEquals(Thread.State.TERMINATED, thread.getState());
+    }
+  }
+
   private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
     return AggregationMessage.newBuilder()
         .setSourceId(workerId)
         .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))
         .build();
+  }
+
+  private class SSPWorkerClockTestThread extends Thread {
+    @Override
+    public void run() {
+      try {
+        sspWorkerClock.waitIfExceedingStalenessBound();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 }

@@ -34,6 +34,20 @@ public interface WorkerClock {
   void clock();
 
   /**
+   * Waits if the worker clock exceeds staleness bound, otherwise returns immediately.
+   *
+   *                 [staleness bound]
+   *
+   *                    staleness
+   *     _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+   *    |                                       |
+   *    |                                       |
+   *    ._______________________________________.
+   * global minimum clock                global minimum clock + staleness
+   */
+  void waitIfExceedingStalenessBound() throws InterruptedException;
+
+  /**
    * @return current worker clock
    */
   int getWorkerClock();
