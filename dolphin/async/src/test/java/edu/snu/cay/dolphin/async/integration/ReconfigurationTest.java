@@ -53,7 +53,7 @@ public class ReconfigurationTest {
         "-num_workers", Integer.toString(numWorkers),
         "-num_servers", Integer.toString(numServers),
         "-max_num_eval_local", Integer.toString(numTotalEvals),
-        "-max_iter", Integer.toString(100),
+        "-max_iter", Integer.toString(150),
         "-delta", Integer.toString(4),
         "-start_key", Integer.toString(100),
         "-num_keys", Integer.toString(100),
