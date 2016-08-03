@@ -125,7 +125,8 @@ public class DynamicServerResolverTest {
 
   /**
    * Tests resolver after initializing the routing table.
-   * The test runs multiple threads using resolver to check whether the correct result is given.
+   * The test checks whether initialization is performed, and
+   * runs multiple threads using resolver to check whether the correct result is given.
    */
   @Test
   public void testResolveAfterInit() throws InterruptedException {
@@ -138,11 +139,6 @@ public class DynamicServerResolverTest {
 
     // confirm that the resolver is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
-
-    // When serverResolver.requestRoutingTable() is called,
-    // workers internally register themselves to subscribe the updates
-    // in routing table to driver via sendWorkerRegisterMsg()
-    verify(msgSender, times(1)).sendWorkerRegisterMsg();
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
 
@@ -168,9 +164,6 @@ public class DynamicServerResolverTest {
 
     ThreadUtils.runConcurrently(threads);
     threadLatch.await(30, TimeUnit.SECONDS);
-
-    // initialization should be done only once
-    verify(msgSender, times(1)).sendWorkerRegisterMsg();
   }
 
   /**
@@ -215,17 +208,11 @@ public class DynamicServerResolverTest {
 
     // confirm that the resolver is not initialized yet
     assertEquals(1, initLatch.getCount());
-    verify(msgSender, never()).sendWorkerRegisterMsg();
 
     serverResolver.triggerInitialization();
 
     // confirm that the resolver is initialized now
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
-
-    // When serverResolver.triggerInitialization() is called,
-    // workers internally register themselves to subscribe the updates
-    // in routing table to driver via sendWorkerRegisterMsg()
-    verify(msgSender, times(1)).sendWorkerRegisterMsg();
 
     threadLatch.await(30, TimeUnit.SECONDS);
   }

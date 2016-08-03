@@ -122,7 +122,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   }
 
   private void onRoutingTableInitMsg(final AvroElasticMemoryMessage msg) {
-    router.initRoutingTableDynamically(msg.getRoutingTableInitMsg().getBlockLocations());
+    router.initRoutingTableWithDriver(msg.getRoutingTableInitMsg().getBlockLocations());
   }
 
   private void onRoutingTableUpdateMsg(final AvroElasticMemoryMessage msg) {

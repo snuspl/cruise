@@ -149,7 +149,7 @@ public class OperationRouterTest {
         @Override
         public Object answer(final InvocationOnMock invocation) throws Throwable {
           final List<Integer> blockLocations = invocation.getArgumentAt(1, List.class);
-          router.initRoutingTableDynamically(blockLocations);
+          router.initRoutingTableWithDriver(blockLocations);
           initLatch.countDown();
           return null;
         }
@@ -288,7 +288,8 @@ public class OperationRouterTest {
    * Tests router after initializing the routing table.
    * Stores in added evaluators are initialized by communicating with the driver,
    * and stores in initial evaluators are initialized by itself without any communication.
-   * The test runs multiple threads using resolver to check whether the correct result is given.
+   * The test checks whether initialization is performed, and
+   * runs multiple threads using resolver to check whether the correct result is given.
    */
   @Test
   public void testRouterInAddedEvalAfterInit() throws InjectionException, InterruptedException {
@@ -320,7 +321,6 @@ public class OperationRouterTest {
 
     // confirm that the router is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
-    verify(evalMsgSender, times(1)).sendRoutingTableInitReqMsg(any(TraceInfo.class));
 
     // While multiple threads use router, the initialization never be triggered because it's already initialized.
     final Runnable[] threads = new Runnable[numThreads];
@@ -350,8 +350,6 @@ public class OperationRouterTest {
 
     ThreadUtils.runConcurrently(threads);
     assertTrue(threadLatch.await(30, TimeUnit.SECONDS));
-
-    verify(evalMsgSender, times(1)).sendRoutingTableInitReqMsg(any(TraceInfo.class));
   }
 
   /**
@@ -420,14 +418,12 @@ public class OperationRouterTest {
 
     // confirm that the router is not initialized yet
     assertEquals(1, initLatch.getCount());
-    verify(evalMsgSender, never()).sendRoutingTableInitReqMsg(any(TraceInfo.class));
 
     routerInInitStore.initialize(endpointIdForInitEval);
     routerInAddedStore.initialize(endpointIdForAddedEval); // It requests the routing table to driver
 
     // confirm that the router is initialized now
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
-    verify(evalMsgSender, times(1)).sendRoutingTableInitReqMsg(any(TraceInfo.class));
 
     assertTrue(threadLatch.await(30, TimeUnit.SECONDS));
   }

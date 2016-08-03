@@ -55,10 +55,8 @@ public final class DynamicServerResolver implements ServerResolver {
   private volatile int numTotalBlocks = 0;
 
   /**
-   * Volatile boolean representing whether it receives the initial routing table from driver or not.
+   * A latch that opens when initialization is done.
    */
-  private volatile boolean initialized = false;
-
   private final CountDownLatch initLatch = new CountDownLatch(1);
 
   private final InjectionFuture<WorkerMsgSender> msgSender;
@@ -83,13 +81,10 @@ public final class DynamicServerResolver implements ServerResolver {
    * otherwise waits the initialization within a bounded time.
    */
   private void checkInitialization() {
-    if (initialized) {
-      return;
-    }
-
-    while (!initialized) {
+    while (true) {
       try {
         initLatch.await();
+        break;
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while waiting for routing table initialization from driver", e);
       }
@@ -107,13 +102,11 @@ public final class DynamicServerResolver implements ServerResolver {
 
       LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
       try {
-        initialized = initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+          return;
+        }
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
-      }
-
-      if (initialized) {
-        return;
       }
     }
     throw new RuntimeException("Fail to initialize the resolver");
@@ -142,7 +135,7 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   @Override
   public synchronized void initRoutingTable(final EMRoutingTable routingTable) {
-    if (initialized) {
+    if (initLatch.getCount() == 0) {
       return;
     }
 
