@@ -19,6 +19,7 @@ import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.resolver.ServerId;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
@@ -63,6 +64,7 @@ public final class ParameterWorkerImplTest {
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(ParameterWorkerImplTestUtil.PULL_RETRY_TIMEOUT_MS))
         .bindImplementation(WorkerHandler.class, ParameterWorkerImpl.class)
+        .bindImplementation(ParameterWorker.class, ParameterWorkerImpl.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
@@ -82,8 +84,8 @@ public final class ParameterWorkerImplTest {
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
-    parameterWorker = injector.getInstance(ParameterWorkerImpl.class);
-    workerHandler = injector.getInstance(ParameterWorkerImpl.class);
+    parameterWorker = (ParameterWorkerImpl) injector.getInstance(ParameterWorker.class);
+    workerHandler = injector.getInstance(WorkerHandler.class);
   }
 
   /**

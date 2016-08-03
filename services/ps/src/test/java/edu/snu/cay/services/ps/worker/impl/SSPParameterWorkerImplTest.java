@@ -19,6 +19,7 @@ import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.resolver.ServerId;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
@@ -62,6 +63,7 @@ public final class SSPParameterWorkerImplTest {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(ParameterWorkerImplTestUtil.PULL_RETRY_TIMEOUT_MS))
+        .bindImplementation(ParameterWorker.class, SSPParameterWorkerImpl.class)
         .bindImplementation(WorkerHandler.class, SSPParameterWorkerImpl.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
@@ -82,7 +84,7 @@ public final class SSPParameterWorkerImplTest {
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
-    parameterWorker = injector.getInstance(SSPParameterWorkerImpl.class);
+    parameterWorker = (SSPParameterWorkerImpl) injector.getInstance(ParameterWorker.class);
     workerHandler = injector.getInstance(WorkerHandler.class);
   }
 
