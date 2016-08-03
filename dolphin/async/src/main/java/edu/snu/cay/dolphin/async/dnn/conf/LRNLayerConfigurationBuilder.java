@@ -37,7 +37,7 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
 
   private int localSize = 5;
   private float alpha = 1;
-  private float beta = 5;
+  private float beta = 0.75f;
   private float k = 1;
 
   public synchronized LRNLayerConfigurationBuilder setLocalSize(final int localSize) {
@@ -71,12 +71,16 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
 
   @Override
   public synchronized Configuration build() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(LayerConfigurationParameters.LocalSize.class, String.valueOf(localSize))
-        .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
-        .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
-        .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
-        .bindImplementation(LayerBase.class, LRNLayer.class)
-        .build();
+    if (localSize % 2 == 0) {
+      throw new IllegalArgumentException("local size should be an odd number");
+    } else {
+      return Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerConfigurationParameters.LocalSize.class, String.valueOf(localSize))
+          .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
+          .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
+          .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
+          .bindImplementation(LayerBase.class, LRNLayer.class)
+          .build();
+    }
   }
 }

@@ -25,8 +25,9 @@ import javax.inject.Inject;
 
 /**
  * Local Response Normalization (LRN) layer.
- *
- * This layer aids generalization done by activation layer
+ * This layer aids generalization done by activation layer.
+ * The corresponding mathematical formula and explanation is at section 3.3 of the following paper.
+ * https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
  */
 
 public final class LRNLayer extends LayerBase {
@@ -35,14 +36,22 @@ public final class LRNLayer extends LayerBase {
   private final float alpha;
   private final float beta;
   private final float k;
-  private MatrixFactory matrixFactory;
-  private int channelSize;
-  private int padSize;
+
+  private final int inputSize;
+  private final int inputChannel;
+  private final int paddingSize;
+
+  private final MatrixFactory matrixFactory;
   private Matrix scale;
 
   /**
    * @param index the index of this layer
    * @param inputShape the shape of input data
+   * @param localSize the number of channels to sum over
+   * @param alpha the scaling parameter
+   * @param beta the exponent
+   * @param k the constant
+   * @param matrixFactory the factory to create new matrices
    */
   @Inject
   private LRNLayer(@Parameter(LayerIndex.class) final int index,
@@ -53,17 +62,21 @@ public final class LRNLayer extends LayerBase {
                    @Parameter(K.class) final float k,
                    final MatrixFactory matrixFactory) {
     super(index, inputShape);
-    this.localSize = localSize; // always odd
+
+    this.localSize = localSize;
+
     this.alpha = alpha;
     this.beta = beta;
     this.k = k;
+    this.paddingSize = (localSize - 1) / 2;
     this.matrixFactory = matrixFactory;
-    this.padSize = (localSize - 1) / 2;
 
-    if (getInputShape().length == 3) {
-      this.channelSize = getInputShape()[1] * getInputShape()[2];
+    if (getInputShape().length == 2) {
+      this.inputChannel = 1;
+      this.inputSize = getInputShape()[0] * getInputShape()[1];
     } else {
-      this.channelSize = getInputShape()[0] * getInputShape()[1];
+      this.inputChannel = getInputShape()[0];
+      this.inputSize = getInputShape()[1] * getInputShape()[2];
     }
   }
 
@@ -86,52 +99,38 @@ public final class LRNLayer extends LayerBase {
   @Override
   public Matrix feedForward(final Matrix input) {
     this.scale = matrixFactory.create(input.getRows(), input.getColumns());
-    final Matrix padded = MatrixFunctions.pow(padder(input), 2);
-    this.scale = summer(scale, padded).mul(alpha / localSize).add(k);
-    return input.mul(MatrixFunctions.pow(scale, -beta));
+
+    for (int n = 0; n < input.getColumns(); n++) {
+      final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
+      for (int i = 0; i < input.getRows(); i++) {
+        paddedImg.put(i + paddingSize * inputSize, input.get(i, n) * input.get(i, n));
+      }
+      sum(scale, paddedImg, n);
+    }
+    scale.muli(alpha / localSize).addi(k);
+    return MatrixFunctions.pow(scale, -beta).muli(input);
   }
 
-  /**
-   * Adds padding, size of ((localSize - 1) / 2) * channelSize on both ends of each image vector.
-   * @param input input matrix to be padded
-   * @return padded matrix
-   */
-  private Matrix padder(final Matrix input) {
-    final Matrix output = matrixFactory.zeros(input.getRows() + (padSize * 2 * channelSize), input.getColumns());
-    for (int i = 0; i < input.getColumns(); ++i) {
-      for (int c = 0; c < input.getRows(); ++c) {
-        output.put(c + (padSize * channelSize), i, input.get(c, i));
+  private void sum(final Matrix output, final Matrix padded, final int n) {
+    final Matrix outputI = matrixFactory.create(inputSize, inputChannel);
+    final Matrix paddedI = padded.reshape(inputSize, inputChannel + paddingSize * 2);
+    //first channel
+    for (int r = 0; r < outputI.getRows(); ++r) {
+      float sum = 0F;
+      for (int l = 0; l < localSize; l++) {
+        sum += paddedI.get(r, l);
+      }
+      outputI.put(r, 0, sum);
+    }
+    //rest of the channels
+    for (int c = 1; c < inputChannel; ++c) {
+      for (int r = 0; r < outputI.getRows(); ++r) {
+        outputI.put(r, c, outputI.get(r, c - 1) + paddedI.get(r, c + (paddingSize * 2)) - paddedI.get(r, c - 1));
+//        outputI.putColumn(c, outputI.getColumn(c - 1).add(paddedI.getColumn(c + (paddingSize * 2)))
+//                                                     .sub(paddedI.getColumn(c - 1)));
       }
     }
-    return output;
-  }
-
-  /**
-   * Splits one image vector to a matrix so that each column represents one kernel.
-   * @param vec image vector
-   * @return split matrix
-   */
-  private Matrix splitter(final Matrix vec) {
-    return vec.reshape(channelSize, vec.getLength() / channelSize);
-  }
-
-  private Matrix summer(final Matrix output, final Matrix padded) {
-    // go through images
-    for (int i = 0; i < output.getColumns(); ++i) {
-      final Matrix outputI = matrixFactory.create(channelSize, scale.getRows() / channelSize);
-      final Matrix paddedI = splitter(padded.getColumn(i));
-      //first channel
-      for (int l = 0; l < localSize; ++l) {
-        outputI.putColumn(0, outputI.getColumn(0).add(paddedI.getColumn(l)));
-      }
-      //rest of the channels
-      for (int c = 1; c < output.getRows() / channelSize; ++c) {
-        outputI.putColumn(c, outputI.getColumn(c - 1).add(paddedI.getColumn(c + (padSize * 2)))
-                                                     .sub(paddedI.getColumn(c - 1)));
-      }
-      output.putColumn(i, outputI.reshape(scale.getRows(), 1));
-    }
-    return output;
+    output.putColumn(n, outputI.reshape(output.getRows(), 1));
   }
 
   /**
@@ -144,10 +143,20 @@ public final class LRNLayer extends LayerBase {
   public Matrix backPropagate(final Matrix input,
                               final Matrix activation,
                               final Matrix nextError) {
-    Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
-    final Matrix padded = padder(nextError.mul(activation).div(scale));
-    error = summer(error, padded).mul(input).mul(-2 * alpha * beta / localSize);
-    return error.add(MatrixFunctions.pow(scale, -beta).mul(nextError));
+    final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
+
+    for (int n = 0; n < nextError.getColumns(); n++) {
+      final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
+      for (int i = 0; i < nextError.getRows(); i++) {
+      // nextError * activation / scale
+      // addPadding(nextError.mul(activation).div(scale));
+        paddedImg.put(i + paddingSize * inputSize, nextError.get(i, n) * activation.get(i, n) / scale.get(i, n));
+      }
+      sum(error, paddedImg, n);
+    }
+
+    error.muli(input).muli(-2 * alpha * beta / localSize);
+    return error.addi(MatrixFunctions.powi(scale, -beta).muli(nextError));
   }
 
   /** {@inheritDoc} */

@@ -90,13 +90,13 @@ public class LRNLayerTest {
   public void setup() throws InjectionException {
     final Configuration layerConfVec = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-        .bindNamedParameter(LayerInputShape.class, "4,2,1")
+        .bindNamedParameter(LayerInputShape.class, "2,2,1")
         .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
         .build();
 
     final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-        .bindNamedParameter(LayerInputShape.class, "8,1,1")
+        .bindNamedParameter(LayerInputShape.class, "4,1,1")
         .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
         .build();
 

@@ -63,26 +63,26 @@ public final class LayerConfigurationParameters {
   /**
    * For lrn layers.
    */
-  @NamedParameter(doc = "the number of channels to sum over")
+  @NamedParameter(doc = "the number of channels to sum over of lrn layer")
   public static final class LocalSize implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "the scaling parameter")
+  @NamedParameter(doc = "the scaling parameter of lrn layer")
   public static final class Alpha implements Name<Float> {
   }
 
-  @NamedParameter(doc = "the exponent")
+  @NamedParameter(doc = "the exponent to raise the power of lrn layer")
   public static final class Beta implements Name<Float> {
   }
 
-  @NamedParameter(doc = "the constant")
+  @NamedParameter(doc = "the constant to add of lrn layer")
   public static final class K implements Name<Float> {
   }
 
   /**
    * For dropout layers.
    */
-  @NamedParameter(doc = "probability of dropping neurons at dropout layer")
+  @NamedParameter(doc = "probability of dropping neurons of dropout layer")
   public static final class DropoutRatio implements Name<Float> {
   }
 
