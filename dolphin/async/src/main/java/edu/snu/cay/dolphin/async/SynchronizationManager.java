@@ -82,7 +82,7 @@ final class SynchronizationManager {
    * The total number of workers to sync.
    */
   @GuardedBy("this")
-  private volatile int numWorkers = 0;
+  private int numWorkers = 0;
 
   /**
    * A set that maintains workers that have sent a sync msg for the current barrier.
@@ -169,7 +169,7 @@ final class SynchronizationManager {
   /**
    * @return true if workers are in the initialization state
    */
-  boolean workersInitializing() {
+  synchronized boolean workersInitializing() {
     return globalStateMachine.getCurrentState().equals(STATE_INIT);
   }
 
@@ -203,9 +203,9 @@ final class SynchronizationManager {
           LOG.log(Level.INFO, "Wait for driver to allow workers to enter cleanup state");
           allowCleanupLatch.await();
 
+          // numWorkers may have changed while waiting for allowCleanupLatch, by the last reconfiguration plan.
+          // We should handle the case differently if new workers have been added.
           final int numAddedWorkers = numWorkers - numWorkersBeforeSleep;
-
-          // Some workers were added while waiting for allowCleanupLatch, by the last reconfiguration plan.
           if (numAddedWorkers > 0) {
 
             LOG.log(Level.FINE, "{0} more workers were added while waiting for driver to allow cleanup",
