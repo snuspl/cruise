@@ -156,13 +156,23 @@ public class SSPWorkerClockTest {
     int globalMinimumClock = initialGlobalMinimumClock;
     final int numOfThreads = 3;
     final List<Thread> threads = new ArrayList<>();
+    class WaitIfExceedingStalenessBoundThread extends Thread {
+      @Override
+      public void run() {
+        try {
+          sspWorkerClock.waitIfExceedingStalenessBound();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
 
     sspWorkerClock.initialize();
 
     // test whether waitIfExceedingStalenessBound() returns immediately when the worker clock is in staleness bound
     while (sspWorkerClock.getWorkerClock() <= globalMinimumClock + staleness) {
       for (int i = 0; i < numOfThreads; i++) {
-        final Thread thread = new SSPWorkerClockTestThread();
+        final Thread thread = new WaitIfExceedingStalenessBoundThread();
         threads.add(thread);
         thread.start();
       }
@@ -182,7 +192,7 @@ public class SSPWorkerClockTest {
     sspWorkerClock.clock();
     assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + staleness);
     for (int i = 0; i < numOfThreads; i++) {
-      final Thread thread = new SSPWorkerClockTestThread();
+      final Thread thread = new WaitIfExceedingStalenessBoundThread();
       threads.add(thread);
       thread.start();
     }
@@ -236,16 +246,5 @@ public class SSPWorkerClockTest {
         .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))
         .build();
-  }
-
-  private class SSPWorkerClockTestThread extends Thread {
-    @Override
-    public void run() {
-      try {
-        sspWorkerClock.waitIfExceedingStalenessBound();
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    }
   }
 }

@@ -42,9 +42,9 @@ import java.util.concurrent.CountDownLatch;
 @EvaluatorSide
 @Unit
 public final class SSPWorkerClock implements WorkerClock {
-  private final int staleness;
 
   private final AggregationSlave aggregationSlave;
+
   private final ClockMsgCodec codec;
 
   /**
@@ -58,6 +58,8 @@ public final class SSPWorkerClock implements WorkerClock {
    * The message is sent multiple times, so the latch should be reinitialized many times.
    */
   private CountDownLatch globalMinClockLatch;
+
+  private final int staleness;
 
   private int workerClock;
 
