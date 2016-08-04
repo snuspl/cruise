@@ -23,6 +23,7 @@ import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.Staleness;
+import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
@@ -37,8 +38,10 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -155,12 +158,15 @@ public class SSPWorkerClockTest {
   public void testWaitIfExceedingStalenessBound() throws InterruptedException {
     int globalMinimumClock = initialGlobalMinimumClock;
     final int numOfThreads = 3;
-    final List<Thread> threads = new ArrayList<>();
-    class WaitIfExceedingStalenessBoundThread extends Thread {
+    final int timeoutInMilliseconds = 500;
+    final Runnable[] threads = new Runnable[numOfThreads];
+    final Map<Runnable, CountDownLatch> threadLatchMap = new HashMap<>();
+    final class WaitIfExceedingStalenessBoundThread implements Runnable {
       @Override
       public void run() {
         try {
           sspWorkerClock.waitIfExceedingStalenessBound();
+          threadLatchMap.get(this).countDown();
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
@@ -169,40 +175,34 @@ public class SSPWorkerClockTest {
 
     sspWorkerClock.initialize();
 
-    // test whether waitIfExceedingStalenessBound() returns immediately when the worker clock is in staleness bound
+    // test whether waitIfExceedingStalenessBound() returns immediately when the worker clock is in staleness bound.
     while (sspWorkerClock.getWorkerClock() <= globalMinimumClock + staleness) {
       for (int i = 0; i < numOfThreads; i++) {
-        final Thread thread = new WaitIfExceedingStalenessBoundThread();
-        threads.add(thread);
-        thread.start();
+        threads[i] = new WaitIfExceedingStalenessBoundThread();
+        threadLatchMap.put(threads[i], new CountDownLatch(1));
       }
+      ThreadUtils.runConcurrently(threads);
 
-      // wait until the thread calls waitIfExceedingStalenessBound
-      Thread.sleep(500);
-
-      // waitIfExceedingStalenessBound() call is returned immediately,
-      // so the thread would terminate at this moment.
-      for (final Thread thread : threads) {
-        assertEquals(Thread.State.TERMINATED, thread.getState());
+      // check whether waitIfExceedingStalenessBound() call is returned immediately.
+      for (final Runnable thread : threads) {
+        threadLatchMap.get(thread).await();
       }
-      threads.clear();
+      threadLatchMap.clear();
       sspWorkerClock.clock();
     }
 
     sspWorkerClock.clock();
     assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + staleness);
     for (int i = 0; i < numOfThreads; i++) {
-      final Thread thread = new WaitIfExceedingStalenessBoundThread();
-      threads.add(thread);
-      thread.start();
+      threads[i] = new WaitIfExceedingStalenessBoundThread();
+      threadLatchMap.put(threads[i], new CountDownLatch(1));
     }
-    // wait until the thread calls waitIfExceedingStalenessBound
-    Thread.sleep(500);
+    ThreadUtils.runConcurrently(threads);
 
-    // waitIfExceedingStalenessBound() call is blocked until the worker clock is within the staleness bound,
-    // so the thread would wait at this moment.
-    for (final Thread thread : threads) {
-      assertEquals(Thread.State.WAITING, thread.getState());
+    // waitIfExceedingStalenessBound() call is blocked until the worker clock is within the staleness bound.
+    for (final Runnable thread : threads) {
+      threadLatchMap.get(thread).await(timeoutInMilliseconds, TimeUnit.MILLISECONDS);
+      assertTrue(threadLatchMap.get(thread).getCount() > 0);
     }
 
     globalMinimumClock++;
@@ -214,12 +214,9 @@ public class SSPWorkerClockTest {
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
     sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToKeepWait));
 
-    // wait until the above message is handled.
-    Thread.sleep(500);
-
-    // thread is still waiting because the worker clock is still out of the staleness bound
-    for (final Thread thread : threads) {
-      assertEquals(Thread.State.WAITING, thread.getState());
+    for (final Runnable thread : threads) {
+      threadLatchMap.get(thread).await(timeoutInMilliseconds, TimeUnit.MILLISECONDS);
+      assertTrue(threadLatchMap.get(thread).getCount() > 0);
     }
 
     globalMinimumClock++;
@@ -231,12 +228,9 @@ public class SSPWorkerClockTest {
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
     sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToTerminate));
 
-    // wait until the above message is handled.
-    Thread.sleep(500);
-
-    // thread is now terminated because the worker clock is within the staleness bound
-    for (final Thread thread : threads) {
-      assertEquals(Thread.State.TERMINATED, thread.getState());
+    // waitIfExceedingStalenessBound() is returned finally
+    for (final Runnable thread : threads) {
+      threadLatchMap.get(thread).await();
     }
   }
 
