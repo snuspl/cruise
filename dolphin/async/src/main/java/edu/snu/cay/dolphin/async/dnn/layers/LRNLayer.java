@@ -93,6 +93,8 @@ public final class LRNLayer extends LayerBase {
 
   /**
    * Computes output values for this dropout layer.
+   * scale = sum(a_j ^ 2) * (alpha / n) + k
+   * b_i = a_i / (scale ^ beta)
    * @param input input values for this layer.
    * @return output values for this layer.
    */
@@ -103,11 +105,14 @@ public final class LRNLayer extends LayerBase {
     for (int n = 0; n < input.getColumns(); n++) {
       final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
       for (int i = 0; i < input.getRows(); i++) {
+        // input ^ 2
         paddedImg.put(i + paddingSize * inputSize, input.get(i, n) * input.get(i, n));
       }
       sum(scale, paddedImg, n);
     }
+    //the following scale is used at backPropagation
     scale.muli(alpha / localSize).addi(k);
+
     return MatrixFunctions.pow(scale, -beta).muli(input);
   }
 
@@ -115,6 +120,7 @@ public final class LRNLayer extends LayerBase {
     final Matrix outputI = matrixFactory.create(inputSize, inputChannel);
     final Matrix paddedI = padded.reshape(inputSize, inputChannel + paddingSize * 2);
     //first channel
+    //add columns, from column[0] to column[localSize - 1]
     for (int r = 0; r < outputI.getRows(); ++r) {
       float sum = 0F;
       for (int l = 0; l < localSize; l++) {
@@ -126,14 +132,14 @@ public final class LRNLayer extends LayerBase {
     for (int c = 1; c < inputChannel; ++c) {
       for (int r = 0; r < outputI.getRows(); ++r) {
         outputI.put(r, c, outputI.get(r, c - 1) + paddedI.get(r, c + (paddingSize * 2)) - paddedI.get(r, c - 1));
-//        outputI.putColumn(c, outputI.getColumn(c - 1).add(paddedI.getColumn(c + (paddingSize * 2)))
-//                                                     .sub(paddedI.getColumn(c - 1)));
       }
     }
     output.putColumn(n, outputI.reshape(output.getRows(), 1));
   }
 
   /**
+   * Computes errors
+   * sum(be_j * b_j / scale) * a_i * (-2 * alpha * beta / n) + (scale ^ -beta) * be_i
    * @param input the input values for this layer
    * @param activation the output values.
    * @param nextError the errors of the next layer - the one closer to the output layer.
@@ -149,7 +155,6 @@ public final class LRNLayer extends LayerBase {
       final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
       for (int i = 0; i < nextError.getRows(); i++) {
       // nextError * activation / scale
-      // addPadding(nextError.mul(activation).div(scale));
         paddedImg.put(i + paddingSize * inputSize, nextError.get(i, n) * activation.get(i, n) / scale.get(i, n));
       }
       sum(error, paddedImg, n);
