@@ -475,7 +475,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   private void executeStartOperation(final DolphinPlanOperation startOp) {
-    final String planContextId = startOp.getEvalId().get();
+    final String planContextId = startOp.getEvalId();
     final Optional<ActiveContext> context = executingPlan.getAddedWorkerContext(planContextId);
 
     if (context.isPresent()) {
@@ -492,7 +492,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   private void executeStopOperation(final DolphinPlanOperation stopOp) {
-    final String contextId = stopOp.getEvalId().get();
+    final String contextId = stopOp.getEvalId();
 
     // put metadata before trying to close worker task
     executingPlan.putWorkerTaskControlOp(contextId, stopOp);
@@ -501,7 +501,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       LOG.log(Level.INFO, "STOP: worker {0}", contextId);
 
     } else {
-      executingPlan.removeWorkerTaskControlOp(stopOp.getEvalId().get());
+      executingPlan.removeWorkerTaskControlOp(stopOp.getEvalId());
       throw new RuntimeException("There's no worker evaluator to stop");
     }
   }
