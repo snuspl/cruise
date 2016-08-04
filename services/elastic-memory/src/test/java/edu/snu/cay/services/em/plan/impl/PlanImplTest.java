@@ -181,7 +181,7 @@ public final class PlanImplTest {
       assertEquals(EMPlanOperation.OpType.DEL, ((EMPlanOperation) operation).getOpType());
     }
 
-    final Set<EMPlanOperation> executingPlans = new HashSet<>();
+    final Set<PlanOperation> executingPlans = new HashSet<>();
 
     // a single Add step can be executed after completing each Del step
 
@@ -192,14 +192,14 @@ public final class PlanImplTest {
 
       assertEquals(EMPlanOperation.OpType.ADD, ((EMPlanOperation) nextOpToExec).getOpType());
 
-      executingPlans.add((EMPlanOperation) nextOpToExec);
+      executingPlans.add(nextOpToExec);
     }
 
     // as a result of two Dels, two Adds started
     assertEquals(2, executingPlans.size());
 
     // these two Adds are the final stages of the plan
-    for (final EMPlanOperation executingPlan : executingPlans) {
+    for (final PlanOperation executingPlan : executingPlans) {
       final Set<PlanOperation> nextOpsToExec = plan.onComplete(executingPlan);
       assertTrue(nextOpsToExec.isEmpty());
     }
