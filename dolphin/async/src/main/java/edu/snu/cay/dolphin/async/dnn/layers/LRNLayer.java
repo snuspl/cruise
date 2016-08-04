@@ -138,7 +138,7 @@ public final class LRNLayer extends LayerBase {
   }
 
   /**
-   * Computes errors
+   * Computes errors.
    * sum(be_j * b_j / scale) * a_i * (-2 * alpha * beta / n) + (scale ^ -beta) * be_i
    * @param input the input values for this layer
    * @param activation the output values.
