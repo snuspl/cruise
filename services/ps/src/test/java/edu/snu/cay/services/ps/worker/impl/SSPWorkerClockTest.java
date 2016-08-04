@@ -154,7 +154,7 @@ public class SSPWorkerClockTest {
   /**
    * Tests whether waitIfExceedingStalenessBound() waits if the worker clock exceeds the staleness bound.
    */
-  @Test
+  @Test(timeout = 6000)
   public void testWaitIfExceedingStalenessBound() throws InterruptedException {
     int globalMinimumClock = initialGlobalMinimumClock;
     final int numOfThreads = 3;
