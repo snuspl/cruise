@@ -53,12 +53,6 @@ public final class SSPWorkerClock implements WorkerClock {
    */
   private final CountDownLatch initLatch;
 
-  /**
-   * The latch to wait until BroadcastMinClockMsg arrive.
-   * The message is sent multiple times, so the latch should be reinitialized many times.
-   */
-  private CountDownLatch globalMinClockLatch;
-
   private final int staleness;
 
   private int workerClock;
@@ -76,7 +70,6 @@ public final class SSPWorkerClock implements WorkerClock {
     this.aggregationSlave = aggregationSlave;
     this.codec = codec;
     this.initLatch = new CountDownLatch(1);
-    this.globalMinClockLatch = new CountDownLatch(1);
     this.workerClock = -1;
     this.globalMinimumClock = -1;
   }
@@ -112,9 +105,9 @@ public final class SSPWorkerClock implements WorkerClock {
   }
 
   @Override
-  public void waitIfExceedingStalenessBound() throws InterruptedException {
+  public synchronized void waitIfExceedingStalenessBound() throws InterruptedException {
     while (workerClock > globalMinimumClock + staleness) {
-      globalMinClockLatch.await();
+      wait();
     }
   }
 
@@ -126,6 +119,11 @@ public final class SSPWorkerClock implements WorkerClock {
   @Override
   public int getGlobalMinimumClock() {
     return globalMinimumClock;
+  }
+
+  private synchronized void updateGlobalMinimumClock(final int updatedGlobalMinimumClock) {
+    globalMinimumClock = updatedGlobalMinimumClock;
+    notifyAll();
   }
 
   public final class MessageHandler implements EventHandler<AggregationMessage> {
@@ -140,9 +138,7 @@ public final class SSPWorkerClock implements WorkerClock {
         initLatch.countDown();
         break;
       case BroadcastMinClockMsg:
-        globalMinimumClock = avroClockMsg.getBroadcastMinClockMsg().getGlobalMinClock();
-        globalMinClockLatch.countDown();
-        globalMinClockLatch = new CountDownLatch(1);
+        updateGlobalMinimumClock(avroClockMsg.getBroadcastMinClockMsg().getGlobalMinClock());
         break;
       default:
         throw new RuntimeException("Unexpected message type: " + avroClockMsg.getType().toString());
