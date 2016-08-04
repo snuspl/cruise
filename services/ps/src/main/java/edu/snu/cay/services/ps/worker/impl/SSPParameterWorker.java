@@ -46,8 +46,8 @@ import java.util.logging.Logger;
  * the Codec classes are thread-safe.
  */
 @EvaluatorSide
-public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
-  private static final Logger LOG = Logger.getLogger(SSPParameterWorkerImpl.class.getName());
+public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
+  private static final Logger LOG = Logger.getLogger(SSPParameterWorker.class.getName());
 
   /**
    * The maximum number to resend push/pull requests
@@ -118,16 +118,16 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
   private final Ticker ticker = Ticker.systemTicker();
 
   @Inject
-  private SSPParameterWorkerImpl(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
-                                 @Parameter(WorkerQueueSize.class) final int queueSize,
-                                 @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
-                                 @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
-                                 @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
-                                 @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
-                                 @Parameter(WorkerLogPeriod.class) final long logPeriod,
-                                 final ParameterUpdater<K, P, V> parameterUpdater,
-                                 final ServerResolver serverResolver,
-                                 final InjectionFuture<WorkerMsgSender<K, P>> sender) {
+  private SSPParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
+                             @Parameter(WorkerQueueSize.class) final int queueSize,
+                             @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
+                             @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
+                             @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
+                             @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
+                             @Parameter(WorkerLogPeriod.class) final long logPeriod,
+                             final ParameterUpdater<K, P, V> parameterUpdater,
+                             final ServerResolver serverResolver,
+                             final InjectionFuture<WorkerMsgSender<K, P>> sender) {
     this.numThreads = numThreads;
     this.parameterUpdater = parameterUpdater;
     this.serverResolver = serverResolver;
@@ -314,7 +314,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
   }
 
   /**
-   * Handles incoming push rejects, but internally it calls {@link SSPParameterWorkerImpl#push}.
+   * Handles incoming push rejects, but internally it calls {@link SSPParameterWorker#push}.
    * This function has been added to this class, that it implements {@link WorkerHandler} interface.
    */
   @Override

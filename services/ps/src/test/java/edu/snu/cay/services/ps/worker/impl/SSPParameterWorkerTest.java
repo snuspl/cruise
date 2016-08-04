@@ -22,7 +22,6 @@ import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
-import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -44,16 +43,16 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests for {@link ParameterWorkerImpl}.
+ * Tests for {@link SSPParameterWorker}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(WorkerMsgSender.class)
-public final class SSPParameterWorkerImplTest {
+public final class SSPParameterWorkerTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
 
   private ParameterWorkerImplTestUtil testUtil;
-  private SSPParameterWorkerImpl<Integer, Integer, Integer> parameterWorker;
+  private SSPParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
 
@@ -64,8 +63,8 @@ public final class SSPParameterWorkerImplTest {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(ParameterWorkerImplTestUtil.PULL_RETRY_TIMEOUT_MS))
-        .bindImplementation(ParameterWorker.class, SSPParameterWorkerImpl.class)
-        .bindImplementation(WorkerHandler.class, SSPParameterWorkerImpl.class)
+        .bindImplementation(ParameterWorker.class, SSPParameterWorker.class)
+        .bindImplementation(WorkerHandler.class, SSPParameterWorker.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
@@ -85,20 +84,20 @@ public final class SSPParameterWorkerImplTest {
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
-    parameterWorker = (SSPParameterWorkerImpl) injector.getInstance(ParameterWorker.class);
+    parameterWorker = (SSPParameterWorker) injector.getInstance(ParameterWorker.class);
     workerHandler = injector.getInstance(WorkerHandler.class);
   }
 
   /**
-   * Test that {@link SSPParameterWorkerImpl#close(long)} does indeed block further operations from being processed.
+   * Test that {@link SSPParameterWorker#close(long)} does indeed block further operations from being processed.
    */
   @Test
   public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     testUtil.close(parameterWorker);
   }
   /**
-   * Test the thread safety of {@link SSPParameterWorkerImpl} by
-   * creating multiple threads that try to push values to the server using {@link SSPParameterWorkerImpl}.
+   * Test the thread safety of {@link SSPParameterWorker} by
+   * creating multiple threads that try to push values to the server using {@link SSPParameterWorker}.
    *
    * {@code numPushThreads} threads are generated, each sending {@code numPushPerThread} pushes.
    */
@@ -109,9 +108,9 @@ public final class SSPParameterWorkerImplTest {
   }
 
   /**
-   * Test the thread safety of {@link SSPParameterWorkerImpl} by
+   * Test the thread safety of {@link SSPParameterWorker} by
    * creating multiple threads that try to pull values from the server
-   * using {@link SSPParameterWorkerImpl}.
+   * using {@link SSPParameterWorker}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
@@ -125,8 +124,8 @@ public final class SSPParameterWorkerImplTest {
   }
 
   /**
-   * Test the thread safety of {@link SSPParameterWorkerImpl} by
-   * creating multiple threads that try to pull several values from the server using {@link SSPParameterWorkerImpl}.
+   * Test the thread safety of {@link SSPParameterWorker} by
+   * creating multiple threads that try to pull several values from the server using {@link SSPParameterWorker}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
@@ -139,9 +138,9 @@ public final class SSPParameterWorkerImplTest {
   }
 
   /**
-   * Test the correct handling of pull rejects by {@link SSPParameterWorkerImpl},
+   * Test the correct handling of pull rejects by {@link SSPParameterWorker},
    * creating multiple threads that try to pull values from the server
-   * using {@link SSPParameterWorkerImpl}.
+   * using {@link SSPParameterWorker}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * To guarantee that {@code sender.sendPullMsg()} should be invoked as many times as {@code worker.pull()} is called,
@@ -178,7 +177,7 @@ public final class SSPParameterWorkerImplTest {
   }
 
   /**
-   * Test that the {@link SSPParameterWorkerImpl#invalidateAll()} method invalidate all caches
+   * Test that the {@link SSPParameterWorker#invalidateAll()} method invalidate all caches
    * so that new pull messages must be issued for each pull request.
    */
   @Test
@@ -187,7 +186,7 @@ public final class SSPParameterWorkerImplTest {
     invalidateAllSSP(parameterWorker);
   }
 
-  private void invalidateAllSSP(final SSPParameterWorkerImpl worker)
+  private void invalidateAllSSP(final SSPParameterWorker worker)
           throws InterruptedException, ExecutionException, TimeoutException, NetworkException {
     final int numPulls = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(1);

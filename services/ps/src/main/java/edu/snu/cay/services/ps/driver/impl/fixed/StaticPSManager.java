@@ -34,10 +34,10 @@ import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.resolver.StaticServerResolver;
+import edu.snu.cay.services.ps.worker.impl.AsyncParameterWorker;
 import edu.snu.cay.services.ps.worker.impl.NullWorkerClock;
-import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.SSPWorkerClock;
-import edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl;
+import edu.snu.cay.services.ps.worker.impl.SSPParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.Staleness;
@@ -109,21 +109,21 @@ public final class StaticPSManager implements PSManager {
 
   /**
    * Returns worker-side service configuration.
-   * Sets {@link ParameterWorkerImpl} as the {@link ParameterWorker} class.
+   * Sets {@link AsyncParameterWorker} as the {@link ParameterWorker} class.
    */
   @Override
   public Configuration getWorkerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES,
-                isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
+                isSSPModel ? SSPParameterWorker.class : AsyncParameterWorker.class)
             .build())
         .bindImplementation(ParameterWorker.class,
-            isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
+            isSSPModel ? SSPParameterWorker.class : AsyncParameterWorker.class)
         .bindImplementation(WorkerClock.class,
             isSSPModel ? SSPWorkerClock.class : NullWorkerClock.class)
         .bindImplementation(WorkerHandler.class,
-            isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
+            isSSPModel ? SSPParameterWorker.class : AsyncParameterWorker.class)
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))

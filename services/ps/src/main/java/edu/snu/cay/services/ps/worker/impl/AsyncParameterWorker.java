@@ -52,8 +52,8 @@ import java.util.logging.Logger;
  * See {@link WorkerThread}.
  */
 @EvaluatorSide
-public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
-  private static final Logger LOG = Logger.getLogger(ParameterWorkerImpl.class.getName());
+public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
+  private static final Logger LOG = Logger.getLogger(AsyncParameterWorker.class.getName());
 
   /**
    * The maximum number to resend push/pull requests
@@ -124,16 +124,16 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private final Ticker ticker = Ticker.systemTicker();
 
   @Inject
-  private ParameterWorkerImpl(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
-                              @Parameter(WorkerQueueSize.class) final int queueSize,
-                              @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
-                              @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
-                              @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
-                              @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                              @Parameter(WorkerLogPeriod.class) final long logPeriod,
-                              final ParameterUpdater<K, P, V> parameterUpdater,
-                              final ServerResolver serverResolver,
-                              final InjectionFuture<WorkerMsgSender<K, P>> sender) {
+  private AsyncParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
+                               @Parameter(WorkerQueueSize.class) final int queueSize,
+                               @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
+                               @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
+                               @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
+                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
+                               @Parameter(WorkerLogPeriod.class) final long logPeriod,
+                               final ParameterUpdater<K, P, V> parameterUpdater,
+                               final ServerResolver serverResolver,
+                               final InjectionFuture<WorkerMsgSender<K, P>> sender) {
     this.numThreads = numThreads;
     this.parameterUpdater = parameterUpdater;
     this.serverResolver = serverResolver;

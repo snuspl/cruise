@@ -43,16 +43,16 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests for {@link ParameterWorkerImpl}.
+ * Tests for {@link AsyncParameterWorker}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(WorkerMsgSender.class)
-public final class ParameterWorkerImplTest {
+public final class AsyncParameterWorkerTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
 
   private ParameterWorkerImplTestUtil testUtil;
-  private ParameterWorkerImpl<Integer, Integer, Integer> parameterWorker;
+  private AsyncParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
 
@@ -63,8 +63,8 @@ public final class ParameterWorkerImplTest {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(ParameterWorkerImplTestUtil.PULL_RETRY_TIMEOUT_MS))
-        .bindImplementation(WorkerHandler.class, ParameterWorkerImpl.class)
-        .bindImplementation(ParameterWorker.class, ParameterWorkerImpl.class)
+        .bindImplementation(WorkerHandler.class, AsyncParameterWorker.class)
+        .bindImplementation(ParameterWorker.class, AsyncParameterWorker.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
@@ -84,20 +84,20 @@ public final class ParameterWorkerImplTest {
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
-    parameterWorker = (ParameterWorkerImpl) injector.getInstance(ParameterWorker.class);
+    parameterWorker = (AsyncParameterWorker) injector.getInstance(ParameterWorker.class);
     workerHandler = injector.getInstance(WorkerHandler.class);
   }
 
   /**
-   * Test that {@link ParameterWorkerImpl#close(long)} does indeed block further operations from being processed.
+   * Test that {@link AsyncParameterWorker#close(long)} does indeed block further operations from being processed.
    */
   @Test
   public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     testUtil.close(parameterWorker);
   }
   /**
-   * Test the thread safety of {@link ParameterWorkerImpl} by
-   * creating multiple threads that try to push values to the server using {@link ParameterWorkerImpl}.
+   * Test the thread safety of {@link AsyncParameterWorker} by
+   * creating multiple threads that try to push values to the server using {@link AsyncParameterWorker}.
    *
    * {@code numPushThreads} threads are generated, each sending {@code numPushPerThread} pushes.
    */
@@ -108,8 +108,8 @@ public final class ParameterWorkerImplTest {
   }
 
   /**
-   * Test the thread safety of {@link ParameterWorkerImpl}
-   * by creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
+   * Test the thread safety of {@link AsyncParameterWorker}
+   * by creating multiple threads that try to pull values from the server using {@link AsyncParameterWorker}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
@@ -123,8 +123,8 @@ public final class ParameterWorkerImplTest {
   }
 
   /**
-   * Test the thread safety of {@link ParameterWorkerImpl} by
-   * creating multiple threads that try to pull several values from the server using {@link ParameterWorkerImpl}.
+   * Test the thread safety of {@link AsyncParameterWorker} by
+   * creating multiple threads that try to pull several values from the server using {@link AsyncParameterWorker}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
@@ -137,8 +137,8 @@ public final class ParameterWorkerImplTest {
   }
 
   /**
-   * Test the correct handling of pull rejects by {@link ParameterWorkerImpl},
-   * creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
+   * Test the correct handling of pull rejects by {@link AsyncParameterWorker},
+   * creating multiple threads that try to pull values from the server using {@link AsyncParameterWorker}.
    *
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * To guarantee that {@code sender.sendPullMsg()} should be invoked as many times as {@code worker.pull()} is called,
@@ -175,7 +175,7 @@ public final class ParameterWorkerImplTest {
   }
 
   /**
-   * Test that the {@link ParameterWorkerImpl#invalidateAll()} method invalidate all caches
+   * Test that the {@link AsyncParameterWorker#invalidateAll()} method invalidate all caches
    * so that new pull messages must be issued for each pull request.
    */
   @Test
@@ -184,7 +184,7 @@ public final class ParameterWorkerImplTest {
     invalidateAllAsync(parameterWorker);
   }
 
-  private void invalidateAllAsync(final ParameterWorkerImpl worker)
+  private void invalidateAllAsync(final AsyncParameterWorker worker)
           throws InterruptedException, ExecutionException, TimeoutException, NetworkException {
     final int numPulls = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(1);
