@@ -168,17 +168,19 @@ public final class LRNLayer extends LayerBase {
                               final Matrix activation,
                               final Matrix nextError) {
     final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
+    final float scalarMultiplier = -2 * alpha * beta / localSize;
 
     for (int n = 0; n < nextError.getColumns(); ++n) {
       final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
       for (int i = 0; i < nextError.getRows(); ++i) {
-      // nextError * activation / scale
-        paddedImg.put(i + paddingSize * inputSize, nextError.get(i, n) * activation.get(i, n) / scale.get(i, n));
+        // nextError * activation / scale
+        paddedImg.put(i + paddingSize * inputSize,
+            nextError.get(i, n) * activation.get(i, n) / scale.get(i, n) * scalarMultiplier);
       }
       computeLocalSum(error, paddedImg, n);
     }
 
-    error.muli(input).muli(-2 * alpha * beta / localSize);
+    error.muli(input);
     return error.addi(MatrixFunctions.powi(scale, -beta).muli(nextError));
   }
 

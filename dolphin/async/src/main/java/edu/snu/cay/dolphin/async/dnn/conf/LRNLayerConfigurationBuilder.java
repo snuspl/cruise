@@ -27,7 +27,6 @@ import org.apache.reef.util.Builder;
  *
  * The configuration that this builder generates is used to create a LRN layer instance.
  */
-
 public final class LRNLayerConfigurationBuilder implements Builder<Configuration> {
 
   public static LRNLayerConfigurationBuilder newConfigurationBuilder() {
