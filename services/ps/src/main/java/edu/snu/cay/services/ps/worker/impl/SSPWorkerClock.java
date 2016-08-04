@@ -64,7 +64,7 @@ public final class SSPWorkerClock implements WorkerClock {
   private int workerClock;
 
   /**
-   * The minimum clock of among all worker clocks.
+   * The minimum clock among all worker clocks.
    */
   private int globalMinimumClock;
 
