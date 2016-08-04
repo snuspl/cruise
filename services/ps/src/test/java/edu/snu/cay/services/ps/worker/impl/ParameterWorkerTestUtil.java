@@ -39,7 +39,7 @@ import static org.mockito.Mockito.verify;
 /**
  * Common test codes for both {@link AsyncParameterWorker} and {@link SSPParameterWorker}.
  */
-public class ParameterWorkerImplTestUtil {
+public class ParameterWorkerTestUtil {
   public static final long CLOSE_TIMEOUT = 5000;
   public static final long PULL_RETRY_TIMEOUT_MS = 500;
   public static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";

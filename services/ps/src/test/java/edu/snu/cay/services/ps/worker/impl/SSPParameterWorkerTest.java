@@ -51,7 +51,7 @@ public final class SSPParameterWorkerTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
 
-  private ParameterWorkerImplTestUtil testUtil;
+  private ParameterWorkerTestUtil testUtil;
   private SSPParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
@@ -62,13 +62,13 @@ public final class SSPParameterWorkerTest {
         .bindNamedParameter(ServerId.class, "ServerId")
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
-        .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(ParameterWorkerImplTestUtil.PULL_RETRY_TIMEOUT_MS))
+        .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(ParameterWorkerTestUtil.PULL_RETRY_TIMEOUT_MS))
         .bindImplementation(ParameterWorker.class, SSPParameterWorker.class)
         .bindImplementation(WorkerHandler.class, SSPParameterWorker.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
-    testUtil = new ParameterWorkerImplTestUtil();
+    testUtil = new ParameterWorkerTestUtil();
 
     mockSender = mock(WorkerMsgSender.class);
 
@@ -202,9 +202,9 @@ public final class SSPParameterWorkerTest {
     pool.shutdown();
 
     final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
-    worker.close(ParameterWorkerImplTestUtil.CLOSE_TIMEOUT);
+    worker.close(ParameterWorkerTestUtil.CLOSE_TIMEOUT);
 
-    assertTrue(ParameterWorkerImplTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
+    assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject());
 
   }

@@ -120,7 +120,6 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   @Inject
   private SSPParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
                              @Parameter(WorkerQueueSize.class) final int queueSize,
-                             @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
                              @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
                              @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                              @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
@@ -135,7 +134,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     this.pendingPulls = new ConcurrentHashMap<>();
     this.pullStats = Statistics.newInstances(numThreads);
     this.threadPool = Executors.newFixedThreadPool(numThreads);
-    this.threads = initThreads(queueSize, cacheExpireTimeout, pullRetryTimeoutMs);
+    this.threads = initThreads(queueSize, pullRetryTimeoutMs);
     this.encodedKeyCache = CacheBuilder.newBuilder()
         .maximumSize(keyCacheSize)
         .build(new CacheLoader<K, EncodedKey<K>>() {
@@ -160,14 +159,14 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    * Call after initializing threadPool.
    */
   @SuppressWarnings("unchecked")
-  private WorkerThread<K, P, V>[] initThreads(final int queueSize, final long cacheExpireTimeout,
+  private WorkerThread<K, P, V>[] initThreads(final int queueSize,
                                               final long pullRetryTimeoutMs) {
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
     final WorkerThread<K, P, V>[] initialized
         = new WorkerThread[numThreads];
     for (int i = 0; i < numThreads; i++) {
       initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize,
-          cacheExpireTimeout, pullRetryTimeoutMs, pullStats[i]);
+          pullRetryTimeoutMs, pullStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -599,10 +598,9 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                  final ServerResolver serverResolver,
                  final InjectionFuture<WorkerMsgSender<K, P>> sender,
                  final int queueSize,
-                 final long cacheExpireTimeout,
                  final long pullRetryTimeoutMs,
                  final Statistics pullStat) {
-      this.kvCache = initCache(pendingPulls, serverResolver, sender, cacheExpireTimeout, pullRetryTimeoutMs, pullStat);
+      this.kvCache = initCache(pendingPulls, serverResolver, sender, pullRetryTimeoutMs, pullStat);
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
       this.localOps = new ArrayList<>(drainSize);
@@ -613,12 +611,10 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
         initCache(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
                   final ServerResolver serverResolver,
                   final InjectionFuture<WorkerMsgSender<K, P>> sender,
-                  final long cacheExpireTimeout,
                   final long pullRetryTimeoutMs,
                   final Statistics pullStat) {
       return CacheBuilder.newBuilder()
           .concurrencyLevel(1)
-          .expireAfterWrite(cacheExpireTimeout, TimeUnit.MILLISECONDS)
           .build(new CacheLoader<EncodedKey<K>, Tagged<V>>() {
 
             @Override
