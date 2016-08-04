@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer;
+package edu.snu.cay.dolphin.async.plan;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinDriver;
-import edu.snu.cay.dolphin.async.plan.DolphinPlanOperation;
+import edu.snu.cay.dolphin.async.optimizer.ServerEM;
+import edu.snu.cay.dolphin.async.optimizer.WorkerEM;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -253,7 +254,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
     private final EMPlanOperation completeOp;
 
-    MovedHandler(final EMPlanOperation completeOp) {
+    private MovedHandler(final EMPlanOperation completeOp) {
       this.completeOp = completeOp;
     }
 
@@ -276,7 +277,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
     private final EMPlanOperation completeOp;
 
-    DeletedHandler(final EMPlanOperation completeOp) {
+    private DeletedHandler(final EMPlanOperation completeOp) {
       this.completeOp = completeOp;
     }
 

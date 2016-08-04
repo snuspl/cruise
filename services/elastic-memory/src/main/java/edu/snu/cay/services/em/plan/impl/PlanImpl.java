@@ -145,7 +145,7 @@ public final class PlanImpl implements Plan {
     private final Map<String, List<TransferStep>> allTransferSteps = new HashMap<>();
 
     // Optional.empty means that there's no resource limit
-    private Optional<Integer> numExtraEvaluators = Optional.empty();
+    private Optional<Integer> numAvailableExtraEvaluators = Optional.empty();
 
     private Builder() {
     }
@@ -153,11 +153,11 @@ public final class PlanImpl implements Plan {
     /**
      * Sets the limitation on the number of extra evaluators to use in plan execution.
      * It not specified, it assumes that there's no resource limit.
-     * @param numExtraEvaluators the number of extra evaluators
+     * @param numAvailableExtraEvaluators the number of extra evaluators
      * @return the builder
      */
-    public Builder setNumExtraEvaluators(final int numExtraEvaluators) {
-      this.numExtraEvaluators = Optional.of(numExtraEvaluators);
+    public Builder setNumAvailableExtraEvaluators(final int numAvailableExtraEvaluators) {
+      this.numAvailableExtraEvaluators = Optional.of(numAvailableExtraEvaluators);
       return this;
     }
 
@@ -254,7 +254,7 @@ public final class PlanImpl implements Plan {
 
       // build an execution graph considering dependency between steps
       final DAG<PlanOperation> dependencyGraph =
-          constructDAG(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, numExtraEvaluators);
+          constructDAG(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, numAvailableExtraEvaluators);
 
       return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps, dependencyGraph);
     }

@@ -333,9 +333,10 @@ public final class SampleOptimizers {
 
       final String destNSEvalToAdd = NEW_EVAL_PREFIX + PLAN_CONTEXT_ID_COUNTER.getAndIncrement();
 
-      final int numExtraEvals = availableEvaluators - (srcNSEvalParamsList.size() + destNSEvalParamsList.size());
+      final int numAvailableExtraEvals
+          = availableEvaluators - (srcNSEvalParamsList.size() + destNSEvalParamsList.size());
       return planBuilder
-          .setNumExtraEvaluators(numExtraEvals)
+          .setNumAvailableExtraEvaluators(numAvailableExtraEvals)
           .addEvaluatorToDelete(srcNamespace, srcNSEvalToDel)
           .addTransferStep(srcNamespace,
               new TransferStepImpl(srcNSEvalToDel, srcNSEvalToMove, new DataInfoImpl(srcNSBlocksToMove)))

@@ -416,10 +416,6 @@ public final class AsyncDolphinDriver {
               }
             }
 
-          } catch (final RuntimeException e) {
-            LOG.log(Level.INFO, "RuntimeException in optimization triggering thread", e);
-            throw e;
-
           } finally {
             // 3. allow workers to do cleanup, after finishing optimization entirely
             LOG.log(Level.INFO, "Stop triggering optimization. Allow workers do cleanup");
@@ -996,7 +992,7 @@ public final class AsyncDolphinDriver {
   /**
    * Closes the running task on the context whose id is {@code workerContextId}.
    * PlanExecutor invokes this method to stop task before migrating out existing data.
-   * @param workerContextId a id of worker context, where the task is running on
+   * @param workerContextId an id of worker context, where the task is running on
    * @return true if succeeds to close
    */
   public boolean closeWorkerTask(final String workerContextId) {

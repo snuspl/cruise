@@ -145,7 +145,7 @@ public final class PlanImplTest {
 
     // 4. case of plan with a cyclic dependency (Add -> Move -> Del -> Add)
     planBuilder = PlanImpl.newBuilder()
-        .setNumExtraEvaluators(0)
+        .setNumAvailableExtraEvaluators(0)
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
         .addTransferStep(NAMESPACE_PREFIX,
@@ -167,7 +167,7 @@ public final class PlanImplTest {
   public void testDelAddPlanDependency() {
     // del -> add
     final Plan plan = PlanImpl.newBuilder()
-        .setNumExtraEvaluators(0)
+        .setNumAvailableExtraEvaluators(0)
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 2)
