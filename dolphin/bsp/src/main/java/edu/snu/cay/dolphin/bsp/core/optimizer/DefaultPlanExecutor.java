@@ -161,12 +161,13 @@ public final class DefaultPlanExecutor implements PlanExecutor {
     if (executingPlan == null) {
       return;
     }
+    LOG.log(Level.FINE, "RunningTask {0}", task);
     executingPlan.onRunningTask(task);
   }
 
   @Override
   public void onCompletedTask(final CompletedTask task) {
-    LOG.log(Level.INFO, "CompletedTask {0}", task);
+    LOG.log(Level.FINE, "CompletedTask {0}", task);
   }
 
   /**

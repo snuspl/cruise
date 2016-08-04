@@ -189,16 +189,16 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the active context callback of ElasticMemory.add().
    */
   private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace,
-                                                                    final EMPlanOperation operation) {
+                                                                    final EMPlanOperation addOperation) {
     final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(2);
     switch (namespace) {
     case NAMESPACE_SERVER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer(true));
-      activeContextHandlers.add(new ServerContextActiveHandler(operation));
+      activeContextHandlers.add(new ServerContextActiveHandler(addOperation));
       break;
     case NAMESPACE_WORKER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForWorker(true));
-      activeContextHandlers.add(new WorkerContextActiveHandler(operation));
+      activeContextHandlers.add(new WorkerContextActiveHandler(addOperation));
       break;
     default:
       throw new RuntimeException("Unsupported namespace");
@@ -346,8 +346,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * Executes the EM operations by distinguishing each OpType as well as namespace.
-   * If the operation is already in_progress or complete (operationStatus != null),
+   * Executes the Plan operations by distinguishing each OpType as well as namespace.
+   * If the operation is already IN_PROGRESS or COMPLETE,
    * the operation is skipped to prevent duplication.
    *
    * @param operationsToExecute a set of EM operations that can be executed independently at the point of trigger
@@ -356,9 +356,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     try {
       for (final PlanOperation operation : operationsToExecute) {
         if (!executingPlan.markOperationRequested(operation)) {
-          continue;
+          continue; // skip if it's already submitted
         }
 
+        // execute the EM operation
         if (operation instanceof EMPlanOperation) {
           final EMPlanOperation emPlanOp = (EMPlanOperation) operation;
           final EMPlanOperation.OpType opType = emPlanOp.getOpType();
@@ -377,6 +378,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
             throw new RuntimeException("Unsupported EM operation type");
           }
 
+        // execute Dolphin-specific operation
         } else if (operation instanceof DolphinPlanOperation) {
           final DolphinPlanOperation dolphinPlanOp = (DolphinPlanOperation) operation;
           final DolphinPlanOperation.OpType opType = dolphinPlanOp.getOpType();
@@ -393,8 +395,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
           }
 
         } else {
-          throw new RuntimeException("Unsupported type of operation");
-
+          throw new RuntimeException("Unsupported implementation of PlanOperation");
         }
       }
     } catch (Exception e) {
@@ -493,7 +494,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private void executeStopOperation(final DolphinPlanOperation stopOp) {
     final String contextId = stopOp.getEvalId().get();
 
-    // put metadata before start closing worker tasks
+    // put metadata before trying to close worker task
     executingPlan.putWorkerTaskControlOp(contextId, stopOp);
 
     if (asyncDolphinDriver.get().closeWorkerTask(contextId)) {
@@ -525,7 +526,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     private final ConcurrentMap<String, DolphinPlanOperation> ongoingWorkerTaskControlOps = new ConcurrentHashMap<>();
 
     /**
-     * operationsRequested: A map of EM operations requested and the execution state (IN_PROGRESS/COMPLETE).
+     * operationsRequested: A map of plan operations requested and the execution state (IN_PROGRESS/COMPLETE).
      */
     private final ConcurrentMap<PlanOperation, OpExecutionStatus> operationsRequested = new ConcurrentHashMap<>();
 
@@ -563,12 +564,17 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       planCtxIdToAddedWorkerCtx.put(planContextId, context);
     }
 
+    /**
+     * Get added worker context whose plan id is {@code planContextId}.
+     * @param planContextId a plan context id that is only valid on plan
+     * @return an Optional with ActiveContext, it return an empty Optional when there's no matching ActiveContext
+     */
     Optional<ActiveContext> getAddedWorkerContext(final String planContextId) {
       return Optional.ofNullable(planCtxIdToAddedWorkerCtx.get(planContextId));
     }
 
     /**
-     *
+     * Put worker task control (START/STOP) operations.
      * @param contextId a context id
      * @param operation a Start or Stop operation
      */
@@ -579,7 +585,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
 
     /**
-     *
+     * Get worker task control (START/STOP) operations that id of context
+     * on which the task is running is {@code contextId}.
      * @param contextId a context id
      * @return an optional with EMPlanOperation
      */
@@ -606,11 +613,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
 
     /**
-     * Puts the initiated EM operation into a map, mapping the operation to the execution status of "In progress".
+     * Puts the initiated plan operation into a map, mapping the operation to the execution status of IN_PROGRESS.
      *
      * @param operation that has just been initiated
      * @return true if operation has successfully been put into the <operation, status> map;
-     *        false if the operation mapping already exists - i.e. is in progress or already complete.
+     *        false if the operation mapping already exists - i.e. is already in progress or complete.
      */
     boolean markOperationRequested(final PlanOperation operation) {
       LOG.log(Level.FINEST, "Operation requested: {0}", operation);
@@ -620,7 +627,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     /**
      * Updates an operation's status as complete,
      * counts down the latch on the entire plan,
-     * gets the next set of operations that can be executed.
+     * and gets the next set of operations that can be executed.
      *
      * @param operation the operation that has just been completed
      * @return the set of operations that can be executed after the operation's completion
@@ -631,7 +638,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
               OpExecutionStatus.IN_PROGRESS, OpExecutionStatus.COMPLETE);
 
       if (!wasInProgress) {
-        throw new RuntimeException("The operation " + operation + " was never in the request queue");
+        throw new RuntimeException("The operation " + operation
+            + " was never in the request queue or already complete");
       }
 
       return plan.onComplete(operation);
@@ -658,7 +666,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
 
     /**
-     * @return the map of operations already requested and each operation's status (in progress or complete)
+     * @return the map of operations already requested and each operation's status (IN_PROGRESS or COMPLETE)
      */
     ConcurrentMap<PlanOperation, OpExecutionStatus> getPlanExecutionStatus() {
       return operationsRequested;

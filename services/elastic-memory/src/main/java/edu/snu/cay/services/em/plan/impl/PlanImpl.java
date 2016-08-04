@@ -26,7 +26,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A plan implementation with builder.
+ * A plan implementation for EM's default plan operations.
  * The builder checks the feasibility of plan and dependencies between detailed steps.
  */
 public final class PlanImpl implements Plan {
@@ -74,11 +74,11 @@ public final class PlanImpl implements Plan {
 
   @Override
   public synchronized Set<PlanOperation> onComplete(final PlanOperation operation) {
-    final Set<PlanOperation> newAvailableOperations = dependencyGraph.getNeighbors(operation);
+    final Set<PlanOperation> candidateOperations = dependencyGraph.getNeighbors(operation);
     final Set<PlanOperation> nextOpsToExecute = new HashSet<>();
     dependencyGraph.removeVertex(operation);
 
-    for (final PlanOperation candidate : newAvailableOperations) {
+    for (final PlanOperation candidate : candidateOperations) {
       if (dependencyGraph.getInDegree(candidate) == 0) {
         nextOpsToExecute.add(candidate);
       }
@@ -266,7 +266,7 @@ public final class PlanImpl implements Plan {
     private DAG<PlanOperation> constructDAG(final Map<String, Set<String>> namespaceToEvalsToAdd,
                                           final Map<String, Set<String>> namespaceToEvalsToDel,
                                           final Map<String, List<TransferStep>> namespaceToTransferSteps,
-                                          final Optional<Integer> numExtraEvals) {
+                                          final Optional<Integer> numAvailableExtraEvals) {
 
       final DAG<PlanOperation> dag = new DAGImpl<>();
 
@@ -313,14 +313,14 @@ public final class PlanImpl implements Plan {
       // We need one Delete for each Add as much as the number of extra evaluators slots
       // is smaller than the number of evaluators to Add.
       // The current strategy simply maps one Delete and one Add that is not necessarily relevant with.
-      if (numExtraEvals.isPresent()) {
-        final int numRequiredEvals = addOperations.size() - delOperations.size();
-        if (numRequiredEvals > numExtraEvals.get()) {
+      if (numAvailableExtraEvals.isPresent()) {
+        final int numRequiredExtraEvals = addOperations.size() - delOperations.size();
+        if (numRequiredExtraEvals > numAvailableExtraEvals.get()) {
           throw new RuntimeException("Plan is infeasible, because it violates the resource limit");
         }
 
-        final int numAddsShouldFollowDel = addOperations.size() - numExtraEvals.get();
-        LOG.log(Level.FINE, "{0} Adds should follow Deletes.");
+        final int numAddsShouldFollowDel = addOperations.size() - numAvailableExtraEvals.get();
+        LOG.log(Level.FINE, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
 
         final Iterator<EMPlanOperation> delOperationsItr = delOperations.values().iterator();
         final Iterator<EMPlanOperation> addOperationsItr = addOperations.values().iterator();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,14 +28,16 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A plan implementation with builder.
+ * A plan implementation that supports EM's default plan operations and Dolphin-specific plan operations.
  * The builder checks the feasibility of plan and dependencies between detailed steps.
  */
 public final class PlanImpl implements Plan {
   private static final Logger LOG = Logger.getLogger(PlanImpl.class.getName());
 
   private final Map<String, Set<String>> evaluatorsToAdd;
+  private final Set<String> workersToStart;
   private final Map<String, Set<String>> evaluatorsToDelete;
+  private final Set<String> workersToStop;
   private final Map<String, List<TransferStep>> allTransferSteps;
 
   private final DAG<PlanOperation> dependencyGraph;
@@ -46,33 +48,27 @@ public final class PlanImpl implements Plan {
                    final Map<String, List<TransferStep>> allTransferSteps,
                    final DAG<PlanOperation> dependencyGraph) {
     this.evaluatorsToAdd = evaluatorsToAdd;
+    this.workersToStart = evaluatorsToAdd.containsKey(Constants.NAMESPACE_WORKER) ?
+        evaluatorsToAdd.get(Constants.NAMESPACE_WORKER) : Collections.emptySet();
     this.evaluatorsToDelete = evaluatorsToDelete;
+    this.workersToStop = evaluatorsToDelete.containsKey(Constants.NAMESPACE_WORKER) ?
+        evaluatorsToDelete.get(Constants.NAMESPACE_WORKER) : Collections.emptySet();
     this.allTransferSteps = allTransferSteps;
     this.dependencyGraph = dependencyGraph;
 
     // count the total number of operations
     int numTotalOps = 0;
-    for (final Map.Entry<String, Set<String>> entry : evaluatorsToAdd.entrySet()) {
-      final String namespace = entry.getKey();
-      final Set<String> evalsToAdd = entry.getValue();
+    for (final Set<String> evalsToAdd : evaluatorsToAdd.values()) {
       numTotalOps += evalsToAdd.size();
-
-      if (namespace.equals(Constants.NAMESPACE_WORKER)) {
-        numTotalOps += evalsToAdd.size(); // builder adds one Start for each worker Add
-      }
     }
-    for (final Map.Entry<String, Set<String>> entry : evaluatorsToDelete.entrySet()) {
-      final String namespace = entry.getKey();
-      final Set<String> evalsToDel = entry.getValue();
+    for (final Set<String> evalsToDel : evaluatorsToDelete.values()) {
       numTotalOps += evalsToDel.size();
-
-      if (namespace.equals(Constants.NAMESPACE_WORKER)) {
-        numTotalOps += evalsToDel.size(); // builder adds one Stop for each worker Delete
-      }
     }
     for (final List<TransferStep> transferSteps : allTransferSteps.values()) {
       numTotalOps += transferSteps.size();
     }
+    numTotalOps += workersToStart.size() + workersToStop.size();
+
     this.numTotalOperations = numTotalOps;
   }
 
@@ -88,11 +84,11 @@ public final class PlanImpl implements Plan {
 
   @Override
   public synchronized Set<PlanOperation> onComplete(final PlanOperation operation) {
-    final Set<PlanOperation> newAvailableOperations = dependencyGraph.getNeighbors(operation);
+    final Set<PlanOperation> candidateOperations = dependencyGraph.getNeighbors(operation);
     final Set<PlanOperation> nextOpsToExecute = new HashSet<>();
     dependencyGraph.removeVertex(operation);
 
-    for (final PlanOperation candidate : newAvailableOperations) {
+    for (final PlanOperation candidate : candidateOperations) {
       if (dependencyGraph.getInDegree(candidate) == 0) {
         nextOpsToExecute.add(candidate);
       }
@@ -126,18 +122,14 @@ public final class PlanImpl implements Plan {
 
   @Override
   public String toString() {
-    final StringBuilder sb = new StringBuilder("PlanImpl{");
-    for (final String key : evaluatorsToAdd.keySet()) {
-      sb.append("evaluatorsToAdd=(").append(key).append(',').append(evaluatorsToAdd.get(key)).append(')');
-    }
-    for (final String key : evaluatorsToDelete.keySet()) {
-      sb.append("evaluatorsToDelete=(").append(key).append(',').append(evaluatorsToDelete.get(key)).append(')');
-    }
-    for (final String key : allTransferSteps.keySet()) {
-      sb.append("TransferSteps=(").append(key).append(',').append(allTransferSteps.get(key)).append(')');
-    }
-    sb.append('}');
-    return sb.toString();
+    return "PlanImpl{" +
+        "evaluatorsToAdd=" + evaluatorsToAdd +
+        ", workersToStart=" + workersToStart +
+        ", evaluatorsToDelete=" + evaluatorsToDelete +
+        ", workersToStop=" + workersToStop +
+        ", allTransferSteps=" + allTransferSteps +
+        ", numTotalOperations=" + numTotalOperations +
+        '}';
   }
 
   public static PlanImpl.Builder newBuilder() {
@@ -146,8 +138,9 @@ public final class PlanImpl implements Plan {
 
   /**
    * A builder of PlanImpl.
-   * Before instantiating a PlanImpl object, it checks the feasibility of plan and
-   * constructs a dependency graph between steps, based on the following rules:
+   * Before instantiating a PlanImpl object, it checks the feasibility of plan.
+   * If the given plan operations are feasible it builds a Plan,
+   * constructing a dependency graph between steps, based on the following rules:
    *   1. Evaluators must be added before they participate in transfers. (add -> move)
    *   2. Evaluators must finish all transfers which they are a part of before they are deleted. (move -> del)
    *   3. One evaluator must be deleted before adding a new evaluator,
@@ -168,7 +161,7 @@ public final class PlanImpl implements Plan {
 
     /**
      * Sets the limitation on the number of extra evaluators to use in plan execution.
-     * It not specified, it assumes that there's no resource limit.
+     * If not specified, it assumes that there's no resource limit.
      * @param numExtraEvaluators the number of extra evaluators
      * @return the builder
      */

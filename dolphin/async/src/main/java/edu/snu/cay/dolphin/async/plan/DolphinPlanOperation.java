@@ -16,32 +16,32 @@
 package edu.snu.cay.dolphin.async.plan;
 
 import edu.snu.cay.services.em.plan.api.PlanOperation;
-import org.apache.reef.util.Optional;
 
 /**
  * A class representing Dolphin-specific plan operation.
- * Worker tasks should be controlled to prevent them from running task iterations
- * with empty dataset when the optimizer generates a plan that includes Add/Del.
+ * Regarding to EM's ADD/DEL, Dolphin's worker tasks should be controlled
+ * to prevent them from running task iterations with empty dataset.
  */
 public final class DolphinPlanOperation implements PlanOperation {
   public enum OpType {
-    START, STOP
+    START, // start worker task
+    STOP   // stop worker task
   }
 
   private final String namespace;
   private final OpType opType;
-  private final Optional<String> evalId;
+  private final String evalId;
 
   /**
    * A constructor for START and STOP operations.
    * @param namespace a namespace of operation
-   * @param opType a type of operation, which is one of ADD or REMOVE
+   * @param opType a type of operation
    * @param evalId a target evaluator id
    */
   public DolphinPlanOperation(final String namespace, final OpType opType, final String evalId) {
     this.namespace = namespace;
     this.opType = opType;
-    this.evalId = Optional.of(evalId);
+    this.evalId = evalId;
   }
 
   /**
@@ -59,10 +59,9 @@ public final class DolphinPlanOperation implements PlanOperation {
   }
 
   /**
-   * @return an Optional with the target evaluator id if the operation type is ADD or DELETE.
-   * For Move operation, it returns an empty Optional.
+   * @return a target evaluator id
    */
-  public Optional<String> getEvalId() {
+  public String getEvalId() {
     return evalId;
   }
 
