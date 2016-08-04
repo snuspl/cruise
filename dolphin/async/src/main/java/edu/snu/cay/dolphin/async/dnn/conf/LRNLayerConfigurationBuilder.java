@@ -26,7 +26,6 @@ import org.apache.reef.util.Builder;
  * Configuration builder for local response normalization(LRN) layer.
  *
  * The configuration that this builder generates is used to create a LRN layer instance.
- * the parameter for a layer input shape, to inject a layer instance.
  */
 
 public final class LRNLayerConfigurationBuilder implements Builder<Configuration> {

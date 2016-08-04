@@ -59,42 +59,42 @@ public class LRNLayerTest {
       {1, 1},
       {1, 1}});
 
-  private final Matrix expectedLRNActivationVec = matrixFactory.create(new float[][] {
+  private final Matrix expectedLRNActivationSizeTwo = matrixFactory.create(new float[][] {
       {0.111111f, 0.111111f},
       {0.111111f, 0.111111f},
       {0.111111f, 0.111111f},
       {0.111111f, 0.111111f}});
 
-  private final Matrix expectedLRNActivation = matrixFactory.create(new float[][] {
+  private final Matrix expectedLRNActivationSizeOne = matrixFactory.create(new float[][] {
       {0.111111f, 0.111111f},
       {0.0625f, 0.0625f},
       {0.0625f, 0.0625f},
       {0.111111f, 0.111111f}});
 
-  private final Matrix expectedLRNErrorVec = matrixFactory.create(new float[][] {
+  private final Matrix expectedLRNErrorSizeTwo = matrixFactory.create(new float[][] {
       {-0.185185f, -0.185185f},
       {-0.185185f, -0.185185f},
       {-0.185185f, -0.185185f},
       {-0.185185f, -0.185185f}});
 
-  private final Matrix expectedLRNError = matrixFactory.create(new float[][] {
+  private final Matrix expectedLRNErrorSizeOne = matrixFactory.create(new float[][] {
       {-0.099537f, -0.099537f},
       {-0.210648f, -0.210648f},
       {-0.210648f, -0.210648f},
       {-0.099537f, -0.099537f}});
 
-  private LayerBase lrnLayer;
-  private LayerBase lrnLayerVec;
+  private LayerBase lrnLayerSizeTwo;
+  private LayerBase lrnLayerSizeOne;
 
   @Before
   public void setup() throws InjectionException {
-    final Configuration layerConfVec = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration layerConfSizeTwo = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
         .bindNamedParameter(LayerInputShape.class, "2,2,1")
         .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
         .build();
 
-    final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration layerConfSizeOne = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
         .bindNamedParameter(LayerInputShape.class, "4,1,1")
         .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
@@ -107,31 +107,28 @@ public class LRNLayerTest {
         .setK(1)
         .setLocalSize(3);
 
-    this.lrnLayerVec =
-        Tang.Factory.getTang().newInjector(layerConfVec, builder.build())
+    this.lrnLayerSizeTwo =
+        Tang.Factory.getTang().newInjector(layerConfSizeTwo, builder.build())
             .getInstance(LayerBase.class);
 
-    this.lrnLayer =
-        Tang.Factory.getTang().newInjector(layerConf, builder.build())
+    this.lrnLayerSizeOne =
+        Tang.Factory.getTang().newInjector(layerConfSizeOne, builder.build())
             .getInstance(LayerBase.class);
   }
 
   @Test
-  public void testLRNVec() {
-    final Matrix activation = lrnLayerVec.feedForward(input);
-    assertTrue(expectedLRNActivationVec.compare(activation, TOLERANCE));
-    final Matrix error = lrnLayerVec.backPropagate(input, expectedLRNActivationVec, nextError);
-    assertTrue(expectedLRNErrorVec.compare(error, TOLERANCE));
+  public void testLRNSizeTwo() {
+    final Matrix activation = lrnLayerSizeTwo.feedForward(input);
+    assertTrue(expectedLRNActivationSizeTwo.compare(activation, TOLERANCE));
+    final Matrix error = lrnLayerSizeTwo.backPropagate(input, expectedLRNActivationSizeTwo, nextError);
+    assertTrue(expectedLRNErrorSizeTwo.compare(error, TOLERANCE));
   }
 
   @Test
-  public void testLRN() {
-    final Matrix activation = lrnLayer.feedForward(input);
-    assertTrue(expectedLRNActivation.compare(activation, TOLERANCE));
-    final Matrix error = lrnLayer.backPropagate(input, expectedLRNActivation, nextError);
-    assertTrue(expectedLRNError.compare(error, TOLERANCE));
+  public void testLRNSizeOne() {
+    final Matrix activation = lrnLayerSizeOne.feedForward(input);
+    assertTrue(expectedLRNActivationSizeOne.compare(activation, TOLERANCE));
+    final Matrix error = lrnLayerSizeOne.backPropagate(input, expectedLRNActivationSizeOne, nextError);
+    assertTrue(expectedLRNErrorSizeOne.compare(error, TOLERANCE));
   }
-
-
-
 }

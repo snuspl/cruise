@@ -29,7 +29,6 @@ import javax.inject.Inject;
  * The corresponding mathematical formula and explanation is at section 3.3 of the following paper.
  * https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
  */
-
 public final class LRNLayer extends LayerBase {
 
   private final int localSize;
@@ -49,8 +48,8 @@ public final class LRNLayer extends LayerBase {
    * @param inputShape the shape of input data
    * @param localSize the number of channels to sum over
    * @param alpha the scaling parameter
-   * @param beta the exponent
-   * @param k the constant
+   * @param beta the exponent to raise the power of
+   * @param k the constant to add
    * @param matrixFactory the factory to create new matrices
    */
   @Inject
@@ -64,7 +63,6 @@ public final class LRNLayer extends LayerBase {
     super(index, inputShape);
 
     this.localSize = localSize;
-
     this.alpha = alpha;
     this.beta = beta;
     this.k = k;
@@ -92,9 +90,16 @@ public final class LRNLayer extends LayerBase {
   }
 
   /**
-   * Computes output values for this dropout layer.
-   * scale = sum(a_j ^ 2) * (alpha / n) + k
-   * b_i = a_i / (scale ^ beta)
+   * Computes output values for this lrn layer.
+   *
+   * scale_i = sum(a_j ^ 2) * (alpha / n) + k
+   * b_i = a_i / (scale_i ^ beta)
+   *
+   * n: localSize
+   * a_i: input where kernel i is applied
+   * b_i: activation of a_i
+   * sum: sigma ranging from max(0, i - n / 2) to min(inputChannel - 1, i + n / 2)
+   *
    * @param input input values for this layer.
    * @return output values for this layer.
    */
@@ -102,33 +107,39 @@ public final class LRNLayer extends LayerBase {
   public Matrix feedForward(final Matrix input) {
     this.scale = matrixFactory.create(input.getRows(), input.getColumns());
 
-    for (int n = 0; n < input.getColumns(); n++) {
+    for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
-      for (int i = 0; i < input.getRows(); i++) {
+      for (int i = 0; i < input.getRows(); ++i) {
         // input ^ 2
         paddedImg.put(i + paddingSize * inputSize, input.get(i, n) * input.get(i, n));
       }
-      sum(scale, paddedImg, n);
+      computeLocalSum(scale, paddedImg, n);
     }
-    //the following scale is used at backPropagation
+    // the following scale is used at backPropagation
     scale.muli(alpha / localSize).addi(k);
 
     return MatrixFunctions.pow(scale, -beta).muli(input);
   }
 
-  private void sum(final Matrix output, final Matrix padded, final int n) {
+  /**
+   * Sums localSize “adjacent” kernel maps at the same spatial position.
+   * @param output this matrix is returned with it's n_th column filled with the computed vector
+   * @param padded n_th column of "input" at feedForward and backPropagate function
+   *               indicating the n_th image, which is padded to simplify the summation process
+   * @param n the index indicating which column of output is being computed
+   */
+  private void computeLocalSum(final Matrix output, final Matrix padded, final int n) {
     final Matrix outputI = matrixFactory.create(inputSize, inputChannel);
     final Matrix paddedI = padded.reshape(inputSize, inputChannel + paddingSize * 2);
-    //first channel
-    //add columns, from column[0] to column[localSize - 1]
+    // first channel
     for (int r = 0; r < outputI.getRows(); ++r) {
       float sum = 0F;
-      for (int l = 0; l < localSize; l++) {
+      for (int l = 0; l < localSize; ++l) {
         sum += paddedI.get(r, l);
       }
       outputI.put(r, 0, sum);
     }
-    //rest of the channels
+    // rest of the channels
     for (int c = 1; c < inputChannel; ++c) {
       for (int r = 0; r < outputI.getRows(); ++r) {
         outputI.put(r, c, outputI.get(r, c - 1) + paddedI.get(r, c + (paddingSize * 2)) - paddedI.get(r, c - 1));
@@ -139,7 +150,14 @@ public final class LRNLayer extends LayerBase {
 
   /**
    * Computes errors.
-   * sum(be_j * b_j / scale) * a_i * (-2 * alpha * beta / n) + (scale ^ -beta) * be_i
+   *
+   * ae_i = sum(be_j * b_j / scale_j) * a_i * (-2 * alpha * beta / n) + (scale ^ -beta) * be_i
+   *
+   * be_i: nextError where kernel i is applied
+   * b_i: activation where kernel i is applied
+   * ae_i: error computed where kernel i is applied
+   * a_i: input where kernel i is applied
+   *
    * @param input the input values for this layer
    * @param activation the output values.
    * @param nextError the errors of the next layer - the one closer to the output layer.
@@ -151,13 +169,13 @@ public final class LRNLayer extends LayerBase {
                               final Matrix nextError) {
     final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
 
-    for (int n = 0; n < nextError.getColumns(); n++) {
+    for (int n = 0; n < nextError.getColumns(); ++n) {
       final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
-      for (int i = 0; i < nextError.getRows(); i++) {
+      for (int i = 0; i < nextError.getRows(); ++i) {
       // nextError * activation / scale
         paddedImg.put(i + paddingSize * inputSize, nextError.get(i, n) * activation.get(i, n) / scale.get(i, n));
       }
-      sum(error, paddedImg, n);
+      computeLocalSum(error, paddedImg, n);
     }
 
     error.muli(input).muli(-2 * alpha * beta / localSize);
