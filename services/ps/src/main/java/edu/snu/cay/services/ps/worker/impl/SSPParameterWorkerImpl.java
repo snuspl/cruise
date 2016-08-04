@@ -41,7 +41,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A SSP Parameter Server worker that interacts with servers and the driver.
+ * A SSP Parameter Server worker that interacts with servers.
  * A single instance of this class can be used by more than one thread safely, if and only if
  * the Codec classes are thread-safe.
  */
@@ -119,15 +119,15 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
 
   @Inject
   private SSPParameterWorkerImpl(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
-                              @Parameter(WorkerQueueSize.class) final int queueSize,
-                              @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
-                              @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
-                              @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
-                              @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
-                              @Parameter(WorkerLogPeriod.class) final long logPeriod,
-                              final ParameterUpdater<K, P, V> parameterUpdater,
-                              final ServerResolver serverResolver,
-                              final InjectionFuture<WorkerMsgSender<K, P>> sender) {
+                                 @Parameter(WorkerQueueSize.class) final int queueSize,
+                                 @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
+                                 @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
+                                 @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
+                                 @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
+                                 @Parameter(WorkerLogPeriod.class) final long logPeriod,
+                                 final ParameterUpdater<K, P, V> parameterUpdater,
+                                 final ServerResolver serverResolver,
+                                 final InjectionFuture<WorkerMsgSender<K, P>> sender) {
     this.numThreads = numThreads;
     this.parameterUpdater = parameterUpdater;
     this.serverResolver = serverResolver;
@@ -137,13 +137,13 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     this.threadPool = Executors.newFixedThreadPool(numThreads);
     this.threads = initThreads(queueSize, cacheExpireTimeout, pullRetryTimeoutMs);
     this.encodedKeyCache = CacheBuilder.newBuilder()
-            .maximumSize(keyCacheSize)
-            .build(new CacheLoader<K, EncodedKey<K>>() {
-              @Override
-              public EncodedKey<K> load(final K key) throws Exception {
-                return new EncodedKey<>(key, keyCodec);
-              }
-            });
+        .maximumSize(keyCacheSize)
+        .build(new CacheLoader<K, EncodedKey<K>>() {
+          @Override
+          public EncodedKey<K> load(final K key) throws Exception {
+            return new EncodedKey<>(key, keyCodec);
+          }
+        });
 
     this.logPeriod = TimeUnit.NANOSECONDS.convert(logPeriod, TimeUnit.MILLISECONDS);
     this.pushStats = Statistics.newInstances(numThreads);
@@ -164,10 +164,10 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
                                               final long pullRetryTimeoutMs) {
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
     final WorkerThread<K, P, V>[] initialized
-            = new WorkerThread[numThreads];
+        = new WorkerThread[numThreads];
     for (int i = 0; i < numThreads; i++) {
       initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize,
-              cacheExpireTimeout, pullRetryTimeoutMs, pullStats[i]);
+          cacheExpireTimeout, pullRetryTimeoutMs, pullStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -185,7 +185,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     }
   }
 
-  void push(final EncodedKey<K> encodedKey, final P preValue) {
+  private void push(final EncodedKey<K> encodedKey, final P preValue) {
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
     threads[threadId].enqueue(new PushOp(encodedKey, preValue, threadId));
@@ -200,7 +200,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     }
   }
 
-  public V pull(final EncodedKey<K> encodedKey) {
+  private V pull(final EncodedKey<K> encodedKey) {
     final PullOp pullOp = new PullOp(encodedKey);
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
@@ -223,7 +223,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     return pullEncodedKeys(encodedKeys);
   }
 
-  List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
+  private List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
     final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
     for (final EncodedKey<K> encodedKey : encodedKeys) {
       final PullOp pullOp = new PullOp(encodedKey);
@@ -239,7 +239,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     return values;
   }
 
-  public void invalidateAll() {
+  void invalidateAll() {
     for (int i = 0; i < numThreads; i++) {
       threads[i].invalidateAll();
     }
@@ -277,6 +277,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
    * Handles incoming pull replies, by setting the value of the future.
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
    */
+  @Override
   public void processPullReply(final K key, final V value) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
@@ -287,7 +288,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
       // But occasionally, multiple responses for a single pendingPull may arrive
       // if the worker retried due to the late response from the target server.
       LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
-              " Response for the key may have arrived earlier from another server", key);
+          " Response for the key may have arrived earlier from another server", key);
     }
   }
 
@@ -295,11 +296,12 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
    * Handles incoming pull rejects, by rejecting the future.
    * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
    */
+  @Override
   public void processPullReject(final K key) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       LOG.log(Level.INFO, "Pull operation for key {0} is rejected." +
-              " It means that the corresponding server is closing or already closed.", key);
+          " It means that the corresponding server is closing or already closed.", key);
       future.reject();
 
     } else {
@@ -307,7 +309,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
       // But occasionally, multiple responses for a single pendingPull may arrive
       // if the worker retried due to the late response from the target server.
       LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
-              " Response for the key may have arrived earlier from another server", key);
+          " Response for the key may have arrived earlier from another server", key);
     }
   }
 
@@ -315,6 +317,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
    * Handles incoming push rejects, but internally it calls {@link SSPParameterWorkerImpl#push}.
    * This function has been added to this class, that it implements {@link WorkerHandler} interface.
    */
+  @Override
   public void processPushReject(final K key, final P preValue) {
     this.push(key, preValue);
   }
@@ -329,6 +332,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
 
     /**
      * Block until a value is set or the maximum waiting time elapses.
+     *
      * @param timeout the maximum time to wait in milliseconds
      * @return the value, or null when it fails to get the value in given timeout
      */
@@ -345,6 +349,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
 
     /**
      * Set the value and unblock all waiting gets.
+     *
      * @param value the value
      */
     synchronized void setValue(final V value) {
@@ -380,10 +385,10 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Worker Thread Id: {1}, PS Worker Push Avg: {2}, " +
             "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
             "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
-            new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
-                    String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
-                    String.format("%g", encodeStat.sum()), String.format("%g", pullStat.avg()),
-                    String.format("%g", pullStat.sum()), String.format("%g", pullStat.count())});
+        new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
+            String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
+            String.format("%g", encodeStat.sum()), String.format("%g", pullStat.avg()),
+            String.format("%g", pullStat.sum()), String.format("%g", pullStat.count())});
     startTimes[threadId] = ticker.read();
     pushStat.reset();
     encodeStat.reset();
@@ -395,6 +400,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
   private interface Op<K, V> {
     /**
      * Method to apply when dequeued by the Partition.
+     *
      * @param kvCache the raw LoadingCache, provided by the Partition.
      */
     void apply(LoadingCache<EncodedKey<K>, Tagged<V>> kvCache);
@@ -448,6 +454,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
     /**
      * First, update the local value, only if it is already cached.
      * Second, send the update to the remote PS.
+     *
      * @param kvCache the raw LoadingCache, provided by the Partition.
      */
     @Override
@@ -477,7 +484,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
         // since an operation may throw NetworkException when routing table is obsolete
         final String serverId = serverResolver.resolveServer(encodedKey.getHash());
         LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
-                new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
+            new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
 
         try {
           final long encodeStartTime = ticker.read();
@@ -520,6 +527,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
 
     /**
      * Delegate loading to the cache, then update the value and notify waiting gets.
+     *
      * @param kvCache the raw LoadingCache, provided by the Partition.
      */
     @Override
@@ -539,6 +547,7 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
 
     /**
      * A blocking get.
+     *
      * @return the value
      */
     public V get() {
@@ -559,15 +568,15 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
    * A partition for the cache on the Worker.
    * The basic structure is similar to the partition for the Server at
    * {@link edu.snu.cay.services.ps.server.api.ParameterServer}.
-   *
+   * <p>
    * The partitions at the Worker can be independent of the partitions at the Server. In other words,
    * the number of worker-side partitions does not have to be equal to the number of server-side partitions.
-   *
+   * <p>
    * A remotely read pull remains in the local cache for a duration of expireTimeout.
    * Pushes are applied locally while the parameter is cached.
    * The single queue-and-thread, combined with the server, provides a guarantee that
    * all previous local pushes are applied to a pull, if it is locally cached.
-   *
+   * <p>
    * This means pull operations are queued behind push operations.
    * We should further explore this trade-off with real ML workloads.
    */
@@ -602,91 +611,91 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
 
     private LoadingCache<EncodedKey<K>, Tagged<V>>
         initCache(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
-              final ServerResolver serverResolver,
-              final InjectionFuture<WorkerMsgSender<K, P>> sender,
-              final long cacheExpireTimeout,
-              final long pullRetryTimeoutMs,
-              final Statistics pullStat) {
+                  final ServerResolver serverResolver,
+                  final InjectionFuture<WorkerMsgSender<K, P>> sender,
+                  final long cacheExpireTimeout,
+                  final long pullRetryTimeoutMs,
+                  final Statistics pullStat) {
       return CacheBuilder.newBuilder()
-              .concurrencyLevel(1)
-              .expireAfterWrite(cacheExpireTimeout, TimeUnit.MILLISECONDS)
-              .build(new CacheLoader<EncodedKey<K>, Tagged<V>>() {
+          .concurrencyLevel(1)
+          .expireAfterWrite(cacheExpireTimeout, TimeUnit.MILLISECONDS)
+          .build(new CacheLoader<EncodedKey<K>, Tagged<V>>() {
 
-                @Override
-                public Tagged<V> load(final EncodedKey<K> encodedKey) {
-                  final PullFuture<V> future = new PullFuture<>();
-                  pendingPulls.put(encodedKey.getKey(), future);
+            @Override
+            public Tagged<V> load(final EncodedKey<K> encodedKey) {
+              final PullFuture<V> future = new PullFuture<>();
+              pendingPulls.put(encodedKey.getKey(), future);
 
-                  V value;
+              V value;
 
-                  int retryCount = 0;
-                  while (true) {
-                    if (retryCount++ > MAX_PULL_RETRY_COUNT) {
-                      throw new RuntimeException("Fail to load a value for pull");
-                    }
-
-                    // 1. try sending msg to server
-                    sendPullMsg(encodedKey);
-
-                    // 2. wait the result from the server.
-                    //
-                    // PullFuture returns null,
-                    // 1) when the msg is rejected by server,
-                    // 2) or when the server does not respond within RETRY_INTERVAL_MS
-                    // The case 2) can be divided into three reasons:
-                    // 2A) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
-                    // 2B) the server is overloaded
-                    // 2C) the msg is missing due to network or other problems
-                    // we should adjust timeout to be large enough to avoid 2A and not to worsen 2B,
-                    // but small enough to quickly recover from 2C.
-                    value = future.getValue(pullRetryTimeoutMs);
-
-                    if (value != null) {
-                      break;
-                    } else {
-                      future.reset();
-                    }
-                  }
-
-                  pendingPulls.remove(encodedKey.getKey());
-                  return new Tagged<>(value, 0);
+              int retryCount = 0;
+              while (true) {
+                if (retryCount++ > MAX_PULL_RETRY_COUNT) {
+                  throw new RuntimeException("Fail to load a value for pull");
                 }
 
-                /**
-                 * Sends a pull msg for the {@code encodedKey} to the target server.
-                 * @param encodedKey encoded key
-                 */
-                private void sendPullMsg(final EncodedKey<K> encodedKey) {
-                  int resendCount = 0;
-                  while (true) {
-                    if (resendCount++ > MAX_RESEND_COUNT) {
-                      throw new RuntimeException("Fail to send a pull msg");
-                    }
+                // 1. try sending msg to server
+                sendPullMsg(encodedKey);
 
-                    // Re-resolve server for every retry, because msg sender throws NetworkException
-                    // when routing table is obsolete and indicates non-existing server.
-                    final String serverId = serverResolver.resolveServer(encodedKey.getHash());
-                    LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
-                            new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
+                // 2. wait the result from the server.
+                //
+                // PullFuture returns null,
+                // 1) when the msg is rejected by server,
+                // 2) or when the server does not respond within RETRY_INTERVAL_MS
+                // The case 2) can be divided into three reasons:
+                // 2A) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
+                // 2B) the server is overloaded
+                // 2C) the msg is missing due to network or other problems
+                // we should adjust timeout to be large enough to avoid 2A and not to worsen 2B,
+                // but small enough to quickly recover from 2C.
+                value = future.getValue(pullRetryTimeoutMs);
 
-                    try {
-                      final long beginTick = ticker.read();
-                      sender.get().sendPullMsg(serverId, encodedKey);
-                      pullStat.put(ticker.read() - beginTick);
-                      break;
-                    } catch (final NetworkException e) {
-                      LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
-                    }
-
-                    LOG.log(Level.FINE, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
-                    try {
-                      Thread.sleep(RESEND_INTERVAL_MS);
-                    } catch (final InterruptedException e) {
-                      LOG.log(Level.WARNING, "Interrupted while waiting for routing table to be updated", e);
-                    }
-                  }
+                if (value != null) {
+                  break;
+                } else {
+                  future.reset();
                 }
-              });
+              }
+
+              pendingPulls.remove(encodedKey.getKey());
+              return new Tagged<>(value, 0);
+            }
+
+            /**
+             * Sends a pull msg for the {@code encodedKey} to the target server.
+             * @param encodedKey encoded key
+             */
+            private void sendPullMsg(final EncodedKey<K> encodedKey) {
+              int resendCount = 0;
+              while (true) {
+                if (resendCount++ > MAX_RESEND_COUNT) {
+                  throw new RuntimeException("Fail to send a pull msg");
+                }
+
+                // Re-resolve server for every retry, because msg sender throws NetworkException
+                // when routing table is obsolete and indicates non-existing server.
+                final String serverId = serverResolver.resolveServer(encodedKey.getHash());
+                LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
+                    new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
+
+                try {
+                  final long beginTick = ticker.read();
+                  sender.get().sendPullMsg(serverId, encodedKey);
+                  pullStat.put(ticker.read() - beginTick);
+                  break;
+                } catch (final NetworkException e) {
+                  LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
+                }
+
+                LOG.log(Level.FINE, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
+                try {
+                  Thread.sleep(RESEND_INTERVAL_MS);
+                } catch (final InterruptedException e) {
+                  LOG.log(Level.WARNING, "Interrupted while waiting for routing table to be updated", e);
+                }
+              }
+            }
+          });
     }
 
     private StateMachine initStateMachine() {
@@ -794,5 +803,4 @@ public final class SSPParameterWorkerImpl<K, P, V> implements ParameterWorker<K,
       }
     }
   }
-
 }

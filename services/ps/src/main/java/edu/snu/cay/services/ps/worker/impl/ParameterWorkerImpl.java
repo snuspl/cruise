@@ -229,7 +229,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     return pullEncodedKeys(encodedKeys);
   }
 
-  List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
+  private List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
     final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
     for (final EncodedKey<K> encodedKey : encodedKeys) {
       final PullOp pullOp = new PullOp(encodedKey);
@@ -283,6 +283,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
    * Handles incoming pull replies, by setting the value of the future.
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
    */
+  @Override
   public void processPullReply(final K key, final V value) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
@@ -297,10 +298,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     }
   }
 
-  /**
-   * Handles incoming pull rejects, by rejecting the future.
-   * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
-   */
+  @Override
   public void processPullReject(final K key) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
@@ -318,9 +316,10 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   }
 
   /**
-   * Handles incoming push rejects, but internally it calls {@link ParameterWorkerImpl#push}.
+   * Handles incoming push rejects, by retrying push request.
    * This function has been added to this class that it implements {@link WorkerHandler} interface.
    */
+  @Override
   public void processPushReject(final K key, final P preValue) {
     this.push(key, preValue);
   }

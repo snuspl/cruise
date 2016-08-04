@@ -22,6 +22,7 @@ import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
+import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import org.apache.reef.exception.evaluator.NetworkException;

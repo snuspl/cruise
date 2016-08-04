@@ -37,7 +37,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * Created by mhkweun on 16. 8. 2.
+ * Common test codes for both {@link ParameterWorkerImpl} and {@link SSPParameterWorkerImpl}.
  */
 public class ParameterWorkerImplTestUtil {
   public static final long CLOSE_TIMEOUT = 5000;
@@ -325,6 +325,4 @@ public class ParameterWorkerImplTestUtil {
     verify(sender, times(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT)).sendPullMsg(anyString(),
         any(EncodedKey.class));
   }
-
-
 }
