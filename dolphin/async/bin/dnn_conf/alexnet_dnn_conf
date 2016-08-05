@@ -1,8 +1,13 @@
+# Unlike AlexNet, this does not support grouping at convolutional layer and
+# artificially enlarging the dataset using label-preserving transformation.
+# See https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
+# sections 3.5 and 4.1 respectively.
+
 batch_size: 256
 step_size: 0.01 #TODO #646: we need to decrease it every 100,000 iterations (about 20 epochs)
 input_shape {
-  dim: 256
-  dim: 256
+  dim: 224
+  dim: 224
 }
 #1
 layer {
