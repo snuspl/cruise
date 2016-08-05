@@ -25,19 +25,35 @@
         <div class="w3-btn" id='reload_btn'>Reload data!</div>
     </div>
     <!-- TODO #705: Visualize received metrics -->
-    <!--For temporary testing-->
-    <div id=metrics>
-        {% for item in metrics %}
-        {%if item.workerid != -1 %}
-        <div>worker id:     {{item.workerid}}</div>
-        {%endif%}
-        {%if item.serverid != -1 %}
-        <div>server id:     {{item.serverid}}</div>
-        {%endif%}
-        {% endfor %}
+    <div class="w3-row">
+        <!-- worker metrics -->
+        <div class="w3-third w3-container w3-pale-yellow">
+            {% for worker in workers %}
+                {% for key in worker.keys() %}
+                <div>{{key}}:   {{worker[key]}}</div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+        <!-- server metrics -->
+        <div class="w3-third w3-container w3-pale-green">
+            {% for server in servers %}
+                {% for key in server.keys() %}
+                <div>{{key}}:   {{server[key]}}</div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+        <!-- app-specific metrics -->
+        <div class="w3-third w3-container w3-pale-blue">
+            {% for metric in metrics %}
+                {% for key in metric.keys() %}
+                <div>{{key}}:   {{metric[key]}}</div>
+                {% endfor %}
+            {% endfor %}
+        </div>
     </div>
 <script>
 // TODO #708: Support real-time visualization by using 'setInterval{function, time}'
+/*
 $('#reload_btn').click(function() {
   $.get("/update", function(data) {
     $("html").html(data);
@@ -51,6 +67,7 @@ $('#loss_btn').click(function() {
 function addProcess(container, name){
     container.append("<div> name </div>");  
 }
+*/
 </script>
 </body>
 

@@ -200,20 +200,8 @@ public final class AsyncDolphinLauncher {
           .build();
       if (!hostAddress.isEmpty()) {
         LOG.log(Level.INFO, "Now launch dashboard server");
-/*
-        int read = 0;
-        final byte[] bytes = new byte[1024];
-        final InputStream inputStream = AsyncDolphinLauncher.class.getResourceAsStream("/dashboard/dashboard.py");
-        final OutputStream outputStream = new FileOutputStream(new File("script.py"));
-        while ((read = inputStream.read(bytes)) != -1) {
-          outputStream.write(bytes, 0, read);
-        }
-        final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-        while ((line = bufferedReader.readLine()) != null) {
-          System.out.println(line);
-        }
-*/
 
+/*
         final String currentPath = System.getProperty("user.dir");
         System.out.println(currentPath);
         final int index = currentPath.indexOf("cay");
@@ -222,12 +210,12 @@ public final class AsyncDolphinLauncher {
             "/dolphin/async/src/main/resources/dashboard/dashboard.py";
         System.out.println(resourcePath);
         final ProcessBuilder pb = new ProcessBuilder("python", resourcePath, String.valueOf(port)).inheritIO();
+*/
 
-/*
         final String path = AsyncDolphinLauncher.class.getClassLoader().getResource("dashboard/dashboard.py").getPath();
         System.out.println("path: " + path);
         final ProcessBuilder pb = new ProcessBuilder("python", path, String.valueOf(port)).inheritIO();
-*/
+
         final Process p = pb.start();
         Runtime.getRuntime().addShutdownHook(new Thread() {
           @Override

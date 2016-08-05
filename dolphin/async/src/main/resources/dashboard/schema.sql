@@ -21,10 +21,33 @@
  * Table metrics will be initialized dynamically at runtime.
  */
 
-/* This is a temporary schema for dummy data. */
-drop table if exists entries;
-create table entries (
-    id integer primary key autoincrement,
-    workerid integer not null,
-    serverid integer not null
+drop table if exists workers;
+drop table if exists servers;
+drop table if exists metrics;
+
+create table workers (
+    id int not null,
+/*    metrics varchar(255) not null, */
+    itrIdx int not null,
+    numDataBlocks int not null,
+    processedDataItemCount int not null,
+    numMiniBatchPerItr int not null,
+    totalTime double not null,
+    totalCompTime double not null,
+    totalPushTime double not null,
+    totalPullTime double not null,
+    avgPushTime double not null,
+    avgPullTime double not null
 );
+
+create table servers (
+    id int not null,
+/*    metrics varchar(255) not null, */
+    windowIndex int not null,
+    numPartitionBlocks int not null,
+    metricWindowMs long not null,
+    avgPullProcessingTime double not null,
+    avgPushProcessingTime double not null,
+    avgReqProcessingTime double not null
+);
+

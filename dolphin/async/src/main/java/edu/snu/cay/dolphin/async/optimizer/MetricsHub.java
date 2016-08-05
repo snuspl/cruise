@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
@@ -30,12 +31,14 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A temporary storage for holding worker and server metrics related to optimization.
  */
 public final class MetricsHub {
-
+  private static final Logger LOG = Logger.getLogger(Metrics.class.getName());
   /**
    * Worker-side metrics, each in the form of a {@link EvaluatorParameters} object.
    */
@@ -66,6 +69,7 @@ public final class MetricsHub {
   private void sendMetrics(final String id, final String metrics) {
     try {
       // Build http connection with the Dashboard server, set configurations.
+      LOG.log(Level.INFO, this.dolphinURL);
       final URL obj = new URL(this.dolphinURL);
       final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
       con.setRequestMethod("POST");
@@ -76,7 +80,7 @@ public final class MetricsHub {
       // Send metrics via outputStream to the Dashboard server.
       final OutputStream os = con.getOutputStream();
       // TODO #704: Send metrics instead of dummy information. The API will be:"id={ID}&metrics={METRICS}"
-      final String param = "serverid=" + id + "&workerid=" + id;
+      final String param = "id" + id + "&metrics=" + metrics;
       os.write((param).getBytes());
       os.flush();
       os.close();
@@ -92,7 +96,7 @@ public final class MetricsHub {
       }
       in.close();
     } catch (Exception e) {
-      throw new RuntimeException("Network Error");
+      throw new RuntimeException("Network Error" + e);
     }
   }
 
