@@ -59,8 +59,8 @@ layer {
   type: "Pooling"
   pooling_param {
     pooling_type: "MAX"
-    padding_height: 2
-    padding_width: 2
+    padding_height: 0
+    padding_width: 0
     stride_height: 2
     stride_width: 2
     kernel_height: 3
