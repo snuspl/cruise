@@ -307,21 +307,20 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         resetStats();
 
         // Log meaningful metrics only
-        if (totalPullCount > 0 && totalPushCount > 0) {
-          final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
-              .setWindowIndex(windowIndex)
-              .setNumModelBlocks(0) // EM is not used here.
-              .setMetricWindowMs(metricsWindowMs)
-              .setTotalPullProcessingTime(totalPullTime)
-              .setTotalPushProcessingTime(totalPushTime)
-              .setTotalReqProcessingTime(totalReqProcTime)
-              .setTotalPullProcessed(totalPullCount)
-              .setTotalPushProcessed(totalPushCount)
-              .setTotalReqProcessed(totalReqCount)
-              .build();
+        final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
+            .setWindowIndex(windowIndex)
+            .setNumModelBlocks(0) // EM is not used here.
+            .setMetricWindowMs(metricsWindowMs)
+            .setTotalPullProcessingTime(totalPullTime)
+            .setTotalPushProcessingTime(totalPushTime)
+            .setTotalReqProcessingTime(totalReqProcTime)
+            .setTotalPullProcessed(totalPullCount)
+            .setTotalPushProcessed(totalPushCount)
+            .setTotalReqProcessed(totalReqCount)
+            .build();
 
-          LOG.log(Level.FINE, "ServerMetrics {0}", metricsMessage);
-        }
+        LOG.log(Level.FINE, "ServerMetrics {0}", metricsMessage);
+
         windowIndex++;
       }
     } catch (final InterruptedException e) {

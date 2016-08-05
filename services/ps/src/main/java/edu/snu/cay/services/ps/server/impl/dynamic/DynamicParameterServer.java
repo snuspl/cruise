@@ -306,22 +306,21 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         resetStats();
 
         // Send meaningful metrics only
-        if (totalPullCount > 0 && totalPushCount > 0) {
-          final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
-              .setWindowIndex(windowIndex)
-              .setNumModelBlocks(numEMBlocks)
-              .setMetricWindowMs(metricsWindowMs)
-              .setTotalPullProcessingTime(totalPullTime)
-              .setTotalPushProcessingTime(totalPushTime)
-              .setTotalReqProcessingTime(totalReqProcTime)
-              .setTotalPullProcessed(totalPullCount)
-              .setTotalPushProcessed(totalPushCount)
-              .setTotalReqProcessed(totalReqCount)
-              .build();
+        final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
+            .setWindowIndex(windowIndex)
+            .setNumModelBlocks(numEMBlocks)
+            .setMetricWindowMs(metricsWindowMs)
+            .setTotalPullProcessingTime(totalPullTime)
+            .setTotalPushProcessingTime(totalPushTime)
+            .setTotalReqProcessingTime(totalReqProcTime)
+            .setTotalPullProcessed(totalPullCount)
+            .setTotalPushProcessed(totalPushCount)
+            .setTotalReqProcessed(totalReqCount)
+            .build();
 
-          LOG.log(Level.FINE, "Sending ServerMetrics {0}", metricsMessage);
-          metricsMsgSender.send(metricsMessage);
-        }
+        LOG.log(Level.FINE, "Sending ServerMetrics {0}", metricsMessage);
+        metricsMsgSender.send(metricsMessage);
+
         windowIndex++;
       }
     } catch (final InterruptedException e) {
