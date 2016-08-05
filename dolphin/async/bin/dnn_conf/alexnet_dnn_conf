@@ -31,8 +31,6 @@ layer {
   convolutional_param {
     kernel_height: 11
     kernel_width: 11
-    padding_height: 0
-    padding_width: 0
     stride_height: 4
     stride_width: 4
     init_weight: 0.01
@@ -59,12 +57,10 @@ layer {
   type: "Pooling"
   pooling_param {
     pooling_type: "MAX"
-    padding_height: 0
-    padding_width: 0
-    stride_height: 2
-    stride_width: 2
     kernel_height: 3
     kernel_width: 3
+    stride_height: 2
+    stride_width: 2
   }
 }
 #2
@@ -75,8 +71,6 @@ layer {
     kernel_width: 5
     padding_height: 2
     padding_width: 2
-    stride_height: 1
-    stride_width: 1
     init_weight: 0.01
     init_bias: 0.1
     num_output: 256
@@ -101,12 +95,10 @@ layer {
   type: "Pooling"
   pooling_param {
     pooling_type: "MAX"
-    padding_height: 0
-    padding_width: 0
-    stride_height: 2
-    stride_width: 2
     kernel_height: 3
     kernel_width: 3
+    stride_height: 2
+    stride_width: 2
   }
 }
 #3
@@ -117,8 +109,6 @@ layer {
     kernel_width: 3
     padding_height: 1
     padding_width: 1
-    stride_height: 1
-    stride_width: 1
     init_weight: 0.01
     init_bias: 0
     num_output: 384
@@ -138,8 +128,6 @@ layer {
     kernel_width: 3
     padding_height: 1
     padding_width: 1
-    stride_height: 1
-    stride_width: 1
     init_weight: 0.01
     init_bias: 0.1
     num_output: 384
@@ -159,8 +147,6 @@ layer {
     kernel_width: 3
     padding_height: 1
     padding_width: 1
-    stride_height: 1
-    stride_width: 1
     init_weight: 0.01
     init_bias: 0.1
     num_output: 256
@@ -176,12 +162,10 @@ layer {
   type: "Pooling"
   pooling_param {
     pooling_type: "MAX"
-    padding_height: 0
-    padding_width: 0
-    stride_height: 2
-    stride_width: 2
     kernel_height: 3
     kernel_width: 3
+    stride_height: 2
+    stride_width: 2
   }
 }
 #6
