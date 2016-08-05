@@ -416,6 +416,10 @@ public final class AsyncDolphinDriver {
               }
             }
 
+          } catch (final RuntimeException e) {
+            LOG.log(Level.SEVERE, "RuntimeException from optimization triggering thread", e);
+            throw e;
+
           } finally {
             // 3. allow workers to do cleanup, after finishing optimization entirely
             LOG.log(Level.INFO, "Stop triggering optimization. Allow workers do cleanup");

@@ -107,7 +107,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
     executingPlan = new ExecutingPlan(plan);
 
-    final Set<PlanOperation> initialPlanOperations = executingPlan.getNextOpsToExecute();
+    final Set<PlanOperation> initialPlanOperations = executingPlan.getInitialOpsToExecute();
     LOG.log(Level.INFO, "Start with initial ops: {0}", initialPlanOperations);
 
     try {
@@ -606,11 +606,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
 
     /**
-     * Get a set of operations in the plan that can be executed next.
+     * Get a set of initial operations in the plan.
      * @return the set of operations
      */
-    Set<PlanOperation> getNextOpsToExecute() {
-      return plan.getReadyOps();
+    Set<PlanOperation> getInitialOpsToExecute() {
+      return plan.getInitialOps();
     }
 
     /**

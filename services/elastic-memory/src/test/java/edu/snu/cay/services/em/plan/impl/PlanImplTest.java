@@ -174,8 +174,10 @@ public final class PlanImplTest {
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .build();
 
+    int numExecutedOps = 0; // increase 1 on every onComplete
+
     // Dels should be executed first to make a room for Adds
-    final Set<PlanOperation> firstOpsToExec = plan.getReadyOps();
+    final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
     assertEquals(2, firstOpsToExec.size());
     for (final PlanOperation operation : firstOpsToExec) {
       assertEquals(EMPlanOperation.OpType.DEL, ((EMPlanOperation) operation).getOpType());
@@ -186,6 +188,7 @@ public final class PlanImplTest {
     // a single Add step can be executed after completing each Del step
 
     for (final PlanOperation operation : firstOpsToExec) {
+      numExecutedOps++;
       final Set<PlanOperation> nextOpsToExec = plan.onComplete(operation);
       assertEquals(1, nextOpsToExec.size());
       final PlanOperation nextOpToExec = nextOpsToExec.iterator().next();
@@ -200,11 +203,12 @@ public final class PlanImplTest {
 
     // these two Adds are the final stages of the plan
     for (final PlanOperation executingPlan : executingPlans) {
+      numExecutedOps++;
       final Set<PlanOperation> nextOpsToExec = plan.onComplete(executingPlan);
       assertTrue(nextOpsToExec.isEmpty());
     }
 
-    assertTrue(plan.getReadyOps().isEmpty());
+    assertEquals(numExecutedOps, plan.getPlanSize());
   }
 
   /**
@@ -231,8 +235,10 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 3, EVAL_PREFIX + 2, new DataInfoImpl(1)))
         .build();
 
+    int numExecutedOps = 0; // increase 1 on every onComplete
+
     // Moves should be executed first
-    final Set<PlanOperation> firstOpsToExec = plan.getReadyOps();
+    final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
     assertEquals(4, firstOpsToExec.size());
 
     final Set<EMPlanOperation> firstMoveSet = new HashSet<>();
@@ -254,12 +260,16 @@ public final class PlanImplTest {
 
     // Delete will be ready after finishing all Moves from target evaluator
     final Iterator<EMPlanOperation> firstMoveSetIter = firstMoveSet.iterator();
+    numExecutedOps++;
     assertTrue(plan.onComplete(firstMoveSetIter.next()).isEmpty());
+    numExecutedOps++;
     final Set<PlanOperation> nextOpsToExec = plan.onComplete(firstMoveSetIter.next());
     assertEquals(1, nextOpsToExec.size());
 
     final Iterator<EMPlanOperation> secondMoveSetIter = secondMoveSet.iterator();
+    numExecutedOps++;
     assertTrue(plan.onComplete(secondMoveSetIter.next()).isEmpty());
+    numExecutedOps++;
     nextOpsToExec.addAll(plan.onComplete(secondMoveSetIter.next()));
     assertEquals(2, nextOpsToExec.size());
 
@@ -267,9 +277,10 @@ public final class PlanImplTest {
       assertEquals(EMPlanOperation.OpType.DEL, ((EMPlanOperation) operation).getOpType());
 
       // these Deletes are the final stages of the plan
+      numExecutedOps++;
       assertTrue(plan.onComplete(operation).isEmpty());
     }
-    assertTrue(plan.getReadyOps().isEmpty());
+    assertEquals(numExecutedOps, plan.getPlanSize());
   }
 
   /**
@@ -296,8 +307,10 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 2, EVAL_PREFIX + 3, new DataInfoImpl(1)))
         .build();
 
+    int numExecutedOps = 0; // increase 1 on every onComplete
+
     // Adds should be executed first
-    final Set<PlanOperation> firstOpsToExec = plan.getReadyOps();
+    final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
     assertEquals(2, firstOpsToExec.size());
 
     EMPlanOperation firstAdd = null;
@@ -317,9 +330,11 @@ public final class PlanImplTest {
     assertNotNull(secondAdd);
 
     // Moves will be ready after finishing Add of destination evaluator
+    numExecutedOps++;
     final Set<PlanOperation> nextOpsToExec = plan.onComplete(firstAdd);
     assertEquals(2, nextOpsToExec.size());
 
+    numExecutedOps++;
     nextOpsToExec.addAll(plan.onComplete(secondAdd));
     assertEquals(4, nextOpsToExec.size());
 
@@ -327,8 +342,9 @@ public final class PlanImplTest {
       assertEquals(EMPlanOperation.OpType.MOVE, ((EMPlanOperation) operation).getOpType());
 
       // these Moves are the final stages of the plan
+      numExecutedOps++;
       assertTrue(plan.onComplete(operation).isEmpty());
     }
-    assertTrue(plan.getReadyOps().isEmpty());
+    assertEquals(numExecutedOps, plan.getPlanSize());
   }
 }

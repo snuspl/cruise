@@ -41,6 +41,7 @@ public final class PlanImpl implements Plan {
   private final Map<String, List<TransferStep>> allTransferSteps;
 
   private final DAG<PlanOperation> dependencyGraph;
+  private final Set<PlanOperation> initialOps;
   private final int numTotalOperations;
 
   private PlanImpl(final Map<String, Set<String>> evaluatorsToAdd,
@@ -55,6 +56,7 @@ public final class PlanImpl implements Plan {
         evaluatorsToDelete.get(Constants.NAMESPACE_WORKER) : Collections.emptySet();
     this.allTransferSteps = allTransferSteps;
     this.dependencyGraph = dependencyGraph;
+    this.initialOps = new HashSet<>(dependencyGraph.getRootVertices());
 
     // count the total number of operations
     int numTotalOps = 0;
@@ -78,8 +80,8 @@ public final class PlanImpl implements Plan {
   }
 
   @Override
-  public synchronized Set<PlanOperation> getReadyOps() {
-    return new HashSet<>(dependencyGraph.getRootVertices());
+  public synchronized Set<PlanOperation> getInitialOps() {
+    return initialOps;
   }
 
   @Override
