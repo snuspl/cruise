@@ -13,46 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.impl;
+package edu.snu.cay.services.ps.ns;
 
-import edu.snu.cay.services.ps.worker.api.WorkerClock;
-import org.apache.reef.annotations.audience.EvaluatorSide;
+import edu.snu.cay.services.ps.avro.AvroClockMsg;
+import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
 /**
- * A null worker clock(empty implementation).
+ * Codec for {@link AvroClockMsg}s.
+ * Simply uses {@link AvroUtils} to encode and decode messages.
  */
-@EvaluatorSide
-public final class NullWorkerClock implements WorkerClock {
+public final class ClockMsgCodec implements Codec<AvroClockMsg> {
 
   @Inject
-  private NullWorkerClock() {
-
+  private ClockMsgCodec() {
   }
 
   @Override
-  public void initialize() {
-
+  public byte[] encode(final AvroClockMsg msg) {
+    return AvroUtils.toBytes(msg, AvroClockMsg.class);
   }
 
   @Override
-  public void clock() {
-
-  }
-
-  @Override
-  public void waitIfExceedingStalenessBound() {
-
-  }
-
-  @Override
-  public int getWorkerClock() {
-    return 0;
-  }
-
-  @Override
-  public int getGlobalMinimumClock() {
-    return 0;
+  public AvroClockMsg decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, AvroClockMsg.class);
   }
 }
