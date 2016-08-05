@@ -47,15 +47,53 @@ public final class MetricsHub {
   private final List<EvaluatorParameters> serverEvalParams;
 
   /**
-   * Dolphin dashboard web server port number.
+   * URL of Dolphin dashboard server. Empty if not using dashboard.
    */
   private final String dolphinURL;
 
   @Inject
-  private MetricsHub(@Parameter(Parameters.DashboardPort.class) final int port) {
+  private MetricsHub(@Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
+                     @Parameter(Parameters.DashboardPort.class) final int port) {
     this.workerEvalParams = Collections.synchronizedList(new LinkedList<>());
     this.serverEvalParams = Collections.synchronizedList(new LinkedList<>());
-    this.dolphinURL = "http://localhost:" + port + "/";
+    if (!hostAddress.isEmpty()) {
+      this.dolphinURL = "http://" + hostAddress + ":" + port + "/";
+    } else {
+      dolphinURL = "";
+    }
+  }
+
+  private void sendMetrics(final String id, final String metrics) {
+    try {
+      // Build http connection with the Dashboard server, set configurations.
+      final URL obj = new URL(this.dolphinURL);
+      final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+      con.setRequestMethod("POST");
+      con.setDoOutput(true);
+      con.setDoInput(true);
+      con.connect();
+
+      // Send metrics via outputStream to the Dashboard server.
+      final OutputStream os = con.getOutputStream();
+      // TODO #704: Send metrics instead of dummy information. The API will be:"id={ID}&metrics={METRICS}"
+      final String param = "serverid=" + id + "&workerid=" + id;
+      os.write((param).getBytes());
+      os.flush();
+      os.close();
+
+      // Receive responses from the Dashboard Server.
+      final BufferedReader in = new BufferedReader(
+          new InputStreamReader(con.getInputStream())
+      );
+      String inputLine;
+      final StringBuffer response = new StringBuffer();
+      while ((inputLine = in.readLine()) != null) {
+        response.append(inputLine);
+      }
+      in.close();
+    } catch (Exception e) {
+      throw new RuntimeException("Network Error");
+    }
   }
 
   /**
@@ -67,32 +105,8 @@ public final class MetricsHub {
     final DataInfo dataInfo = new DataInfoImpl(metrics.getNumDataBlocks());
     final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
     workerEvalParams.add(evaluatorParameters);
-    try {
-      final URL obj = new URL(this.dolphinURL);
-      final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-      con.setRequestMethod("POST");
-      con.setDoOutput(true);
-      con.setDoInput(true);
-      con.connect();
-      // request
-      final OutputStream os = con.getOutputStream();
-      final String param = "serverid=-1&workerid=" + workerId;
-      System.out.println("request with " + param);
-      os.write((param).getBytes());
-      os.flush();
-      os.close();
-      // response
-      final BufferedReader in = new BufferedReader(
-          new InputStreamReader(con.getInputStream())
-      );
-      String inputLine;
-      final StringBuffer response = new StringBuffer();
-      while ((inputLine = in.readLine()) != null) {
-        response.append(inputLine);
-      }
-      in.close();
-    } catch (Exception e) {
-      System.out.println(e);
+    if (!dolphinURL.isEmpty()) {
+      sendMetrics(workerId, metrics.toString());
     }
   }
 
@@ -105,32 +119,8 @@ public final class MetricsHub {
     final DataInfo dataInfo = new DataInfoImpl(metrics.getNumPartitionBlocks());
     final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
     serverEvalParams.add(evaluatorParameters);
-    try {
-      final URL obj = new URL(this.dolphinURL);
-      final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-      con.setRequestMethod("POST");
-      con.setDoOutput(true);
-      con.setDoInput(true);
-      con.connect();
-      // request
-      final OutputStream os = con.getOutputStream();
-      final String param = "workerid=-1&serverid=" + serverId;
-      System.out.println("request with " + param);
-      os.write((param).getBytes());
-      os.flush();
-      os.close();
-      // response
-      final BufferedReader in = new BufferedReader(
-          new InputStreamReader(con.getInputStream())
-      );
-      String inputLine;
-      final StringBuffer response = new StringBuffer();
-      while ((inputLine = in.readLine()) != null) {
-        response.append(inputLine);
-      }
-      in.close();
-    } catch (Exception e) {
-      System.out.println(e);
+    if (!dolphinURL.isEmpty()) {
+      sendMetrics(serverId, metrics.toString());
     }
   }
 

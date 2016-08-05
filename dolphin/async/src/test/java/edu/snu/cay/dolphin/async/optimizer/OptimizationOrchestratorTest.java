@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -71,6 +72,7 @@ public final class OptimizationOrchestratorTest {
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(PlanExecutor.class, LoggingPlanExecutor.class)
             .bindNamedParameter(DelayAfterOptimizationMs.class, String.valueOf(OPTIMIZATION_DELAY))
+            .bindNamedParameter(Parameters.DashboardHostAddress.class, "")
             .build());
 
     metricsHub = injector.getInstance(MetricsHub.class);

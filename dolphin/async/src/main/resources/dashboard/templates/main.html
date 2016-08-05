@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!-- Copyright (C) 2016 Seoul National University
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+             http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+<html>
+<head>
+    <title>Dolphin Dashboard</title>
+    <link rel="stylesheet" href="http://www.w3schools.com/lib/w3.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+</head>
+<body>
+    <!-- title -->
+    <div class="w3-container">
+        <h1>Dolphin</h1> 
+        <div class="w3-btn" id='reload_btn'>Reload data!</div>
+    </div>
+    <!-- TODO #705: Visualize received metrics -->
+    <!--For temporary testing-->
+    <div id=metrics>
+        {% for item in metrics %}
+        {%if item.workerid != -1 %}
+        <div>worker id:     {{item.workerid}}</div>
+        {%endif%}
+        {%if item.serverid != -1 %}
+        <div>server id:     {{item.serverid}}</div>
+        {%endif%}
+        {% endfor %}
+    </div>
+<script>
+// TODO #708: Support real-time visualization by using 'setInterval{function, time}'
+$('#reload_btn').click(function() {
+  $.get("/update", function(data) {
+    $("html").html(data);
+  });
+});
+$('#loss_btn').click(function() {
+  $.get("/plot", function(data) {
+    $("#graph").html(data);
+  });
+});
+function addProcess(container, name){
+    container.append("<div> name </div>");  
+}
+</script>
+</body>
+
+</html>

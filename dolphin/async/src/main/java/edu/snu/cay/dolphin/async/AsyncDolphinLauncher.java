@@ -68,12 +68,15 @@ import org.apache.reef.util.EnvironmentUtils;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.impl.Tuple2;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.net.*;
+import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static org.apache.commons.net.ntp.NtpUtils.getHostAddress;
 
 /**
  * Main entry point for launching a {@code dolphin-async} application.
@@ -185,22 +188,46 @@ public final class AsyncDolphinLauncher {
           .bindNamedParameter(SerializedEMServerClientConfiguration.class, confSerializer.toString(emServerClientConf))
           .build();
 
-
       // driver-side configurations
       final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
 
-      // launch dashboard
+      // check dashboard availability and add configuration
       final int port = basicParameterInjector.getNamedInstance(DashboardPort.class);
-      if (port > 0) {
-        System.out.println("Now launching dashboard server");
+      final String hostAddress = getHostAddress(port);
+      final Configuration dashboardConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(DashboardHostAddress.class, hostAddress)
+          .build();
+      if (!hostAddress.isEmpty()) {
+        LOG.log(Level.INFO, "Now launch dashboard server");
+/*
+        int read = 0;
+        final byte[] bytes = new byte[1024];
+        final InputStream inputStream = AsyncDolphinLauncher.class.getResourceAsStream("/dashboard/dashboard.py");
+        final OutputStream outputStream = new FileOutputStream(new File("script.py"));
+        while ((read = inputStream.read(bytes)) != -1) {
+          outputStream.write(bytes, 0, read);
+        }
+        final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+        while ((line = bufferedReader.readLine()) != null) {
+          System.out.println(line);
+        }
+*/
+
         final String currentPath = System.getProperty("user.dir");
         System.out.println(currentPath);
         final int index = currentPath.indexOf("cay");
         //if (index < 0) ; //throw exception
-        final String resourcePath = currentPath.substring(0, index + 3) + "/dolphin/async/dashboard/dashboard.py";
+        final String resourcePath = currentPath.substring(0, index + 3) +
+            "/dolphin/async/src/main/resources/dashboard/dashboard.py";
         System.out.println(resourcePath);
         final ProcessBuilder pb = new ProcessBuilder("python", resourcePath, String.valueOf(port)).inheritIO();
+
+/*
+        final String path = AsyncDolphinLauncher.class.getClassLoader().getResource("dashboard/dashboard.py").getPath();
+        System.out.println("path: " + path);
+        final ProcessBuilder pb = new ProcessBuilder("python", path, String.valueOf(port)).inheritIO();
+*/
         final Process p = pb.start();
         Runtime.getRuntime().addShutdownHook(new Thread() {
           @Override
@@ -212,7 +239,8 @@ public final class AsyncDolphinLauncher {
 
       final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
           Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
-              serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf),
+              serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf,
+              dashboardConf),
           timeout);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
       return status;
@@ -397,6 +425,54 @@ public final class AsyncDolphinLauncher {
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
             .build());
+  }
+
+  private static String getHostAddress(final int port) {
+    if (port < 0) {
+      // User refuses to use dashboard.
+      return "";
+    }
+    String hostAddress = "";
+    try {
+      // Find IP address of driver PC.
+      final Enumeration e = NetworkInterface.getNetworkInterfaces();
+      while (e.hasMoreElements()) {
+        final NetworkInterface n = (NetworkInterface) e.nextElement();
+        if (n.isLoopback() || n.isVirtual() || !n.isUp()) {
+          continue;
+        }
+        final Enumeration ee = n.getInetAddresses();
+        while (ee.hasMoreElements()) {
+          final InetAddress i = (InetAddress) ee.nextElement();
+          if (i.isLinkLocalAddress()) {
+            continue;
+          }
+          hostAddress = i.getHostAddress();
+          break;
+        }
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Network Error", e);
+    }
+    // Check if host address is found.
+    if (hostAddress.isEmpty()) {
+      LOG.log(Level.WARNING, "Fail to find local host address");
+      return "";
+    } else {
+      LOG.log(Level.INFO, "HostAddress found: " + hostAddress);
+    }
+    // Check if the port number is available.
+    try {
+      (new Socket(hostAddress, port)).close();
+      LOG.log(Level.WARNING, "Port number already in use");
+      return "";
+    } catch (ConnectException connectException) {
+      LOG.log(Level.INFO, "URL found: " + hostAddress + ":" + port);
+      return hostAddress;
+    } catch (Exception e) {
+      LOG.log(Level.INFO, "Invalid port number");
+      return "";
+    }
   }
 
   private static String processInputDir(final String inputDir, final Injector injector) throws InjectionException {

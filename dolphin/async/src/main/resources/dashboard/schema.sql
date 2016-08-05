@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 
+/*
+ * This initializes the database.
+ * The database contains three tables: worker, server, metrics.
+ * Table Worker and Server are initialized here, since we know what metrics are coming,
+ * Table metrics will be initialized dynamically at runtime.
+ */
+
+/* This is a temporary schema for dummy data. */
 drop table if exists entries;
 create table entries (
     id integer primary key autoincrement,

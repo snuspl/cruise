@@ -20,13 +20,11 @@ from plotly.tools import get_embed
 
 print("building server...")
 
-# create our little application :)
+#
+# Configurations
+#
 app = Flask(__name__)
 app.config.from_object(__name__)
-
-#
-# Settings
-#
 app.config.update(dict(
     DATABASE=os.path.join(app.root_path, 'metrics.db'),
     SECRET_KEY='development key',
@@ -37,6 +35,7 @@ app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 
 #
 # Database
+# Create, connect database(sqlite3), save the database when shutting down.
 #
 def connect_db():
     rv = sqlite3.connect(app.config['DATABASE'])
@@ -63,6 +62,7 @@ def close_db(error):
 #
 # Urls
 #
+# The main URL which shows metrics visualization to users.
 @app.route('/', methods=['GET', 'POST'])
 def main():
     db = get_db()
@@ -77,19 +77,6 @@ def main():
         print(entries)
         return render_template('main.html', metrics=entries)
 
-@app.route('/update', methods=['GET'])
-def update():
-    db = get_db()
-    cur = db.execute('select * from entries')
-    entries = cur.fetchall()
-    print(entries)
-    return render_template('main.html', metrics=entries) 
-
-@app.route('/plot', methods=['POST'])
-def plot():
-    # plotly code
-    return get_embed('https://plot.ly/')
-
 #
 # Main
 #
@@ -97,7 +84,7 @@ if __name__ == '__main__':
     with app.app_context():
         init_db()
         try:
-            app.run(port=sys.argv[1])
+            app.run(host='0.0.0.0', port=sys.argv[1])
         except:
-            print('invalid port number')
+            print('Flask script: Invalid port number')
             sys.exit(1)

@@ -75,9 +75,15 @@ public final class Parameters {
   public final class MiniBatches implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Port number for Dashboard web server, -1 if not using dashboard",
-      short_name = "dashboard",
+  @NamedParameter(doc = "Port number for client-side localhost Dashboard server, the number should be within " +
+      "[0, 65535], other numbers or occupied port numbers will lead to launch failure",
+      short_name = "dashboard_port",
       default_value = "-1")
-  public static final class DashboardPort implements Name<Integer> {
+  public final class DashboardPort implements Name<Integer> {
+  }
+
+
+  @NamedParameter(doc = "Host address of the driver machine, used as host address of Dashboard server")
+  public final class DashboardHostAddress implements Name<String> {
   }
 }
