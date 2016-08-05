@@ -13,24 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer;
-
-import org.apache.reef.tang.annotations.DefaultImplementation;
+package edu.snu.cay.dolphin.async.optimizer.parameters;
 
 /**
- * Orchestrates the Optimization in Dolphin Async.
+ * Constants used for optimization in driver.
  */
-@DefaultImplementation(OptimizationOrchestratorImpl.class)
-public interface OptimizationOrchestrator {
-
+public final class Constants {
   /**
-   * Runs optimization.
+   * Empty private constructor to prohibit instantiation of utility class.
    */
-  void run();
+  private Constants() {
+  }
 
-  /**
-   * Checks whether the plan is being executed.
-   * @return True if the generated plan is on execution
-   */
-  boolean isPlanExecuting();
+  public static final String NAMESPACE_SERVER = "SERVER";
+  public static final String NAMESPACE_WORKER = "WORKER";
 }

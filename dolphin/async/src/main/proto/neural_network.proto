@@ -57,6 +57,13 @@ message DropoutLayerConfiguration {
   optional float dropout_ratio = 1 [default = 0.5];
 }
 
+message LRNLayerConfiguration {
+  optional uint32 local_size = 1 [default = 5];
+  optional float alpha = 2 [default = 1];
+  optional float beta = 3 [default = 0.75];
+  optional float k = 4 [default = 1];
+}
+
 message LayerConfiguration {
   required string type = 1;
   optional FullyConnectedLayerConfiguration fully_connected_param = 2;
@@ -65,6 +72,7 @@ message LayerConfiguration {
   optional PoolingLayerConfiguration pooling_param = 5;
   optional ConvolutionalLayerConfiguration convolutional_param = 6;
   optional DropoutLayerConfiguration dropout_param = 7;
+  optional LRNLayerConfiguration lrn_param = 8;
 }
 
 message Shape {

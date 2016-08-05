@@ -22,16 +22,30 @@ package edu.snu.cay.services.ps.worker.api;
 public interface WorkerClock {
 
   /**
-   * Set initial worker clock.
+   * Sets initial worker clock and receives current global minimum clock.
    * initial worker clock =
    * global minimum clock + ({@link edu.snu.cay.services.ps.worker.parameters.Staleness}/2)
    */
   void initialize();
 
   /**
-   * Tick worker clock.
+   * Ticks worker clock.
    */
   void clock();
+
+  /**
+   * Waits if the worker clock exceeds staleness bound, otherwise returns immediately.
+   *
+   *                 [staleness bound]
+   *
+   *                    staleness
+   *     _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+   *    |                                       |
+   *    |                                       |
+   *    ._______________________________________.
+   * global minimum clock                global minimum clock + staleness
+   */
+  void waitIfExceedingStalenessBound() throws InterruptedException;
 
   /**
    * @return current worker clock
