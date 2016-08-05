@@ -101,6 +101,9 @@ public final class PlanImplTest {
     }
   }
 
+  /**
+   * Tests whether the plan builder detects a violation in the plans.
+   */
   @Test
   public void testInvalidPlans() {
     PlanImpl.Builder planBuilder;

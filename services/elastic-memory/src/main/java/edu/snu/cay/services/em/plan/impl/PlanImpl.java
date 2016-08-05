@@ -324,16 +324,18 @@ public final class PlanImpl implements Plan {
         }
 
         final int numAddsShouldFollowDel = addOperations.size() - numAvailableExtraEvals.get();
-        LOG.log(Level.FINE, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
+        if (numAddsShouldFollowDel > 0) {
+          LOG.log(Level.FINE, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
 
-        final Iterator<PlanOperation> delOperationsItr = delOperations.values().iterator();
-        final Iterator<PlanOperation> addOperationsItr = addOperations.values().iterator();
+          final Iterator<PlanOperation> delOperationsItr = delOperations.values().iterator();
+          final Iterator<PlanOperation> addOperationsItr = addOperations.values().iterator();
 
-        // pick each add/del operations with no special ordering
-        for (int i = 0; i < numAddsShouldFollowDel; i++) {
-          final PlanOperation addOperation = addOperationsItr.next();
-          final PlanOperation delOperation = delOperationsItr.next();
-          dag.addEdge(delOperation, addOperation);
+          // pick each add/del operations with no special ordering
+          for (int i = 0; i < numAddsShouldFollowDel; i++) {
+            final PlanOperation addOperation = addOperationsItr.next();
+            final PlanOperation delOperation = delOperationsItr.next();
+            dag.addEdge(delOperation, addOperation);
+          }
         }
       }
 

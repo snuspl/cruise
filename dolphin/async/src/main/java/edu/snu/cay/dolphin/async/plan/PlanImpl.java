@@ -298,7 +298,10 @@ public final class PlanImpl implements Plan {
             final PlanOperation stopOperation
                 = new StopPlanOperation(namespace, evalToDel);
             stopOperations.put(evalToDel, stopOperation);
-            dag.addVertex(stopOperation); // do not add 'Stop->Del' edge, because we assume Delete always involves Moves
+            dag.addVertex(stopOperation);
+
+            // add 'Stop->Del' edge for the exceptional case that Del does not accompany any Moves
+            dag.addEdge(stopOperation, delOperation);
           }
         }
       }
@@ -318,7 +321,10 @@ public final class PlanImpl implements Plan {
             final PlanOperation startOperation
                 = new StartPlanOperation(namespace, evalToAdd);
             startOperations.put(evalToAdd, startOperation);
-            dag.addVertex(startOperation); // do not add 'Add->Start' edge, because we assume Add always involves Moves
+            dag.addVertex(startOperation);
+
+            // add 'Add->Start' edge for the exceptional case that Add does not accompany any Moves
+            dag.addEdge(addOperation, startOperation);
           }
         }
       }
@@ -349,16 +355,18 @@ public final class PlanImpl implements Plan {
         }
 
         final int numAddsShouldFollowDel = addOperations.size() - numAvailableExtraEvals.get();
-        LOG.log(Level.INFO, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
+        if (numAddsShouldFollowDel > 0) {
+          LOG.log(Level.INFO, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
 
-        final Iterator<PlanOperation> delOperationsItr = delOperations.values().iterator();
-        final Iterator<PlanOperation> addOperationsItr = addOperations.values().iterator();
+          final Iterator<PlanOperation> delOperationsItr = delOperations.values().iterator();
+          final Iterator<PlanOperation> addOperationsItr = addOperations.values().iterator();
 
-        // pick each add/del operations with no special ordering
-        for (int i = 0; i < numAddsShouldFollowDel; i++) {
-          final PlanOperation addOperation = addOperationsItr.next();
-          final PlanOperation delOperation = delOperationsItr.next();
-          dag.addEdge(delOperation, addOperation);
+          // pick each add/del operations with no special ordering
+          for (int i = 0; i < numAddsShouldFollowDel; i++) {
+            final PlanOperation addOperation = addOperationsItr.next();
+            final PlanOperation delOperation = delOperationsItr.next();
+            dag.addEdge(delOperation, addOperation);
+          }
         }
       }
 
