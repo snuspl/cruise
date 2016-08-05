@@ -24,7 +24,9 @@ import edu.snu.cay.services.ps.avro.TickMsg;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
+import edu.snu.cay.services.ps.worker.parameters.Staleness;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
@@ -41,21 +43,33 @@ import java.util.concurrent.CountDownLatch;
 @Unit
 public final class SSPWorkerClock implements WorkerClock {
 
+  private final AggregationSlave aggregationSlave;
+
+  private final ClockMsgCodec codec;
+
+  /**
+   * The latch to wait until ReplyInitClockMsg arrive.
+   * The message is sent only once.
+   */
+  private final CountDownLatch initLatch;
+
+  private final int staleness;
+
   private int workerClock;
 
-  // the minimum clock of among all worker clocks.
+  /**
+   * The minimum clock among all worker clocks.
+   */
   private int globalMinimumClock;
 
-  private final AggregationSlave aggregationSlave;
-  private final ClockMsgCodec codec;
-  private final CountDownLatch latch;
-
   @Inject
-  private SSPWorkerClock(final AggregationSlave aggregationSlave,
+  private SSPWorkerClock(@Parameter(Staleness.class) final int staleness,
+                         final AggregationSlave aggregationSlave,
                          final ClockMsgCodec codec) {
+    this.staleness = staleness;
     this.aggregationSlave = aggregationSlave;
     this.codec = codec;
-    this.latch = new CountDownLatch(1);
+    this.initLatch = new CountDownLatch(1);
     this.workerClock = -1;
     this.globalMinimumClock = -1;
   }
@@ -72,7 +86,7 @@ public final class SSPWorkerClock implements WorkerClock {
 
     // wait until to get current global minimum clock and initial worker clock
     try {
-      latch.await();
+      initLatch.await();
     } catch (final InterruptedException e) {
       throw new RuntimeException("Unexpected exception", e);
     }
@@ -91,6 +105,13 @@ public final class SSPWorkerClock implements WorkerClock {
   }
 
   @Override
+  public synchronized void waitIfExceedingStalenessBound() throws InterruptedException {
+    while (workerClock > globalMinimumClock + staleness) {
+      wait();
+    }
+  }
+
+  @Override
   public int getWorkerClock() {
     return workerClock;
   }
@@ -98,6 +119,11 @@ public final class SSPWorkerClock implements WorkerClock {
   @Override
   public int getGlobalMinimumClock() {
     return globalMinimumClock;
+  }
+
+  private synchronized void updateGlobalMinimumClock(final int updatedGlobalMinimumClock) {
+    globalMinimumClock = updatedGlobalMinimumClock;
+    notifyAll();
   }
 
   public final class MessageHandler implements EventHandler<AggregationMessage> {
@@ -109,10 +135,10 @@ public final class SSPWorkerClock implements WorkerClock {
       case ReplyInitClockMsg:
         globalMinimumClock = avroClockMsg.getReplyInitClockMsg().getGlobalMinClock();
         workerClock = avroClockMsg.getReplyInitClockMsg().getInitClock();
-        latch.countDown();
+        initLatch.countDown();
         break;
       case BroadcastMinClockMsg:
-        globalMinimumClock = avroClockMsg.getBroadcastMinClockMsg().getGlobalMinClock();
+        updateGlobalMinimumClock(avroClockMsg.getBroadcastMinClockMsg().getGlobalMinClock());
         break;
       default:
         throw new RuntimeException("Unexpected message type: " + avroClockMsg.getType().toString());

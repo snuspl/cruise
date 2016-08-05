@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.integration;
 import edu.snu.cay.dolphin.async.examples.addinteger.AddIntegerREEF;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
+import edu.snu.cay.utils.TestLoggingConfig;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -39,6 +40,8 @@ public class ReconfigurationTest {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(OptimizationOrchestrator.class, TestingOrchestrator.class)
         .build();
+
+    System.setProperty("java.util.logging.config.class", TestLoggingConfig.class.getName());
 
     assertEquals("The job has been failed", LauncherStatus.COMPLETED, AddIntegerREEF.runAddInteger(args, conf));
   }
