@@ -24,9 +24,7 @@ import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -94,22 +92,29 @@ public final class DynamicServerResolver implements ServerResolver {
   /**
    * Triggers initialization by requesting initial routing table to driver and waits within a bounded time.
    * It throws RuntimeException, if the table is not initialized til the end.
+   * Since initialization takes time, it executes initialization asynchronously.
+   * @return a future of initialization thread
    */
-  public void triggerInitialization() {
-    // sends init request and waits for several times
-    for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
-      requestRoutingTable();
+  public Future triggerInitialization() {
+    return Executors.newSingleThreadExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        // sends init request and waits for several times
+        for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
+          requestRoutingTable();
 
-      LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
-      try {
-        if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-          return;
+          LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
+          try {
+            if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+              return;
+            }
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+          }
         }
-      } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+        throw new RuntimeException("Fail to initialize the resolver");
       }
-    }
-    throw new RuntimeException("Fail to initialize the resolver");
+    });
   }
 
   /**

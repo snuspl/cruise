@@ -316,8 +316,10 @@ public class OperationRouterTest {
     final String endpointIdForInitEval = EVAL_ID_PREFIX + initStoreId;
     final String endpointIdForAddedEval = EVAL_ID_PREFIX + addedStoreId;
 
-    routerInInitStore.initialize(endpointIdForInitEval);
-    routerInAddedStore.initialize(endpointIdForAddedEval); // It requests the routing table to driver
+    routerInInitStore.setEndpointIdPrefix(endpointIdForInitEval);
+    routerInInitStore.triggerInitialization();
+    routerInAddedStore.setEndpointIdPrefix(endpointIdForAddedEval);
+    routerInAddedStore.triggerInitialization();
 
     // confirm that the router is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
@@ -419,8 +421,10 @@ public class OperationRouterTest {
     // confirm that the router is not initialized yet
     assertEquals(1, initLatch.getCount());
 
-    routerInInitStore.initialize(endpointIdForInitEval);
-    routerInAddedStore.initialize(endpointIdForAddedEval); // It requests the routing table to driver
+    routerInInitStore.setEndpointIdPrefix(endpointIdForInitEval);
+    routerInInitStore.triggerInitialization();
+    routerInAddedStore.setEndpointIdPrefix(endpointIdForAddedEval);
+    routerInAddedStore.triggerInitialization();
 
     // confirm that the router is initialized now
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));

@@ -52,7 +52,8 @@ public final class NetworkContextRegister {
       emNetworkSetup.registerConnectionFactory(identifier);
 
       final String localId = emNetworkSetup.getMyId().toString();
-      router.initialize(localId);
+      router.setEndpointIdPrefix(localId);
+      router.triggerInitialization(); // it's an asynchronous call
     }
   }
 

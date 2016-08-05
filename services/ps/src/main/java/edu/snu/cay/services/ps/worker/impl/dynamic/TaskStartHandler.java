@@ -20,7 +20,6 @@ import org.apache.reef.task.events.TaskStart;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.concurrent.Executors;
 
 /**
  * Sends a msg to register itself to start subscribing updates of the EM's routing table in PS servers.
@@ -37,7 +36,7 @@ public final class TaskStartHandler implements EventHandler<TaskStart> {
 
   @Override
   public void onNext(final TaskStart taskStart) {
-    // do initialization asynchronously
-    Executors.newSingleThreadExecutor().execute(serverResolver::triggerInitialization);
+    // it's an asynchronous call
+    serverResolver.triggerInitialization();
   }
 }

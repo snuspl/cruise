@@ -33,9 +33,7 @@ import org.htrace.TraceScope;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -65,7 +63,7 @@ public final class OperationRouter<K> {
   private final boolean addedEval;
 
   /**
-   * A prefix of evaluator id will be set by {@link #initialize(String)},
+   * A prefix of evaluator id will be set by {@link #setEndpointIdPrefix(String)},
    * and used by {@link #getEvalId(int)} to make the complete evaluator id.
    */
   private volatile String evalPrefix;
@@ -137,21 +135,13 @@ public final class OperationRouter<K> {
 
 
   /**
-   * Initializes the router by providing a prefix of evaluator that will be used to resolve remote evaluators.
-   * In addition, this method includes the initialization of the routing table for added Evaluators
-   * by EM.add(). It sends a request for up-to-date routing table to the driver and
-   * postpones the initialization until the response.
-   * Note that this method is invoked when the context is started.
+   * Sets a prefix of evaluator that will be used to resolve remote evaluators.
+   * Note that this method should be invoked before {@link #triggerInitialization()}.
    */
-  public void initialize(final String endpointId) {
+  public void setEndpointIdPrefix(final String endpointId) {
     // TODO #509: Remove assumption on the format of context id
     this.evalPrefix = endpointId.split("-")[0];
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
-
-    if (addedEval) {
-      // do initialization asynchronously
-      Executors.newSingleThreadExecutor().execute(this::triggerInitialization);
-    }
   }
 
   /**
@@ -220,22 +210,33 @@ public final class OperationRouter<K> {
   /**
    * Triggers initialization by requesting initial routing table to driver and waits within a bounded time.
    * It throws RuntimeException, if the table is not initialized til the end.
+   * For evaluators not added by EM, it does not trigger initialization.
+   * @return a future of initialization thread, a completed future for evaluators not added by EM
    */
-  private void triggerInitialization() {
-    // sends init request and waits for several times
-    for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
-      requestRoutingTable();
-
-      LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
-      try {
-        if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-          return;
-        }
-      } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
-      }
+  public Future triggerInitialization() {
+    if (!addedEval) {
+      return CompletableFuture.completedFuture(null);
     }
-    throw new RuntimeException("Fail to initialize the router");
+
+    return Executors.newSingleThreadExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        // sends init request and waits for several times
+        for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
+          requestRoutingTable();
+
+          LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
+          try {
+            if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+              return;
+            }
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+          }
+        }
+        throw new RuntimeException("Fail to initialize the router");
+      }
+    });
   }
 
   /**
