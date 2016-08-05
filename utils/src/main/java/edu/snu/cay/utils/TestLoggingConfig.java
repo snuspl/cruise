@@ -13,24 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.optimizer;
+package edu.snu.cay.utils;
 
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import java.io.IOException;
+import java.util.logging.LogManager;
 
 /**
- * Orchestrates the Optimization in Dolphin Async.
+ * Wrapper for logging config for debugging.
  */
-@DefaultImplementation(OptimizationOrchestratorImpl.class)
-public interface OptimizationOrchestrator {
+public final class TestLoggingConfig {
 
-  /**
-   * Runs optimization.
-   */
-  void run();
-
-  /**
-   * Checks whether the plan is being executed.
-   * @return True if the generated plan is on execution
-   */
-  boolean isPlanExecuting();
+  public TestLoggingConfig() throws IOException {
+    LogManager.getLogManager().readConfiguration(
+        Thread.currentThread().getContextClassLoader()
+            .getResourceAsStream("edu/snu/cay/utils/testlogging.properties"));
+  }
 }

@@ -41,8 +41,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.NAMESPACE_SERVER;
-import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.NAMESPACE_WORKER;
+import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_WORKER;
+import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_SERVER;
 
 /**
  * Implementation of Plan Executor for AsyncDolphin.
@@ -242,7 +242,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
-      asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker().onNext(context);
+      asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker(true).onNext(context);
       executingPlan.putAddedWorkerContext(completedOp.getEvalId().get(), context);
       onOperationComplete(completedOp);
     }
@@ -299,12 +299,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    */
   private void onOperationComplete(final EMOperation completeOp) {
     final Set<EMOperation> nextOpsToExecute = executingPlan.markOperationComplete(completeOp);
-    LOG.log(Level.FINEST, "Operation marked complete: {0}", completeOp);
+    LOG.log(Level.INFO, "CompleteOp: {0}, NextOps: {1}", new Object[]{completeOp, nextOpsToExecute});
 
     if (!nextOpsToExecute.isEmpty()) {
-      LOG.log(Level.INFO, "Executing the next set of independent operations. " +
-          "CompleteOp: {0}", completeOp);
-
       try {
         nextOpsToExecuteInParallel.put(nextOpsToExecute);
       } catch (final InterruptedException e) {
