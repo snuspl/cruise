@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -131,7 +132,8 @@ final class SynchronizationManager {
 
     // when deleted worker did not send a sync msg yet
     } else {
-      tryReleaseWorkers();
+      // should be done asynchronously
+      Executors.newSingleThreadExecutor().execute(this::tryReleaseWorkers);
     }
   }
 
