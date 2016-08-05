@@ -310,7 +310,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         if (totalPullCount > 0 && totalPushCount > 0) {
           final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
               .setWindowIndex(windowIndex)
-              .setNumModelParamBlocks(0) // EM is not used here.
+              .setNumModelBlocks(0) // EM is not used here.
               .setMetricWindowMs(metricsWindowMs)
               .setTotalPullProcessingTime(totalPullTime)
               .setTotalPushProcessingTime(totalPushTime)
@@ -327,30 +327,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     } catch (final InterruptedException e) {
       LOG.log(Level.SEVERE, "Exception Occurred", e); // Log for the case when the thread swallows the exception
       throw new RuntimeException(e);
-    }
-  }
-
-  /**
-   * Computes processing unit (C_s_proc) across all threads in this Server.
-   * It is computed by first calculating the total throughput of this server by adding each thread's throughput
-   * and getting the inverse of the throughput to finally get the time required to process a unit request.
-   *
-   * {@code Double.POSITIVE_INFINITY} is returned when all threads
-   * have not processed any requests so far.
-   */
-  private double getAvgProcTimePerReq(final Statistics[] procTimeStats) {
-    double throughputSum = 0D;
-
-    synchronized (procTimeStats) {
-      for (final Statistics stat : procTimeStats) {
-        throughputSum += stat.count() / stat.sum();
-      }
-    }
-
-    if (throughputSum == 0D) {
-      return Double.POSITIVE_INFINITY;
-    } else {
-      return 1.0 / throughputSum;
     }
   }
 

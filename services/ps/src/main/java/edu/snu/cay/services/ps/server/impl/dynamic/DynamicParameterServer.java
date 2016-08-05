@@ -309,7 +309,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         if (totalPullCount > 0 && totalPushCount > 0) {
           final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
               .setWindowIndex(windowIndex)
-              .setNumModelParamBlocks(numEMBlocks)
+              .setNumModelBlocks(numEMBlocks)
               .setMetricWindowMs(metricsWindowMs)
               .setTotalPullProcessingTime(totalPullTime)
               .setTotalPushProcessingTime(totalPushTime)

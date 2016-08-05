@@ -183,7 +183,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
         throw new RuntimeException("The number of executed operations is different from the expectation");
       }
 
-      metricManager.loadMetricValidationInfo(serverEM.getEvalIdToNumBlocks(), workerEM.getEvalIdToNumBlocks());
+      metricManager.loadMetricValidationInfo(workerEM.getEvalIdToNumBlocks(), serverEM.getEvalIdToNumBlocks());
       metricManager.startMetricCollection();
 
       // obtain the state of EMs, after executing the plan
@@ -366,8 +366,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
         final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
         aggregatedMetricBuilder.setWindowIndex((int) serverMetric.stream().mapToInt(
             param -> ((ServerMetrics) param.getMetrics()).getWindowIndex()).average().getAsDouble());
-        aggregatedMetricBuilder.setNumModelParamBlocks((int) serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getNumModelParamBlocks()).average().getAsDouble());
+        aggregatedMetricBuilder.setNumModelBlocks((int) serverMetric.stream().mapToInt(
+            param -> ((ServerMetrics) param.getMetrics()).getNumModelBlocks()).average().getAsDouble());
         aggregatedMetricBuilder.setMetricWindowMs((int) serverMetric.stream().mapToLong(
             param -> ((ServerMetrics) param.getMetrics()).getMetricWindowMs()).average().getAsDouble());
         aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(

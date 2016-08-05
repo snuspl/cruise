@@ -53,16 +53,17 @@ public final class MetricManager {
    * A map that contains each evaluator's mapping to the number of blocks it contains.
    * The map is loaded only when metric collection is enabled.
    */
-  private Map<String, Integer> numBlockOwnershipByEvalIdForServer;
-  private Map<String, Integer> numBlockOwnershipByEvalIdForWorker;
+  private Map<String, Integer> numBlockByEvalIdForWorker;
+  private Map<String, Integer> numBlockByEvalIdForServer;
+
 
   @Inject
   private MetricManager() {
     this.workerEvalParams = Collections.synchronizedMap(new HashMap<>());
     this.serverEvalParams = Collections.synchronizedMap(new HashMap<>());
     this.metricCollectionEnabled = false;
-    this.numBlockOwnershipByEvalIdForServer = null;
-    this.numBlockOwnershipByEvalIdForWorker = null;
+    this.numBlockByEvalIdForWorker = null;
+    this.numBlockByEvalIdForServer = null;
   }
 
   /**
@@ -72,9 +73,10 @@ public final class MetricManager {
    */
   public void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
     if (metricCollectionEnabled) {
-      try {
-        final int numDataBlocksOnWorker = metrics.getNumDataBlocks();
-        final int numDataBlocksOnDriver = numBlockOwnershipByEvalIdForWorker.get(workerId);
+      final int numDataBlocksOnWorker = metrics.getNumDataBlocks();
+
+      if (numBlockByEvalIdForWorker.containsKey(workerId)) {
+        final int numDataBlocksOnDriver = numBlockByEvalIdForWorker.get(workerId);
 
         if (numDataBlocksOnWorker == numDataBlocksOnDriver) {
           final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnWorker);
@@ -84,12 +86,9 @@ public final class MetricManager {
           LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
               new Object[]{workerId, numDataBlocksOnWorker, numDataBlocksOnDriver});
         }
-      } catch (NullPointerException e) {
-        // NullPointerException thrown if {@code numBlockOwnershipByEvalId} does not contain a mapping
-        // i.e. the metric from {@code workerId} is from an unknown evaluator (probably a deleted worker)
+      } else {
         LOG.log(Level.FINE, "No information about {0}. Dropping metric.", workerId);
       }
-
     } else {
       LOG.log(Level.FINE, "Metric collection disabled. Dropping metric from {0}", workerId);
     }
@@ -102,21 +101,20 @@ public final class MetricManager {
    */
   public void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
     if (metricCollectionEnabled) {
-      try {
-        final int numDataBlocksOnServer = metrics.getNumModelParamBlocks();
-        final int numDataBlocksOnDriver = numBlockOwnershipByEvalIdForServer.get(serverId);
+      final int numModelBlocksOnServer = metrics.getNumModelBlocks();
 
-        if (numDataBlocksOnServer == numDataBlocksOnDriver) {
-          final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnServer);
+      if (numBlockByEvalIdForServer.containsKey(serverId)) {
+        final int numModelBlocksOnDriver = numBlockByEvalIdForServer.get(serverId);
+
+        if (numModelBlocksOnServer == numModelBlocksOnDriver) {
+          final DataInfo dataInfo = new DataInfoImpl(numModelBlocksOnServer);
           final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
           serverEvalParams.computeIfAbsent(serverId, metricList -> new ArrayList<>()).add(evaluatorParameters);
         } else {
           LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
-              new Object[]{serverId, numDataBlocksOnServer, numDataBlocksOnDriver});
+              new Object[]{serverId, numModelBlocksOnServer, numModelBlocksOnDriver});
         }
-      } catch (NullPointerException e) {
-        // NullPointerException thrown if {@code numBlockOwnershipByEvalId} does not contain a mapping
-        // i.e. the metric from {@code serverId} is from an unknown evaluator (probably a deleted server)
+      } else {
         LOG.log(Level.FINE, "No information about {0}. Dropping metric.", serverId);
       }
     } else {
@@ -126,14 +124,22 @@ public final class MetricManager {
 
   public Map<String, List<EvaluatorParameters>> getWorkerMetrics() {
     synchronized (workerEvalParams) {
-      final Map<String, List<EvaluatorParameters>> currWorkerMetrics = new HashMap<>(workerEvalParams);
+      final Map<String, List<EvaluatorParameters>> currWorkerMetrics = new HashMap<>();
+
+      for (final Map.Entry<String, List<EvaluatorParameters>> entry : workerEvalParams.entrySet()) {
+        currWorkerMetrics.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+      }
       return currWorkerMetrics;
     }
   }
 
   public Map<String, List<EvaluatorParameters>> getServerMetrics() {
     synchronized (serverEvalParams) {
-      final Map<String, List<EvaluatorParameters>> currServerMetrics = new HashMap<>(serverEvalParams);
+      final Map<String, List<EvaluatorParameters>> currServerMetrics = new HashMap<>();
+
+      for (final Map.Entry<String, List<EvaluatorParameters>> entry : serverEvalParams.entrySet()) {
+        currServerMetrics.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+      }
       return currServerMetrics;
     }
   }
@@ -157,15 +163,15 @@ public final class MetricManager {
   }
 
   /**
-   * Loads information required for metric validation when metric collection is enabled.
+   * Loads information required for metric validation.
    * Any information to be used for metric validation may be added here
    * and used to filter out invalid incoming metric in
    * {@link #storeWorkerMetrics(String, WorkerMetrics)} or {@link #storeServerMetrics(String, ServerMetrics)}
    */
-  public void loadMetricValidationInfo(final Map<String, Integer> numBlockOwnershipForServer,
-                                       final Map<String, Integer> numBlockOwnershipForWorker) {
-    this.numBlockOwnershipByEvalIdForServer = numBlockOwnershipForServer;
-    this.numBlockOwnershipByEvalIdForWorker = numBlockOwnershipForWorker;
+  public void loadMetricValidationInfo(final Map<String, Integer> numBlockForWorker,
+                                       final Map<String, Integer> numBlockForServer) {
+    this.numBlockByEvalIdForWorker = numBlockForWorker;
+    this.numBlockByEvalIdForServer = numBlockForServer;
   }
 
   /**
