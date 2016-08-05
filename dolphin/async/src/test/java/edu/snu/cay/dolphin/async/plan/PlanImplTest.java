@@ -89,7 +89,7 @@ public final class PlanImplTest {
     final int numEvalsToStart = numEvalsToAdd;
     final int numEvalsToStop = numEvalsToDel;
 
-    // test whether a plan contains all the added steps
+    // test whether a plan contains all the explicitly added steps and automatically generated start/stop steps
     assertEquals("Plan does not contain all the steps that we expect",
         (numEvalsToAdd + numEvalsToDel + numTransfers) * 2 + (numEvalsToStart + numEvalsToStop), plan.getPlanSize());
 
@@ -178,11 +178,9 @@ public final class PlanImplTest {
                                                final AtomicInteger numExecutedOps) {
     final Set<PlanOperation> nextOpsToExec = new HashSet<>();
 
-    // a single Del step can be executed after completing each Stop step
     for (final PlanOperation operation : prevOpsToExec) {
       numExecutedOps.incrementAndGet();
       final Set<PlanOperation> opsFollowingDel = plan.onComplete(operation);
-      // verifyNextOpSet();
 
       nextOpsToExec.addAll(opsFollowingDel);
     }
@@ -200,7 +198,6 @@ public final class PlanImplTest {
                                                     final AtomicInteger numExecutedOps) {
     final Set<PlanOperation> nextOpsToExec = new HashSet<>();
 
-    // a single Del step can be executed after completing each Stop step
     for (final PlanOperation operation : prevOpsToExec) {
       numExecutedOps.incrementAndGet();
       final Set<PlanOperation> opsFollowingDel = plan.onComplete(operation);
@@ -224,7 +221,6 @@ public final class PlanImplTest {
                                                     final AtomicInteger numExecutedOps) {
     final Set<PlanOperation> nextOpsToExec = new HashSet<>();
 
-    // a single Del step can be executed after completing each Stop step
     for (final PlanOperation operation : prevOpsToExec) {
       numExecutedOps.incrementAndGet();
       final Set<PlanOperation> opsFollowingDel = plan.onComplete(operation);
@@ -240,7 +236,7 @@ public final class PlanImplTest {
 
   /**
    * Executes {@code prevOpsToExec}, validating that
-   * each pair of executed operation enables one operation for next execution,
+   * a pair of executed operation enables one operation for next execution,
    * and returns next operations to execute.
    * It assumes that {@code prevOpsToExec} has only two elements.
    */
@@ -284,7 +280,7 @@ public final class PlanImplTest {
         .addEvaluatorToAdd(Constants.NAMESPACE_WORKER, EVAL_PREFIX + 3) // Adding worker involves Start
         .build();
 
-    final AtomicInteger numExecutedOps = new AtomicInteger(0); // increase 1 on every onComplete
+    final AtomicInteger numExecutedOps = new AtomicInteger(0); // increase 1 on every plan.onComplete()
 
     final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
     assertEquals(2, firstOpsToExec.size());
@@ -325,7 +321,7 @@ public final class PlanImplTest {
         .addEvaluatorToAdd(Constants.NAMESPACE_SERVER, EVAL_PREFIX + 3)
         .build();
 
-    final AtomicInteger numExecutedOps = new AtomicInteger(0); // increase 1 on every onComplete
+    final AtomicInteger numExecutedOps = new AtomicInteger(0); // increase 1 on every plan.onComplete()
 
     final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
     assertEquals(2, firstOpsToExec.size());
@@ -375,7 +371,7 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 3, EVAL_PREFIX + 2, new DataInfoImpl(1)))
         .build();
 
-    final AtomicInteger numExecutedOps = new AtomicInteger(0); // increase 1 on every onComplete
+    final AtomicInteger numExecutedOps = new AtomicInteger(0); // increase 1 on every plan.onComplete()
 
     // Stops should be executed first
     final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
@@ -431,7 +427,7 @@ public final class PlanImplTest {
         .addEvaluatorToAdd(Constants.NAMESPACE_WORKER, EVAL_PREFIX + 3)
         .build();
 
-    final AtomicInteger numExecutedOps = new AtomicInteger(0); // increase 1 on every onComplete
+    final AtomicInteger numExecutedOps = new AtomicInteger(0); // increase 1 on every plan.onComplete()
 
     // Adds should be executed first
     final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
