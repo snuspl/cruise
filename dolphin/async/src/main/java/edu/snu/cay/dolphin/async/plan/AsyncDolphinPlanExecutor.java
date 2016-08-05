@@ -22,7 +22,6 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.plan.api.*;
-import edu.snu.cay.services.em.plan.impl.EMPlanOperation;
 import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -43,6 +42,11 @@ import java.util.logging.Logger;
 
 import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_WORKER;
 import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_SERVER;
+import static edu.snu.cay.dolphin.async.plan.DolphinPlanOperation.START_OP;
+import static edu.snu.cay.dolphin.async.plan.DolphinPlanOperation.STOP_OP;
+import static edu.snu.cay.services.em.plan.impl.EMPlanOperation.ADD_OP;
+import static edu.snu.cay.services.em.plan.impl.EMPlanOperation.DEL_OP;
+import static edu.snu.cay.services.em.plan.impl.EMPlanOperation.MOVE_OP;
 
 /**
  * Implementation of Plan Executor for AsyncDolphin.
@@ -190,7 +194,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the active context callback of ElasticMemory.add().
    */
   private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace,
-                                                                    final EMPlanOperation addOperation) {
+                                                                    final PlanOperation addOperation) {
     final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(2);
     switch (namespace) {
     case NAMESPACE_SERVER:
@@ -211,9 +215,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for servers.
    */
   private final class ServerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMPlanOperation completedOp;
+    private final PlanOperation completedOp;
 
-    private ServerContextActiveHandler(final EMPlanOperation completedOp) {
+    private ServerContextActiveHandler(final PlanOperation completedOp) {
       this.completedOp = completedOp;
     }
 
@@ -223,7 +227,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForServer().onNext(context);
-      executingPlan.putAddedServerContext(completedOp.getEvalId().get(), context);
+      executingPlan.putAddedServerContext(completedOp.getEvalId(), context);
       onOperationComplete(completedOp);
     }
   }
@@ -232,9 +236,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as a callback to ElasticMemory.add() for workers.
    */
   private final class WorkerContextActiveHandler implements EventHandler<ActiveContext> {
-    private final EMPlanOperation completedOp;
+    private final PlanOperation completedOp;
 
-    private WorkerContextActiveHandler(final EMPlanOperation completedOp) {
+    private WorkerContextActiveHandler(final PlanOperation completedOp) {
       this.completedOp = completedOp;
     }
     @Override
@@ -243,7 +247,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
 
-      executingPlan.putAddedWorkerContext(completedOp.getEvalId().get(), context);
+      executingPlan.putAddedWorkerContext(completedOp.getEvalId(), context);
       onOperationComplete(completedOp);
     }
   }
@@ -252,9 +256,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the second callback to ElasticMemory.move().
    */
   private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
-    private final EMPlanOperation completeOp;
+    private final PlanOperation completeOp;
 
-    private MovedHandler(final EMPlanOperation completeOp) {
+    private MovedHandler(final PlanOperation completeOp) {
       this.completeOp = completeOp;
     }
 
@@ -275,9 +279,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the callback to ElasticMemory.delete().
    */
   private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
-    private final EMPlanOperation completeOp;
+    private final PlanOperation completeOp;
 
-    private DeletedHandler(final EMPlanOperation completeOp) {
+    private DeletedHandler(final PlanOperation completeOp) {
       this.completeOp = completeOp;
     }
 
@@ -305,7 +309,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       return;
     }
 
-    final Optional<DolphinPlanOperation> completedOp
+    final Optional<PlanOperation> completedOp
         = executingPlan.removeWorkerTaskControlOp(task.getActiveContext().getId());
     if (completedOp.isPresent()) {
       onOperationComplete(completedOp.get());
@@ -323,7 +327,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       return;
     }
 
-    final Optional<DolphinPlanOperation> completedOp
+    final Optional<PlanOperation> completedOp
         = executingPlan.removeWorkerTaskControlOp(task.getActiveContext().getId());
     if (completedOp.isPresent()) {
       onOperationComplete(completedOp.get());
@@ -360,43 +364,24 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
           continue; // skip if it's already submitted
         }
 
-        // execute the EM operation
-        if (operation instanceof EMPlanOperation) {
-          final EMPlanOperation emPlanOp = (EMPlanOperation) operation;
-          final EMPlanOperation.OpType opType = emPlanOp.getOpType();
-
-          switch (opType) {
-          case ADD:
-            executeAddOperation(emPlanOp);
-            break;
-          case DEL:
-            executeDelOperation(emPlanOp);
-            break;
-          case MOVE:
-            executeMoveOperation(emPlanOp);
-            break;
-          default:
-            throw new RuntimeException("Unsupported EM operation type");
-          }
-
-        // execute Dolphin-specific operation
-        } else if (operation instanceof DolphinPlanOperation) {
-          final DolphinPlanOperation dolphinPlanOp = (DolphinPlanOperation) operation;
-          final DolphinPlanOperation.OpType opType = dolphinPlanOp.getOpType();
-
-          switch (opType) {
-          case START:
-            executeStartOperation(dolphinPlanOp);
-            break;
-          case STOP:
-            executeStopOperation(dolphinPlanOp);
-            break;
-          default:
-            throw new RuntimeException("Unsupported Dolphin operation type");
-          }
-
-        } else {
-          throw new RuntimeException("Unsupported implementation of PlanOperation");
+        switch (operation.getOpType()) {
+        case ADD_OP:
+          executeAddOperation(operation);
+          break;
+        case DEL_OP:
+          executeDelOperation(operation);
+          break;
+        case MOVE_OP:
+          executeMoveOperation(operation);
+          break;
+        case START_OP:
+          executeStartOperation(operation);
+          break;
+        case STOP_OP:
+          executeStopOperation(operation);
+          break;
+        default:
+          throw new RuntimeException("Unsupported plan operation type");
         }
       }
     } catch (Exception e) {
@@ -404,7 +389,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeAddOperation(final EMPlanOperation operation) {
+  private void executeAddOperation(final PlanOperation operation) {
     final String namespace = operation.getNamespace();
 
     switch (namespace) {
@@ -425,9 +410,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeDelOperation(final EMPlanOperation operation) {
+  private void executeDelOperation(final PlanOperation operation) {
     final String namespace = operation.getNamespace();
-    final String evaluatorId = operation.getEvalId().get();
+    final String evaluatorId = operation.getEvalId();
 
     switch (namespace) {
     case NAMESPACE_SERVER:
@@ -443,7 +428,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeMoveOperation(final EMPlanOperation operation) {
+  private void executeMoveOperation(final PlanOperation operation) {
     final String namespace = operation.getNamespace();
     final TransferStep transferStep = operation.getTransferStep().get();
 
@@ -475,7 +460,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeStartOperation(final DolphinPlanOperation startOp) {
+  private void executeStartOperation(final PlanOperation startOp) {
     final String planContextId = startOp.getEvalId();
     final Optional<ActiveContext> context = executingPlan.getAddedWorkerContext(planContextId);
 
@@ -492,7 +477,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-  private void executeStopOperation(final DolphinPlanOperation stopOp) {
+  private void executeStopOperation(final PlanOperation stopOp) {
     final String contextId = stopOp.getEvalId();
 
     // put metadata before trying to close worker task
@@ -524,7 +509,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     /**
      * A bookkeeping of ongoing worker task Start/Stop operations.
      */
-    private final ConcurrentMap<String, DolphinPlanOperation> ongoingWorkerTaskControlOps = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, PlanOperation> ongoingWorkerTaskControlOps = new ConcurrentHashMap<>();
 
     /**
      * operationsRequested: A map of plan operations requested and the execution state (IN_PROGRESS/COMPLETE).
@@ -579,7 +564,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * @param contextId a context id
      * @param operation a Start or Stop operation
      */
-    void putWorkerTaskControlOp(final String contextId, final DolphinPlanOperation operation) {
+    void putWorkerTaskControlOp(final String contextId, final PlanOperation operation) {
       ongoingWorkerTaskControlOps.put(contextId, operation);
       LOG.log(Level.INFO, "ongoingWorkerTaskControlOps: {0}, contextId: {1}",
           new Object[]{ongoingWorkerTaskControlOps, contextId});
@@ -589,9 +574,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
      * Get worker task control (START/STOP) operations that id of context
      * on which the task is running is {@code contextId}.
      * @param contextId a context id
-     * @return an optional with EMPlanOperation
+     * @return an optional with PlanOperation
      */
-    Optional<DolphinPlanOperation> removeWorkerTaskControlOp(final String contextId) {
+    Optional<PlanOperation> removeWorkerTaskControlOp(final String contextId) {
       LOG.log(Level.INFO, "ongoingWorkerTaskControlOps: {0}, contextId: {1}",
           new Object[]{ongoingWorkerTaskControlOps, contextId});
       return Optional.ofNullable(ongoingWorkerTaskControlOps.remove(contextId));

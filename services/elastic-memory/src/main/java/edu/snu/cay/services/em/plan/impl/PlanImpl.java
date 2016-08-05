@@ -273,37 +273,37 @@ public final class PlanImpl implements Plan {
       final DAG<PlanOperation> dag = new DAGImpl<>();
 
       // add vertices of Delete
-      final Map<String, EMPlanOperation> delOperations = new HashMap<>();
+      final Map<String, PlanOperation> delOperations = new HashMap<>();
       for (final Map.Entry<String, Set<String>> entry : namespaceToEvalsToDel.entrySet()) {
         final String namespace = entry.getKey();
         final Set<String> evalsToDel = entry.getValue();
         for (final String evalToDel : evalsToDel) {
-          final EMPlanOperation delOperation = new EMPlanOperation(namespace, EMPlanOperation.OpType.DEL, evalToDel);
+          final PlanOperation delOperation = new EMPlanOperation(namespace, EMPlanOperation.DEL_OP, evalToDel);
           delOperations.put(evalToDel, delOperation);
           dag.addVertex(delOperation);
         }
       }
 
       // add vertices of Add
-      final Map<String, EMPlanOperation> addOperations = new HashMap<>();
+      final Map<String, PlanOperation> addOperations = new HashMap<>();
       for (final Map.Entry<String, Set<String>> entry : namespaceToEvalsToAdd.entrySet()) {
         final String namespace = entry.getKey();
         final Set<String> evalsToAdd = entry.getValue();
         for (final String evalToAdd : evalsToAdd) {
-          final EMPlanOperation addOperation = new EMPlanOperation(namespace, EMPlanOperation.OpType.ADD, evalToAdd);
+          final PlanOperation addOperation = new EMPlanOperation(namespace, EMPlanOperation.ADD_OP, evalToAdd);
           addOperations.put(evalToAdd, addOperation);
           dag.addVertex(addOperation);
         }
       }
 
       // add vertices of Move
-      final List<EMPlanOperation> moveOperations = new LinkedList<>();
+      final List<PlanOperation> moveOperations = new LinkedList<>();
       for (final Map.Entry<String, List<TransferStep>> entry : namespaceToTransferSteps.entrySet()) {
         final String namespace = entry.getKey();
         final List<TransferStep> transferSteps = entry.getValue();
 
         for (final TransferStep transferStep : transferSteps) {
-          final EMPlanOperation moveOperation = new EMPlanOperation(namespace, transferStep);
+          final PlanOperation moveOperation = new EMPlanOperation(namespace, transferStep);
           moveOperations.add(moveOperation);
           dag.addVertex(moveOperation);
         }
@@ -324,31 +324,31 @@ public final class PlanImpl implements Plan {
         final int numAddsShouldFollowDel = addOperations.size() - numAvailableExtraEvals.get();
         LOG.log(Level.FINE, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
 
-        final Iterator<EMPlanOperation> delOperationsItr = delOperations.values().iterator();
-        final Iterator<EMPlanOperation> addOperationsItr = addOperations.values().iterator();
+        final Iterator<PlanOperation> delOperationsItr = delOperations.values().iterator();
+        final Iterator<PlanOperation> addOperationsItr = addOperations.values().iterator();
 
         // pick each add/del operations with no special ordering
         for (int i = 0; i < numAddsShouldFollowDel; i++) {
-          final EMPlanOperation addOperation = addOperationsItr.next();
-          final EMPlanOperation delOperation = delOperationsItr.next();
+          final PlanOperation addOperation = addOperationsItr.next();
+          final PlanOperation delOperation = delOperationsItr.next();
           dag.addEdge(delOperation, addOperation);
         }
       }
 
-      for (final EMPlanOperation moveOperation : moveOperations) {
+      for (final PlanOperation moveOperation : moveOperations) {
         final TransferStep transferStep = moveOperation.getTransferStep().get();
         final String srcId = transferStep.getSrcId();
         final String dstId = transferStep.getDstId();
 
         // 2. add -> move
         if (addOperations.containsKey(dstId)) {
-          final EMPlanOperation addOperation = addOperations.get(dstId);
+          final PlanOperation addOperation = addOperations.get(dstId);
           dag.addEdge(addOperation, moveOperation);
         }
 
         // 3. move -> del
         if (delOperations.containsKey(srcId)) {
-          final EMPlanOperation delOperation = delOperations.get(srcId);
+          final PlanOperation delOperation = delOperations.get(srcId);
           dag.addEdge(moveOperation, delOperation);
         }
       }

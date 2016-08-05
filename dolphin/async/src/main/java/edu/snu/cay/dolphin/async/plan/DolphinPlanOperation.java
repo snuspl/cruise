@@ -16,6 +16,8 @@
 package edu.snu.cay.dolphin.async.plan;
 
 import edu.snu.cay.services.em.plan.api.PlanOperation;
+import edu.snu.cay.services.em.plan.api.TransferStep;
+import org.apache.reef.util.Optional;
 
 /**
  * A class representing Dolphin-specific plan operation.
@@ -23,13 +25,11 @@ import edu.snu.cay.services.em.plan.api.PlanOperation;
  * to prevent them from running task iterations with empty dataset.
  */
 public final class DolphinPlanOperation implements PlanOperation {
-  public enum OpType {
-    START, // start worker task
-    STOP   // stop worker task
-  }
+  static final String START_OP = "START"; // start worker task
+  static final String STOP_OP = "STOP"; // stop worker task
 
   private final String namespace;
-  private final OpType opType;
+  private final String opType;
   private final String evalId;
 
   /**
@@ -38,31 +38,30 @@ public final class DolphinPlanOperation implements PlanOperation {
    * @param opType a type of operation
    * @param evalId a target evaluator id
    */
-  public DolphinPlanOperation(final String namespace, final OpType opType, final String evalId) {
+  public DolphinPlanOperation(final String namespace, final String opType, final String evalId) {
     this.namespace = namespace;
     this.opType = opType;
     this.evalId = evalId;
   }
 
-  /**
-   * @return a namespace of operation
-   */
+  @Override
   public String getNamespace() {
     return namespace;
   }
 
-  /**
-   * @return a type of operation
-   */
-  public OpType getOpType() {
+  @Override
+  public String getOpType() {
     return opType;
   }
 
-  /**
-   * @return a target evaluator id
-   */
+  @Override
   public String getEvalId() {
     return evalId;
+  }
+
+  @Override
+  public Optional<TransferStep> getTransferStep() {
+    return Optional.empty();
   }
 
   @Override

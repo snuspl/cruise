@@ -15,8 +15,30 @@
  */
 package edu.snu.cay.services.em.plan.api;
 
+import org.apache.reef.util.Optional;
+
 /**
  * An interface class that represents a fine-grained step of a plan.
  */
 public interface PlanOperation {
+  /**
+   * @return a namespace of operation
+   */
+  String getNamespace();
+
+  /**
+   * @return a type of operation
+   */
+  String getOpType();
+
+  /**
+   * @return a target evaluator id
+   */
+  String getEvalId();
+
+  /**
+   * @return an Optional with the TransferStep if the operation type is EM's MOVE.
+   * For other operations, it returns an empty Optional.
+   */
+  Optional<TransferStep> getTransferStep();
 }

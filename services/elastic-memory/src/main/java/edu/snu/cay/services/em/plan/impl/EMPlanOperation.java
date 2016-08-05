@@ -23,13 +23,13 @@ import org.apache.reef.util.Optional;
  * A class representing EM's plan operation.
  */
 public final class EMPlanOperation implements PlanOperation {
-  public enum OpType {
-    ADD, DEL, MOVE
-  }
+  public static final String ADD_OP = "ADD";
+  public static final String DEL_OP = "DEL";
+  public static final String MOVE_OP = "MOVE";
 
   private final String namespace;
-  private final OpType opType;
-  private final Optional<String> evalId;
+  private final String opType;
+  private final String evalId;
   private final Optional<TransferStep> transferStep;
 
   /**
@@ -38,10 +38,10 @@ public final class EMPlanOperation implements PlanOperation {
    * @param opType a type of operation, which is one of ADD or REMOVE
    * @param evalId a target evaluator id
    */
-  public EMPlanOperation(final String namespace, final OpType opType, final String evalId) {
+  public EMPlanOperation(final String namespace, final String opType, final String evalId) {
     this.namespace = namespace;
     this.opType = opType;
-    this.evalId = Optional.of(evalId);
+    this.evalId = evalId;
     this.transferStep = Optional.empty();
   }
 
@@ -52,8 +52,8 @@ public final class EMPlanOperation implements PlanOperation {
    */
   public EMPlanOperation(final String namespace, final TransferStep transferStep) {
     this.namespace = namespace;
-    this.opType = OpType.MOVE;
-    this.evalId = Optional.empty();
+    this.opType = MOVE_OP;
+    this.evalId = transferStep.getSrcId();
     this.transferStep = Optional.of(transferStep);
   }
 
@@ -67,15 +67,15 @@ public final class EMPlanOperation implements PlanOperation {
   /**
    * @return a type of operation
    */
-  public OpType getOpType() {
+  public String getOpType() {
     return opType;
   }
 
   /**
-   * @return an Optional with the target evaluator id if the operation type is ADD or DELETE.
-   * For Move operation, it returns an empty Optional.
+   * @return a target evaluator id if the operation type is ADD or DELETE.
+   * For Move operation, it returns a source evaluator id.
    */
-  public Optional<String> getEvalId() {
+  public String getEvalId() {
     return evalId;
   }
 

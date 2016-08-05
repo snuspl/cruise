@@ -282,19 +282,19 @@ public final class PlanImpl implements Plan {
       final DAG<PlanOperation> dag = new DAGImpl<>();
 
       // add vertices of Delete and Stop
-      final Map<String, EMPlanOperation> delOperations = new HashMap<>();
-      final Map<String, DolphinPlanOperation> stopOperations = new HashMap<>();
+      final Map<String, PlanOperation> delOperations = new HashMap<>();
+      final Map<String, PlanOperation> stopOperations = new HashMap<>();
       for (final Map.Entry<String, Set<String>> entry : namespaceToEvalsToDel.entrySet()) {
         final String namespace = entry.getKey();
         final Set<String> evalsToDel = entry.getValue();
         for (final String evalToDel : evalsToDel) {
-          final EMPlanOperation delOperation = new EMPlanOperation(namespace, EMPlanOperation.OpType.DEL, evalToDel);
+          final PlanOperation delOperation = new EMPlanOperation(namespace, EMPlanOperation.DEL_OP, evalToDel);
           delOperations.put(evalToDel, delOperation);
           dag.addVertex(delOperation);
 
           if (namespace.equals(Constants.NAMESPACE_WORKER)) {
-            final DolphinPlanOperation stopOperation
-                = new DolphinPlanOperation(namespace, DolphinPlanOperation.OpType.STOP, evalToDel);
+            final PlanOperation stopOperation
+                = new DolphinPlanOperation(namespace, DolphinPlanOperation.STOP_OP, evalToDel);
             stopOperations.put(evalToDel, stopOperation);
             dag.addVertex(stopOperation); // do not add 'Stop->Del' edge, because we assume Delete always involves Moves
           }
@@ -302,19 +302,19 @@ public final class PlanImpl implements Plan {
       }
 
       // add vertices of Add and Start
-      final Map<String, EMPlanOperation> addOperations = new HashMap<>();
-      final Map<String, DolphinPlanOperation> startOperations = new HashMap<>();
+      final Map<String, PlanOperation> addOperations = new HashMap<>();
+      final Map<String, PlanOperation> startOperations = new HashMap<>();
       for (final Map.Entry<String, Set<String>> entry : namespaceToEvalsToAdd.entrySet()) {
         final String namespace = entry.getKey();
         final Set<String> evalsToAdd = entry.getValue();
         for (final String evalToAdd : evalsToAdd) {
-          final EMPlanOperation addOperation = new EMPlanOperation(namespace, EMPlanOperation.OpType.ADD, evalToAdd);
+          final PlanOperation addOperation = new EMPlanOperation(namespace, EMPlanOperation.ADD_OP, evalToAdd);
           addOperations.put(evalToAdd, addOperation);
           dag.addVertex(addOperation);
 
           if (namespace.equals(Constants.NAMESPACE_WORKER)) {
-            final DolphinPlanOperation startOperation
-                = new DolphinPlanOperation(namespace, DolphinPlanOperation.OpType.START, evalToAdd);
+            final PlanOperation startOperation
+                = new DolphinPlanOperation(namespace, DolphinPlanOperation.START_OP, evalToAdd);
             startOperations.put(evalToAdd, startOperation);
             dag.addVertex(startOperation); // do not add 'Add->Start' edge, because we assume Add always involves Moves
           }
@@ -322,13 +322,13 @@ public final class PlanImpl implements Plan {
       }
 
       // add vertices of Move
-      final List<EMPlanOperation> moveOperations = new LinkedList<>();
+      final List<PlanOperation> moveOperations = new LinkedList<>();
       for (final Map.Entry<String, List<TransferStep>> entry : namespaceToTransferSteps.entrySet()) {
         final String namespace = entry.getKey();
         final List<TransferStep> transferSteps = entry.getValue();
 
         for (final TransferStep transferStep : transferSteps) {
-          final EMPlanOperation moveOperation = new EMPlanOperation(namespace, transferStep);
+          final PlanOperation moveOperation = new EMPlanOperation(namespace, transferStep);
           moveOperations.add(moveOperation);
           dag.addVertex(moveOperation);
         }
@@ -349,40 +349,40 @@ public final class PlanImpl implements Plan {
         final int numAddsShouldFollowDel = addOperations.size() - numAvailableExtraEvals.get();
         LOG.log(Level.INFO, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
 
-        final Iterator<EMPlanOperation> delOperationsItr = delOperations.values().iterator();
-        final Iterator<EMPlanOperation> addOperationsItr = addOperations.values().iterator();
+        final Iterator<PlanOperation> delOperationsItr = delOperations.values().iterator();
+        final Iterator<PlanOperation> addOperationsItr = addOperations.values().iterator();
 
         // pick each add/del operations with no special ordering
         for (int i = 0; i < numAddsShouldFollowDel; i++) {
-          final EMPlanOperation addOperation = addOperationsItr.next();
-          final EMPlanOperation delOperation = delOperationsItr.next();
+          final PlanOperation addOperation = addOperationsItr.next();
+          final PlanOperation delOperation = delOperationsItr.next();
           dag.addEdge(delOperation, addOperation);
         }
       }
 
-      for (final EMPlanOperation moveOperation : moveOperations) {
+      for (final PlanOperation moveOperation : moveOperations) {
         final TransferStep transferStep = moveOperation.getTransferStep().get();
         final String srcId = transferStep.getSrcId();
         final String dstId = transferStep.getDstId();
 
         // 2. add -> move -> start
         if (addOperations.containsKey(dstId)) {
-          final EMPlanOperation addOperation = addOperations.get(dstId);
+          final PlanOperation addOperation = addOperations.get(dstId);
           dag.addEdge(addOperation, moveOperation);
 
           if (moveOperation.getNamespace().equals(Constants.NAMESPACE_WORKER)) {
-            final DolphinPlanOperation startOperation = startOperations.get(dstId);
+            final PlanOperation startOperation = startOperations.get(dstId);
             dag.addEdge(moveOperation, startOperation);
           }
         }
 
         // 3. stop -> move -> del
         if (delOperations.containsKey(srcId)) {
-          final EMPlanOperation delOperation = delOperations.get(srcId);
+          final PlanOperation delOperation = delOperations.get(srcId);
           dag.addEdge(moveOperation, delOperation);
 
           if (moveOperation.getNamespace().equals(Constants.NAMESPACE_WORKER)) {
-            final DolphinPlanOperation stopOperation = stopOperations.get(srcId);
+            final PlanOperation stopOperation = stopOperations.get(srcId);
             dag.addEdge(stopOperation, moveOperation);
           }
         }
