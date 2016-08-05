@@ -22,104 +22,212 @@ import org.apache.reef.util.Optional;
 /**
  * A class representing EM's plan operation.
  */
-public final class EMPlanOperation implements PlanOperation {
+public final class EMPlanOperation {
   public static final String ADD_OP = "ADD";
   public static final String DEL_OP = "DEL";
   public static final String MOVE_OP = "MOVE";
 
-  private final String namespace;
-  private final String opType;
-  private final String evalId;
-  private final Optional<TransferStep> transferStep;
-
   /**
-   * A constructor for ADD and DELETE operations.
-   * @param namespace a namespace of operation
-   * @param opType a type of operation, which is one of ADD or REMOVE
-   * @param evalId a target evaluator id
+   * Should not be instantiated.
    */
-  public EMPlanOperation(final String namespace, final String opType, final String evalId) {
-    this.namespace = namespace;
-    this.opType = opType;
-    this.evalId = evalId;
-    this.transferStep = Optional.empty();
+  private EMPlanOperation() {
   }
 
-  /**
-   * A constructor for MOVE operation.
-   * @param namespace a namespace of operation
-   * @param transferStep a TransferStep including src, dest, data info of MOVE operation
-   */
-  public EMPlanOperation(final String namespace, final TransferStep transferStep) {
-    this.namespace = namespace;
-    this.opType = MOVE_OP;
-    this.evalId = transferStep.getSrcId();
-    this.transferStep = Optional.of(transferStep);
-  }
+  public static final class AddPlanOperation implements PlanOperation {
+    private final String namespace;
+    private final String evalId;
 
-  /**
-   * @return a namespace of operation
-   */
-  public String getNamespace() {
-    return namespace;
-  }
-
-  /**
-   * @return a type of operation
-   */
-  public String getOpType() {
-    return opType;
-  }
-
-  /**
-   * @return a target evaluator id if the operation type is ADD or DELETE.
-   * For Move operation, it returns a source evaluator id.
-   */
-  public String getEvalId() {
-    return evalId;
-  }
-
-  /**
-   * @return an Optional with the TransferStep if the operation type is MOVE.
-   * For ADD or DELETE operations, it returns an empty Optional.
-   */
-  public Optional<TransferStep> getTransferStep() {
-    return transferStep;
-  }
-
-  @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
+    /**
+     * A constructor for ADD operation.
+     *
+     * @param namespace a namespace of operation
+     * @param evalId    a target evaluator id
+     */
+    public AddPlanOperation(final String namespace, final String evalId) {
+      this.namespace = namespace;
+      this.evalId = evalId;
     }
 
-    final EMPlanOperation other = (EMPlanOperation) obj;
+    @Override
+    public String getNamespace() {
+      return namespace;
+    }
 
-    return namespace.equals(other.namespace) &&
-        opType.equals(other.opType) &&
-        evalId.equals(other.evalId) &&
-        transferStep.equals(other.transferStep);
+    @Override
+    public String getOpType() {
+      return ADD_OP;
+    }
+
+    @Override
+    public Optional<String> getEvalId() {
+      return Optional.of(evalId);
+    }
+
+    @Override
+    public Optional<TransferStep> getTransferStep() {
+      return Optional.empty();
+    }
+
+
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      final AddPlanOperation that = (AddPlanOperation) o;
+
+      return namespace.equals(that.namespace) && evalId.equals(that.evalId);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = namespace.hashCode();
+      result = 31 * result + evalId.hashCode();
+      return result;
+    }
+
+    @Override
+    public String toString() {
+      return "AddPlanOperation{" +
+          "namespace='" + namespace + '\'' +
+          ", evalId='" + evalId + '\'' +
+          '}';
+    }
   }
 
-  @Override
-  public int hashCode() {
-    int result = namespace.hashCode();
-    result = 31 * result + opType.hashCode();
-    result = 31 * result + evalId.hashCode();
-    result = 31 * result + transferStep.hashCode();
-    return result;
+  public static final class DeletePlanOperation implements PlanOperation {
+    private final String namespace;
+    private final String evalId;
+
+    /**
+     * A constructor for DELETE operation.
+     *
+     * @param namespace a namespace of operation
+     * @param evalId    a target evaluator id
+     */
+    public DeletePlanOperation(final String namespace, final String evalId) {
+      this.namespace = namespace;
+      this.evalId = evalId;
+    }
+
+    @Override
+    public String getNamespace() {
+      return namespace;
+    }
+
+    @Override
+    public String getOpType() {
+      return DEL_OP;
+    }
+
+    @Override
+    public Optional<String> getEvalId() {
+      return Optional.of(evalId);
+    }
+
+    @Override
+    public String toString() {
+      return "DeletePlanOperation{" +
+          "namespace='" + namespace + '\'' +
+          ", evalId='" + evalId + '\'' +
+          '}';
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      final DeletePlanOperation that = (DeletePlanOperation) o;
+
+      return namespace.equals(that.namespace) && evalId.equals(that.evalId);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = namespace.hashCode();
+      result = 31 * result + evalId.hashCode();
+      return result;
+    }
+
+    @Override
+    public Optional<TransferStep> getTransferStep() {
+      return Optional.empty();
+    }
   }
 
-  @Override
-  public String toString() {
-    return "EMPlanOperation{" +
-        "namespace='" + namespace + '\'' +
-        ", opType=" + opType +
-        ", evalId=" + evalId +
-        ", transferStep=" + transferStep +
-        '}';
+  public static final class MovePlanOperation implements PlanOperation {
+    private final String namespace;
+    private final TransferStep transferStep;
+
+
+    /**
+     * A constructor for MOVE operation.
+     *
+     * @param namespace    a namespace of operation
+     * @param transferStep a TransferStep including src, dest, data info of MOVE operation
+     */
+    public MovePlanOperation(final String namespace, final TransferStep transferStep) {
+      this.namespace = namespace;
+      this.transferStep = transferStep;
+    }
+
+    @Override
+    public String getNamespace() {
+      return namespace;
+    }
+
+    @Override
+    public String getOpType() {
+      return MOVE_OP;
+    }
+
+    @Override
+    public Optional<String> getEvalId() {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<TransferStep> getTransferStep() {
+      return Optional.of(transferStep);
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      final MovePlanOperation that = (MovePlanOperation) o;
+
+      return namespace.equals(that.namespace) && transferStep.equals(that.transferStep);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = namespace.hashCode();
+      result = 31 * result + transferStep.hashCode();
+      return result;
+    }
+
+    @Override
+    public String toString() {
+      return "MovePlanOperation{" +
+          "namespace='" + namespace + '\'' +
+          ", transferStep=" + transferStep +
+          '}';
+    }
   }
 }

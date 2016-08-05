@@ -32,9 +32,9 @@ public interface PlanOperation {
   String getOpType();
 
   /**
-   * @return a target evaluator id
+   * @return a target evaluator id. For MOVE operation, it returns an empty Optional.
    */
-  String getEvalId();
+  Optional<String> getEvalId();
 
   /**
    * @return an Optional with the TransferStep if the operation type is EM's MOVE.

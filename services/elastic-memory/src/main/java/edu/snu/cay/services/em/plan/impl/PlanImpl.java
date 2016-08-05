@@ -25,6 +25,8 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.services.em.plan.impl.EMPlanOperation.*;
+
 /**
  * A plan implementation for EM's default plan operations.
  * The builder checks the feasibility of plan and dependencies between detailed steps.
@@ -278,7 +280,7 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToDel = entry.getValue();
         for (final String evalToDel : evalsToDel) {
-          final PlanOperation delOperation = new EMPlanOperation(namespace, EMPlanOperation.DEL_OP, evalToDel);
+          final PlanOperation delOperation = new DeletePlanOperation(namespace, evalToDel);
           delOperations.put(evalToDel, delOperation);
           dag.addVertex(delOperation);
         }
@@ -290,7 +292,7 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToAdd = entry.getValue();
         for (final String evalToAdd : evalsToAdd) {
-          final PlanOperation addOperation = new EMPlanOperation(namespace, EMPlanOperation.ADD_OP, evalToAdd);
+          final PlanOperation addOperation = new AddPlanOperation(namespace, evalToAdd);
           addOperations.put(evalToAdd, addOperation);
           dag.addVertex(addOperation);
         }
@@ -303,7 +305,7 @@ public final class PlanImpl implements Plan {
         final List<TransferStep> transferSteps = entry.getValue();
 
         for (final TransferStep transferStep : transferSteps) {
-          final PlanOperation moveOperation = new EMPlanOperation(namespace, transferStep);
+          final PlanOperation moveOperation = new MovePlanOperation(namespace, transferStep);
           moveOperations.add(moveOperation);
           dag.addVertex(moveOperation);
         }

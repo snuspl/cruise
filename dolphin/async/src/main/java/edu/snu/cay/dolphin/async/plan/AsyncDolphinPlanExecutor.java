@@ -227,7 +227,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
       asyncDolphinDriver.get().getSecondContextActiveHandlerForServer().onNext(context);
-      executingPlan.putAddedServerContext(completedOp.getEvalId(), context);
+      executingPlan.putAddedServerContext(completedOp.getEvalId().get(), context);
       onOperationComplete(completedOp);
     }
   }
@@ -247,7 +247,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
 
-      executingPlan.putAddedWorkerContext(completedOp.getEvalId(), context);
+      executingPlan.putAddedWorkerContext(completedOp.getEvalId().get(), context);
       onOperationComplete(completedOp);
     }
   }
@@ -394,13 +394,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
     switch (namespace) {
     case NAMESPACE_SERVER:
-      LOG.log(Level.FINE, "ADD: server {0}", operation.getEvalId());
+      LOG.log(Level.FINE, "ADD: server {0}", operation.getEvalId().get());
       serverEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
           getAllocatedEvalHandler(NAMESPACE_SERVER),
           getActiveContextHandler(NAMESPACE_SERVER, operation));
       break;
     case NAMESPACE_WORKER:
-      LOG.log(Level.FINE, "ADD: worker {0}", operation.getEvalId());
+      LOG.log(Level.FINE, "ADD: worker {0}", operation.getEvalId().get());
       workerEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
           getAllocatedEvalHandler(NAMESPACE_WORKER),
           getActiveContextHandler(NAMESPACE_WORKER, operation));
@@ -412,7 +412,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   private void executeDelOperation(final PlanOperation operation) {
     final String namespace = operation.getNamespace();
-    final String evaluatorId = operation.getEvalId();
+    final String evaluatorId = operation.getEvalId().get();
 
     switch (namespace) {
     case NAMESPACE_SERVER:
@@ -461,7 +461,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   private void executeStartOperation(final PlanOperation startOp) {
-    final String planContextId = startOp.getEvalId();
+    final String planContextId = startOp.getEvalId().get();
     final Optional<ActiveContext> context = executingPlan.getAddedWorkerContext(planContextId);
 
     if (context.isPresent()) {
@@ -478,7 +478,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   private void executeStopOperation(final PlanOperation stopOp) {
-    final String contextId = stopOp.getEvalId();
+    final String contextId = stopOp.getEvalId().get();
 
     // put metadata before trying to close worker task
     executingPlan.putWorkerTaskControlOp(contextId, stopOp);
@@ -487,7 +487,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       LOG.log(Level.INFO, "STOP: worker {0}", contextId);
 
     } else {
-      executingPlan.removeWorkerTaskControlOp(stopOp.getEvalId());
+      executingPlan.removeWorkerTaskControlOp(stopOp.getEvalId().get());
       throw new RuntimeException("There's no worker evaluator to stop");
     }
   }

@@ -19,13 +19,15 @@ import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanOperation;
 import edu.snu.cay.services.em.plan.api.TransferStep;
-import edu.snu.cay.services.em.plan.impl.EMPlanOperation;
 import edu.snu.cay.utils.DAG;
 import edu.snu.cay.utils.DAGImpl;
 
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.services.em.plan.impl.EMPlanOperation.*;
+import static edu.snu.cay.dolphin.async.plan.DolphinPlanOperation.*;
 
 /**
  * A plan implementation that supports EM's default plan operations and Dolphin-specific plan operations.
@@ -288,13 +290,13 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToDel = entry.getValue();
         for (final String evalToDel : evalsToDel) {
-          final PlanOperation delOperation = new EMPlanOperation(namespace, EMPlanOperation.DEL_OP, evalToDel);
+          final PlanOperation delOperation = new DeletePlanOperation(namespace, evalToDel);
           delOperations.put(evalToDel, delOperation);
           dag.addVertex(delOperation);
 
           if (namespace.equals(Constants.NAMESPACE_WORKER)) {
             final PlanOperation stopOperation
-                = new DolphinPlanOperation(namespace, DolphinPlanOperation.STOP_OP, evalToDel);
+                = new StopPlanOperation(namespace, evalToDel);
             stopOperations.put(evalToDel, stopOperation);
             dag.addVertex(stopOperation); // do not add 'Stop->Del' edge, because we assume Delete always involves Moves
           }
@@ -308,13 +310,13 @@ public final class PlanImpl implements Plan {
         final String namespace = entry.getKey();
         final Set<String> evalsToAdd = entry.getValue();
         for (final String evalToAdd : evalsToAdd) {
-          final PlanOperation addOperation = new EMPlanOperation(namespace, EMPlanOperation.ADD_OP, evalToAdd);
+          final PlanOperation addOperation = new AddPlanOperation(namespace, evalToAdd);
           addOperations.put(evalToAdd, addOperation);
           dag.addVertex(addOperation);
 
           if (namespace.equals(Constants.NAMESPACE_WORKER)) {
             final PlanOperation startOperation
-                = new DolphinPlanOperation(namespace, DolphinPlanOperation.START_OP, evalToAdd);
+                = new StartPlanOperation(namespace, evalToAdd);
             startOperations.put(evalToAdd, startOperation);
             dag.addVertex(startOperation); // do not add 'Add->Start' edge, because we assume Add always involves Moves
           }
@@ -328,7 +330,7 @@ public final class PlanImpl implements Plan {
         final List<TransferStep> transferSteps = entry.getValue();
 
         for (final TransferStep transferStep : transferSteps) {
-          final PlanOperation moveOperation = new EMPlanOperation(namespace, transferStep);
+          final PlanOperation moveOperation = new MovePlanOperation(namespace, transferStep);
           moveOperations.add(moveOperation);
           dag.addVertex(moveOperation);
         }

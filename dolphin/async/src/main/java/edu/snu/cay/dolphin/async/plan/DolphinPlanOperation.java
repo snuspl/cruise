@@ -24,76 +24,144 @@ import org.apache.reef.util.Optional;
  * Regarding to EM's ADD/DEL, Dolphin's worker tasks should be controlled
  * to prevent them from running task iterations with empty dataset.
  */
-public final class DolphinPlanOperation implements PlanOperation {
+final class DolphinPlanOperation {
   static final String START_OP = "START"; // start worker task
   static final String STOP_OP = "STOP"; // stop worker task
 
-  private final String namespace;
-  private final String opType;
-  private final String evalId;
-
   /**
-   * A constructor for START and STOP operations.
-   * @param namespace a namespace of operation
-   * @param opType a type of operation
-   * @param evalId a target evaluator id
+   * Should not be instantiated.
    */
-  public DolphinPlanOperation(final String namespace, final String opType, final String evalId) {
-    this.namespace = namespace;
-    this.opType = opType;
-    this.evalId = evalId;
+  private DolphinPlanOperation() {
+
   }
 
-  @Override
-  public String getNamespace() {
-    return namespace;
-  }
+  static final class StartPlanOperation implements PlanOperation {
+    private final String namespace;
+    private final String evalId;
 
-  @Override
-  public String getOpType() {
-    return opType;
-  }
-
-  @Override
-  public String getEvalId() {
-    return evalId;
-  }
-
-  @Override
-  public Optional<TransferStep> getTransferStep() {
-    return Optional.empty();
-  }
-
-  @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
+    /**
+     * A constructor for START operation.
+     *
+     * @param namespace a namespace of operation
+     * @param evalId    a target evaluator id
+     */
+    StartPlanOperation(final String namespace, final String evalId) {
+      this.namespace = namespace;
+      this.evalId = evalId;
     }
 
-    final DolphinPlanOperation other = (DolphinPlanOperation) obj;
+    @Override
+    public String getNamespace() {
+      return namespace;
+    }
 
-    return namespace.equals(other.namespace) &&
-        opType.equals(other.opType) &&
-        evalId.equals(other.evalId);
+    @Override
+    public String getOpType() {
+      return START_OP;
+    }
+
+    @Override
+    public Optional<String> getEvalId() {
+      return Optional.of(evalId);
+    }
+
+    @Override
+    public Optional<TransferStep> getTransferStep() {
+      return Optional.empty();
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      final StartPlanOperation that = (StartPlanOperation) o;
+
+      return namespace.equals(that.namespace) && evalId.equals(that.evalId);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = namespace.hashCode();
+      result = 31 * result + evalId.hashCode();
+      return result;
+    }
+
+    @Override
+    public String toString() {
+      return "StartPlanOperation{" +
+          "namespace='" + namespace + '\'' +
+          ", evalId='" + evalId + '\'' +
+          '}';
+    }
   }
 
-  @Override
-  public int hashCode() {
-    int result = namespace.hashCode();
-    result = 31 * result + opType.hashCode();
-    result = 31 * result + evalId.hashCode();
-    return result;
-  }
+  static final class StopPlanOperation implements PlanOperation {
+    private final String namespace;
+    private final String evalId;
 
-  @Override
-  public String toString() {
-    return "DolphinPlanOperation{" +
-        "namespace='" + namespace + '\'' +
-        ", opType=" + opType +
-        ", evalId=" + evalId +
-        '}';
+    /**
+     * A constructor for STOP operation.
+     *
+     * @param namespace a namespace of operation
+     * @param evalId    a target evaluator id
+     */
+    StopPlanOperation(final String namespace, final String evalId) {
+      this.namespace = namespace;
+      this.evalId = evalId;
+    }
+
+    @Override
+    public String getNamespace() {
+      return namespace;
+    }
+
+    @Override
+    public String getOpType() {
+      return STOP_OP;
+    }
+
+    @Override
+    public Optional<String> getEvalId() {
+      return Optional.of(evalId);
+    }
+
+    @Override
+    public Optional<TransferStep> getTransferStep() {
+      return Optional.empty();
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      final StopPlanOperation that = (StopPlanOperation) o;
+
+      return namespace.equals(that.namespace) && evalId.equals(that.evalId);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = namespace.hashCode();
+      result = 31 * result + evalId.hashCode();
+      return result;
+    }
+
+    @Override
+    public String toString() {
+      return "StopPlanOperation{" +
+          "namespace='" + namespace + '\'' +
+          ", evalId='" + evalId + '\'' +
+          '}';
+    }
   }
 }

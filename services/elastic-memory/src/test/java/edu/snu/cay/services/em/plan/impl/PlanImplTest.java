@@ -317,7 +317,7 @@ public final class PlanImplTest {
     for (final PlanOperation operation : firstOpsToExec) {
       assertEquals(EMPlanOperation.ADD_OP, operation.getOpType());
 
-      if (operation.getEvalId().equals(EVAL_PREFIX + 0)) {
+      if (operation.getEvalId().get().equals(EVAL_PREFIX + 0)) {
         firstAdd = operation;
       } else {
         secondAdd = operation;
