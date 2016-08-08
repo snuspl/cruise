@@ -265,6 +265,12 @@ public final class ClockManager {
       case TickMsg:
         tickClock(workerId);
         break;
+      case NetworkWaitingTimeMsg:
+        LOG.entering(ClockManager.MessageHandler.class.getSimpleName(), "onNext");
+        LOG.log(Level.INFO, "Total network waiting time for clock of {0}: {1}",
+            new Object[]{workerId, rcvMsg.getNetworkWaitingTimeMsg()});
+        LOG.exiting(ClockManager.MessageHandler.class.getSimpleName(), "onNext");
+        break;
       default:
         throw new RuntimeException("Unexpected message type: " + rcvMsg.getType().toString());
       }

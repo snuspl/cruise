@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
+import com.google.common.util.concurrent.AtomicDouble;
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
@@ -60,6 +61,7 @@ public class SSPWorkerClockTest {
   private final int staleness = 4;
   private final int initialWorkerClock = 10;
   private final int initialGlobalMinimumClock = 10;
+  private final double expectedNetWorkWaitingTime = 3;
 
   private AggregationSlave mockAggregationSlave;
   private AggregationMaster mockAggregationMaster;
@@ -67,6 +69,7 @@ public class SSPWorkerClockTest {
   private SSPWorkerClock sspWorkerClock;
   private SSPWorkerClock.MessageHandler sspWorkerClockMessageHandler;
   private AtomicInteger numberOfTickMsgCalls;
+  private AtomicDouble networkWaitingTime;
 
   @Before
   public void setup() throws InjectionException {
@@ -84,6 +87,7 @@ public class SSPWorkerClockTest {
     this.sspWorkerClockMessageHandler = injector.getInstance(SSPWorkerClock.MessageHandler.class);
     this.codec = injector.getInstance(ClockMsgCodec.class);
     this.numberOfTickMsgCalls = new AtomicInteger(0);
+    this.networkWaitingTime = new AtomicDouble(0.0);
 
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
@@ -97,6 +101,8 @@ public class SSPWorkerClockTest {
           sspWorkerClockMessageHandler.onNext(aggregationMessage);
         } else if (sendMsg.getType() == ClockMsgType.TickMsg) {
           numberOfTickMsgCalls.incrementAndGet();
+        } else if (sendMsg.getType() == ClockMsgType.NetworkWaitingTimeMsg) {
+          networkWaitingTime.set(expectedNetWorkWaitingTime);
         }
         return null;
       }).when(mockAggregationSlave).send(anyString(), anyObject());
@@ -232,6 +238,18 @@ public class SSPWorkerClockTest {
     for (final Runnable thread : threads) {
       threadLatchMap.get(thread).await();
     }
+  }
+
+  /**
+   * Tests whether sendClockNetworkWaitingTime() sends correct message.
+   */
+  @Test
+  public void testSendClockNetworkWaitingTime() {
+    sspWorkerClock.initialize();
+    assertTrue(networkWaitingTime.doubleValue() == 0.0);
+    // check whether sendClockNetworkWaitingTime() sends NetworkWaitingTimeMsg
+    sspWorkerClock.sendClockNetworkWaitingTime();
+    assertTrue(networkWaitingTime.doubleValue() == expectedNetWorkWaitingTime);
   }
 
   private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
