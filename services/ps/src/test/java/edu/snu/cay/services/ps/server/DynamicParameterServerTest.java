@@ -117,7 +117,7 @@ public final class DynamicParameterServerTest {
 
     // EM's router should be initialized explicitly
     final OperationRouter router = injector.getInstance(OperationRouter.class);
-    router.initialize("DUMMY");
+    router.triggerInitialization();
 
     mockSender = injector.getInstance(ServerSideReplySender.class);
     server = injector.getInstance(DynamicParameterServer.class);
