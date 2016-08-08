@@ -25,7 +25,7 @@ import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -36,7 +36,6 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.nio.ByteBuffer;
 import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
@@ -63,6 +62,7 @@ public final class AsyncParameterWorkerTest {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(ParameterWorkerTestUtil.PULL_RETRY_TIMEOUT_MS))
+        .bindNamedParameter(PSParameters.KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(WorkerHandler.class, AsyncParameterWorker.class)
         .bindImplementation(ParameterWorker.class, AsyncParameterWorker.class)
         .build();
@@ -75,7 +75,6 @@ public final class AsyncParameterWorkerTest {
     injector.bindVolatileInstance(WorkerMsgSender.class, mockSender);
     injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
     injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
-    injector.bindVolatileParameter(PSParameters.KeyCodecName.class, new IntegerCodec());
 
     // pull messages to asynchronous parameter worker should return values s.t. key == value
     doAnswer(invocationOnMock -> {
@@ -115,7 +114,6 @@ public final class AsyncParameterWorkerTest {
    * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
    * Thus, we verify the validity of the result by simply checking whether pulled values are as expected or not.
    */
-
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
@@ -129,7 +127,6 @@ public final class AsyncParameterWorkerTest {
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
    */
-
   @Test
   public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException,
           ExecutionException, NetworkException {
@@ -204,21 +201,5 @@ public final class AsyncParameterWorkerTest {
 
     assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject());
-
-  }
-
-  private final class IntegerCodec implements Codec<Integer> {
-    @Override
-    public Integer decode(final byte[] bytes) {
-      final ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-      return byteBuffer.getInt();
-    }
-
-    @Override
-    public byte[] encode(final Integer integer) {
-      final ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.SIZE / Byte.SIZE);
-      byteBuffer.putInt(integer);
-      return byteBuffer.array();
-    }
   }
 }

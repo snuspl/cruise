@@ -33,6 +33,7 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,10 +42,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A SSP Parameter Server worker that interacts with servers.
+ * An SSP Parameter Server worker that interacts with servers.
  * A single instance of this class can be used by more than one thread safely, if and only if
  * the Codec classes are thread-safe.
  */
+@NotThreadSafe
 @EvaluatorSide
 public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
   private static final Logger LOG = Logger.getLogger(SSPParameterWorker.class.getName());
@@ -190,6 +192,9 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     threads[threadId].enqueue(new PushOp(encodedKey, preValue, threadId));
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public V pull(final K key) {
     try {
@@ -207,6 +212,9 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     return pullOp.get();
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public List<V> pull(final List<K> keys) {
     // transform keys to encoded keys

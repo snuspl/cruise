@@ -297,7 +297,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           " Response for the key may have arrived earlier from another server", key);
     }
   }
-
+  /**
+   * Handles incoming pull rejects, by rejecting the future.
+   * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
+   */
   @Override
   public void processPullReject(final K key) {
     final PullFuture<V> future = pendingPulls.get(key);
