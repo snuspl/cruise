@@ -111,6 +111,7 @@ public final class PlanImplTest {
   /**
    * Tests whether the plan builder detects a violation in the plans.
    */
+  // TODO #725: remove duplicate code with the default one of EM
   @Test
   public void testInvalidPlans() {
     PlanImpl.Builder planBuilder;

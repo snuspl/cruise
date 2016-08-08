@@ -33,6 +33,7 @@ import static edu.snu.cay.dolphin.async.plan.DolphinPlanOperation.*;
  * A plan implementation that supports EM's default plan operations and Dolphin-specific plan operations.
  * The builder checks the feasibility of plan and dependencies between detailed steps.
  */
+// TODO #725: clean up duplicate code with the plan implementation of EM package
 public final class PlanImpl implements Plan {
   private static final Logger LOG = Logger.getLogger(PlanImpl.class.getName());
 
