@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.integration;
 
 import edu.snu.cay.dolphin.async.examples.addinteger.AddIntegerREEF;
-import edu.snu.cay.dolphin.async.optimizer.AsyncDolphinPlanExecutor;
+import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.utils.TestLoggingConfig;
 import org.apache.reef.client.LauncherStatus;

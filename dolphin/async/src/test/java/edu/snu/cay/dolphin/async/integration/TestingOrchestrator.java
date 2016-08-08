@@ -26,6 +26,8 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
 import edu.snu.cay.services.em.plan.api.TransferStep;
+import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -152,6 +154,16 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     isPlanExecuting.set(false);
 
     callsMade++;
+  }
+
+  @Override
+  public void onRunningTask(final RunningTask task) {
+    planExecutor.onRunningTask(task);
+  }
+
+  @Override
+  public void onCompletedTask(final CompletedTask task) {
+    planExecutor.onCompletedTask(task);
   }
 
   /**

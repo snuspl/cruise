@@ -283,7 +283,9 @@ final class SynchronizationManager {
         case STATE_RUN:
           if (localState.equals(STATE_RUN)) {
             // worker finishes their main iteration and is waiting for response to enter the cleanup stage
-            waitingCleanup.set(true);
+            if (waitingCleanup.compareAndSet(false, true)) {
+              LOG.log(Level.INFO, "One of worker starts waiting for cleanup");
+            }
             blockWorker(workerId);
           } else if (localState.equals(STATE_INIT)) {
             // let added evaluators skip the initial barriers

@@ -24,6 +24,8 @@ import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -171,6 +173,16 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     } catch (final InterruptedException | ExecutionException e) {
       LOG.log(Level.SEVERE, "Exception while executing optimization", e);
     }
+  }
+
+  @Override
+  public void onRunningTask(final RunningTask task) {
+    planExecutor.onRunningTask(task);
+  }
+
+  @Override
+  public void onCompletedTask(final CompletedTask task) {
+    planExecutor.onCompletedTask(task);
   }
 
   @Override

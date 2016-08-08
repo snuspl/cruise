@@ -15,20 +15,19 @@
  */
 package edu.snu.cay.services.em.plan.api;
 
+import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.RunningTask;
 
 import java.util.concurrent.Future;
 
 /**
  * A plan executor interface.
- * Plan execution returns a Future. Executors should start new thread(s) to execute within and update the Future
- * when complete.
  */
 public interface PlanExecutor {
 
   /**
-   * Execute a plan.
-   * Note, no two plans will be executed concurrently. This is guaranteed by the OptimizationOrchestrator.
+   * Execute a plan with new thread and return a future.
+   * Note that in default it does not support concurrent execution of multiple plans.
    *
    * @param plan to execute
    * @return a Future that summarizes a plan execution when it has finished
@@ -36,9 +35,15 @@ public interface PlanExecutor {
   Future<PlanResult> execute(Plan plan);
 
   /**
-   * Receive a RunningTask event from the Dolphin Runtime.
+   * Receive a RunningTask event from the Runtime.
    * Each PlanExecutor should implement this handler to keep track of newly submitted tasks.
    * @param task the running task
    */
   void onRunningTask(RunningTask task);
+
+  /**
+   * Receive a CompletedTask event from the Runtime.
+   * @param task the completed task
+   */
+  void onCompletedTask(CompletedTask task);
 }
