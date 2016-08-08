@@ -11,14 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import sys
 import json
+import os
+import re
 import sqlite3
+import sys
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
 from plotly.tools import get_embed
 
-print("building server...")
+print("Flask script: Building server...")
 
 #
 # Configurations
@@ -67,45 +68,45 @@ def close_db(error):
 def main():
     db = get_db()
     if request.method == 'POST':
-        # update database with new metrics
-        id = request.form['id'];
-        metrics = json.loads(request.form['metrics'])
-        # app-specific metrics
-        ml_metrics = metrics.pop('metrics')
-        if ml_metrics is not None:
-            db.execute('create table if not exists metrics (' 
-                    + ' varchar(255) not null,'.join(ml_metrics['data'].keys()) 
-                    + ' varchar(255) not null)')
-            db.execute('insert into metrics values (' 
-                    + ', '.join(str(i) for i in ml_metrics['data'].values()) 
-                    + ')')
-        # other metrics
-        query = list()
-        if id.startswith('Worker'):
-            query.append('insert into workers values (')
-        else:
-            query.append('insert into servers values (')
-        id = re.sub(r'\D', '', id)
-        query.append(id + ', ' + ', '.join(str(i) for i in metrics.values()))
-        query.append(')')
-        db.execute(''.join(query))
-        db.commit()
-        return 'accept'
+        try:
+            # update database with new metrics
+            id = request.form['id'];
+            metrics = json.loads(request.form['metrics'])
+            # app-specific metrics
+            ml_metrics = metrics.pop('metrics')
+            if ml_metrics is not None:
+                db.execute('create table if not exists metrics ('
+                        + ' varchar(255) not null,'.join(ml_metrics['data'].keys())
+                        + ' varchar(255) not null)')
+                db.execute('insert into metrics values ('
+                        + ', '.join(str(i) for i in ml_metrics['data'].values())
+                        + ')')
+            # other metrics
+            query = list()
+            if id.startswith('Worker'):
+                query.append('insert into workers values (')
+            else:
+                query.append('insert into servers values (')
+            id = re.sub(r'\D', '', id)
+            query.append(id + ', ' + ', '.join(str(i) for i in metrics.values()))
+            query.append(')')
+            db.execute(''.join(query))
+            db.commit()
+            return 'accept'
+        except:
+            return 'error'
     else:
         # get metrics from database
         cur = db.execute('select * from workers')
         worker = cur.fetchall()
-        print(worker)
         cur = db.execute('select * from servers')
         server = cur.fetchall()
-        print(server)
         cur = db.execute('select name from sqlite_master where type=\'table\' and name=\'metrics\';')
         metrics_list = cur.fetchall()
         if not metrics_list:
             return render_template('main.html', workers=worker, servers=server)
         cur = db.execute('select * from metrics')
         metric = cur.fetchall()
-        print(metric)
         return render_template('main.html', workers=worker, servers=server, metrics=metric)
 
 #

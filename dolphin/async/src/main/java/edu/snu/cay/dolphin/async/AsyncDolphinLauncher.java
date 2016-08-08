@@ -72,13 +72,16 @@ import org.apache.reef.wake.remote.impl.Tuple2;
 
 import java.io.*;
 import java.net.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static org.apache.commons.net.ntp.NtpUtils.getHostAddress;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 /**
  * Main entry point for launching a {@code dolphin-async} application.
@@ -194,38 +197,17 @@ public final class AsyncDolphinLauncher {
       final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
 
-      // check dashboard availability and add configuration
+      // run dashboard and add configuration
       final int port = basicParameterInjector.getNamedInstance(DashboardPort.class);
-      final String hostAddress = getHostAddress(port);
+      String hostAddress = getHostAddress(port);
+      if (!hostAddress.isEmpty()) {
+        if (runDashboardServer(port) == -1) {
+          hostAddress = "";
+        }
+      }
       final Configuration dashboardConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(DashboardHostAddress.class, hostAddress)
           .build();
-      if (!hostAddress.isEmpty()) {
-        LOG.log(Level.INFO, "Now launch dashboard server");
-
-/*
-        final String currentPath = System.getProperty("user.dir");
-        System.out.println(currentPath);
-        final int index = currentPath.indexOf("cay");
-        //if (index < 0) ; //throw exception
-        final String resourcePath = currentPath.substring(0, index + 3) +
-            "/dolphin/async/src/main/resources/dashboard/dashboard.py";
-        System.out.println(resourcePath);
-        final ProcessBuilder pb = new ProcessBuilder("python", resourcePath, String.valueOf(port)).inheritIO();
-*/
-
-        final String path = AsyncDolphinLauncher.class.getClassLoader().getResource("dashboard/dashboard.py").getPath();
-        System.out.println("path: " + path);
-        final ProcessBuilder pb = new ProcessBuilder("python", path, String.valueOf(port)).inheritIO();
-
-        final Process p = pb.start();
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-          @Override
-          public void run() {
-            p.destroy();
-          }
-        });
-      }
 
       final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
           Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
@@ -440,8 +422,6 @@ public final class AsyncDolphinLauncher {
     if (hostAddress.isEmpty()) {
       LOG.log(Level.WARNING, "Fail to find local host address");
       return "";
-    } else {
-      LOG.log(Level.INFO, "HostAddress found: " + hostAddress);
     }
     // Check if the port number is available.
     try {
@@ -455,6 +435,54 @@ public final class AsyncDolphinLauncher {
       LOG.log(Level.INFO, "Invalid port number");
       return "";
     }
+  }
+
+  private static int runDashboardServer(final int port) {
+    LOG.log(Level.INFO, "Now launch dashboard server");
+
+    final Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir") + "/dashboard");
+    // Copy the dashboard python script to /tmp
+    try {
+      final URI resource = AsyncDolphinLauncher.class.getResource("").toURI();
+      final FileSystem fileSystem = FileSystems.newFileSystem(
+          resource,
+          Collections.<String, String>emptyMap()
+      );
+      final Path jarPath = fileSystem.getPath("/dashboard");
+      Files.walkFileTree(jarPath, new SimpleFileVisitor<Path>() {
+        @Override
+        public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
+          Files.createDirectories(tmpPath.resolve(jarPath.relativize(dir).toString()));
+          return FileVisitResult.CONTINUE;
+        }
+        @Override
+        public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+          Files.copy(file, tmpPath.resolve(jarPath.relativize(file).toString()), REPLACE_EXISTING);
+          return FileVisitResult.CONTINUE;
+        }
+      });
+    } catch (Exception e) {
+      LOG.log(Level.WARNING, "Copy failure: " + e);
+      return -1;
+    }
+    // Launch server
+    try {
+      final String tmpScript = tmpPath.toString() + "/dashboard.py";
+      final ProcessBuilder pb = new ProcessBuilder("python", tmpScript, String.valueOf(port)).inheritIO();
+
+      final Process p = pb.start();
+      Runtime.getRuntime().addShutdownHook(new Thread() {
+        @Override
+        public void run() {
+          p.destroy();
+        }
+      });
+    } catch (Exception e) {
+      LOG.log(Level.WARNING, "Launch failure: " + e);
+      return -1;
+    }
+    // Return 0 on launch success.
+    return 0;
   }
 
   private static AggregationConfiguration.Builder getAggregationConfigurationDefaultBuilder() {
