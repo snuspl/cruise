@@ -283,6 +283,15 @@ public final class SampleOptimizers {
         return planBuilder.build();
       }
 
+      final List<EvaluatorParameters> destNSEvalParamsList = evalParamsMap.get(destNamespace);
+      if (destNSEvalParamsList == null) {
+        LOG.log(Level.INFO, "There's no parameters for destination namespace: {0}", destNamespace);
+        return planBuilder.build();
+      }
+
+      final int numAvailableExtraEvals
+          = availableEvaluators - (srcNSEvalParamsList.size() + destNSEvalParamsList.size());
+
       // pick the very first evaluator that has any data block in it to be the evaluator to be deleted
       for (final EvaluatorParameters srcNSEvalParams : srcNSEvalParamsList) {
         final int numBlocks = srcNSEvalParams.getDataInfo().getNumBlocks();
@@ -312,11 +321,6 @@ public final class SampleOptimizers {
       String destNSEvalToMove = null;
       int destNSBlocksToMove = 0;
 
-      final List<EvaluatorParameters> destNSEvalParamsList = evalParamsMap.get(destNamespace);
-      if (destNSEvalParamsList == null) {
-        LOG.log(Level.INFO, "There's no parameters for destination namespace: {0}", destNamespace);
-        return planBuilder.build();
-      }
       for (final EvaluatorParameters destNSEvalParams : destNSEvalParamsList) {
         final int numBlocks = destNSEvalParams.getDataInfo().getNumBlocks();
         if (numBlocks > 1) {
@@ -333,8 +337,6 @@ public final class SampleOptimizers {
 
       final String destNSEvalToAdd = NEW_EVAL_PREFIX + PLAN_CONTEXT_ID_COUNTER.getAndIncrement();
 
-      final int numAvailableExtraEvals
-          = availableEvaluators - (srcNSEvalParamsList.size() + destNSEvalParamsList.size());
       return planBuilder
           .setNumAvailableExtraEvaluators(numAvailableExtraEvals)
           .addEvaluatorToDelete(srcNamespace, srcNSEvalToDel)

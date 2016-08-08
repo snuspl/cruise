@@ -92,6 +92,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
 
+    final int numAvailableExtraEvals = availableEvaluators - (serverParams.size() + workerParams.size());
+
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
             param -> ((ServerMetrics) param.getMetrics()).getAvgPullProcessingTime(),
@@ -134,7 +136,6 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     generatePlanForOptimalConfig(Constants.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
         workerParams.size(), numDataBlocks, planBuilder);
 
-    final int numAvailableExtraEvals = availableEvaluators - (serverParams.size() + workerParams.size());
     planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals);
 
     return planBuilder.build();
