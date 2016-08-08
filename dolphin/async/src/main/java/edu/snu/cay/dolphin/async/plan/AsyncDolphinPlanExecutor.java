@@ -469,8 +469,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       LOG.log(Level.FINE, "START: worker {0}", contextId);
 
       // submit task
-      asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker(true).onNext(context.get());
       executingPlan.putWorkerTaskControlOp(contextId, startOp);
+      asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker(true).onNext(context.get());
 
     } else {
       throw new RuntimeException("There's no worker evaluator to start");
@@ -571,8 +571,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
 
     /**
-     * Get worker task control (START/STOP) operations that id of context
-     * on which the task is running is {@code contextId}.
+     * Remove and get worker task control (START/STOP) operations of {@code contextId}.
+     * The {@code contextId} is the id of context on which the task is running.
      * @param contextId a context id
      * @return an optional with PlanOperation
      */
