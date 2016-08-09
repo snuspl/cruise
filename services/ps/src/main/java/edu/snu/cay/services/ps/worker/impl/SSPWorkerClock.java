@@ -19,7 +19,6 @@ import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
-import edu.snu.cay.services.ps.avro.NetworkWaitingTimeMsg;
 import edu.snu.cay.services.ps.avro.RequestInitClockMsg;
 import edu.snu.cay.services.ps.avro.TickMsg;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
@@ -33,6 +32,8 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A worker clock of SSP model.
@@ -43,6 +44,7 @@ import java.util.concurrent.CountDownLatch;
 @EvaluatorSide
 @Unit
 public final class SSPWorkerClock implements WorkerClock {
+  private static final Logger LOG = Logger.getLogger(SSPWorkerClock.class.getName());
 
   private final AggregationSlave aggregationSlave;
 
@@ -92,11 +94,11 @@ public final class SSPWorkerClock implements WorkerClock {
     final byte[] data = codec.encode(avroClockMsg);
     final long beginTime = System.currentTimeMillis();
     aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
-    clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
 
     // wait until to get current global minimum clock and initial worker clock
     try {
       initLatch.await();
+      clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
     } catch (final InterruptedException e) {
       throw new RuntimeException("Unexpected exception", e);
     }
@@ -119,22 +121,15 @@ public final class SSPWorkerClock implements WorkerClock {
   @Override
   public synchronized void waitIfExceedingStalenessBound() throws InterruptedException {
     while (workerClock > globalMinimumClock + staleness) {
+      final long beginTime = System.currentTimeMillis();
       wait();
+      clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
     }
   }
 
   @Override
-  public void sendClockNetworkWaitingTime() {
-    final NetworkWaitingTimeMsg networkWaitingTimeMsg
-        = NetworkWaitingTimeMsg.newBuilder()
-            .setTotalNetworkWaitingTime(clockNetworkWaitingTime / 1000.0D).build();
-    final AvroClockMsg avroClockMsg =
-        AvroClockMsg.newBuilder()
-            .setType(ClockMsgType.NetworkWaitingTimeMsg)
-            .setNetworkWaitingTimeMsg(networkWaitingTimeMsg)
-            .build();
-    final byte[] data = codec.encode(avroClockMsg);
-    aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+  public void recordClockNetworkWaitingTime() {
+    LOG.log(Level.INFO, "Total network waiting time for clock is {0}", clockNetworkWaitingTime);
   }
 
   @Override

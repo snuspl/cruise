@@ -47,7 +47,7 @@ public final class NullWorkerClock implements WorkerClock {
   }
 
   @Override
-  public void sendClockNetworkWaitingTime() {
+  public void recordClockNetworkWaitingTime() {
 
   }
 

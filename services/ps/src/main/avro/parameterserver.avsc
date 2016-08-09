@@ -258,20 +258,6 @@
   "fields": []
 },
 
-/**
- * This message is sent from WorkerClock to ClockManager to notify the total network waiting time of clock messages.
- * The time unit is second.
- */
-{
-  "namespace": "edu.snu.cay.services.ps.avro",
-  "type": "record",
-  "name": "NetworkWaitingTimeMsg",
-  "fields":
-  [
-     {"name": "totalNetworkWaitingTime", "type": "double"}
-  ]
-},
-
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
@@ -282,13 +268,11 @@
      "type":
        {"type": "enum",
         "name": "ClockMsgType",
-        "symbols": ["BroadcastMinClockMsg", "RequestInitClockMsg", "ReplyInitClockMsg",
-         "TickMsg", "NetworkWaitingTimeMsg"]}},
+        "symbols": ["BroadcastMinClockMsg", "RequestInitClockMsg", "ReplyInitClockMsg", "TickMsg"]}},
     {"name": "broadcastMinClockMsg", "type": ["null", "BroadcastMinClockMsg"], "default": null},
     {"name": "requestInitClockMsg", "type": ["null", "RequestInitClockMsg"], "default": null},
     {"name": "replyInitClockMsg", "type": ["null", "ReplyInitClockMsg"], "default": null},
-    {"name": "tickMsg", "type": ["null", "TickMsg"], "default": null},
-    {"name": "networkWaitingTimeMsg", "type": ["null", "NetworkWaitingTimeMsg"], "default": null}
+    {"name": "tickMsg", "type": ["null", "TickMsg"], "default": null}
   ]
 }
 ]

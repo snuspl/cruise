@@ -95,8 +95,8 @@ final class AsyncWorkerTask implements Task {
   final class CloseEventHandler implements EventHandler<CloseEvent> {
     @Override
     public void onNext(final CloseEvent closeEvent) {
-      // send total network waiting time of worker clock when the worker is closed
-      workerClock.sendClockNetworkWaitingTime();
+      // record total network waiting time of worker clock when the worker is closed
+      workerClock.recordClockNetworkWaitingTime();
       aborted = true;
     }
   }
