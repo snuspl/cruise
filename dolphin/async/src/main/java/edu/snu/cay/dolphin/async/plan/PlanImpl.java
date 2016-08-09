@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.plan.impl;
+package edu.snu.cay.dolphin.async.plan;
 
+import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanOperation;
 import edu.snu.cay.services.em.plan.api.TransferStep;
@@ -26,16 +27,20 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static edu.snu.cay.services.em.plan.impl.EMPlanOperation.*;
+import static edu.snu.cay.dolphin.async.plan.DolphinPlanOperation.*;
 
 /**
- * A plan implementation for EM's default plan operations.
+ * A plan implementation that supports EM's default plan operations and Dolphin-specific plan operations.
  * The builder checks the feasibility of plan and dependencies between detailed steps.
  */
+// TODO #725: clean up duplicate code with the plan implementation of EM package
 public final class PlanImpl implements Plan {
   private static final Logger LOG = Logger.getLogger(PlanImpl.class.getName());
 
   private final Map<String, Set<String>> evaluatorsToAdd;
+  private final Set<String> workersToStart;
   private final Map<String, Set<String>> evaluatorsToDelete;
+  private final Set<String> workersToStop;
   private final Map<String, List<TransferStep>> allTransferSteps;
 
   private final DAG<PlanOperation> dependencyGraph;
@@ -47,7 +52,11 @@ public final class PlanImpl implements Plan {
                    final Map<String, List<TransferStep>> allTransferSteps,
                    final DAG<PlanOperation> dependencyGraph) {
     this.evaluatorsToAdd = evaluatorsToAdd;
+    this.workersToStart = evaluatorsToAdd.containsKey(Constants.NAMESPACE_WORKER) ?
+        evaluatorsToAdd.get(Constants.NAMESPACE_WORKER) : Collections.emptySet();
     this.evaluatorsToDelete = evaluatorsToDelete;
+    this.workersToStop = evaluatorsToDelete.containsKey(Constants.NAMESPACE_WORKER) ?
+        evaluatorsToDelete.get(Constants.NAMESPACE_WORKER) : Collections.emptySet();
     this.allTransferSteps = allTransferSteps;
     this.dependencyGraph = dependencyGraph;
     this.initialOps = new HashSet<>(dependencyGraph.getRootVertices());
@@ -63,6 +72,8 @@ public final class PlanImpl implements Plan {
     for (final List<TransferStep> transferSteps : allTransferSteps.values()) {
       numTotalOps += transferSteps.size();
     }
+    numTotalOps += workersToStart.size() + workersToStop.size();
+
     this.numTotalOperations = numTotalOps;
   }
 
@@ -116,18 +127,14 @@ public final class PlanImpl implements Plan {
 
   @Override
   public String toString() {
-    final StringBuilder sb = new StringBuilder("PlanImpl{");
-    for (final String key : evaluatorsToAdd.keySet()) {
-      sb.append("evaluatorsToAdd=(").append(key).append(',').append(evaluatorsToAdd.get(key)).append(')');
-    }
-    for (final String key : evaluatorsToDelete.keySet()) {
-      sb.append("evaluatorsToDelete=(").append(key).append(',').append(evaluatorsToDelete.get(key)).append(')');
-    }
-    for (final String key : allTransferSteps.keySet()) {
-      sb.append("TransferSteps=(").append(key).append(',').append(allTransferSteps.get(key)).append(')');
-    }
-    sb.append('}');
-    return sb.toString();
+    return "PlanImpl{" +
+        "evaluatorsToAdd=" + evaluatorsToAdd +
+        ", workersToStart=" + workersToStart +
+        ", evaluatorsToDelete=" + evaluatorsToDelete +
+        ", workersToStop=" + workersToStop +
+        ", allTransferSteps=" + allTransferSteps +
+        ", numTotalOperations=" + numTotalOperations +
+        '}';
   }
 
   public static PlanImpl.Builder newBuilder() {
@@ -136,12 +143,15 @@ public final class PlanImpl implements Plan {
 
   /**
    * A builder of PlanImpl.
-   * Before instantiating a PlanImpl object, it checks the feasibility of plan and
-   * constructs a dependency graph between steps, based on the following rules:
+   * Before instantiating a PlanImpl object, it checks the feasibility of plan.
+   * If the given plan operations are feasible it builds a Plan,
+   * constructing a dependency graph between steps, based on the following rules:
    *   1. Evaluators must be added before they participate in transfers. (add -> move)
    *   2. Evaluators must finish all transfers which they are a part of before they are deleted. (move -> del)
    *   3. One evaluator must be deleted before adding a new evaluator,
    *     because we are using the whole available resources. (del -> add)
+   *   4. Tasks in newly added evaluators should start after migrating initial data (move -> start)
+   *   5. Tasks in evaluators to be deleted should stop before migrating remaining data (stop -> move)
    */
   public static final class Builder implements org.apache.reef.util.Builder<PlanImpl> {
     private final Map<String, Set<String>> evaluatorsToAdd = new HashMap<>();
@@ -156,7 +166,7 @@ public final class PlanImpl implements Plan {
 
     /**
      * Sets the limitation on the number of extra evaluators to use in plan execution.
-     * It not specified, it assumes that there's no resource limit.
+     * If not specified, it assumes that there's no resource limit.
      * @param numAvailableExtraEvaluators the number of extra evaluators
      * @return the builder
      */
@@ -274,8 +284,9 @@ public final class PlanImpl implements Plan {
 
       final DAG<PlanOperation> dag = new DAGImpl<>();
 
-      // add vertices of Delete
+      // add vertices of Delete and Stop
       final Map<String, PlanOperation> delOperations = new HashMap<>();
+      final Map<String, PlanOperation> stopOperations = new HashMap<>();
       for (final Map.Entry<String, Set<String>> entry : namespaceToEvalsToDel.entrySet()) {
         final String namespace = entry.getKey();
         final Set<String> evalsToDel = entry.getValue();
@@ -283,11 +294,22 @@ public final class PlanImpl implements Plan {
           final PlanOperation delOperation = new DeletePlanOperation(namespace, evalToDel);
           delOperations.put(evalToDel, delOperation);
           dag.addVertex(delOperation);
+
+          if (namespace.equals(Constants.NAMESPACE_WORKER)) {
+            final PlanOperation stopOperation
+                = new StopPlanOperation(namespace, evalToDel);
+            stopOperations.put(evalToDel, stopOperation);
+            dag.addVertex(stopOperation);
+
+            // add 'Stop->Del' edge for the exceptional case that Del does not accompany any Moves
+            dag.addEdge(stopOperation, delOperation);
+          }
         }
       }
 
-      // add vertices of Add
+      // add vertices of Add and Start
       final Map<String, PlanOperation> addOperations = new HashMap<>();
+      final Map<String, PlanOperation> startOperations = new HashMap<>();
       for (final Map.Entry<String, Set<String>> entry : namespaceToEvalsToAdd.entrySet()) {
         final String namespace = entry.getKey();
         final Set<String> evalsToAdd = entry.getValue();
@@ -295,6 +317,16 @@ public final class PlanImpl implements Plan {
           final PlanOperation addOperation = new AddPlanOperation(namespace, evalToAdd);
           addOperations.put(evalToAdd, addOperation);
           dag.addVertex(addOperation);
+
+          if (namespace.equals(Constants.NAMESPACE_WORKER)) {
+            final PlanOperation startOperation
+                = new StartPlanOperation(namespace, evalToAdd);
+            startOperations.put(evalToAdd, startOperation);
+            dag.addVertex(startOperation);
+
+            // add 'Add->Start' edge for the exceptional case that Add does not accompany any Moves
+            dag.addEdge(addOperation, startOperation);
+          }
         }
       }
 
@@ -314,7 +346,7 @@ public final class PlanImpl implements Plan {
       // add edges representing dependencies between vertices
 
       // 1. del -> add
-      // We need one Delete for each Add as much as the number of extra evaluators slots
+      // We need one Delete for each Add as much as the number of extra evaluator slots
       // is smaller than the number of evaluators to Add.
       // The current strategy simply maps one Delete and one Add that is not necessarily relevant with.
       if (numAvailableExtraEvals.isPresent()) {
@@ -325,7 +357,7 @@ public final class PlanImpl implements Plan {
 
         final int numAddsShouldFollowDel = addOperations.size() - numAvailableExtraEvals.get();
         if (numAddsShouldFollowDel > 0) {
-          LOG.log(Level.FINE, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
+          LOG.log(Level.INFO, "{0} Adds should follow each one Delete.", numAddsShouldFollowDel);
 
           final Iterator<PlanOperation> delOperationsItr = delOperations.values().iterator();
           final Iterator<PlanOperation> addOperationsItr = addOperations.values().iterator();
@@ -344,16 +376,26 @@ public final class PlanImpl implements Plan {
         final String srcId = transferStep.getSrcId();
         final String dstId = transferStep.getDstId();
 
-        // 2. add -> move
+        // 2. add -> move -> start
         if (addOperations.containsKey(dstId)) {
           final PlanOperation addOperation = addOperations.get(dstId);
           dag.addEdge(addOperation, moveOperation);
+
+          if (moveOperation.getNamespace().equals(Constants.NAMESPACE_WORKER)) {
+            final PlanOperation startOperation = startOperations.get(dstId);
+            dag.addEdge(moveOperation, startOperation);
+          }
         }
 
-        // 3. move -> del
+        // 3. stop -> move -> del
         if (delOperations.containsKey(srcId)) {
           final PlanOperation delOperation = delOperations.get(srcId);
           dag.addEdge(moveOperation, delOperation);
+
+          if (moveOperation.getNamespace().equals(Constants.NAMESPACE_WORKER)) {
+            final PlanOperation stopOperation = stopOperations.get(srcId);
+            dag.addEdge(stopOperation, moveOperation);
+          }
         }
       }
 

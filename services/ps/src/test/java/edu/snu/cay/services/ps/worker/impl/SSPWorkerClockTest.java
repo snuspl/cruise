@@ -23,6 +23,7 @@ import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.Staleness;
+import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
@@ -37,9 +38,14 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -60,6 +66,7 @@ public class SSPWorkerClockTest {
   private ClockMsgCodec codec;
   private SSPWorkerClock sspWorkerClock;
   private SSPWorkerClock.MessageHandler sspWorkerClockMessageHandler;
+  private AtomicInteger numberOfTickMsgCalls;
 
   @Before
   public void setup() throws InjectionException {
@@ -76,16 +83,7 @@ public class SSPWorkerClockTest {
     this.sspWorkerClock = injector.getInstance(SSPWorkerClock.class);
     this.sspWorkerClockMessageHandler = injector.getInstance(SSPWorkerClock.MessageHandler.class);
     this.codec = injector.getInstance(ClockMsgCodec.class);
-  }
-
-  /**
-   * Tests whether initialize() sets worker clock and global minimum clock according to the reply message.
-   * Tests whether clock() ticks its worker clock and sends TICK message.
-   */
-  @Test
-  public void testInitializeAndClock() {
-    final int numberOfClockCalls = 3;
-    final AtomicInteger numberOfTickMsgCalls = new AtomicInteger(0);
+    this.numberOfTickMsgCalls = new AtomicInteger(0);
 
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
@@ -102,6 +100,15 @@ public class SSPWorkerClockTest {
         }
         return null;
       }).when(mockAggregationSlave).send(anyString(), anyObject());
+  }
+
+  /**
+   * Tests whether initialize() sets worker clock and global minimum clock according to the reply message.
+   * Tests whether clock() ticks its worker clock and sends TICK message.
+   */
+  @Test
+  public void testInitializeAndClock() {
+    final int numberOfClockCalls = 3;
 
     sspWorkerClock.initialize();
     assertEquals(initialWorkerClock, sspWorkerClock.getWorkerClock());
@@ -125,20 +132,6 @@ public class SSPWorkerClockTest {
   public void testUpdateGlobalMinimumClock() throws NetworkException {
     final int updatedGlobalMinimumClock = 100;
 
-    doAnswer(invocation -> {
-        final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final AvroClockMsg sendMsg = codec.decode(data);
-
-        if (sendMsg.getType() == ClockMsgType.RequestInitClockMsg) {
-          final AvroClockMsg initClockMsg =
-              ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
-          final byte[] replyData = codec.encode(initClockMsg);
-          final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
-          sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        }
-        return null;
-      }).when(mockAggregationSlave).send(anyString(), anyObject());
-
     sspWorkerClock.initialize();
     assertEquals(initialWorkerClock, sspWorkerClock.getWorkerClock());
     assertEquals(initialGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
@@ -156,6 +149,89 @@ public class SSPWorkerClockTest {
     mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", data);
 
     assertEquals(updatedGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
+  }
+
+  /**
+   * Tests whether waitIfExceedingStalenessBound() waits if the worker clock exceeds the staleness bound.
+   */
+  @Test(timeout = 10000)
+  public void testWaitIfExceedingStalenessBound() throws InterruptedException {
+    int globalMinimumClock = initialGlobalMinimumClock;
+    final int numOfThreads = 3;
+    final int timeoutInMilliseconds = 500;
+    final Runnable[] threads = new Runnable[numOfThreads];
+    final Map<Runnable, CountDownLatch> threadLatchMap = new HashMap<>();
+    final class WaitIfExceedingStalenessBoundThread implements Runnable {
+      @Override
+      public void run() {
+        try {
+          sspWorkerClock.waitIfExceedingStalenessBound();
+          threadLatchMap.get(this).countDown();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+
+    sspWorkerClock.initialize();
+
+    // test whether waitIfExceedingStalenessBound() returns immediately when the worker clock is in staleness bound.
+    while (sspWorkerClock.getWorkerClock() <= globalMinimumClock + staleness) {
+      for (int i = 0; i < numOfThreads; i++) {
+        threads[i] = new WaitIfExceedingStalenessBoundThread();
+        threadLatchMap.put(threads[i], new CountDownLatch(1));
+      }
+      ThreadUtils.runConcurrently(threads);
+
+      // check whether waitIfExceedingStalenessBound() call is returned immediately.
+      for (final Runnable thread : threads) {
+        threadLatchMap.get(thread).await();
+      }
+      threadLatchMap.clear();
+      sspWorkerClock.clock();
+    }
+
+    sspWorkerClock.clock();
+    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + staleness);
+    for (int i = 0; i < numOfThreads; i++) {
+      threads[i] = new WaitIfExceedingStalenessBoundThread();
+      threadLatchMap.put(threads[i], new CountDownLatch(1));
+    }
+    ThreadUtils.runConcurrently(threads);
+
+    // waitIfExceedingStalenessBound() call is blocked until the worker clock is within the staleness bound.
+    for (final Runnable thread : threads) {
+      threadLatchMap.get(thread).await(timeoutInMilliseconds, TimeUnit.MILLISECONDS);
+      assertTrue(threadLatchMap.get(thread).getCount() > 0);
+    }
+
+    globalMinimumClock++;
+    // the worker clock is out of staleness bound even though global minimum clock is ticked.
+    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + staleness);
+
+    // send message with increased global minimum clock
+    final byte[] broadcastClockMsgToKeepWait =
+        codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
+    sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToKeepWait));
+
+    for (final Runnable thread : threads) {
+      threadLatchMap.get(thread).await(timeoutInMilliseconds, TimeUnit.MILLISECONDS);
+      assertTrue(threadLatchMap.get(thread).getCount() > 0);
+    }
+
+    globalMinimumClock++;
+    // now, this increased global minimum clock is enough to terminate the thread.
+    assertTrue(sspWorkerClock.getWorkerClock() <= globalMinimumClock + staleness);
+
+    // send message with increased global minimum clock
+    final byte[] broadcastClockMsgToTerminate =
+        codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
+    sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToTerminate));
+
+    // waitIfExceedingStalenessBound() is returned finally
+    for (final Runnable thread : threads) {
+      threadLatchMap.get(thread).await();
+    }
   }
 
   private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {

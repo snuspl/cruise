@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.plan.impl;
 
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
+import edu.snu.cay.services.em.plan.api.PlanOperation;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import org.junit.Test;
 
@@ -100,6 +101,9 @@ public final class PlanImplTest {
     }
   }
 
+  /**
+   * Tests whether the plan builder detects a violation in the plans.
+   */
   @Test
   public void testInvalidPlans() {
     PlanImpl.Builder planBuilder;
@@ -144,6 +148,7 @@ public final class PlanImplTest {
 
     // 4. case of plan with a cyclic dependency (Add -> Move -> Del -> Add)
     planBuilder = PlanImpl.newBuilder()
+        .setNumAvailableExtraEvaluators(0)
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
         .addTransferStep(NAMESPACE_PREFIX,
@@ -165,29 +170,33 @@ public final class PlanImplTest {
   public void testDelAddPlanDependency() {
     // del -> add
     final Plan plan = PlanImpl.newBuilder()
+        .setNumAvailableExtraEvaluators(0)
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 0)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 1)
         .addEvaluatorToDelete(NAMESPACE_PREFIX, EVAL_PREFIX + 2)
         .addEvaluatorToAdd(NAMESPACE_PREFIX, EVAL_PREFIX + 3)
         .build();
 
+    int numExecutedOps = 0; // increase 1 on every onComplete
+
     // Dels should be executed first to make a room for Adds
-    final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
+    final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
     assertEquals(2, firstOpsToExec.size());
-    for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.OpType.DEL, operation.getOpType());
+    for (final PlanOperation operation : firstOpsToExec) {
+      assertEquals(EMPlanOperation.DEL_OP, operation.getOpType());
     }
 
-    final Set<EMOperation> executingPlans = new HashSet<>();
+    final Set<PlanOperation> executingPlans = new HashSet<>();
 
     // a single Add step can be executed after completing each Del step
 
-    for (final EMOperation operation : firstOpsToExec) {
-      final Set<EMOperation> nextOpsToExec = plan.onComplete(operation);
+    for (final PlanOperation operation : firstOpsToExec) {
+      numExecutedOps++;
+      final Set<PlanOperation> nextOpsToExec = plan.onComplete(operation);
       assertEquals(1, nextOpsToExec.size());
-      final EMOperation nextOpToExec = nextOpsToExec.iterator().next();
+      final PlanOperation nextOpToExec = nextOpsToExec.iterator().next();
 
-      assertEquals(EMOperation.OpType.ADD, nextOpToExec.getOpType());
+      assertEquals(EMPlanOperation.ADD_OP, nextOpToExec.getOpType());
 
       executingPlans.add(nextOpToExec);
     }
@@ -196,12 +205,13 @@ public final class PlanImplTest {
     assertEquals(2, executingPlans.size());
 
     // these two Adds are the final stages of the plan
-    for (final EMOperation executingPlan : executingPlans) {
-      final Set<EMOperation> nextOpsToExec = plan.onComplete(executingPlan);
+    for (final PlanOperation executingPlan : executingPlans) {
+      numExecutedOps++;
+      final Set<PlanOperation> nextOpsToExec = plan.onComplete(executingPlan);
       assertTrue(nextOpsToExec.isEmpty());
     }
 
-    assertTrue(plan.getReadyOps().isEmpty());
+    assertEquals(numExecutedOps, plan.getPlanSize());
   }
 
   /**
@@ -228,16 +238,18 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 3, EVAL_PREFIX + 2, new DataInfoImpl(1)))
         .build();
 
+    int numExecutedOps = 0; // increase 1 on every onComplete
+
     // Moves should be executed first
-    final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
+    final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
     assertEquals(4, firstOpsToExec.size());
 
-    final Set<EMOperation> firstMoveSet = new HashSet<>();
-    final Set<EMOperation> secondMoveSet = new HashSet<>();
+    final Set<PlanOperation> firstMoveSet = new HashSet<>();
+    final Set<PlanOperation> secondMoveSet = new HashSet<>();
 
     // after finishing Moves from each evaluator, Dels for the evaluator will be ready
-    for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.OpType.MOVE, operation.getOpType());
+    for (final PlanOperation operation : firstOpsToExec) {
+      assertEquals(EMPlanOperation.MOVE_OP, operation.getOpType());
 
       if (operation.getTransferStep().get().getSrcId().equals(EVAL_PREFIX + 0)) {
         firstMoveSet.add(operation);
@@ -249,23 +261,28 @@ public final class PlanImplTest {
     assertEquals(2, secondMoveSet.size());
 
     // Delete will be ready after finishing all Moves from target evaluator
-    final Iterator<EMOperation> firstMoveSetIter = firstMoveSet.iterator();
+    final Iterator<PlanOperation> firstMoveSetIter = firstMoveSet.iterator();
+    numExecutedOps++;
     assertTrue(plan.onComplete(firstMoveSetIter.next()).isEmpty());
-    final Set<EMOperation> nextOpsToExec = plan.onComplete(firstMoveSetIter.next());
+    numExecutedOps++;
+    final Set<PlanOperation> nextOpsToExec = plan.onComplete(firstMoveSetIter.next());
     assertEquals(1, nextOpsToExec.size());
 
-    final Iterator<EMOperation> secondMoveSetIter = secondMoveSet.iterator();
+    final Iterator<PlanOperation> secondMoveSetIter = secondMoveSet.iterator();
+    numExecutedOps++;
     assertTrue(plan.onComplete(secondMoveSetIter.next()).isEmpty());
+    numExecutedOps++;
     nextOpsToExec.addAll(plan.onComplete(secondMoveSetIter.next()));
     assertEquals(2, nextOpsToExec.size());
 
-    for (final EMOperation operation : nextOpsToExec) {
-      assertEquals(EMOperation.OpType.DEL, operation.getOpType());
+    for (final PlanOperation operation : nextOpsToExec) {
+      assertEquals(EMPlanOperation.DEL_OP, operation.getOpType());
 
       // these Deletes are the final stages of the plan
+      numExecutedOps++;
       assertTrue(plan.onComplete(operation).isEmpty());
     }
-    assertTrue(plan.getReadyOps().isEmpty());
+    assertEquals(numExecutedOps, plan.getPlanSize());
   }
 
   /**
@@ -292,14 +309,16 @@ public final class PlanImplTest {
             new TransferStepImpl(EVAL_PREFIX + 2, EVAL_PREFIX + 3, new DataInfoImpl(1)))
         .build();
 
+    int numExecutedOps = 0; // increase 1 on every onComplete
+
     // Adds should be executed first
-    final Set<EMOperation> firstOpsToExec = plan.getReadyOps();
+    final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
     assertEquals(2, firstOpsToExec.size());
 
-    EMOperation firstAdd = null;
-    EMOperation secondAdd = null;
-    for (final EMOperation operation : firstOpsToExec) {
-      assertEquals(EMOperation.OpType.ADD, operation.getOpType());
+    PlanOperation firstAdd = null;
+    PlanOperation secondAdd = null;
+    for (final PlanOperation operation : firstOpsToExec) {
+      assertEquals(EMPlanOperation.ADD_OP, operation.getOpType());
 
       if (operation.getEvalId().get().equals(EVAL_PREFIX + 0)) {
         firstAdd = operation;
@@ -311,18 +330,21 @@ public final class PlanImplTest {
     assertNotNull(secondAdd);
 
     // Moves will be ready after finishing Add of destination evaluator
-    final Set<EMOperation> nextOpsToExec = plan.onComplete(firstAdd);
+    numExecutedOps++;
+    final Set<PlanOperation> nextOpsToExec = plan.onComplete(firstAdd);
     assertEquals(2, nextOpsToExec.size());
 
+    numExecutedOps++;
     nextOpsToExec.addAll(plan.onComplete(secondAdd));
     assertEquals(4, nextOpsToExec.size());
 
-    for (final EMOperation operation : nextOpsToExec) {
-      assertEquals(EMOperation.OpType.MOVE, operation.getOpType());
+    for (final PlanOperation operation : nextOpsToExec) {
+      assertEquals(EMPlanOperation.MOVE_OP, operation.getOpType());
 
       // these Moves are the final stages of the plan
+      numExecutedOps++;
       assertTrue(plan.onComplete(operation).isEmpty());
     }
-    assertTrue(plan.getReadyOps().isEmpty());
+    assertEquals(numExecutedOps, plan.getPlanSize());
   }
 }

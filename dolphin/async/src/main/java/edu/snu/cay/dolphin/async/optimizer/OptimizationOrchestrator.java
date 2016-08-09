@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
@@ -27,6 +29,18 @@ public interface OptimizationOrchestrator {
    * Runs optimization.
    */
   void run();
+
+  /**
+   * Receive a RunningTask event and notify the plan executor.
+   * @param task the running task
+   */
+  void onRunningTask(RunningTask task);
+
+  /**
+   * Receive a CompletedTask event and notify the plan executor.
+   * @param task the completed task
+   */
+  void onCompletedTask(CompletedTask task);
 
   /**
    * Checks whether the plan is being executed.

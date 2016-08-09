@@ -124,26 +124,21 @@ public class DynamicServerResolverTest {
   }
 
   /**
-   * Tests resolver after explicitly initializing the routing table.
-   * The test runs multiple threads using resolver to check
-   * whether the correct result is given, and whether initialization is performed only once or not.
+   * Tests resolver after initializing the routing table.
+   * The test checks whether initialization is performed, and
+   * runs multiple threads using resolver to check whether the correct result is given.
    */
   @Test
-  public void testResolveAfterExplicitInit() throws InterruptedException {
+  public void testResolveAfterInit() throws InterruptedException {
     final int numKey = 1000;
     final int numThreads = 10;
 
     final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
-    serverResolver.requestRoutingTable();
+    serverResolver.triggerInitialization();
 
     // confirm that the resolver is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
-
-    // When serverResolver.requestRoutingTable() is called,
-    // workers internally register themselves to subscribe the updates
-    // in routing table to driver via sendWorkerRegisterMsg()
-    verify(msgSender, times(1)).sendWorkerRegisterMsg();
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
 
@@ -169,19 +164,15 @@ public class DynamicServerResolverTest {
 
     ThreadUtils.runConcurrently(threads);
     threadLatch.await(30, TimeUnit.SECONDS);
-
-    // initialization should be done only once
-    verify(msgSender, times(1)).sendWorkerRegisterMsg();
   }
 
   /**
-   * Tests resolver without explicit initialization of the routing table.
-   * The initialization of routers will be triggered by {@link DynamicServerResolver#resolveServer(int)}.
+   * Tests resolver by using it before initialization of the routing table.
    * The test runs multiple threads using resolver to check
-   * whether the correct result is given, and whether initialization is performed only once or not.
+   * whether the threads are blocked until the initialization and the correct result is given.
    */
   @Test
-  public void testResolveWithoutExplicitInit() throws InterruptedException {
+  public void testResolveBeforeInit() throws InterruptedException {
     final int numKey = 1000;
     final int numThreads = 10;
 
@@ -189,8 +180,7 @@ public class DynamicServerResolverTest {
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
 
-    // Initialization would be done while resolving server.
-    // While multiple threads use resolver, the initialization should be done only once.
+    // While multiple threads use resolver, they will wait until the initialization is done.
     final Runnable[] threads = new Runnable[numThreads];
 
     for (int idx = 0; idx < numThreads; idx++) {
@@ -211,13 +201,20 @@ public class DynamicServerResolverTest {
     }
 
     ThreadUtils.runConcurrently(threads);
-    threadLatch.await(30, TimeUnit.SECONDS);
 
-    // When serverResolver.resolveServer() is called and the resolver is not initialized yet,
-    // it internally invokes serverResolver.triggerInitialization()
-    // that finally invokes serverResolver.requestRoutingTable().
-    // Because triggerInitialization() is a synchronized method, requesting the routing table should be done only once.
-    verify(msgSender, times(1)).sendWorkerRegisterMsg();
+    // make threads wait for initialization
+    Thread.sleep(5000);
+    assertEquals("Threads should not progress before initialization", numThreads, threadLatch.getCount());
+
+    // confirm that the resolver is not initialized yet
+    assertEquals(1, initLatch.getCount());
+
+    serverResolver.triggerInitialization();
+
+    // confirm that the resolver is initialized now
+    assertTrue(initLatch.await(10, TimeUnit.SECONDS));
+
+    threadLatch.await(30, TimeUnit.SECONDS);
   }
 
   /**
@@ -228,7 +225,7 @@ public class DynamicServerResolverTest {
   public void testUpdateResolver() {
     final int numKey = 1000;
 
-    serverResolver.requestRoutingTable();
+    serverResolver.triggerInitialization();
 
     // Update the routing table by migrating a block that contains the key
     for (int hash = 0; hash < numKey; hash++) {

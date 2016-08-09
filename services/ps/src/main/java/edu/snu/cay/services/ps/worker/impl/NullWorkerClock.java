@@ -42,6 +42,16 @@ public final class NullWorkerClock implements WorkerClock {
   }
 
   @Override
+  public void waitIfExceedingStalenessBound() {
+
+  }
+
+  @Override
+  public void recordClockNetworkWaitingTime() {
+
+  }
+
+  @Override
   public int getWorkerClock() {
     return 0;
   }
