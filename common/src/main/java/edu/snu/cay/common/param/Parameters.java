@@ -76,14 +76,13 @@ public final class Parameters {
   }
 
   @NamedParameter(doc = "Port number for client-side localhost Dashboard server, the number should be within " +
-      "[0, 65535], other numbers or occupied port numbers will lead to launch failure",
+      "(0, 65535), other numbers or occupied port numbers will lead to launch failure",
       short_name = "dashboard_port",
       default_value = "-1")
   public final class DashboardPort implements Name<Integer> {
   }
 
-
-  @NamedParameter(doc = "Host address of the driver machine, used as the host address of Dashboard server, " +
+  @NamedParameter(doc = "Host address of the client machine, which is used as the host address of Dashboard server, " +
       "empty if failed to find valid host address.", default_value = "")
   public final class DashboardHostAddress implements Name<String> {
   }

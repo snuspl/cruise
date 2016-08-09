@@ -19,7 +19,7 @@ import sys
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
 from plotly.tools import get_embed
 
-print("Flask script: Building server...")
+print("Flask script: Launching dashboard server...")
 
 #
 # Configurations
@@ -57,13 +57,13 @@ def init_db():
 @app.teardown_appcontext
 def close_db(error):
     if hasattr(g, 'sqlite_db'):
-        # TODO: Save the contents
+        # TODO #706: Save the contents
         g.sqlite_db.close()
 
 #
 # Urls
 #
-# The main URL which shows metrics visualization to users. 
+# The main URL which receives metrics visualizes the metrics to users.
 @app.route('/', methods=['GET', 'POST'])
 def main():
     db = get_db()
@@ -75,22 +75,18 @@ def main():
             # app-specific metrics
             ml_metrics = metrics.pop('metrics')
             if ml_metrics is not None:
-                db.execute('create table if not exists metrics ('
-                        + ' varchar(255) not null,'.join(ml_metrics['data'].keys())
-                        + ' varchar(255) not null)')
-                db.execute('insert into metrics values ('
-                        + ', '.join(str(i) for i in ml_metrics['data'].values())
-                        + ')')
+                db.execute('create table if not exists metrics ({0} varchar(255) not null);'
+                           .format(' varchar(255) not null, '.join(ml_metrics['data'].keys())))
+                db.execute('insert into metrics values ({0})'
+                           .format(', '.join(str(i) for i in ml_metrics['data'].values())))
             # other metrics
-            query = list()
             if id.startswith('Worker'):
-                query.append('insert into workers values (')
+                side = 'workers'
             else:
-                query.append('insert into servers values (')
+                side = 'servers'
             id = re.sub(r'\D', '', id)
-            query.append(id + ', ' + ', '.join(str(i) for i in metrics.values()))
-            query.append(')')
-            db.execute(''.join(query))
+            db.execute('insert into {0} values ({1}, {2})'
+                       .format(side, id, ', '.join(str(i) for i in metrics.values())))
             db.commit()
             return 'accept'
         except:

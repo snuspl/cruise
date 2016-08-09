@@ -90,6 +90,8 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 @ClientSide
 public final class AsyncDolphinLauncher {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinLauncher.class.getName());
+  private static final String DASHBOARD_DIR = "/dashboard";
+  private static final String DASHBOARD_SCRIPT = "dashboard.py";
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
   final class SerializedParameterConfiguration implements Name<String> {
@@ -199,13 +201,15 @@ public final class AsyncDolphinLauncher {
 
       // run dashboard and add configuration
       final int port = basicParameterInjector.getNamedInstance(DashboardPort.class);
-      String hostAddress = getHostAddress(port);
+      String hostAddress = "";
       try {
-        runDashboardServer(port);
+        if (port > 0) {
+          hostAddress = getHostAddress(port);
+          runDashboardServer(port);
+        }
       } catch (IOException e) {
         hostAddress = "";
       } finally {
-
         final Configuration dashboardConf = Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(DashboardHostAddress.class, hostAddress)
             .build();
@@ -394,82 +398,75 @@ public final class AsyncDolphinLauncher {
             .build());
   }
 
-  private static String getHostAddress(final int port) {
-    if (port < 0) {
-      // User refuses to use dashboard.
-      return "";
-    }
+  /**
+   * Find the Host address of Client machine.
+   * @param port is the port number provided by user.
+   * @return String of HostAddress.
+   * @throws IOException happens when the port number is invalid or failed to find the host address.
+   */
+  private static String getHostAddress(final int port) throws IOException {
     String hostAddress = "";
-    try {
       // Find IP address of driver PC.
-      final Enumeration e = NetworkInterface.getNetworkInterfaces();
-      while (e.hasMoreElements()) {
-        final NetworkInterface n = (NetworkInterface) e.nextElement();
-        if (n.isLoopback() || n.isVirtual() || !n.isUp()) {
+    final Enumeration e = NetworkInterface.getNetworkInterfaces();
+    while (e.hasMoreElements()) {
+      final NetworkInterface n = (NetworkInterface) e.nextElement();
+      if (n.isLoopback() || n.isVirtual() || !n.isUp()) {
+        continue;
+      }
+      final Enumeration ee = n.getInetAddresses();
+      while (ee.hasMoreElements()) {
+        final InetAddress i = (InetAddress) ee.nextElement();
+        if (i.isLinkLocalAddress()) {
           continue;
         }
-        final Enumeration ee = n.getInetAddresses();
-        while (ee.hasMoreElements()) {
-          final InetAddress i = (InetAddress) ee.nextElement();
-          if (i.isLinkLocalAddress()) {
-            continue;
-          }
-          hostAddress = i.getHostAddress();
-          break;
-        }
+        hostAddress = i.getHostAddress();
+        break;
       }
-    } catch (Exception e) {
-      throw new RuntimeException("Network Error", e);
-    }
-    // Check if host address is found.
-    if (hostAddress.isEmpty()) {
-      LOG.log(Level.WARNING, "Fail to find local host address");
-      return "";
     }
     // Check if the port number is available.
     try {
       (new Socket(hostAddress, port)).close();
-      LOG.log(Level.WARNING, "Port number already in use");
-      return "";
+      LOG.log(Level.INFO, "Port number already in use.");
+      throw new IOException();
     } catch (ConnectException connectException) {
       LOG.log(Level.INFO, "URL found: " + hostAddress + ":" + port);
       return hostAddress;
-    } catch (Exception e) {
-      LOG.log(Level.INFO, "Invalid port number");
-      return "";
     }
   }
 
+  /**
+   * Copy the server launching script directory to java tmpdir and run Dashboard server on localhost.
+   * @param port is the port number provided by user.
+   * @throws IOException happens when failed to copy the server script or failed to make processBuilder.
+   */
   private static void runDashboardServer(final int port) throws IOException {
     LOG.log(Level.INFO, "Now launch dashboard server");
 
-    final Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir") + "/dashboard");
+    final Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir") + DASHBOARD_DIR);
     // Copy the dashboard python script to /tmp
     try {
       final FileSystem fileSystem = FileSystems.newFileSystem(
           AsyncDolphinLauncher.class.getResource("").toURI(),
           Collections.<String, String>emptyMap()
       );
-      final Path jarPath = fileSystem.getPath("/dashboard");
+
+      final Path jarPath = fileSystem.getPath(DASHBOARD_DIR);
       Files.walkFileTree(jarPath, new SimpleFileVisitor<Path>() {
         @Override
         public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
           Files.createDirectories(tmpPath.resolve(jarPath.relativize(dir).toString()));
           return FileVisitResult.CONTINUE;
         }
+
         @Override
         public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
           Files.copy(file, tmpPath.resolve(jarPath.relativize(file).toString()), REPLACE_EXISTING);
           return FileVisitResult.CONTINUE;
         }
       });
-    } catch (Exception e) {
-      LOG.log(Level.WARNING, "Copy failure: " + e);
-      throw new IOException();
-    }
-    // Launch server
-    try {
-      final String tmpScript = tmpPath.toString() + "/dashboard.py";
+
+      // Launch server
+      final String tmpScript = Paths.get(tmpPath.toString(), DASHBOARD_SCRIPT).toString();
       final ProcessBuilder pb = new ProcessBuilder("python", tmpScript, String.valueOf(port)).inheritIO();
 
       final Process p = pb.start();
@@ -479,9 +476,8 @@ public final class AsyncDolphinLauncher {
           p.destroy();
         }
       });
-    } catch (Exception e) {
-      LOG.log(Level.WARNING, "Launch failure: " + e);
-      throw new IOException();
+    } catch (URISyntaxException e) {
+      LOG.log(Level.WARNING, "Faied to access current jar file.");
     }
   }
 

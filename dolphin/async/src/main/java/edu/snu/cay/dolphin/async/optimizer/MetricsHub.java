@@ -30,11 +30,15 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A temporary storage for holding worker and server metrics related to optimization.
+ * Users can optionally run a dashboard server, which visualizes the received metrics. {@link DashboardPort}
  */
 public final class MetricsHub {
+  private static final Logger LOG = Logger.getLogger(MetricsHub.class.getName());
   /**
    * Worker-side metrics, each in the form of a {@link EvaluatorParameters} object.
    */
@@ -48,7 +52,7 @@ public final class MetricsHub {
   /**
    * URL of Dolphin dashboard server. Empty if not using dashboard.
    */
-  private final String dolphinURL;
+  private final String dashboardURL;
 
   @Inject
   private MetricsHub(@Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
@@ -56,42 +60,47 @@ public final class MetricsHub {
     this.workerEvalParams = Collections.synchronizedList(new LinkedList<>());
     this.serverEvalParams = Collections.synchronizedList(new LinkedList<>());
     if (!hostAddress.isEmpty()) {
-      this.dolphinURL = "http://" + hostAddress + ":" + port + "/";
+      this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
     } else {
-      dolphinURL = "";
+      this.dashboardURL = "";
     }
   }
 
+  /**
+   * Send metrics to Dashboard server.
+   * @param id
+   * @param metrics
+   */
   private void sendMetrics(final String id, final String metrics) {
     try {
       // Build http connection with the Dashboard server, set configurations.
       // TODO #722: Create WebSocket instead of connecting every time to send metrics to Dashboard server
-      final URL obj = new URL(this.dolphinURL);
-      final HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+      final String dashboardUrlStr = this.dashboardURL;
+      final URL dashboardUrl = new URL(dashboardUrlStr);
+      final HttpURLConnection con = (HttpURLConnection) dashboardUrl.openConnection();
       con.setRequestMethod("POST");
       con.setDoOutput(true);
       con.setDoInput(true);
       con.connect();
 
       // Send metrics via outputStream to the Dashboard server.
-      final OutputStream os = con.getOutputStream();
-      final String param = "id=" + id + "&metrics=" + metrics;
-      os.write((param).getBytes());
-      os.flush();
-      os.close();
+      try (final OutputStream os = con.getOutputStream()) {
+        final String param = "id=" + id + "&metrics=" + metrics + "&time=" + System.currentTimeMillis();
+        os.write((param).getBytes());
+        os.flush();
+      }
 
       // Receive responses from the Dashboard Server.
-      final BufferedReader in = new BufferedReader(
-          new InputStreamReader(con.getInputStream())
-      );
-      String inputLine;
-      final StringBuffer response = new StringBuffer();
-      while ((inputLine = in.readLine()) != null) {
-        response.append(inputLine);
+      try (final BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+        String inputLine;
+        final StringBuffer response = new StringBuffer();
+        while ((inputLine = in.readLine()) != null) {
+          response.append(inputLine);
+        }
       }
-      in.close();
+
     } catch (Exception e) {
-      throw new RuntimeException("Network Error" + e);
+      LOG.log(Level.WARNING, "Failed to send metrics to Dashboard server." + e);
     }
   }
 
@@ -104,7 +113,7 @@ public final class MetricsHub {
     final DataInfo dataInfo = new DataInfoImpl(metrics.getNumDataBlocks());
     final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
     workerEvalParams.add(evaluatorParameters);
-    if (!dolphinURL.isEmpty()) {
+    if (!this.dashboardURL.isEmpty()) {
       sendMetrics(workerId, metrics.toString());
     }
   }
@@ -118,7 +127,7 @@ public final class MetricsHub {
     final DataInfo dataInfo = new DataInfoImpl(metrics.getNumPartitionBlocks());
     final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
     serverEvalParams.add(evaluatorParameters);
-    if (!dolphinURL.isEmpty()) {
+    if (!this.dashboardURL.isEmpty()) {
       sendMetrics(serverId, metrics.toString());
     }
   }

@@ -48,4 +48,3 @@ create table servers (
     avgPushProcessingTime double not null,
     avgReqProcessingTime double not null
 );
-
