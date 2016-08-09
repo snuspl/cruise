@@ -27,7 +27,6 @@ drop table if exists metrics;
 
 create table workers (
     id int not null,
-/*    metrics varchar(255) not null, */
     itrIdx int not null,
     numDataBlocks int not null,
     processedDataItemCount int not null,
@@ -42,7 +41,6 @@ create table workers (
 
 create table servers (
     id int not null,
-/*    metrics varchar(255) not null, */
     windowIndex int not null,
     numPartitionBlocks int not null,
     metricWindowMs long not null,

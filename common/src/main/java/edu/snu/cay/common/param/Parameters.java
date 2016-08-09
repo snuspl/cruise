@@ -83,7 +83,8 @@ public final class Parameters {
   }
 
 
-  @NamedParameter(doc = "Host address of the driver machine, used as host address of Dashboard server")
+  @NamedParameter(doc = "Host address of the driver machine, used as the host address of Dashboard server, " +
+      "empty if failed to find valid host address.", default_value = "")
   public final class DashboardHostAddress implements Name<String> {
   }
 }

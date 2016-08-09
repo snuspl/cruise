@@ -200,22 +200,24 @@ public final class AsyncDolphinLauncher {
       // run dashboard and add configuration
       final int port = basicParameterInjector.getNamedInstance(DashboardPort.class);
       String hostAddress = getHostAddress(port);
-      if (!hostAddress.isEmpty()) {
-        if (runDashboardServer(port) == -1) {
-          hostAddress = "";
-        }
-      }
-      final Configuration dashboardConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(DashboardHostAddress.class, hostAddress)
-          .build();
+      try {
+        runDashboardServer(port);
+      } catch (IOException e) {
+        hostAddress = "";
+      } finally {
 
-      final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
-          Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
-              serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf,
-              dashboardConf),
-          timeout);
-      LOG.log(Level.INFO, "REEF job completed: {0}", status);
-      return status;
+        final Configuration dashboardConf = Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(DashboardHostAddress.class, hostAddress)
+            .build();
+
+        final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
+            Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
+                serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf,
+                dashboardConf),
+            timeout);
+        LOG.log(Level.INFO, "REEF job completed: {0}", status);
+        return status;
+      }
 
     } catch (final Exception e) {
       final LauncherStatus status = LauncherStatus.failed(e);
@@ -225,6 +227,7 @@ public final class AsyncDolphinLauncher {
       LOG.log(Level.WARNING, "Exception occurred", e);
 
       return status;
+
     }
   }
 
@@ -437,15 +440,14 @@ public final class AsyncDolphinLauncher {
     }
   }
 
-  private static int runDashboardServer(final int port) {
+  private static void runDashboardServer(final int port) throws IOException {
     LOG.log(Level.INFO, "Now launch dashboard server");
 
     final Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir") + "/dashboard");
     // Copy the dashboard python script to /tmp
     try {
-      final URI resource = AsyncDolphinLauncher.class.getResource("").toURI();
       final FileSystem fileSystem = FileSystems.newFileSystem(
-          resource,
+          AsyncDolphinLauncher.class.getResource("").toURI(),
           Collections.<String, String>emptyMap()
       );
       final Path jarPath = fileSystem.getPath("/dashboard");
@@ -463,7 +465,7 @@ public final class AsyncDolphinLauncher {
       });
     } catch (Exception e) {
       LOG.log(Level.WARNING, "Copy failure: " + e);
-      return -1;
+      throw new IOException();
     }
     // Launch server
     try {
@@ -479,10 +481,8 @@ public final class AsyncDolphinLauncher {
       });
     } catch (Exception e) {
       LOG.log(Level.WARNING, "Launch failure: " + e);
-      return -1;
+      throw new IOException();
     }
-    // Return 0 on launch success.
-    return 0;
   }
 
   private static AggregationConfiguration.Builder getAggregationConfigurationDefaultBuilder() {
