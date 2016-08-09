@@ -94,6 +94,7 @@ public final class SSPParameterWorkerTest {
   public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     testUtil.close(parameterWorker);
   }
+
   /**
    * Test the thread safety of {@link SSPParameterWorker} by
    * creating multiple threads that try to push values to the server using {@link SSPParameterWorker}.
@@ -115,7 +116,6 @@ public final class SSPParameterWorkerTest {
    * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
    * Thus, we verify the validity of the result by simply checking whether pulled values are as expected or not.
    */
-
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
@@ -129,7 +129,6 @@ public final class SSPParameterWorkerTest {
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
    */
-
   @Test
   public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException,
           ExecutionException, NetworkException {
@@ -207,4 +206,3 @@ public final class SSPParameterWorkerTest {
     verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject());
   }
 }
-

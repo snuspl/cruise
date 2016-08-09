@@ -94,6 +94,7 @@ public final class AsyncParameterWorkerTest {
   public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     testUtil.close(parameterWorker);
   }
+
   /**
    * Test the thread safety of {@link AsyncParameterWorker} by
    * creating multiple threads that try to push values to the server using {@link AsyncParameterWorker}.
