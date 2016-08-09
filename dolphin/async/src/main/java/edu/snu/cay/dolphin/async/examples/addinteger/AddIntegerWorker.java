@@ -152,6 +152,7 @@ final class AddIntegerWorker implements Worker {
 
     while (numRetries-- > 0) {
       if (validate()) {
+        LOG.log(Level.WARNING, "Validation success");
         return;
       }
 
