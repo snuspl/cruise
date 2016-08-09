@@ -21,7 +21,7 @@ import edu.snu.cay.services.ps.PSParameters.KeyCodecName;
 import edu.snu.cay.services.ps.PSParameters.PreValueCodecName;
 import edu.snu.cay.services.ps.PSParameters.ValueCodecName;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
-import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
+import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
@@ -43,7 +43,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   /**
    * This evaluator's asynchronous handler that is expecting Parameter Server pull message results.
    */
-  private final AsyncWorkerHandler<K, P, V> asyncWorkerHandler;
+  private final WorkerHandler<K, P, V> workerHandler;
 
   private final ServerResolver serverResolver;
 
@@ -63,12 +63,12 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   private final Codec<V> valueCodec;
 
   @Inject
-  private WorkerSideMsgHandler(final AsyncWorkerHandler<K, P, V> asyncWorkerHandler,
+  private WorkerSideMsgHandler(final WorkerHandler<K, P, V> workerHandler,
                                final ServerResolver serverResolver,
                                @Parameter(KeyCodecName.class)final Codec<K> keyCodec,
                                @Parameter(PreValueCodecName.class)final Codec<P> preValueCodec,
                                @Parameter(ValueCodecName.class) final Codec<V> valueCodec) {
-    this.asyncWorkerHandler = asyncWorkerHandler;
+    this.workerHandler = workerHandler;
     this.serverResolver = serverResolver;
     this.keyCodec = keyCodec;
     this.preValueCodec = preValueCodec;
@@ -76,7 +76,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   }
 
   /**
-   * Hand over values given from the server to {@link AsyncWorkerHandler}.
+   * Hand over values given from the server to {@link WorkerHandler}.
    * Throws an exception if messages of an unexpected type arrive.
    */
   @Override 
@@ -141,17 +141,17 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   private void onPullReplyMsg(final PullReplyMsg pullReplyMsg) {
     final K key = keyCodec.decode(pullReplyMsg.getKey().array());
     final V value = valueCodec.decode(pullReplyMsg.getValue().array());
-    asyncWorkerHandler.processPullReply(key, value);
+    workerHandler.processPullReply(key, value);
   }
 
   private void onPushRejectMsg(final PushRejectMsg pushRejectMsg) {
     final K key = keyCodec.decode(pushRejectMsg.getKey().array());
     final P preValue = preValueCodec.decode(pushRejectMsg.getPreValue().array());
-    asyncWorkerHandler.processPushReject(key, preValue);
+    workerHandler.processPushReject(key, preValue);
   }
 
   private void onPullRejectMsg(final PullRejectMsg pullRejectMsg) {
     final K key = keyCodec.decode(pullRejectMsg.getKey().array());
-    asyncWorkerHandler.processPullReject(key);
+    workerHandler.processPullReject(key);
   }
 }

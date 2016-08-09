@@ -22,6 +22,7 @@ import com.google.common.cache.LoadingCache;
 import edu.snu.cay.services.ps.PSParameters.KeyCodecName;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.Statistics;
@@ -51,8 +52,8 @@ import java.util.logging.Logger;
  * See {@link WorkerThread}.
  */
 @EvaluatorSide
-public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P, V> {
-  private static final Logger LOG = Logger.getLogger(ParameterWorkerImpl.class.getName());
+public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
+  private static final Logger LOG = Logger.getLogger(AsyncParameterWorker.class.getName());
 
   /**
    * The maximum number to resend push/pull requests
@@ -123,16 +124,16 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private final Ticker ticker = Ticker.systemTicker();
 
   @Inject
-  private ParameterWorkerImpl(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
-                              @Parameter(WorkerQueueSize.class) final int queueSize,
-                              @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
-                              @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
-                              @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
-                              @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                              @Parameter(WorkerLogPeriod.class) final long logPeriod,
-                              final ParameterUpdater<K, P, V> parameterUpdater,
-                              final ServerResolver serverResolver,
-                              final InjectionFuture<WorkerMsgSender<K, P>> sender) {
+  private AsyncParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
+                               @Parameter(WorkerQueueSize.class) final int queueSize,
+                               @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
+                               @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
+                               @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
+                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
+                               @Parameter(WorkerLogPeriod.class) final long logPeriod,
+                               final ParameterUpdater<K, P, V> parameterUpdater,
+                               final ServerResolver serverResolver,
+                               final InjectionFuture<WorkerMsgSender<K, P>> sender) {
     this.numThreads = numThreads;
     this.parameterUpdater = parameterUpdater;
     this.serverResolver = serverResolver;
@@ -228,7 +229,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     return pullEncodedKeys(encodedKeys);
   }
 
-  List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
+  private List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
     final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
     for (final EncodedKey<K> encodedKey : encodedKeys) {
       final PullOp pullOp = new PullOp(encodedKey);
@@ -281,9 +282,9 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   /**
    * Handles incoming pull replies, by setting the value of the future.
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
-   * Called by {@link AsyncWorkerHandlerImpl#processPullReply}.
    */
-  void processPullReply(final K key, final V value) {
+  @Override
+  public void processPullReply(final K key, final V value) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);
@@ -296,13 +297,12 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
           " Response for the key may have arrived earlier from another server", key);
     }
   }
-
   /**
    * Handles incoming pull rejects, by rejecting the future.
    * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
-   * Called by {@link AsyncWorkerHandlerImpl#processPullReject}.
    */
-  void processPullReject(final K key) {
+  @Override
+  public void processPullReject(final K key) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       LOG.log(Level.INFO, "Pull operation for key {0} is rejected." +
@@ -316,6 +316,15 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
       LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
           " Response for the key may have arrived earlier from another server", key);
     }
+  }
+
+  /**
+   * Handles incoming push rejects, by retrying push request.
+   * This function has been added to this class that it implements {@link WorkerHandler} interface.
+   */
+  @Override
+  public void processPushReject(final K key, final P preValue) {
+    this.push(key, preValue);
   }
 
   /**

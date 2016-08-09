@@ -24,7 +24,7 @@ import org.apache.reef.annotations.audience.Private;
  * to a {@link edu.snu.cay.services.ps.worker.api.ParameterWorker}.
  */
 @Private
-public interface AsyncWorkerHandler<K, P, V> {
+public interface WorkerHandler<K, P, V> {
   /**
    * Reply to the worker with a {@code value} that was previously requested by {@link ParameterWorker#pull(Object)}.
    * @param key key object representing what was sent
