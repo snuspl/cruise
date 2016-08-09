@@ -120,11 +120,11 @@ public final class SSPWorkerClock implements WorkerClock {
 
   @Override
   public synchronized void waitIfExceedingStalenessBound() throws InterruptedException {
+    final long beginTime = System.currentTimeMillis();
     while (workerClock > globalMinimumClock + staleness) {
-      final long beginTime = System.currentTimeMillis();
       wait();
-      clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
     }
+    clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
   }
 
   @Override

@@ -78,6 +78,8 @@ final class AsyncWorkerTask implements Task {
     for (int iteration = 0; iteration < maxIterations; ++iteration) {
       if (aborted) {
         LOG.log(Level.INFO, "Abort a thread to completely close the task");
+        // record total network waiting time of worker clock when the task is aborted
+        workerClock.recordClockNetworkWaitingTime();
         return null;
       }
       worker.run();
@@ -89,14 +91,14 @@ final class AsyncWorkerTask implements Task {
     synchronizer.globalBarrier();
 
     worker.cleanup();
+    // record total network waiting time of worker clock when the task is finished
+    workerClock.recordClockNetworkWaitingTime();
     return null;
   }
 
   final class CloseEventHandler implements EventHandler<CloseEvent> {
     @Override
     public void onNext(final CloseEvent closeEvent) {
-      // record total network waiting time of worker clock when the worker is closed
-      workerClock.recordClockNetworkWaitingTime();
       aborted = true;
     }
   }
