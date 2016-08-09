@@ -261,19 +261,13 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         .setTotalTime(timeSinceLastPrintStat / 1e9D)
         .setPullCount((int)pullStat.count())
         .setTotalPullTime(pullStat.sum())
-        .setAvgPullTime(pullStat.avg())
         .setTotalPullWaitTime(pullWaitStat.sum())
-        .setAvgPullWaitTime(pullWaitStat.avg())
         .setPushCount((int)pushStat.count())
         .setTotalPushTime(pushStat.sum())
-        .setAvgPushTime(pushStat.avg())
         .setTotalPushWaitTime(pushWaitStat.sum())
-        .setAvgPushWaitTime(pushWaitStat.avg())
         .setReqCount((int)requestStat.count())
         .setTotalReqTime(requestStat.sum())
-        .setAvgReqTime(requestStat.avg())
         .setTotalReqWaitTime(requestWaitStat.sum())
-        .setAvgReqWaitTime(requestWaitStat.avg())
         .build();
 
     LOG.log(Level.FINE, "ServerThreadMetrics {0}", threadMetrics);
