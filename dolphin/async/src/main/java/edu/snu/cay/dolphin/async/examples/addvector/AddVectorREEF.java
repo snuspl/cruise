@@ -13,50 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.examples.addinteger;
+package edu.snu.cay.dolphin.async.examples.addvector;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
-import org.apache.reef.client.LauncherStatus;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Tang;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Application launching code for AddIntegerREEF.
+ * Application launching code for AddVectorREEF.
  */
-public final class AddIntegerREEF {
+public final class AddVectorREEF {
 
   /**
    * Should not be instantiated.
    */
-  private AddIntegerREEF() {
-  }
-
-  /**
-   * Runs app with given arguments and custom configuration.
-   * @param args command line arguments for running app
-   * @param conf a job configuration
-   * @return a LauncherStatus
-   */
-  public static LauncherStatus runAddInteger(final String[] args, final Configuration conf) {
-    return AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
-        .setWorkerClass(AddIntegerWorker.class)
-        .setUpdaterClass(AddIntegerUpdater.class)
-        .addParameterClass(DeltaValue.class)
-        .addParameterClass(NumKeys.class)
-        .addParameterClass(NumUpdatesPerItr.class)
-        .addParameterClass(NumWorkers.class)
-        .addParameterClass(ComputeTimeMs.class)
-        .build(), conf);
+  private AddVectorREEF() {
   }
 
   public static void main(final String[] args) {
-    runAddInteger(args, Tang.Factory.getTang().newConfigurationBuilder().build());
+    AsyncDolphinLauncher.launch("AddVectorREEF", args, AsyncDolphinConfiguration.newBuilder()
+        .setWorkerClass(AddVectorWorker.class)
+        .setUpdaterClass(AddVectorUpdater.class)
+        .setValueCodecClass(DenseVectorCodec.class)
+        .setServerSerializerClass(DenseVectorSerializer.class)
+        .addParameterClass(DeltaValue.class)
+        .addParameterClass(NumKeys.class)
+        .addParameterClass(NumWorkers.class)
+        .addParameterClass(VectorSize.class)
+        .addParameterClass(ComputeTimeMs.class)
+        .build());
   }
 
-  @NamedParameter(doc = "All workers will add this integer to the sum", short_name = "delta")
+  @NamedParameter(doc = "All workers will add this integer to each element of the vector", short_name = "delta")
   final class DeltaValue implements Name<Integer> {
   }
 
@@ -64,16 +55,16 @@ public final class AddIntegerREEF {
   final class NumKeys implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "num_updates")
-  final class NumUpdatesPerItr implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "The number of workers", short_name = "num_workers")
   final class NumWorkers implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The time to sleep to simulate the computation in workers",
+  @NamedParameter(doc = "The time to sleep to simulate the computation in each mini-batch",
       short_name = "compute_time_ms", default_value = "300")
   final class ComputeTimeMs implements Name<Long> {
+  }
+
+  @NamedParameter(doc = "The size of vector", short_name = "vector_size")
+  final class VectorSize implements Name<Integer> {
   }
 }
