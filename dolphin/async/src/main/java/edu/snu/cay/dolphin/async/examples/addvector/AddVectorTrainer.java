@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async.examples.addvector;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -31,12 +31,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * {@link Worker} class for the AddVectorREEF application.
+ * {@link Trainer} class for the AddVectorREEF application.
  * Pushes a value to the server and checks the current value at the server via pull, once per iteration.
  * It sleeps {@link #computeTime} for each iteration to simulate computation, preventing the saturation of NCS of PS.
  */
-final class AddVectorWorker implements Worker {
-  private static final Logger LOG = Logger.getLogger(AddVectorWorker.class.getName());
+final class AddVectorTrainer implements Trainer {
+  private static final Logger LOG = Logger.getLogger(AddVectorTrainer.class.getName());
 
   /**
    * Sleep to wait validation check is possible.
@@ -81,15 +81,15 @@ final class AddVectorWorker implements Worker {
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
 
   @Inject
-  private AddVectorWorker(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
-                          @Parameter(AddVectorREEF.DeltaValue.class) final int delta,
-                          @Parameter(AddVectorREEF.NumKeys.class) final int numberOfKeys,
-                          @Parameter(AddVectorREEF.NumWorkers.class) final int numberOfWorkers,
-                          @Parameter(AddVectorREEF.ComputeTimeMs.class) final long computeTime,
-                          @Parameter(Parameters.Iterations.class) final int numIterations,
-                          @Parameter(Parameters.MiniBatches.class) final int numMiniBatchesPerItr,
-                          final MemoryStore<Long> memoryStore,
-                          final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
+  private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
+                           @Parameter(AddVectorREEF.DeltaValue.class) final int delta,
+                           @Parameter(AddVectorREEF.NumKeys.class) final int numberOfKeys,
+                           @Parameter(AddVectorREEF.NumWorkers.class) final int numberOfWorkers,
+                           @Parameter(AddVectorREEF.ComputeTimeMs.class) final long computeTime,
+                           @Parameter(Parameters.Iterations.class) final int numIterations,
+                           @Parameter(Parameters.MiniBatches.class) final int numMiniBatchesPerItr,
+                           final MemoryStore<Long> memoryStore,
+                           final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
     this.keyList = new ArrayList<>(numberOfKeys);

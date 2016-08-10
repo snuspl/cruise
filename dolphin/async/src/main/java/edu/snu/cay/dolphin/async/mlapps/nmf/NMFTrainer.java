@@ -20,7 +20,7 @@ import com.google.common.collect.Sets;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
@@ -42,13 +42,13 @@ import java.util.stream.Collectors;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
 /**
- * Worker for non-negative matrix factorization via SGD.
+ * Trainer for non-negative matrix factorization via SGD.
  *
  * Assumes that indices in {@link NMFData} are one-based.
  */
-final class NMFWorker implements Worker {
+final class NMFTrainer implements Trainer {
 
-  private static final Logger LOG = Logger.getLogger(NMFWorker.class.getName());
+  private static final Logger LOG = Logger.getLogger(NMFTrainer.class.getName());
 
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
   private final VectorFactory vectorFactory;
@@ -82,18 +82,18 @@ final class NMFWorker implements Worker {
   private int iteration = 0;
 
   @Inject
-  private NMFWorker(final NMFDataParser dataParser,
-                    final ParameterWorker<Integer, Vector, Vector> parameterWorker,
-                    final VectorFactory vectorFactory,
-                    @Parameter(Rank.class) final int rank,
-                    @Parameter(StepSize.class) final double stepSize,
-                    @Parameter(Lambda.class) final double lambda,
-                    @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
-                    @Parameter(PrintMatrices.class) final boolean printMatrices,
-                    final NMFModelGenerator modelGenerator,
-                    final DataIdFactory<Long> idFactory,
-                    final MemoryStore<Long> memoryStore,
-                    final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
+  private NMFTrainer(final NMFDataParser dataParser,
+                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+                     final VectorFactory vectorFactory,
+                     @Parameter(Rank.class) final int rank,
+                     @Parameter(StepSize.class) final double stepSize,
+                     @Parameter(Lambda.class) final double lambda,
+                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
+                     @Parameter(PrintMatrices.class) final boolean printMatrices,
+                     final NMFModelGenerator modelGenerator,
+                     final DataIdFactory<Long> idFactory,
+                     final MemoryStore<Long> memoryStore,
+                     final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.vectorFactory = vectorFactory;
     this.dataParser = dataParser;

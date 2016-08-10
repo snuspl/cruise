@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.io.network.util.Pair;
@@ -29,7 +29,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * {@link Worker} class for the LassoREEF application.
+ * {@link Trainer} class for the LassoREEF application.
  * Based on lasso regression via stochastic coordinate descent, proposed in
  * S. Shalev-Shwartz and A. Tewari, Stochastic Methods for l1-regularized Loss Minimization, 2011.
  *
@@ -40,8 +40,8 @@ import java.util.logging.Logger;
  *
  * All inner product values are cached in member fields.
  */
-final class LassoWorker implements Worker {
-  private static final Logger LOG = Logger.getLogger(LassoWorker.class.getName());
+final class LassoTrainer implements Trainer {
+  private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
 
   /**
    * Array of vectors containing the features of the input data.
@@ -88,14 +88,14 @@ final class LassoWorker implements Worker {
   private final Random random;
 
   /**
-   * Worker object for interacting with the parameter server.
+   * Trainer object for interacting with the parameter server.
    */
   private final ParameterWorker<Integer, Double, Double> worker;
 
   @Inject
-  private LassoWorker(final LassoParser lassoParser,
-                      @Parameter(LassoREEF.Lambda.class) final double lambda,
-                      final ParameterWorker<Integer, Double, Double> worker) {
+  private LassoTrainer(final LassoParser lassoParser,
+                       @Parameter(LassoREEF.Lambda.class) final double lambda,
+                       final ParameterWorker<Integer, Double, Double> worker) {
     final Pair<Vector[], Vector> pair = lassoParser.parse();
     this.vecXArray = pair.getFirst();
     this.vecY = pair.getSecond();

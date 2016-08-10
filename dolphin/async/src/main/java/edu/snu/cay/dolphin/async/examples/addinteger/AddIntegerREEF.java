@@ -42,7 +42,7 @@ public final class AddIntegerREEF {
    */
   public static LauncherStatus runAddInteger(final String[] args, final Configuration conf) {
     return AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
-        .setWorkerClass(AddIntegerWorker.class)
+        .setTrainerClass(AddIntegerTrainer.class)
         .setUpdaterClass(AddIntegerUpdater.class)
         .addParameterClass(DeltaValue.class)
         .addParameterClass(NumKeys.class)
