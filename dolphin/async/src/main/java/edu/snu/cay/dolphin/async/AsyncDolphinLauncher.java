@@ -211,7 +211,7 @@ public final class AsyncDolphinLauncher {
               .bindNamedParameter(DashboardHostAddress.class, hostAddress);
         }
       } catch (IOException e) {
-        LOG.log(Level.WARNING, "Not launching dashboard");
+        LOG.log(Level.WARNING, "Launching dashboard has failed", e);
       } finally {
         final Configuration dashboardConf = dashboardConfBuilder.build();
         final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
