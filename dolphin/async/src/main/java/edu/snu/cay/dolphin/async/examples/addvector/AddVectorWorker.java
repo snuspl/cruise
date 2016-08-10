@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.examples.addinteger;
+package edu.snu.cay.dolphin.async.examples.addvector;
 
-import edu.snu.cay.common.metric.*;
+import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
@@ -24,16 +25,18 @@ import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * {@link Worker} class for the AddIntegerREEF application.
+ * {@link Worker} class for the AddVectorREEF application.
  * Pushes a value to the server and checks the current value at the server via pull, once per iteration.
  * It sleeps {@link #computeTime} for each iteration to simulate computation, preventing the saturation of NCS of PS.
  */
-final class AddIntegerWorker implements Worker {
-  private static final Logger LOG = Logger.getLogger(AddIntegerWorker.class.getName());
+final class AddVectorWorker implements Worker {
+  private static final Logger LOG = Logger.getLogger(AddVectorWorker.class.getName());
 
   /**
    * Sleep to wait validation check is possible.
@@ -45,7 +48,7 @@ final class AddIntegerWorker implements Worker {
    */
   private static final int NUM_VALIDATE_RETRIES = 20;
 
-  private final ParameterWorker<Integer, Integer, Integer> parameterWorker;
+  private final ParameterWorker<Integer, Integer, Vector> parameterWorker;
 
   /**
    * The integer to be added to each key in an update.
@@ -53,14 +56,14 @@ final class AddIntegerWorker implements Worker {
   private final int delta;
 
   /**
-   * The number of keys.
+   * a key list to use in communicating with PS server.
    */
-  private final int numberOfKeys;
+  private final List<Integer> keyList;
 
   /**
-   * The number of updates for each key in an iteration.
+   * Number of batches per iteration.
    */
-  private final int numberOfUpdates;
+  private final int numMiniBatchesPerItr;
 
   /**
    * Sleep time to simulate computation.
@@ -78,25 +81,29 @@ final class AddIntegerWorker implements Worker {
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
 
   @Inject
-  private AddIntegerWorker(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
-                           @Parameter(AddIntegerREEF.DeltaValue.class) final int delta,
-                           @Parameter(AddIntegerREEF.NumKeys.class) final int numberOfKeys,
-                           @Parameter(AddIntegerREEF.NumUpdatesPerItr.class) final int numberOfUpdates,
-                           @Parameter(AddIntegerREEF.NumWorkers.class) final int numberOfWorkers,
-                           @Parameter(AddIntegerREEF.ComputeTimeMs.class) final long computeTime,
-                           @Parameter(Parameters.Iterations.class) final int numIterations,
-                           final MemoryStore<Long> memoryStore,
-                           final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
+  private AddVectorWorker(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
+                          @Parameter(AddVectorREEF.DeltaValue.class) final int delta,
+                          @Parameter(AddVectorREEF.NumKeys.class) final int numberOfKeys,
+                          @Parameter(AddVectorREEF.NumWorkers.class) final int numberOfWorkers,
+                          @Parameter(AddVectorREEF.ComputeTimeMs.class) final long computeTime,
+                          @Parameter(Parameters.Iterations.class) final int numIterations,
+                          @Parameter(Parameters.MiniBatches.class) final int numMiniBatchesPerItr,
+                          final MemoryStore<Long> memoryStore,
+                          final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
-    this.numberOfKeys = numberOfKeys;
-    this.numberOfUpdates = numberOfUpdates;
+    this.keyList = new ArrayList<>(numberOfKeys);
+    for (int key = 0; key < numberOfKeys; key++) {
+      keyList.add(key);
+    }
+
     this.computeTime = computeTime;
+    this.numMiniBatchesPerItr = numMiniBatchesPerItr;
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
-    this.expectedResult = delta * numberOfWorkers * numIterations * numberOfUpdates;
-    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numberOfUpdates:{3}",
-        new Object[]{delta, numberOfWorkers, numIterations, numberOfUpdates});
+    this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatchesPerItr;
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numMiniBatchesPerItr:{3}",
+        new Object[]{delta, numberOfWorkers, numIterations, numMiniBatchesPerItr});
 
     this.memoryStore = memoryStore;
     this.metricsMsgSender = metricsMsgSender;
@@ -108,18 +115,22 @@ final class AddIntegerWorker implements Worker {
 
   @Override
   public void run() {
-    // sleep to simulate computation
-    try {
-      Thread.sleep(computeTime);
-    } catch (final InterruptedException e) {
-      LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
-    }
+    // run mini-batches
+    for (int i = 0; i < numMiniBatchesPerItr; i++) {
+      // 1. pull model to compute with
+      final List<Vector> valueList = parameterWorker.pull(keyList);
+      LOG.log(Level.INFO, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
-    for (int i = 0; i < numberOfUpdates; i++) {
-      for (int key = 0; key < numberOfKeys; key++) {
+      // 2. sleep to simulate computation
+      try {
+        Thread.sleep(computeTime);
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
+      }
+
+      // 3. push computed model
+      for (final int key : keyList) {
         parameterWorker.push(key, delta);
-        final Integer value = parameterWorker.pull(key);
-        LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{key, value});
       }
     }
 
@@ -139,7 +150,6 @@ final class AddIntegerWorker implements Worker {
   private WorkerMetrics buildMetricsMsg(final int numDataBlocks) {
     return WorkerMetrics.newBuilder()
         .setNumDataBlocks(numDataBlocks)
-        .setTotalCompTime(DELAY_MS)
         .build();
   }
 
@@ -166,17 +176,22 @@ final class AddIntegerWorker implements Worker {
   /**
    * Checks the result(total sum) of each key is same with expected result.
    *
-   * @return true if all of the values of keys are matched with expected result, otherwise false.
+   * @return true if all of the values of keyList are matched with expected result, otherwise false.
    */
   private boolean validate() {
     LOG.log(Level.INFO, "Start validation");
     boolean isSuccess = true;
-    for (int key = 0; key < numberOfKeys; key++) {
-      final int result = parameterWorker.pull(key);
 
-      if (expectedResult != result) {
-        LOG.log(Level.WARNING, "For key {0}, expected value {1} but received {2}",
-            new Object[]{key, expectedResult, result});
+    final List<Vector> valueList = parameterWorker.pull(keyList);
+    LOG.log(Level.INFO, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
+
+    for (int idx = 0; idx < keyList.size(); idx++) {
+      final int key = keyList.get(idx);
+      final Vector value = valueList.get(idx);
+
+      if (expectedResult != value.get(0)) { // check only the first element, because all elements are identical
+        LOG.log(Level.WARNING, "For key {0}, expected value of elements is {1} but received {2}",
+            new Object[]{key, expectedResult, value});
         isSuccess = false;
       }
     }
