@@ -222,12 +222,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> serverMetric = entry.getValue();
         final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
-        aggregatedMetricBuilder.setWindowIndex((int) serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getWindowIndex()).average().getAsDouble());
         aggregatedMetricBuilder.setNumModelBlocks((int) serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getNumModelBlocks()).average().getAsDouble());
-        aggregatedMetricBuilder.setMetricWindowMs((int) serverMetric.stream().mapToLong(
-            param -> ((ServerMetrics) param.getMetrics()).getMetricWindowMs()).average().getAsDouble());
+            param -> ((ServerMetrics) param.getMetrics()).getNumModelBlocks()).average().orElse(0));
         aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessed()).sum());
         aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
@@ -244,12 +240,12 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
         // This server did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getTotalPullProcessed() == 0) {
+        if (aggregatedMetric.getTotalReqProcessed() == 0) {
           break;
         } else {
           processedMetrics.add(new ServerEvaluatorParameters(entry.getKey(),
               new DataInfoImpl((int) serverMetric.stream().mapToInt(
-                  param -> param.getDataInfo().getNumBlocks()).average().getAsDouble()), aggregatedMetric));
+                  param -> param.getDataInfo().getNumBlocks()).average().orElse(0)), aggregatedMetric));
         }
       }
       break;
@@ -257,26 +253,22 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
-        aggregatedMetricBuilder.setItrIdx((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getItrIdx()).average().getAsDouble());
         aggregatedMetricBuilder.setNumDataBlocks((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getNumDataBlocks()).average().getAsDouble());
-        aggregatedMetricBuilder.setNumMiniBatchPerItr((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getNumMiniBatchPerItr()).average().getAsDouble());
+            param -> ((WorkerMetrics) param.getMetrics()).getNumDataBlocks()).average().orElse(0));
         aggregatedMetricBuilder.setProcessedDataItemCount((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount()).average().getAsDouble());
+            param -> ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount()).average().orElse(0));
         aggregatedMetricBuilder.setTotalTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalTime()).average().getAsDouble());
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalTime()).average().orElse(0.0));
         aggregatedMetricBuilder.setTotalCompTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().getAsDouble());
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0.0));
         aggregatedMetricBuilder.setTotalPullTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().getAsDouble());
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0.0));
         aggregatedMetricBuilder.setTotalPushTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalPushTime()).average().getAsDouble());
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalPushTime()).average().orElse(0.0));
         aggregatedMetricBuilder.setAvgPullTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getAvgPullTime()).average().getAsDouble());
+            param -> ((WorkerMetrics) param.getMetrics()).getAvgPullTime()).average().orElse(0.0));
         aggregatedMetricBuilder.setAvgPushTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getAvgPushTime()).average().getAsDouble());
+            param -> ((WorkerMetrics) param.getMetrics()).getAvgPushTime()).average().orElse(0.0));
 
         final WorkerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
@@ -286,7 +278,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         } else {
           processedMetrics.add(new WorkerEvaluatorParameters(entry.getKey(),
               new DataInfoImpl((int) workerMetric.stream().mapToInt(
-                  param -> param.getDataInfo().getNumBlocks()).average().getAsDouble()), aggregatedMetric));
+                  param -> param.getDataInfo().getNumBlocks()).average().orElse(0)), aggregatedMetric));
         }
       }
       break;

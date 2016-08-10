@@ -435,6 +435,9 @@ public final class AsyncDolphinDriver {
             // 4. allow workers to do cleanup, after finishing optimization entirely
             LOG.log(Level.INFO, "Stop triggering optimization. Allow workers do cleanup");
             synchronizationManager.allowWorkersCleanup();
+
+            // 5. Stop metric collection
+            metricManager.stopMetricCollection();
           }
         }
       });
