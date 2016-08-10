@@ -27,6 +27,8 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.sun.tools.internal.xjc.reader.Ring.add;
+
 /**
  * A temporary storage for holding worker and server metrics related to optimization.
  */
@@ -53,8 +55,8 @@ public final class MetricManager {
    * A map that contains each evaluator's mapping to the number of blocks it contains.
    * The map is loaded only when metric collection is enabled.
    */
-  private Map<String, Integer> numBlockByEvalIdForWorker;
-  private Map<String, Integer> numBlockByEvalIdForServer;
+  private volatile Map<String, Integer> numBlockByEvalIdForWorker;
+  private volatile Map<String, Integer> numBlockByEvalIdForServer;
 
 
   @Inject
@@ -75,13 +77,18 @@ public final class MetricManager {
     if (metricCollectionEnabled) {
       final int numDataBlocksOnWorker = metrics.getNumDataBlocks();
 
-      if (numBlockByEvalIdForWorker.containsKey(workerId)) {
+      if (numBlockByEvalIdForWorker != null && numBlockByEvalIdForWorker.containsKey(workerId)) {
         final int numDataBlocksOnDriver = numBlockByEvalIdForWorker.get(workerId);
 
         if (numDataBlocksOnWorker == numDataBlocksOnDriver) {
           final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnWorker);
           final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
-          workerEvalParams.computeIfAbsent(workerId, metricList -> new ArrayList<>()).add(evaluatorParameters);
+          synchronized (workerEvalParams) {
+            if (!workerEvalParams.containsKey(workerId)) {
+              workerEvalParams.put(workerId, new ArrayList<>());
+            }
+            workerEvalParams.get(workerId).add(evaluatorParameters);
+          }
         } else {
           LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
               new Object[]{workerId, numDataBlocksOnWorker, numDataBlocksOnDriver});
@@ -103,13 +110,18 @@ public final class MetricManager {
     if (metricCollectionEnabled) {
       final int numModelBlocksOnServer = metrics.getNumModelBlocks();
 
-      if (numBlockByEvalIdForServer.containsKey(serverId)) {
+      if (numBlockByEvalIdForServer != null && numBlockByEvalIdForServer.containsKey(serverId)) {
         final int numModelBlocksOnDriver = numBlockByEvalIdForServer.get(serverId);
 
         if (numModelBlocksOnServer == numModelBlocksOnDriver) {
           final DataInfo dataInfo = new DataInfoImpl(numModelBlocksOnServer);
           final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
-          serverEvalParams.computeIfAbsent(serverId, metricList -> new ArrayList<>()).add(evaluatorParameters);
+          synchronized (serverEvalParams) {
+            if (!serverEvalParams.containsKey(serverId)) {
+              serverEvalParams.put(serverId, new ArrayList<>());
+            }
+            serverEvalParams.get(serverId).add(evaluatorParameters);
+          }
         } else {
           LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
               new Object[]{serverId, numModelBlocksOnServer, numModelBlocksOnDriver});
