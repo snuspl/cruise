@@ -25,21 +25,18 @@ import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * {@link Worker} class for the AddIntegerREEF application.
+ * {@link Worker} class for the AddVectorREEF application.
  * Pushes a value to the server and checks the current value at the server via pull, once per iteration.
- * It sleeps {@link #DELAY_MS} for each iteration to simulate computation, preventing the saturation of NCS of PS.
+ * It sleeps {@link #computeTime} for each iteration to simulate computation, preventing the saturation of NCS of PS.
  */
 final class AddVectorWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(AddVectorWorker.class.getName());
-
-  /**
-   * Sleep 300 ms to simulate computation.
-   */
-  private static final long DELAY_MS = 300;
 
   /**
    * Sleep to wait validation check is possible.
@@ -59,19 +56,19 @@ final class AddVectorWorker implements Worker {
   private final int delta;
 
   /**
-   * The start key.
+   * a key list to use in communicating with PS server.
    */
-  private final int startKey;
+  private final List<Integer> keyList;
 
   /**
-   * The number of keys.
+   * Number of batches per iteration.
    */
-  private final int numberOfKeys;
+  private final int numMiniBatchesPerItr;
 
   /**
-   * The number of updates for each key in an iteration.
+   * Sleep time to simulate computation.
    */
-  private final int numberOfUpdates;
+  private final long computeTime;
 
   /**
    * The expected total sum of each key.
@@ -86,23 +83,27 @@ final class AddVectorWorker implements Worker {
   @Inject
   private AddVectorWorker(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
                           @Parameter(AddVectorREEF.DeltaValue.class) final int delta,
-                          @Parameter(AddVectorREEF.StartKey.class) final int startKey,
                           @Parameter(AddVectorREEF.NumKeys.class) final int numberOfKeys,
-                          @Parameter(AddVectorREEF.NumUpdates.class) final int numberOfUpdates,
                           @Parameter(AddVectorREEF.NumWorkers.class) final int numberOfWorkers,
+                          @Parameter(AddVectorREEF.ComputeTimeMs.class) final long computeTime,
                           @Parameter(Parameters.Iterations.class) final int numIterations,
+                          @Parameter(Parameters.MiniBatches.class) final int numMiniBatchesPerItr,
                           final MemoryStore<Long> memoryStore,
                           final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
-    this.startKey = startKey;
-    this.numberOfKeys = numberOfKeys;
-    this.numberOfUpdates = numberOfUpdates;
+    this.keyList = new ArrayList<>(numberOfKeys);
+    for (int key = 0; key < numberOfKeys; key++) {
+      keyList.add(key);
+    }
+
+    this.computeTime = computeTime;
+    this.numMiniBatchesPerItr = numMiniBatchesPerItr;
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
-    this.expectedResult = delta * numberOfWorkers * numIterations * numberOfUpdates;
-    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numberOfUpdates:{3}",
-        new Object[]{delta, numberOfWorkers, numIterations, numberOfUpdates});
+    this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatchesPerItr;
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numMiniBatchesPerItr:{3}",
+        new Object[]{delta, numberOfWorkers, numIterations, numMiniBatchesPerItr});
 
     this.memoryStore = memoryStore;
     this.metricsMsgSender = metricsMsgSender;
@@ -114,18 +115,22 @@ final class AddVectorWorker implements Worker {
 
   @Override
   public void run() {
-    // sleep to simulate computation
-    try {
-      Thread.sleep(DELAY_MS);
-    } catch (final InterruptedException e) {
-      LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
-    }
+    // run mini-batches
+    for (int i = 0; i < numMiniBatchesPerItr; i++) {
+      // 1. pull model to compute with
+      final List<Vector> valueList = parameterWorker.pull(keyList);
+      LOG.log(Level.INFO, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
-    for (int i = 0; i < numberOfUpdates; i++) {
-      for (int j = 0; j < numberOfKeys; j++) {
-        parameterWorker.push(startKey + j, delta);
-        final Vector value = parameterWorker.pull(startKey + j);
-        LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{startKey + j, value});
+      // 2. sleep to simulate computation
+      try {
+        Thread.sleep(computeTime);
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
+      }
+
+      // 3. push computed model
+      for (final int key : keyList) {
+        parameterWorker.push(key, delta);
       }
     }
 
@@ -150,11 +155,11 @@ final class AddVectorWorker implements Worker {
 
   @Override
   public void cleanup() {
-    int numRetries = NUM_VALIDATE_RETRIES;
+    int numRemainingRetries = NUM_VALIDATE_RETRIES;
 
-    while (numRetries-- > 0) {
+    while (numRemainingRetries-- > 0) {
       if (validate()) {
-        LOG.log(Level.WARNING, "Validation success");
+        LOG.log(Level.INFO, "Validation success");
         return;
       }
 
@@ -171,17 +176,22 @@ final class AddVectorWorker implements Worker {
   /**
    * Checks the result(total sum) of each key is same with expected result.
    *
-   * @return true if all of the values of keys are matched with expected result, otherwise false.
+   * @return true if all of the values of keyList are matched with expected result, otherwise false.
    */
   private boolean validate() {
     LOG.log(Level.INFO, "Start validation");
     boolean isSuccess = true;
-    for (int i = 0; i < numberOfKeys; i++) {
-      final Vector result = parameterWorker.pull(startKey + i);
 
-      if (expectedResult != result.get(0)) { // check only the first element
+    final List<Vector> valueList = parameterWorker.pull(keyList);
+    LOG.log(Level.INFO, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
+
+    for (int idx = 0; idx < keyList.size(); idx++) {
+      final int key = keyList.get(idx);
+      final Vector value = valueList.get(idx);
+
+      if (expectedResult != value.get(0)) { // check only the first element, because all elements are identical
         LOG.log(Level.WARNING, "For key {0}, expected value of elements is {1} but received {2}",
-            new Object[]{startKey + i, expectedResult, result});
+            new Object[]{key, expectedResult, value});
         isSuccess = false;
       }
     }

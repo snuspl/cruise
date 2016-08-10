@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * A simple application that uses multiple workers to continuously add vectors.
+ * A simple application that uses multiple workers to repeatedly update vectors by adding a fixed delta value.
  */
 package edu.snu.cay.dolphin.async.examples.addvector;

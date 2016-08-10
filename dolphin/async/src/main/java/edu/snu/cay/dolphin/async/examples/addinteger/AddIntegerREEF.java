@@ -45,10 +45,10 @@ public final class AddIntegerREEF {
         .setWorkerClass(AddIntegerWorker.class)
         .setUpdaterClass(AddIntegerUpdater.class)
         .addParameterClass(DeltaValue.class)
-        .addParameterClass(StartKey.class)
         .addParameterClass(NumKeys.class)
-        .addParameterClass(NumUpdates.class)
+        .addParameterClass(NumUpdatesPerItr.class)
         .addParameterClass(NumWorkers.class)
+        .addParameterClass(ComputeTimeMs.class)
         .build(), conf);
   }
 
@@ -60,19 +60,20 @@ public final class AddIntegerREEF {
   final class DeltaValue implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The start key", short_name = "start_key")
-  final class StartKey implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "The number of keys", short_name = "num_keys")
   final class NumKeys implements Name<Integer> {
   }
 
   @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "num_updates")
-  final class NumUpdates implements Name<Integer> {
+  final class NumUpdatesPerItr implements Name<Integer> {
   }
 
   @NamedParameter(doc = "The number of workers", short_name = "num_workers")
   final class NumWorkers implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The time to sleep to simulate the computation in workers",
+      short_name = "compute_time_ms", default_value = "300")
+  final class ComputeTimeMs implements Name<Long> {
   }
 }
