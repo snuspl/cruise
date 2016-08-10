@@ -15,20 +15,30 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * A temporary storage for holding worker and server metrics related to optimization.
+ * Users can optionally run a dashboard server, which visualizes the received metrics
+ * (See {@link edu.snu.cay.common.param.Parameters.DashboardPort}).
  */
 @DriverSide
 public final class MetricManager {
@@ -56,14 +66,38 @@ public final class MetricManager {
   private volatile Map<String, Integer> numBlockByEvalIdForWorker;
   private volatile Map<String, Integer> numBlockByEvalIdForServer;
 
+  /**
+   * URL of Dolphin dashboard server. Empty if not using dashboard.
+   */
+  private final String dashboardURL;
 
+  /**
+   * If the Dashboard server is in use.
+   */
+  private final boolean dashboardEnabled;
+
+  /**
+   * Constructor of MetricManager.
+   * @param hostAddress Host address of the dashboard server. The address is set lazily at the constructor
+   *                    if the client has configured a feasible port number.
+   * @param port Port number of dolphin dashboard server.
+   */
   @Inject
-  private MetricManager() {
+  private MetricManager(@Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
+                        @Parameter(Parameters.DashboardPort.class) final int port) {
     this.workerEvalParams = Collections.synchronizedMap(new HashMap<>());
     this.serverEvalParams = Collections.synchronizedMap(new HashMap<>());
     this.metricCollectionEnabled = false;
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
+
+    this.dashboardEnabled = !hostAddress.isEmpty();
+    this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
+    if (this.dashboardEnabled) {
+      LOG.log(Level.INFO, "Dashboard url: {0}", dashboardURL);
+    } else {
+      LOG.log(Level.INFO, "Dashboard is not in use");
+    }
   }
 
   /**
@@ -97,6 +131,11 @@ public final class MetricManager {
     } else {
       LOG.log(Level.FINE, "Metric collection disabled. Dropping metric from {0}", workerId);
     }
+
+    // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
+    if (this.dashboardEnabled) {
+      sendMetricsToDashboard(workerId, metrics.toString());
+    }
   }
 
   /**
@@ -129,6 +168,11 @@ public final class MetricManager {
       }
     } else {
       LOG.log(Level.FINE, "Metric collection disabled. Dropping metric from {0}", serverId);
+    }
+
+    // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
+    if (this.dashboardEnabled) {
+      sendMetricsToDashboard(serverId, metrics.toString());
     }
   }
 
@@ -199,6 +243,44 @@ public final class MetricManager {
   private void clearServerMetrics() {
     synchronized (serverEvalParams) {
       serverEvalParams.clear();
+    }
+  }
+
+  /**
+   * Send metrics to Dashboard server.
+   * @param id ID of the part which is sending the metrics.
+   * @param metrics The metrics to send to the Dashboard server.
+   */
+  private void sendMetricsToDashboard(final String id, final String metrics) {
+    try {
+      // Build http connection with the Dashboard server, set configurations.
+      // TODO #722: Create WebSocket instead of connecting every time to send metrics to Dashboard server
+      final String dashboardUrlStr = this.dashboardURL;
+      final URL dashboardUrl = new URL(dashboardUrlStr);
+      final HttpURLConnection con = (HttpURLConnection) dashboardUrl.openConnection();
+      con.setRequestMethod("POST");
+      con.setDoOutput(true);
+      con.setDoInput(true);
+      con.connect();
+
+      // Send metrics via outputStream to the Dashboard server.
+      try (final OutputStream os = con.getOutputStream()) {
+        final String param = "id=" + id + "&metrics=" + metrics + "&time=" + System.currentTimeMillis();
+        os.write((param).getBytes());
+        os.flush();
+      }
+
+      // Receive responses from the Dashboard Server.
+      try (final BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+        String inputLine;
+        final StringBuffer response = new StringBuffer();
+        while ((inputLine = in.readLine()) != null) {
+          response.append(inputLine);
+        }
+      }
+
+    } catch (IOException e) {
+      LOG.log(Level.WARNING, "Failed to send metrics to Dashboard server.", e);
     }
   }
 }
