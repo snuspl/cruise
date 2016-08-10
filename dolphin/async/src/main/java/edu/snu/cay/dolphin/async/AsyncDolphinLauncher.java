@@ -208,7 +208,6 @@ public final class AsyncDolphinLauncher {
           runDashboardServer(port);
           LOG.log(Level.INFO, "Add dashboard configuration!");
           dashboardConfBuilder
-              .bindNamedParameter(DashboardEnabled.class, "true")
               .bindNamedParameter(DashboardHostAddress.class, hostAddress);
         }
       } catch (IOException e) {
@@ -401,11 +400,12 @@ public final class AsyncDolphinLauncher {
    * Find the Host address of Client machine.
    * @param port is the port number provided by user.
    * @return String of HostAddress.
-   * @throws IOException happens when the port number is invalid or failed to find the host address.
+   * @throws IOException when the port number is invalid or failed to find the host address.
    */
   private static String getHostAddress(final int port) throws IOException {
     String hostAddress = "";
-      // Find IP address of client PC.
+
+    // Find IP address of client PC.
     final Enumeration e = NetworkInterface.getNetworkInterfaces();
     while (e.hasMoreElements()) {
       final NetworkInterface n = (NetworkInterface) e.nextElement();
@@ -422,23 +422,24 @@ public final class AsyncDolphinLauncher {
         break;
       }
     }
+
     // Check if the port number is available by trying to connect a socket to given port.
     // If the connection is successful, it means the port number is already in use.
-    // Only when connectionException occurs means that the port number is available
+    // Only when connectionException occurs means that the port number is available.
     try {
       (new Socket(hostAddress, port)).close();
-      LOG.log(Level.INFO, "Port number already in use.");
+      LOG.log(Level.WARNING, "Port number already in use.");
       throw new IOException("Port number already in use.");
     } catch (ConnectException connectException) {
-      LOG.log(Level.INFO, "URL found: " + hostAddress + ":" + port);
+      LOG.log(Level.INFO, "URL found: {0}:{1}", new Object[]{hostAddress, port});
       return hostAddress;
     }
   }
 
   /**
    * Copy the server launching script directory to java tmpdir and run Dashboard server on localhost.
-   * @param port is the port number provided by user.
-   * @throws IOException happens when failed to copy the server script or failed to make processBuilder.
+   * @param port The port number provided by user.
+   * @throws IOException when failed to copy the server script or failed to make processBuilder.
    */
   private static void runDashboardServer(final int port) throws IOException {
     LOG.log(Level.INFO, "Now launch dashboard server");

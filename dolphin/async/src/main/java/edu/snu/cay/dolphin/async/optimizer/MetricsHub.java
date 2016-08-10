@@ -25,6 +25,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -35,7 +36,8 @@ import java.util.logging.Logger;
 
 /**
  * A temporary storage for holding worker and server metrics related to optimization.
- * Users can optionally run a dashboard server, which visualizes the received metrics. {@link DashboardPort}
+ * Users can optionally run a dashboard server, which visualizes the received metrics
+ * (See {@link edu.snu.cay.common.param.Parameters.DashboardPort}).
  */
 public final class MetricsHub {
   private static final Logger LOG = Logger.getLogger(MetricsHub.class.getName());
@@ -61,17 +63,16 @@ public final class MetricsHub {
 
   @Inject
   private MetricsHub(@Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
-                     @Parameter(Parameters.DashboardPort.class) final int port,
-                     @Parameter(Parameters.DashboardEnabled.class) final boolean dashboardEnabled) {
+                     @Parameter(Parameters.DashboardPort.class) final int port) {
     this.workerEvalParams = Collections.synchronizedList(new LinkedList<>());
     this.serverEvalParams = Collections.synchronizedList(new LinkedList<>());
-    this.dashboardEnabled = dashboardEnabled;
-    if (dashboardEnabled) {
-      this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
+    this.dashboardEnabled = !hostAddress.isEmpty();
+    this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
+    if (this.dashboardEnabled) {
+      LOG.log(Level.INFO, "Dashboard url: {0}", dashboardURL);
     } else {
-      this.dashboardURL = "";
+      LOG.log(Level.INFO, "Dashboard is not in use");
     }
-    LOG.log(Level.INFO, "Dashboard: " + dashboardEnabled + " " + dashboardURL);
   }
 
   /**
@@ -81,8 +82,6 @@ public final class MetricsHub {
    */
   private void sendMetrics(final String id, final String metrics) {
     try {
-      LOG.log(Level.INFO, "send metrics to " + dashboardURL);
-      LOG.log(Level.INFO, "send " + metrics);
       // Build http connection with the Dashboard server, set configurations.
       // TODO #722: Create WebSocket instead of connecting every time to send metrics to Dashboard server
       final String dashboardUrlStr = this.dashboardURL;
@@ -109,7 +108,7 @@ public final class MetricsHub {
         }
       }
 
-    } catch (Exception e) {
+    } catch (IOException e) {
       LOG.log(Level.WARNING, "Failed to send metrics to Dashboard server.", e);
     }
   }

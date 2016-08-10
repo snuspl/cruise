@@ -87,8 +87,4 @@ public final class Parameters {
       "empty if failed to find valid host address.", default_value = "")
   public final class DashboardHostAddress implements Name<String> {
   }
-
-  @NamedParameter(doc = "A boolean saving if the Dashboard server is in use", default_value = "false")
-  public final class DashboardEnabled implements Name<Boolean> {
-  }
 }
