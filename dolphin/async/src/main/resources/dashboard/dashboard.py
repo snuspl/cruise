@@ -17,7 +17,6 @@ import re
 import sqlite3
 import sys
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
-from plotly.tools import get_embed
 
 print("Flask script: Launching dashboard server...")
 

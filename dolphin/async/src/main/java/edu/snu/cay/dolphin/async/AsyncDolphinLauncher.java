@@ -200,20 +200,21 @@ public final class AsyncDolphinLauncher {
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
 
       // run dashboard and add configuration
+      final JavaConfigurationBuilder dashboardConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
       final int port = basicParameterInjector.getNamedInstance(DashboardPort.class);
-      String hostAddress = "";
       try {
         if (port > 0) {
-          hostAddress = getHostAddress(port);
+          final String hostAddress = getHostAddress(port);
           runDashboardServer(port);
+          LOG.log(Level.INFO, "Add dashboard configuration!");
+          dashboardConfBuilder
+              .bindNamedParameter(DashboardEnabled.class, "true")
+              .bindNamedParameter(DashboardHostAddress.class, hostAddress);
         }
       } catch (IOException e) {
-        hostAddress = "";
+        LOG.log(Level.WARNING, "Not launching dashboard");
       } finally {
-        final Configuration dashboardConf = Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(DashboardHostAddress.class, hostAddress)
-            .build();
-
+        final Configuration dashboardConf = dashboardConfBuilder.build();
         final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
             Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
                 serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf,
@@ -222,7 +223,6 @@ public final class AsyncDolphinLauncher {
         LOG.log(Level.INFO, "REEF job completed: {0}", status);
         return status;
       }
-
     } catch (final Exception e) {
       final LauncherStatus status = LauncherStatus.failed(e);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
@@ -231,7 +231,6 @@ public final class AsyncDolphinLauncher {
       LOG.log(Level.WARNING, "Exception occurred", e);
 
       return status;
-
     }
   }
 
@@ -406,7 +405,7 @@ public final class AsyncDolphinLauncher {
    */
   private static String getHostAddress(final int port) throws IOException {
     String hostAddress = "";
-      // Find IP address of driver PC.
+      // Find IP address of client PC.
     final Enumeration e = NetworkInterface.getNetworkInterfaces();
     while (e.hasMoreElements()) {
       final NetworkInterface n = (NetworkInterface) e.nextElement();
@@ -423,11 +422,13 @@ public final class AsyncDolphinLauncher {
         break;
       }
     }
-    // Check if the port number is available.
+    // Check if the port number is available by trying to connect a socket to given port.
+    // If the connection is successful, it means the port number is already in use.
+    // Only when connectionException occurs means that the port number is available
     try {
       (new Socket(hostAddress, port)).close();
       LOG.log(Level.INFO, "Port number already in use.");
-      throw new IOException();
+      throw new IOException("Port number already in use.");
     } catch (ConnectException connectException) {
       LOG.log(Level.INFO, "URL found: " + hostAddress + ":" + port);
       return hostAddress;
@@ -442,7 +443,7 @@ public final class AsyncDolphinLauncher {
   private static void runDashboardServer(final int port) throws IOException {
     LOG.log(Level.INFO, "Now launch dashboard server");
 
-    final Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir") + DASHBOARD_DIR);
+    final Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir"), DASHBOARD_DIR);
     // Copy the dashboard python script to /tmp
     try {
       final FileSystem fileSystem = FileSystems.newFileSystem(
@@ -477,7 +478,7 @@ public final class AsyncDolphinLauncher {
         }
       });
     } catch (URISyntaxException e) {
-      LOG.log(Level.WARNING, "Faied to access current jar file.");
+      LOG.log(Level.WARNING, "Failed to access current jar file.", e);
     }
   }
 

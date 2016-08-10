@@ -54,25 +54,35 @@ public final class MetricsHub {
    */
   private final String dashboardURL;
 
+  /**
+   * If the Dashboard server is in use.
+   */
+  private final boolean dashboardEnabled;
+
   @Inject
   private MetricsHub(@Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
-                     @Parameter(Parameters.DashboardPort.class) final int port) {
+                     @Parameter(Parameters.DashboardPort.class) final int port,
+                     @Parameter(Parameters.DashboardEnabled.class) final boolean dashboardEnabled) {
     this.workerEvalParams = Collections.synchronizedList(new LinkedList<>());
     this.serverEvalParams = Collections.synchronizedList(new LinkedList<>());
-    if (!hostAddress.isEmpty()) {
+    this.dashboardEnabled = dashboardEnabled;
+    if (dashboardEnabled) {
       this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
     } else {
       this.dashboardURL = "";
     }
+    LOG.log(Level.INFO, "Dashboard: " + dashboardEnabled + " " + dashboardURL);
   }
 
   /**
    * Send metrics to Dashboard server.
-   * @param id
-   * @param metrics
+   * @param id ID of the part which is sending the metrics.
+   * @param metrics The metrics to send to the Dashboard server.
    */
   private void sendMetrics(final String id, final String metrics) {
     try {
+      LOG.log(Level.INFO, "send metrics to " + dashboardURL);
+      LOG.log(Level.INFO, "send " + metrics);
       // Build http connection with the Dashboard server, set configurations.
       // TODO #722: Create WebSocket instead of connecting every time to send metrics to Dashboard server
       final String dashboardUrlStr = this.dashboardURL;
@@ -100,7 +110,7 @@ public final class MetricsHub {
       }
 
     } catch (Exception e) {
-      LOG.log(Level.WARNING, "Failed to send metrics to Dashboard server." + e);
+      LOG.log(Level.WARNING, "Failed to send metrics to Dashboard server.", e);
     }
   }
 
@@ -113,7 +123,7 @@ public final class MetricsHub {
     final DataInfo dataInfo = new DataInfoImpl(metrics.getNumDataBlocks());
     final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
     workerEvalParams.add(evaluatorParameters);
-    if (!this.dashboardURL.isEmpty()) {
+    if (this.dashboardEnabled) {
       sendMetrics(workerId, metrics.toString());
     }
   }
@@ -127,7 +137,7 @@ public final class MetricsHub {
     final DataInfo dataInfo = new DataInfoImpl(metrics.getNumPartitionBlocks());
     final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
     serverEvalParams.add(evaluatorParameters);
-    if (!this.dashboardURL.isEmpty()) {
+    if (this.dashboardEnabled) {
       sendMetrics(serverId, metrics.toString());
     }
   }

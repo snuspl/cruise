@@ -75,8 +75,9 @@ public final class Parameters {
   public final class MiniBatches implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Port number for client-side localhost Dashboard server, the number should be within " +
-      "(0, 65535), other numbers or occupied port numbers will lead to launch failure",
+  @NamedParameter(doc = "Port number for client-side localhost Dashboard server, " +
+      "the number should be within (0, 65535), other numbers or occupied port numbers will lead to launch failure. " +
+      "You need to install Flask in python first.",
       short_name = "dashboard_port",
       default_value = "-1")
   public final class DashboardPort implements Name<Integer> {
@@ -85,5 +86,9 @@ public final class Parameters {
   @NamedParameter(doc = "Host address of the client machine, which is used as the host address of Dashboard server, " +
       "empty if failed to find valid host address.", default_value = "")
   public final class DashboardHostAddress implements Name<String> {
+  }
+
+  @NamedParameter(doc = "A boolean saving if the Dashboard server is in use", default_value = "false")
+  public final class DashboardEnabled implements Name<Boolean> {
   }
 }
