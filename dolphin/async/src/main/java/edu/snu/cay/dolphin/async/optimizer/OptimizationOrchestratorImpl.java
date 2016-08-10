@@ -160,12 +160,12 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
           } catch (final InterruptedException | ExecutionException e) {
             LOG.log(Level.WARNING, "Exception while waiting for the plan execution to be completed", e);
           }
+
         } finally {
           // 7) Once the execution is complete, restart metric collection.
           isPlanExecuting.set(false);
           metricManager.loadMetricValidationInfo(workerEM.getEvalIdToNumBlocks(), serverEM.getEvalIdToNumBlocks());
           metricManager.startMetricCollection();
-
         }
       }
     });
@@ -247,7 +247,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         if (aggregatedMetric.getTotalPullProcessed() == 0) {
           break;
         } else {
-          processedMetrics.add(new ServerEvaluatorParameters(entry.getKey(),
+          final String serverId = entry.getKey();
+          processedMetrics.add(new ServerEvaluatorParameters(serverId,
               new DataInfoImpl((int) serverMetric.stream().mapToInt(
                   param -> param.getDataInfo().getNumBlocks()).average().getAsDouble()), aggregatedMetric));
         }
