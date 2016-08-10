@@ -27,8 +27,6 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.sun.tools.internal.xjc.reader.Ring.add;
-
 /**
  * A temporary storage for holding worker and server metrics related to optimization.
  */
