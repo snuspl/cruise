@@ -139,7 +139,6 @@ final class AddIntegerWorker implements Worker {
   private WorkerMetrics buildMetricsMsg(final int numDataBlocks) {
     return WorkerMetrics.newBuilder()
         .setNumDataBlocks(numDataBlocks)
-        .setTotalCompTime(DELAY_MS)
         .build();
   }
 
