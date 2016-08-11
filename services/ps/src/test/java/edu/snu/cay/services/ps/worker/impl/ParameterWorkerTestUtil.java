@@ -41,7 +41,7 @@ import static org.mockito.Mockito.verify;
  */
 public class ParameterWorkerTestUtil {
   public static final long CLOSE_TIMEOUT = 5000;
-  public static final long PULL_RETRY_TIMEOUT_MS = 500;
+  public static final long PULL_RETRY_TIMEOUT_MS = 1000;
   public static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_THREADS_SHOULD_NOT_FINISH = "threads have finished but should not";
   private static final String MSG_RESULT_ASSERTION = "threads received incorrect values";
