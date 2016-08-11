@@ -119,7 +119,7 @@ final class AddVectorWorker implements Worker {
     for (int i = 0; i < numMiniBatchesPerItr; i++) {
       // 1. pull model to compute with
       final List<Vector> valueList = parameterWorker.pull(keyList);
-      LOG.log(Level.INFO, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
+      LOG.log(Level.FINE, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
       // 2. sleep to simulate computation
       try {
@@ -183,7 +183,7 @@ final class AddVectorWorker implements Worker {
     boolean isSuccess = true;
 
     final List<Vector> valueList = parameterWorker.pull(keyList);
-    LOG.log(Level.INFO, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
+    LOG.log(Level.FINE, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
     for (int idx = 0; idx < keyList.size(); idx++) {
       final int key = keyList.get(idx);
