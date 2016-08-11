@@ -89,8 +89,9 @@ public final class OptimizationOrchestratorTest {
       evalIdToNumBlocksMapForServers.put(EVAL_PREFIX + i, NUM_BLOCKS);
       evalIdToNumBlocksMapForWorkers.put(EVAL_PREFIX + i, NUM_BLOCKS);
     }
-    metricManager.startMetricCollection();
+
     metricManager.loadMetricValidationInfo(evalIdToNumBlocksMapForWorkers, evalIdToNumBlocksMapForServers);
+    metricManager.startMetricCollection();
 
     final ElasticMemory workerEM = mock(ElasticMemory.class);
     workerStoreIdMap = new HashMap<>();
@@ -146,8 +147,7 @@ public final class OptimizationOrchestratorTest {
       serverStoreIdMap.put(i, Collections.emptySet());
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalPullProcessed(1)
-          .setTotalPullProcessingTime(1.0)
+          .setTotalReqProcessed(1)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
@@ -184,8 +184,7 @@ public final class OptimizationOrchestratorTest {
     for (int i = 0; i < numServers; i++) {
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalPullProcessed(1)
-          .setTotalPullProcessingTime(1.0)
+          .setTotalReqProcessed(1)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
       orchestrator.run();
@@ -223,8 +222,7 @@ public final class OptimizationOrchestratorTest {
       serverStoreIdMap.put(i, Collections.emptySet());
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalPullProcessed(1)
-          .setTotalPullProcessingTime(1.0)
+          .setTotalReqProcessed(1)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
 

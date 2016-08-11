@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -76,6 +77,7 @@ final class AddIntegerWorker implements Worker {
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+  private final Tracer computeTracer;
 
   @Inject
   private AddIntegerWorker(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
@@ -100,6 +102,8 @@ final class AddIntegerWorker implements Worker {
 
     this.memoryStore = memoryStore;
     this.metricsMsgSender = metricsMsgSender;
+
+    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -109,10 +113,13 @@ final class AddIntegerWorker implements Worker {
   @Override
   public void run() {
     // sleep to simulate computation
+    computeTracer.startTimer();
     try {
       Thread.sleep(computeTime);
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
+    } finally {
+      computeTracer.recordTime(1);
     }
 
     for (int i = 0; i < numberOfUpdates; i++) {
@@ -139,6 +146,7 @@ final class AddIntegerWorker implements Worker {
   private WorkerMetrics buildMetricsMsg(final int numDataBlocks) {
     return WorkerMetrics.newBuilder()
         .setNumDataBlocks(numDataBlocks)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
         .build();
   }
 
