@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.metric;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.dolphin.async.optimizer.MetricsHub;
+import edu.snu.cay.dolphin.async.optimizer.MetricManager;
 import edu.snu.cay.services.ps.metric.ServerMetricsMsgCodec;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -35,13 +35,13 @@ public final class DriverSideMetricsMsgHandlerForServer implements EventHandler<
   private static final Logger LOG = Logger.getLogger(DriverSideMetricsMsgHandlerForServer.class.getName());
 
   private final ServerMetricsMsgCodec metricsMessageCodec;
-  private final MetricsHub metricsHub;
+  private final MetricManager metricManager;
 
   @Inject
   private DriverSideMetricsMsgHandlerForServer(final ServerMetricsMsgCodec metricsMessageCodec,
-                                               final MetricsHub metricsHub) {
+                                               final MetricManager metricManager) {
     this.metricsMessageCodec = metricsMessageCodec;
-    this.metricsHub = metricsHub;
+    this.metricManager = metricManager;
   }
 
   @Override
@@ -53,7 +53,7 @@ public final class DriverSideMetricsMsgHandlerForServer implements EventHandler<
 
     LOG.log(Level.INFO, "ServerMetrics {0} {1}: {2}",
         new Object[]{System.currentTimeMillis(), serverId, metricsMessage});
-    metricsHub.storeServerMetrics(serverId, metricsMessage);
+    metricManager.storeServerMetrics(serverId, metricsMessage);
 
     LOG.exiting(DriverSideMetricsMsgHandlerForServer.class.getSimpleName(), "onNext");
   }

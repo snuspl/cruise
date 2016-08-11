@@ -56,4 +56,13 @@ public final class ServerEvaluatorParameters implements EvaluatorParameters<Serv
   public ServerMetrics getMetrics() {
     return metrics;
   }
+
+  @Override
+  public String toString() {
+    return "ServerEvaluatorParameters{" +
+        "id='" + id + '\'' +
+        ", dataInfo=" + dataInfo +
+        ", metrics=" + metrics +
+        '}';
+  }
 }

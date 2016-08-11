@@ -176,4 +176,9 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
     return blockManager.getStoreIdToBlockIds();
   }
+
+  @Override
+  public Map<String, Integer> getEvalIdToNumBlocks() {
+    return blockManager.getEvalIdToNumBlocks();
+  }
 }

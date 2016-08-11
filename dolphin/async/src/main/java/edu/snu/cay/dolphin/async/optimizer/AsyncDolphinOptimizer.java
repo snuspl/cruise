@@ -32,6 +32,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -44,6 +46,7 @@ import java.util.stream.IntStream;
  * communication cost = servers' pull processing time averaged
  */
 public final class AsyncDolphinOptimizer implements Optimizer {
+  private static final Logger LOG = Logger.getLogger(AsyncDolphinOptimizer.class.getName());
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
@@ -96,7 +99,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> ((ServerMetrics) param.getMetrics()).getAvgPullProcessingTime(),
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTime() /
+                (double) ((ServerMetrics) param.getMetrics()).getNumModelBlocks(),
             NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
@@ -128,6 +132,9 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .get()
         .getFirst();
     final int optimalNumServers = availableEvaluators - optimalNumWorkers;
+
+    LOG.log(Level.INFO, "numAvailEval: {0}, numOptWorker: {1}, numOptServer: {2}",
+        new Object[]{availableEvaluators, optimalNumWorkers, optimalNumServers});
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
