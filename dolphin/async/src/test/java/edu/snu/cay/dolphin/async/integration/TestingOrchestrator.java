@@ -136,6 +136,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     // there were only metrics not enough for this optimization cycle to be executed.
     if (processedServerMetrics.size() < numRunningServers || processedWorkerMetrics.size() < numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because the metrics do not suffice to undergo an optimization cycle.");
+      return;
     }
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
