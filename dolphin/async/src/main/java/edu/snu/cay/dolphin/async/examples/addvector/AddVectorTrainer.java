@@ -19,6 +19,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -48,6 +49,12 @@ final class AddVectorTrainer implements Trainer {
    */
   private static final int NUM_VALIDATE_RETRIES = 20;
 
+  /**
+   * The number of items to process. Currently AddVectorTrainer is assumed to process only 1 element at fixed cost.
+   * We can extend it by storing data to process in its MemoryStore.
+   */
+  private static final int NUM_DATA_ITEMS_TO_PROCESS = 1;
+
   private final ParameterWorker<Integer, Integer, Vector> parameterWorker;
 
   /**
@@ -75,10 +82,19 @@ final class AddVectorTrainer implements Trainer {
    */
   private final int expectedResult;
 
+  // TODO #734: Improve AddVector example to enable runtime optimization
   private final MemoryStore<Long> memoryStore;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+  private final Tracer pushTracer;
+  private final Tracer pullTracer;
+  private final Tracer computeTracer;
+
+  /**
+   * Number of iterations.
+   */
+  private int iteration = 0;
 
   @Inject
   private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
@@ -107,6 +123,10 @@ final class AddVectorTrainer implements Trainer {
 
     this.memoryStore = memoryStore;
     this.metricsMsgSender = metricsMsgSender;
+
+    this.pushTracer = new Tracer();
+    this.pullTracer = new Tracer();
+    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -115,29 +135,42 @@ final class AddVectorTrainer implements Trainer {
 
   @Override
   public void run() {
+    ++iteration;
+    final long iterationBegin = System.currentTimeMillis();
+    resetTracers();
+
     // run mini-batches
     for (int i = 0; i < numMiniBatchesPerItr; i++) {
+
       // 1. pull model to compute with
+      pullTracer.startTimer();
       final List<Vector> valueList = parameterWorker.pull(keyList);
+      pullTracer.recordTime(valueList.size());
       LOG.log(Level.FINE, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
       // 2. sleep to simulate computation
       try {
+        computeTracer.startTimer();
         Thread.sleep(computeTime);
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
+      } finally {
+        computeTracer.recordTime(NUM_DATA_ITEMS_TO_PROCESS);
       }
 
       // 3. push computed model
+      pushTracer.startTimer();
       for (final int key : keyList) {
         parameterWorker.push(key, delta);
       }
+      pushTracer.recordTime(keyList.size());
     }
-
+    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     // send empty metrics to trigger optimization
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(memoryStore.getNumBlocks());
+        buildMetricsMsg(memoryStore.getNumBlocks(), elapsedTime);
 
+    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
   }
 
@@ -147,9 +180,18 @@ final class AddVectorTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int numDataBlocks) {
+  private WorkerMetrics buildMetricsMsg(final int numDataBlocks, final double elapsedTime) {
     return WorkerMetrics.newBuilder()
+        .setItrIdx(iteration)
+        .setNumMiniBatchPerItr(numMiniBatchesPerItr)
+        .setProcessedDataItemCount(NUM_DATA_ITEMS_TO_PROCESS)
         .setNumDataBlocks(numDataBlocks)
+        .setTotalTime(elapsedTime)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerRecord())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPushTime(pushTracer.avgTimePerRecord())
         .build();
   }
 
@@ -196,5 +238,11 @@ final class AddVectorTrainer implements Trainer {
       }
     }
     return isSuccess;
+  }
+
+  private void resetTracers() {
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
   }
 }
