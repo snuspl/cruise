@@ -19,6 +19,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -75,10 +76,14 @@ final class AddVectorTrainer implements Trainer {
    */
   private final int expectedResult;
 
+  // TODO #734: Improve AddVector example to enable runtime optimization
   private final MemoryStore<Long> memoryStore;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+  private final Tracer pushTracer;
+  private final Tracer pullTracer;
+  private final Tracer computeTracer;
 
   @Inject
   private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
@@ -107,6 +112,10 @@ final class AddVectorTrainer implements Trainer {
 
     this.memoryStore = memoryStore;
     this.metricsMsgSender = metricsMsgSender;
+
+    this.pushTracer = new Tracer();
+    this.pullTracer = new Tracer();
+    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -117,21 +126,29 @@ final class AddVectorTrainer implements Trainer {
   public void run() {
     // run mini-batches
     for (int i = 0; i < numMiniBatchesPerItr; i++) {
+
       // 1. pull model to compute with
+      pullTracer.startTimer();
       final List<Vector> valueList = parameterWorker.pull(keyList);
+      pullTracer.recordTime(valueList.size());
       LOG.log(Level.FINE, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
       // 2. sleep to simulate computation
       try {
+        computeTracer.startTimer();
         Thread.sleep(computeTime);
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
+      } finally {
+        computeTracer.recordTime(1); // Currently AddVectorTrainer is assumed to process only 1 element at fixed cost.
       }
 
       // 3. push computed model
+      pushTracer.startTimer();
       for (final int key : keyList) {
         parameterWorker.push(key, delta);
       }
+      pushTracer.recordTime(keyList.size());
     }
 
     // send empty metrics to trigger optimization
