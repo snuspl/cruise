@@ -87,7 +87,7 @@ public final class NeuralNetworkREEF {
           Configurations.merge(buildNeuralNetworkConfiguration(neuralNetConf), buildBlasConfiguration(blasLibrary));
 
       AsyncDolphinLauncher.launch("NeuralNetworkREEF", args, AsyncDolphinConfiguration.newBuilder()
-          .setWorkerClass(NeuralNetworkWorker.class)
+          .setTrainerClass(NeuralNetworkTrainer.class)
           .setUpdaterClass(NeuralNetworkParameterUpdater.class)
           .setPreValueCodecClass(LayerParameterCodec.class)
           .setValueCodecClass(LayerParameterCodec.class)

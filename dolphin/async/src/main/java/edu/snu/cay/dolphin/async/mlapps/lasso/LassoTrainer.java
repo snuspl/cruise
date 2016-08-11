@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.io.network.util.Pair;
@@ -29,19 +29,19 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * {@link Worker} class for the LassoREEF application.
+ * {@link Trainer} class for the LassoREEF application.
  * Based on lasso regression via stochastic coordinate descent, proposed in
  * S. Shalev-Shwartz and A. Tewari, Stochastic Methods for l1-regularized Loss Minimization, 2011.
  *
- * For each iteration, the worker pulls the whole model from the server,
+ * For each iteration, the trainer pulls the whole model from the server,
  * and then randomly picks a dimension to update.
- * The worker computes and pushes the optimal model value for that particular dimension to
+ * The trainer computes and pushes the optimal model value for that particular dimension to
  * minimize the objective function - square loss with l1 regularization.
  *
  * All inner product values are cached in member fields.
  */
-final class LassoWorker implements Worker {
-  private static final Logger LOG = Logger.getLogger(LassoWorker.class.getName());
+final class LassoTrainer implements Trainer {
+  private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
 
   /**
    * Array of vectors containing the features of the input data.
@@ -88,14 +88,14 @@ final class LassoWorker implements Worker {
   private final Random random;
 
   /**
-   * Worker object for interacting with the parameter server.
+   * ParameterWorker object for interacting with the parameter server.
    */
-  private final ParameterWorker<Integer, Double, Double> worker;
+  private final ParameterWorker<Integer, Double, Double> parameterWorker;
 
   @Inject
-  private LassoWorker(final LassoParser lassoParser,
-                      @Parameter(LassoREEF.Lambda.class) final double lambda,
-                      final ParameterWorker<Integer, Double, Double> worker) {
+  private LassoTrainer(final LassoParser lassoParser,
+                       @Parameter(LassoREEF.Lambda.class) final double lambda,
+                       final ParameterWorker<Integer, Double, Double> parameterWorker) {
     final Pair<Vector[], Vector> pair = lassoParser.parse();
     this.vecXArray = pair.getFirst();
     this.vecY = pair.getSecond();
@@ -103,7 +103,7 @@ final class LassoWorker implements Worker {
     this.x2y = new double[vecXArray.length];
     this.x2x = HashBasedTable.create();
     this.random = new Random();
-    this.worker = worker;
+    this.parameterWorker = parameterWorker;
   }
 
   /**
@@ -141,7 +141,7 @@ final class LassoWorker implements Worker {
   public void run() {
     final double[] vecModel = new double[vecXArray.length];
     for (int index = 0; index < vecModel.length; index++) {
-      vecModel[index] = worker.pull(index);
+      vecModel[index] = parameterWorker.pull(index);
     }
 
     final int index = random.nextInt(vecModel.length);
@@ -161,7 +161,7 @@ final class LassoWorker implements Worker {
     }
 
     dotValue /= vecY.length();
-    worker.push(index, sthresh(dotValue, lambda));
+    parameterWorker.push(index, sthresh(dotValue, lambda));
   }
 
   /**
@@ -172,7 +172,7 @@ final class LassoWorker implements Worker {
   public void cleanup() {
     final double[] vecModel = new double[vecXArray.length];
     for (int index = 0; index < vecModel.length; index++) {
-      vecModel[index] = worker.pull(index);
+      vecModel[index] = parameterWorker.pull(index);
       if (vecModel[index] != 0) {
         LOG.log(Level.INFO, "Index {0}: value {1}", new Object[]{index, vecModel[index]});
       }
