@@ -49,6 +49,12 @@ final class AddVectorTrainer implements Trainer {
    */
   private static final int NUM_VALIDATE_RETRIES = 20;
 
+  /**
+   * The number of items to process. Currently AddVectorTrainer is assumed to process only 1 element at fixed cost.
+   * We can extend it by storing data to process in its MemoryStore.
+   */
+  private static final int NUM_DATA_ITEMS_TO_PROCESS = 1;
+
   private final ParameterWorker<Integer, Integer, Vector> parameterWorker;
 
   /**
@@ -149,7 +155,7 @@ final class AddVectorTrainer implements Trainer {
       } catch (final InterruptedException e) {
         LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
       } finally {
-        computeTracer.recordTime(1); // Currently AddVectorTrainer is assumed to process only 1 element at fixed cost.
+        computeTracer.recordTime(NUM_DATA_ITEMS_TO_PROCESS);
       }
 
       // 3. push computed model
@@ -176,6 +182,9 @@ final class AddVectorTrainer implements Trainer {
 
   private WorkerMetrics buildMetricsMsg(final int numDataBlocks, final double elapsedTime) {
     return WorkerMetrics.newBuilder()
+        .setItrIdx(iteration)
+        .setNumMiniBatchPerItr(numMiniBatchesPerItr)
+        .setProcessedDataItemCount(NUM_DATA_ITEMS_TO_PROCESS)
         .setNumDataBlocks(numDataBlocks)
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
