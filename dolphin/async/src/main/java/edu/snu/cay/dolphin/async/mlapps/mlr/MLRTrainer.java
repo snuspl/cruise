@@ -55,9 +55,9 @@ final class MLRTrainer implements Trainer {
   private final MLRParser mlrParser;
 
   /**
-   * Trainer object used to interact with the parameter server.
+   * ParameterWorker object used to interact with the parameter server.
    */
-  private final ParameterWorker<Integer, Vector, Vector> worker;
+  private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
 
   /**
    * Number of possible classes for a data instance.
@@ -136,7 +136,7 @@ final class MLRTrainer implements Trainer {
 
   @Inject
   private MLRTrainer(final MLRParser mlrParser,
-                     final ParameterWorker<Integer, Vector, Vector> worker,
+                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                      @Parameter(NumClasses.class) final int numClasses,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
@@ -151,7 +151,7 @@ final class MLRTrainer implements Trainer {
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
-    this.worker = worker;
+    this.parameterWorker = parameterWorker;
     this.numClasses = numClasses;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     if (numFeatures % numFeaturesPerPartition != 0) {
@@ -319,7 +319,7 @@ final class MLRTrainer implements Trainer {
 
   private void pullModels() {
     pullTracer.startTimer();
-    final List<Vector> partitions = worker.pull(classPartitionIndices);
+    final List<Vector> partitions = parameterWorker.pull(classPartitionIndices);
     pullTracer.recordTime(partitions.size());
     computeTracer.startTimer();
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
@@ -346,7 +346,7 @@ final class MLRTrainer implements Trainer {
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
         final int partitionStart = partitionIndex * numFeaturesPerPartition;
         final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
-        worker.push(classIndex * numPartitionsPerClass + partitionIndex,
+        parameterWorker.push(classIndex * numPartitionsPerClass + partitionIndex,
             gradient.slice(partitionStart, partitionEnd));
       }
       pushTracer.recordTime(numPartitionsPerClass);
