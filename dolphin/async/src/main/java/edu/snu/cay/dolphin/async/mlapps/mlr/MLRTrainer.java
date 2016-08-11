@@ -101,7 +101,7 @@ final class MLRTrainer implements Trainer {
   private final Vector[] newModels;
 
   /**
-   * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@code worker.pull()}.
+   * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@link #pullModels()}.
    */
   private List<Integer> classPartitionIndices;
 
