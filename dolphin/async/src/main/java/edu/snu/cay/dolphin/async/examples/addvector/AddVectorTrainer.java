@@ -85,6 +85,11 @@ final class AddVectorTrainer implements Trainer {
   private final Tracer pullTracer;
   private final Tracer computeTracer;
 
+  /**
+   * Number of iterations.
+   */
+  private int iteration = 0;
+
   @Inject
   private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
                            @Parameter(AddVectorREEF.DeltaValue.class) final int delta,
@@ -124,6 +129,10 @@ final class AddVectorTrainer implements Trainer {
 
   @Override
   public void run() {
+    ++iteration;
+    final long iterationBegin = System.currentTimeMillis();
+    resetTracers();
+
     // run mini-batches
     for (int i = 0; i < numMiniBatchesPerItr; i++) {
 
@@ -150,11 +159,12 @@ final class AddVectorTrainer implements Trainer {
       }
       pushTracer.recordTime(keyList.size());
     }
-
+    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     // send empty metrics to trigger optimization
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(memoryStore.getNumBlocks());
+        buildMetricsMsg(memoryStore.getNumBlocks(), elapsedTime);
 
+    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
   }
 
@@ -164,9 +174,18 @@ final class AddVectorTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int numDataBlocks) {
+  private WorkerMetrics buildMetricsMsg(final int numDataBlocks, final double elapsedTime) {
     return WorkerMetrics.newBuilder()
         .setNumDataBlocks(numDataBlocks)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setTotalTime(elapsedTime)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerRecord())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPushTime(pushTracer.avgTimePerRecord())
         .build();
   }
 
@@ -213,5 +232,11 @@ final class AddVectorTrainer implements Trainer {
       }
     }
     return isSuccess;
+  }
+
+  private void resetTracers() {
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
   }
 }
