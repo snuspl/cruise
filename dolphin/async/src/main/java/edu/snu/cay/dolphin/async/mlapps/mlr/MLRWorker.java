@@ -222,12 +222,16 @@ final class MLRWorker implements Worker {
     final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
     final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
 
-    pullModels();
+    // Record the number of EM data blocks at the beginning of this iteration
+    // to filter out stale metrics for optimization
+    final int numEMBlocks = memoryStore.getNumBlocks();
 
     int numInstances = 0;
     int batchIdx = 0;
     int batchSize = workload.size() / numMiniBatchPerIter +
         ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+
+    pullModels();
 
     computeTracer.startTimer();
     for (final Pair<Vector, Integer> entry : workload) {
@@ -288,7 +292,7 @@ final class MLRWorker implements Worker {
     final Metrics appMetrics = buildAppMetrics(lossRegLossAccuracy.getFirst(),
         lossRegLossAccuracy.getSecond(), (double) lossRegLossAccuracy.getThird(), elapsedTime, numInstances);
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), workload.size(), elapsedTime);
+        buildMetricsMsg(appMetrics, numEMBlocks, workload.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);

@@ -173,19 +173,13 @@
     {"name": "totalTime", "type": "double", "default": 0.0},
     {"name": "pullCount", "type": "int", "default": 0},
     {"name": "totalPullTime", "type": "double", "default": 0.0},
-    {"name": "avgPullTime", "type": "double", "default": 0.0},
     {"name": "totalPullWaitTime", "type": "double", "default": 0.0},
-    {"name": "avgPullWaitTime", "type": "double", "default": 0.0},
     {"name": "pushCount", "type": "int", "default": 0},
     {"name": "totalPushTime", "type": "double", "default": 0.0},
-    {"name": "avgPushTime", "type": "double", "default": 0.0},
     {"name": "totalPushWaitTime", "type": "double", "default": 0.0},
-    {"name": "avgPushWaitTime", "type": "double", "default": 0.0},
     {"name": "reqCount", "type": "int", "default": 0},
     {"name": "totalReqTime", "type": "double", "default": 0.0},
-    {"name": "avgReqTime", "type": "double", "default": 0.0},
-    {"name": "totalReqWaitTime", "type": "double", "default": 0.0},
-    {"name": "avgReqWaitTime", "type": "double", "default": 0.0}
+    {"name": "totalReqWaitTime", "type": "double", "default": 0.0}
   ]
 },
 
@@ -203,11 +197,14 @@
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default":null},
     {"name": "windowIndex", "type": "int", "default":0},
-    {"name": "numPartitionBlocks", "type": "int", "default":0},
+    {"name": "numModelBlocks", "type": "int", "default":0},
     {"name": "metricWindowMs", "type": "long", "default":0},
-    {"name": "avgPullProcessingTime", "type": "double", "default":0.0},
-    {"name": "avgPushProcessingTime", "type": "double", "default":0.0},
-    {"name": "avgReqProcessingTime", "type": "double", "default":0.0}
+    {"name": "totalPullProcessed", "type": "int", "default":0},
+    {"name": "totalPushProcessed", "type": "int", "default":0},
+    {"name": "totalReqProcessed", "type": "int", "default":0},
+    {"name": "totalPullProcessingTime", "type": "double", "default":0.0},
+    {"name": "totalPushProcessingTime", "type": "double", "default":0.0},
+    {"name": "totalReqProcessingTime", "type": "double", "default":0.0}
   ]
 },
 

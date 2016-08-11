@@ -15,37 +15,41 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
-import edu.snu.cay.common.param.Parameters.LocalRuntimeMaxNumEvaluators;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
+import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Orchestrator implementation.
- * It calculates plan using {@link Optimizer} based on the metrics from {@link MetricsHub}.
- * It then uses {@link PlanExecutor} to run the calculated plan through {@link WorkerEM} and {@link ServerEM}.
+ * Orchestrates the Optimization in Dolphin Async.
  */
 public final class OptimizationOrchestratorImpl implements OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestratorImpl.class.getName());
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
-  private final MetricsHub metricsHub;
+  private final MetricManager metricManager;
 
   private final AtomicBoolean isPlanExecuting = new AtomicBoolean(false);
 
@@ -61,20 +65,17 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   private final ElasticMemory workerEM;
   private final ElasticMemory serverEM;
 
-  private final List<EvaluatorParameters> serverParameters = new ArrayList<>();
-  private final List<EvaluatorParameters> workerParameters = new ArrayList<>();
-
   @Inject
   private OptimizationOrchestratorImpl(final Optimizer optimizer,
-                                       final PlanExecutor planExecutor,
-                                       final MetricsHub metricsHub,
-                                       @Parameter(WorkerEM.class) final ElasticMemory workerEM,
-                                       @Parameter(ServerEM.class) final ElasticMemory serverEM,
-                                       @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
-                                       @Parameter(LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
+                                   final PlanExecutor planExecutor,
+                                   final MetricManager metricManager,
+                                   @Parameter(WorkerEM.class) final ElasticMemory workerEM,
+                                   @Parameter(ServerEM.class) final ElasticMemory serverEM,
+                                   @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
+                                   @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
-    this.metricsHub = metricsHub;
+    this.metricManager = metricManager;
     this.workerEM = workerEM;
     this.serverEM = serverEM;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
@@ -82,37 +83,27 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   }
 
   /**
-   * Runs optimization as following steps.
-   * 1) Checks the metrics have been prepared for the optimization
-   * 2) Process the metrics (e.g., extract the latest metrics only)
-   * 3) Calculate the optimal plan with the metrics
-   * 4) Execute the obtained plan
-   * 5) Wait for the plan execution to be completed
+   * Runs optimization based on the metrics from {@link MetricManager} in the following steps.
+   * 1) Check that metrics have arrived from all evaluators.
+   * 2) Process the received metrics (e.g., calculate the EMA of metrics).
+   *    Here, we assume that invalid metrics have already been considered in {@link MetricManager}.
+   * 3) Check that the processed metrics suffice to undergo an optimization cycle.
+   * 4) Calculate the optimal plan with the metrics.
+   * 5) Pause metric collection.
+   * 6) Execute the obtained plan.
+   * 7) Once the execution is complete, restart metric collection.
    */
-  @Override
   public synchronized void run() {
-    // 1) Checks the metric state whether it's enough for the optimization.
-    serverParameters.addAll(metricsHub.drainServerMetrics());
-    workerParameters.addAll(metricsHub.drainWorkerMetrics());
+    // 1) Check that metrics have arrived from all evaluators.
+    final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
+    final Map<String, List<EvaluatorParameters>> currentWorkerMetrics = metricManager.getWorkerMetrics();
 
-    final int numServerMetricSources = getNumMetricSources(serverParameters);
-    final int numWorkerMetricSources = getNumMetricSources(workerParameters);
+    final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
+    final int numWorkerMetricSources = getNumMetricSources(currentWorkerMetrics);
     final int numRunningServers = getNumRunningInstances(serverEM);
     final int numRunningWorkers = getNumRunningInstances(workerEM);
 
-    // Case1. If there are metrics from dead nodes
-    if (numServerMetricSources > numRunningServers || numWorkerMetricSources > numRunningWorkers) {
-      LOG.log(Level.INFO, "Skip this round, because the collected metrics include ones from dead nodes." +
-              "The current metrics will be dumped to prevent them from being used in the next optimization try." +
-              " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
-          new Object[]{numServerMetricSources, numRunningServers, numWorkerMetricSources, numRunningWorkers});
-      // Dump all the collected metrics
-      serverParameters.clear();
-      workerParameters.clear();
-      return;
-
-    // Case2. If there are missing metrics
-    } else if (numServerMetricSources < numRunningServers || numWorkerMetricSources < numRunningWorkers) {
+    if (numServerMetricSources < numRunningServers || numWorkerMetricSources < numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because there are missing metrics." +
               " The existing metrics will be kept and reused in the next optimization try." +
               " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
@@ -121,24 +112,30 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       return;
     }
 
-    // 2) Process metrics before starting optimization
+    // 2) Process the received metrics (e.g., calculate the EMA of metrics).
+    final List<EvaluatorParameters> processedServerMetrics =
+        processMetricsForOptimization(Constants.NAMESPACE_SERVER, currentServerMetrics);
+    final List<EvaluatorParameters> processedWorkerMetrics =
+        processMetricsForOptimization(Constants.NAMESPACE_WORKER, currentWorkerMetrics);
+
+    // 3) Check that the processed metrics suffice to undergo an optimization cycle.
+    // processed(*)Metrics of size less that the number of evaluators running in each space implies that
+    // there were only metrics not enough for this optimization cycle to be executed.
+    if (processedServerMetrics.size() < numRunningServers || processedWorkerMetrics.size() < numRunningWorkers) {
+      LOG.log(Level.INFO, "Skip this round, because the metrics do not suffice to undergo an optimization cycle.");
+    }
+
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
-
-    // use only one latest metric of each evaluator
-    final List<EvaluatorParameters> latestServerMetrics = filterLatestParams(serverParameters);
-    final List<EvaluatorParameters> latestWorkerMetrics = filterLatestParams(workerParameters);
-    serverParameters.clear();
-    workerParameters.clear();
-
-    evaluatorParameters.put(Constants.NAMESPACE_SERVER, latestServerMetrics);
-    evaluatorParameters.put(Constants.NAMESPACE_WORKER, latestWorkerMetrics);
+    evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
+    evaluatorParameters.put(Constants.NAMESPACE_WORKER, processedWorkerMetrics);
 
     final Future future = optimizationThreadPool.submit(new Runnable() {
       @Override
       public void run() {
-        LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan");
+        LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan with metrics: {0}",
+            evaluatorParameters);
 
-        // 3) Calculate the optimal plan with the metrics
+        // 4) Calculate the optimal plan with the metrics
         final Plan plan;
         try {
           plan = optimizer.optimize(evaluatorParameters, maxNumEvals);
@@ -148,8 +145,11 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
           return;
         }
 
-        // 4) Execute the obtained plan
+        // 5) Pause metric collection.
         isPlanExecuting.set(true);
+        metricManager.stopMetricCollection();
+
+        // 6) Execute the obtained plan.
         try {
           final Future<PlanResult> planExecutionResultFuture = planExecutor.execute(plan);
           try {
@@ -162,12 +162,14 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
           }
 
         } finally {
+          // 7) Once the execution is complete, restart metric collection.
           isPlanExecuting.set(false);
+          metricManager.loadMetricValidationInfo(workerEM.getEvalIdToNumBlocks(), serverEM.getEvalIdToNumBlocks());
+          metricManager.startMetricCollection();
         }
       }
     });
 
-    // 5) Wait for the optimization to be completed
     try {
       future.get();
     } catch (final InterruptedException | ExecutionException e) {
@@ -186,6 +188,11 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   }
 
   @Override
+
+  /**
+   * Checks whether the plan is being executed.
+   * @return True if the generated plan is on execution
+   */
   public boolean isPlanExecuting() {
     return isPlanExecuting.get();
   }
@@ -194,25 +201,91 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     return em.getStoreIdToBlockIds().size();
   }
 
-  private int getNumMetricSources(final List<EvaluatorParameters> evalParams) {
-    return (int) evalParams.stream()
-        .map(EvaluatorParameters::getId)
-        .distinct().count();
+  private int getNumMetricSources(final Map<String, List<EvaluatorParameters>> evalParams) {
+    return evalParams.keySet().size();
   }
 
   /**
-   * Filter the Evaluator Parameters, so that there exist only one latest value per Evaluator.
+   * Processes raw metrics to extract a representative metric for each evaluator.
+   * For servers, the total number of requests and processed times are summed up for average processing time overall.
+   * For workers, the average of processing times are to be used.
+   * @param namespace
+   * @param rawMetrics
+   * @return
    */
-  private List<EvaluatorParameters> filterLatestParams(final List<EvaluatorParameters> params) {
-    final Map<String, EvaluatorParameters> evalIdToParameters = new HashMap<>();
-    final ListIterator<EvaluatorParameters> listIterator = params.listIterator(params.size());
+  private List<EvaluatorParameters> processMetricsForOptimization(
+      final String namespace, final Map<String, List<EvaluatorParameters>> rawMetrics) {
+    final List<EvaluatorParameters> processedMetrics = new ArrayList<>();
 
-    // iterate from the tail in order to save the latest params
-    while (listIterator.hasPrevious()) {
-      final EvaluatorParameters evalParams = listIterator.previous();
-      evalIdToParameters.putIfAbsent(evalParams.getId(), evalParams);
+    switch (namespace) {
+    case Constants.NAMESPACE_SERVER:
+      for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
+        final List<EvaluatorParameters> serverMetric = entry.getValue();
+        final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
+        aggregatedMetricBuilder.setNumModelBlocks((int) serverMetric.stream().mapToInt(
+            param -> ((ServerMetrics) param.getMetrics()).getNumModelBlocks()).average().orElse(0));
+        aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessed()).sum());
+        aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessed()).sum());
+        aggregatedMetricBuilder.setTotalReqProcessed(serverMetric.stream().mapToInt(
+            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessed()).sum());
+        aggregatedMetricBuilder.setTotalPullProcessingTime(serverMetric.stream().mapToDouble(
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTime()).sum());
+        aggregatedMetricBuilder.setTotalPushProcessingTime(serverMetric.stream().mapToDouble(
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessingTime()).sum());
+        aggregatedMetricBuilder.setTotalReqProcessingTime(serverMetric.stream().mapToDouble(
+            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessingTime()).sum());
+
+        final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
+
+        // This server did not send metrics meaningful enough for optimization.
+        if (aggregatedMetric.getTotalReqProcessed() == 0) {
+          break;
+        } else {
+          final String serverId = entry.getKey();
+          processedMetrics.add(new ServerEvaluatorParameters(serverId,
+              new DataInfoImpl((int) serverMetric.stream().mapToInt(
+                  param -> param.getDataInfo().getNumBlocks()).average().orElse(0)), aggregatedMetric));
+        }
+      }
+      break;
+    case Constants.NAMESPACE_WORKER:
+      for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
+        final List<EvaluatorParameters> workerMetric = entry.getValue();
+        final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
+        aggregatedMetricBuilder.setNumDataBlocks((int) workerMetric.stream().mapToInt(
+            param -> ((WorkerMetrics) param.getMetrics()).getNumDataBlocks()).average().orElse(0));
+        aggregatedMetricBuilder.setProcessedDataItemCount((int) workerMetric.stream().mapToInt(
+            param -> ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount()).average().orElse(0));
+        aggregatedMetricBuilder.setTotalTime(workerMetric.stream().mapToDouble(
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalTime()).average().orElse(0.0));
+        aggregatedMetricBuilder.setTotalCompTime(workerMetric.stream().mapToDouble(
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0.0));
+        aggregatedMetricBuilder.setTotalPullTime(workerMetric.stream().mapToDouble(
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0.0));
+        aggregatedMetricBuilder.setTotalPushTime(workerMetric.stream().mapToDouble(
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalPushTime()).average().orElse(0.0));
+        aggregatedMetricBuilder.setAvgPullTime(workerMetric.stream().mapToDouble(
+            param -> ((WorkerMetrics) param.getMetrics()).getAvgPullTime()).average().orElse(0.0));
+        aggregatedMetricBuilder.setAvgPushTime(workerMetric.stream().mapToDouble(
+            param -> ((WorkerMetrics) param.getMetrics()).getAvgPushTime()).average().orElse(0.0));
+
+        final WorkerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
+
+        // This worker did not send metrics meaningful enough for optimization.
+        if (aggregatedMetric.getTotalCompTime() == 0D) {
+          break;
+        } else {
+          processedMetrics.add(new WorkerEvaluatorParameters(entry.getKey(),
+              new DataInfoImpl((int) workerMetric.stream().mapToInt(
+                  param -> param.getDataInfo().getNumBlocks()).average().orElse(0)), aggregatedMetric));
+        }
+      }
+      break;
+    default:
+      throw new RuntimeException("Unsupported namespace");
     }
-
-    return new ArrayList<>(evalIdToParameters.values());
+    return processedMetrics;
   }
 }

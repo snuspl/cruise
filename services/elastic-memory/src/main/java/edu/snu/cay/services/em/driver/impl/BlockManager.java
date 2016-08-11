@@ -302,7 +302,10 @@ public final class BlockManager {
     }
   }
 
-  private Map<String, Integer> getEvalIdToNumBlocks() {
+  /**
+   * @return a new map containing each evaluator's mapping to the number of blocks it contains.
+   */
+  public Map<String, Integer> getEvalIdToNumBlocks() {
     final Map<String, Integer> evalIdToNumBlocks = new HashMap<>();
     for (final Map.Entry<Integer, Set<Integer>> storeIdToblockId : storeIdToBlockIds.entrySet()) {
       final String evalId = getEvaluatorId(storeIdToblockId.getKey());

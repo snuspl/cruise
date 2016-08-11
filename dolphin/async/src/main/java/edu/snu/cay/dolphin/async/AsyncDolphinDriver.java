@@ -136,6 +136,11 @@ public final class AsyncDolphinDriver {
   private final AggregationManager aggregationManager;
 
   /**
+   * Manage metrics (drop metrics if inappropriate) from evaluators.
+   */
+  private final MetricManager metricManager;
+
+  /**
    * Accessor for parameter server service.
    */
   private final PSDriver psDriver;
@@ -275,10 +280,10 @@ public final class AsyncDolphinDriver {
   /**
    * Injectable constructor.
    *
-   * The {@code metricsHub} parameter is placed here to make sure that {@link OptimizationOrchestratorImpl},
+   * The {@code metricManager} parameter is placed here to make sure that {@link OptimizationOrchestratorImpl},
    * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForWorker}, and
    * {@link edu.snu.cay.dolphin.async.metric.DriverSideMetricsMsgHandlerForServer} hold references to the same
-   * {@link MetricsHub} instance.
+   * {@link MetricManager} instance.
    */
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
@@ -299,7 +304,7 @@ public final class AsyncDolphinDriver {
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
-                             final MetricsHub metricsHub,
+                             final MetricManager metricManager,
                              final HTraceParameters traceParameters,
                              final HTrace hTrace) throws IOException {
     hTrace.initialize();
@@ -312,6 +317,7 @@ public final class AsyncDolphinDriver {
     this.identifierFactory = identifierFactory;
     this.driverIdStr = driverIdStr;
     this.aggregationManager = aggregationManager;
+    this.metricManager = metricManager;
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
     this.serverConf = configurationSerializer.fromString(serializedServerConf);
@@ -402,9 +408,15 @@ public final class AsyncDolphinDriver {
               }
             }
 
+            // 2. Start collecting metrics from evaluators.
+            //    Load metric manager's data validation map using ServerEM and WorkerEM, which are initialized by now.
+            metricManager.loadMetricValidationInfo(workerEMWrapper.getInstance().getEvalIdToNumBlocks(),
+                serverEMWrapper.getInstance().getEvalIdToNumBlocks());
+            metricManager.startMetricCollection();
+
             LOG.log(Level.INFO, "Worker tasks are initialized. Start triggering optimization.");
 
-            // 2. trigger optimization during all workers are running their main iterations
+            // 3. trigger optimization during all workers are running their main iterations
             // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iterations
             LOG.log(Level.FINE, "Trigger optimization with interval {0} ms", optimizationIntervalMs);
             while (!synchronizationManager.waitingCleanup()) {
@@ -415,15 +427,17 @@ public final class AsyncDolphinDriver {
                 LOG.log(Level.WARNING, "Interrupted while sleeping between optimizations", e);
               }
             }
-
           } catch (final RuntimeException e) {
             LOG.log(Level.SEVERE, "RuntimeException from optimization triggering thread", e);
             throw e;
 
           } finally {
-            // 3. allow workers to do cleanup, after finishing optimization entirely
+            // 4. allow workers to do cleanup, after finishing optimization entirely
             LOG.log(Level.INFO, "Stop triggering optimization. Allow workers do cleanup");
             synchronizationManager.allowWorkersCleanup();
+
+            // 5. Stop metric collection
+            metricManager.stopMetricCollection();
           }
         }
       });
