@@ -177,9 +177,6 @@ final class AddVectorTrainer implements Trainer {
   private WorkerMetrics buildMetricsMsg(final int numDataBlocks, final double elapsedTime) {
     return WorkerMetrics.newBuilder()
         .setNumDataBlocks(numDataBlocks)
-        .setTotalCompTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
