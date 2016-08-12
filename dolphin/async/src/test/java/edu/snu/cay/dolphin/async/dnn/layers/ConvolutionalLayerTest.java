@@ -200,6 +200,8 @@ public class ConvolutionalLayerTest {
 
     final ConvolutionalLayerConfigurationBuilder builder3D = ConvolutionalLayerConfigurationBuilder
         .newConfigurationBuilder()
+        .setInitWeight(0.2f)
+        .setInitBias(0)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
@@ -212,7 +214,7 @@ public class ConvolutionalLayerTest {
     this.convolutionalLayer = injector.forkInjector(layerConf, builder.build())
         .getInstance(LayerBase.class);
 
-    convolutionalLayer.setLayerParameter(LayerParameter.newBuilder()
+    this.convolutionalLayer.setLayerParameter(LayerParameter.newBuilder()
         .setWeightParam(matrixFactory.create(new float[]
             {-0.20001359283924103f, -0.09591300785541534f, 0.06575873494148254f, 0.2478870451450348f}))
         .setBiasParam(matrixFactory.zeros(4)).build());
@@ -220,7 +222,7 @@ public class ConvolutionalLayerTest {
     this.convolutionalWithPaddingLayer = injector.forkInjector(layerConf, builderWithPadding.build())
         .getInstance(LayerBase.class);
 
-    convolutionalWithPaddingLayer.setLayerParameter(LayerParameter.newBuilder()
+    this.convolutionalWithPaddingLayer.setLayerParameter(LayerParameter.newBuilder()
         .setWeightParam(matrixFactory.create(new float[]
             {-0.20001359283924103f, -0.09591300785541534f, 0.06575873494148254f, 0.2478870451450348f}))
         .setBiasParam(matrixFactory.zeros(16)).build());
@@ -228,7 +230,7 @@ public class ConvolutionalLayerTest {
     this.convolutional3DLayer = injector.forkInjector(layerConf3D, builder3D.build())
         .getInstance(LayerBase.class);
 
-    convolutional3DLayer.setLayerParameter(LayerParameter.newBuilder()
+    this.convolutional3DLayer.setLayerParameter(LayerParameter.newBuilder()
         .setWeightParam(matrixFactory.create(new float[][]{
             {-0.20001359283924103f, 0.1096421629190445f},
             {-0.09591300785541534f, 0.021724732592701912f},
