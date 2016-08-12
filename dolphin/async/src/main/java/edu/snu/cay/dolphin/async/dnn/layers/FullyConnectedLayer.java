@@ -45,7 +45,6 @@ public final class FullyConnectedLayer extends LayerBase {
                               final LayerParameterInitializer layerParameterInitializer) {
     super(index, inputShape);
     this.outputShape = layerParameterInitializer.getOutputShape();
-    setLayerParameter(layerParameterInitializer.generateInitialParameter());
   }
 
   /** {@inheritDoc} */

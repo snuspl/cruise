@@ -25,7 +25,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
 import javax.inject.Inject;
@@ -79,6 +78,7 @@ public final class NeuralNetwork {
    * @param serializedLayerConfSets the set of Tang configurations used to inject layer instances
    * @param inputShape the shape of input data
    * @param parameterWorker the parameter worker for updating layer parameters
+   * @param matrixFactory the factory to create new matrices
    * @param injector the injector having the matrix factory configuration to be used for injecting layer instances
    */
   @Inject
@@ -86,26 +86,14 @@ public final class NeuralNetwork {
       final ConfigurationSerializer configurationSerializer,
       @Parameter(SerializedLayerConfigurationSet.class) final Set<String> serializedLayerConfSets,
       @Parameter(InputShape.class) final String inputShape,
-      @Parameter(RandomSeed.class) final long randomSeed,
       final ParameterWorker<Integer, LayerParameter, LayerParameter> parameterWorker,
+      final MatrixFactory matrixFactory,
       final Injector injector) {
-    // assumes that a matrix factory instance has never been injected by the passed injector.
-    // If the matrix factory instance has been injected, we cannot get multiple copies of it.
-
-    // The injector is forked in order for neural network models in the same evaluator
-    // to have their own matrix factory instances,
-    // which enables the models to initialize parameters with the same sequence of random values.
-    final Injector forkedInjector = injector.forkInjector();
-    try {
-      this.matrixFactory = forkedInjector.getInstance(MatrixFactory.class);
-      matrixFactory.setRandomSeed(randomSeed);
-    } catch (final InjectionException ie) {
-      throw new RuntimeException("Failed to inject a matrix factory instance", ie);
-    }
+    this.matrixFactory = matrixFactory;
     this.parameterWorker = parameterWorker;
     final Configuration[] layerConfs =
         deserializeLayerConfSetToArray(configurationSerializer, serializedLayerConfSets);
-    this.layers = getLayerInstances(forkedInjector, layerConfs, inputShape);
+    this.layers = getLayerInstances(injector, layerConfs, inputShape);
     this.emptyMatrix = matrixFactory.create(0);
     this.emptyLayerParam = LayerParameter.newEmptyInstance(matrixFactory);
     this.learnableLayerIndices = getLearnableLayerIndices();
@@ -144,13 +132,13 @@ public final class NeuralNetwork {
    * @param label the label matrix.
    */
   public void train(final Matrix input, final Matrix label) {
+    updateParameters();
+
     final Matrix[] activations = ArrayUtils.add(feedForward(input), 0, input); // inserts input at the beginning.
     final Matrix[] errors = backPropagate(activations, label);
     final LayerParameter[] parameterGradients = generateParameterGradients(activations, errors);
 
     pushGradients(input.getColumns(), parameterGradients);
-
-    updateParameters();
   }
 
   /**
@@ -169,7 +157,7 @@ public final class NeuralNetwork {
    * @param batchSize the number of instance in an input batch
    * @param parameterGradients the list of parameter gradients
    */
-  private void pushGradients(final int batchSize, final LayerParameter[] parameterGradients) {
+  void pushGradients(final int batchSize, final LayerParameter[] parameterGradients) {
     // average parameter gradients
     for (int i = 0; i < parameterGradients.length; ++i) {
       if (layers[i].isLearnable()) {
@@ -184,7 +172,7 @@ public final class NeuralNetwork {
   /**
    * Updates the layer parameters by pulling the latest parameters from the parameter servers.
    */
-  private void updateParameters() {
+  void updateParameters() {
     final List<LayerParameter> newParameters = parameterWorker.pull(learnableLayerIndices);
     for (int i = 0; i < learnableLayerIndices.size(); ++i) {
       layers[learnableLayerIndices.get(i)].setLayerParameter(newParameters.get(i));

@@ -23,6 +23,7 @@ import edu.snu.cay.dolphin.async.dnn.conf.ActivationLayerConfigurationBuilder;
 import edu.snu.cay.dolphin.async.dnn.conf.ActivationWithLossLayerConfigurationBuilder;
 import edu.snu.cay.dolphin.async.dnn.conf.FullyConnectedLayerConfigurationBuilder;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationBuilder;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.reef.tang.Configuration;
@@ -32,7 +33,12 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.*;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -53,6 +59,29 @@ public final class NeuralNetworkTest {
       throw new RuntimeException("InjectionException while injecting a matrix factory: " + e);
     }
   }
+
+  private final Matrix weightOne = matrixFactory.create(new float[][] {
+      {-1.00006793218e-04f, -1.54579829541e-05f, 6.94163973093e-05f, -1.06398147181e-04f,
+          2.24940842599e-04f, 2.46723706368e-04f, -1.06568011688e-04f, -4.03687081416e-05f},
+      {-4.79565023852e-05f, 4.79118025396e-05f, -1.03981255961e-04f, -5.14816019858e-05f,
+          1.58282928168e-04f, 5.05058269482e-05f, 6.63289756630e-05f, 5.64001311431e-05f},
+      {3.28793648805e-05f, -1.24143082302e-06f, 5.19458808412e-06f, -4.80942035210e-05f,
+          7.82513598096e-05f, 3.65737469110e-05f, -1.19681484648e-04f, 1.21497352665e-04f},
+      {1.23943522339e-04f, 5.48210773558e-05f, -3.73580915038e-05f, -2.88651972368e-05f,
+          1.00603145256e-04f, 1.37029155666e-05f, 1.04539096355e-04f, 9.48021261137e-06f},
+      {-6.45994732622e-05f, 1.08623662526e-05f, -3.13096330501e-04f, -4.43520293629e-05f,
+          4.67877107439e-05f, -1.47852388181e-05f, 2.29103789024e-05f, 4.29372485086e-05f}});
+
+  private final Matrix biasOne = matrixFactory.create(new float[]
+      {1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f});
+
+  private final Matrix weightTwo = matrixFactory.create(new float[][]{
+      {0.20476184785f, 0.12248460203f, 0.22612512111f, 0.35694047808f, 0.17052401602f},
+      {0.07434597611f, -0.15545003116f, 0.10352678596f, 0.09480648487f, -0.14262562990f},
+      {0.05223761871f, 0.00742011470f, -0.28489932417f, 0.00368047505f, 0.26537343859f}});
+
+  private final Matrix biasTwo = matrixFactory.create(new float[]
+      {0.30000001192f, 0.30000001192f, 0.30000001192f});
 
   private final Matrix input = matrixFactory.create(new float[]{77, 57, 30, 26, 75, 74, 87, 75});
   private final Matrix expectedOutput =
@@ -100,6 +129,7 @@ public final class NeuralNetworkTest {
       .build();
 
   private NeuralNetwork neuralNetwork;
+  private ParameterWorker mockParameterWorker;
 
   private final Matrix[] expectedErrors = new Matrix[] {
       matrixFactory.create(new float[]{
@@ -111,8 +141,26 @@ public final class NeuralNetworkTest {
   @Before
   public void buildNeuralNetwork() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector(blasConfiguration, neuralNetworkConfiguration);
-    injector.bindVolatileInstance(ParameterWorker.class, mock(ParameterWorker.class));
+    mockParameterWorker = mock(ParameterWorker.class);
+    injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
     neuralNetwork = injector.getInstance(NeuralNetwork.class);
+
+    doAnswer(invocation -> {
+        final LayerParameter layerParameterOne = LayerParameter.newBuilder()
+            .setWeightParam(weightOne)
+            .setBiasParam(biasOne)
+            .build();
+        final LayerParameter layerParameterTwo = LayerParameter.newBuilder()
+            .setWeightParam(weightTwo)
+            .setBiasParam(biasTwo)
+            .build();
+        final List<LayerParameter> result = new ArrayList<>();
+        result.add(layerParameterOne);
+        result.add(layerParameterTwo);
+        return result;
+      }).when(mockParameterWorker).pull(anyObject());
+
+    neuralNetwork.updateParameters();
   }
 
   /**
