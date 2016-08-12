@@ -82,7 +82,6 @@ public final class ConvolutionalLayer extends LayerBase {
     this.kernelHeight = kernelHeight;
     this.kernelWidth = kernelWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
-    setLayerParameter(layerParameterInitializer.generateInitialParameter());
     this.matrixFactory = matrixFactory;
 
     if (getInputShape().length == 2) {
