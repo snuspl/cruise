@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
@@ -33,11 +34,13 @@ import org.htrace.SpanReceiver;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.inject.Inject;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * Test class for checking the thread safeness of MemoryStore.
@@ -50,27 +53,52 @@ public final class MemoryStoreTest {
   private static final String MSG_SIZE_ASSERTION = "size of final memory store";
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_REMOVE_ALL_ASSERTION = "getAll() after removeAll()";
+  private static final String MSG_INCORRECT_RESULT = "the final result is different from the expectation";
 
   private MemoryStore<Long> memoryStore;
 
   @Before
   public void setUp() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(SpanReceiver.class, MemoryStoreTestUtils.MockedSpanReceiver.class)
-        .bindImplementation(ElasticMemoryMsgSender.class, MemoryStoreTestUtils.MockedMsgSender.class)
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(1))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
+    injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
+    injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
     memoryStore = injector.getInstance(MemoryStore.class);
 
     // router should be initialized explicitly
     final OperationRouter<Long> router = injector.getInstance(OperationRouter.class);
     router.triggerInitialization();
+  }
+
+  /**
+   * An implementation of {@link EMUpdateFunction} that accumulates the delta starting from zero.
+   */
+  private static final class EMUpdateFunctionImpl implements EMUpdateFunction<Long, Integer> {
+
+    /**
+     * Injectable constructor.
+     */
+    @Inject
+    private EMUpdateFunctionImpl() {
+    }
+
+    @Override
+    public Integer getInitValue(final Long key) {
+      return 0;
+    }
+
+    @Override
+    public Integer getUpdatedValue(final Integer oldValue, final Integer deltaValue) {
+      return oldValue + deltaValue;
+    }
   }
 
   /**
@@ -135,6 +163,39 @@ public final class MemoryStoreTest {
   @Test
   public void testMultithreadPutRemoveSingle() throws InterruptedException {
     mulithreadPutRemove(1);
+  }
+
+  /**
+   * Multithreading test for {@code update}.
+   * Check that the consistency of a {@link MemoryStore} is preserved
+   * when multiple threads try to update values associated with a certain set of keys.
+   */
+  @Test
+  public void testMultiThreadUpdate() throws InterruptedException {
+    final int numThreads = 8;
+    final long startKey = 0;
+    final int numKeys = 10;
+    final int deltaValue = 1;
+    final int updatesPerKeyPerThread = 10000;
+    final int updatesPerKey = updatesPerKeyPerThread * numThreads;
+    final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
+
+    final Runnable[] threads = new Runnable[numThreads];
+    for (int index = 0; index < numThreads; index++) {
+      threads[index] = new MemoryStoreTestUtils.UpdateThread(
+          countDownLatch, memoryStore, startKey, numKeys, deltaValue, updatesPerKeyPerThread);
+    }
+    ThreadUtils.runConcurrently(threads);
+    final boolean allThreadsFinished = countDownLatch.await(TIMEOUT, TimeUnit.SECONDS);
+
+    // check that all threads have finished without falling into deadlocks or infinite loops
+    assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
+
+    // check that all values associated keys are as expected
+    for (long key = startKey; key < startKey + numKeys; key++) {
+      final int value = (int) memoryStore.get(key).getSecond();
+      assertEquals(MSG_INCORRECT_RESULT, updatesPerKey * deltaValue, value);
+    }
   }
 
   /**
