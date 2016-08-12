@@ -76,7 +76,7 @@
   "fields":
   [
     {"name": "origEvalId", "type": "string"},
-    {"name": "opType", "type": {"type": "enum", "name": "DataOpType", "symbols": ["PUT", "GET", "REMOVE"]}},
+    {"name": "opType", "type": {"type": "enum", "name": "DataOpType", "symbols": ["PUT", "GET", "REMOVE", "UPDATE"]}},
     {"name": "dataKeys", "type": ["DataKey", {"type": "array", "items": "KeyRange"}]},
     {"name": "dataValues", "type": ["null", "DataValue", {"type": "array", "items": "KeyValuePair"}]}
   ]

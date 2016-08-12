@@ -16,6 +16,7 @@
 package edu.snu.cay.services.ps.driver.impl.dynamic;
 
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
+import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
@@ -29,6 +30,7 @@ import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.impl.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.impl.ServerSideReplySenderImpl;
 import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
+import edu.snu.cay.services.ps.server.impl.dynamic.EMUpdateFunctionImpl;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
@@ -161,6 +163,7 @@ public final class DynamicPSManager implements PSManager {
             .bindNamedParameter(EndpointId.class, contextId)
             .bindNamedParameter(PSMessageHandler.class, ServerSideMsgHandler.class)
             .bindImplementation(ServerResolver.class, DynamicServerResolver.class)
+            .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionImpl.class)
             .bindNamedParameter(NumServers.class, Integer.toString(numServers))
             .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
             .bindNamedParameter(ServerNumThreads.class, Integer.toString(serverNumThreads))

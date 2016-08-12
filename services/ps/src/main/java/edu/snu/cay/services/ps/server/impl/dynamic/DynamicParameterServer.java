@@ -441,23 +441,12 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         pushWaitStats[threadId].put(waitTime);
         requestWaitStats[threadId].put(waitTime);
 
-        final Pair<HashedKey<K>, V> oldKVPair = memoryStore.get(hashedKey);
-
-        final V oldValue;
-        if (null == oldKVPair) {
-          LOG.log(Level.FINE, "The value did not exist. Will use the initial value specified in ParameterUpdater.");
-          oldValue = parameterUpdater.initValue(hashedKey.getKey());
-        } else {
-          oldValue = oldKVPair.getSecond();
-        }
-
         final V deltaValue = parameterUpdater.process(hashedKey.getKey(), preValue);
         if (deltaValue == null) {
           return;
         }
 
-        final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
-        memoryStore.put(hashedKey, updatedValue);
+        memoryStore.update(hashedKey, deltaValue);
 
         final long processEndTime = ticker.read();
         final long processingTime = processEndTime - waitEndTime;

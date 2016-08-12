@@ -648,6 +648,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
+  public <V> Pair<Long, V> update(final Long id, final V deltaValue) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public <V> Pair<Long, V> remove(final Long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
