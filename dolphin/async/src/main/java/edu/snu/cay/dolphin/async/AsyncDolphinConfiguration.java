@@ -31,14 +31,14 @@ import java.util.List;
 /**
  * Job configuration of a {@code dolphin-async} application.
  *
- * Call {@code newBuilder} and supply classes for {@link Worker}, {@link ParameterUpdater}, codecs, parameters,
+ * Call {@code newBuilder} and supply classes for {@link Trainer}, {@link ParameterUpdater}, codecs, parameters,
  * configuration for workers, and configuration for servers.
  * {@link SerializableCodec}s are used in case codec classes are not given. Parameter classes are also optional.
  * Use with {@link AsyncDolphinLauncher#launch(String, String[], AsyncDolphinConfiguration)} to launch application.
  */
 @ClientSide
 public final class AsyncDolphinConfiguration {
-  private final Class<? extends Worker> workerClass;
+  private final Class<? extends Trainer> trainerClass;
   private final Class<? extends ParameterUpdater> updaterClass;
   private final Class<? extends Codec> keyCodecClass;
   private final Class<? extends Codec> preValueCodecClass;
@@ -50,7 +50,7 @@ public final class AsyncDolphinConfiguration {
   private final Configuration serverConfiguration;
 
 
-  private AsyncDolphinConfiguration(final Class<? extends Worker> workerClass,
+  private AsyncDolphinConfiguration(final Class<? extends Trainer> trainerClass,
                                     final Class<? extends ParameterUpdater> updaterClass,
                                     final Class<? extends Codec> keyCodecClass,
                                     final Class<? extends Codec> preValueCodecClass,
@@ -60,7 +60,7 @@ public final class AsyncDolphinConfiguration {
                                     final Class<? extends Serializer> serverSerializerClass,
                                     final Configuration workerConfiguration,
                                     final Configuration serverConfiguration) {
-    this.workerClass = workerClass;
+    this.trainerClass = trainerClass;
     this.updaterClass = updaterClass;
     this.keyCodecClass = keyCodecClass;
     this.preValueCodecClass = preValueCodecClass;
@@ -72,8 +72,8 @@ public final class AsyncDolphinConfiguration {
     this.serverConfiguration = serverConfiguration;
   }
 
-  public Class<? extends Worker> getWorkerClass() {
-    return workerClass;
+  public Class<? extends Trainer> getTrainerClass() {
+    return trainerClass;
   }
 
   public Class<? extends ParameterUpdater> getUpdaterClass() {
@@ -118,7 +118,7 @@ public final class AsyncDolphinConfiguration {
   }
 
   public static class Builder implements org.apache.reef.util.Builder<AsyncDolphinConfiguration> {
-    private Class<? extends Worker> workerClass;
+    private Class<? extends Trainer> trainerClass;
     private Class<? extends ParameterUpdater> updaterClass;
     private Class<? extends Codec> keyCodecClass = SerializableCodec.class;
     private Class<? extends Codec> preValueCodecClass = SerializableCodec.class;
@@ -130,8 +130,8 @@ public final class AsyncDolphinConfiguration {
     private Configuration serverConfiguration = Tang.Factory.getTang().newConfigurationBuilder().build();
 
 
-    public Builder setWorkerClass(final Class<? extends Worker> workerClass) {
-      this.workerClass = workerClass;
+    public Builder setTrainerClass(final Class<? extends Trainer> trainerClass) {
+      this.trainerClass = trainerClass;
       return this;
     }
 
@@ -182,15 +182,15 @@ public final class AsyncDolphinConfiguration {
 
     @Override
     public AsyncDolphinConfiguration build() {
-      if (workerClass == null) {
-        throw new RuntimeException("Worker class is required.");
+      if (trainerClass == null) {
+        throw new RuntimeException("Trainer class is required.");
       }
 
       if (updaterClass == null) {
         throw new RuntimeException("Updater class is required.");
       }
 
-      return new AsyncDolphinConfiguration(workerClass, updaterClass,
+      return new AsyncDolphinConfiguration(trainerClass, updaterClass,
           keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList,
           workerSerializerClass, serverSerializerClass, workerConfiguration, serverConfiguration);
     }

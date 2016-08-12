@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
-import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -33,9 +33,9 @@ import java.util.logging.Logger;
  * all workers update their initial topic assignments. For each iteration, sequentially sampling documents,
  * it immediately pushes the changed topic assignment whenever each word is sampled to a new topic.
  */
-final class LdaWorker implements Worker {
+final class LdaTrainer implements Trainer {
 
-  private static final Logger LOG = Logger.getLogger(LdaWorker.class.getName());
+  private static final Logger LOG = Logger.getLogger(LdaTrainer.class.getName());
 
   private final LdaDataParser dataParser;
   private final LdaBatchParameterWorker batchWorker;
@@ -46,12 +46,12 @@ final class LdaWorker implements Worker {
   private final MemoryStore<Long> memoryStore;
 
   @Inject
-  private LdaWorker(final LdaDataParser dataParser,
-                    final LdaBatchParameterWorker batchWorker,
-                    final SparseLdaSampler sampler,
-                    final DataIdFactory<Long> idFactory,
-                    final MemoryStore<Long> memoryStore,
-                    @Parameter(LdaREEF.NumVocabs.class) final int numVocabs) {
+  private LdaTrainer(final LdaDataParser dataParser,
+                     final LdaBatchParameterWorker batchWorker,
+                     final SparseLdaSampler sampler,
+                     final DataIdFactory<Long> idFactory,
+                     final MemoryStore<Long> memoryStore,
+                     @Parameter(LdaREEF.NumVocabs.class) final int numVocabs) {
     this.dataParser = dataParser;
     this.batchWorker = batchWorker;
     this.sampler = sampler;

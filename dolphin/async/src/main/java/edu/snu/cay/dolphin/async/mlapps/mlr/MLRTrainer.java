@@ -20,7 +20,7 @@ import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -42,12 +42,12 @@ import java.util.logging.Logger;
 import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 
 /**
- * {@link Worker} class for the MLRREEF application.
+ * {@link Trainer} class for the MLRREEF application.
  * Uses {@code numClasses} model vectors to determine which class each data instance belongs to.
  * The model vector that outputs the highest dot product value is declared as that data instance's prediction.
  */
-final class MLRWorker implements Worker {
-  private static final Logger LOG = Logger.getLogger(MLRWorker.class.getName());
+final class MLRTrainer implements Trainer {
+  private static final Logger LOG = Logger.getLogger(MLRTrainer.class.getName());
 
   /**
    * Parser object for fetching and parsing the input dataset.
@@ -55,9 +55,9 @@ final class MLRWorker implements Worker {
   private final MLRParser mlrParser;
 
   /**
-   * Worker object used to interact with the parameter server.
+   * ParameterWorker object used to interact with the parameter server.
    */
-  private final ParameterWorker<Integer, Vector, Vector> worker;
+  private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
 
   /**
    * Number of possible classes for a data instance.
@@ -101,7 +101,7 @@ final class MLRWorker implements Worker {
   private final Vector[] newModels;
 
   /**
-   * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@code worker.pull()}.
+   * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@link #pullModels()}.
    */
   private List<Integer> classPartitionIndices;
 
@@ -135,23 +135,23 @@ final class MLRWorker implements Worker {
   private final Tracer computeTracer;
 
   @Inject
-  private MLRWorker(final MLRParser mlrParser,
-                    final ParameterWorker<Integer, Vector, Vector> worker,
-                    @Parameter(NumClasses.class) final int numClasses,
-                    @Parameter(NumFeatures.class) final int numFeatures,
-                    @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                    @Parameter(InitialStepSize.class) final double initStepSize,
-                    @Parameter(Lambda.class) final double lambda,
-                    @Parameter(DecayRate.class) final double decayRate,
-                    @Parameter(DecayPeriod.class) final int decayPeriod,
-                    @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
-                    @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
-                    final DataIdFactory<Long> idFactory,
-                    final MemoryStore<Long> memoryStore,
-                    final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
-                    final VectorFactory vectorFactory) {
+  private MLRTrainer(final MLRParser mlrParser,
+                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+                     @Parameter(NumClasses.class) final int numClasses,
+                     @Parameter(NumFeatures.class) final int numFeatures,
+                     @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
+                     @Parameter(InitialStepSize.class) final double initStepSize,
+                     @Parameter(Lambda.class) final double lambda,
+                     @Parameter(DecayRate.class) final double decayRate,
+                     @Parameter(DecayPeriod.class) final int decayPeriod,
+                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
+                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
+                     final DataIdFactory<Long> idFactory,
+                     final MemoryStore<Long> memoryStore,
+                     final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
+                     final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
-    this.worker = worker;
+    this.parameterWorker = parameterWorker;
     this.numClasses = numClasses;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     if (numFeatures % numFeaturesPerPartition != 0) {
@@ -222,12 +222,16 @@ final class MLRWorker implements Worker {
     final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
     final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
 
-    pullModels();
+    // Record the number of EM data blocks at the beginning of this iteration
+    // to filter out stale metrics for optimization
+    final int numEMBlocks = memoryStore.getNumBlocks();
 
     int numInstances = 0;
     int batchIdx = 0;
     int batchSize = workload.size() / numMiniBatchPerIter +
         ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+
+    pullModels();
 
     computeTracer.startTimer();
     for (final Pair<Vector, Integer> entry : workload) {
@@ -288,7 +292,7 @@ final class MLRWorker implements Worker {
     final Metrics appMetrics = buildAppMetrics(lossRegLossAccuracy.getFirst(),
         lossRegLossAccuracy.getSecond(), (double) lossRegLossAccuracy.getThird(), elapsedTime, numInstances);
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(appMetrics, memoryStore.getNumBlocks(), workload.size(), elapsedTime);
+        buildMetricsMsg(appMetrics, numEMBlocks, workload.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
@@ -315,7 +319,7 @@ final class MLRWorker implements Worker {
 
   private void pullModels() {
     pullTracer.startTimer();
-    final List<Vector> partitions = worker.pull(classPartitionIndices);
+    final List<Vector> partitions = parameterWorker.pull(classPartitionIndices);
     pullTracer.recordTime(partitions.size());
     computeTracer.startTimer();
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
@@ -342,7 +346,7 @@ final class MLRWorker implements Worker {
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
         final int partitionStart = partitionIndex * numFeaturesPerPartition;
         final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
-        worker.push(classIndex * numPartitionsPerClass + partitionIndex,
+        parameterWorker.push(classIndex * numPartitionsPerClass + partitionIndex,
             gradient.slice(partitionStart, partitionEnd));
       }
       pushTracer.recordTime(numPartitionsPerClass);

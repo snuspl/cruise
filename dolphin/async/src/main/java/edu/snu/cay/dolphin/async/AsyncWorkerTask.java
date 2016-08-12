@@ -29,7 +29,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * REEF Task for a worker thread of {@code dolphin-async} applications.
+ * REEF Task for a trainer thread of {@code dolphin-async} applications.
  */
 @Unit
 final class AsyncWorkerTask implements Task {
@@ -39,12 +39,12 @@ final class AsyncWorkerTask implements Task {
   private final String taskId;
   private final int maxIterations;
   private final WorkerSynchronizer synchronizer;
-  private final Worker worker;
+  private final Trainer trainer;
   private final WorkerClock workerClock;
 
   /**
-   * A boolean flag shared among all worker threads.
-   * Worker threads end when this flag becomes true by {@link CloseEventHandler#onNext(CloseEvent)}.
+   * A boolean flag shared among all trainer threads.
+   * Trainer threads end when this flag becomes true by {@link CloseEventHandler#onNext(CloseEvent)}.
    */
   private volatile boolean aborted = false;
 
@@ -52,12 +52,12 @@ final class AsyncWorkerTask implements Task {
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
                           final WorkerSynchronizer synchronizer,
-                          final Worker worker,
+                          final Trainer trainer,
                           final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
     this.synchronizer = synchronizer;
-    this.worker = worker;
+    this.trainer = trainer;
     this.workerClock = workerClock;
   }
 
@@ -65,8 +65,8 @@ final class AsyncWorkerTask implements Task {
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
-    // TODO #681: Need to add numWorkerThreads concept after multi-thread worker is enabled
-    worker.initialize();
+    // TODO #681: Need to add numWorkerThreads concept after multi-thread trainer is enabled
+    trainer.initialize();
 
     // synchronize all workers before starting the main iteration
     // to avoid meaningless iterations by the workers who started earlier
@@ -78,9 +78,11 @@ final class AsyncWorkerTask implements Task {
     for (int iteration = 0; iteration < maxIterations; ++iteration) {
       if (aborted) {
         LOG.log(Level.INFO, "Abort a thread to completely close the task");
+        // record total network waiting time of worker clock when the task is aborted
+        workerClock.recordClockNetworkWaitingTime();
         return null;
       }
-      worker.run();
+      trainer.run();
       workerClock.clock();
     }
 
@@ -88,7 +90,9 @@ final class AsyncWorkerTask implements Task {
     // to finish with the globally equivalent view of trained model
     synchronizer.globalBarrier();
 
-    worker.cleanup();
+    trainer.cleanup();
+    // record total network waiting time of worker clock when the task is finished
+    workerClock.recordClockNetworkWaitingTime();
     return null;
   }
 

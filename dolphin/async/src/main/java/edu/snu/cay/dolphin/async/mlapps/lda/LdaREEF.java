@@ -42,7 +42,7 @@ public final class LdaREEF {
         .setPreValueCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
         .setUpdaterClass(LdaUpdater.class)
-        .setWorkerClass(LdaWorker.class)
+        .setTrainerClass(LdaTrainer.class)
         .build());
   }
 
