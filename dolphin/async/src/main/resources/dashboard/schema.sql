@@ -21,11 +21,12 @@
  * Table metrics will be initialized dynamically at runtime.
  */
 
-drop table if exists workers;
-drop table if exists servers;
-drop table if exists metrics;
+drop table if exists worker;
+drop table if exists server;
+drop table if exists metric;
 
-create table workers (
+create table worker (
+    time double not null,
     id int not null,
     itrIdx int not null,
     numDataBlocks int not null,
@@ -39,7 +40,8 @@ create table workers (
     avgPullTime double not null
 );
 
-create table servers (
+create table server (
+    time double not null,
     id int not null,
     windowIndex int not null,
     numPartitionBlocks int not null,

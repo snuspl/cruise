@@ -67,42 +67,62 @@ def close_db(error):
 def main():
     db = get_db()
     if request.method == 'POST':
-        try:
-            # update database with new metrics
-            id = request.form['id'];
-            metrics = json.loads(request.form['metrics'])
-            # app-specific metrics
-            ml_metrics = metrics.pop('metrics')
-            if ml_metrics is not None:
-                db.execute('create table if not exists metrics ({0} varchar(255) not null);'
-                           .format(' varchar(255) not null, '.join(ml_metrics['data'].keys())))
-                db.execute('insert into metrics values ({0})'
-                           .format(', '.join(str(i) for i in ml_metrics['data'].values())))
-            # other metrics
-            if id.startswith('Worker'):
-                side = 'workers'
-            else:
-                side = 'servers'
-            id = re.sub(r'\D', '', id)
-            db.execute('insert into {0} values ({1}, {2})'
-                       .format(side, id, ', '.join(str(i) for i in metrics.values())))
-            db.commit()
-            return 'accept'
-        except:
-            return 'error'
+        # update database with new metrics
+        id = request.form['id'];
+        time = request.form['time'];
+        metrics = json.loads(request.form['metrics'])
+        ml_metrics = metrics.pop('metrics')
+        # metrics
+        if id.startswith('Worker'):
+            position = 'worker'
+        else:
+            position = 'server'
+        id = re.sub(r'\D', '', id)
+        db.execute('insert into {0} values ({1}, {2}, {3})'
+                   .format(position, time, id, ', '.join(str(i) for i in metrics.values())))
+        # app-specific metrics
+        if ml_metrics is not None:
+            db.execute('create table if not exists metric (time double not null, id int not null, {0} varchar(255) not null);'
+                       .format(' varchar(255) not null, '.join(ml_metrics['data'].keys())))
+            db.execute('insert into metric values ({0}, {1}, {2})'
+                       .format(time, id, ', '.join(str(i) for i in ml_metrics['data'].values())))
+        db.commit()
+        return 'accept'
     else:
-        # get metrics from database
-        cur = db.execute('select * from workers')
-        worker = cur.fetchall()
-        cur = db.execute('select * from servers')
-        server = cur.fetchall()
-        cur = db.execute('select name from sqlite_master where type=\'table\' and name=\'metrics\';')
-        metrics_list = cur.fetchall()
-        if not metrics_list:
-            return render_template('main.html', workers=worker, servers=server)
-        cur = db.execute('select * from metrics')
-        metric = cur.fetchall()
-        return render_template('main.html', workers=worker, servers=server, metrics=metric)
+        return render_template('main.html')
+
+@app.route('/plot', methods=['POST'])
+def plot():
+    position = request.form['position'].lower();
+    x = request.form['x'];
+    y = request.form['y'];
+    id = re.sub(r'\D', '', request.form['id']);
+    db = get_db()
+    data = dict()
+    try:
+        cur = db.execute('select time, id, {0} from {1}'.format(y, position))
+        for row in cur:
+            if row[1] == int(id):
+                data[row[0]] = row[2]
+    except:
+        data = dict()
+    return json.dumps(data)
+
+@app.route('/selectors', methods=['POST'])
+def selectors():
+    position = request.form['position'].lower()
+    db = get_db()
+    try:
+        cur = db.execute('pragma table_info({0})'.format(position))
+        y_axis = map(lambda x: x['name'], cur.fetchall())
+    except:
+        y_axis = ['no data yet']
+    try:
+        cur = db.execute('select id from {0}'.format(position))
+        ids = sorted(set(map(lambda x: x[0], cur.fetchall())))
+    except:
+        ids = ['no data yet']
+    return json.dumps({'id':ids, 'y':y_axis})
 
 #
 # Main
