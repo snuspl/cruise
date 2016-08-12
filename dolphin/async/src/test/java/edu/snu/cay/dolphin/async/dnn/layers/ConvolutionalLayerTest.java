@@ -200,8 +200,6 @@ public class ConvolutionalLayerTest {
 
     final ConvolutionalLayerConfigurationBuilder builder3D = ConvolutionalLayerConfigurationBuilder
         .newConfigurationBuilder()
-        .setInitWeight(0.2f)
-        .setInitBias(0)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
@@ -210,19 +208,37 @@ public class ConvolutionalLayerTest {
         .setNumOutput(2);
 
     final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
-    final MatrixFactory matrixFactoryForLayer = injector.getInstance(MatrixFactory.class);
 
-    matrixFactoryForLayer.setRandomSeed(10);
     this.convolutionalLayer = injector.forkInjector(layerConf, builder.build())
         .getInstance(LayerBase.class);
 
-    matrixFactoryForLayer.setRandomSeed(10);
+    convolutionalLayer.setLayerParameter(LayerParameter.newBuilder()
+        .setWeightParam(matrixFactory.create(new float[]
+            {-0.20001359283924103f, -0.09591300785541534f, 0.06575873494148254f, 0.2478870451450348f}))
+        .setBiasParam(matrixFactory.zeros(4)).build());
+
     this.convolutionalWithPaddingLayer = injector.forkInjector(layerConf, builderWithPadding.build())
         .getInstance(LayerBase.class);
 
-    matrixFactoryForLayer.setRandomSeed(10);
+    convolutionalWithPaddingLayer.setLayerParameter(LayerParameter.newBuilder()
+        .setWeightParam(matrixFactory.create(new float[]
+            {-0.20001359283924103f, -0.09591300785541534f, 0.06575873494148254f, 0.2478870451450348f}))
+        .setBiasParam(matrixFactory.zeros(16)).build());
+
     this.convolutional3DLayer = injector.forkInjector(layerConf3D, builder3D.build())
         .getInstance(LayerBase.class);
+
+    convolutional3DLayer.setLayerParameter(LayerParameter.newBuilder()
+        .setWeightParam(matrixFactory.create(new float[][]{
+            {-0.20001359283924103f, 0.1096421629190445f},
+            {-0.09591300785541534f, 0.021724732592701912f},
+            {0.06575873494148254f, 0.13883279263973236f},
+            {0.2478870451450348f, -0.2079625129699707f},
+            {-0.12919895350933075f, 0.0103891771286726f},
+            {-0.030915966257452965f, -0.07471618801355362f},
+            {0.09582360833883286f, -0.6261926889419556f},
+            {-0.0024828617461025715f, -0.21279631555080414f}}))
+        .setBiasParam(matrixFactory.zeros(8)).build());
   }
 
   @Test

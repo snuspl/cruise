@@ -26,6 +26,7 @@ import edu.snu.cay.services.em.exceptions.IdGenerationException;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -88,6 +89,7 @@ final class NeuralNetworkWorker implements Worker {
   public void run() {
     final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
     final Collection<NeuralNetworkData> workload = workloadMap.values();
+    final Collection<NeuralNetworkData> validationWorkload = Collections.emptyList();
 
     for (final NeuralNetworkData data : workload) {
       final Matrix input = data.getMatrix();
@@ -98,11 +100,22 @@ final class NeuralNetworkWorker implements Worker {
       }
 
       if (data.isValidation()) {
-        crossValidator.validate(input, labels);
+        validationWorkload.add(data);
       } else {
         neuralNetwork.train(input, labels);
         trainingValidator.validate(input, labels);
       }
+    }
+
+    for (final NeuralNetworkData data : validationWorkload) {
+      final Matrix input = data.getMatrix();
+      final int[] labels = data.getLabels();
+
+      if (input.getColumns() != labels.length) {
+        throw new RuntimeException("Invalid data: the number of inputs is not equal to the number of labels");
+      }
+
+      crossValidator.validate(input, labels);
     }
 
     LOG.log(Level.INFO, generateIterationLog(
