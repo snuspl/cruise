@@ -32,6 +32,8 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A worker clock of SSP model.
@@ -42,6 +44,7 @@ import java.util.concurrent.CountDownLatch;
 @EvaluatorSide
 @Unit
 public final class SSPWorkerClock implements WorkerClock {
+  private static final Logger LOG = Logger.getLogger(SSPWorkerClock.class.getName());
 
   private final AggregationSlave aggregationSlave;
 
@@ -62,6 +65,12 @@ public final class SSPWorkerClock implements WorkerClock {
    */
   private int globalMinimumClock;
 
+  /**
+   * The network waiting time spent on sending clock-related messages.
+   * The time unit is millisecond.
+   */
+  private long clockNetworkWaitingTime;
+
   @Inject
   private SSPWorkerClock(@Parameter(Staleness.class) final int staleness,
                          final AggregationSlave aggregationSlave,
@@ -72,6 +81,7 @@ public final class SSPWorkerClock implements WorkerClock {
     this.initLatch = new CountDownLatch(1);
     this.workerClock = -1;
     this.globalMinimumClock = -1;
+    this.clockNetworkWaitingTime = 0;
   }
 
   @Override
@@ -82,11 +92,13 @@ public final class SSPWorkerClock implements WorkerClock {
         .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
         .build();
     final byte[] data = codec.encode(avroClockMsg);
+    final long beginTime = System.currentTimeMillis();
     aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
 
     // wait until to get current global minimum clock and initial worker clock
     try {
       initLatch.await();
+      clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
     } catch (final InterruptedException e) {
       throw new RuntimeException("Unexpected exception", e);
     }
@@ -101,14 +113,23 @@ public final class SSPWorkerClock implements WorkerClock {
             .setTickMsg(TickMsg.newBuilder().build())
             .build();
     final byte[] data = codec.encode(avroClockMsg);
+    final long beginTime = System.currentTimeMillis();
     aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+    clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
   }
 
   @Override
   public synchronized void waitIfExceedingStalenessBound() throws InterruptedException {
+    final long beginTime = System.currentTimeMillis();
     while (workerClock > globalMinimumClock + staleness) {
       wait();
     }
+    clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
+  }
+
+  @Override
+  public void recordClockNetworkWaitingTime() {
+    LOG.log(Level.INFO, "Total network waiting time for clock is {0}", clockNetworkWaitingTime);
   }
 
   @Override

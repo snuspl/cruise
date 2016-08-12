@@ -261,19 +261,13 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         .setTotalTime(timeSinceLastPrintStat / 1e9D)
         .setPullCount((int)pullStat.count())
         .setTotalPullTime(pullStat.sum())
-        .setAvgPullTime(pullStat.avg())
         .setTotalPullWaitTime(pullWaitStat.sum())
-        .setAvgPullWaitTime(pullWaitStat.avg())
         .setPushCount((int)pushStat.count())
         .setTotalPushTime(pushStat.sum())
-        .setAvgPushTime(pushStat.avg())
         .setTotalPushWaitTime(pushWaitStat.sum())
-        .setAvgPushWaitTime(pushWaitStat.avg())
         .setReqCount((int)requestStat.count())
         .setTotalReqTime(requestStat.sum())
-        .setAvgReqTime(requestStat.avg())
         .setTotalReqWaitTime(requestWaitStat.sum())
-        .setAvgReqWaitTime(requestWaitStat.avg())
         .build();
 
     LOG.log(Level.FINE, "ServerThreadMetrics {0}", threadMetrics);
@@ -290,29 +284,37 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       Thread.sleep(METRIC_INIT_DELAY_MS);
 
       while (true) {
+        // Record the number of EM data blocks at the beginning of this window
+        // to conservatively filter out stale metrics for optimization
+        final int numEMBlocks = memoryStore.getNumBlocks();
+
         Thread.sleep(metricsWindowMs);
 
         // After time has elapsed as long as a windowIndex, get the collected metrics and build a MetricsMessage.
-        final double avgPullTime = getAvgProcTimePerReq(pullStats);
-        final double avgPushTime = getAvgProcTimePerReq(pushStats);
-        final double avgReqProcTime = getAvgProcTimePerReq(requestStats);
+        final double totalPullTime = getTotalProcTime(pullStats);
+        final double totalPushTime = getTotalProcTime(pushStats);
+        final double totalReqProcTime = getTotalProcTime(requestStats);
+        final int totalPullCount = getTotalProcCount(pullStats);
+        final int totalPushCount = getTotalProcCount(pushStats);
+        final int totalReqCount = getTotalProcCount(requestStats);
         resetStats();
 
-        // Send meaningful metrics only (i.e., infinity processing time implies that no data has been processed yet).
-        if (avgPullTime != Double.POSITIVE_INFINITY && avgPushTime != Double.POSITIVE_INFINITY) {
-          final int numPartitionBlocks = memoryStore.getNumBlocks();
-          final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
-              .setWindowIndex(windowIndex)
-              .setNumPartitionBlocks(numPartitionBlocks)
-              .setMetricWindowMs(metricsWindowMs)
-              .setAvgPullProcessingTime(avgPullTime)
-              .setAvgPushProcessingTime(avgPushTime)
-              .setAvgReqProcessingTime(avgReqProcTime)
-              .build();
+        // Send meaningful metrics only
+        final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
+            .setWindowIndex(windowIndex)
+            .setNumModelBlocks(numEMBlocks)
+            .setMetricWindowMs(metricsWindowMs)
+            .setTotalPullProcessingTime(totalPullTime)
+            .setTotalPushProcessingTime(totalPushTime)
+            .setTotalReqProcessingTime(totalReqProcTime)
+            .setTotalPullProcessed(totalPullCount)
+            .setTotalPushProcessed(totalPushCount)
+            .setTotalReqProcessed(totalReqCount)
+            .build();
 
-          LOG.log(Level.FINE, "Sending ServerMetrics {0}", metricsMessage);
-          metricsMsgSender.send(metricsMessage);
-        }
+        LOG.log(Level.FINE, "Sending ServerMetrics {0}", metricsMessage);
+        metricsMsgSender.send(metricsMessage);
+
         windowIndex++;
       }
     } catch (final InterruptedException e) {
@@ -322,27 +324,37 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   /**
-   * Computes processing unit (C_s_proc) across all threads in this Server.
-   * It is computed by first calculating the total throughput of this server by adding each thread's throughput
-   * and getting the inverse of the throughput to finally get the time required to process a unit request.
+   * Computes the total number of requests across all threads in this server.
    *
-   * {@code Double.POSITIVE_INFINITY} is returned when all threads
-   * have not processed any requests so far.
+   * It is used later on used to calculate the processing unit cost for this server (C_s_proc).
    */
-  private double getAvgProcTimePerReq(final Statistics[] procTimeStats) {
-    double throughputSum = 0D;
+  private int getTotalProcCount(final Statistics[] procTimeStats) {
+    int processedCount = 0;
 
     synchronized (procTimeStats) {
       for (final Statistics stat : procTimeStats) {
-        throughputSum += stat.count() / stat.sum();
+        processedCount += stat.count();
       }
     }
 
-    if (throughputSum == 0D) {
-      return Double.POSITIVE_INFINITY;
-    } else {
-      return 1.0 / throughputSum;
+    return processedCount;
+  }
+
+  /**
+   * Computes the time spent on processing {@link #getTotalProcCount(Statistics[])} with the threads in this server.
+   *
+   * It is used later on used to calculate the processing unit cost for this server (C_s_proc).
+   */
+  private double getTotalProcTime(final Statistics[] procTimeStats) {
+    double procTimeSum = 0D;
+
+    synchronized (procTimeStats) {
+      for (final Statistics stat : procTimeStats) {
+        procTimeSum += stat.sum();
+      }
     }
+
+    return procTimeSum;
   }
 
   /**

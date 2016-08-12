@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.RunningTask;
 
 import javax.inject.Inject;
@@ -70,5 +71,10 @@ public final class LoggingPlanExecutor implements PlanExecutor {
   @Override
   public void onRunningTask(final RunningTask task) {
     LOG.log(Level.INFO, "RunningTask {0}", task);
+  }
+
+  @Override
+  public void onCompletedTask(final CompletedTask task) {
+    LOG.log(Level.INFO, "CompletedTask {0}", task);
   }
 }

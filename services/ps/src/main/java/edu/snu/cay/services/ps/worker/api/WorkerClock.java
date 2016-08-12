@@ -48,6 +48,11 @@ public interface WorkerClock {
   void waitIfExceedingStalenessBound() throws InterruptedException;
 
   /**
+   * Records log about total network waiting time consumed to send and receive clock related messages.
+   */
+  void recordClockNetworkWaitingTime();
+
+  /**
    * @return current worker clock
    */
   int getWorkerClock();

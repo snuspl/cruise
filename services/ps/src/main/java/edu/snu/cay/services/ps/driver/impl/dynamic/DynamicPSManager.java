@@ -33,14 +33,13 @@ import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
-import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
+import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.impl.AsyncWorkerHandlerImpl;
+import edu.snu.cay.services.ps.worker.impl.AsyncParameterWorker;
 import edu.snu.cay.services.ps.worker.impl.NullWorkerClock;
-import edu.snu.cay.services.ps.worker.impl.ParameterWorkerImpl;
 import edu.snu.cay.services.ps.worker.impl.SSPWorkerClock;
-import edu.snu.cay.services.ps.worker.impl.SSPParameterWorkerImpl;
+import edu.snu.cay.services.ps.worker.impl.SSPParameterWorker;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStopHandler;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
@@ -117,22 +116,23 @@ public final class DynamicPSManager implements PSManager {
 
   /**
    * Returns worker-side service configuration.
-   * Sets {@link ParameterWorkerImpl} as the {@link ParameterWorker} class.
+   * Sets {@link AsyncParameterWorker} as the {@link ParameterWorker} class.
    */
   @Override
   public Configuration getWorkerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES,
-                isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
+                isSSPModel ? SSPParameterWorker.class : AsyncParameterWorker.class)
             .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
             .set(ServiceConfiguration.ON_TASK_STOP, TaskStopHandler.class)
             .build())
         .bindImplementation(ParameterWorker.class,
-            isSSPModel ? SSPParameterWorkerImpl.class : ParameterWorkerImpl.class)
+            isSSPModel ? SSPParameterWorker.class : AsyncParameterWorker.class)
         .bindImplementation(WorkerClock.class,
             isSSPModel ? SSPWorkerClock.class : NullWorkerClock.class)
-        .bindImplementation(AsyncWorkerHandler.class, AsyncWorkerHandlerImpl.class)
+        .bindImplementation(WorkerHandler.class,
+            isSSPModel ? SSPParameterWorker.class : AsyncParameterWorker.class)
         .bindImplementation(ServerResolver.class, DynamicServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))

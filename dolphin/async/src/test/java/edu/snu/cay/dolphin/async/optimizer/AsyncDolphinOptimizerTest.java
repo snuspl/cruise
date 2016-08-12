@@ -67,14 +67,15 @@ public final class AsyncDolphinOptimizerTest {
     optimizer.optimize(map, 12);
   }
 
-  private List<EvaluatorParameters> generateServerEvaluatorParameters(final int[] numModelsArray,
+  private List<EvaluatorParameters> generateServerEvaluatorParameters(final int[] numModelBlocksArray,
                                                                       final double[] processingTimeArray) {
-    final List<EvaluatorParameters> evalParamList = new ArrayList<>(numModelsArray.length);
+    final List<EvaluatorParameters> evalParamList = new ArrayList<>(numModelBlocksArray.length);
 
-    for (int index = 0; index < numModelsArray.length; ++index) {
-      final DataInfo dataInfo = new DataInfoImpl(numModelsArray[index]);
+    for (int index = 0; index < numModelBlocksArray.length; ++index) {
+      final DataInfo dataInfo = new DataInfoImpl(numModelBlocksArray[index]);
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
-          .setAvgPullProcessingTime(processingTimeArray[index]).build();
+          .setTotalPullProcessed(numModelBlocksArray[index])
+          .setTotalPullProcessingTime(processingTimeArray[index]).build();
 
       evalParamList.add(new ServerEvaluatorParameters(SERVER_PREFIX + index, dataInfo, serverMetrics));
     }

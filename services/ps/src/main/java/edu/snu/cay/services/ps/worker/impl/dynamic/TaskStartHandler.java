@@ -36,6 +36,7 @@ public final class TaskStartHandler implements EventHandler<TaskStart> {
 
   @Override
   public void onNext(final TaskStart taskStart) {
-    serverResolver.requestRoutingTable();
+    // it's an asynchronous call
+    serverResolver.triggerInitialization();
   }
 }

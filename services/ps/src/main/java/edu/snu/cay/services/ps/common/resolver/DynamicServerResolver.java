@@ -24,7 +24,7 @@ import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -53,9 +53,9 @@ public final class DynamicServerResolver implements ServerResolver {
   private volatile int numTotalBlocks = 0;
 
   /**
-   * Volatile boolean representing whether it receives the initial routing table from driver or not.
+   * A latch that opens when initialization is done.
    */
-  private volatile boolean initialized = false;
+  private final CountDownLatch initLatch = new CountDownLatch(1);
 
   private final InjectionFuture<WorkerMsgSender> msgSender;
 
@@ -76,46 +76,51 @@ public final class DynamicServerResolver implements ServerResolver {
   /**
    * Checks the initialization of the routing table.
    * It returns if the routing table has been initialized,
-   * otherwise requests initial routing table to driver and waits within a bounded time.
-   * It throws RuntimeException, if the table is not initialized til the end.
+   * otherwise waits the initialization within a bounded time.
    */
   private void checkInitialization() {
-    // check without locking
-    if (initialized) {
-      return;
+    while (true) {
+      try {
+        initLatch.await();
+        break;
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while waiting for routing table initialization from driver", e);
+      }
     }
-
-    retryInitialization();
   }
 
-  private synchronized void retryInitialization() {
-    // check within synchronization method
-    if (initialized) {
-      return;
-    }
+  /**
+   * Triggers initialization by requesting initial routing table to driver and waits within a bounded time.
+   * It throws RuntimeException, if the table is not initialized til the end.
+   * Since initialization takes time, it executes initialization asynchronously.
+   * @return a future of initialization thread
+   */
+  public Future triggerInitialization() {
+    return Executors.newSingleThreadExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        // sends init request and waits for several times
+        for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
+          requestRoutingTable();
 
-    // sends init request and waits for several times
-    for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
-      requestRoutingTable();
-
-      LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
-      try {
-        this.wait(INIT_WAIT_TIMEOUT_MS);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+          LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
+          try {
+            if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+              return;
+            }
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+          }
+        }
+        throw new RuntimeException("Fail to initialize the resolver");
       }
-
-      if (initialized) {
-        return;
-      }
-    }
-    throw new RuntimeException("Fail to initialize the resolver");
+    });
   }
 
   /**
    * Requests a routing table to driver.
    */
-  public void requestRoutingTable() {
+  private void requestRoutingTable() {
     LOG.log(Level.FINE, "Sends a request for the routing table");
     msgSender.get().sendWorkerRegisterMsg();
   }
@@ -135,7 +140,7 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   @Override
   public synchronized void initRoutingTable(final EMRoutingTable routingTable) {
-    if (initialized) {
+    if (initLatch.getCount() == 0) {
       return;
     }
 
@@ -151,7 +156,7 @@ public final class DynamicServerResolver implements ServerResolver {
       }
     }
 
-    initialized = true;
+    initLatch.countDown();
 
     LOG.log(Level.FINE, "Server resolver is initialized");
     // wake up all waiting threads

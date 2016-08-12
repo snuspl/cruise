@@ -18,21 +18,22 @@ package edu.snu.cay.dolphin.async.optimizer;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
+import edu.snu.cay.dolphin.async.plan.PlanImpl;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
-import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
-import scala.annotation.meta.param;
 
 import javax.inject.Inject;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -45,6 +46,7 @@ import java.util.stream.IntStream;
  * communication cost = servers' pull processing time averaged
  */
 public final class AsyncDolphinOptimizer implements Optimizer {
+  private static final Logger LOG = Logger.getLogger(AsyncDolphinOptimizer.class.getName());
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
@@ -93,9 +95,12 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
 
+    final int numAvailableExtraEvals = availableEvaluators - (serverParams.size() + workerParams.size());
+
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> ((ServerMetrics) param.getMetrics()).getAvgPullProcessingTime(),
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTime() /
+                (double) ((ServerMetrics) param.getMetrics()).getNumModelBlocks(),
             NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
@@ -128,12 +133,17 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .getFirst();
     final int optimalNumServers = availableEvaluators - optimalNumWorkers;
 
+    LOG.log(Level.INFO, "numAvailEval: {0}, numOptWorker: {1}, numOptServer: {2}",
+        new Object[]{availableEvaluators, optimalNumWorkers, optimalNumServers});
+
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
     generatePlanForOptimalConfig(Constants.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
         serverParams.size(), numModelBlocks, planBuilder);
     generatePlanForOptimalConfig(Constants.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
         workerParams.size(), numDataBlocks, planBuilder);
+
+    planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals);
 
     return planBuilder.build();
   }

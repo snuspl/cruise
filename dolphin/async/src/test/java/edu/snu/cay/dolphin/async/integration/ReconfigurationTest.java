@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.integration;
 
 import edu.snu.cay.dolphin.async.examples.addinteger.AddIntegerREEF;
-import edu.snu.cay.dolphin.async.optimizer.AsyncDolphinPlanExecutor;
+import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.utils.TestLoggingConfig;
 import org.apache.reef.client.LauncherStatus;
@@ -58,12 +58,12 @@ public class ReconfigurationTest {
         "-max_num_eval_local", Integer.toString(numTotalEvals),
         "-max_iter", Integer.toString(100),
         "-delta", Integer.toString(4),
-        "-start_key", Integer.toString(100),
         "-num_keys", Integer.toString(100),
         "-num_updates", Integer.toString(2),
         "-input", ClassLoader.getSystemResource("data").getPath() + "/empty_file",
         "-dynamic", Boolean.toString(true),
         "-plan_executor", AsyncDolphinPlanExecutor.class.getName(),
+        "-compute_time_ms", Integer.toString(300),
         "-optimization_interval_ms", Integer.toString(3000),
         "-delay_after_optimization_ms", Integer.toString(10000),
         "-worker_log_period_ms", Integer.toString(0),

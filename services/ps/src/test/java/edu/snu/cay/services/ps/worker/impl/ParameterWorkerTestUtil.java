@@ -15,28 +15,11 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.services.ps.PSParameters;
-import edu.snu.cay.services.ps.common.resolver.ServerId;
-import edu.snu.cay.services.ps.common.resolver.ServerResolver;
-import edu.snu.cay.services.ps.server.api.ParameterUpdater;
-import edu.snu.cay.services.ps.worker.api.AsyncWorkerHandler;
-import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
-import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
-import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,59 +28,26 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.*;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
- * Tests for {@link ParameterWorkerImpl}.
+ * Common test codes for both {@link AsyncParameterWorker} and {@link SSPParameterWorker}.
  */
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(WorkerMsgSender.class)
-public final class ParameterWorkerImplTest {
-  private static final long CLOSE_TIMEOUT = 5000;
-  private static final int WORKER_QUEUE_SIZE = 2500;
-  private static final int WORKER_NUM_THREADS = 2;
-  private static final long PULL_RETRY_TIMEOUT_MS = 500;
-
-  private static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";
+public class ParameterWorkerTestUtil {
+  public static final long CLOSE_TIMEOUT = 5000;
+  public static final long PULL_RETRY_TIMEOUT_MS = 1000;
+  public static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_THREADS_SHOULD_NOT_FINISH = "threads have finished but should not";
   private static final String MSG_RESULT_ASSERTION = "threads received incorrect values";
 
-  private ParameterWorkerImpl<Integer, Integer, Integer> worker;
-  private AsyncWorkerHandler<Integer, Integer, Integer> handler;
-  private WorkerMsgSender<Integer, Integer> mockSender;
-
-  @Before
-  public void setup() throws InjectionException, NetworkException {
-    final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(ServerId.class, "ServerId")
-        .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
-        .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
-        .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(PULL_RETRY_TIMEOUT_MS))
-        .build();
-    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
-    mockSender = mock(WorkerMsgSender.class);
-    injector.bindVolatileInstance(WorkerMsgSender.class, mockSender);
-    injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
-    injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
-    injector.bindVolatileParameter(PSParameters.KeyCodecName.class, new IntegerCodec());
-
-    // pull messages should return values s.t. key == value
-    doAnswer(invocationOnMock -> {
-        final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
-        return null;
-      }).when(mockSender).sendPullMsg(anyString(), anyObject());
-
-    worker = injector.getInstance(ParameterWorkerImpl.class);
-    handler = injector.getInstance(AsyncWorkerHandlerImpl.class);
-  }
-
-  /**
-   * Test that {@link ParameterWorkerImpl#close(long)} does indeed block further operations from being processed.
-   */
-  @Test
-  public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+  public void close(final ParameterWorker worker)
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
@@ -113,14 +63,7 @@ public final class ParameterWorkerImplTest {
     assertFalse(MSG_THREADS_SHOULD_NOT_FINISH, allThreadsFinished);
   }
 
-  /**
-   * Test the thread safety of {@link ParameterWorkerImpl} by
-   * creating multiple threads that try to push values to the server using {@link ParameterWorkerImpl}.
-   *
-   * {@code numPushThreads} threads are generated, each sending {@code numPushPerThread} pushes.
-   */
-  @Test
-  public void testMultiThreadPush()
+  public void multiThreadPush(final ParameterWorker worker, final WorkerMsgSender sender)
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPushThreads = 8;
     final int numKeys = 4;
@@ -144,19 +87,10 @@ public final class ParameterWorkerImplTest {
     worker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
-    verify(mockSender, times(numPushThreads * numPushPerThread)).sendPushMsg(anyString(), anyObject(), eq(pushValue));
+    verify(sender, times(numPushThreads * numPushPerThread)).sendPushMsg(anyString(), anyObject(), eq(pushValue));
   }
 
-  /**
-   * Test the thread safety of {@link ParameterWorkerImpl} by
-   * creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
-   *
-   * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
-   * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
-   * Thus, we verify the validity of the result by simply checking whether pulled values are as expected or not.
-   */
-  @Test
-  public void testMultiThreadPull()
+  public void multiThreadPull(final ParameterWorker<Integer, Integer, Integer> worker)
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPullThreads = 8;
     final int numKeys = 4;
@@ -187,16 +121,8 @@ public final class ParameterWorkerImplTest {
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
   }
 
-  /**
-   * Test the thread safety of {@link ParameterWorkerImpl} by
-   * creating multiple threads that try to pull several values from the server using {@link ParameterWorkerImpl}.
-   *
-   * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
-   * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
-   */
-  @Test
-  public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException,
-      ExecutionException, NetworkException {
+  public void multiThreadMultiKeyPull(final ParameterWorker worker)
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPullThreads = 8;
     final int numKeys = 4;
     final int numPullPerThread = 1000;
@@ -236,20 +162,13 @@ public final class ParameterWorkerImplTest {
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
   }
 
-  /**
-   * Test the correct handling of pull rejects by {@link ParameterWorkerImpl},
-   * creating multiple threads that try to pull values from the server using {@link ParameterWorkerImpl}.
-   *
-   * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
-   * To guarantee that {@code sender.sendPullMsg()} should be invoked as many times as {@code worker.pull()} is called,
-   * this test use different keys for each pull.
-   */
-  @Test
-  public void testPullReject()
+
+  public void pullReject(final ParameterWorker<Integer, Integer, Integer> worker,
+                         final WorkerHandler handler, final WorkerMsgSender sender)
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPullThreads = 8;
     final int numPullPerThread = 1000;
-    final int numRejectPerKey = ParameterWorkerImpl.MAX_PULL_RETRY_COUNT / 2;
+    final int numRejectPerKey = AsyncParameterWorker.MAX_PULL_RETRY_COUNT / 2;
 
     final Map<Integer, AtomicInteger> keyToNumPullCounter = new HashMap<>();
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
@@ -295,7 +214,7 @@ public final class ParameterWorkerImplTest {
         pullKeyToReplyQueue.put(encodedKey);
 
         return null;
-      }).when(mockSender).sendPullMsg(anyString(), anyObject());
+      }).when(sender).sendPullMsg(anyString(), anyObject());
 
     for (int index = 0; index < numPullThreads; ++index) {
       final int baseKey = index * numPullPerThread;
@@ -320,16 +239,15 @@ public final class ParameterWorkerImplTest {
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
-    verify(mockSender, times(numPullPerThread * numPullThreads * (numRejectPerKey + 1)))
+    verify(sender, times(numPullPerThread * numPullThreads * (numRejectPerKey + 1)))
         .sendPullMsg(anyString(), anyObject());
   }
 
-  /**
-   * Tests whether worker correctly resend the pull operation, when network exception happens.
-   */
-  @Test
-  public void testPullNetworkExceptionAndResend() throws NetworkException, InterruptedException {
-    final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_RESEND_COUNT);
+
+
+  public void pullNetworkExceptionAndResend(final ParameterWorker worker, final WorkerMsgSender sender)
+      throws NetworkException, InterruptedException {
+    final CountDownLatch sendLatch = new CountDownLatch(1 + AsyncParameterWorker.MAX_RESEND_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
@@ -337,27 +255,27 @@ public final class ParameterWorkerImplTest {
     doAnswer(invocationOnMock -> {
         sendLatch.countDown();
         throw new NetworkException("exception");
-      }).when(mockSender).sendPullMsg(anyString(), any(EncodedKey.class));
+      }).when(sender).sendPullMsg(anyString(), any(EncodedKey.class));
 
     final int key = 0;
 
     pool.execute(() -> worker.pull(key));
     pool.shutdown();
 
-    assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriodMs)
-        * ParameterWorkerImpl.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
+    assertTrue(sendLatch.await((AsyncParameterWorker.RESEND_INTERVAL_MS + gracePeriodMs)
+        * AsyncParameterWorker.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
 
     // Check whether the expected number of pull requests have been made
     // (1 initial attempt + MAX_RESEND_COUNT resend).
-    verify(mockSender, times(1 + ParameterWorkerImpl.MAX_RESEND_COUNT)).sendPullMsg(anyString(), any(EncodedKey.class));
+    verify(sender, times(1 + AsyncParameterWorker.MAX_RESEND_COUNT)).sendPullMsg(anyString(), any(EncodedKey.class));
   }
 
-  /**
-   * Tests whether worker correctly resend the push operation, when network exception happens.
-   */
-  @Test
-  public void testPushNetworkExceptionAndResend() throws NetworkException, InterruptedException {
-    final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_RESEND_COUNT);
+
+
+
+  public void pushNetworkExceptionAndResend(final ParameterWorker worker, final WorkerMsgSender sender)
+      throws NetworkException, InterruptedException {
+    final CountDownLatch sendLatch = new CountDownLatch(1 + AsyncParameterWorker.MAX_RESEND_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
@@ -365,28 +283,26 @@ public final class ParameterWorkerImplTest {
     doAnswer(invocationOnMock -> {
         sendLatch.countDown();
         throw new NetworkException("exception");
-      }).when(mockSender).sendPushMsg(anyString(), any(EncodedKey.class), anyObject());
+      }).when(sender).sendPushMsg(anyString(), any(EncodedKey.class), anyObject());
 
     final int key = 0;
 
     pool.execute(() -> worker.push(key, key));
     pool.shutdown();
 
-    assertTrue(sendLatch.await((ParameterWorkerImpl.RESEND_INTERVAL_MS + gracePeriodMs)
-        * ParameterWorkerImpl.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
+    assertTrue(sendLatch.await((AsyncParameterWorker.RESEND_INTERVAL_MS + gracePeriodMs)
+        * AsyncParameterWorker.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
 
     // Check whether the expected number of push requests have been made
     // (1 initial attempt + MAX_RESEND_COUNT resend).
-    verify(mockSender, times(1 + ParameterWorkerImpl.MAX_RESEND_COUNT)).sendPushMsg(anyString(), any(EncodedKey.class),
+    verify(sender, times(1 + AsyncParameterWorker.MAX_RESEND_COUNT)).sendPushMsg(anyString(), any(EncodedKey.class),
         anyObject());
   }
 
-  /**
-   * Tests whether worker correctly restart the pull operation, when the server does not respond within timeout.
-   */
-  @Test
-  public void testPullTimeoutAndRetry() throws NetworkException, InterruptedException {
-    final CountDownLatch sendLatch = new CountDownLatch(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT);
+
+  public void pullTimeoutAndRetry(final ParameterWorker worker, final WorkerMsgSender sender)
+      throws NetworkException, InterruptedException {
+    final CountDownLatch sendLatch = new CountDownLatch(1 + AsyncParameterWorker.MAX_PULL_RETRY_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all retry requests have been sent.
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
@@ -396,59 +312,17 @@ public final class ParameterWorkerImplTest {
     doAnswer(invocationOnMock -> {
         sendLatch.countDown();
         return null;
-      }).when(mockSender).sendPullMsg(anyString(), anyObject());
+      }).when(sender).sendPullMsg(anyString(), anyObject());
 
     pool.execute(() -> worker.pull(key));
     pool.shutdown();
 
-    assertTrue(sendLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriodMs) * ParameterWorkerImpl.MAX_PULL_RETRY_COUNT,
+    assertTrue(sendLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriodMs) * AsyncParameterWorker.MAX_PULL_RETRY_COUNT,
         TimeUnit.MILLISECONDS));
 
     // Check whether the expected number of pull requests have been made
     // (1 initial attempt + MAX_PULL_RETRY_COUNT retry).
-    verify(mockSender, times(1 + ParameterWorkerImpl.MAX_PULL_RETRY_COUNT)).sendPullMsg(anyString(),
+    verify(sender, times(1 + AsyncParameterWorker.MAX_PULL_RETRY_COUNT)).sendPullMsg(anyString(),
         any(EncodedKey.class));
-  }
-
-  /**
-   * Test that the {@link ParameterWorkerImpl#invalidateAll()} method invalidates all caches
-   * so that new pull messages must be issued for each pull request.
-   */
-  @Test
-  public void testInvalidateAll()
-      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    final int numPulls = 1000;
-    final CountDownLatch countDownLatch = new CountDownLatch(1);
-    final ExecutorService pool = Executors.newSingleThreadExecutor();
-
-    pool.submit(() -> {
-        for (int pull = 0; pull < numPulls; ++pull) {
-          worker.pull(0);
-          worker.invalidateAll();
-        }
-        countDownLatch.countDown();
-      });
-    pool.shutdown();
-
-    final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
-    worker.close(CLOSE_TIMEOUT);
-
-    assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
-    verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject());
-  }
-
-  private final class IntegerCodec implements Codec<Integer> {
-    @Override
-    public Integer decode(final byte[] bytes) {
-      final ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-      return byteBuffer.getInt();
-    }
-
-    @Override
-    public byte[] encode(final Integer integer) {
-      final ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.SIZE / Byte.SIZE);
-      byteBuffer.putInt(integer);
-      return byteBuffer.array();
-    }
   }
 }

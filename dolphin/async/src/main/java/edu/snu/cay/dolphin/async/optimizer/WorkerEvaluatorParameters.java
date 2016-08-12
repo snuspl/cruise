@@ -56,4 +56,13 @@ public final class WorkerEvaluatorParameters implements EvaluatorParameters<Work
   public WorkerMetrics getMetrics() {
     return metrics;
   }
+
+  @Override
+  public String toString() {
+    return "WorkerEvaluatorParameters{" +
+        "id='" + id + '\'' +
+        ", dataInfo=" + dataInfo +
+        ", metrics=" + metrics +
+        '}';
+  }
 }

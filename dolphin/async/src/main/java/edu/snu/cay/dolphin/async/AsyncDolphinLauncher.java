@@ -169,7 +169,7 @@ public final class AsyncDolphinLauncher {
       // worker-specific configurations
       // pass the worker class implementation as well as user-defined parameters
       final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(Worker.class, asyncDolphinConfiguration.getWorkerClass())
+          .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
           .bindNamedParameter(Iterations.class,
               Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
           .bindNamedParameter(MiniBatches.class,
@@ -211,7 +211,7 @@ public final class AsyncDolphinLauncher {
               .bindNamedParameter(DashboardHostAddress.class, hostAddress);
         }
       } catch (IOException e) {
-        LOG.log(Level.WARNING, "Not launching dashboard");
+        LOG.log(Level.WARNING, "Launching dashboard has failed", e);
       } finally {
         final Configuration dashboardConf = dashboardConfBuilder.build();
         final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(

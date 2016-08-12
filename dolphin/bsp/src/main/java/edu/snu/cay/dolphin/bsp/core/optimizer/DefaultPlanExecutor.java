@@ -29,6 +29,7 @@ import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.tang.Configuration;
@@ -160,7 +161,13 @@ public final class DefaultPlanExecutor implements PlanExecutor {
     if (executingPlan == null) {
       return;
     }
+    LOG.log(Level.FINE, "RunningTask {0}", task);
     executingPlan.onRunningTask(task);
+  }
+
+  @Override
+  public void onCompletedTask(final CompletedTask task) {
+    LOG.log(Level.FINE, "CompletedTask {0}", task);
   }
 
   /**

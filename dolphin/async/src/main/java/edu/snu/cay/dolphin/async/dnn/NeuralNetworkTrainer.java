@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
-import edu.snu.cay.dolphin.async.Worker;
+import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkData;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkDataParser;
@@ -34,11 +34,11 @@ import java.util.logging.Logger;
 import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.generateIterationLog;
 
 /**
- * Worker for the neural network job.
+ * Trainer for the neural network job.
  */
-final class NeuralNetworkWorker implements Worker {
+final class NeuralNetworkTrainer implements Trainer {
 
-  private static final Logger LOG = Logger.getLogger(NeuralNetworkWorker.class.getName());
+  private static final Logger LOG = Logger.getLogger(NeuralNetworkTrainer.class.getName());
 
   private final NeuralNetworkDataParser dataParser;
   private final NeuralNetwork neuralNetwork;
@@ -57,10 +57,10 @@ final class NeuralNetworkWorker implements Worker {
    * @param memoryStore the key-value store for neural network data
    */
   @Inject
-  private NeuralNetworkWorker(final NeuralNetworkDataParser dataParser,
-                              final NeuralNetwork neuralNetwork,
-                              final DataIdFactory<Long> idFactory,
-                              final MemoryStore<Long> memoryStore) {
+  private NeuralNetworkTrainer(final NeuralNetworkDataParser dataParser,
+                               final NeuralNetwork neuralNetwork,
+                               final DataIdFactory<Long> idFactory,
+                               final MemoryStore<Long> memoryStore) {
     this.dataParser = dataParser;
     this.neuralNetwork = neuralNetwork;
     this.trainingValidator = new Validator(neuralNetwork);

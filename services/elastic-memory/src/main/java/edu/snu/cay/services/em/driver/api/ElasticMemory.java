@@ -98,4 +98,9 @@ public interface ElasticMemory {
    * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
    */
   Map<Integer, Set<Integer>> getStoreIdToBlockIds();
+
+  /**
+   * @return a new map containing each evaluator's mapping to the number of blocks it contains.
+   */
+  Map<String, Integer> getEvalIdToNumBlocks();
 }

@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async;
 import org.apache.reef.annotations.audience.TaskSide;
 
 /**
- * A single worker thread of a {@code dolphin-async} application.
+ * A trainer of a {@code dolphin-async} application.
  *
  * Classes implementing this interface should consist of
  * a main {@code run} method that is executed once every iteration, as well as
@@ -37,7 +37,7 @@ import org.apache.reef.annotations.audience.TaskSide;
  * {@link org.apache.reef.tang.annotations.Parameter} and an actual value is given for the parameter via command line.
  */
 @TaskSide
-public interface Worker {
+public interface Trainer {
 
   /**
    * Pre-run method that is executed after the constructor but before {@code run}, exactly once.
@@ -45,13 +45,13 @@ public interface Worker {
   void initialize();
 
   /**
-   * Main method of this worker. The number of times this method is called can be adjusted with the parameter
+   * Main method of this trainer. The number of times this method is called can be adjusted with the parameter
    * {@link edu.snu.cay.common.param.Parameters.Iterations}.
    */
   void run();
 
   /**
-   * Post-run method executed after {@code run} but before worker termination, exactly once.
+   * Post-run method executed after {@code run} but before task termination, exactly once.
    */
   void cleanup();
 }

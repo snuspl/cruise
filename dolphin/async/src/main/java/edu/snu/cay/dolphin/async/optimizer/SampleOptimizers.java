@@ -16,12 +16,12 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
+import edu.snu.cay.dolphin.async.plan.PlanImpl;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.TransferStep;
-import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
@@ -269,7 +269,8 @@ public final class SampleOptimizers {
      */
     private Plan getPlanSwapEvalBetweenNamespaces(final String srcNamespace,
                                                   final String destNamespace,
-                                                  final Map<String, List<EvaluatorParameters>> evalParamsMap) {
+                                                  final Map<String, List<EvaluatorParameters>> evalParamsMap,
+                                                  final int availableEvaluators) {
       final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
       // 1. source namespace: find one eval to delete and one eval to move data into it.
@@ -281,6 +282,15 @@ public final class SampleOptimizers {
         LOG.log(Level.INFO, "There's no parameters for source namespace: {0}", srcNamespace);
         return planBuilder.build();
       }
+
+      final List<EvaluatorParameters> destNSEvalParamsList = evalParamsMap.get(destNamespace);
+      if (destNSEvalParamsList == null) {
+        LOG.log(Level.INFO, "There's no parameters for destination namespace: {0}", destNamespace);
+        return planBuilder.build();
+      }
+
+      final int numAvailableExtraEvals
+          = availableEvaluators - (srcNSEvalParamsList.size() + destNSEvalParamsList.size());
 
       // pick the very first evaluator that has any data block in it to be the evaluator to be deleted
       for (final EvaluatorParameters srcNSEvalParams : srcNSEvalParamsList) {
@@ -311,11 +321,6 @@ public final class SampleOptimizers {
       String destNSEvalToMove = null;
       int destNSBlocksToMove = 0;
 
-      final List<EvaluatorParameters> destNSEvalParamsList = evalParamsMap.get(destNamespace);
-      if (destNSEvalParamsList == null) {
-        LOG.log(Level.INFO, "There's no parameters for destination namespace: {0}", destNamespace);
-        return planBuilder.build();
-      }
       for (final EvaluatorParameters destNSEvalParams : destNSEvalParamsList) {
         final int numBlocks = destNSEvalParams.getDataInfo().getNumBlocks();
         if (numBlocks > 1) {
@@ -333,6 +338,7 @@ public final class SampleOptimizers {
       final String destNSEvalToAdd = NEW_EVAL_PREFIX + PLAN_CONTEXT_ID_COUNTER.getAndIncrement();
 
       return planBuilder
+          .setNumAvailableExtraEvaluators(numAvailableExtraEvals)
           .addEvaluatorToDelete(srcNamespace, srcNSEvalToDel)
           .addTransferStep(srcNamespace,
               new TransferStepImpl(srcNSEvalToDel, srcNSEvalToMove, new DataInfoImpl(srcNSBlocksToMove)))
@@ -355,13 +361,11 @@ public final class SampleOptimizers {
       final Plan plan;
 
       if (callsMade % 2 == 0) {
-        plan = getPlanSwapEvalBetweenNamespaces(Constants.NAMESPACE_WORKER,
-            Constants.NAMESPACE_SERVER,
-            evalParamsMap);
+        plan = getPlanSwapEvalBetweenNamespaces(Constants.NAMESPACE_WORKER, Constants.NAMESPACE_SERVER,
+            evalParamsMap, availableEvaluators);
       } else {
-        plan = getPlanSwapEvalBetweenNamespaces(Constants.NAMESPACE_SERVER,
-            Constants.NAMESPACE_WORKER,
-            evalParamsMap);
+        plan = getPlanSwapEvalBetweenNamespaces(Constants.NAMESPACE_SERVER, Constants.NAMESPACE_WORKER,
+            evalParamsMap, availableEvaluators);
       }
 
       callsMade++;

@@ -15,22 +15,21 @@
  */
 package edu.snu.cay.services.em.plan.api;
 
-import edu.snu.cay.services.em.plan.impl.EMOperation;
-
 import java.util.Collection;
 import java.util.Set;
 
 /**
  * A plan to be executed by {@link PlanExecutor}.
- * It also embeds the dependency information between detailed steps, {@link EMOperation)s.
+ * It also embeds the dependency information between detailed steps, {@link PlanOperation)s.
  * {@link PlanExecutor} can execute the plan by following steps.
- *   1. At first, call {@link #getReadyOps()} to obtain operations to execute.
- *   2. When the operation is completed, call {@link #onComplete(EMOperation)} to mark it as completed
+ *   1. At first, call {@link #getInitialOps()} to obtain operations to execute.
+ *   2. When the operation is completed, call {@link #onComplete(PlanOperation)} to mark it as completed
  *    and obtain a set of operations enabled by the completion of the operation.
  *   2-1. Start executing the obtained operations.
  *   2-2. If step 2 returns an empty set, check whether the whole plan is completed,
- *    using {@link #getReadyOps()}.
+ *    using {@link #getPlanSize()}.
  *   3. Wait the completion of operations. Goto step 2 again.
+ *
  */
 public interface Plan {
 
@@ -41,18 +40,19 @@ public interface Plan {
   int getPlanSize();
 
   /**
-   * Gets ready operations that have no prerequisite operation.
-   * @return a set of ready operations
+   * Gets initial operations to start with.
+   * @return a set of initial operations
    */
-  Set<EMOperation> getReadyOps();
+  Set<PlanOperation> getInitialOps();
 
   /**
    * Marks the operation complete.
-   * It returns operations that become ready at the completion of the operation.
+   * It returns operations that become ready, which means that they have no prerequisite operations,
+   * at the completion of the operation.
    * @param operation the completed operation
    * @return a set of operations that become ready
    */
-  Set<EMOperation> onComplete(EMOperation operation);
+  Set<PlanOperation> onComplete(PlanOperation operation);
 
   /**
    * Evaluators to be added.

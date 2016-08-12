@@ -33,7 +33,7 @@ public final class LassoREEF {
 
   public static void main(final String[] args) {
     AsyncDolphinLauncher.launch("LassoREEF", args, AsyncDolphinConfiguration.newBuilder()
-        .setWorkerClass(LassoWorker.class)
+        .setTrainerClass(LassoTrainer.class)
         .setUpdaterClass(LassoUpdater.class)
         .addParameterClass(NumFeatures.class)
         .addParameterClass(Lambda.class)

@@ -69,7 +69,7 @@ public final class MemoryStoreTest {
 
     // router should be initialized explicitly
     final OperationRouter<Long> router = injector.getInstance(OperationRouter.class);
-    router.initialize("DUMMY");
+    router.triggerInitialization();
   }
 
   /**

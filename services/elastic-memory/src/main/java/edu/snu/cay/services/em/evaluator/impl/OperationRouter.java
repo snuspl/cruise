@@ -33,6 +33,7 @@ import org.htrace.TraceScope;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,9 +53,9 @@ public final class OperationRouter<K> {
   private static final int MAX_NUM_INIT_REQUESTS = 3;
 
   /**
-   * A volatile type of boolean for checking the initialization of router.
+   * A latch that opens when initialization is done.
    */
-  private volatile boolean initialized = false;
+  private final CountDownLatch initLatch = new CountDownLatch(1);
 
   /**
    * A boolean representing whether the evaluator is added by EM.add().
@@ -62,7 +63,7 @@ public final class OperationRouter<K> {
   private final boolean addedEval;
 
   /**
-   * A prefix of evaluator id will be set by {@link #initialize(String)} or {@link #initialize(List)} once,
+   * A prefix of evaluator id will be set by {@link #setEndpointIdPrefix(String)},
    * and used by {@link #getEvalId(int)} to make the complete evaluator id.
    */
   private volatile String evalPrefix;
@@ -108,7 +109,7 @@ public final class OperationRouter<K> {
     if (!addedEval) {
       final int numInitialLocalBlocks = numTotalBlocks / numInitialEvals + 1; // +1 for remainders
       this.initialLocalBlocks = new ArrayList<>(numInitialLocalBlocks);
-      initRoutingTable();
+      initRoutingTableWithoutDriver();
     } else {
       this.initialLocalBlocks = Collections.emptyList();
     }
@@ -119,7 +120,7 @@ public final class OperationRouter<K> {
    * Note that if the MemoryStore is created by EM.add(), this method should not be called
    * because the block location might have been updated by EM.move() calls before this add() is called.
    */
-  private void initRoutingTable() {
+  private void initRoutingTableWithoutDriver() {
     // initial evaluators can initialize the routing table by itself
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
       initialLocalBlocks.add(blockId);
@@ -134,21 +135,13 @@ public final class OperationRouter<K> {
 
 
   /**
-   * Initializes the router to resolve remote evaluators by providing a prefix of evaluator.
-   * In addition, this method includes the initialization of the routing table for added Evaluators
-   * by EM.add(). It sends a request for up-to-date routing table to the driver and
-   * postpones the initialization until the response.
-   * Note that this method is invoked when the context is started.
+   * Sets a prefix of evaluator that will be used to resolve remote evaluators.
+   * Note that this method should be invoked before {@link #triggerInitialization()}.
    */
-  public void initialize(final String endpointId) {
+  public void setEndpointIdPrefix(final String endpointId) {
     // TODO #509: Remove assumption on the format of context id
     this.evalPrefix = endpointId.split("-")[0];
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
-
-    if (addedEval) {
-      // TODO #565: call triggerInitialization() within a separate thread, which will not block caller's progress
-      requestRoutingTable();
-    }
   }
 
   /**
@@ -168,8 +161,8 @@ public final class OperationRouter<K> {
    * whose routing table should be initiated from the existing information.
    * It'd be invoked by the network response of {@link #requestRoutingTable()}.
    */
-  public synchronized void initialize(final List<Integer> initBlockLocations) {
-    if (!addedEval || initialized) {
+  public synchronized void initRoutingTableWithDriver(final List<Integer> initBlockLocations) {
+    if (!addedEval || initLatch.getCount() == 0) {
       return;
     }
 
@@ -187,7 +180,7 @@ public final class OperationRouter<K> {
       this.blockLocations.set(blockId, storeId);
     }
 
-    initialized = true;
+    initLatch.countDown();
 
     LOG.log(Level.FINE, "Operation router is initialized");
     // wake up all waiting threads
@@ -197,40 +190,53 @@ public final class OperationRouter<K> {
   /**
    * Checks the initialization of the routing table.
    * It returns if the routing table has been initialized,
-   * otherwise requests initial routing table to driver and waits within a bounded time.
-   * It throws RuntimeException, if the table is not initialized til the end.
+   * otherwise waits the initialization within a bounded time.
    */
   private void checkInitialization() {
-    // check without locking
-    if (!addedEval || initialized) {
+    if (!addedEval) {
       return;
     }
 
-    triggerInitialization();
+    while (true) {
+      try {
+        initLatch.await();
+        break;
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while waiting for routing table initialization from driver", e);
+      }
+    }
   }
 
-  private synchronized void triggerInitialization() {
-    // check within synchronization method
-    if (initialized) {
-      return;
+  /**
+   * Triggers initialization by requesting initial routing table to driver and waits within a bounded time.
+   * It throws RuntimeException, if the table is not initialized til the end.
+   * For evaluators not added by EM, it does not trigger initialization.
+   * @return a future of initialization thread, a completed future for evaluators not added by EM
+   */
+  public Future triggerInitialization() {
+    if (!addedEval) {
+      return CompletableFuture.completedFuture(null);
     }
 
-    // sends init request and waits for several times
-    for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
-      requestRoutingTable();
+    return Executors.newSingleThreadExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        // sends init request and waits for several times
+        for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
+          requestRoutingTable();
 
-      LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
-      try {
-        this.wait(INIT_WAIT_TIMEOUT_MS);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+          LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
+          try {
+            if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+              return;
+            }
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+          }
+        }
+        throw new RuntimeException("Fail to initialize the router");
       }
-
-      if (initialized) {
-        return;
-      }
-    }
-    throw new RuntimeException("Fail to initialize the router");
+    });
   }
 
   /**
