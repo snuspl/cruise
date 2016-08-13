@@ -31,12 +31,15 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.concurrent.*;
+import java.util.logging.Level;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -133,6 +136,13 @@ public final class AsyncParameterWorkerTest {
           ExecutionException, NetworkException {
     testUtil.multiThreadMultiKeyPull(parameterWorker);
   }
+
+  /**
+   * Rule for suppressing massive logging of INFO level in msg reject.
+   */
+  @Rule
+  public TestRule watcher = new TestWatcherLoggingRule("testPullReject",
+      AsyncParameterWorker.class.getName(), Level.WARNING);
 
   /**
    * Test the correct handling of pull rejects by {@link AsyncParameterWorker},
