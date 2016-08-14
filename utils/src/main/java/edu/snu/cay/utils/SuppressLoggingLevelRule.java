@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.impl;
+package edu.snu.cay.utils;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,10 +22,11 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
 /**
- * TestWatcher class to override the logging level of specific logger to the specified level.
- * It restores the logging level after a test method is finished.
+ * TestWatcher implementation to override the logging level of specific logger to the specified level.
+ * The overridden level lasts during a specific jUnit test method and
+ * is restored after the test method is finished.
  */
-final class TestWatcherLoggingRule extends TestWatcher {
+public final class SuppressLoggingLevelRule extends TestWatcher {
 
   private final String methodName;
 
@@ -35,8 +36,16 @@ final class TestWatcherLoggingRule extends TestWatcher {
 
   private final Level targetLoggingLevel;
 
-  TestWatcherLoggingRule(final String methodName, final String loggerName,
-                                final Level targetLoggingLevel) {
+  /**
+   * Constructor of {@link SuppressLoggingLevelRule}.
+   * A rule created by this constructor will override the logging level of logger {@code loggerName}
+   * with {@code targetLoggingLevel} in the scope of a jUnit test named {@code methodName}.
+   * @param methodName a method name of a jUnit test
+   * @param loggerName a name of a Java logger
+   * @param targetLoggingLevel a logging level to override the logger with
+   */
+  public SuppressLoggingLevelRule(final String methodName, final String loggerName,
+                                  final Level targetLoggingLevel) {
     this.methodName = methodName;
     this.logger = Logger.getLogger(loggerName);
     this.origLoggingLevel = logger.getLevel();
@@ -52,6 +61,8 @@ final class TestWatcherLoggingRule extends TestWatcher {
 
   @Override
   public void finished(final Description desc) {
-    logger.setLevel(origLoggingLevel);
+    if (desc.getMethodName().equals(methodName)) {
+      logger.setLevel(origLoggingLevel);
+    }
   }
 }

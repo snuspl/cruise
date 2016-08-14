@@ -24,6 +24,7 @@ import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
+import edu.snu.cay.utils.SuppressLoggingLevelRule;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -142,7 +143,7 @@ public final class SSPParameterWorkerTest {
    * Rule for suppressing massive logging of INFO level in msg reject.
    */
   @Rule
-  public TestRule watcher = new TestWatcherLoggingRule("testPullReject",
+  private TestRule watcher = new SuppressLoggingLevelRule("testPullReject",
       SSPParameterWorker.class.getName(), Level.WARNING);
 
   /**
