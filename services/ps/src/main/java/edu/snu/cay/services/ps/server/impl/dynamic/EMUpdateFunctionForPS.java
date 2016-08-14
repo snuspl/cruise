@@ -23,22 +23,24 @@ import javax.inject.Inject;
 /**
  * EM update function implementation of PS.
  * It processes given key/value using {@link ParameterUpdater}.
- * @param <K> a type of key
+ * @param <K> a type of EM key, which is a {@link HashedKey} that encapsulates PS key
  * @param <V> a type of value
- * @param <A> a type of actual key
+ * @param <A> a type of PS key, which is an internal key of {@link HashedKey} used in EM
  */
-public final class EMUpdateFunctionImpl<K, V, A> implements EMUpdateFunction<K, V> {
+public final class EMUpdateFunctionForPS<K, V, A> implements EMUpdateFunction<K, V> {
   private final ParameterUpdater<A, ?, V> parameterUpdater;
 
   @Inject
-  private EMUpdateFunctionImpl(final ParameterUpdater<A, ?, V> parameterUpdater) {
+  private EMUpdateFunctionForPS(final ParameterUpdater<A, ?, V> parameterUpdater) {
     this.parameterUpdater = parameterUpdater;
   }
 
   @Override
-  public V getInitValue(final K key) {
-    final A actualKey = ((HashedKey<A>) key).getKey();
-    return parameterUpdater.initValue(actualKey);
+  public V getInitValue(final K emKey) {
+    // PS uses HashedKey for EM key, which embeds actual PS key and exposes it through HashedKey.getKey().
+    // So to get actual PS key and use it with ParameterUpdater, we need to cast a given EM key to HashedKey first.
+    final A psKey = ((HashedKey<A>) emKey).getKey();
+    return parameterUpdater.initValue(psKey);
   }
 
   @Override

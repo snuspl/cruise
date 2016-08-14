@@ -15,23 +15,30 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
+import edu.snu.cay.services.em.evaluator.impl.VoidUpdateFunction;
+import org.apache.reef.tang.annotations.DefaultImplementation;
+
 /**
  * An EM update function interface that provides an initial value for key
- * and an update value for given old value and delta value.
+ * and an update value for given old value and delta value when {@link MemoryStore#update} is called.
+ * Users should provide their own implementation, corresponding to their update semantic.
  * @param <K> a type of key
  * @param <V> a type of data
  */
+@DefaultImplementation(VoidUpdateFunction.class)
 public interface EMUpdateFunction<K, V> {
 
   /**
-   * Gets an initial value for the key.
+   * Gets an initial value to associate with given key in {@link MemoryStore#update},
+   * when no value has been associated in the MemoryStore.
    * @param key a key
    * @return an initial value
    */
   V getInitValue(final K key);
 
   /**
-   * Gets an update value by applying deltaValue to oldValue.
+   * Gets an update value by applying deltaValue to oldValue when {@link MemoryStore#update} is called.
+   * Implementations should specify how to update the associated value with the given deltaValue.
    * @param oldValue an old value
    * @param deltaValue a delta value
    * @return an update value

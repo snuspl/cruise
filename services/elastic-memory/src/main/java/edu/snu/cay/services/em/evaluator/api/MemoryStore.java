@@ -91,6 +91,7 @@ public interface MemoryStore<K> {
    * {@link EMUpdateFunction#getUpdateValue(Object, Object)}.
    * If there's no associated value, it initializes the value
    * with {@link EMUpdateFunction#getInitValue(Object)} and process it.
+   * To use this update method, users should provide their own implementation of {@link EMUpdateFunction}.
    *
    * @param id global unique identifier of item
    * @param deltaValue value

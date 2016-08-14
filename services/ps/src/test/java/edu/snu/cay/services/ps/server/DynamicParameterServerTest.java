@@ -31,7 +31,7 @@ import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
-import edu.snu.cay.services.ps.server.impl.dynamic.EMUpdateFunctionImpl;
+import edu.snu.cay.services.ps.server.impl.dynamic.EMUpdateFunctionForPS;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.Configuration;
@@ -86,7 +86,7 @@ public final class DynamicParameterServerTest {
         .bindNamedParameter(PSParameters.PreValueCodecName.class, IntegerCodec.class)
         .bindNamedParameter(ServerQueueSize.class, Integer.toString(SERVER_QUEUE_SIZE))
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
-        .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionImpl.class)
+        .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionForPS.class)
         .bindImplementation(BlockResolver.class, HashBlockResolver.class)
         .bindNamedParameter(KeyCodecName.class, IntegerCodec.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
