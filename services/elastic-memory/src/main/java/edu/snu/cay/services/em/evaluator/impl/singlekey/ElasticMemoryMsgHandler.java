@@ -176,7 +176,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
     // decode data values
     final Optional<Object> decodedValue;
-    if (operationType.equals(DataOpType.PUT)) {
+    if (operationType.equals(DataOpType.PUT) || operationType.equals(DataOpType.UPDATE)) {
       final Codec dataCodec = serializer.getCodec();
       decodedValue = Optional.of(dataCodec.decode(dataValue.getValue().array()));
     } else {

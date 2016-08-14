@@ -19,6 +19,7 @@ import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.driver.context.ActiveContext;
@@ -122,6 +123,7 @@ final class RemoteEMDriver {
           emConf.getServiceConfiguration(contextId, EVAL_NUM),
           aggregationManager.getServiceConfigurationWithoutNameResolver(),
           Tang.Factory.getTang().newConfigurationBuilder()
+              .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionImpl.class)
               .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
               .build());
 

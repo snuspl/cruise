@@ -56,6 +56,7 @@ final class RemoteEMTask implements Task {
   private static final String MSG_GLOBAL_SIZE_MISMATCH =
       "the number of items in the global MemoryStore is not as expected";
   private static final String MSG_OPERATION_FAILED = "not all operations succeeded";
+  private static final String MSG_INCORRECT_RESULT = "the final result is different from the expectation";
 
   private final MemoryStore<Long> memoryStore;
   private final DataIdFactory<Long> localDataIdFactory;
@@ -172,6 +173,8 @@ final class RemoteEMTask implements Task {
       runTest(new TestMultiThreadRemotePutGetRemoveRange());
       runTest(new TestMultiThreadLocalPut());
       runTest(new TestSimpleScenario());
+    } else {
+      runTest(new TestMultiThreadRemoteUpdate());
     }
 
     runTest(new TestMultiThreadRemotePutSingle());
@@ -728,6 +731,85 @@ final class RemoteEMTask implements Task {
   }
 
   /**
+   * Multithreading test for {@code update} involving remote access.
+   * Checks that the all the operations by multiple threads are performed successfully.
+   * Also check that the consistency of the store is preserved
+   * when multiple threads try to update values associated with a certain set of keys concurrently.
+   */
+  private class TestMultiThreadRemoteUpdate implements Runnable {
+
+    @Override
+    public void run() {
+      final int numThreads = 8;
+      final int numKeys = 5;
+      final int deltaValue = 1;
+      final int updatesPerKeyPerThread = 1000;
+      final int totalNumberOfUpdates = numThreads * numKeys * updatesPerKeyPerThread;
+
+      final DataIdFactory<Long> remoteIdFactory = initDataIdFactory(nextRemoteStoreId);
+
+      // a list of keys that each thread will perform update with
+      final List<Long> keys;
+      try {
+        keys = remoteIdFactory.getIds(numKeys);
+      } catch (final IdGenerationException e) {
+        throw new RuntimeException(e);
+      }
+
+      final List<Callable<Long>> threads = new ArrayList<>(numThreads);
+      for (int index = 0; index < numThreads; index++) {
+        threads.add(index, new UpdateThread(updatesPerKeyPerThread, deltaValue, keys));
+      }
+      final List<Future<Long>> futures = ThreadUtils.runConcurrentlyWithResult(threads);
+
+      long numTotalRemoteUpdateSuccess = 0;
+      // check that all threads have finished successfully without falling into deadlocks or infinite loops
+      for (int index = 0; index < numThreads; index++) {
+        try {
+          numTotalRemoteUpdateSuccess += futures.get(index).get();
+        } catch (final ExecutionException | InterruptedException e) {
+          throw new RuntimeException("Test thread failed", e);
+        }
+      }
+
+      if (numTotalRemoteUpdateSuccess != totalNumberOfUpdates) {
+        throw new RuntimeException(MSG_OPERATION_FAILED);
+      }
+
+      // wait put operations of whole stores are finished
+      synchronize();
+
+      final int totalNumberOfLocalObjects = numKeys;
+      if (memoryStore.getAll().size() != totalNumberOfLocalObjects) {
+        throw new RuntimeException(MSG_LOCAL_SIZE_MISMATCH);
+      }
+
+      int expectedNumGlobalData = 0;
+      for (int memStoreId = 0; memStoreId < numInitialEvals; memStoreId++) {
+        expectedNumGlobalData += numKeys;
+      }
+
+      // check that the total number of objects equal the expected number
+      final int numLocalData = memoryStore.getAll().size();
+      final long numGlobalData = syncGlobalCount(numLocalData);
+      LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
+      if (numGlobalData != expectedNumGlobalData) {
+        throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
+      }
+
+      // check that values associated with the keys are as expected
+      final int expectedResult = updatesPerKeyPerThread * numThreads;
+      for (final long key : keys) {
+        final Pair<Long, Integer> output = memoryStore.get(key);
+
+        if (output.getSecond() != expectedResult) {
+          throw new RuntimeException(MSG_INCORRECT_RESULT);
+        }
+      }
+    }
+  }
+
+  /**
    * A thread executing put operation on data keys from the given DataIdFactory.
    * It returns the number of succeeded put operations.
    */
@@ -841,6 +923,36 @@ final class RemoteEMTask implements Task {
         }
       }
       return numRemoveSuccess;
+    }
+  }
+
+  /**
+   * A thread executing update operation on the given data keys.
+   * It returns the number of succeeded update operations.
+   */
+  private class UpdateThread implements Callable<Long> {
+
+    private int updatesPerKeyPerThread;
+    private int deltaValue;
+    private List<Long> keys;
+
+    UpdateThread(final int updatesPerKeyPerThread, final int deltaValue, final List<Long> keys) {
+      this.updatesPerKeyPerThread = updatesPerKeyPerThread;
+      this.deltaValue = deltaValue;
+      this.keys = keys;
+    }
+
+    @Override
+    public Long call() throws Exception {
+      long numUpdateSuccess = 0;
+
+      for (int i = 0; i < updatesPerKeyPerThread; i++) {
+        for (final long key : keys) {
+          memoryStore.update(key, deltaValue);
+          numUpdateSuccess++;
+        }
+      }
+      return numUpdateSuccess;
     }
   }
 

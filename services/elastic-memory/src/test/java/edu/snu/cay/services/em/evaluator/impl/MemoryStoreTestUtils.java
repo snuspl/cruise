@@ -15,18 +15,8 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import org.apache.reef.util.Optional;
-import org.htrace.HTraceConfiguration;
-import org.htrace.Span;
-import org.htrace.SpanReceiver;
-import org.htrace.TraceInfo;
 
-import javax.annotation.Nullable;
-import javax.inject.Inject;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
@@ -193,122 +183,34 @@ public final class MemoryStoreTestUtils {
     }
   }
 
-  /**
-   * Mocked message sender that implements ElasticMemoryMsgSender, which is required to instantiate MemoryStore.
-   */
-  public static final class MockedMsgSender implements ElasticMemoryMsgSender {
+  public static final class UpdateThread implements Runnable {
+    private final CountDownLatch countDownLatch;
+    private final MemoryStore memoryStore;
+    private final long startKey;
+    private final int numKeys;
+    private final int deltaValue;
+    private final int updatesPerKeyPerThread;
 
-    @Inject
-    private MockedMsgSender() {
-
+    public UpdateThread(final CountDownLatch countDownLatch, final MemoryStore memoryStore,
+                        final long startKey, final int numKeys, final int deltaValue,
+                        final int updatesPerKeyPerThread) {
+      this.countDownLatch = countDownLatch;
+      this.memoryStore = memoryStore;
+      this.startKey = startKey;
+      this.numKeys = numKeys;
+      this.deltaValue = deltaValue;
+      this.updatesPerKeyPerThread = updatesPerKeyPerThread;
     }
 
     @Override
-    public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final List<KeyRange> dataKeyRanges,
-                                final List<KeyValuePair> dataKVPairList, final String operationId,
-                                @Nullable final TraceInfo parentTraceInfo) {
+    public void run() {
+      for (int i = 0; i < updatesPerKeyPerThread; i++) {
+        for (long key = startKey; key < startKey + numKeys; key++) {
+          memoryStore.update(key, deltaValue);
+        }
+      }
 
-    }
-
-    @Override
-    public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final DataKey dataKey, final DataValue dataValue,
-                                final String operationId, @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendRemoteOpResultMsg(final String destId, final List<KeyValuePair> dataKVPairList,
-                                      final List<KeyRange> failedRanges, final String operationId,
-                                      @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendRemoteOpResultMsg(final String destId, final DataValue dataValue, final boolean isSuccess,
-                                      final String operationId, @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendRoutingTableInitReqMsg(@Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendRoutingTableInitMsg(final String destId, final List<Integer> blockLocations,
-                                        @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
-                                          final String oldOwnerId, final String newOwnerId,
-                                          @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendCtrlMsg(final String destId, final String targetEvalId,
-                            final List<Integer> blocks, final String operationId,
-                            @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendDataMsg(final String destId, final List<KeyValuePair> keyValuePairs,
-                            final int blockId, final String operationId,
-                            @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendOwnershipMsg(final Optional<String> destId, final String operationId,
-                                 final int blockId, final int oldOwnerId, final int newOwnerId,
-                                 @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendOwnershipAckMsg(final String operationId, final int blockId,
-                                    @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendFailureMsg(final String operationId, final String reason,
-                               @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-  }
-
-  /**
-   * Mocked span receiver that implements SpanReceiver, which is required to instantiate HTrace.
-   * In this test, the instantiated HTrace is eventually used to instantiate MemoryStore.
-   */
-  public static final class MockedSpanReceiver implements SpanReceiver {
-
-    @Inject
-    private MockedSpanReceiver() {
-
-    }
-
-    @Override
-    public void configure(final HTraceConfiguration hTraceConfiguration) {
-
-    }
-
-    @Override
-    public void receiveSpan(final Span span) {
-
-    }
-
-    @Override
-    public void close() throws IOException {
-
+      countDownLatch.countDown();
     }
   }
 }
-
-

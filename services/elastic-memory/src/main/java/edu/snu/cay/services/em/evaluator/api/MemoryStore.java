@@ -86,6 +86,22 @@ public interface MemoryStore<K> {
   <V> Map<K, V> getRange(K startId, K endId);
 
   /**
+   * Update a data item in the store with {@code deltaValue} using {@link EMUpdateFunction}.
+   * Specifically, it processes the value associated with key with {@code deltaValue} by
+   * {@link EMUpdateFunction#getUpdateValue(Object, Object)}.
+   * If there's no associated value, it initializes the value
+   * with {@link EMUpdateFunction#getInitValue(Object)} and process it.
+   * To use this update method, users should provide their own implementation of {@link EMUpdateFunction}
+   * and bind it to the interface.
+   *
+   * @param id global unique identifier of item
+   * @param deltaValue value
+   * @param <V> type of the data
+   * @return a {@link Pair} of the data id and the data item
+   */
+  <V> Pair<K, V> update(K id, V deltaValue);
+
+  /**
    * Fetch and remove a certain data item from this store.
    *
    * @param id global unique identifier of item
