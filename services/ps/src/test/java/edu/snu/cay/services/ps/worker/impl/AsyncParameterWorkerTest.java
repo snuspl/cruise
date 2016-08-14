@@ -24,6 +24,7 @@ import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
+import edu.snu.cay.utils.EnforceLoggingLevelRule;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -31,12 +32,15 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.concurrent.*;
+import java.util.logging.Level;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -133,6 +137,14 @@ public final class AsyncParameterWorkerTest {
           ExecutionException, NetworkException {
     testUtil.multiThreadMultiKeyPull(parameterWorker);
   }
+
+  /**
+   * Rule for suppressing massive INFO level logs in {@link AsyncParameterWorker#processPullReject},
+   * which are intentionally called many times in {@link #testPullReject}.
+   */
+  @Rule
+  private TestRule watcher = new EnforceLoggingLevelRule("testPullReject",
+      AsyncParameterWorker.class.getName(), Level.WARNING);
 
   /**
    * Test the correct handling of pull rejects by {@link AsyncParameterWorker},
