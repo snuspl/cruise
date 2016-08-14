@@ -42,7 +42,7 @@ public final class EMUpdateFunctionImpl<K, V, A> implements EMUpdateFunction<K, 
   }
 
   @Override
-  public V getUpdatedValue(final V oldValue, final V deltaValue) {
+  public V getUpdateValue(final V oldValue, final V deltaValue) {
     return parameterUpdater.update(oldValue, deltaValue);
   }
 }

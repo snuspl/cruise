@@ -96,7 +96,7 @@ public final class MemoryStoreTest {
     }
 
     @Override
-    public Integer getUpdatedValue(final Integer oldValue, final Integer deltaValue) {
+    public Integer getUpdateValue(final Integer oldValue, final Integer deltaValue) {
       return oldValue + deltaValue;
     }
   }

@@ -274,7 +274,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     private V update(final K key, final V deltaValue) {
       return subDataMap.compute(key, (k, v) -> {
           final V oldValue = (v == null) ? emUpdateFunction.getInitValue(k) : v;
-          return emUpdateFunction.getUpdatedValue(oldValue, deltaValue);
+          return emUpdateFunction.getUpdateValue(oldValue, deltaValue);
         });
     }
 
@@ -389,7 +389,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     } else {
       final Block<V> block = blocks.get(blockId);
       final V output = block.update(id, deltaValue);
-      return output == null ? null : new Pair<>(id, output);
+      return new Pair<>(id, output);
     }
   }
 

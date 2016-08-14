@@ -37,7 +37,7 @@ final class EMUpdateFunctionImpl implements EMUpdateFunction<Long, Integer> {
   }
 
   @Override
-  public Integer getUpdatedValue(final Integer oldValue, final Integer deltaValue) {
+  public Integer getUpdateValue(final Integer oldValue, final Integer deltaValue) {
     return oldValue + deltaValue;
   }
 }

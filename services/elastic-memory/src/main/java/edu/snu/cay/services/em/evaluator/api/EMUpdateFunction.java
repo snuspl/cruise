@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.evaluator.api;
 
 /**
  * An EM update function interface that provides an initial value for key
- * and updated value for given old value and delta value.
+ * and an update value for given old value and delta value.
  * @param <K> a type of key
  * @param <V> a type of data
  */
@@ -31,10 +31,10 @@ public interface EMUpdateFunction<K, V> {
   V getInitValue(final K key);
 
   /**
-   * Gets an updated value obtained by applying deltaValue to oldValue.
+   * Gets an update value by applying deltaValue to oldValue.
    * @param oldValue an old value
    * @param deltaValue a delta value
-   * @return an updated value
+   * @return an update value
    */
-  V getUpdatedValue(final V oldValue, final V deltaValue);
+  V getUpdateValue(final V oldValue, final V deltaValue);
 }

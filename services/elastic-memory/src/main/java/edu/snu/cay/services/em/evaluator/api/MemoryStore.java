@@ -88,7 +88,7 @@ public interface MemoryStore<K> {
   /**
    * Update a data item in the store with {@code deltaValue} using {@link EMUpdateFunction}.
    * Specifically, it processes the value associated with key with {@code deltaValue} by
-   * {@link EMUpdateFunction#getUpdatedValue(Object, Object)}.
+   * {@link EMUpdateFunction#getUpdateValue(Object, Object)}.
    * If there's no associated value, it initializes the value
    * with {@link EMUpdateFunction#getInitValue(Object)} and process it.
    *
