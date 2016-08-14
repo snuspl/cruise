@@ -38,13 +38,14 @@ public final class EnforceLoggingLevelRule extends TestWatcher {
 
   /**
    * Constructor of {@link EnforceLoggingLevelRule}.
-   * A rule created by this constructor will override the logging level of logger {@code loggerName}
-   * with {@code targetLoggingLevel} in the scope of a jUnit test named {@code methodName}.
-   * @param methodName a method name of a jUnit test
-   * @param loggerName a name of a Java logger
+   * This rule overrides the logging level of logger {@code loggerName} with {@code targetLoggingLevel}
+   * in the scope of a jUnit test named {@code methodName}.
+   * @param methodName the method name of jUnit test
+   * @param loggerName the name of logger (Normally we use the class name)
    * @param targetLoggingLevel a logging level to override the logger with
    */
-  public EnforceLoggingLevelRule(final String methodName, final String loggerName,
+  public EnforceLoggingLevelRule(final String methodName,
+                                 final String loggerName,
                                  final Level targetLoggingLevel) {
     this.methodName = methodName;
     this.logger = Logger.getLogger(loggerName);
