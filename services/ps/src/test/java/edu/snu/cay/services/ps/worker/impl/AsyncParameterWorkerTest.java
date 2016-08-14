@@ -24,7 +24,7 @@ import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
-import edu.snu.cay.utils.SuppressLoggingLevelRule;
+import edu.snu.cay.utils.EnforceLoggingLevelRule;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -139,10 +139,11 @@ public final class AsyncParameterWorkerTest {
   }
 
   /**
-   * Rule for suppressing massive logging of INFO level in msg reject.
+   * Rule for suppressing massive INFO level logs in {@link AsyncParameterWorker#processPullReject},
+   * which are intentionally called many times in {@link #testPullReject}.
    */
   @Rule
-  private TestRule watcher = new SuppressLoggingLevelRule("testPullReject",
+  private TestRule watcher = new EnforceLoggingLevelRule("testPullReject",
       AsyncParameterWorker.class.getName(), Level.WARNING);
 
   /**
