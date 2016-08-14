@@ -18,20 +18,29 @@ package edu.snu.cay.services.em.evaluator.impl;
 import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import org.apache.commons.lang3.NotImplementedException;
 
+import javax.inject.Inject;
+
 /**
  * An empty implementation of EMUpdateFunction for users who don't use update API of EM.
  */
-public class VoidUpdateFunction implements EMUpdateFunction {
+public final class VoidUpdateFunction implements EMUpdateFunction<Void, Void> {
 
   private static final String NOT_IMPLEMENTED = "The implementation of EMUpdateFunction is not specified";
 
+  /**
+   * Injectable constructor.
+   */
+  @Inject
+  private VoidUpdateFunction() {
+  }
+
   @Override
-  public Object getInitValue(final Object key) {
+  public Void getInitValue(final Void key) {
     throw new NotImplementedException(NOT_IMPLEMENTED);
   }
 
   @Override
-  public Object getUpdateValue(final Object oldValue, final Object deltaValue) {
+  public Void getUpdateValue(final Void oldValue, final Void deltaValue) {
     throw new NotImplementedException(NOT_IMPLEMENTED);
   }
 }

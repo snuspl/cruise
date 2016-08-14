@@ -41,4 +41,3 @@ final class EMUpdateFunctionImpl implements EMUpdateFunction<Long, Integer> {
     return oldValue + deltaValue;
   }
 }
-
