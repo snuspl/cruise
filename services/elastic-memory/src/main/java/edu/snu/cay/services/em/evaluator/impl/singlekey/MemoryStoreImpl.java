@@ -56,7 +56,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   private final RemoteOpHandler<K> remoteOpHandler;
 
   /**
-   * An update function to be used in {@link Block#update(Object, Object)}.
+   * An update function to be used in {@link Block#update}.
    * We assume that there's only one function for the store.
    */
   private final EMUpdateFunction<K, ?> updateFunction;
