@@ -19,6 +19,7 @@ import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
+import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
@@ -30,6 +31,7 @@ import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
+import edu.snu.cay.services.ps.server.impl.dynamic.EMUpdateFunctionForPS;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.Configuration;
@@ -84,6 +86,7 @@ public final class DynamicParameterServerTest {
         .bindNamedParameter(PSParameters.PreValueCodecName.class, IntegerCodec.class)
         .bindNamedParameter(ServerQueueSize.class, Integer.toString(SERVER_QUEUE_SIZE))
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionForPS.class)
         .bindImplementation(BlockResolver.class, HashBlockResolver.class)
         .bindNamedParameter(KeyCodecName.class, IntegerCodec.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))

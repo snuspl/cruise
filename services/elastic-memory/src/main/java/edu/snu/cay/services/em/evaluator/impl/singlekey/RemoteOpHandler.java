@@ -100,9 +100,9 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
       // encode data
       final ByteBuffer encodedKey = ByteBuffer.wrap(keyCodec.encode(operation.getKey()));
       final DataValue dataValue;
-      if (operation.getOpType() == DataOpType.PUT) {
+      if (operation.getOpType().equals(DataOpType.PUT) || operation.getOpType().equals(DataOpType.UPDATE)) {
         if (!operation.getValue().isPresent()) {
-          throw new RuntimeException("Data value is empty for PUT");
+          throw new RuntimeException("Data value is empty for PUT/UPDATE");
         }
         final ByteBuffer encodedData = ByteBuffer.wrap(dataCodec.encode(operation.getValue().get()));
         dataValue = new DataValue(encodedData);

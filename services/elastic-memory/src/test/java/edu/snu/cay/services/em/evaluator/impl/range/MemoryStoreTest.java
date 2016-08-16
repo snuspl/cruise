@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * Test class for checking the thread safeness of MemoryStore.
@@ -55,8 +56,6 @@ public final class MemoryStoreTest {
   @Before
   public void setUp() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(SpanReceiver.class, MemoryStoreTestUtils.MockedSpanReceiver.class)
-        .bindImplementation(ElasticMemoryMsgSender.class, MemoryStoreTestUtils.MockedMsgSender.class)
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
@@ -65,6 +64,8 @@ public final class MemoryStoreTest {
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
+    injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
+    injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
     memoryStore = injector.getInstance(MemoryStore.class);
 
     // router should be initialized explicitly

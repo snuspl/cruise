@@ -55,6 +55,12 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   private final BlockResolver<K> blockResolver;
   private final RemoteOpHandler<K> remoteOpHandler;
 
+  /**
+   * An update function to be used in {@link Block#update}.
+   * We assume that there's only one function for the store.
+   */
+  private final EMUpdateFunction<K, ?> updateFunction;
+
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
   /**
@@ -67,11 +73,13 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
                           final OperationRouter<K> router,
                           final BlockResolver<K> blockResolver,
                           final RemoteOpHandler<K> remoteOpHandler,
+                          final EMUpdateFunction<K, ?> updateFunction,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
     this.blockResolver = blockResolver;
     this.remoteOpHandler = remoteOpHandler;
+    this.updateFunction = updateFunction;
     initBlocks();
     initExecutor(numStoreThreads);
   }
@@ -186,6 +194,9 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
           case REMOVE:
             output = block.remove(operation.getKey());
             break;
+          case UPDATE:
+            output = block.update(operation.getKey(), operation.getValue().get());
+            break;
           default:
             LOG.log(Level.WARNING, "Undefined type of operation.");
             output = null;
@@ -218,6 +229,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
      * maximize the performance of concurrent single-key operations.
      */
     private final ConcurrentMap<K, V> subDataMap = new ConcurrentHashMap<>();
+    private final EMUpdateFunction<K, V> emUpdateFunction = (EMUpdateFunction<K, V>) updateFunction;
 
     private void put(final K key, final V value) {
       subDataMap.put(key, value);
@@ -254,6 +266,16 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       final Map<K, V> output = new HashMap<>(subDataMap);
       subDataMap.clear();
       return output;
+    }
+
+    /**
+     * Updates the value associated with the given {@code key} using {@code deltaValue}.
+     */
+    private V update(final K key, final V deltaValue) {
+      return subDataMap.compute(key, (k, v) -> {
+          final V oldValue = (v == null) ? emUpdateFunction.getInitValue(k) : v;
+          return emUpdateFunction.getUpdateValue(oldValue, deltaValue);
+        });
     }
 
     /**
@@ -352,6 +374,23 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   @Override
   public <V> Map<K, V> getRange(final K startId, final K endId) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <V> Pair<K, V> update(final K id, final V deltaValue) {
+    final int blockId = blockResolver.resolveBlock(id);
+    final Optional<String> remoteEvalId = router.resolveEval(blockId);
+
+    if (remoteEvalId.isPresent()) {
+      final SingleKeyOperation<K, V> operation =
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.UPDATE, id, Optional.of(deltaValue), remoteEvalId.get());
+
+      return new Pair<>(id, operation.getOutputData().get());
+    } else {
+      final Block<V> block = blocks.get(blockId);
+      final V output = block.update(id, deltaValue);
+      return new Pair<>(id, output);
+    }
   }
 
   @Override
