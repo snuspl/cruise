@@ -60,7 +60,9 @@
     var yAxis;
     var objects;
     var id;
+    var requestTimer;
     $('.dd-obj-query').change(function(){
+        clearInterval(requestTimer);
         objects = this.value;
         $.post('/selectors', {position:objects}, function(json){
             data = JSON.parse(json);
@@ -78,24 +80,26 @@
     });
 
     function reloadData() {
-        objects = $('#objects').val();
-        xAxis = $('#x-axis').val();
-        yAxis = $('#y-axis').val();
-        id = $('#id').val();
-        $.post('/plot', {position:objects, x:xAxis, y:yAxis, id:id}, function(json) {
-            data = JSON.parse(json);
-            keys = Object.keys(data).sort();
-            trace = {
-                x: keys,
-                y: keys.map(function(key){return data[key];}),
-                type: 'scatter'
-            };
-            Plotly.newPlot($('#main-display')[0], [trace]);
-        });
+        requestTimer = setInterval(function(){
+            objects = $('#objects').val();
+            xAxis = $('#x-axis').val();
+            yAxis = $('#y-axis').val();
+            id = $('#id').val();
+            $.post('/plot', {position:objects, x:xAxis, y:yAxis, id:id}, function(json) {
+                data = JSON.parse(json);
+                keys = Object.keys(data).sort();
+                trace = {
+                    x: keys,
+                    y: keys.map(function(key){return data[key];}),
+                    type: 'scatter'
+                };
+                Plotly.newPlot($('#main-display')[0], [trace]);
+            });
+        }, 1000);
     }
 
     $('.dd-query').change(function(){
-        reloadData();
+        clearInterval(requestTimer);
     });
     </script>
 </body>

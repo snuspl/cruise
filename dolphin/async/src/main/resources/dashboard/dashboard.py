@@ -78,8 +78,9 @@ def main():
         else:
             position = 'server'
         id = re.sub(r'\D', '', id)
-        db.execute('insert into {0} values ({1}, {2}, {3})'
-                   .format(position, time, id, ', '.join(str(i) for i in metrics.values())))
+        db.execute('insert into {0} (time, id, {1}) values ({2}, {3}, {4})'
+                   .format(position, ', '.join(str(i) for i in metrics.keys()),
+                           time, id, ', '.join(str(i) for i in metrics.values())))
         # app-specific metrics
         if ml_metrics is not None:
             db.execute('create table if not exists metric (time double not null, id int not null, {0} varchar(255) not null);'
@@ -89,7 +90,17 @@ def main():
         db.commit()
         return 'accept'
     else:
-        return render_template('main.html')
+        cur = db.execute('select * from worker')
+        worker = cur.fetchall()
+        cur = db.execute('select * from server')
+        server = cur.fetchall()
+        cur = db.execute('select name from sqlite_master where type=\'table\' and name=\'metric\';')
+        metrics_list = cur.fetchall()
+        if not metrics_list:
+            return render_template('main.html', workers=worker, servers=server)
+        cur = db.execute('select * from metric')
+        metric = cur.fetchall()
+        return render_template('main.html', workers=worker, servers=server, metrics=metric)
 
 @app.route('/plot', methods=['POST'])
 def plot():

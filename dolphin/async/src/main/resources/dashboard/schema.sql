@@ -44,9 +44,12 @@ create table server (
     time double not null,
     id int not null,
     windowIndex int not null,
-    numPartitionBlocks int not null,
+    numModelBlocks int not null,
     metricWindowMs long not null,
-    avgPullProcessingTime double not null,
-    avgPushProcessingTime double not null,
-    avgReqProcessingTime double not null
+    totalPullProcessed int not null,
+    totalPushProcessed int not null,
+    totalReqProcessed int not null,
+    totalPullProcessingTime double not null,
+    totalPushProcessingTime double not null,
+    totalReqProcessingTime double not null
 );
