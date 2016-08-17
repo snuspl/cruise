@@ -25,12 +25,22 @@ import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.EnforceLoggingLevelRule;
+import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.services.ps.avro.AvroClockMsg;
+import edu.snu.cay.services.ps.avro.ClockMsgType;
+import edu.snu.cay.services.ps.driver.impl.ClockManager;
+import edu.snu.cay.services.ps.ns.ClockMsgCodec;
+import edu.snu.cay.services.ps.worker.parameters.Staleness;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
+import org.apache.reef.wake.IdentifierFactory;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,9 +49,12 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.*;
 import java.util.logging.Level;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -49,15 +62,25 @@ import static org.mockito.Mockito.*;
  * Tests for {@link SSPParameterWorker}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(WorkerMsgSender.class)
+@PrepareForTest({WorkerMsgSender.class, AggregationSlave.class, AggregationMaster.class})
 public final class SSPParameterWorkerTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
+  private final int initialWorkerClock = 10;
+  private final int initialGlobalMinimumClock = 10;
+  private final int staleness = 5;
 
   private ParameterWorkerTestUtil testUtil;
   private SSPParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
+  private AggregationSlave mockAggregationSlave;
+  private AggregationMaster mockAggregationMaster;
+  private ClockMsgCodec codec;
+  private SSPWorkerClock.MessageHandler sspWorkerClockMessageHandler;
+  private AtomicInteger numberOfTickMsgCalls;
+  private SSPWorkerClock sspWorkerClock;
+  private AtomicInteger numberOfPullRequests;
 
   @Before
   public void setup() throws InjectionException, NetworkException {
@@ -67,13 +90,15 @@ public final class SSPParameterWorkerTest {
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(ParameterWorkerTestUtil.PULL_RETRY_TIMEOUT_MS))
         .bindNamedParameter(PSParameters.KeyCodecName.class, SerializableCodec.class)
+        .bindNamedParameter(Staleness.class, Integer.toString(staleness))
         .bindImplementation(ParameterWorker.class, SSPParameterWorker.class)
         .bindImplementation(WorkerHandler.class, SSPParameterWorker.class)
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
-    testUtil = new ParameterWorkerTestUtil();
-
+    this.testUtil = new ParameterWorkerTestUtil();
+    this.numberOfPullRequests = new AtomicInteger(0);
     mockSender = mock(WorkerMsgSender.class);
 
     injector.bindVolatileInstance(WorkerMsgSender.class, mockSender);
@@ -84,11 +109,41 @@ public final class SSPParameterWorkerTest {
     doAnswer(invocationOnMock -> {
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+        numberOfPullRequests.incrementAndGet();
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
+    this.mockAggregationSlave = mock(AggregationSlave.class);
+    injector.bindVolatileInstance(AggregationSlave.class, this.mockAggregationSlave);
+    this.mockAggregationMaster = mock(AggregationMaster.class);
+    injector.bindVolatileInstance(AggregationMaster.class, this.mockAggregationMaster);
+    this.sspWorkerClock = injector.getInstance(SSPWorkerClock.class);
+
+    this.sspWorkerClockMessageHandler = injector.getInstance(SSPWorkerClock.MessageHandler.class);
+    this.codec = injector.getInstance(ClockMsgCodec.class);
+    this.numberOfTickMsgCalls = new AtomicInteger(0);
+
+    // It may be needed to define aggregation master/slave mockers' actions for send() operation.
+    doAnswer(invocation -> {
+        final byte[] data = invocation.getArgumentAt(1, byte[].class);
+        final AvroClockMsg sendMsg = codec.decode(data);
+
+        if (sendMsg.getType() == ClockMsgType.RequestInitClockMsg) {
+          final AvroClockMsg initClockMsg =
+              ClockManager.getReplyInitialClockMessage(initialGlobalMinimumClock, initialWorkerClock);
+          final byte[] replyData = codec.encode(initClockMsg);
+          final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
+          sspWorkerClockMessageHandler.onNext(aggregationMessage);
+        } else if (sendMsg.getType() == ClockMsgType.TickMsg) {
+          numberOfTickMsgCalls.incrementAndGet();
+        }
+        return null;
+      }).when(mockAggregationSlave).send(anyString(), anyObject());
+
+
     parameterWorker = (SSPParameterWorker) injector.getInstance(ParameterWorker.class);
     workerHandler = injector.getInstance(WorkerHandler.class);
+    this.sspWorkerClock.initialize();
   }
 
   /**
@@ -102,12 +157,12 @@ public final class SSPParameterWorkerTest {
   /**
    * Test the thread safety of {@link SSPParameterWorker} by
    * creating multiple threads that try to push values to the server using {@link SSPParameterWorker}.
-   *
+   * <p>
    * {@code numPushThreads} threads are generated, each sending {@code numPushPerThread} pushes.
    */
   @Test
   public void testMultiThreadPush()
-          throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     testUtil.multiThreadPush(parameterWorker, mockSender);
   }
 
@@ -115,7 +170,7 @@ public final class SSPParameterWorkerTest {
    * Test the thread safety of {@link SSPParameterWorker} by
    * creating multiple threads that try to pull values from the server
    * using {@link SSPParameterWorker}.
-   *
+   * <p>
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * Due to the cache, {@code sender.sendPullMsg()} may not be invoked as many times as {@code worker.pull()} is called.
    * Thus, we verify the validity of the result by simply checking whether pulled values are as expected or not.
@@ -129,13 +184,13 @@ public final class SSPParameterWorkerTest {
   /**
    * Test the thread safety of {@link SSPParameterWorker} by
    * creating multiple threads that try to pull several values from the server using {@link SSPParameterWorker}.
-   *
+   * <p>
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
    */
   @Test
   public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException,
-          ExecutionException, NetworkException {
+      ExecutionException, NetworkException {
     testUtil.multiThreadMultiKeyPull(parameterWorker);
   }
 
@@ -151,14 +206,14 @@ public final class SSPParameterWorkerTest {
    * Test the correct handling of pull rejects by {@link SSPParameterWorker},
    * creating multiple threads that try to pull values from the server
    * using {@link SSPParameterWorker}.
-   *
+   * <p>
    * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
    * To guarantee that {@code sender.sendPullMsg()} should be invoked as many times as {@code worker.pull()} is called,
    * this test use different keys for each pull.
    */
   @Test
   public void testPullReject()
-          throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     testUtil.pullReject(parameterWorker, workerHandler, mockSender);
   }
 
@@ -187,17 +242,51 @@ public final class SSPParameterWorkerTest {
   }
 
   /**
+   * Tests whether worker correctly checks and handles data staleness when it receives a request for stale data.
+   */
+  @Test
+  public void testDataStalenessCheck() throws NetworkException, InterruptedException {
+    int i;
+    final int numberOfKeys = 3;
+
+    doAnswer(invocation -> {
+        final byte[] data = invocation.getArgumentAt(2, byte[].class);
+        final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", data);
+        sspWorkerClockMessageHandler.onNext(aggregationMessage);
+        return null;
+      }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
+
+    for (i = 0; i < (2 * numberOfKeys); i++) {
+      parameterWorker.pull((i % numberOfKeys));
+    }
+
+    assertEquals(initialGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
+
+    final byte[] data =
+        codec.encode(ClockManager.getBroadcastMinClockMessage(initialGlobalMinimumClock + (2 * staleness)));
+    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", data);
+
+    assertEquals(initialGlobalMinimumClock + (2 * staleness), sspWorkerClock.getGlobalMinimumClock());
+
+    for (i = 0; i < numberOfKeys; i++) {
+      parameterWorker.pull(i);
+    }
+
+    assertEquals(2 * numberOfKeys, numberOfPullRequests.get());
+  }
+
+  /**
    * Test that the {@link SSPParameterWorker#invalidateAll()} method invalidate all caches
    * so that new pull messages must be issued for each pull request.
    */
   @Test
   public void testInvalidateAll()
-          throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     invalidateAllSSP(parameterWorker);
   }
 
   private void invalidateAllSSP(final SSPParameterWorker worker)
-          throws InterruptedException, ExecutionException, TimeoutException, NetworkException {
+      throws InterruptedException, ExecutionException, TimeoutException, NetworkException {
     final int numPulls = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -217,4 +306,13 @@ public final class SSPParameterWorkerTest {
     assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject());
   }
+
+  private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
+    return AggregationMessage.newBuilder()
+        .setSourceId(workerId)
+        .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
+        .setData(ByteBuffer.wrap(data))
+        .build();
+  }
 }
+
