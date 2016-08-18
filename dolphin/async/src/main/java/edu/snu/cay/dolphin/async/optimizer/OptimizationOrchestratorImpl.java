@@ -231,7 +231,6 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     double weightedDivisor = 0.0;
     final double weightSmoothingFactor = 1.0 - metricWeightFactor;
 
-    LOG.log(Level.INFO, "metricWeightFactor!: " + metricWeightFactor);
     int metricIdx = evalParams.size() - 1;
     for (final EvaluatorParameters param : evalParams) {
       final double metric = targetMetricFunction.applyAsDouble(param);
