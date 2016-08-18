@@ -239,11 +239,11 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     double weightedDivisor = 0D;
     final double weightSmoothingFactor = 1.0 - metricWeightFactor;
 
-    // TODO: #746 Select an appropriate window size when applying moving averages
+    // TODO #746: Select an appropriate window size when applying moving averages
     final int metricSubsetSize = (movingAvgWindowSize == 0) ? evalParams.size() : movingAvgWindowSize;
 
     int metricIdx = 0;
-    ListIterator<EvaluatorParameters> reversedParamsIterator = evalParams.listIterator(evalParams.size());
+    final ListIterator<EvaluatorParameters> reversedParamsIterator = evalParams.listIterator(evalParams.size());
 
     while (reversedParamsIterator.hasPrevious() && metricIdx < metricSubsetSize) {
       final double metric = targetMetricFunction.applyAsDouble(reversedParamsIterator.previous());
