@@ -18,8 +18,8 @@ package edu.snu.cay.dolphin.async.optimizer.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "A delay after completion of optimization to wait the system to be stable",
-                short_name = "delay_after_optimization_ms",
-                default_value = "10000")
-public class MetricWeightFactor implements Name<Long> {
+@NamedParameter(doc = "An exponentially decreasing weight factor for metrics in EMA",
+                short_name = "metric_weight_factor",
+                default_value = "0.0")
+public class MetricWeightFactor implements Name<Double> {
 }
