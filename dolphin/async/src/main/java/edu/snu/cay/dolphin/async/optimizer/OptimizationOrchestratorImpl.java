@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MetricWeightFactor;
+import edu.snu.cay.dolphin.async.optimizer.parameters.MovingAverageWindowSize;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -69,6 +70,11 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    */
   private final double metricWeightFactor;
 
+  /**
+   * Window size for applying EMA to metrics. This value set to 0 uses all the collected metrics.
+   */
+  private final int movingAvgWindowSize;
+
   private final ElasticMemory workerEM;
   private final ElasticMemory serverEM;
 
@@ -80,6 +86,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
                                    @Parameter(ServerEM.class) final ElasticMemory serverEM,
                                    @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                    @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
+                                   @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
                                    @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
@@ -88,6 +95,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     this.serverEM = serverEM;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
     this.metricWeightFactor = metricWeightFactor;
+    this.movingAvgWindowSize = movingAvgWindowSize;
     this.maxNumEvals = maxNumEvals;
   }
 
@@ -226,18 +234,23 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    * @return the exponential moving average value
    */
   private double calculateExponentialMovingAverage(final List<EvaluatorParameters> evalParams,
-                                                   final ToDoubleFunction targetMetricFunction) {
-    double weightedSum = 0.0;
-    double weightedDivisor = 0.0;
+                                                   final ToDoubleFunction<EvaluatorParameters> targetMetricFunction) {
+    double weightedSum = 0D;
+    double weightedDivisor = 0D;
     final double weightSmoothingFactor = 1.0 - metricWeightFactor;
 
-    int metricIdx = evalParams.size() - 1;
-    for (final EvaluatorParameters param : evalParams) {
-      final double metric = targetMetricFunction.applyAsDouble(param);
+    // TODO: #746 Select an appropriate window size when applying moving averages
+    final int metricSubsetSize = (movingAvgWindowSize == 0) ? evalParams.size() : movingAvgWindowSize;
+
+    int metricIdx = 0;
+    ListIterator<EvaluatorParameters> reversedParamsIterator = evalParams.listIterator(evalParams.size());
+
+    while (reversedParamsIterator.hasPrevious() && metricIdx < metricSubsetSize) {
+      final double metric = targetMetricFunction.applyAsDouble(reversedParamsIterator.previous());
       final double weight = Math.pow(weightSmoothingFactor, metricIdx);
       weightedSum += weight * metric;
       weightedDivisor += weight;
-      metricIdx--;
+      metricIdx++;
     }
 
     return (weightedDivisor == 0.0) ? 0.0 : (weightedSum / weightedDivisor);
@@ -284,7 +297,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
           final String serverId = entry.getKey();
           processedMetrics.add(new ServerEvaluatorParameters(serverId,
               new DataInfoImpl((int) calculateExponentialMovingAverage(serverMetric,
-                  param -> ((ServerEvaluatorParameters) param).getDataInfo().getNumBlocks())), aggregatedMetric));
+                  param -> param.getDataInfo().getNumBlocks())), aggregatedMetric));
         }
       }
       break;
@@ -317,7 +330,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         } else {
           processedMetrics.add(new WorkerEvaluatorParameters(entry.getKey(),
               new DataInfoImpl((int) calculateExponentialMovingAverage(workerMetric,
-                  param -> ((WorkerEvaluatorParameters) param).getDataInfo().getNumBlocks())), aggregatedMetric));
+                  param -> param.getDataInfo().getNumBlocks())), aggregatedMetric));
         }
       }
       break;
