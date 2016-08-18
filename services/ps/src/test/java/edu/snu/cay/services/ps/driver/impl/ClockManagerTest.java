@@ -23,7 +23,7 @@ import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.avro.RequestInitClockMsg;
 import edu.snu.cay.services.ps.avro.TickMsg;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
-import edu.snu.cay.services.ps.worker.parameters.Staleness;
+import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
@@ -55,7 +55,7 @@ import static org.mockito.Mockito.mock;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({AggregationSlave.class, AggregationMaster.class})
 public final class ClockManagerTest {
-  private final int staleness = 4;
+  private final int stalenessBound = 4;
   private final int numWorkers = 10;
 
   private AggregationSlave mockAggregationSlave;
@@ -67,7 +67,7 @@ public final class ClockManagerTest {
   @Before
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(Staleness.class, Integer.toString(staleness))
+        .bindNamedParameter(StalenessBound.class, Integer.toString(stalenessBound))
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
@@ -99,7 +99,7 @@ public final class ClockManagerTest {
   @Test
   public void testInitializingWorkers() throws InjectionException, NetworkException {
     final int initialGlobalMinimumClock = clockManager.getGlobalMinimumClock();
-    final int expectedClockOfWorkersAddedByEM = clockManager.getGlobalMinimumClock() + (staleness / 2);
+    final int expectedClockOfWorkersAddedByEM = clockManager.getGlobalMinimumClock() + (stalenessBound / 2);
     final int numEarlyWorkers = numWorkers / 2;
 
     // initialize the clock of workers not added by EM

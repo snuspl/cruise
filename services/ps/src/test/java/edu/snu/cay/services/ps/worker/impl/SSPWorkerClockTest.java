@@ -22,7 +22,7 @@ import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
-import edu.snu.cay.services.ps.worker.parameters.Staleness;
+import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
@@ -57,7 +57,7 @@ import static org.mockito.Mockito.mock;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({AggregationSlave.class, AggregationMaster.class})
 public class SSPWorkerClockTest {
-  private final int staleness = 4;
+  private final int stalenessBound = 4;
   private final int initialWorkerClock = 10;
   private final int initialGlobalMinimumClock = 10;
 
@@ -71,7 +71,7 @@ public class SSPWorkerClockTest {
   @Before
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(Staleness.class, Integer.toString(staleness))
+        .bindNamedParameter(StalenessBound.class, Integer.toString(stalenessBound))
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
@@ -176,7 +176,7 @@ public class SSPWorkerClockTest {
     sspWorkerClock.initialize();
 
     // test whether waitIfExceedingStalenessBound() returns immediately when the worker clock is in staleness bound.
-    while (sspWorkerClock.getWorkerClock() <= globalMinimumClock + staleness) {
+    while (sspWorkerClock.getWorkerClock() <= globalMinimumClock + stalenessBound) {
       for (int i = 0; i < numOfThreads; i++) {
         threads[i] = new WaitIfExceedingStalenessBoundThread();
         threadLatchMap.put(threads[i], new CountDownLatch(1));
@@ -192,7 +192,7 @@ public class SSPWorkerClockTest {
     }
 
     sspWorkerClock.clock();
-    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + staleness);
+    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + stalenessBound);
     for (int i = 0; i < numOfThreads; i++) {
       threads[i] = new WaitIfExceedingStalenessBoundThread();
       threadLatchMap.put(threads[i], new CountDownLatch(1));
@@ -207,7 +207,7 @@ public class SSPWorkerClockTest {
 
     globalMinimumClock++;
     // the worker clock is out of staleness bound even though global minimum clock is ticked.
-    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + staleness);
+    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + stalenessBound);
 
     // send message with increased global minimum clock
     final byte[] broadcastClockMsgToKeepWait =
@@ -221,7 +221,7 @@ public class SSPWorkerClockTest {
 
     globalMinimumClock++;
     // now, this increased global minimum clock is enough to terminate the thread.
-    assertTrue(sspWorkerClock.getWorkerClock() <= globalMinimumClock + staleness);
+    assertTrue(sspWorkerClock.getWorkerClock() <= globalMinimumClock + stalenessBound);
 
     // send message with increased global minimum clock
     final byte[] broadcastClockMsgToTerminate =

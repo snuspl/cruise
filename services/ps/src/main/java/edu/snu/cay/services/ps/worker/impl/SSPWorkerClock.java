@@ -24,7 +24,7 @@ import edu.snu.cay.services.ps.avro.TickMsg;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
-import edu.snu.cay.services.ps.worker.parameters.Staleness;
+import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
@@ -56,7 +56,7 @@ public final class SSPWorkerClock implements WorkerClock {
    */
   private final CountDownLatch initLatch;
 
-  private final int staleness;
+  private final int stalenessBound;
 
   private int workerClock;
 
@@ -72,10 +72,10 @@ public final class SSPWorkerClock implements WorkerClock {
   private long clockNetworkWaitingTime;
 
   @Inject
-  private SSPWorkerClock(@Parameter(Staleness.class) final int staleness,
+  private SSPWorkerClock(@Parameter(StalenessBound.class) final int stalenessBound,
                          final AggregationSlave aggregationSlave,
                          final ClockMsgCodec codec) {
-    this.staleness = staleness;
+    this.stalenessBound = stalenessBound;
     this.aggregationSlave = aggregationSlave;
     this.codec = codec;
     this.initLatch = new CountDownLatch(1);
@@ -121,7 +121,7 @@ public final class SSPWorkerClock implements WorkerClock {
   @Override
   public synchronized void waitIfExceedingStalenessBound() throws InterruptedException {
     final long beginTime = System.currentTimeMillis();
-    while (workerClock > globalMinimumClock + staleness) {
+    while (workerClock > globalMinimumClock + stalenessBound) {
       wait();
     }
     clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;

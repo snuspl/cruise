@@ -365,8 +365,8 @@ public final class AsyncDolphinLauncher {
         .setDriverConfigurationModule(driverConf)
         .build();
 
-    final int staleness = injector.getNamedInstance(Staleness.class);
-    final boolean isSSPModel = staleness >= 0;
+    final int stalenessBound = injector.getNamedInstance(StalenessBound.class);
+    final boolean isSSPModel = stalenessBound >= 0;
     final AggregationConfiguration aggregationServiceConf = isSSPModel ?
         getAggregationConfigurationForSSP() : getAggregationConfigurationDefault();
     // set up an optimizer configuration

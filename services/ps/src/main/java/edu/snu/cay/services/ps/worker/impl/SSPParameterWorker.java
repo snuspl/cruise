@@ -120,7 +120,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   private final long[] startTimes;
   private final Ticker ticker = Ticker.systemTicker();
   private final SSPWorkerClock workerClock;
-  private final int staleness;
+  private final int stalenessBound;
 
   @Inject
   private SSPParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
@@ -129,7 +129,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                              @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                              @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
                              @Parameter(WorkerLogPeriod.class) final long logPeriod,
-                             @Parameter(Staleness.class) final int staleness,
+                             @Parameter(StalenessBound.class) final int stalenessBound,
                              final SSPWorkerClock workerClock,
                              final ParameterUpdater<K, P, V> parameterUpdater,
                              final ServerResolver serverResolver,
@@ -143,7 +143,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     this.threadPool = Executors.newFixedThreadPool(numThreads);
     this.workerClock = workerClock;
     this.threads = initThreads(queueSize, pullRetryTimeoutMs);
-    this.staleness = staleness;
+    this.stalenessBound = stalenessBound;
     this.encodedKeyCache = CacheBuilder.newBuilder()
         .maximumSize(keyCacheSize)
         .build(new CacheLoader<K, EncodedKey<K>>() {
@@ -549,18 +549,15 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
       try {
         Tagged<V> tagged;
         V loadedValue;
-        int clock, threshold;
 
-        threshold = workerClock.getGlobalMinimumClock() - staleness;
-        threshold = (threshold > 0) ? threshold : 0;
         while (true) {
           tagged = kvCache.get(encodedKey);
-          clock = tagged.getClock();
-          if (clock < threshold) {
-            kvCache.invalidate(encodedKey);
-          } else {
+          final int staleness = workerClock.getGlobalMinimumClock() - tagged.getClock();
+          if (staleness < stalenessBound) {
             loadedValue = tagged.getValue();
             break;
+          } else {
+            kvCache.invalidate(encodedKey);
           }
         }
 
