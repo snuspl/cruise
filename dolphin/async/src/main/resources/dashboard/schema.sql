@@ -23,7 +23,7 @@
 
 drop table if exists worker;
 drop table if exists server;
-drop table if exists metric;
+drop table if exists custom;
 
 create table worker (
     time double not null,

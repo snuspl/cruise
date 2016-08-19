@@ -16,9 +16,11 @@ import os
 import re
 import sqlite3
 import sys
+import time
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
 
 print("Flask script: Launching dashboard server...")
+timestamp = time.time()
 
 #
 # Configurations
@@ -69,9 +71,9 @@ def main():
     if request.method == 'POST':
         # update database with new metrics
         id = request.form['id'];
-        time = request.form['time'];
+        time = float(request.form['time'])/1000 - timestamp;
         metrics = json.loads(request.form['metrics'])
-        ml_metrics = metrics.pop('metrics')
+        custom = metrics.pop('metrics')
         # metrics
         if id.startswith('Worker'):
             position = 'worker'
@@ -82,25 +84,15 @@ def main():
                    .format(position, ', '.join(str(i) for i in metrics.keys()),
                            time, id, ', '.join(str(i) for i in metrics.values())))
         # app-specific metrics
-        if ml_metrics is not None:
-            db.execute('create table if not exists metric (time double not null, id int not null, {0} varchar(255) not null);'
-                       .format(' varchar(255) not null, '.join(ml_metrics['data'].keys())))
-            db.execute('insert into metric values ({0}, {1}, {2})'
-                       .format(time, id, ', '.join(str(i) for i in ml_metrics['data'].values())))
+        if custom is not None:
+            db.execute('create table if not exists custom (time double not null, id int not null, {0} varchar(255) not null);'
+                       .format(' varchar(255) not null, '.join(custom['data'].keys())))
+            db.execute('insert into custom values ({0}, {1}, {2})'
+                       .format(time, id, ', '.join(str(i) for i in custom['data'].values())))
         db.commit()
         return 'accept'
     else:
-        cur = db.execute('select * from worker')
-        worker = cur.fetchall()
-        cur = db.execute('select * from server')
-        server = cur.fetchall()
-        cur = db.execute('select name from sqlite_master where type=\'table\' and name=\'metric\';')
-        metrics_list = cur.fetchall()
-        if not metrics_list:
-            return render_template('main.html', workers=worker, servers=server)
-        cur = db.execute('select * from metric')
-        metric = cur.fetchall()
-        return render_template('main.html', workers=worker, servers=server, metrics=metric)
+        return render_template('main.html')
 
 @app.route('/plot', methods=['POST'])
 def plot():
@@ -143,6 +135,6 @@ if __name__ == '__main__':
         init_db()
         try:
             app.run(host='0.0.0.0', port=sys.argv[1])
-        except:
-            print('Flask script: Invalid port number')
+        except Exception as err:
+            print('Flask script: {0}'.format(err))
             sys.exit(1)
