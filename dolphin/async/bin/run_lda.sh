@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_lda.sh -input sample_lda -local true -split 4 -num_servers 2 -num_topics 10 -num_vocabs 102656 -max_iter 3 -max_num_eval_local 6 -timeout 180000 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
+# ./run_lda.sh -input sample_lda -local true -split 4 -num_servers 2 -num_topics 10 -num_vocabs 17935 -max_iter 3 -max_num_eval_local 6 -timeout 180000 -dynamic true -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
@@ -24,7 +24,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.dolphin.async.mlapps.lda.LdaREEF
+ALG=edu.snu.cay.dolphin.async.mlapps.lda.LDAREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD
