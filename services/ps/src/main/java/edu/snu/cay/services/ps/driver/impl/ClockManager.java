@@ -170,6 +170,9 @@ public final class ClockManager {
     if (workerClockVal != null) {
       return workerClockVal;
     }
+
+    // the initial value of worker clock is set up to
+    // the sum of the global minimum clock and half the staleness bound.
     final int workerClock = globalMinimumClock + (stalenessBound / 2);
     workerClockMap.put(workerId, workerClock);
     return workerClock;

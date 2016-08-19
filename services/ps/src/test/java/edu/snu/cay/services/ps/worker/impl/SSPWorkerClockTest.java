@@ -61,7 +61,6 @@ public class SSPWorkerClockTest {
   private static final int INIT_GLOBAL_MIN_CLOCK = 10;
   private static final int INIT_WORKER_CLOCK = INIT_GLOBAL_MIN_CLOCK;
 
-
   private AggregationSlave mockAggregationSlave;
   private AggregationMaster mockAggregationMaster;
   private ClockMsgCodec codec;
