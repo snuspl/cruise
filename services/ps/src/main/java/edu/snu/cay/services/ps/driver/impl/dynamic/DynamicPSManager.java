@@ -39,7 +39,7 @@ import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.impl.AsyncParameterWorker;
-import edu.snu.cay.services.ps.worker.impl.NullWorkerClock;
+import edu.snu.cay.services.ps.worker.impl.AsyncWorkerClock;
 import edu.snu.cay.services.ps.worker.impl.SSPWorkerClock;
 import edu.snu.cay.services.ps.worker.impl.SSPParameterWorker;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
@@ -132,7 +132,7 @@ public final class DynamicPSManager implements PSManager {
         .bindImplementation(ParameterWorker.class,
             isSSPModel ? SSPParameterWorker.class : AsyncParameterWorker.class)
         .bindImplementation(WorkerClock.class,
-            isSSPModel ? SSPWorkerClock.class : NullWorkerClock.class)
+            isSSPModel ? SSPWorkerClock.class : AsyncWorkerClock.class)
         .bindImplementation(WorkerHandler.class,
             isSSPModel ? SSPParameterWorker.class : AsyncParameterWorker.class)
         .bindImplementation(ServerResolver.class, DynamicServerResolver.class)

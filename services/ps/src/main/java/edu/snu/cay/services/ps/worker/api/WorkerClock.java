@@ -30,6 +30,7 @@ public interface WorkerClock {
 
   /**
    * Ticks worker clock.
+   * Should be called after {@link #initialize()} is done.
    */
   void clock();
 
