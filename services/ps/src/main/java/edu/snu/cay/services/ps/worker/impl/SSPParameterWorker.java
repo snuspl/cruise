@@ -119,7 +119,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   private final Statistics[] pullStats;
   private final long[] startTimes;
   private final Ticker ticker = Ticker.systemTicker();
-  private final SSPWorkerClock workerClock;
+  private final WorkerClock workerClock;
   private final int stalenessBound;
 
   @Inject
@@ -130,7 +130,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                              @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
                              @Parameter(WorkerLogPeriod.class) final long logPeriod,
                              @Parameter(StalenessBound.class) final int stalenessBound,
-                             final SSPWorkerClock workerClock,
+                             final WorkerClock workerClock,
                              final ParameterUpdater<K, P, V> parameterUpdater,
                              final ServerResolver serverResolver,
                              final InjectionFuture<WorkerMsgSender<K, P>> sender) {
@@ -547,16 +547,16 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     @Override
     public void apply(final LoadingCache<EncodedKey<K>, Tagged<V>> kvCache) {
       try {
-        Tagged<V> tagged;
-        V loadedValue;
+        final V loadedValue;
 
         while (true) {
-          tagged = kvCache.get(encodedKey);
+          final Tagged<V> tagged = kvCache.get(encodedKey);
           final int staleness = workerClock.getGlobalMinimumClock() - tagged.getClock();
-          if (staleness < stalenessBound) {
+          if (staleness <= stalenessBound) {
             loadedValue = tagged.getValue();
             break;
           } else {
+            // Invalidate stale data before fetching new data from a server.
             kvCache.invalidate(encodedKey);
           }
         }
