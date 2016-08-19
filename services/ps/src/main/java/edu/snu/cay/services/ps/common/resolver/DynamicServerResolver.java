@@ -174,12 +174,13 @@ public final class DynamicServerResolver implements ServerResolver {
     // add or replace an eval id of a store
     storeIdToEndpointId.put(newOwnerId, newEvalId);
 
-    for (final int blockId : routingTableUpdate.getBlockIds()) {
-      final int actualOldOwnerId = blockIdToStoreId.put(blockId, newOwnerId);
-      if (oldOwnerId != actualOldOwnerId) {
-        LOG.log(Level.FINER, "Mapping was stale about block {0}", blockId);
-      }
+    final int blockId = routingTableUpdate.getBlockId();
+
+    final int actualOldOwnerId = blockIdToStoreId.put(blockId, newOwnerId);
+    if (oldOwnerId != actualOldOwnerId) {
+      LOG.log(Level.FINER, "Mapping was stale about block {0}", blockId);
+    } else {
+      LOG.log(Level.FINE, "Mapping table in server resolver is updated");
     }
-    LOG.log(Level.FINE, "Mapping table in server resolver is updated");
   }
 }

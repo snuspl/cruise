@@ -15,8 +15,6 @@
  */
 package edu.snu.cay.services.em.driver.api;
 
-import java.util.List;
-
 /**
  * An interface representing the update in EM's routing table.
  */
@@ -41,8 +39,8 @@ public interface EMRoutingTableUpdate {
   String getNewEvalId();
 
   /**
-   * Returns the ids of blocks that their locations are updated.
-   * @return a list of block id
+   * Returns the id of block that its location is updated.
+   * @return a block id
    */
-  List<Integer> getBlockIds();
+  int getBlockId();
 }

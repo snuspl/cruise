@@ -250,7 +250,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
+  public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blockIds,
                                         final String oldEvalId, final String newEvalId,
                                         @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRoutingTableUpdateMsgScope =
@@ -261,7 +261,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       final RoutingTableUpdateMsg routingTableUpdateMsg = RoutingTableUpdateMsg.newBuilder()
           .setOldEvalId(oldEvalId)
           .setNewEvalId(newEvalId)
-          .setBlockIds(blocks)
+          .setBlockIds(blockIds)
           .build();
 
       send(destId,

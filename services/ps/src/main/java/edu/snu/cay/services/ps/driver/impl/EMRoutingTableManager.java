@@ -196,13 +196,13 @@ public final class EMRoutingTableManager {
       final int oldOwnerId = emRoutingTableUpdate.getOldOwnerId();
       final int newOwnerId = emRoutingTableUpdate.getNewOwnerId();
       final String newEvalID = emRoutingTableUpdate.getNewEvalId();
-      final List<Integer> blockIds = emRoutingTableUpdate.getBlockIds();
+      final int blockId = emRoutingTableUpdate.getBlockId();
 
       final RoutingTableUpdateMsg routingTableUpdateMsg = RoutingTableUpdateMsg.newBuilder()
           .setOldOwnerId(oldOwnerId)
           .setNewOwnerId(newOwnerId)
           .setNewEvalId(newEvalID)
-          .setBlockIds(blockIds)
+          .setBlockId(blockId)
           .build();
 
       final AvroPSMsg updateMsg =
