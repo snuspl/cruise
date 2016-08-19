@@ -22,7 +22,7 @@ import edu.snu.cay.services.ps.avro.BroadcastMinClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.avro.ReplyInitClockMsg;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
-import edu.snu.cay.services.ps.worker.parameters.Staleness;
+import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.Parameter;
@@ -51,7 +51,7 @@ public final class ClockManager {
   private static final int INITIAL_GLOBAL_MINIMUM_CLOCK = 0;
   private static final int MAXIMUM_RETRY_COUNTS = 5;
 
-  private final int staleness;
+  private final int stalenessBound;
   private final AggregationMaster aggregationMaster;
   private final ClockMsgCodec codec;
 
@@ -73,10 +73,10 @@ public final class ClockManager {
   @Inject
   private ClockManager(final AggregationMaster aggregationMaster,
                        final ClockMsgCodec codec,
-                       @Parameter(Staleness.class) final int staleness) {
+                       @Parameter(StalenessBound.class) final int stalenessBound) {
     this.aggregationMaster = aggregationMaster;
     this.codec = codec;
-    this.staleness = staleness;
+    this.stalenessBound = stalenessBound;
     this.globalMinimumClock = INITIAL_GLOBAL_MINIMUM_CLOCK;
     workerClockMap = new HashMap<>();
     minimumClockWorkers = new ArrayList<>();
@@ -170,7 +170,10 @@ public final class ClockManager {
     if (workerClockVal != null) {
       return workerClockVal;
     }
-    final int workerClock = globalMinimumClock + (staleness / 2);
+
+    // the initial value of worker clock is set up to
+    // the sum of the global minimum clock and half the staleness bound.
+    final int workerClock = globalMinimumClock + (stalenessBound / 2);
     workerClockMap.put(workerId, workerClock);
     return workerClock;
   }

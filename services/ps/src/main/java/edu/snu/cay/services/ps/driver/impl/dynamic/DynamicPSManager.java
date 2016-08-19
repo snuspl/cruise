@@ -46,7 +46,7 @@ import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStopHandler;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
-import edu.snu.cay.services.ps.worker.parameters.Staleness;
+import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
 import edu.snu.cay.services.ps.worker.parameters.WorkerLogPeriod;
@@ -100,7 +100,7 @@ public final class DynamicPSManager implements PSManager {
                            @Parameter(ServerMetricsWindowMs.class) final long serverMetricsWindowMs,
                            @Parameter(ServerLogPeriod.class) final long serverLogPeriod,
                            @Parameter(WorkerLogPeriod.class) final long workerLogPeriod,
-                           @Parameter(Staleness.class) final int staleness) {
+                           @Parameter(StalenessBound.class) final int stalenessBound) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.workerNumThreads = workerNumThrs;
@@ -113,7 +113,7 @@ public final class DynamicPSManager implements PSManager {
     this.workerLogPeriod = workerLogPeriod;
     this.serverLogPeriod = serverLogPeriod;
     this.serverMetricsWindowMs = serverMetricsWindowMs;
-    this.isSSPModel = staleness >= 0;
+    this.isSSPModel = stalenessBound >= 0;
   }
 
   /**
