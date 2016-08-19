@@ -36,11 +36,8 @@ import java.util.logging.Logger;
 /**
  * A worker clock for non-SSP model.
  *
- * Receive the global minimum clock from the driver and send the worker clock to the driver.
- * clock() is called once per each iteration.
- *
- * Differently from {@link SSPWorkerClock},
- * it only cares about initializing the local clock with the global minimum clock.
+ * Initially, the clock is set by receiving the global minimum clock from the driver.
+ * In each iteration, its clock is sent to the driver for tracking the global minimum clock.
  */
 @EvaluatorSide
 @Unit
@@ -57,7 +54,7 @@ public final class AsyncWorkerClock implements WorkerClock {
    */
   private final CountDownLatch initLatch = new CountDownLatch(1);
 
-  private int workerClock;
+  private volatile int workerClock;
 
   @Inject
   private AsyncWorkerClock(final AggregationSlave aggregationSlave,
@@ -76,7 +73,7 @@ public final class AsyncWorkerClock implements WorkerClock {
     final byte[] data = codec.encode(avroClockMsg);
     aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
 
-    // wait until to get current global minimum clock and initial worker clock
+    // wait until getting the initial worker clock
     try {
       initLatch.await();
     } catch (final InterruptedException e) {
@@ -85,7 +82,7 @@ public final class AsyncWorkerClock implements WorkerClock {
   }
 
   @Override
-  public synchronized void clock() {
+  public void clock() {
     workerClock++;
     LOG.log(Level.FINE, "Worker clock: {0}", workerClock);
     final AvroClockMsg avroClockMsg =
@@ -114,7 +111,7 @@ public final class AsyncWorkerClock implements WorkerClock {
 
   @Override
   public int getGlobalMinimumClock() {
-    return 0;
+    throw new UnsupportedOperationException();
   }
 
   public final class MessageHandler implements EventHandler<AggregationMessage> {
@@ -125,7 +122,7 @@ public final class AsyncWorkerClock implements WorkerClock {
       switch (avroClockMsg.getType()) {
       case ReplyInitClockMsg:
         workerClock = avroClockMsg.getReplyInitClockMsg().getInitClock();
-        LOG.log(Level.INFO, "Worker clock is initialized to {0}", workerClock);
+        LOG.log(Level.INFO, "Initialize worker clock to {0}", workerClock);
         initLatch.countDown();
         break;
       case BroadcastMinClockMsg:
