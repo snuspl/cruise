@@ -18,7 +18,8 @@ package edu.snu.cay.dolphin.async.optimizer.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Moving average window size for applying EMA to the set of collected metrics",
+@NamedParameter(doc = "Moving average window size for applying EMA to the set of collected metrics. " +
+    "This value set to 0 means to use all the values available for calculating the moving average.",
                 short_name = "moving_avg_window_size",
                 default_value = "0")
 public class MovingAverageWindowSize implements Name<Integer> {

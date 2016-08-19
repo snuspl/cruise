@@ -18,7 +18,9 @@ package edu.snu.cay.dolphin.async.optimizer.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "An exponentially decreasing weight factor for metrics in EMA",
+@NamedParameter(doc = "An exponentially decreasing weight factor for values in EMA. " +
+    "Metric weight factor can be a value between 0.0 (all values are given equal weights) " +
+    "and 1.0 (the most recent value is the only value that contributes to the EMA).",
                 short_name = "metric_weight_factor",
                 default_value = "0.0")
 public class MetricWeightFactor implements Name<Double> {
