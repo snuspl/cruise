@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.ps.avro.*;
@@ -42,7 +44,7 @@ public final class EMRoutingTableManager {
   /**
    * A mapping between store id and endpoint id of server-side evaluators.
    */
-  private final Map<Integer, String> storeIdToEndpointId = new HashMap<>();
+  private final BiMap<Integer, String> storeIdToEndpointId = HashBiMap.create();;
 
   /**
    * Server-side ElasticMemory instance.
@@ -103,13 +105,12 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * TODO #473: invoke this method when deleting memory store
    * Called when a Server instance based on EM is deleted.
    * This method cleans up existing metadata for the deleted server.
-   * @param storeId The MemoryStore id in EM.
+   * @param endpointId The Endpoint id in PS.
    */
-  public void deregisterServer(final int storeId) {
-    storeIdToEndpointId.remove(storeId);
+  public synchronized void deregisterServer(final String endpointId) {
+    storeIdToEndpointId.inverse().remove(endpointId);
   }
 
   /**
