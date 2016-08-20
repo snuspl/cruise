@@ -15,8 +15,6 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.ps.avro.*;
