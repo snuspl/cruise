@@ -41,7 +41,7 @@ final class LDATrainer implements Trainer {
   private final LDADataParser dataParser;
   private final LDABatchParameterWorker batchParameterWorker;
   private final SparseLDASampler sampler;
-  private final LDAStatCalculator stats;
+  private final LDAStatCalculator statCalculator;
   private final int numVocabs;
   private final List<Integer> vocabList;
 
@@ -54,7 +54,7 @@ final class LDATrainer implements Trainer {
   private LDATrainer(final LDADataParser dataParser,
                      final LDABatchParameterWorker batchParameterWorker,
                      final SparseLDASampler sampler,
-                     final LDAStatCalculator stats,
+                     final LDAStatCalculator statCalculator,
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
@@ -62,12 +62,12 @@ final class LDATrainer implements Trainer {
     this.dataParser = dataParser;
     this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
-    this.stats = stats;
+    this.statCalculator = statCalculator;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
-    // key numVocabs is a summary vector of word-topic distribution
+    // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
     for (int i = 0; i < numVocabs + 1; i++) {
       vocabList.add(i);
@@ -122,10 +122,11 @@ final class LDATrainer implements Trainer {
 
     LOG.log(Level.INFO, "Start computing log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
-    // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution
+    // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution,
+    // in a form of numTopics-dimensional vector
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
-    LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(stats.computeDocLLH(workload),
-        stats.computeWordLLH(wordTopicCounts, wordTopicCountsSummary)));
+    LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(statCalculator.computeDocLLH(workload),
+        statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary)));
 
     LOG.log(Level.INFO, "Iteration Ended");
   }

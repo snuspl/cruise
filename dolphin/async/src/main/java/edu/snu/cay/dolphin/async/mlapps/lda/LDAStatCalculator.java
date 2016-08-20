@@ -59,7 +59,7 @@ final class LDAStatCalculator {
   }
 
   /**
-   * Computes log likelihood for documents according to Eq. [3] in the reference.
+   * Computes log likelihood for documents (P(z)) according to Eq. [3] in the reference.
    * <ul>
    *   <li>T: {@code numTopics}</li>
    *   <li>D: Total number of documents</li>
@@ -81,7 +81,7 @@ final class LDAStatCalculator {
   }
 
   /**
-   * Computes log likelihood for word-topic vectors according to Eq. [2] in the reference.
+   * Computes log likelihood for word-topic vectors (P(w|z)) according to Eq. [2] in the reference.
    * <ul>
    *   <li>T: {@code numTopics}</li>
    *   <li>W: {@code numVocabs}</li>

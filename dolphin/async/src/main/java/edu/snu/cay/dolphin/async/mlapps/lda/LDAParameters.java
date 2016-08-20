@@ -43,11 +43,11 @@ final class LDAParameters {
   }
 
   static final class MetricKeys {
-    // The key denoting a portion of log likelihood computed from document-topic distribution.
+    // The key denoting a portion of log likelihood (P(z)) computed from document-topic distribution.
     static final String DOC_LLH =
         "LDA_TRAINER_DOC_LLH";
 
-    // The key denoting a portion of log likelihood computed from word-topic distribution.
+    // The key denoting a portion of log likelihood (P(w|z)) computed from word-topic distribution.
     static final String WORD_LLH =
         "LDA_TRAINER_WORD_LLH";
   }
