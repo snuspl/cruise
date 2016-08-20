@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.ps.avro.*;
@@ -27,6 +29,11 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Provides the routing table information used in Dynamic ParameterServer.
@@ -37,6 +44,8 @@ import java.util.*;
 @Private
 @DriverSide
 public final class EMRoutingTableManager {
+  private static final Logger LOG = Logger.getLogger(EMRoutingTableManager.class.getName());
+
   private static final String CLIENT_ID = "PS_CLIENT";
 
   /**
@@ -54,12 +63,18 @@ public final class EMRoutingTableManager {
   /**
    * Workers participating in the system and subscribing the routing table of servers.
    */
-  private final Set<String> activeWorkerIds = new HashSet<>();
+  private final Set<String> activeWorkerIds = Collections.synchronizedSet(new HashSet<>());
 
   /**
    * Workers waiting for the server initialization to receive the initial routing table for resolving servers.
    */
-  private final Set<String> waitingWorkers = new HashSet<>();
+  private final Set<String> waitingWorkers = Collections.synchronizedSet(new HashSet<>());
+
+  /**
+   * Ongoing sync operations that assures workers to be ready for the deletion of a certain server.
+   * Key is a id of server to be deleted and value is a latch for counting the number of synchronized workers.
+   */
+  private final ConcurrentMap<String, CountDownLatch> ongoingSyncs = new ConcurrentHashMap<>();
 
   /**
    * The number of initial servers, which is for deciding when to send the routing table to workers at the beginning.
@@ -110,6 +125,57 @@ public final class EMRoutingTableManager {
    */
   public void deregisterServer(final int storeId) {
     storeIdToEndpointId.remove(storeId);
+  }
+
+  /**
+   * Sync workers to be ready for the deletion of a certain by receiving updates for
+   * their {@link edu.snu.cay.services.ps.common.resolver.DynamicServerResolver}.
+   * @param serverId id of server to be deleted
+   */
+  public synchronized void syncWorkers(final String serverId) {
+    if (ongoingSyncs.containsKey(serverId)) {
+      LOG.log(Level.WARNING, "Sync for {0} is already ongoing", serverId);
+      return;
+    }
+
+    final CountDownLatch syncLatch = new CountDownLatch(activeWorkerIds.size());
+    ongoingSyncs.put(serverId, syncLatch);
+
+    LOG.log(Level.INFO, "Send sync msg for {0} to workers: {1}", new Object[]{serverId, activeWorkerIds});
+    broadcastSyncMsg(serverId);
+
+    try {
+      syncLatch.await();
+    } catch (final InterruptedException e) {
+      LOG.log(Level.WARNING, "Interrupted while waiting for synchronization", e);
+    }
+  }
+
+  private void broadcastSyncMsg(final String serverId) {
+    final RoutingTableSyncMsg routingTableSyncMsg = RoutingTableSyncMsg.newBuilder()
+        .setServerId(serverId)
+        .build();
+
+    final AvroPSMsg syncMsg =
+        AvroPSMsg.newBuilder()
+            .setType(Type.RoutingTableSyncMsg)
+            .setRoutingTableSyncMsg(routingTableSyncMsg)
+            .build();
+
+    for (final String workerId : activeWorkerIds) {
+      sender.get().send(workerId, syncMsg);
+    }
+  }
+
+  synchronized void onSyncReply(final String serverId, final String workerId) {
+    if (!ongoingSyncs.containsKey(serverId)) {
+      LOG.log(Level.WARNING, "Sync for {0} is already completed", serverId);
+      return;
+    }
+
+    LOG.log(Level.INFO, "Sync reply for {0} has been arrived from worker {1}", new Object[]{serverId, workerId});
+    final CountDownLatch syncLatch = ongoingSyncs.get(serverId);
+    syncLatch.countDown();
   }
 
   /**

@@ -41,6 +41,7 @@ public final class PlanImpl implements Plan {
   private final Set<String> workersToStart;
   private final Map<String, Set<String>> evaluatorsToDelete;
   private final Set<String> workersToStop;
+  private final Set<String> serversToSync;
   private final Map<String, List<TransferStep>> allTransferSteps;
 
   private final DAG<PlanOperation> dependencyGraph;
@@ -57,6 +58,9 @@ public final class PlanImpl implements Plan {
     this.evaluatorsToDelete = evaluatorsToDelete;
     this.workersToStop = evaluatorsToDelete.containsKey(Constants.NAMESPACE_WORKER) ?
         evaluatorsToDelete.get(Constants.NAMESPACE_WORKER) : Collections.emptySet();
+    this.serversToSync = evaluatorsToDelete.containsKey(Constants.NAMESPACE_SERVER) ?
+        evaluatorsToDelete.get(Constants.NAMESPACE_SERVER) : Collections.emptySet();
+
     this.allTransferSteps = allTransferSteps;
     this.dependencyGraph = dependencyGraph;
     this.initialOps = new HashSet<>(dependencyGraph.getRootVertices());
@@ -72,7 +76,7 @@ public final class PlanImpl implements Plan {
     for (final List<TransferStep> transferSteps : allTransferSteps.values()) {
       numTotalOps += transferSteps.size();
     }
-    numTotalOps += workersToStart.size() + workersToStop.size();
+    numTotalOps += workersToStart.size() + workersToStop.size() + serversToSync.size();
 
     this.numTotalOperations = numTotalOps;
   }
@@ -132,6 +136,7 @@ public final class PlanImpl implements Plan {
         ", workersToStart=" + workersToStart +
         ", evaluatorsToDelete=" + evaluatorsToDelete +
         ", workersToStop=" + workersToStop +
+        ", serversToSync=" + serversToSync +
         ", allTransferSteps=" + allTransferSteps +
         ", numTotalOperations=" + numTotalOperations +
         '}';
@@ -287,6 +292,7 @@ public final class PlanImpl implements Plan {
       // add vertices of Delete and Stop
       final Map<String, PlanOperation> delOperations = new HashMap<>();
       final Map<String, PlanOperation> stopOperations = new HashMap<>();
+      final Map<String, PlanOperation> syncOperations = new HashMap<>();
       for (final Map.Entry<String, Set<String>> entry : namespaceToEvalsToDel.entrySet()) {
         final String namespace = entry.getKey();
         final Set<String> evalsToDel = entry.getValue();
@@ -297,12 +303,18 @@ public final class PlanImpl implements Plan {
 
           if (namespace.equals(Constants.NAMESPACE_WORKER)) {
             final PlanOperation stopOperation
-                = new StopPlanOperation(namespace, evalToDel);
+                = new StopPlanOperation(evalToDel);
             stopOperations.put(evalToDel, stopOperation);
             dag.addVertex(stopOperation);
 
             // add 'Stop->Del' edge for the exceptional case that Del does not accompany any Moves
             dag.addEdge(stopOperation, delOperation);
+          } else {
+            final PlanOperation syncOperation
+                = new SyncPlanOperation(evalToDel);
+            syncOperations.put(evalToDel, syncOperation);
+            dag.addVertex(syncOperation);
+            dag.addEdge(syncOperation, delOperation);
           }
         }
       }
@@ -320,7 +332,7 @@ public final class PlanImpl implements Plan {
 
           if (namespace.equals(Constants.NAMESPACE_WORKER)) {
             final PlanOperation startOperation
-                = new StartPlanOperation(namespace, evalToAdd);
+                = new StartPlanOperation(evalToAdd);
             startOperations.put(evalToAdd, startOperation);
             dag.addVertex(startOperation);
 
@@ -387,14 +399,21 @@ public final class PlanImpl implements Plan {
           }
         }
 
-        // 3. stop -> move -> del
+        // 3. move -> del
         if (delOperations.containsKey(srcId)) {
           final PlanOperation delOperation = delOperations.get(srcId);
-          dag.addEdge(moveOperation, delOperation);
 
+          // worker: stop -> move -> del
           if (moveOperation.getNamespace().equals(Constants.NAMESPACE_WORKER)) {
             final PlanOperation stopOperation = stopOperations.get(srcId);
             dag.addEdge(stopOperation, moveOperation);
+            dag.addEdge(moveOperation, delOperation);
+
+          // server: move -> sync -> del
+          } else { // NAMESPACE_SERVER
+            final PlanOperation syncOperation = syncOperations.get(srcId);
+            dag.addEdge(moveOperation, syncOperation);
+            // sync -> del edge is already added when adding the sync vertex
           }
         }
       }

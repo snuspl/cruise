@@ -58,7 +58,17 @@ public interface ServerResolver {
   /**
    * Update its local routing table.
    * Note that this method is used only in the DynamicParameterServer.
+   * Send a reply msg for {@link #syncRoutingTable(String)}, if this update fulfills the requirement of the sync.
    */
   // TODO #553: Methods that are used by only one implementation should not be included in the interface.
   void updateRoutingTable(EMRoutingTableUpdate routingTableUpdate);
+
+  /**
+   * Sync its local routing table about the deletion of a certain server.
+   * It immediately sends a sync reply msg to driver, if the table does not {@code serverId}.
+   * Otherwise, it will be replied by {@link #updateRoutingTable(EMRoutingTableUpdate)}.
+   * @param serverId Network Connections Service identifier of the server.
+   */
+  // TODO #553: Methods that are used by only one implementation should not be included in the interface.
+  void syncRoutingTable(String serverId);
 }

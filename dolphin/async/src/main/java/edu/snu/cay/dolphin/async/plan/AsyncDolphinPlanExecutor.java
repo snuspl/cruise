@@ -23,6 +23,7 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.plan.api.*;
 import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
+import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -42,6 +43,7 @@ import java.util.logging.Logger;
 
 import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_WORKER;
 import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE_SERVER;
+import static edu.snu.cay.dolphin.async.plan.DolphinPlanOperation.SYNC_OP;
 import static edu.snu.cay.dolphin.async.plan.DolphinPlanOperation.START_OP;
 import static edu.snu.cay.dolphin.async.plan.DolphinPlanOperation.STOP_OP;
 import static edu.snu.cay.services.em.plan.impl.EMPlanOperation.ADD_OP;
@@ -66,6 +68,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   private final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver;
 
+  private final EMRoutingTableManager routingTableManager;
+
   private final ExecutorService mainExecutor = Executors.newSingleThreadExecutor();
 
   /**
@@ -87,10 +91,12 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
                                    @Parameter(ServerEM.class) final ElasticMemory serverEM,
-                                   @Parameter(WorkerEM.class) final ElasticMemory workerEM) {
+                                   @Parameter(WorkerEM.class) final ElasticMemory workerEM,
+                                   final EMRoutingTableManager routingTableManager) {
     this.asyncDolphinDriver = asyncDolphinDriver;
     this.serverEM = serverEM;
     this.workerEM = workerEM;
+    this.routingTableManager = routingTableManager;
   }
 
   /**
@@ -374,6 +380,9 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         case MOVE_OP:
           executeMoveOperation(operation);
           break;
+        case SYNC_OP:
+          executeSyncOperation(operation);
+          break;
         case START_OP:
           executeStartOperation(operation);
           break;
@@ -458,6 +467,14 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     default:
       throw new RuntimeException("Unsupported namespace");
     }
+  }
+
+  private void executeSyncOperation(final PlanOperation syncOp) {
+    final String serverId = syncOp.getEvalId().get();
+    LOG.log(Level.FINE, "SYNC: server {0}", serverId);
+    routingTableManager.syncWorkers(serverId);
+
+    onOperationComplete(syncOp);
   }
 
   private void executeStartOperation(final PlanOperation startOp) {

@@ -53,6 +53,10 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPSMs
       onWorkerDeregisterMsg(srcId);
       break;
 
+    case RoutingTableSyncReplyMsg:
+      onRoutingTableSyncReplyMsg(msg.getRoutingTableSyncMsg().getServerId().toString(), srcId);
+      break;
+
     default:
       throw new RuntimeException("Unexpected message type: " + msg.getType().toString());
     }
@@ -64,5 +68,9 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPSMs
 
   private void onWorkerDeregisterMsg(final String srcId) {
     routingTableManager.deregisterWorker(srcId);
+  }
+
+  private void onRoutingTableSyncReplyMsg(final String serverId, final String srcId) {
+    routingTableManager.onSyncReply(serverId, srcId);
   }
 }

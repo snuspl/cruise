@@ -21,6 +21,7 @@ import edu.snu.cay.services.ps.worker.impl.WorkerMsgSender;
 import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +57,11 @@ public final class DynamicServerResolver implements ServerResolver {
    * A latch that opens when initialization is done.
    */
   private final CountDownLatch initLatch = new CountDownLatch(1);
+
+  /**
+   * A set maintaining sync requests about the deletion of a certain server.
+   */
+  private final Set<String> ongoingSyncs = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private final InjectionFuture<WorkerMsgSender> msgSender;
 
@@ -181,6 +187,24 @@ public final class DynamicServerResolver implements ServerResolver {
       LOG.log(Level.FINER, "Mapping was stale about block {0}", blockId);
     } else {
       LOG.log(Level.FINE, "Mapping table in server resolver is updated");
+    }
+
+    // remove old server eval id, if it has no block
+    if (!blockIdToStoreId.containsValue(oldOwnerId)) {
+      final String deletedServerId = storeIdToEndpointId.remove(oldOwnerId);
+
+      if (deletedServerId != null && ongoingSyncs.remove(deletedServerId)) {
+        msgSender.get().sendRoutingTableSyncReplyMsg(deletedServerId);
+      }
+    }
+  }
+
+  @Override
+  public synchronized void syncRoutingTable(final String serverId) {
+    if (!storeIdToEndpointId.containsValue(serverId)) {
+      msgSender.get().sendRoutingTableSyncReplyMsg(serverId);
+    } else {
+      ongoingSyncs.add(serverId);
     }
   }
 }
