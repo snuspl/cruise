@@ -227,7 +227,7 @@ public class MigrationManagerTest {
     assertTrue("Move does not finish within time", movedLatch.await(10000, TimeUnit.MILLISECONDS));
 
     int loop = 0;
-    final int numUpdatesInFirstMoves = numMoves - finishedCallback.getNumFailedMoves();
+    final int numUpdatesInFirstMoves = finishedCallback.getNumMovedBlocks();
     while (updateCallback0.getUpdateCount() < numUpdatesInFirstMoves ||
         updateCallback1.getUpdateCount() < numUpdatesInFirstMoves) {
       loop++;
@@ -254,7 +254,7 @@ public class MigrationManagerTest {
     assertTrue("Move does not finish within time", movedLatch.await(10000, TimeUnit.MILLISECONDS));
 
     loop = 0;
-    final int numUpdatesInSecondMoves = numMoves - finishedCallback.getNumFailedMoves();
+    final int numUpdatesInSecondMoves = finishedCallback.getNumMovedBlocks();
     while (updateCallback0.getUpdateCount() < numUpdatesInFirstMoves + numUpdatesInSecondMoves) {
       loop++;
       Thread.sleep(WAIT_INTERVAL_MS);
