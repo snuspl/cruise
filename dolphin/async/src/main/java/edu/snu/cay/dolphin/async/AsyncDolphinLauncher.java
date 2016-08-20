@@ -43,6 +43,7 @@ import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
+import edu.snu.cay.services.ps.worker.impl.AsyncWorkerClock;
 import edu.snu.cay.services.ps.worker.impl.SSPWorkerClock;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.trace.HTraceParameters;
@@ -501,7 +502,11 @@ public final class AsyncDolphinLauncher {
   }
 
   private static AggregationConfiguration getAggregationConfigurationDefault() {
-    return getAggregationConfigurationDefaultBuilder().build();
+    return getAggregationConfigurationDefaultBuilder()
+        .addAggregationClient(ClockManager.AGGREGATION_CLIENT_NAME,
+            ClockManager.MessageHandler.class,
+            AsyncWorkerClock.MessageHandler.class)
+        .build();
   }
 
   private static AggregationConfiguration getAggregationConfigurationForSSP() {
