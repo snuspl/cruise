@@ -36,7 +36,7 @@ final class SparseLDASampler {
   private final int numTopics;
   private final int numVocabs;
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final LDABatchParameterWorker batchWorker;
+  private final LDABatchParameterWorker batchParameterWorker;
 
   @Inject
   private SparseLDASampler(@Parameter(Alpha.class) final double alpha,
@@ -44,13 +44,13 @@ final class SparseLDASampler {
                            @Parameter(NumTopics.class) final int numTopics,
                            @Parameter(NumVocabs.class) final int numVocabs,
                            final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                           final LDABatchParameterWorker batchWorker) {
+                           final LDABatchParameterWorker batchParameterWorker) {
     this.alpha = alpha;
     this.beta = beta;
     this.numTopics = numTopics;
     this.numVocabs = numVocabs;
     this.parameterWorker = parameterWorker;
-    this.batchWorker = batchWorker;
+    this.batchParameterWorker = batchParameterWorker;
   }
 
   void sample(final Document document) {
@@ -163,15 +163,15 @@ final class SparseLDASampler {
 
       if (newTopic != oldTopic) {
         // Push the changes to the parameter servers
-        batchWorker.addTopicChange(word, oldTopic, -1);
-        batchWorker.addTopicChange(word, newTopic, 1);
+        batchParameterWorker.addTopicChange(word, oldTopic, -1);
+        batchParameterWorker.addTopicChange(word, newTopic, 1);
         // numVocabs-th row represents the total word-topic assignment count vector
-        batchWorker.addTopicChange(numVocabs, oldTopic, -1);
-        batchWorker.addTopicChange(numVocabs, newTopic, 1);
+        batchParameterWorker.addTopicChange(numVocabs, oldTopic, -1);
+        batchParameterWorker.addTopicChange(numVocabs, newTopic, 1);
       }
     }
 
-    batchWorker.pushAndClear();
+    batchParameterWorker.pushAndClear();
   }
 
   private int sampleFromTerms(final double randomVar, final double[] terms) {

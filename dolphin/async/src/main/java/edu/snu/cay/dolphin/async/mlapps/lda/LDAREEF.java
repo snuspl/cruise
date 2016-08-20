@@ -24,6 +24,7 @@ import javax.inject.Inject;
 
 /**
  * Run Latent Dirichlet Allocation algorithm on dolphin-async.
+ * Input dataset should be preprocessed to have continuous (no missing) vocabulary indices.
  */
 public final class LDAREEF {
 

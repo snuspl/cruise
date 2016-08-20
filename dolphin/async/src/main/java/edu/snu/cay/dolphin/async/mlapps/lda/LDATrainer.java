@@ -39,9 +39,9 @@ final class LDATrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(LDATrainer.class.getName());
 
   private final LDADataParser dataParser;
-  private final LDABatchParameterWorker batchWorker;
+  private final LDABatchParameterWorker batchParameterWorker;
   private final SparseLDASampler sampler;
-  private final LDAStats stats;
+  private final LDAStatCalculator stats;
   private final int numVocabs;
   private final List<Integer> vocabList;
 
@@ -52,21 +52,22 @@ final class LDATrainer implements Trainer {
 
   @Inject
   private LDATrainer(final LDADataParser dataParser,
-                     final LDABatchParameterWorker batchWorker,
+                     final LDABatchParameterWorker batchParameterWorker,
                      final SparseLDASampler sampler,
-                     final LDAStats stats,
+                     final LDAStatCalculator stats,
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
                      @Parameter(NumVocabs.class) final int numVocabs) {
     this.dataParser = dataParser;
-    this.batchWorker = batchWorker;
+    this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
     this.stats = stats;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
+    // key numVocabs is a summary vector of word-topic distribution
     this.vocabList = new ArrayList<>(numVocabs + 1);
     for (int i = 0; i < numVocabs + 1; i++) {
       vocabList.add(i);
@@ -89,11 +90,11 @@ final class LDATrainer implements Trainer {
     for (final Document document : documents) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
-        batchWorker.addTopicChange(word, document.getAssignment(i), 1);
+        batchParameterWorker.addTopicChange(word, document.getAssignment(i), 1);
         // numVocabs-th row represents the total word-topic assignment count vector
-        batchWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
+        batchParameterWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
       }
-      batchWorker.pushAndClear();
+      batchParameterWorker.pushAndClear();
     }
 
     LOG.log(Level.INFO, "All random topic assignments are updated");
@@ -121,6 +122,7 @@ final class LDATrainer implements Trainer {
 
     LOG.log(Level.INFO, "Start computing log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
+    // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
     LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(stats.computeDocLLH(workload),
         stats.computeWordLLH(wordTopicCounts, wordTopicCountsSummary)));
