@@ -23,7 +23,7 @@ import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.avro.RequestInitClockMsg;
 import edu.snu.cay.services.ps.avro.TickMsg;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
-import edu.snu.cay.services.ps.worker.parameters.Staleness;
+import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
@@ -55,8 +55,8 @@ import static org.mockito.Mockito.mock;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({AggregationSlave.class, AggregationMaster.class})
 public final class ClockManagerTest {
-  private final int staleness = 4;
-  private final int numWorkers = 10;
+  private static final int STALENESS_BOUND = 4;
+  private static final int NUM_WORKERS = 10;
 
   private AggregationSlave mockAggregationSlave;
   private AggregationMaster mockAggregationMaster;
@@ -67,7 +67,7 @@ public final class ClockManagerTest {
   @Before
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(Staleness.class, Integer.toString(staleness))
+        .bindNamedParameter(StalenessBound.class, Integer.toString(STALENESS_BOUND))
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
@@ -99,8 +99,8 @@ public final class ClockManagerTest {
   @Test
   public void testInitializingWorkers() throws InjectionException, NetworkException {
     final int initialGlobalMinimumClock = clockManager.getGlobalMinimumClock();
-    final int expectedClockOfWorkersAddedByEM = clockManager.getGlobalMinimumClock() + (staleness / 2);
-    final int numEarlyWorkers = numWorkers / 2;
+    final int expectedClockOfWorkersAddedByEM = clockManager.getGlobalMinimumClock() + (STALENESS_BOUND / 2);
+    final int numEarlyWorkers = NUM_WORKERS / 2;
 
     // initialize the clock of workers not added by EM
     for (int workerIdx = 0; workerIdx < numEarlyWorkers; workerIdx++) {
@@ -123,7 +123,7 @@ public final class ClockManagerTest {
     assertEquals(initialGlobalMinimumClock, clockManager.getGlobalMinimumClock());
 
     // initialize the clock of workers added by EM
-    for (int workerIdx = numEarlyWorkers; workerIdx < numWorkers; workerIdx++) {
+    for (int workerIdx = numEarlyWorkers; workerIdx < NUM_WORKERS; workerIdx++) {
       final String workerId = Integer.toString(workerIdx);
       clockManager.onWorkerAdded(true, workerId);
 
@@ -151,12 +151,12 @@ public final class ClockManagerTest {
     final int initialGlobalMinimumClock = clockManager.getGlobalMinimumClock();
 
     // add workers(not added by EM)
-    for (int workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
+    for (int workerIdx = 0; workerIdx < NUM_WORKERS; workerIdx++) {
       final String workerId = Integer.toString(workerIdx);
       clockManager.onWorkerAdded(false, workerId);
     }
 
-    for (int workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
+    for (int workerIdx = 0; workerIdx < NUM_WORKERS; workerIdx++) {
       final String workerId = Integer.toString(workerIdx);
       // tick worker id times
       for (int i = 0; i < workerIdx; i++) {
@@ -173,7 +173,7 @@ public final class ClockManagerTest {
 
     // delete minimum clock worker
     // in this test, minimum clock worker has minimum worker id
-    for (int workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
+    for (int workerIdx = 0; workerIdx < NUM_WORKERS; workerIdx++) {
       assertEquals(initialGlobalMinimumClock + workerIdx, clockManager.getGlobalMinimumClock());
 
       final String workerId = Integer.toString(workerIdx);
@@ -195,7 +195,7 @@ public final class ClockManagerTest {
     // the number of broadcast messages that are sent from ClockManager.
     // each broadcast message is sent to all workers,
     // so the total message count is numberOfMinClockUpdates(=NUM_WORKERS) * NUM_WORKERS.
-    final int expectedNumberOfBroadcastMessages = numWorkers * numWorkers;
+    final int expectedNumberOfBroadcastMessages = NUM_WORKERS * NUM_WORKERS;
     final AtomicInteger numberOfBroadcastMessages = new AtomicInteger(0);
 
     doAnswer(invocation -> {
@@ -210,12 +210,12 @@ public final class ClockManagerTest {
       }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
 
     // add workers first to set same initial clock to all workers
-    for (int workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
+    for (int workerIdx = 0; workerIdx < NUM_WORKERS; workerIdx++) {
       final String workerId = Integer.toString(workerIdx);
       clockManager.onWorkerAdded(false, workerId);
     }
 
-    for (int workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
+    for (int workerIdx = 0; workerIdx < NUM_WORKERS; workerIdx++) {
       final String workerId = Integer.toString(workerIdx);
       // tick clock its worker id times
       for (int i = 0; i < workerIdx; i++) {
@@ -230,7 +230,7 @@ public final class ClockManagerTest {
       workerClockMap.put(workerId, initialGlobalMinimumClock + workerIdx);
     }
 
-    for (int workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
+    for (int workerIdx = 0; workerIdx < NUM_WORKERS; workerIdx++) {
 
       // tick workers with minimum clock
       for (int i = 0; i <= workerIdx; i++) {

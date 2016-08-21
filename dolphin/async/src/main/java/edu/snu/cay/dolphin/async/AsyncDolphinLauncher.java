@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
+import edu.snu.cay.dolphin.async.optimizer.parameters.MetricWeightFactor;
+import edu.snu.cay.dolphin.async.optimizer.parameters.MovingAverageWindowSize;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
@@ -41,6 +43,7 @@ import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
+import edu.snu.cay.services.ps.worker.impl.AsyncWorkerClock;
 import edu.snu.cay.services.ps.worker.impl.SSPWorkerClock;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.trace.HTraceParameters;
@@ -292,6 +295,8 @@ public final class AsyncDolphinLauncher {
     // add optimizer parameters
     basicParameterClassList.add(OptimizationIntervalMs.class);
     basicParameterClassList.add(DelayAfterOptimizationMs.class);
+    basicParameterClassList.add(MetricWeightFactor.class);
+    basicParameterClassList.add(MovingAverageWindowSize.class);
 
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {
       cl.registerShortNameOfClass(basicParameterClass);
@@ -365,8 +370,8 @@ public final class AsyncDolphinLauncher {
         .setDriverConfigurationModule(driverConf)
         .build();
 
-    final int staleness = injector.getNamedInstance(Staleness.class);
-    final boolean isSSPModel = staleness >= 0;
+    final int stalenessBound = injector.getNamedInstance(StalenessBound.class);
+    final boolean isSSPModel = stalenessBound >= 0;
     final AggregationConfiguration aggregationServiceConf = isSSPModel ?
         getAggregationConfigurationForSSP() : getAggregationConfigurationDefault();
     // set up an optimizer configuration
@@ -497,7 +502,11 @@ public final class AsyncDolphinLauncher {
   }
 
   private static AggregationConfiguration getAggregationConfigurationDefault() {
-    return getAggregationConfigurationDefaultBuilder().build();
+    return getAggregationConfigurationDefaultBuilder()
+        .addAggregationClient(ClockManager.AGGREGATION_CLIENT_NAME,
+            ClockManager.MessageHandler.class,
+            AsyncWorkerClock.MessageHandler.class)
+        .build();
   }
 
   private static AggregationConfiguration getAggregationConfigurationForSSP() {

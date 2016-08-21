@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.parameters;
+package edu.snu.cay.dolphin.async.optimizer.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "The staleness limits the maximum staleness of computational workers, " +
-    "a number greater than or equal to 0 is valid value of SSP, " +
-    "and a negative value means total asynchronous model support rather than SSP model",
-    default_value = "-1", short_name = "staleness")
-public final class Staleness implements Name<Integer> {
-
+@NamedParameter(doc = "An exponentially decreasing weight factor for values in EMA. " +
+    "Metric weight factor can be a value between 0.0 (all values are given equal weights) " +
+    "and 1.0 (the most recent value is the only value that contributes to the EMA).",
+                short_name = "metric_weight_factor",
+                default_value = "0.0")
+public class MetricWeightFactor implements Name<Double> {
 }

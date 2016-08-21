@@ -829,6 +829,9 @@ public final class AsyncDolphinDriver {
     } else if (deletedServerContextIds.remove(contextId)) {
       LOG.log(Level.INFO, "The server context {0} is closed by EM's Delete.", contextId);
 
+      // notify RoutingTableManager about the deletion of server
+      emRoutingTableManager.deregisterServer(contextId);
+
       if (!parentContext.isPresent()) {
         throw new RuntimeException("Root context of the deleted server context does not exist");
       }

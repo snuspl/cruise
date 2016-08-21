@@ -24,9 +24,7 @@ import edu.snu.cay.services.ps.avro.TickMsg;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
-import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
@@ -36,15 +34,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A worker clock of SSP model.
+ * A worker clock for non-SSP model.
  *
- * Receive the global minimum clock from the driver and send the worker clock to the driver.
- * clock() is called once per each iteration.
+ * Initially, the clock is set by receiving the global minimum clock from the driver.
+ * In each iteration, its clock is sent to the driver for tracking the global minimum clock.
  */
 @EvaluatorSide
 @Unit
-public final class SSPWorkerClock implements WorkerClock {
-  private static final Logger LOG = Logger.getLogger(SSPWorkerClock.class.getName());
+public final class AsyncWorkerClock implements WorkerClock {
+  private static final Logger LOG = Logger.getLogger(AsyncWorkerClock.class.getName());
 
   private final AggregationSlave aggregationSlave;
 
@@ -54,51 +52,30 @@ public final class SSPWorkerClock implements WorkerClock {
    * The latch to wait until ReplyInitClockMsg arrive.
    * The message is sent only once.
    */
-  private final CountDownLatch initLatch;
+  private final CountDownLatch initLatch = new CountDownLatch(1);
 
-  private final int stalenessBound;
-
-  private int workerClock;
-
-  /**
-   * The minimum clock among all worker clocks.
-   */
-  private int globalMinimumClock;
-
-  /**
-   * The network waiting time spent on sending clock-related messages.
-   * The time unit is millisecond.
-   */
-  private long clockNetworkWaitingTime;
+  private volatile int workerClock;
 
   @Inject
-  private SSPWorkerClock(@Parameter(StalenessBound.class) final int stalenessBound,
-                         final AggregationSlave aggregationSlave,
-                         final ClockMsgCodec codec) {
-    this.stalenessBound = stalenessBound;
-    this.aggregationSlave = aggregationSlave;
+  private AsyncWorkerClock(final AggregationSlave aggregationSlave,
+                           final ClockMsgCodec codec) {
     this.codec = codec;
-    this.initLatch = new CountDownLatch(1);
-    this.workerClock = -1;
-    this.globalMinimumClock = -1;
-    this.clockNetworkWaitingTime = 0;
+    this.aggregationSlave = aggregationSlave;
   }
 
   @Override
   public void initialize() {
     final AvroClockMsg avroClockMsg =
         AvroClockMsg.newBuilder()
-        .setType(ClockMsgType.RequestInitClockMsg)
-        .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
-        .build();
+            .setType(ClockMsgType.RequestInitClockMsg)
+            .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
+            .build();
     final byte[] data = codec.encode(avroClockMsg);
-    final long beginTime = System.currentTimeMillis();
     aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
 
-    // wait until to get current global minimum clock and initial worker clock
+    // wait until getting the initial worker clock
     try {
       initLatch.await();
-      clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
     } catch (final InterruptedException e) {
       throw new RuntimeException("Unexpected exception", e);
     }
@@ -107,29 +84,24 @@ public final class SSPWorkerClock implements WorkerClock {
   @Override
   public void clock() {
     workerClock++;
+    LOG.log(Level.FINE, "Worker clock: {0}", workerClock);
     final AvroClockMsg avroClockMsg =
         AvroClockMsg.newBuilder()
             .setType(ClockMsgType.TickMsg)
             .setTickMsg(TickMsg.newBuilder().build())
             .build();
     final byte[] data = codec.encode(avroClockMsg);
-    final long beginTime = System.currentTimeMillis();
     aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
-    clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
   }
 
   @Override
-  public synchronized void waitIfExceedingStalenessBound() throws InterruptedException {
-    final long beginTime = System.currentTimeMillis();
-    while (workerClock > globalMinimumClock + stalenessBound) {
-      wait();
-    }
-    clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
+  public void waitIfExceedingStalenessBound() {
+
   }
 
   @Override
   public void recordClockNetworkWaitingTime() {
-    LOG.log(Level.INFO, "Total network waiting time for clock is {0}", clockNetworkWaitingTime);
+
   }
 
   @Override
@@ -139,12 +111,7 @@ public final class SSPWorkerClock implements WorkerClock {
 
   @Override
   public int getGlobalMinimumClock() {
-    return globalMinimumClock;
-  }
-
-  private synchronized void updateGlobalMinimumClock(final int updatedGlobalMinimumClock) {
-    globalMinimumClock = updatedGlobalMinimumClock;
-    notifyAll();
+    throw new UnsupportedOperationException();
   }
 
   public final class MessageHandler implements EventHandler<AggregationMessage> {
@@ -154,12 +121,12 @@ public final class SSPWorkerClock implements WorkerClock {
       final AvroClockMsg avroClockMsg = codec.decode(aggregationMessage.getData().array());
       switch (avroClockMsg.getType()) {
       case ReplyInitClockMsg:
-        globalMinimumClock = avroClockMsg.getReplyInitClockMsg().getGlobalMinClock();
         workerClock = avroClockMsg.getReplyInitClockMsg().getInitClock();
+        LOG.log(Level.INFO, "Initialize worker clock to {0}", workerClock);
         initLatch.countDown();
         break;
       case BroadcastMinClockMsg:
-        updateGlobalMinimumClock(avroClockMsg.getBroadcastMinClockMsg().getGlobalMinClock());
+        // do not care
         break;
       default:
         throw new RuntimeException("Unexpected message type: " + avroClockMsg.getType().toString());

@@ -155,6 +155,7 @@ public final class OptimizationOrchestratorTest {
       workerStoreIdMap.put(i, Collections.emptySet());
       final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
           .setNumDataBlocks(NUM_BLOCKS)
+          .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
           .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
@@ -196,6 +197,7 @@ public final class OptimizationOrchestratorTest {
     for (int i = 0; i < numWorkers; i++) {
       final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
           .setNumDataBlocks(NUM_BLOCKS)
+          .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
           .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
@@ -234,6 +236,7 @@ public final class OptimizationOrchestratorTest {
       workerStoreIdMap.put(i, Collections.emptySet());
       final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
           .setNumDataBlocks(NUM_BLOCKS)
+          .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
           .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
