@@ -80,7 +80,7 @@ final class DolphinPlanOperation {
         return false;
       }
 
-      final StartPlanOperation that = (StartPlanOperation) o;
+      final SyncPlanOperation that = (SyncPlanOperation) o;
 
       return namespace.equals(that.namespace) && evalId.equals(that.evalId);
     }

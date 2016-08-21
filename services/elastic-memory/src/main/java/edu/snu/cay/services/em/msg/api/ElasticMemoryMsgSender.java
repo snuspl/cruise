@@ -98,7 +98,7 @@ public interface ElasticMemoryMsgSender {
    * It is for Driver to tell evaluator {@code destId} that
    * {@code blocks} are moved from {@code oldEvalId} to {@code newEvalId}.
    */
-  void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blockIds,
+  void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
                                  final String oldEvalId, final String newEvalId,
                                  @Nullable final TraceInfo parentTraceInfo);
 

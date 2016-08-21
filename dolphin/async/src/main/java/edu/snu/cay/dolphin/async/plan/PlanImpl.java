@@ -309,11 +309,15 @@ public final class PlanImpl implements Plan {
 
             // add 'Stop->Del' edge for the exceptional case that Del does not accompany any Moves
             dag.addEdge(stopOperation, delOperation);
-          } else {
+
+          } else { // NAMESPACE_SERVER
             final PlanOperation syncOperation
                 = new SyncPlanOperation(evalToDel);
             syncOperations.put(evalToDel, syncOperation);
             dag.addVertex(syncOperation);
+
+            // add 'Sync -> Del' edge here.
+            // It means that Sync always precedes Del, even if Sync does not accompany any Moves
             dag.addEdge(syncOperation, delOperation);
           }
         }
@@ -413,7 +417,7 @@ public final class PlanImpl implements Plan {
           } else { // NAMESPACE_SERVER
             final PlanOperation syncOperation = syncOperations.get(srcId);
             dag.addEdge(moveOperation, syncOperation);
-            // sync -> del edge is already added when adding the sync vertex
+            // 'Sync -> Del' edge is already added when adding the sync vertex
           }
         }
       }

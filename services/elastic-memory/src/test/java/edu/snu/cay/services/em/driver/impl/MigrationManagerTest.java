@@ -464,7 +464,7 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blockIds,
+    public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
                                           final String oldOwnerId, final String newOwnerId,
                                           @Nullable final TraceInfo parentTraceInfo) {
       // called when move is finished, so as to broadcast the change of the routing table
