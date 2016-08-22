@@ -771,30 +771,35 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
      */
     @Override
     public void run() {
-      while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
-        // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
-        try {
-          final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-          if (op == null) {
+      try {
+        while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
+          // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
+          try {
+            final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            if (op == null) {
+              continue;
+            }
+            op.apply(kvCache);
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
             continue;
           }
-          op.apply(kvCache);
-        } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
-          continue;
+
+          // Then, drain up to drainSize of the remaining queue and apply.
+          // Calling drainTo does not block if queue is empty, which is why we poll first.
+          // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
+          queue.drainTo(localOps, drainSize);
+          for (final Op<K, V> op : localOps) {
+            op.apply(kvCache);
+          }
+          localOps.clear();
         }
 
-        // Then, drain up to drainSize of the remaining queue and apply.
-        // Calling drainTo does not block if queue is empty, which is why we poll first.
-        // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
-        queue.drainTo(localOps, drainSize);
-        for (final Op<K, V> op : localOps) {
-          op.apply(kvCache);
-        }
-        localOps.clear();
+        finishClose();
+      } catch (final RuntimeException e) {
+        LOG.log(Level.SEVERE, "PS worker thread has been down due to RuntimeException", e);
+        throw e;
       }
-
-      finishClose();
     }
 
     /**
