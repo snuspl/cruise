@@ -87,7 +87,7 @@ final class AsyncWorkerTask implements Task {
         workerClock.recordClockNetworkWaitingTime();
         return null;
       }
-      trainer.run();
+      trainer.run(iteration);
       workerClock.clock();
     }
 
