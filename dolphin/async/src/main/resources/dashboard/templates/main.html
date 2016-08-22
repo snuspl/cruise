@@ -25,7 +25,7 @@
         <h1>Dolphin</h1> 
     </div>
     <div class='w3-container'>
-        <!-- Select bar -->
+        <!-- Selection bar -->
         <ul class='w3-light-grey w3-navbar'>
             <li class='w3-col m2 l1' style='line-height:35px;text-align:center'>Detail</li>
             <!--objects-->
@@ -61,6 +61,7 @@
     var objects;
     var id;
     var requestTimer;
+    // When users choose which object to see, change the y-axis-items to those belong to the objects.
     $('.dd-obj-query').change(function(){
         clearInterval(requestTimer);
         var objects = this.value;
@@ -80,6 +81,7 @@
         });
     });
 
+    // reload data from the server every 1 sec to provide real-time visualization.
     function reloadData() {
         requestTimer = setInterval(function(){
             var objects = $('#objects').val();

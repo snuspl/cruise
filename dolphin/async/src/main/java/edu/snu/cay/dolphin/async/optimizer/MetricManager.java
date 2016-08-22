@@ -32,6 +32,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -77,10 +78,20 @@ public final class MetricManager {
   private final boolean dashboardEnabled;
 
   /**
+   * Thread for sending metrics to dashboard server.
+   */
+  private final ExecutorService metricsSenderThread = Executors.newSingleThreadScheduledExecutor();
+
+  /**
+   * Metrics request queue.
+   */
+  private final BlockingQueue<String> metricsRequestQueue = new ArrayBlockingQueue<String>(128);
+
+  /**
    * Constructor of MetricManager.
    * @param hostAddress Host address of the dashboard server. The address is set lazily at the constructor
    *                    if the client has configured a feasible port number.
-   * @param port Port number of dolphin dashboard server.
+   * @param port        Port number of dolphin dashboard server.
    */
   @Inject
   private MetricManager(@Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
@@ -94,10 +105,26 @@ public final class MetricManager {
     this.dashboardEnabled = !hostAddress.isEmpty();
     this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
     if (this.dashboardEnabled) {
+      runMetricsSenderThread();
       LOG.log(Level.INFO, "Dashboard url: {0}", dashboardURL);
     } else {
       LOG.log(Level.INFO, "Dashboard is not in use");
     }
+  }
+
+  void runMetricsSenderThread() {
+    metricsSenderThread.execute(new Runnable() {
+      @Override
+      public void run() {
+        while (true) {
+          try {
+            sendMetricsToDashboard(metricsRequestQueue.take());
+          } catch (InterruptedException e) {
+            LOG.log(Level.WARNING, "");
+          }
+        }
+      }
+    });
   }
 
   /**
@@ -134,7 +161,8 @@ public final class MetricManager {
 
     // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
     if (this.dashboardEnabled) {
-      sendMetricsToDashboard(workerId, metrics.toString());
+      metricsRequestQueue.add(String.format("id=%s&metrics=%s&time=%d",
+          workerId, metrics, System.currentTimeMillis()));
     }
   }
 
@@ -172,7 +200,8 @@ public final class MetricManager {
 
     // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
     if (this.dashboardEnabled) {
-      sendMetricsToDashboard(serverId, metrics.toString());
+      metricsRequestQueue.add(String.format("id=%s&metrics=%s&time=%d",
+          serverId, metrics, System.currentTimeMillis()));
     }
   }
 
@@ -248,10 +277,9 @@ public final class MetricManager {
 
   /**
    * Send metrics to Dashboard server.
-   * @param id ID of the part which is sending the metrics.
-   * @param metrics The metrics to send to the Dashboard server.
+   * @param request The POST request content which is to be sent to the dashboard server.
    */
-  private void sendMetricsToDashboard(final String id, final String metrics) {
+  private void sendMetricsToDashboard(final String request) {
     try {
       // Build http connection with the Dashboard server, set configurations.
       // TODO #722: Create WebSocket instead of connecting every time to send metrics to Dashboard server
@@ -265,8 +293,7 @@ public final class MetricManager {
 
       // Send metrics via outputStream to the Dashboard server.
       try (final OutputStream os = con.getOutputStream()) {
-        final String param = "id=" + id + "&metrics=" + metrics + "&time=" + System.currentTimeMillis();
-        os.write((param).getBytes());
+        os.write((request).getBytes());
         os.flush();
       }
 
