@@ -796,6 +796,9 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
         }
 
         finishClose();
+
+      // catch and rethrow RuntimeException after leaving a log
+      // otherwise, the thread disapperas without any noticeable marks
       } catch (final RuntimeException e) {
         LOG.log(Level.SEVERE, "PS worker thread has been down due to RuntimeException", e);
         throw e;
