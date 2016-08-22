@@ -106,11 +106,6 @@ final class MLRTrainer implements Trainer {
   private List<Integer> classPartitionIndices;
 
   /**
-   * Number of times {@code run()} has been called.
-   */
-  private int iteration;
-
-  /**
    * The step size drops by this rate.
    */
   private final double decayRate;
@@ -164,7 +159,6 @@ final class MLRTrainer implements Trainer {
     this.vectorFactory = vectorFactory;
     this.oldModels = new Vector[numClasses];
     this.newModels = new Vector[numClasses];
-    this.iteration = 0;
     this.decayRate = decayRate;
     this.decayPeriod = decayPeriod;
     this.trainErrorDatasetSize = trainErrorDatasetSize;
@@ -214,8 +208,7 @@ final class MLRTrainer implements Trainer {
   }
 
   @Override
-  public void run() {
-    ++iteration;
+  public void run(final int iteration) {
     final long iterationBegin = System.currentTimeMillis();
     resetTracers();
 
@@ -292,7 +285,7 @@ final class MLRTrainer implements Trainer {
     final Metrics appMetrics = buildAppMetrics(lossRegLossAccuracy.getFirst(),
         lossRegLossAccuracy.getSecond(), (double) lossRegLossAccuracy.getThird(), elapsedTime, numInstances);
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(appMetrics, numEMBlocks, workload.size(), elapsedTime);
+        buildMetricsMsg(iteration, appMetrics, numEMBlocks, workload.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
@@ -463,7 +456,7 @@ final class MLRTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final Metrics appMetrics, final int numDataBlocks,
+  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numDataBlocks,
                                         final int numProcessedDataItemCount, final double elapsedTime) {
     final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
         .setMetrics(appMetrics)

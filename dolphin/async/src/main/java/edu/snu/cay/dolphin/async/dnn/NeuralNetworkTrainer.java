@@ -49,8 +49,6 @@ final class NeuralNetworkTrainer implements Trainer {
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
-  private int iteration = 0;
-
   /**
    * @param dataParser the parser that transforms input data into {@link NeuralNetworkData} instances
    * @param neuralNetwork the neural network model
@@ -86,7 +84,7 @@ final class NeuralNetworkTrainer implements Trainer {
   }
 
   @Override
-  public void run() {
+  public void run(final int iteration) {
     final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
     final Collection<NeuralNetworkData> workload = workloadMap.values();
     final Collection<NeuralNetworkData> validationWorkload = Collections.emptyList();
@@ -119,7 +117,7 @@ final class NeuralNetworkTrainer implements Trainer {
     }
 
     LOG.log(Level.INFO, generateIterationLog(
-        trainingValidator.getValidationStats(), crossValidator.getValidationStats(), iteration++));
+        trainingValidator.getValidationStats(), crossValidator.getValidationStats(), iteration));
 
     crossValidator.getValidationStats().reset();
     trainingValidator.getValidationStats().reset();
