@@ -103,6 +103,8 @@ final class SynchronizationManager {
                                  final DataLoadingService dataLoadingService) {
     this.aggregationMaster = aggregationMaster;
     this.codec = codec;
+
+    // TODO #452: Decouple numWorkers from data input splits
     this.numInitialWorkers = dataLoadingService.getNumberOfPartitions();
     this.globalStateMachine = initStateMachine();
   }
