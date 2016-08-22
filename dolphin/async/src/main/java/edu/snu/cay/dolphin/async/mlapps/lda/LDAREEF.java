@@ -17,23 +17,23 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
+import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 
 import javax.inject.Inject;
 
 /**
  * Run Latent Dirichlet Allocation algorithm on dolphin-async.
+ * Input dataset should be preprocessed to have continuous (no missing) vocabulary indices.
  */
-public final class LdaREEF {
+public final class LDAREEF {
 
   @Inject
-  private LdaREEF() {
+  private LDAREEF() {
   }
 
   public static void main(final String[] args) {
-    AsyncDolphinLauncher.launch("LdaREEF", args, AsyncDolphinConfiguration.newBuilder()
+    AsyncDolphinLauncher.launch("LDAREEF", args, AsyncDolphinConfiguration.newBuilder()
         .addParameterClass(Alpha.class)
         .addParameterClass(Beta.class)
         .addParameterClass(NumTopics.class)
@@ -41,36 +41,9 @@ public final class LdaREEF {
         .setKeyCodecClass(SerializableCodec.class)
         .setPreValueCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
-        .setUpdaterClass(LdaUpdater.class)
-        .setTrainerClass(LdaTrainer.class)
+        .setUpdaterClass(LDAUpdater.class)
+        .setTrainerClass(LDATrainer.class)
         .build());
   }
 
-  /**
-   * A parameter of the Dirichlet prior on the per-document topic distribution.
-   */
-  @NamedParameter(short_name = "alpha", default_value = "0.001")
-  public static final class Alpha implements Name<Double> {
-  }
-
-  /**
-   * A parameter of the Dirichlet prior on the per-topic word distribution.
-   */
-  @NamedParameter(short_name = "beta", default_value = "0.01")
-  public static final class Beta implements Name<Double> {
-  }
-
-  /**
-   * The number of topics.
-   */
-  @NamedParameter(short_name = "num_topics", default_value = "100")
-  public static final class NumTopics implements Name<Integer> {
-  }
-
-  /**
-   * The number of unique words in the corpus.
-   */
-  @NamedParameter(short_name = "num_vocabs")
-  public static final class NumVocabs implements Name<Integer> {
-  }
 }

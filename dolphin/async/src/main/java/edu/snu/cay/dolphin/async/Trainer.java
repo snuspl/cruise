@@ -47,8 +47,10 @@ public interface Trainer {
   /**
    * Main method of this trainer. The number of times this method is called can be adjusted with the parameter
    * {@link edu.snu.cay.common.param.Parameters.Iterations}.
+   *
+   * @param iteration the index of current iteration
    */
-  void run();
+  void run(int iteration);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

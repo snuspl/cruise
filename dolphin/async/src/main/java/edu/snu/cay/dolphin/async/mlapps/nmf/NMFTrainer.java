@@ -76,11 +76,6 @@ final class NMFTrainer implements Trainer {
   private final Tracer pullTracer;
   private final Tracer computeTracer;
 
-  /**
-   * Number of iterations.
-   */
-  private int iteration = 0;
-
   @Inject
   private NMFTrainer(final NMFDataParser dataParser,
                      final ParameterWorker<Integer, Vector, Vector> parameterWorker,
@@ -135,8 +130,7 @@ final class NMFTrainer implements Trainer {
   }
 
   @Override
-  public void run() {
-    ++iteration;
+  public void run(final int iteration) {
     final long iterationBegin = System.currentTimeMillis();
     double lossSum = 0.0;
     int elemCount = 0;
@@ -221,7 +215,7 @@ final class NMFTrainer implements Trainer {
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, workload.size());
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(appMetrics, numEMBlocks, workload.size(), elapsedTime);
+        buildMetricsMsg(iteration, appMetrics, numEMBlocks, workload.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
@@ -330,7 +324,7 @@ final class NMFTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final Metrics appMetrics, final int numDataBlocks,
+  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numDataBlocks,
                                         final int numProcessedDataItemCount, final double elapsedTime) {
     return WorkerMetrics.newBuilder()
         .setMetrics(appMetrics)

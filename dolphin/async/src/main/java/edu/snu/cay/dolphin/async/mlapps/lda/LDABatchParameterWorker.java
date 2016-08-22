@@ -26,13 +26,13 @@ import java.util.Map;
  * Updates many topic changes at once.
  * Note that this is not thread-safe for performance reason.
  */
-final class LdaBatchParameterWorker {
+final class LDABatchParameterWorker {
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
   private final Table<Integer, Integer, Integer> changedTopicCounts;
 
   @Inject
-  private LdaBatchParameterWorker(final ParameterWorker<Integer, int[], int[]> parameterWorker) {
+  private LDABatchParameterWorker(final ParameterWorker<Integer, int[], int[]> parameterWorker) {
     this.parameterWorker = parameterWorker;
     this.changedTopicCounts = HashBasedTable.create();
   }

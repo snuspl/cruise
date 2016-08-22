@@ -91,11 +91,6 @@ final class AddVectorTrainer implements Trainer {
   private final Tracer pullTracer;
   private final Tracer computeTracer;
 
-  /**
-   * Number of iterations.
-   */
-  private int iteration = 0;
-
   @Inject
   private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
                            @Parameter(AddVectorREEF.DeltaValue.class) final int delta,
@@ -134,8 +129,7 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public void run() {
-    ++iteration;
+  public void run(final int iteration) {
     final long iterationBegin = System.currentTimeMillis();
     resetTracers();
 
@@ -168,7 +162,7 @@ final class AddVectorTrainer implements Trainer {
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     // send empty metrics to trigger optimization
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(memoryStore.getNumBlocks(), elapsedTime);
+        buildMetricsMsg(iteration, memoryStore.getNumBlocks(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
@@ -180,7 +174,7 @@ final class AddVectorTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int numDataBlocks, final double elapsedTime) {
+  private WorkerMetrics buildMetricsMsg(final int iteration, final int numDataBlocks, final double elapsedTime) {
     return WorkerMetrics.newBuilder()
         .setItrIdx(iteration)
         .setNumMiniBatchPerItr(numMiniBatchesPerItr)
