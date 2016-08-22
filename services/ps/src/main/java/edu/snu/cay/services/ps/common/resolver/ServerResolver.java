@@ -65,7 +65,7 @@ public interface ServerResolver {
 
   /**
    * Sync its local routing table about the deletion of a certain server.
-   * It immediately sends a sync reply msg to driver, if the table does not {@code serverId}.
+   * It immediately sends a sync reply msg to driver, if the table does not contain {@code serverId}.
    * Otherwise, it will be replied by {@link #updateRoutingTable(EMRoutingTableUpdate)}.
    * @param serverId Network Connections Service identifier of the server.
    */

@@ -20,11 +20,9 @@ import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.worker.impl.WorkerMsgSender;
 import org.apache.reef.tang.InjectionFuture;
 
+import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -46,6 +44,12 @@ public final class DynamicServerResolver implements ServerResolver {
   private final Map<Integer, Integer> blockIdToStoreId = new ConcurrentHashMap<>();
 
   /**
+   * Mapping for inverse access of {@link #blockIdToStoreId},
+   * so as to prevent a linear overhead in {@link #updateRoutingTable(EMRoutingTableUpdate)}.
+   */
+  private final Map<Integer, Set<Integer>> storeIdToBlockIds = new ConcurrentHashMap<>();
+
+  /**
    * Mapping from EM's MemoryStore ID to the PS's NCS endpoint ID.
    * This mapping rarely changes compared to the blockIdToStoreId.
    */
@@ -61,7 +65,8 @@ public final class DynamicServerResolver implements ServerResolver {
   /**
    * A set maintaining sync requests about the deletion of a certain server.
    */
-  private final Set<String> ongoingSyncs = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  @GuardedBy("ongoingSyncs")
+  private final Set<String> ongoingSyncs = new HashSet<>();
 
   private final InjectionFuture<WorkerMsgSender> msgSender;
 
@@ -150,7 +155,7 @@ public final class DynamicServerResolver implements ServerResolver {
       return;
     }
 
-    final Map<Integer, Set<Integer>> storeIdToBlockIds = routingTable.getStoreIdToBlockIds();
+    storeIdToBlockIds.putAll(routingTable.getStoreIdToBlockIds());
 
     numTotalBlocks = routingTable.getNumTotalBlocks();
     storeIdToEndpointId.putAll(routingTable.getStoreIdToEndpointId());
@@ -184,27 +189,48 @@ public final class DynamicServerResolver implements ServerResolver {
 
     final int actualOldOwnerId = blockIdToStoreId.put(blockId, newOwnerId);
     if (oldOwnerId != actualOldOwnerId) {
-      LOG.log(Level.FINER, "Mapping was stale about block {0}", blockId);
-    } else {
-      LOG.log(Level.FINE, "Mapping table in server resolver is updated");
+      LOG.log(Level.WARNING, "Mapping was stale about block {0}", blockId);
     }
+
+    storeIdToBlockIds.get(actualOldOwnerId).remove(blockId);
 
     // remove old server eval id, if it has no block
-    if (!blockIdToStoreId.containsValue(oldOwnerId)) {
-      final String deletedServerId = storeIdToEndpointId.remove(oldOwnerId);
+    synchronized (ongoingSyncs) {
+      final Set<Integer> blockIdsInOldStore = storeIdToBlockIds.get(actualOldOwnerId);
+      if (blockIdsInOldStore != null && blockIdsInOldStore.isEmpty()) {
+        storeIdToBlockIds.remove(actualOldOwnerId);
+        final String deletedServerId = storeIdToEndpointId.remove(oldOwnerId);
 
-      if (deletedServerId != null && ongoingSyncs.remove(deletedServerId)) {
-        msgSender.get().sendRoutingTableSyncReplyMsg(deletedServerId);
+        if (deletedServerId != null && ongoingSyncs.remove(deletedServerId)) {
+          LOG.log(Level.INFO, "Server {0} is deleted from routing table", deletedServerId);
+          msgSender.get().sendRoutingTableSyncReplyMsg(deletedServerId);
+        }
       }
     }
+
+    // when new server is added.
+    synchronized (storeIdToBlockIds) {
+      if (!storeIdToBlockIds.containsKey(newOwnerId)) {
+        storeIdToBlockIds.put(newOwnerId, new HashSet<>());
+      }
+    }
+
+    storeIdToBlockIds.get(newOwnerId).add(blockId);
+
+    LOG.log(Level.FINE, "Mapping table in server resolver is updated." +
+        " BlockId: {0}, OldOwnerId: {1}, newOwnerId {2}", new Object[]{blockId, actualOldOwnerId, newOwnerId});
   }
 
   @Override
-  public synchronized void syncRoutingTable(final String serverId) {
-    if (!storeIdToEndpointId.containsValue(serverId)) {
-      msgSender.get().sendRoutingTableSyncReplyMsg(serverId);
-    } else {
-      ongoingSyncs.add(serverId);
+  public void syncRoutingTable(final String serverId) {
+    checkInitialization();
+
+    synchronized (ongoingSyncs) {
+      if (!storeIdToEndpointId.containsValue(serverId)) {
+        msgSender.get().sendRoutingTableSyncReplyMsg(serverId);
+      } else {
+        ongoingSyncs.add(serverId);
+      }
     }
   }
 }

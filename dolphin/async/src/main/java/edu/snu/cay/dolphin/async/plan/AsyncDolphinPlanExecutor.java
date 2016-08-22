@@ -474,7 +474,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     LOG.log(Level.FINE, "SYNC: server {0}", serverId);
 
     // blocking call: wait until all workers to be ready for the deletion of a server
-    routingTableManager.syncWorkers(serverId);
+    routingTableManager.waitUntilWorkersReadyForServerDelete(serverId);
 
     onOperationComplete(syncOp);
   }

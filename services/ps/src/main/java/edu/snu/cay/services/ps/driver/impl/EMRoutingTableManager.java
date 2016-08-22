@@ -31,7 +31,6 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -63,18 +62,18 @@ public final class EMRoutingTableManager {
   /**
    * Workers participating in the system and subscribing the routing table of servers.
    */
-  private final Set<String> activeWorkerIds = Collections.synchronizedSet(new HashSet<>());
+  private final Set<String> activeWorkerIds = new HashSet<>();
 
   /**
    * Workers waiting for the server initialization to receive the initial routing table for resolving servers.
    */
-  private final Set<String> waitingWorkers = Collections.synchronizedSet(new HashSet<>());
+  private final Set<String> waitingWorkers = new HashSet<>();
 
   /**
    * Ongoing sync operations that assures workers to be ready for the deletion of a certain server.
-   * Key is a id of server to be deleted and value is a latch for counting the number of synchronized workers.
+   * Key is a id of server to be deleted and value is a set of worker ids to be checked.
    */
-  private final ConcurrentMap<String, CountDownLatch> ongoingSyncs = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Set<String>> ongoingSyncs = new ConcurrentHashMap<>();
 
   /**
    * The number of initial servers, which is for deciding when to send the routing table to workers at the beginning.
@@ -127,27 +126,33 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * Sync workers to be ready for the deletion of a certain by receiving updates for
-   * their {@link edu.snu.cay.services.ps.common.resolver.DynamicServerResolver}.
+   * Wait until workers to be ready for the deletion of a certain server.
+   * It sends sync message to all active workers.
    * @param serverId id of server to be deleted
    */
-  public synchronized void syncWorkers(final String serverId) {
+  public synchronized void waitUntilWorkersReadyForServerDelete(final String serverId) {
     if (ongoingSyncs.containsKey(serverId)) {
       LOG.log(Level.WARNING, "Sync for {0} is already ongoing", serverId);
       return;
     }
 
-    final CountDownLatch syncLatch = new CountDownLatch(activeWorkerIds.size());
-    ongoingSyncs.put(serverId, syncLatch);
+    final Set<String> workersToCheck = new HashSet<>(activeWorkerIds);
+    ongoingSyncs.put(serverId, workersToCheck);
 
     LOG.log(Level.INFO, "Send sync msg for {0} to workers: {1}", new Object[]{serverId, activeWorkerIds});
     broadcastSyncMsg(serverId);
 
-    try {
-      syncLatch.await();
-    } catch (final InterruptedException e) {
-      LOG.log(Level.WARNING, "Interrupted while waiting for synchronization", e);
+    while (!workersToCheck.isEmpty()) {
+      synchronized (workersToCheck) {
+        try {
+          workersToCheck.wait(); // onSyncReply() and deregisterWorker() call notify()
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "Interrupted while waiting for synchronization", e);
+        }
+      }
     }
+
+    ongoingSyncs.remove(serverId);
   }
 
   private void broadcastSyncMsg(final String serverId) {
@@ -173,8 +178,12 @@ public final class EMRoutingTableManager {
     }
 
     LOG.log(Level.INFO, "Sync reply for {0} has been arrived from worker {1}", new Object[]{serverId, workerId});
-    final CountDownLatch syncLatch = ongoingSyncs.get(serverId);
-    syncLatch.countDown();
+
+    final Set<String> workersToCheck = ongoingSyncs.get(serverId);
+    workersToCheck.remove(workerId);
+    synchronized (workersToCheck) {
+      workersToCheck.notify();
+    }
   }
 
   /**
@@ -210,6 +219,16 @@ public final class EMRoutingTableManager {
     activeWorkerIds.remove(workerId);
     if (activeWorkerIds.isEmpty()) {
       serverEM.deregisterRoutingTableUpdateCallback(CLIENT_ID);
+    }
+
+    // check the worker in all ongoing syncs and remove it
+    // we do not care registerWorker() method, because newly started workers receive up-to-date routing table
+    for (final Set<String> workersToCheck : ongoingSyncs.values()) {
+      if (workersToCheck.remove(workerId)) {
+        synchronized (workersToCheck) {
+          workersToCheck.notify();
+        }
+      }
     }
   }
 
