@@ -111,7 +111,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public void run() {
+  public void run(final int iteration) {
     // sleep to simulate computation
     computeTracer.startTimer();
     try {

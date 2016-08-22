@@ -101,7 +101,7 @@ final class LDATrainer implements Trainer {
   }
 
   @Override
-  public void run() {
+  public void run(final int iteration) {
     LOG.log(Level.INFO, "Iteration Started");
 
     final Map<Long, Document> workloadMap = memoryStore.getAll();
