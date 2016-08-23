@@ -62,7 +62,7 @@
     var id;
     var requestTimer;
 
-    // When users choose which object to see, change the y-axis-items to those belong to the objects.
+    // When users choose which object to see, change the IDs and y-axis-items to those belong to the objects.
     function getIdAndY() {
         clearInterval(requestTimer);
         var objects = $('#objects').val();
@@ -94,6 +94,7 @@
             var xAxis = $('#x-axis').val();
             var yAxis = $('#y-axis').val();
             var id = $('#id').val();
+            // get data for plotting by sending post request to the server.
             $.post('/plot', {position:objects, x:xAxis, y:yAxis, id:id}, function(json) {
                 var data = JSON.parse(json);
                 var keys = Object.keys(data);
@@ -125,12 +126,14 @@
                 };
                 Plotly.newPlot($('#main-display')[0], [trace], layout);
             }).fail(function() {
+                // if the server is stopped, stop sending requests to the server.
                 console.log('Stop requesting.');
                 clearInterval(requestTimer);
             });
         }, 1000);
     }
 
+    // when users are changing the metrics to monitor, stop sending requests to the server.
     $('.dd-query').change(function(){
         clearInterval(requestTimer);
     });

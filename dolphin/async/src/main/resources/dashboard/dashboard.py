@@ -97,10 +97,12 @@ def main():
 
 @app.route('/plot', methods=['POST'])
 def plot():
+    # specify which metrics the user is monitoring.
     position = request.form['position'].lower();
     x = request.form['x'];
     y = request.form['y'];
     id = re.sub(r'\D', '', request.form['id']);
+    # get the metrics from the database.
     db = get_db()
     data = dict()
     try:
@@ -114,6 +116,7 @@ def plot():
 
 @app.route('/selectors', methods=['POST'])
 def selectors():
+    # get IDs, yAxis items according to the object the user is watching.
     position = request.form['position'].lower()
     db = get_db()
     try:
@@ -135,6 +138,7 @@ if __name__ == '__main__':
     with app.app_context():
         init_db()
         try:
+            # run a multi-threaded server.
             app.run(host='0.0.0.0', port=sys.argv[1], threaded=True)
         except Exception as err:
             print('Flask script: {0}'.format(err))

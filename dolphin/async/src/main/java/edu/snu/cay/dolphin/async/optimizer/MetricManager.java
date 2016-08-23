@@ -89,7 +89,7 @@ public final class MetricManager {
   private final ExecutorService metricsSenderThread = Executors.newSingleThreadScheduledExecutor();
 
   /**
-   * Metrics request queue.
+   * Metrics request queue which saves unsent requests.
    */
   private final ConcurrentLinkedQueue<String> metricsRequestQueue = new ConcurrentLinkedQueue<String>();
 
@@ -124,22 +124,6 @@ public final class MetricManager {
       metricsSendingPool = null;
       LOG.log(Level.INFO, "Dashboard is not in use");
     }
-  }
-
-  /**
-   * Makes a thread watching the metrics queue to send the oldest metrics information via http request.
-   */
-  void runMetricsSenderThread() {
-    metricsSenderThread.execute(new Runnable() {
-      @Override
-      public void run() {
-        while (true) {
-          while (!metricsRequestQueue.isEmpty()) {
-            sendMetricsToDashboard(metricsRequestQueue.poll());
-          }
-        }
-      }
-    });
   }
 
   /**
@@ -288,6 +272,22 @@ public final class MetricManager {
     synchronized (serverEvalParams) {
       serverEvalParams.clear();
     }
+  }
+
+  /**
+   * Runs a thread watching the metrics queue to send the oldest metrics information via http request.
+   */
+  void runMetricsSenderThread() {
+    metricsSenderThread.execute(new Runnable() {
+      @Override
+      public void run() {
+        while (true) {
+          while (!metricsRequestQueue.isEmpty()) {
+            sendMetricsToDashboard(metricsRequestQueue.poll());
+          }
+        }
+      }
+    });
   }
 
   /**
