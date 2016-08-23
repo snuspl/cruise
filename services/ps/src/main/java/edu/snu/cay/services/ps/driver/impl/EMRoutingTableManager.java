@@ -181,8 +181,11 @@ public final class EMRoutingTableManager {
 
     final Set<String> workersToCheck = ongoingSyncs.get(serverId);
     workersToCheck.remove(workerId);
-    synchronized (workersToCheck) {
-      workersToCheck.notify();
+
+    if (workersToCheck.isEmpty()) {
+      synchronized (workersToCheck) {
+        workersToCheck.notify();
+      }
     }
   }
 

@@ -46,6 +46,7 @@ public final class DynamicServerResolver implements ServerResolver {
   /**
    * Mapping for inverse access of {@link #blockIdToStoreId},
    * so as to prevent a linear overhead in {@link #updateRoutingTable(EMRoutingTableUpdate)}.
+   * Note that the value set is not thread-safe data structure.
    */
   private final Map<Integer, Set<Integer>> storeIdToBlockIds = new ConcurrentHashMap<>();
 
@@ -155,9 +156,8 @@ public final class DynamicServerResolver implements ServerResolver {
       return;
     }
 
-    storeIdToBlockIds.putAll(routingTable.getStoreIdToBlockIds());
-
     numTotalBlocks = routingTable.getNumTotalBlocks();
+    storeIdToBlockIds.putAll(routingTable.getStoreIdToBlockIds());
     storeIdToEndpointId.putAll(routingTable.getStoreIdToEndpointId());
 
     for (final Map.Entry<Integer, Set<Integer>> entry : storeIdToBlockIds.entrySet()) {
@@ -170,8 +170,6 @@ public final class DynamicServerResolver implements ServerResolver {
     initLatch.countDown();
 
     LOG.log(Level.FINE, "Server resolver is initialized");
-    // wake up all waiting threads
-    this.notifyAll();
   }
 
   @Override
@@ -192,30 +190,35 @@ public final class DynamicServerResolver implements ServerResolver {
       LOG.log(Level.WARNING, "Mapping was stale about block {0}", blockId);
     }
 
-    storeIdToBlockIds.get(actualOldOwnerId).remove(blockId);
+    final Set<Integer> blockIdsInOldStore = storeIdToBlockIds.get(actualOldOwnerId);
 
     // remove old server eval id, if it has no block
     synchronized (ongoingSyncs) {
-      final Set<Integer> blockIdsInOldStore = storeIdToBlockIds.get(actualOldOwnerId);
-      if (blockIdsInOldStore != null && blockIdsInOldStore.isEmpty()) {
-        storeIdToBlockIds.remove(actualOldOwnerId);
-        final String deletedServerId = storeIdToEndpointId.remove(oldOwnerId);
+      blockIdsInOldStore.remove(blockId);
 
-        if (deletedServerId != null && ongoingSyncs.remove(deletedServerId)) {
-          LOG.log(Level.INFO, "Server {0} is deleted from routing table", deletedServerId);
+      if (blockIdsInOldStore.isEmpty()) {
+        storeIdToBlockIds.remove(actualOldOwnerId);
+
+        final String deletedServerId = storeIdToEndpointId.remove(actualOldOwnerId);
+        LOG.log(Level.INFO, "Server {0} is deleted from routing table", deletedServerId);
+
+        // send a sync reply msg if sync for this server has been requested
+        if (ongoingSyncs.remove(deletedServerId)) {
           msgSender.get().sendRoutingTableSyncReplyMsg(deletedServerId);
         }
       }
     }
 
-    // when new server is added.
-    synchronized (storeIdToBlockIds) {
-      if (!storeIdToBlockIds.containsKey(newOwnerId)) {
-        storeIdToBlockIds.put(newOwnerId, new HashSet<>());
-      }
-    }
+    Set<Integer> blockIdsInNewStore = storeIdToBlockIds.get(newOwnerId);
 
-    storeIdToBlockIds.get(newOwnerId).add(blockId);
+    // when this update is for new server
+    synchronized (storeIdToBlockIds) {
+      if (blockIdsInNewStore == null) {
+        blockIdsInNewStore = storeIdToBlockIds.put(newOwnerId, new HashSet<>());
+      }
+
+      blockIdsInNewStore.add(blockId);
+    }
 
     LOG.log(Level.FINE, "Mapping table in server resolver is updated." +
         " BlockId: {0}, OldOwnerId: {1}, newOwnerId {2}", new Object[]{blockId, actualOldOwnerId, newOwnerId});
