@@ -19,6 +19,8 @@ import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
+import edu.snu.cay.dolphin.async.optimizer.parameters.MetricWeightFactor;
+import edu.snu.cay.dolphin.async.optimizer.parameters.MovingAverageWindowSize;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -38,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.ToDoubleFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -62,6 +65,16 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
 
   private final int maxNumEvals;
 
+  /**
+   * Weight decreasing factor used for metric EMA.
+   */
+  private final double metricWeightFactor;
+
+  /**
+   * Window size for applying EMA to metrics. This value set to 0 uses all the collected metrics.
+   */
+  private final int movingAvgWindowSize;
+
   private final ElasticMemory workerEM;
   private final ElasticMemory serverEM;
 
@@ -72,6 +85,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
                                    @Parameter(WorkerEM.class) final ElasticMemory workerEM,
                                    @Parameter(ServerEM.class) final ElasticMemory serverEM,
                                    @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
+                                   @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
+                                   @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
                                    @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
@@ -79,6 +94,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     this.workerEM = workerEM;
     this.serverEM = serverEM;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
+    this.metricWeightFactor = metricWeightFactor;
+    this.movingAvgWindowSize = movingAvgWindowSize;
     this.maxNumEvals = maxNumEvals;
   }
 
@@ -207,6 +224,39 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   }
 
   /**
+   * Calculates the exponential moving average value of the collected metrics.
+   * This way, recent metrics are given more weight when applied to optimization.
+   *
+   * Note that this function returns a simple moving average if {@see metricWeightFactor} is 0.
+   *
+   * @param evalParams a list of {@link EvaluatorParameters}
+   * @param targetMetricFunction a function to extract the target metric from {@param evalParams}
+   * @return the exponential moving average value
+   */
+  private double calculateExponentialMovingAverage(final List<EvaluatorParameters> evalParams,
+                                                   final ToDoubleFunction<EvaluatorParameters> targetMetricFunction) {
+    double weightedSum = 0D;
+    double weightedDivisor = 0D;
+    final double weightSmoothingFactor = 1.0 - metricWeightFactor;
+
+    // TODO #746: Select an appropriate window size when applying moving averages
+    final int metricSubsetSize = (movingAvgWindowSize == 0) ? evalParams.size() : movingAvgWindowSize;
+
+    int metricIdx = 0;
+    final ListIterator<EvaluatorParameters> reversedParamsIterator = evalParams.listIterator(evalParams.size());
+
+    while (reversedParamsIterator.hasPrevious() && metricIdx < metricSubsetSize) {
+      final double metric = targetMetricFunction.applyAsDouble(reversedParamsIterator.previous());
+      final double weight = Math.pow(weightSmoothingFactor, metricIdx);
+      weightedSum += weight * metric;
+      weightedDivisor += weight;
+      metricIdx++;
+    }
+
+    return (weightedDivisor == 0.0) ? 0.0 : (weightedSum / weightedDivisor);
+  }
+
+  /**
    * Processes raw metrics to extract a representative metric for each evaluator.
    * For servers, the total number of requests and processed times are summed up for average processing time overall.
    * For workers, the average of processing times are to be used.
@@ -223,20 +273,20 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> serverMetric = entry.getValue();
         final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
-        aggregatedMetricBuilder.setNumModelBlocks((int) serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getNumModelBlocks()).average().orElse(0));
+        aggregatedMetricBuilder.setNumModelBlocks((int) calculateExponentialMovingAverage(serverMetric,
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getNumModelBlocks()));
         aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessed()).sum());
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessed()).sum());
         aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessed()).sum());
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessed()).sum());
         aggregatedMetricBuilder.setTotalReqProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessed()).sum());
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalReqProcessed()).sum());
         aggregatedMetricBuilder.setTotalPullProcessingTime(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTime()).sum());
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessingTime()).sum());
         aggregatedMetricBuilder.setTotalPushProcessingTime(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessingTime()).sum());
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessingTime()).sum());
         aggregatedMetricBuilder.setTotalReqProcessingTime(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessingTime()).sum());
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalReqProcessingTime()).sum());
 
         final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
@@ -246,8 +296,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         } else {
           final String serverId = entry.getKey();
           processedMetrics.add(new ServerEvaluatorParameters(serverId,
-              new DataInfoImpl((int) serverMetric.stream().mapToInt(
-                  param -> param.getDataInfo().getNumBlocks()).average().orElse(0)), aggregatedMetric));
+              new DataInfoImpl((int) calculateExponentialMovingAverage(serverMetric,
+                  param -> param.getDataInfo().getNumBlocks())), aggregatedMetric));
         }
       }
       break;
@@ -255,32 +305,33 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
-        aggregatedMetricBuilder.setNumDataBlocks((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getNumDataBlocks()).average().orElse(0));
-        aggregatedMetricBuilder.setProcessedDataItemCount((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount()).average().orElse(0));
-        aggregatedMetricBuilder.setTotalTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalTime()).average().orElse(0.0));
-        aggregatedMetricBuilder.setTotalCompTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0.0));
-        aggregatedMetricBuilder.setTotalPullTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0.0));
-        aggregatedMetricBuilder.setTotalPushTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalPushTime()).average().orElse(0.0));
-        aggregatedMetricBuilder.setAvgPullTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getAvgPullTime()).average().orElse(0.0));
-        aggregatedMetricBuilder.setAvgPushTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getAvgPushTime()).average().orElse(0.0));
+        aggregatedMetricBuilder.setNumDataBlocks((int) calculateExponentialMovingAverage(workerMetric,
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getNumDataBlocks()));
+        aggregatedMetricBuilder.setProcessedDataItemCount((int) calculateExponentialMovingAverage(workerMetric,
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getProcessedDataItemCount()));
+        aggregatedMetricBuilder.setTotalTime(calculateExponentialMovingAverage(workerMetric,
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalTime()));
+        aggregatedMetricBuilder.setTotalCompTime(calculateExponentialMovingAverage(workerMetric,
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalCompTime()));
+        aggregatedMetricBuilder.setTotalPullTime(calculateExponentialMovingAverage(workerMetric,
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalPullTime()));
+        aggregatedMetricBuilder.setTotalPushTime(calculateExponentialMovingAverage(workerMetric,
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalPushTime()));
+        aggregatedMetricBuilder.setAvgPullTime(calculateExponentialMovingAverage(workerMetric,
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getAvgPullTime()));
+        aggregatedMetricBuilder.setAvgPushTime(calculateExponentialMovingAverage(workerMetric,
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getAvgPushTime()));
 
         final WorkerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
         // This worker did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getTotalCompTime() == 0D) {
+        if (aggregatedMetric.getProcessedDataItemCount() == 0) {
           break;
         } else {
-          processedMetrics.add(new WorkerEvaluatorParameters(entry.getKey(),
-              new DataInfoImpl((int) workerMetric.stream().mapToInt(
-                  param -> param.getDataInfo().getNumBlocks()).average().orElse(0)), aggregatedMetric));
+          final String workerId = entry.getKey();
+          processedMetrics.add(new WorkerEvaluatorParameters(workerId,
+              new DataInfoImpl((int) calculateExponentialMovingAverage(workerMetric,
+                  param -> param.getDataInfo().getNumBlocks())), aggregatedMetric));
         }
       }
       break;

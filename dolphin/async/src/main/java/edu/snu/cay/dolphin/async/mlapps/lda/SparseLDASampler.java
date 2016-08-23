@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -28,28 +29,28 @@ import java.util.List;
  * Efficient methods for topic model inference on streaming document collections. In Proceedings of the
  * 15th ACM SIGKDD international conference on Knowledge discovery and data mining, pages 937–946. ACM, 2009.
  */
-final class SparseLdaSampler {
+final class SparseLDASampler {
 
   private final double alpha;
   private final double beta;
   private final int numTopics;
   private final int numVocabs;
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final LdaBatchParameterWorker batchWorker;
+  private final LDABatchParameterWorker batchParameterWorker;
 
   @Inject
-  private SparseLdaSampler(@Parameter(LdaREEF.Alpha.class) final double alpha,
-                           @Parameter(LdaREEF.Beta.class) final double beta,
-                           @Parameter(LdaREEF.NumTopics.class) final int numTopics,
-                           @Parameter(LdaREEF.NumVocabs.class) final int numVocabs,
+  private SparseLDASampler(@Parameter(Alpha.class) final double alpha,
+                           @Parameter(Beta.class) final double beta,
+                           @Parameter(NumTopics.class) final int numTopics,
+                           @Parameter(NumVocabs.class) final int numVocabs,
                            final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                           final LdaBatchParameterWorker batchWorker) {
+                           final LDABatchParameterWorker batchParameterWorker) {
     this.alpha = alpha;
     this.beta = beta;
     this.numTopics = numTopics;
     this.numVocabs = numVocabs;
     this.parameterWorker = parameterWorker;
-    this.batchWorker = batchWorker;
+    this.batchParameterWorker = batchParameterWorker;
   }
 
   void sample(final Document document) {
@@ -162,15 +163,15 @@ final class SparseLdaSampler {
 
       if (newTopic != oldTopic) {
         // Push the changes to the parameter servers
-        batchWorker.addTopicChange(word, oldTopic, -1);
-        batchWorker.addTopicChange(word, newTopic, 1);
+        batchParameterWorker.addTopicChange(word, oldTopic, -1);
+        batchParameterWorker.addTopicChange(word, newTopic, 1);
         // numVocabs-th row represents the total word-topic assignment count vector
-        batchWorker.addTopicChange(numVocabs, oldTopic, -1);
-        batchWorker.addTopicChange(numVocabs, newTopic, 1);
+        batchParameterWorker.addTopicChange(numVocabs, oldTopic, -1);
+        batchParameterWorker.addTopicChange(numVocabs, newTopic, 1);
       }
     }
 
-    batchWorker.pushAndClear();
+    batchParameterWorker.pushAndClear();
   }
 
   private int sampleFromTerms(final double randomVar, final double[] terms) {

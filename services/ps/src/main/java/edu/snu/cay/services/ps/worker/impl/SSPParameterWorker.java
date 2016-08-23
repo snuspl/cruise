@@ -25,6 +25,7 @@ import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
+import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -118,6 +119,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   private final Statistics[] pullStats;
   private final long[] startTimes;
   private final Ticker ticker = Ticker.systemTicker();
+  private final WorkerClock workerClock;
+  private final int stalenessBound;
 
   @Inject
   private SSPParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
@@ -126,6 +129,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                              @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                              @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
                              @Parameter(WorkerLogPeriod.class) final long logPeriod,
+                             @Parameter(StalenessBound.class) final int stalenessBound,
+                             final WorkerClock workerClock,
                              final ParameterUpdater<K, P, V> parameterUpdater,
                              final ServerResolver serverResolver,
                              final InjectionFuture<WorkerMsgSender<K, P>> sender) {
@@ -136,7 +141,9 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     this.pendingPulls = new ConcurrentHashMap<>();
     this.pullStats = Statistics.newInstances(numThreads);
     this.threadPool = Executors.newFixedThreadPool(numThreads);
+    this.workerClock = workerClock;
     this.threads = initThreads(queueSize, pullRetryTimeoutMs);
+    this.stalenessBound = stalenessBound;
     this.encodedKeyCache = CacheBuilder.newBuilder()
         .maximumSize(keyCacheSize)
         .build(new CacheLoader<K, EncodedKey<K>>() {
@@ -168,7 +175,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
         = new WorkerThread[numThreads];
     for (int i = 0; i < numThreads; i++) {
       initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize,
-          pullRetryTimeoutMs, pullStats[i]);
+          pullRetryTimeoutMs, pullStats[i], workerClock);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -540,8 +547,19 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     @Override
     public void apply(final LoadingCache<EncodedKey<K>, Tagged<V>> kvCache) {
       try {
-        V loadedValue;
-        loadedValue = kvCache.get(encodedKey).getValue();
+        final V loadedValue;
+
+        while (true) {
+          final Tagged<V> tagged = kvCache.get(encodedKey);
+          final int staleness = workerClock.getGlobalMinimumClock() - tagged.getClock();
+          if (staleness <= stalenessBound) {
+            loadedValue = tagged.getValue();
+            break;
+          } else {
+            // Invalidate stale data before fetching new data from a server.
+            kvCache.invalidate(encodedKey);
+          }
+        }
 
         synchronized (this) {
           this.value = loadedValue;
@@ -607,8 +625,9 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                  final InjectionFuture<WorkerMsgSender<K, P>> sender,
                  final int queueSize,
                  final long pullRetryTimeoutMs,
-                 final Statistics pullStat) {
-      this.kvCache = initCache(pendingPulls, serverResolver, sender, pullRetryTimeoutMs, pullStat);
+                 final Statistics pullStat,
+                 final WorkerClock workerClock) {
+      this.kvCache = initCache(pendingPulls, serverResolver, sender, pullRetryTimeoutMs, pullStat, workerClock);
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
       this.localOps = new ArrayList<>(drainSize);
@@ -620,7 +639,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                   final ServerResolver serverResolver,
                   final InjectionFuture<WorkerMsgSender<K, P>> sender,
                   final long pullRetryTimeoutMs,
-                  final Statistics pullStat) {
+                  final Statistics pullStat,
+                  final WorkerClock workerClock) {
       return CacheBuilder.newBuilder()
           .concurrencyLevel(1)
           .build(new CacheLoader<EncodedKey<K>, Tagged<V>>() {
@@ -662,7 +682,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
               }
 
               pendingPulls.remove(encodedKey.getKey());
-              return new Tagged<>(value, 0);
+              return new Tagged<>(value, workerClock.getGlobalMinimumClock());
             }
 
             /**
@@ -751,30 +771,38 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
      */
     @Override
     public void run() {
-      while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
-        // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
-        try {
-          final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-          if (op == null) {
+      try {
+        while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
+          // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
+          try {
+            final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            if (op == null) {
+              continue;
+            }
+            op.apply(kvCache);
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
             continue;
           }
-          op.apply(kvCache);
-        } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
-          continue;
+
+          // Then, drain up to drainSize of the remaining queue and apply.
+          // Calling drainTo does not block if queue is empty, which is why we poll first.
+          // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
+          queue.drainTo(localOps, drainSize);
+          for (final Op<K, V> op : localOps) {
+            op.apply(kvCache);
+          }
+          localOps.clear();
         }
 
-        // Then, drain up to drainSize of the remaining queue and apply.
-        // Calling drainTo does not block if queue is empty, which is why we poll first.
-        // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
-        queue.drainTo(localOps, drainSize);
-        for (final Op<K, V> op : localOps) {
-          op.apply(kvCache);
-        }
-        localOps.clear();
+        finishClose();
+
+      // catch and rethrow RuntimeException after leaving a log
+      // otherwise, the thread disapperas without any noticeable marks
+      } catch (final RuntimeException e) {
+        LOG.log(Level.SEVERE, "PS worker thread has been down due to RuntimeException", e);
+        throw e;
       }
-
-      finishClose();
     }
 
     /**

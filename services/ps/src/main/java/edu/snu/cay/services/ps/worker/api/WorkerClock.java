@@ -24,12 +24,13 @@ public interface WorkerClock {
   /**
    * Sets initial worker clock and receives current global minimum clock.
    * initial worker clock =
-   * global minimum clock + ({@link edu.snu.cay.services.ps.worker.parameters.Staleness}/2)
+   * global minimum clock + ({@link edu.snu.cay.services.ps.worker.parameters.StalenessBound}/2)
    */
   void initialize();
 
   /**
    * Ticks worker clock.
+   * Should be called after {@link #initialize()} is done.
    */
   void clock();
 

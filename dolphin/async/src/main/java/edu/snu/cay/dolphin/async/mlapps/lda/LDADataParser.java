@@ -27,16 +27,16 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-final class LdaDataParser {
+final class LDADataParser {
 
-  private static final Logger LOG = Logger.getLogger(LdaDataParser.class.getName());
+  private static final Logger LOG = Logger.getLogger(LDADataParser.class.getName());
 
   private final DataSet<LongWritable, Text> dataSet;
   private final int numTopics;
 
   @Inject
-  private LdaDataParser(final DataSet<LongWritable, Text> dataSet,
-                        @Parameter(LdaREEF.NumTopics.class) final int numTopics) {
+  private LDADataParser(final DataSet<LongWritable, Text> dataSet,
+                        @Parameter(LDAParameters.NumTopics.class) final int numTopics) {
     this.dataSet = dataSet;
     this.numTopics = numTopics;
   }

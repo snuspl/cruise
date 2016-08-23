@@ -55,7 +55,7 @@ public final class AsyncParameterWorkerTest {
   private static final int WORKER_NUM_THREADS = 2;
 
   private ParameterWorkerTestUtil testUtil;
-  private AsyncParameterWorker<Integer, Integer, Integer> parameterWorker;
+  private ParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
 
@@ -87,7 +87,7 @@ public final class AsyncParameterWorkerTest {
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
-    parameterWorker = (AsyncParameterWorker) injector.getInstance(ParameterWorker.class);
+    parameterWorker = injector.getInstance(ParameterWorker.class);
     workerHandler = injector.getInstance(WorkerHandler.class);
   }
 
@@ -189,28 +189,23 @@ public final class AsyncParameterWorkerTest {
    * so that new pull messages must be issued for each pull request.
    */
   @Test
-  public void testInvalidateAll()
-          throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    invalidateAllAsync(parameterWorker);
-  }
-
-  private void invalidateAllAsync(final AsyncParameterWorker worker)
+  public void invalidateAll()
           throws InterruptedException, ExecutionException, TimeoutException, NetworkException {
     final int numPulls = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
-
+    final AsyncParameterWorker asyncParameterWorker = (AsyncParameterWorker) parameterWorker;
     pool.submit(() -> {
         for (int pull = 0; pull < numPulls; ++pull) {
-          worker.pull(0);
-          worker.invalidateAll();
+          asyncParameterWorker.pull(0);
+          asyncParameterWorker.invalidateAll();
         }
         countDownLatch.countDown();
       });
     pool.shutdown();
 
     final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
-    worker.close(ParameterWorkerTestUtil.CLOSE_TIMEOUT);
+    asyncParameterWorker.close(ParameterWorkerTestUtil.CLOSE_TIMEOUT);
 
     assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject());

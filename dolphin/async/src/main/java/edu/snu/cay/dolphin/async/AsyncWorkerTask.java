@@ -75,14 +75,19 @@ final class AsyncWorkerTask implements Task {
     // initialize the worker clock
     workerClock.initialize();
 
-    for (int iteration = 0; iteration < maxIterations; ++iteration) {
+    final int initialClock = workerClock.getWorkerClock();
+
+    // By starting iteration from the initial clock, which is dynamically fetched from driver,
+    // it prevents workers added by EM from starting from iteration 0 and deferring job completion.
+    // More specifically, added workers start from the minimum iteration of other existing workers.
+    for (int iteration = initialClock; iteration < maxIterations; ++iteration) {
       if (aborted) {
         LOG.log(Level.INFO, "Abort a thread to completely close the task");
         // record total network waiting time of worker clock when the task is aborted
         workerClock.recordClockNetworkWaitingTime();
         return null;
       }
-      trainer.run();
+      trainer.run(iteration);
       workerClock.clock();
     }
 

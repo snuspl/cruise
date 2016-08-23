@@ -138,7 +138,7 @@ final class LassoTrainer implements Trainer {
    * 4) Push value to server.
    */
   @Override
-  public void run() {
+  public void run(final int iteration) {
     final double[] vecModel = new double[vecXArray.length];
     for (int index = 0; index < vecModel.length; index++) {
       vecModel[index] = parameterWorker.pull(index);

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -25,12 +26,12 @@ import javax.inject.Inject;
  * number of words in the corpus that are assigned to a specific topic. We use
  * numVocabs-th row as the total count vector for all word indices.
  */
-final class LdaUpdater implements ParameterUpdater<Integer, int[], int[]> {
+final class LDAUpdater implements ParameterUpdater<Integer, int[], int[]> {
 
   private final int numTopics;
 
   @Inject
-  private LdaUpdater(@Parameter(LdaREEF.NumTopics.class) final int numTopics) {
+  private LDAUpdater(@Parameter(NumTopics.class) final int numTopics) {
     this.numTopics = numTopics;
   }
 

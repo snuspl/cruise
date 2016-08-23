@@ -15,16 +15,17 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,31 +34,44 @@ import java.util.logging.Logger;
  * all workers update their initial topic assignments. For each iteration, sequentially sampling documents,
  * it immediately pushes the changed topic assignment whenever each word is sampled to a new topic.
  */
-final class LdaTrainer implements Trainer {
+final class LDATrainer implements Trainer {
 
-  private static final Logger LOG = Logger.getLogger(LdaTrainer.class.getName());
+  private static final Logger LOG = Logger.getLogger(LDATrainer.class.getName());
 
-  private final LdaDataParser dataParser;
-  private final LdaBatchParameterWorker batchWorker;
-  private final SparseLdaSampler sampler;
+  private final LDADataParser dataParser;
+  private final LDABatchParameterWorker batchParameterWorker;
+  private final SparseLDASampler sampler;
+  private final LDAStatCalculator statCalculator;
   private final int numVocabs;
+  private final List<Integer> vocabList;
 
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
+  private final ParameterWorker<Integer, int[], int[]> parameterWorker;
+
   @Inject
-  private LdaTrainer(final LdaDataParser dataParser,
-                     final LdaBatchParameterWorker batchWorker,
-                     final SparseLdaSampler sampler,
+  private LDATrainer(final LDADataParser dataParser,
+                     final LDABatchParameterWorker batchParameterWorker,
+                     final SparseLDASampler sampler,
+                     final LDAStatCalculator statCalculator,
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
-                     @Parameter(LdaREEF.NumVocabs.class) final int numVocabs) {
+                     final ParameterWorker<Integer, int[], int[]> parameterWorker,
+                     @Parameter(NumVocabs.class) final int numVocabs) {
     this.dataParser = dataParser;
-    this.batchWorker = batchWorker;
+    this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
+    this.statCalculator = statCalculator;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
+    this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
+    // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
+    this.vocabList = new ArrayList<>(numVocabs + 1);
+    for (int i = 0; i < numVocabs + 1; i++) {
+      vocabList.add(i);
+    }
   }
 
   @Override
@@ -76,18 +90,18 @@ final class LdaTrainer implements Trainer {
     for (final Document document : documents) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
-        batchWorker.addTopicChange(word, document.getAssignment(i), 1);
+        batchParameterWorker.addTopicChange(word, document.getAssignment(i), 1);
         // numVocabs-th row represents the total word-topic assignment count vector
-        batchWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
+        batchParameterWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
       }
-      batchWorker.pushAndClear();
+      batchParameterWorker.pushAndClear();
     }
 
     LOG.log(Level.INFO, "All random topic assignments are updated");
   }
 
   @Override
-  public void run() {
+  public void run(final int iteration) {
     LOG.log(Level.INFO, "Iteration Started");
 
     final Map<Long, Document> workloadMap = memoryStore.getAll();
@@ -106,10 +120,28 @@ final class LdaTrainer implements Trainer {
       }
     }
 
+    LOG.log(Level.INFO, "Start computing log likelihood");
+    final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
+    // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution,
+    // in a form of numTopics-dimensional vector
+    final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
+    LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(statCalculator.computeDocLLH(workload),
+        statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary)));
+
     LOG.log(Level.INFO, "Iteration Ended");
   }
 
   @Override
   public void cleanup() {
+  }
+
+  private Metrics buildAppMetrics(final double docLLH, final double wordLLH) {
+    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+    appMetricMap.put(MetricKeys.DOC_LLH, docLLH);
+    appMetricMap.put(MetricKeys.WORD_LLH, wordLLH);
+
+    return Metrics.newBuilder()
+        .setData(appMetricMap)
+        .build();
   }
 }
