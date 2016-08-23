@@ -92,6 +92,7 @@
                 var data = JSON.parse(json);
                 var keys = Object.keys(data);
                 keys.sort(function(a, b){return a-b;});
+                console.log(keys);
                 var trace = {
                     x: keys,
                     y: keys.map(function(key){return data[key];}),

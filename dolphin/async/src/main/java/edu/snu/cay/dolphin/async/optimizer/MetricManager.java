@@ -21,16 +21,17 @@ import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
@@ -78,6 +79,11 @@ public final class MetricManager {
   private final boolean dashboardEnabled;
 
   /**
+   * HTTP connection pool to reuse http connections.
+   */
+  private final CloseableHttpClient metricsSendingPool;
+
+  /**
    * Thread for sending metrics to dashboard server.
    */
   private final ExecutorService metricsSenderThread = Executors.newSingleThreadScheduledExecutor();
@@ -85,7 +91,7 @@ public final class MetricManager {
   /**
    * Metrics request queue.
    */
-  private final BlockingQueue<String> metricsRequestQueue = new ArrayBlockingQueue<String>(128);
+  private final ConcurrentLinkedQueue<String> metricsRequestQueue = new ConcurrentLinkedQueue<String>();
 
   /**
    * Constructor of MetricManager.
@@ -105,22 +111,31 @@ public final class MetricManager {
     this.dashboardEnabled = !hostAddress.isEmpty();
     this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
     if (this.dashboardEnabled) {
+      // make a pool of http requests with request limitation of INT_MAX.
+      final PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+      connectionManager.setMaxTotal(Integer.MAX_VALUE);
+      connectionManager.setDefaultMaxPerRoute(Integer.MAX_VALUE);
+      metricsSendingPool = HttpClients.custom().setConnectionManager(connectionManager).build();
+
+      // run another thread to send metrics.
       runMetricsSenderThread();
       LOG.log(Level.INFO, "Dashboard url: {0}", dashboardURL);
     } else {
+      metricsSendingPool = null;
       LOG.log(Level.INFO, "Dashboard is not in use");
     }
   }
 
+  /**
+   * Makes a thread watching the metrics queue to send the oldest metrics information via http request.
+   */
   void runMetricsSenderThread() {
     metricsSenderThread.execute(new Runnable() {
       @Override
       public void run() {
         while (true) {
-          try {
-            sendMetricsToDashboard(metricsRequestQueue.take());
-          } catch (InterruptedException e) {
-            LOG.log(Level.WARNING, "");
+          while (!metricsRequestQueue.isEmpty()) {
+            sendMetricsToDashboard(metricsRequestQueue.poll());
           }
         }
       }
@@ -279,35 +294,19 @@ public final class MetricManager {
    * Send metrics to Dashboard server.
    * @param request The POST request content which is to be sent to the dashboard server.
    */
-  private void sendMetricsToDashboard(final String request) {
+  void sendMetricsToDashboard(final String request) {
     try {
-      // Build http connection with the Dashboard server, set configurations.
-      // TODO #722: Create WebSocket instead of connecting every time to send metrics to Dashboard server
-      final String dashboardUrlStr = this.dashboardURL;
-      final URL dashboardUrl = new URL(dashboardUrlStr);
-      final HttpURLConnection con = (HttpURLConnection) dashboardUrl.openConnection();
-      con.setRequestMethod("POST");
-      con.setDoOutput(true);
-      con.setDoInput(true);
-      con.connect();
-
-      // Send metrics via outputStream to the Dashboard server.
-      try (final OutputStream os = con.getOutputStream()) {
-        os.write((request).getBytes());
-        os.flush();
+      final HttpPost httpPost = new HttpPost(dashboardURL);
+      httpPost.setHeader("Content-Type", "application/x-www-form-urlencoded");
+      httpPost.setEntity(new StringEntity(request));
+      final HttpResponse response = metricsSendingPool.execute(httpPost);
+      if (response.getStatusLine().getStatusCode() == 200) {
+        LOG.log(Level.INFO, "Dashboard: post succeeded.");
+      } else {
+        LOG.log(Level.WARNING, "Dashboard: post failed.");
       }
-
-      // Receive responses from the Dashboard Server.
-      try (final BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
-        String inputLine;
-        final StringBuffer response = new StringBuffer();
-        while ((inputLine = in.readLine()) != null) {
-          response.append(inputLine);
-        }
-      }
-
     } catch (IOException e) {
-      LOG.log(Level.WARNING, "Failed to send metrics to Dashboard server.", e);
+      LOG.log(Level.WARNING, "Dashboard: post failed.");
     }
   }
 }

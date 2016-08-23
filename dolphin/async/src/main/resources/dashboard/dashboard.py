@@ -70,8 +70,8 @@ def main():
     db = get_db()
     if request.method == 'POST':
         # update database with new metrics
-        id = request.form['id'];
-        time = float(request.form['time'])/1000 - timestamp;
+        id = request.form['id']
+        time = float(request.form['time'])/1000 - timestamp
         metrics = json.loads(request.form['metrics'])
         custom = metrics.pop('metrics')
         # metrics
