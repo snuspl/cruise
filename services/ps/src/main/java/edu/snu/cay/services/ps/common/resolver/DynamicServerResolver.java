@@ -187,22 +187,23 @@ public final class DynamicServerResolver implements ServerResolver {
 
     final int actualOldOwnerId = blockIdToStoreId.put(blockId, newOwnerId);
     if (oldOwnerId != actualOldOwnerId) {
-      LOG.log(Level.WARNING, "Mapping was stale about block {0}", blockId);
+      LOG.log(Level.WARNING, "Mapping was stale about block {0}. ExpectedOldOwnerId: {1}, ActualOldOwnerId: {2}",
+          new Object[]{blockId, oldOwnerId, actualOldOwnerId});
     }
 
     final Set<Integer> blockIdsInOldStore = storeIdToBlockIds.get(actualOldOwnerId);
 
-    // remove old server eval id, if it has no block
     synchronized (ongoingSyncs) {
       blockIdsInOldStore.remove(blockId);
 
+      // remove old server eval id, if it has no block
       if (blockIdsInOldStore.isEmpty()) {
         storeIdToBlockIds.remove(actualOldOwnerId);
 
         final String deletedServerId = storeIdToEndpointId.remove(actualOldOwnerId);
         LOG.log(Level.INFO, "Server {0} is deleted from routing table", deletedServerId);
 
-        // send a sync reply msg if sync for this server has been requested
+        // send a sync reply msg if a sync for this server has been requested
         if (ongoingSyncs.remove(deletedServerId)) {
           msgSender.get().sendRoutingTableSyncReplyMsg(deletedServerId);
         }
@@ -211,8 +212,8 @@ public final class DynamicServerResolver implements ServerResolver {
 
     Set<Integer> blockIdsInNewStore = storeIdToBlockIds.get(newOwnerId);
 
-    // when this update is for new server
     synchronized (storeIdToBlockIds) {
+      // when this update is for new server
       if (blockIdsInNewStore == null) {
         blockIdsInNewStore = storeIdToBlockIds.put(newOwnerId, new HashSet<>());
       }
@@ -229,7 +230,7 @@ public final class DynamicServerResolver implements ServerResolver {
     checkInitialization();
 
     synchronized (ongoingSyncs) {
-      if (!storeIdToEndpointId.containsValue(serverId)) {
+      if (!storeIdToEndpointId.containsValue(serverId)) { // linear overhead. But this method will be rarely called
         msgSender.get().sendRoutingTableSyncReplyMsg(serverId);
       } else {
         ongoingSyncs.add(serverId);

@@ -26,7 +26,7 @@ import org.apache.reef.util.Optional;
  * to prevent them from running task iterations with empty dataset.
  */
 final class DolphinPlanOperation {
-  static final String SYNC_OP = "SYNC"; // sync server's ownership state
+  static final String SYNC_OP = "SYNC"; // sync server's ownership state between driver and workers
   static final String START_OP = "START"; // start worker task
   static final String STOP_OP = "STOP"; // stop worker task
 

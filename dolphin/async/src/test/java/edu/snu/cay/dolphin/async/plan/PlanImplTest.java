@@ -90,7 +90,7 @@ public final class PlanImplTest {
     final int numWorkersToStop = numEvalsToDel;
     final int numServersToSync = numEvalsToDel;
 
-    // test whether a plan contains all the explicitly added steps and automatically generated start/stop steps
+    // test whether a plan contains all the explicitly added steps and automatically generated start/stop/sync steps
     assertEquals("Plan does not contain all the steps that we expect",
         (numEvalsToAdd + numEvalsToDel + numTransfers) * 2 + (numWorkersToStart + numWorkersToStop + numServersToSync),
         plan.getPlanSize());
