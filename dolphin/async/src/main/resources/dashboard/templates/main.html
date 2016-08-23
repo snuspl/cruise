@@ -29,7 +29,7 @@
         <ul class='w3-light-grey w3-navbar'>
             <li class='w3-col m2 l1' style='line-height:35px;text-align:center'>Detail</li>
             <!--objects-->
-            <li><select class='w3-select w3-border w3-light-grey dd-obj-query' id='objects'>
+            <li><select onclick="getIdAndY();" class='w3-select w3-border w3-light-grey' id='objects'>
                     <option disabled selected hidden>Objects</option>
                     <option>Worker</option>
                     <option>Server</option>
@@ -61,29 +61,35 @@
     var objects;
     var id;
     var requestTimer;
+
     // When users choose which object to see, change the y-axis-items to those belong to the objects.
-    $('.dd-obj-query').change(function(){
+    function getIdAndY() {
         clearInterval(requestTimer);
-        var objects = this.value;
+        var objects = $('#objects').val();
         $.post('/selectors', {position:objects}, function(json){
             var data = JSON.parse(json);
-            $('#id').html('<option disabled selected hidden>ID</option>');
-            var position = (objects === 'Custom')? 'Worker' : objects;
-            for (id in data['id']) {
-                $('#id').append('<option>' + position + '-' + data['id'][id] + '</option>');
+            if (data['id'].length > 0) {
+                $('#id').html('<option disabled selected hidden>ID</option>');
+                var position = (objects === 'Custom')? 'Worker' : objects;
+                for (id in data['id']) {
+                    $('#id').append('<option>' + position + '-' + data['id'][id] + '</option>');
+                }
             }
-            $('#y-axis').html('<option disabled selected hidden>Y-axis</option>');
-            for (y in data['y']) {
-                if (data['y'][y] != 'time' && data['y'][y] != 'id') {
-                    $('#y-axis').append('<option>' + data['y'][y] + '</option>');
+            if (data['y'].length > 0) {
+                $('#y-axis').html('<option disabled selected hidden>Y-axis</option>');
+                for (y in data['y']) {
+                    if (data['y'][y] != 'time' && data['y'][y] != 'id') {
+                        $('#y-axis').append('<option>' + data['y'][y] + '</option>');
+                    }
                 }
             }
         });
-    });
+    }
 
     // reload data from the server every 1 sec to provide real-time visualization.
     function reloadData() {
-        requestTimer = setInterval(function(){
+        clearInterval(requestTimer);
+        requestTimer = window.setInterval(function(){
             var objects = $('#objects').val();
             var xAxis = $('#x-axis').val();
             var yAxis = $('#y-axis').val();
@@ -91,8 +97,10 @@
             $.post('/plot', {position:objects, x:xAxis, y:yAxis, id:id}, function(json) {
                 var data = JSON.parse(json);
                 var keys = Object.keys(data);
+                if (keys.length == 0){
+                    return;
+                }
                 keys.sort(function(a, b){return a-b;});
-                console.log(keys);
                 var trace = {
                     x: keys,
                     y: keys.map(function(key){return data[key];}),
@@ -116,6 +124,9 @@
                     }
                 };
                 Plotly.newPlot($('#main-display')[0], [trace], layout);
+            }).fail(function() {
+                console.log('Stop requesting.');
+                clearInterval(requestTimer);
             });
         }, 1000);
     }

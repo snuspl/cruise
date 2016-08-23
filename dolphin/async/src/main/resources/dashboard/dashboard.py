@@ -34,6 +34,7 @@ app.config.update(dict(
     PASSWORD='default'
 ))
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
+os.remove(app.config['DATABASE'])
 
 #
 # Database
@@ -119,12 +120,12 @@ def selectors():
         cur = db.execute('pragma table_info({0})'.format(position))
         y_axis = map(lambda x: x['name'], cur.fetchall())
     except:
-        y_axis = ['no data yet']
+        y_axis = []
     try:
         cur = db.execute('select id from {0}'.format(position))
         ids = sorted(set(map(lambda x: x[0], cur.fetchall())))
     except:
-        ids = ['no data yet']
+        ids = []
     return json.dumps({'id':ids, 'y':y_axis})
 
 #
@@ -134,7 +135,7 @@ if __name__ == '__main__':
     with app.app_context():
         init_db()
         try:
-            app.run(host='0.0.0.0', port=sys.argv[1])
+            app.run(host='0.0.0.0', port=sys.argv[1], threaded=True)
         except Exception as err:
             print('Flask script: {0}'.format(err))
             sys.exit(1)
