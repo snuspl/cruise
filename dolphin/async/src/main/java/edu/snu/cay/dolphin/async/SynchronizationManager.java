@@ -20,6 +20,7 @@ import edu.snu.cay.common.aggregation.driver.AggregationMaster;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Unit;
@@ -86,6 +87,11 @@ final class SynchronizationManager {
   private int numWorkers = 0;
 
   /**
+   * The total number of initial workers participating in job.
+   */
+  private final int numInitialWorkers;
+
+  /**
    * A set that maintains workers that have sent a sync msg for the current barrier.
    */
   @GuardedBy("this")
@@ -93,9 +99,13 @@ final class SynchronizationManager {
 
   @Inject
   private SynchronizationManager(final AggregationMaster aggregationMaster,
-                                 final SerializableCodec<String> codec) {
+                                 final SerializableCodec<String> codec,
+                                 final DataLoadingService dataLoadingService) {
     this.aggregationMaster = aggregationMaster;
     this.codec = codec;
+
+    // TODO #452: Decouple numWorkers from data input splits
+    this.numInitialWorkers = dataLoadingService.getNumberOfPartitions();
     this.globalStateMachine = initStateMachine();
   }
 
@@ -190,16 +200,26 @@ final class SynchronizationManager {
   }
 
   private synchronized void tryReleaseWorkers() {
+    final String currentState = globalStateMachine.getCurrentState();
+
+    // check whether all initial workers are added through onWorkerAdded()
+    if (currentState.equals(STATE_INIT)) {
+      if (numWorkers < numInitialWorkers) {
+        LOG.log(Level.FINE, "Need {0} more initial workers to start", numInitialWorkers - numWorkers);
+        return;
+      }
+    }
+
     if (blockedWorkerIds.size() == numWorkers) {
       LOG.log(Level.INFO, "Try releasing {0} blocked workers: {1}", new Object[]{numWorkers, blockedWorkerIds});
 
       // wake threads waiting initialization in waitInitialization()
-      if (globalStateMachine.getCurrentState().equals(STATE_INIT)) {
+      if (currentState.equals(STATE_INIT)) {
         initLatch.countDown();
 
       // Let workers enter the cleanup state after assuring that there's no ongoing optimization.
       // Note that in the STATE_CLEANUP state, orchestrator never trigger further optimization.
-      } else if (globalStateMachine.getCurrentState().equals(STATE_RUN)) {
+      } else if (currentState.equals(STATE_RUN)) {
         try {
           final int numWorkersBeforeSleep = numWorkers;
           LOG.log(Level.INFO, "Wait for driver to allow workers to enter cleanup state");
