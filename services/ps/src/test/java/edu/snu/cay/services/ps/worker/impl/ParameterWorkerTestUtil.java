@@ -52,7 +52,7 @@ final class ParameterWorkerTestUtil {
   private ParameterWorkerTestUtil() {
   }
 
-  static void close(final ParameterWorker worker)
+  static void close(final ParameterWorker<Integer, ?, ?> worker)
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -69,7 +69,8 @@ final class ParameterWorkerTestUtil {
     assertFalse(MSG_THREADS_SHOULD_NOT_FINISH, allThreadsFinished);
   }
 
-  static void multiThreadPush(final ParameterWorker worker, final WorkerMsgSender sender)
+  static void multiThreadPush(final ParameterWorker<Integer, Integer, ?> worker,
+                              final WorkerMsgSender<Integer, Integer> sender)
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPushThreads = 8;
     final int numKeys = 4;
@@ -127,7 +128,7 @@ final class ParameterWorkerTestUtil {
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
   }
 
-  static void multiThreadMultiKeyPull(final ParameterWorker worker)
+  static void multiThreadMultiKeyPull(final ParameterWorker<Integer, ?, Integer> worker)
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPullThreads = 8;
     final int numKeys = 4;
@@ -168,8 +169,9 @@ final class ParameterWorkerTestUtil {
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
   }
 
-  static void pullReject(final ParameterWorker<Integer, Integer, Integer> worker,
-                         final WorkerHandler handler, final WorkerMsgSender sender)
+  static void pullReject(final ParameterWorker<Integer, ?, Integer> worker,
+                         final WorkerHandler<Integer, ?, Integer> handler,
+                         final WorkerMsgSender<Integer, ?> sender)
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
     final int numPullThreads = 8;
     final int numPullPerThread = 1000;
@@ -248,8 +250,9 @@ final class ParameterWorkerTestUtil {
         .sendPullMsg(anyString(), anyObject());
   }
 
-  static void pullNetworkExceptionAndResend(final ParameterWorker worker,
-                                                   final WorkerHandler handler, final WorkerMsgSender sender)
+  static void pullNetworkExceptionAndResend(final ParameterWorker<Integer, ?, Integer> worker,
+                                            final WorkerHandler<Integer, ?, Integer> handler,
+                                            final WorkerMsgSender<Integer, ?> sender)
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
     final CountDownLatch sendLatch = new CountDownLatch(AsyncParameterWorker.MAX_RESEND_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
@@ -282,7 +285,8 @@ final class ParameterWorkerTestUtil {
     verify(sender, times(AsyncParameterWorker.MAX_RESEND_COUNT)).sendPullMsg(anyString(), any(EncodedKey.class));
   }
 
-  static void pushNetworkExceptionAndResend(final ParameterWorker worker, final WorkerMsgSender sender)
+  static void pushNetworkExceptionAndResend(final ParameterWorker<Integer, Integer, ?> worker,
+                                            final WorkerMsgSender<Integer, ?> sender)
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
     final CountDownLatch sendLatch = new CountDownLatch(AsyncParameterWorker.MAX_RESEND_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
@@ -313,8 +317,9 @@ final class ParameterWorkerTestUtil {
         anyObject());
   }
 
-  static void pullTimeoutAndRetry(final ParameterWorker worker,
-                                         final WorkerHandler handler, final WorkerMsgSender sender)
+  static void pullTimeoutAndRetry(final ParameterWorker<Integer, ?, Integer> worker,
+                                  final WorkerHandler<Integer, ?, Integer> handler,
+                                  final WorkerMsgSender<Integer, ?> sender)
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
     final CountDownLatch sendLatch = new CountDownLatch(AsyncParameterWorker.MAX_PULL_RETRY_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all retry requests have been sent.
