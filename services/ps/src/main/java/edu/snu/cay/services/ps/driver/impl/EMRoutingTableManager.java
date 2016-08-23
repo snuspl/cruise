@@ -143,12 +143,10 @@ public final class EMRoutingTableManager {
     broadcastSyncMsg(serverId);
 
     while (!workersToCheck.isEmpty()) {
-      synchronized (workersToCheck) {
-        try {
-          workersToCheck.wait(); // onSyncReply() and deregisterWorker() call notify()
-        } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "Interrupted while waiting for synchronization", e);
-        }
+      try {
+        wait(); // onSyncReply() and deregisterWorker() will notify
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while waiting for synchronization", e);
       }
     }
 
@@ -183,9 +181,7 @@ public final class EMRoutingTableManager {
     workersToCheck.remove(workerId);
 
     if (workersToCheck.isEmpty()) {
-      synchronized (workersToCheck) {
-        workersToCheck.notify();
-      }
+      notifyAll(); // wake up all threads in waitUntilWorkersReadyForServerDelete() for simplicity
     }
   }
 
@@ -227,10 +223,10 @@ public final class EMRoutingTableManager {
     // check the worker in all ongoing syncs and remove it
     // we do not care registerWorker() method, because newly started workers receive up-to-date routing table
     for (final Set<String> workersToCheck : ongoingSyncs.values()) {
-      if (workersToCheck.remove(workerId)) {
-        synchronized (workersToCheck) {
-          workersToCheck.notify();
-        }
+      workersToCheck.remove(workerId);
+
+      if (workersToCheck.isEmpty()) {
+        notifyAll(); // wake up all threads in waitUntilWorkersReadyForServerDelete() for simplicity
       }
     }
   }

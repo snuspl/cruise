@@ -20,7 +20,6 @@ import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.worker.impl.WorkerMsgSender;
 import org.apache.reef.tang.InjectionFuture;
 
-import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
@@ -66,7 +65,6 @@ public final class DynamicServerResolver implements ServerResolver {
   /**
    * A set maintaining sync requests about the deletion of a certain server.
    */
-  @GuardedBy("ongoingSyncs")
   private final Set<String> ongoingSyncs = new HashSet<>();
 
   private final InjectionFuture<WorkerMsgSender> msgSender;
@@ -185,15 +183,19 @@ public final class DynamicServerResolver implements ServerResolver {
 
     final int blockId = routingTableUpdate.getBlockId();
 
+    // 1. update blockIdToStoreId
     final int actualOldOwnerId = blockIdToStoreId.put(blockId, newOwnerId);
     if (oldOwnerId != actualOldOwnerId) {
       LOG.log(Level.WARNING, "Mapping was stale about block {0}. ExpectedOldOwnerId: {1}, ActualOldOwnerId: {2}",
           new Object[]{blockId, oldOwnerId, actualOldOwnerId});
     }
 
-    final Set<Integer> blockIdsInOldStore = storeIdToBlockIds.get(actualOldOwnerId);
+    // 2. update storeIdToBlockIds.
+    // This part needs to be synchronized to avoid the concurrent execution of itself and syncRoutingTable method
+    synchronized (this) {
+      // 2-1. remove metadata of old owner
+      final Set<Integer> blockIdsInOldStore = storeIdToBlockIds.get(actualOldOwnerId);
 
-    synchronized (ongoingSyncs) {
       blockIdsInOldStore.remove(blockId);
 
       // remove old server eval id, if it has no block
@@ -208,12 +210,11 @@ public final class DynamicServerResolver implements ServerResolver {
           msgSender.get().sendRoutingTableSyncReplyMsg(deletedServerId);
         }
       }
-    }
 
-    Set<Integer> blockIdsInNewStore = storeIdToBlockIds.get(newOwnerId);
+      // 2-2. add metadata of new owner
+      Set<Integer> blockIdsInNewStore = storeIdToBlockIds.get(newOwnerId);
 
-    synchronized (storeIdToBlockIds) {
-      // when this update is for new server
+      // when this update is for newly added server
       if (blockIdsInNewStore == null) {
         blockIdsInNewStore = storeIdToBlockIds.put(newOwnerId, new HashSet<>());
       }
@@ -222,14 +223,15 @@ public final class DynamicServerResolver implements ServerResolver {
     }
 
     LOG.log(Level.FINE, "Mapping table in server resolver is updated." +
-        " BlockId: {0}, OldOwnerId: {1}, newOwnerId {2}", new Object[]{blockId, actualOldOwnerId, newOwnerId});
+        " BlockId: {0}, OldOwnerId: {1}, NewOwnerId {2}", new Object[]{blockId, actualOldOwnerId, newOwnerId});
   }
 
   @Override
   public void syncRoutingTable(final String serverId) {
     checkInitialization();
 
-    synchronized (ongoingSyncs) {
+    // It needs to be synchronized to avoid concurrent execution with the sync block in updateRoutingTable
+    synchronized (this) {
       if (!storeIdToEndpointId.containsValue(serverId)) { // linear overhead. But this method will be rarely called
         msgSender.get().sendRoutingTableSyncReplyMsg(serverId);
       } else {
