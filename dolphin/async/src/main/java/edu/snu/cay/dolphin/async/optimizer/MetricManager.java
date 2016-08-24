@@ -21,12 +21,13 @@ import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
-import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
+import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
+import org.apache.http.nio.reactor.IOReactorException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -45,6 +46,8 @@ import java.util.logging.Logger;
 @DriverSide
 public final class MetricManager {
   private static final Logger LOG = Logger.getLogger(MetricManager.class.getName());
+
+  private static final int METRIC_QUEUE_SIZE = 1024;
 
   /**
    * Worker-side metrics, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
@@ -79,19 +82,19 @@ public final class MetricManager {
   private final boolean dashboardEnabled;
 
   /**
-   * HTTP connection pool to reuse http connections.
+   * Reusable HTTP client managed with PoolingHttpClientConnectionManager.
    */
-  private final CloseableHttpClient metricsSendingPool;
+  private final CloseableHttpAsyncClient reusableHttpClient;
 
   /**
    * Thread for sending metrics to dashboard server.
    */
-  private final ExecutorService metricsSenderThread = Executors.newSingleThreadScheduledExecutor();
+  private final ExecutorService metricsSenderExecutor = Executors.newSingleThreadScheduledExecutor();
 
   /**
    * Metrics request queue which saves unsent requests.
    */
-  private final ConcurrentLinkedQueue<String> metricsRequestQueue = new ConcurrentLinkedQueue<String>();
+  private final ArrayBlockingQueue<String> metricsRequestQueue = new ArrayBlockingQueue<String>(METRIC_QUEUE_SIZE);
 
   /**
    * Constructor of MetricManager.
@@ -110,20 +113,28 @@ public final class MetricManager {
 
     this.dashboardEnabled = !hostAddress.isEmpty();
     this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
+
+    CloseableHttpAsyncClient tempReusableHttpClient;
     if (this.dashboardEnabled) {
       // make a pool of http requests with request limitation of INT_MAX.
-      final PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
-      connectionManager.setMaxTotal(Integer.MAX_VALUE);
-      connectionManager.setDefaultMaxPerRoute(Integer.MAX_VALUE);
-      metricsSendingPool = HttpClients.custom().setConnectionManager(connectionManager).build();
-
-      // run another thread to send metrics.
-      runMetricsSenderThread();
-      LOG.log(Level.INFO, "Dashboard url: {0}", dashboardURL);
+      try {
+        final PoolingNHttpClientConnectionManager connectionManager
+            = new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor());
+        connectionManager.setMaxTotal(Integer.MAX_VALUE);
+        tempReusableHttpClient = HttpAsyncClients.custom().setConnectionManager(connectionManager).build();
+      } catch (IOReactorException e) {
+        tempReusableHttpClient = null;
+      }
     } else {
-      metricsSendingPool = null;
+      tempReusableHttpClient = null;
       LOG.log(Level.INFO, "Dashboard is not in use");
     }
+
+    this.reusableHttpClient = tempReusableHttpClient;
+    this.reusableHttpClient.start();
+    // run another thread to send metrics.
+    runMetricsSenderThread();
+    LOG.log(Level.INFO, "Dashboard url: {0}", dashboardURL);
   }
 
   /**
@@ -160,8 +171,12 @@ public final class MetricManager {
 
     // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
     if (this.dashboardEnabled) {
-      metricsRequestQueue.add(String.format("id=%s&metrics=%s&time=%d",
-          workerId, metrics, System.currentTimeMillis()));
+      try {
+        metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
+            workerId, metrics, System.currentTimeMillis()));
+      } catch (InterruptedException e) {
+        LOG.log(Level.WARNING, "Dashboard: ", e);
+      }
     }
   }
 
@@ -199,8 +214,12 @@ public final class MetricManager {
 
     // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
     if (this.dashboardEnabled) {
-      metricsRequestQueue.add(String.format("id=%s&metrics=%s&time=%d",
-          serverId, metrics, System.currentTimeMillis()));
+      try {
+        metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
+            serverId, metrics, System.currentTimeMillis()));
+      } catch (InterruptedException e) {
+        LOG.log(Level.WARNING, "Dashboard: ", e);
+      }
     }
   }
 
@@ -277,13 +296,16 @@ public final class MetricManager {
   /**
    * Runs a thread watching the metrics queue to send the oldest metrics information via http request.
    */
-  void runMetricsSenderThread() {
-    metricsSenderThread.execute(new Runnable() {
+  private void runMetricsSenderThread() {
+    metricsSenderExecutor.execute(new Runnable() {
       @Override
       public void run() {
         while (true) {
-          while (!metricsRequestQueue.isEmpty()) {
-            sendMetricsToDashboard(metricsRequestQueue.poll());
+          try {
+            final String request = metricsRequestQueue.take();
+            sendMetricsToDashboard(request);
+          } catch (InterruptedException e) {
+            LOG.log(Level.WARNING, "Dashboard:", e);
           }
         }
       }
@@ -294,19 +316,16 @@ public final class MetricManager {
    * Send metrics to Dashboard server.
    * @param request The POST request content which is to be sent to the dashboard server.
    */
-  void sendMetricsToDashboard(final String request) {
+  private void sendMetricsToDashboard(final String request) {
     try {
+
+      LOG.log(Level.WARNING, "SendMetricsToDashboard");
       final HttpPost httpPost = new HttpPost(dashboardURL);
       httpPost.setHeader("Content-Type", "application/x-www-form-urlencoded");
       httpPost.setEntity(new StringEntity(request));
-      final HttpResponse response = metricsSendingPool.execute(httpPost);
-      if (response.getStatusLine().getStatusCode() == 200) {
-        LOG.log(Level.INFO, "Dashboard: post succeeded.");
-      } else {
-        LOG.log(Level.WARNING, "Dashboard: post failed.");
-      }
+      reusableHttpClient.execute(httpPost, null);
     } catch (IOException e) {
-      LOG.log(Level.WARNING, "Dashboard: post failed.");
+      LOG.log(Level.WARNING, "Dashboard: post failed - ", e);
     }
   }
 }

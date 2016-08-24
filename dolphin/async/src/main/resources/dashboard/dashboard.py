@@ -16,11 +16,13 @@ import os
 import re
 import sqlite3
 import sys
+import threading
 import time
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
 
 print("Flask script: Launching dashboard server...")
 timestamp = time.time()
+db_lock = threading.Lock()
 
 #
 # Configurations
@@ -68,8 +70,8 @@ def close_db(error):
 # The main URL which receives metrics visualizes the metrics to users.
 @app.route('/', methods=['GET', 'POST'])
 def main():
-    db = get_db()
     if request.method == 'POST':
+        db = get_db()
         # update database with new metrics
         id = request.form['id']
         time = float(request.form['time'])/1000 - timestamp
@@ -81,16 +83,21 @@ def main():
         else:
             position = 'server'
         id = re.sub(r'\D', '', id)
+        db_lock.acquire()
         db.execute('insert into {0} (time, id, {1}) values ({2}, {3}, {4})'
                    .format(position, ', '.join(str(i) for i in metrics.keys()),
                            time, id, ', '.join(str(i) for i in metrics.values())))
+        db.commit()
+        db_lock.release()
         # app-specific metrics
         if custom is not None:
+            db_lock.acquire()
             db.execute('create table if not exists custom (time double not null, id int not null, {0} varchar(255) not null);'
                        .format(' varchar(255) not null, '.join(custom['data'].keys())))
             db.execute('insert into custom values ({0}, {1}, {2})'
                        .format(time, id, ', '.join(str(i) for i in custom['data'].values())))
-        db.commit()
+            db.commit()
+            db_lock.release()
         return 'accept'
     else:
         return render_template('main.html')
@@ -106,7 +113,9 @@ def plot():
     db = get_db()
     data = dict()
     try:
+        db_lock.acquire()
         cur = db.execute('select time, id, {0} from {1}'.format(y, position))
+        db_lock.release()
         for row in cur:
             if row[1] == int(id):
                 data[row[0]] = row[2]
@@ -120,15 +129,22 @@ def selectors():
     position = request.form['position'].lower()
     db = get_db()
     try:
+        db_lock.acquire()
         cur = db.execute('pragma table_info({0})'.format(position))
+        db_lock.release()
         y_axis = map(lambda x: x['name'], cur.fetchall())
-    except:
+    except Exception as err:
+        print(err)
         y_axis = []
     try:
+        db_lock.acquire()
         cur = db.execute('select id from {0}'.format(position))
+        db_lock.release()
         ids = sorted(set(map(lambda x: x[0], cur.fetchall())))
-    except:
+    except Exception as err:
+        print(err)
         ids = []
+    print(ids)
     return json.dumps({'id':ids, 'y':y_axis})
 
 #
@@ -137,9 +153,9 @@ def selectors():
 if __name__ == '__main__':
     with app.app_context():
         init_db()
-        try:
-            # run a multi-threaded server.
-            app.run(host='0.0.0.0', port=sys.argv[1], threaded=True)
-        except Exception as err:
-            print('Flask script: {0}'.format(err))
-            sys.exit(1)
+    try:
+        # run a multi-threaded server.
+        app.run(host='0.0.0.0', port=sys.argv[1], threaded=True)
+    except Exception as err:
+        print('Flask script: {0}'.format(err))
+        sys.exit(1)

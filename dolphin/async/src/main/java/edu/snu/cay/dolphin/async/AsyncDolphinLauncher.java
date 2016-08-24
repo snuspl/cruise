@@ -209,7 +209,6 @@ public final class AsyncDolphinLauncher {
         if (port > 0) {
           final String hostAddress = getHostAddress(port);
           runDashboardServer(port);
-          LOG.log(Level.INFO, "Add dashboard configuration!");
           dashboardConfBuilder
               .bindNamedParameter(DashboardHostAddress.class, hostAddress);
         }
