@@ -34,6 +34,7 @@ import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
+import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -51,6 +52,8 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 
@@ -121,6 +124,13 @@ public final class SSPParameterWorkerTest {
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
     // It may be needed to define aggregation master/slave mockers' actions for send() operation.
+    doAnswer(invocation -> {
+        final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
+        final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", initClockMsgData);
+        sspWorkerClockMessageHandler.onNext(aggregationMessage);
+        return null;
+      }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
+
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
         final AvroClockMsg sendMsg = codec.decode(data);
@@ -232,13 +242,6 @@ public final class SSPParameterWorkerTest {
   public void testDataStalenessCheck() throws NetworkException, InterruptedException {
     final int numberOfKeys = 3;
 
-    doAnswer(invocation -> {
-        final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
-        final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", initClockMsgData);
-        sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        return null;
-      }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
-
     // mockSender's sendPullMsg method should be called 'the number of keys' times to pull all the data from servers.
     for (int i = 0; i < numberOfKeys; i++) {
       parameterWorker.pull(i);
@@ -268,6 +271,76 @@ public final class SSPParameterWorkerTest {
       parameterWorker.pull(i);
     }
     verify(mockSender, times(2 * numberOfKeys)).sendPullMsg(anyString(), anyObject());
+  }
+
+  @Test
+  public void testWorkerStalenessCheck() throws NetworkException, InterruptedException {
+    final int numOfThreads = 3;
+    final int key = 0;
+    final int timeoutInMilliseconds = 500;
+    final Runnable[] threads = new Runnable[numOfThreads];
+    final Map<Runnable, CountDownLatch> threadLatchMap = new HashMap<>();
+    final class WorkerStalenessCheckThread implements Runnable {
+      @Override
+      public void run() {
+        parameterWorker.pull(key);
+        threadLatchMap.get(this).countDown();
+      }
+    }
+
+    workerClock.initialize();
+
+    // Test to verify whether threads aren't blocked and make progresses for pull requests
+    // when the worker clock is in staleness bound.
+    while (workerClock.getWorkerClock() <= workerClock.getGlobalMinimumClock() + STALENESS_BOUND) {
+      for (int i = 0; i < numOfThreads; i++) {
+        threads[i] = new WorkerStalenessCheckThread();
+        threadLatchMap.put(threads[i], new CountDownLatch(1));
+      }
+      ThreadUtils.runConcurrently(threads);
+
+      // Check whether threads aren't blocked and return immediately after pull requests.
+      for (final Runnable thread : threads) {
+        threadLatchMap.get(thread).await();
+        assertTrue(threadLatchMap.get(thread).getCount() == 0);
+      }
+      threadLatchMap.clear();
+      workerClock.clock();
+    }
+
+    // At this moment, worker clock is outside the staleness bound from global minimum clock.
+    // So these threads below should be blocked during pull requests.
+    assertTrue(workerClock.getWorkerClock() > workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
+    for (int i = 0; i < numOfThreads; i++) {
+      threads[i] = new WorkerStalenessCheckThread();
+      threadLatchMap.put(threads[i], new CountDownLatch(1));
+    }
+
+    ThreadUtils.runConcurrently(threads);
+
+    // The threads should keep being blocked until the timeouts expire.
+    // Since they will be blocked until the worker clock satisfies the worker staleness condition.
+    for (final Runnable thread : threads) {
+      threadLatchMap.get(thread).await(10, TimeUnit.SECONDS);
+      assertTrue(threadLatchMap.get(thread).getCount() > 0);
+    }
+
+    // Manipulate the global minimum clock to make the worker clock get inside of the bound,
+    // which means the blocked threads will be released and process pull requests.
+    final int oldGlobalMinimumClock = workerClock.getGlobalMinimumClock();
+    final int deltaClock = 1;
+    final byte[] initClockMsgData =
+        codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaClock));
+    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", initClockMsgData);
+
+    assertEquals(oldGlobalMinimumClock + deltaClock, workerClock.getGlobalMinimumClock());
+    assertTrue(workerClock.getWorkerClock() <= workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
+
+    // All the threads now should return after finishing pull requests.
+    for (final Runnable thread : threads) {
+      threadLatchMap.get(thread).await();
+      assertTrue(threadLatchMap.get(thread).getCount() == 0);
+    }
   }
 
   /**
