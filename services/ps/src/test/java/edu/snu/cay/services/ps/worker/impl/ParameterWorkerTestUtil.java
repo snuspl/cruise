@@ -332,7 +332,7 @@ final class ParameterWorkerTestUtil {
         sendLatch.countDown();
 
         if (sendLatch.getCount() > 0) {
-          throw new NetworkException("exception");
+          return null;
         }
 
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
