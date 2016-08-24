@@ -232,9 +232,12 @@ public final class DynamicServerResolver implements ServerResolver {
 
     // It needs to be synchronized to avoid concurrent execution with the sync block in updateRoutingTable
     synchronized (this) {
-      if (!storeIdToEndpointId.containsValue(serverId)) { // linear overhead. But this method will be rarely called
+      if (!storeIdToBlockIds.containsKey(serverId)) {
         msgSender.get().sendRoutingTableSyncReplyMsg(serverId);
+
       } else {
+        // we assume that Sync operation always succeeds finally
+        // TODO #764: handle failures in sync operation
         ongoingSyncs.add(serverId);
       }
     }

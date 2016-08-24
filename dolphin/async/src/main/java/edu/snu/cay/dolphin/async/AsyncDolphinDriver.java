@@ -318,6 +318,7 @@ public final class AsyncDolphinDriver {
     this.driverIdStr = driverIdStr;
     this.aggregationManager = aggregationManager;
     this.metricManager = metricManager;
+
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
     this.serverConf = configurationSerializer.fromString(serializedServerConf);
@@ -348,6 +349,7 @@ public final class AsyncDolphinDriver {
       final Injector optimizerInjector = injector.forkInjector();
       optimizerInjector.bindVolatileParameter(ServerEM.class, serverEMWrapper.getInstance());
       optimizerInjector.bindVolatileParameter(WorkerEM.class, workerEMWrapper.getInstance());
+      optimizerInjector.bindVolatileInstance(EMRoutingTableManager.class, emRoutingTableManager);
       optimizerInjector.bindVolatileInstance(AsyncDolphinDriver.class, this);
       this.optimizationOrchestrator = optimizerInjector.getInstance(OptimizationOrchestrator.class);
     } catch (final InjectionException e) {

@@ -23,6 +23,7 @@ import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
@@ -62,7 +63,7 @@ public final class EMRoutingTableManager {
   /**
    * Workers participating in the system and subscribing the routing table of servers.
    */
-  private final Set<String> activeWorkerIds = new HashSet<>();
+  private final HashSet<String> activeWorkerIds = new HashSet<>();
 
   /**
    * Workers waiting for the server initialization to receive the initial routing table for resolving servers.
@@ -71,9 +72,10 @@ public final class EMRoutingTableManager {
 
   /**
    * Ongoing sync operations that assures workers to be ready for the deletion of a certain server.
-   * Key is a id of server to be deleted and value is a set of worker ids to be checked.
+   * Key is a id of server to be deleted, and value is a tuple comprised of a set of worker ids to be checked
+   * and a callback to notify when the sync operation is completed.
    */
-  private final ConcurrentMap<String, Set<String>> ongoingSyncs = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Tuple<Set<String>, EventHandler<Void>>> ongoingSyncs = new ConcurrentHashMap<>();
 
   /**
    * The number of initial servers, which is for deciding when to send the routing table to workers at the beginning.
@@ -126,34 +128,35 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * Wait until workers to be ready for the deletion of a certain server.
-   * It sends sync message to all active workers.
-   * @param serverId id of server to be deleted
+   * Checks whether all workers are ready for server delete.
+   * To check the state of workers, it sends a sync message to all active workers
+   * and the workers will reply when they become ready.
+   * On receiving reply from all workers that messages are sent to, a callback will be invoked.
+   * See {@link #handleWorkerResponseForSync(String, Tuple)}.
+   * @param serverId a server id
+   * @param callback a callback to be invoked when sync is completed
    */
-  public synchronized void waitUntilWorkersReadyForServerDelete(final String serverId) {
+  public synchronized void checkWorkersTobeReadyForServerDelete(final String serverId,
+                                                                final EventHandler<Void> callback) {
+    if (activeWorkerIds.isEmpty()) {
+      LOG.log(Level.SEVERE, "No existing workers");
+      callback.onNext(null); // TODO #746: consider failure of sync operation
+      return;
+    }
+
     if (ongoingSyncs.containsKey(serverId)) {
       LOG.log(Level.WARNING, "Sync for {0} is already ongoing", serverId);
       return;
     }
 
-    final Set<String> workersToCheck = new HashSet<>(activeWorkerIds);
-    ongoingSyncs.put(serverId, workersToCheck);
+    final Set<String> workersToCheck = (Set<String>) activeWorkerIds.clone();
+    ongoingSyncs.put(serverId, new Tuple<>(workersToCheck, callback));
 
-    LOG.log(Level.INFO, "Send sync msg for {0} to workers: {1}", new Object[]{serverId, activeWorkerIds});
-    broadcastSyncMsg(serverId);
-
-    while (!workersToCheck.isEmpty()) {
-      try {
-        wait(); // onSyncReply() and deregisterWorker() will notify
-      } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "Interrupted while waiting for synchronization", e);
-      }
-    }
-
-    ongoingSyncs.remove(serverId);
+    LOG.log(Level.INFO, "Send sync msg for {0} to workers: {1}", new Object[]{serverId, workersToCheck});
+    broadcastSyncMsg(serverId, workersToCheck);
   }
 
-  private void broadcastSyncMsg(final String serverId) {
+  private void broadcastSyncMsg(final String serverId, final Set<String> workersToCheck) {
     final RoutingTableSyncMsg routingTableSyncMsg = RoutingTableSyncMsg.newBuilder()
         .setServerId(serverId)
         .build();
@@ -164,7 +167,7 @@ public final class EMRoutingTableManager {
             .setRoutingTableSyncMsg(routingTableSyncMsg)
             .build();
 
-    for (final String workerId : activeWorkerIds) {
+    for (final String workerId : workersToCheck) {
       sender.get().send(workerId, syncMsg);
     }
   }
@@ -177,11 +180,9 @@ public final class EMRoutingTableManager {
 
     LOG.log(Level.INFO, "Sync reply for {0} has been arrived from worker {1}", new Object[]{serverId, workerId});
 
-    final Set<String> workersToCheck = ongoingSyncs.get(serverId);
-    workersToCheck.remove(workerId);
-
-    if (workersToCheck.isEmpty()) {
-      notifyAll(); // wake up all threads in waitUntilWorkersReadyForServerDelete() for simplicity
+    final Tuple<Set<String>, EventHandler<Void>> workerSetAndCallback = ongoingSyncs.get(serverId);
+    if (handleWorkerResponseForSync(workerId, workerSetAndCallback)) {
+      ongoingSyncs.remove(serverId);
     }
   }
 
@@ -220,15 +221,37 @@ public final class EMRoutingTableManager {
       serverEM.deregisterRoutingTableUpdateCallback(CLIENT_ID);
     }
 
-    // check the worker in all ongoing syncs and remove it
-    // we do not care registerWorker() method, because newly started workers receive up-to-date routing table
-    for (final Set<String> workersToCheck : ongoingSyncs.values()) {
-      workersToCheck.remove(workerId);
+    // check all ongoing syncs
+    for (final Map.Entry<String, Tuple<Set<String>, EventHandler<Void>>> entry : ongoingSyncs.entrySet()) {
+      final Tuple<Set<String>, EventHandler<Void>> workerSetAndCallback = entry.getValue();
 
-      if (workersToCheck.isEmpty()) {
-        notifyAll(); // wake up all threads in waitUntilWorkersReadyForServerDelete() for simplicity
+      if (handleWorkerResponseForSync(workerId, workerSetAndCallback)) {
+        final String serverId = entry.getKey();
+        ongoingSyncs.remove(serverId);
       }
     }
+  }
+
+  /**
+   * Handle workers's responses for sync operation.
+   * It is invoked when a worker sends a sync reply msg (see {@link #onSyncReply(String, String)})
+   * or the worker is deleted (see {@link #deregisterWorker(String)}).
+   * We do not care {@link #registerWorker(String)} method,
+   * because newly started workers receive up-to-date routing table.
+   * It returns true if sync has been completed.
+   */
+  private boolean handleWorkerResponseForSync(final String workerId,
+                                           final Tuple<Set<String>, EventHandler<Void>> workerSetAndCallback) {
+    final Set<String> workersToCheck = workerSetAndCallback.getKey();
+    workersToCheck.remove(workerId);
+
+    // invoke callback, when all workers have replied
+    if (workersToCheck.isEmpty()) {
+      final EventHandler<Void> callback = workerSetAndCallback.getValue();
+      callback.onNext(null);
+      return true;
+    }
+    return false;
   }
 
   private void sendWorkerRegisterReplyMsg(final String workerId, final EMRoutingTable routingTable) {

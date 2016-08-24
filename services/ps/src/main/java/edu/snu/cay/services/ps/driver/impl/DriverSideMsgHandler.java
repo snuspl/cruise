@@ -54,7 +54,7 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPSMs
       break;
 
     case RoutingTableSyncReplyMsg:
-      onRoutingTableSyncReplyMsg(msg.getRoutingTableSyncMsg().getServerId().toString(), srcId);
+      onRoutingTableSyncReplyMsg(msg.getRoutingTableSyncReplyMsg().getServerId().toString(), srcId);
       break;
 
     default:

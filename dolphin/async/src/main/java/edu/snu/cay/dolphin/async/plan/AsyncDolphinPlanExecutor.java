@@ -305,6 +305,29 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
+   * This handler is registered as the callback to
+   * {@link EMRoutingTableManager#checkWorkersTobeReadyForServerDelete(String, EventHandler)}.
+   */
+  private final class SyncHandler implements EventHandler<Void> {
+    private final PlanOperation syncOp;
+
+    private SyncHandler(final PlanOperation syncOp) {
+      this.syncOp = syncOp;
+    }
+
+    @Override
+    public void onNext(final Void aVoid) {
+      LOG.log(Level.FINER, "Received Sync complete for server {0}", syncOp.getEvalId().get());
+      if (executingPlan == null) {
+        throw new RuntimeException("Sync operation is completed, but no executingPlan available.");
+      }
+
+      // we assume that Sync operation always succeeds
+      onOperationComplete(syncOp);
+    }
+  }
+
+  /**
    * Handles the result of Start operation.
    * It marks Start operation complete and execute the next operations, if they exist.
    */
@@ -342,6 +365,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   /**
    * Refer to the steps explained in {@link Plan}.
+   * TODO #764: need to consider failure in executing each operation
    */
   private void onOperationComplete(final PlanOperation completeOp) {
     final Set<PlanOperation> nextOpsToExecute = executingPlan.markOperationComplete(completeOp);
@@ -473,10 +497,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     final String serverId = syncOp.getEvalId().get();
     LOG.log(Level.FINE, "SYNC: server {0}", serverId);
 
-    // blocking call: wait until all workers to be ready for the deletion of a server
-    routingTableManager.waitUntilWorkersReadyForServerDelete(serverId);
-
-    onOperationComplete(syncOp);
+    routingTableManager.checkWorkersTobeReadyForServerDelete(serverId, new SyncHandler(syncOp));
   }
 
   private void executeStartOperation(final PlanOperation startOp) {
