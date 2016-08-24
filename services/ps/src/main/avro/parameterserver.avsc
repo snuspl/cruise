@@ -211,6 +211,7 @@
 
 /**
  * A message containing parameter worker metrics.
+ * Parameter worker metrics are collected and sent in worker's iteration unit.
  */
 {
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
@@ -218,37 +219,37 @@
   "name": "ParameterWorkerMetrics",
   "fields":
   [
-    // iteration number
+    // number of threads used for push/pull requests
     {"name": "numThreads", "type": "int", "default": 0},
 
-    // total push time for this iteration (seconds)
+    // total push time for this iteration (seconds) : time between a push request's dequeue and network send
     {"name": "totalPushTime", "type": "double", "default": 0.0},
 
-    // total pull time for this iteration (seconds)
+    // total pull time for this iteration (seconds) : time between a pull request's dequeue and network send
     {"name": "totalPullTime", "type": "double", "default": 0.0},
 
-    // total computation time for this iteration (seconds)
+    // total encode time for this iteration (seconds) : time spent to encode a request
     {"name": "totalEncodeTime", "type": "double", "default": 0.0},
 
-    // total computation time for this iteration (seconds)
+    // total pending time for this iteration (seconds) : time spent in queue for a request
     {"name": "totalPendingTime", "type": "double", "default": 0.0},
 
-    // total computation time for this iteration (seconds)
+    // total network time for this iteration (seconds) : time spent in the network for a pull request/reply transmission
     {"name": "totalNetworkTime", "type": "double", "default": 0.0},
 
-    // number of data items (mapped to a key in MemoryStore) processed
+    // number of push requests processed
     {"name": "totalPushCount", "type": "int", "default": 0},
 
-    // number of data items (mapped to a key in MemoryStore) processed
+    // number of pull requests processed
     {"name": "totalPullCount", "type": "int", "default": 0},
 
-    // number of data items (mapped to a key in MemoryStore) processed
+    // number of encodes processed
     {"name": "totalEncodeCount", "type": "int", "default": 0},
 
-    // number of data items (mapped to a key in MemoryStore) processed
+    // number of requests pended/put in queue
     {"name": "totalPendingStatCount", "type": "int", "default": 0},
 
-    // number of data items (mapped to a key in MemoryStore) processed
+    // number of pull request/reply pairs processed
     {"name": "totalNetworkStatCount", "type": "int", "default": 0}
   ]
 },
