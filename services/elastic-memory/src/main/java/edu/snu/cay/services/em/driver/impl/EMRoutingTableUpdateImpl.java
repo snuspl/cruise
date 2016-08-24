@@ -18,8 +18,6 @@ package edu.snu.cay.services.em.driver.impl;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import org.apache.reef.annotations.audience.Private;
 
-import java.util.List;
-
 /**
  * An implementation class of {@link EMRoutingTableUpdate}.
  */
@@ -28,14 +26,14 @@ final class EMRoutingTableUpdateImpl implements EMRoutingTableUpdate {
   private final int oldOwnerId;
   private final int newOwnerId;
   private final String newEvalId;
-  private final List<Integer> blockIds;
+  private final int blockId;
 
   EMRoutingTableUpdateImpl(final int oldOwnerId, final int newOwnerId, final String newEvalId,
-                           final List<Integer> blockIds) {
+                           final int blockId) {
     this.oldOwnerId = oldOwnerId;
     this.newOwnerId = newOwnerId;
     this.newEvalId = newEvalId;
-    this.blockIds = blockIds;
+    this.blockId = blockId;
   }
 
   @Override
@@ -54,7 +52,7 @@ final class EMRoutingTableUpdateImpl implements EMRoutingTableUpdate {
   }
 
   @Override
-  public List<Integer> getBlockIds() {
-    return blockIds;
+  public int getBlockId() {
+    return blockId;
   }
 }

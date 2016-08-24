@@ -159,4 +159,19 @@ public final class WorkerMsgSender<K, P> {
       throw new RuntimeException("Network exception while communicating with driver", e);
     }
   }
+
+  public void sendRoutingTableSyncReplyMsg(final String serverId) {
+    final RoutingTableSyncReplyMsg routingTableSyncReplyMsg = RoutingTableSyncReplyMsg.newBuilder()
+        .setServerId(serverId)
+        .build();
+    try {
+      send(driverIdentifier,
+          AvroPSMsg.newBuilder()
+              .setType(Type.RoutingTableSyncReplyMsg)
+              .setRoutingTableSyncReplyMsg(routingTableSyncReplyMsg)
+              .build());
+    } catch (final NetworkException e) {
+      throw new RuntimeException("Network exception while communicating with driver", e);
+    }
+  }
 }

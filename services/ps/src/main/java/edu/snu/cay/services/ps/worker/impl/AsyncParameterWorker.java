@@ -491,10 +491,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           }
           break;
         } catch (final NetworkException e) {
-          LOG.log(Level.FINE, "NetworkException while sending push msg. Do retry", e);
+          LOG.log(Level.WARNING, "NetworkException while sending push msg. Do retry", e);
         }
 
-        LOG.log(Level.FINE, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
+        LOG.log(Level.WARNING, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
         try {
           Thread.sleep(RESEND_INTERVAL_MS);
         } catch (final InterruptedException e) {
@@ -669,10 +669,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                   pullStat.put(ticker.read() - beginTick);
                   break;
                 } catch (final NetworkException e) {
-                  LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
+                  LOG.log(Level.WARNING, "NetworkException while sending pull msg. Do retry", e);
                 }
 
-                LOG.log(Level.FINE, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
+                LOG.log(Level.WARNING, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
                 try {
                   Thread.sleep(RESEND_INTERVAL_MS);
                 } catch (final InterruptedException e) {
