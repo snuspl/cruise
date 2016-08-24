@@ -197,7 +197,7 @@ public class ParameterWorkerTestUtil {
               handler.processPullReject(encodedKey.getKey());
             } else {
               // pull messages should return values s.t. key == value
-              handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+              handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), 0);
             }
 
           } catch (final InterruptedException e) {

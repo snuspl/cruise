@@ -19,6 +19,7 @@ import com.google.common.base.Ticker;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.Statistics;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
@@ -287,12 +288,17 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     result.get(timeoutMs, TimeUnit.MILLISECONDS);
   }
 
+  @Override
+  public ParameterWorkerMetrics buildParameterWorkerMetrics() {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Handles incoming pull replies, by setting the value of the future.
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
    */
   @Override
-  public void processPullReply(final K key, final V value) {
+  public void processPullReply(final K key, final V value, final long serverProcessingTime) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);

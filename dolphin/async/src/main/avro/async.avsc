@@ -27,6 +27,9 @@
     // "metrics" should contain app-specific metrics. (ex. loss, DvT)
     {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
 
+    {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics"],
+     "default":null},
+
     // iteration number
     {"name": "itrIdx", "type": "int", "default": 0},
 

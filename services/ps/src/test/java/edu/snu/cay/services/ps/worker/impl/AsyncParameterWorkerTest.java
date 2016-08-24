@@ -83,7 +83,7 @@ public final class AsyncParameterWorkerTest {
     // pull messages to asynchronous parameter worker should return values s.t. key == value
     doAnswer(invocationOnMock -> {
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+        workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), 0);
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
