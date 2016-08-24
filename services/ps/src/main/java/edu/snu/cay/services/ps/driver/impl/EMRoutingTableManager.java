@@ -63,7 +63,7 @@ public final class EMRoutingTableManager {
   /**
    * Workers participating in the system and subscribing the routing table of servers.
    */
-  private final HashSet<String> activeWorkerIds = new HashSet<>();
+  private final Set<String> activeWorkerIds = new HashSet<>();
 
   /**
    * Workers waiting for the server initialization to receive the initial routing table for resolving servers.
@@ -149,7 +149,7 @@ public final class EMRoutingTableManager {
       return;
     }
 
-    final Set<String> workersToCheck = (Set<String>) activeWorkerIds.clone();
+    final Set<String> workersToCheck = new HashSet<>(activeWorkerIds);
     ongoingSyncs.put(serverId, new Tuple<>(workersToCheck, callback));
 
     LOG.log(Level.INFO, "Send sync msg for {0} to workers: {1}", new Object[]{serverId, workersToCheck});
@@ -238,10 +238,10 @@ public final class EMRoutingTableManager {
    * or the worker is deleted (see {@link #deregisterWorker(String)}).
    * We do not care {@link #registerWorker(String)} method,
    * because newly started workers receive up-to-date routing table.
-   * It returns true if sync has been completed.
+   * It returns true if sync has been completed by this response.
    */
   private boolean handleWorkerResponseForSync(final String workerId,
-                                           final Tuple<Set<String>, EventHandler<Void>> workerSetAndCallback) {
+                                              final Tuple<Set<String>, EventHandler<Void>> workerSetAndCallback) {
     final Set<String> workersToCheck = workerSetAndCallback.getKey();
     workersToCheck.remove(workerId);
 
