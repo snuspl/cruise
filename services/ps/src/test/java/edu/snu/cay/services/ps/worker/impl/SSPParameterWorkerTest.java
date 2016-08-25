@@ -57,6 +57,7 @@ import java.util.logging.Level;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.*;
 
 /**
@@ -118,8 +119,8 @@ public final class SSPParameterWorkerTest {
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
-    // This is a definition of the message receiving part of SSP worker clock message handler
-    // When it receives a broadcast message for updating the global minimum clock.
+    // Stub to simulate the behavior of SSPWorkerClock.MessageHandler.
+    // The message handler responds to the Aggregation message from Driver, which consists of the global minimum clock.
     doAnswer(invocation -> {
         final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
         final AggregationMessage aggregationMessage = getTestAggregationMessage(WORKER_ID, initClockMsgData);
@@ -127,8 +128,9 @@ public final class SSPParameterWorkerTest {
         return null;
       }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
 
-    // This is a definition of the message receiving part of SSP worker clock message handler
-    // when it receives a response from the driver after sending an initial clock request.
+    // Stub to simulate how the initial clock is set in Workers, assuming workers have sent requests for the
+    // initial clock to Driver via AggregationSlave.send().
+    // When worker receives reply from Driver, the handler sets its clock by the value in the message.
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
         final AvroClockMsg sendMsg = codec.decode(data);
@@ -274,8 +276,10 @@ public final class SSPParameterWorkerTest {
     verify(mockSender, times(2 * numberOfKeys)).sendPullMsg(anyString(), anyObject());
   }
 
-  // This test case is to test whether the worker staleness check routine works properly
-  // to block/release threads who request pull operations with respect to worker staleness condition.
+  /**
+   * Tests whether the staleness condition coordinates workers correctly.
+   * When worker threads request pull operations, they are blocked or released according to their staleness condition.
+   */
   @Test(timeout = 30000)
   public void testWorkerStalenessCheck() throws NetworkException, InterruptedException, BrokenBarrierException {
     final int numOfThreads = 3;
@@ -298,18 +302,15 @@ public final class SSPParameterWorkerTest {
           // If a thread is waiting at the barrier, that means,
           // it finishes its pull request without being blocked or it has been released.
           cyclicBarrier.await();
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        } catch (BrokenBarrierException e) {
-          throw new RuntimeException(e);
+        } catch (InterruptedException | BrokenBarrierException e) {
+          fail("Exception occurred while waiting: " + e.getMessage());
         }
       }
     }
 
     workerClock.initialize();
 
-    // Test to verify whether threads aren't blocked and make progresses for pull requests
-    // when the worker clock is in staleness bound.
+    // When the worker clock is within the staleness bound, worker threads are not blocked for pull requests.
     while (workerClock.getWorkerClock() <= workerClock.getGlobalMinimumClock() + STALENESS_BOUND) {
       barrier.reset();
 
@@ -318,12 +319,13 @@ public final class SSPParameterWorkerTest {
       }
       ThreadUtils.runConcurrently(threads);
 
-      // Check whether threads aren't blocked and return immediately after pull requests.
+      // The following await() call can release the barrier, only if all threads have returned immediately
+      // after pull requests (See WorkerStalenessCheckThread.run()).
       barrier.await();
       workerClock.clock();
     }
 
-    // At this moment, worker clock is outside the staleness bound from global minimum clock.
+    // At this moment, worker clock is beyond the staleness bound from global minimum clock.
     // So these threads below should be blocked during pull requests.
     assertTrue(workerClock.getWorkerClock() > workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
 
@@ -333,13 +335,12 @@ public final class SSPParameterWorkerTest {
     }
     ThreadUtils.runConcurrently(threads);
 
-    // There should never be a thread waiting on the cyclic barrier after its pull request.
-    // Since they will be blocked until the worker clock satisfies the worker staleness condition.
+    // Since all threads are blocked by pull, there should be no thread who is waiting on the cyclic barrier.
     Thread.sleep(timeoutInMilliSeconds);
     assertEquals(barrier.getNumberWaiting(), 0);
 
     // Manipulate the global minimum clock to make the worker clock get inside of the bound,
-    // which means the blocked threads will be released and process pull requests.
+    // which releases the blocked threads from pull requests.
     final int oldGlobalMinimumClock = workerClock.getGlobalMinimumClock();
     final int deltaClock = 1;
     final byte[] initClockMsgData =
@@ -349,7 +350,7 @@ public final class SSPParameterWorkerTest {
     assertEquals(oldGlobalMinimumClock + deltaClock, workerClock.getGlobalMinimumClock());
     assertTrue(workerClock.getWorkerClock() <= workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
 
-    // All the threads now should wait at the barrier after finishing pull requests.
+    // All the threads now wait at the barrier after finishing their pull requests.
     barrier.await();
   }
 
