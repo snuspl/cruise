@@ -16,10 +16,7 @@
 package edu.snu.cay.dolphin.async.plan;
 
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
-import edu.snu.cay.services.em.plan.api.PlanOperation;
-import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.BasePlanOperation;
-import org.apache.reef.util.Optional;
 
 /**
  * A class representing Dolphin-specific plan operation.
