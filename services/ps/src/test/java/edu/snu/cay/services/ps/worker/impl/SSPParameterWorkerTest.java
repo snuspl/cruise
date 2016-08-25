@@ -52,8 +52,6 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 
@@ -72,7 +70,7 @@ public final class SSPParameterWorkerTest {
   private static final int INIT_GLOBAL_MIN_CLOCK = 10;
   private static final int INIT_WORKER_CLOCK = INIT_GLOBAL_MIN_CLOCK;
   private static final int STALENESS_BOUND = 5;
-
+  private static final String WORKER_ID = "worker";
   private ParameterWorkerTestUtil testUtil;
   private ParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
@@ -123,14 +121,17 @@ public final class SSPParameterWorkerTest {
         return null;
       }).when(mockSender).sendPullMsg(anyString(), anyObject());
 
-    // It may be needed to define aggregation master/slave mockers' actions for send() operation.
+    // This is a definition of the message receiving part of SSP worker clock message handler
+    // When it receives a broadcast message for updating the global minimum clock.
     doAnswer(invocation -> {
         final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
-        final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", initClockMsgData);
+        final AggregationMessage aggregationMessage = getTestAggregationMessage(WORKER_ID, initClockMsgData);
         sspWorkerClockMessageHandler.onNext(aggregationMessage);
         return null;
       }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
 
+    // This is a definition of the message receiving part of SSP worker clock message handler
+    // when it receives a response from the driver after sending an initial clock request.
     doAnswer(invocation -> {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
         final AvroClockMsg sendMsg = codec.decode(data);
@@ -139,7 +140,7 @@ public final class SSPParameterWorkerTest {
           final AvroClockMsg initClockMsg =
               ClockManager.getReplyInitialClockMessage(INIT_GLOBAL_MIN_CLOCK, INIT_WORKER_CLOCK);
           final byte[] replyData = codec.encode(initClockMsg);
-          final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
+          final AggregationMessage aggregationMessage = getTestAggregationMessage(WORKER_ID, replyData);
           sspWorkerClockMessageHandler.onNext(aggregationMessage);
         }
         return null;
@@ -260,7 +261,7 @@ public final class SSPParameterWorkerTest {
     final int deltaClock = STALENESS_BOUND + 1;
     final byte[] initClockMsgData =
         codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaClock));
-    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", initClockMsgData);
+    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
 
     assertEquals(oldGlobalMinimumClock + deltaClock, workerClock.getGlobalMinimumClock());
 
@@ -273,18 +274,35 @@ public final class SSPParameterWorkerTest {
     verify(mockSender, times(2 * numberOfKeys)).sendPullMsg(anyString(), anyObject());
   }
 
-  @Test
-  public void testWorkerStalenessCheck() throws NetworkException, InterruptedException {
+  // This test case is to test whether the worker staleness check routine works properly
+  // to block/release threads who request pull operations with respect to worker staleness condition.
+  @Test(timeout = 30000)
+  public void testWorkerStalenessCheck() throws NetworkException, InterruptedException, BrokenBarrierException {
     final int numOfThreads = 3;
     final int key = 0;
-    final int timeoutInMilliseconds = 500;
+    final long timeoutInMilliSeconds = 10000;
+    final int cyclicBarrierSize = numOfThreads + 1;
+    final CyclicBarrier barrier = new CyclicBarrier(cyclicBarrierSize);
     final Runnable[] threads = new Runnable[numOfThreads];
-    final Map<Runnable, CountDownLatch> threadLatchMap = new HashMap<>();
     final class WorkerStalenessCheckThread implements Runnable {
+      private final CyclicBarrier cyclicBarrier;
+
+      WorkerStalenessCheckThread(final CyclicBarrier barrier) {
+        this.cyclicBarrier = barrier;
+      }
+
       @Override
       public void run() {
         parameterWorker.pull(key);
-        threadLatchMap.get(this).countDown();
+        try {
+          // If a thread is waiting at the barrier, that means,
+          // it finishes its pull request without being blocked or it has been released.
+          cyclicBarrier.await();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        } catch (BrokenBarrierException e) {
+          throw new RuntimeException(e);
+        }
       }
     }
 
@@ -293,37 +311,33 @@ public final class SSPParameterWorkerTest {
     // Test to verify whether threads aren't blocked and make progresses for pull requests
     // when the worker clock is in staleness bound.
     while (workerClock.getWorkerClock() <= workerClock.getGlobalMinimumClock() + STALENESS_BOUND) {
+      barrier.reset();
+      assertEquals(barrier.getNumberWaiting(), 0);
       for (int i = 0; i < numOfThreads; i++) {
-        threads[i] = new WorkerStalenessCheckThread();
-        threadLatchMap.put(threads[i], new CountDownLatch(1));
+        threads[i] = new WorkerStalenessCheckThread(barrier);
       }
       ThreadUtils.runConcurrently(threads);
 
       // Check whether threads aren't blocked and return immediately after pull requests.
-      for (final Runnable thread : threads) {
-        threadLatchMap.get(thread).await();
-        assertTrue(threadLatchMap.get(thread).getCount() == 0);
-      }
-      threadLatchMap.clear();
+      barrier.await();
+      assertEquals(barrier.getNumberWaiting(), 0);
       workerClock.clock();
     }
 
     // At this moment, worker clock is outside the staleness bound from global minimum clock.
     // So these threads below should be blocked during pull requests.
     assertTrue(workerClock.getWorkerClock() > workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
-    for (int i = 0; i < numOfThreads; i++) {
-      threads[i] = new WorkerStalenessCheckThread();
-      threadLatchMap.put(threads[i], new CountDownLatch(1));
-    }
 
+    barrier.reset();
+    for (int i = 0; i < numOfThreads; i++) {
+      threads[i] = new WorkerStalenessCheckThread(barrier);
+    }
     ThreadUtils.runConcurrently(threads);
 
-    // The threads should keep being blocked until the timeouts expire.
+    // There should never be a thread waiting on the cyclic barrier after its pull request.
     // Since they will be blocked until the worker clock satisfies the worker staleness condition.
-    for (final Runnable thread : threads) {
-      threadLatchMap.get(thread).await(10, TimeUnit.SECONDS);
-      assertTrue(threadLatchMap.get(thread).getCount() > 0);
-    }
+    Thread.sleep(timeoutInMilliSeconds);
+    assertEquals(barrier.getNumberWaiting(), 0);
 
     // Manipulate the global minimum clock to make the worker clock get inside of the bound,
     // which means the blocked threads will be released and process pull requests.
@@ -331,16 +345,13 @@ public final class SSPParameterWorkerTest {
     final int deltaClock = 1;
     final byte[] initClockMsgData =
         codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaClock));
-    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", initClockMsgData);
+    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
 
     assertEquals(oldGlobalMinimumClock + deltaClock, workerClock.getGlobalMinimumClock());
     assertTrue(workerClock.getWorkerClock() <= workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
 
-    // All the threads now should return after finishing pull requests.
-    for (final Runnable thread : threads) {
-      threadLatchMap.get(thread).await();
-      assertTrue(threadLatchMap.get(thread).getCount() == 0);
-    }
+    // All the threads now should wait at the barrier after finishing pull requests.
+    barrier.await();
   }
 
   /**
