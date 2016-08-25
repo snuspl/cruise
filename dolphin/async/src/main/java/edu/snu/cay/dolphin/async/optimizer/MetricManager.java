@@ -111,30 +111,32 @@ public final class MetricManager {
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
 
-    this.dashboardEnabled = !hostAddress.equals("INVALID");
-    this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
+    boolean tempDashboardEnabled = !hostAddress.equals("INVALID");
+    CloseableHttpAsyncClient tempReusableHttpClient = null;
 
-    CloseableHttpAsyncClient tempReusableHttpClient;
-    if (this.dashboardEnabled) {
-      // make a pool of http requests with request limitation of INT_MAX.
+    if (tempDashboardEnabled) {
+      this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
       try {
+        // make a pool of http requests with request limitation of INT_MAX.
         final PoolingNHttpClientConnectionManager connectionManager
             = new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor());
         connectionManager.setMaxTotal(Integer.MAX_VALUE);
         tempReusableHttpClient = HttpAsyncClients.custom().setConnectionManager(connectionManager).build();
+        tempReusableHttpClient.start();
+
+        // run another thread to send metrics.
+        runMetricsSenderThread();
       } catch (IOReactorException e) {
+        LOG.log(Level.WARNING, "Dashboard: ", e);
+        tempDashboardEnabled = false;
         tempReusableHttpClient = null;
       }
     } else {
-      tempReusableHttpClient = null;
       LOG.log(Level.INFO, "Dashboard is not in use");
+      this.dashboardURL = null;
     }
-
     this.reusableHttpClient = tempReusableHttpClient;
-    this.reusableHttpClient.start();
-    // run another thread to send metrics.
-    runMetricsSenderThread();
-    LOG.log(Level.INFO, "Dashboard url: {0}", dashboardURL);
+    this.dashboardEnabled = tempDashboardEnabled;
   }
 
   /**
