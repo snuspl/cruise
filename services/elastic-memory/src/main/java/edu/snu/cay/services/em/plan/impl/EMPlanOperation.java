@@ -97,7 +97,7 @@ public final class EMPlanOperation {
       return "AddPlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
-          ", opType='" + opType +'\'' +
+          ", opType='" + opType + '\'' +
           '}';
     }
   }
@@ -139,7 +139,7 @@ public final class EMPlanOperation {
       return "DeletePlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
-          ", opType='" + opType +'\'' +
+          ", opType='" + opType + '\'' +
           '}';
     }
 
@@ -236,7 +236,7 @@ public final class EMPlanOperation {
       return "MovePlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", transferStep=" + transferStep +
-          ", opType='" + opType +'\'' +
+          ", opType='" + opType + '\'' +
           '}';
     }
   }

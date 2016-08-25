@@ -100,7 +100,7 @@ final class DolphinPlanOperation {
       return "SyncPlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
-          ", opType='" + opType +'\'' +
+          ", opType='" + opType + '\'' +
           '}';
     }
   }
@@ -168,7 +168,7 @@ final class DolphinPlanOperation {
       return "StartPlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
-          ", opType='" + opType +'\'' +
+          ", opType='" + opType + '\'' +
           '}';
     }
   }
@@ -236,7 +236,7 @@ final class DolphinPlanOperation {
       return "StopPlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
-          ", opType='" + opType +'\'' +
+          ", opType='" + opType + '\'' +
           '}';
     }
   }
