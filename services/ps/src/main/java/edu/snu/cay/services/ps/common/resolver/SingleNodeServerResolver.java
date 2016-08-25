@@ -79,4 +79,9 @@ public final class SingleNodeServerResolver implements ServerResolver {
   public void updateRoutingTable(final EMRoutingTableUpdate routingTableUpdate) {
     throw new UnsupportedOperationException("This method is used only in the dynamic PS");
   }
+
+  @Override
+  public void syncRoutingTable(final String server) {
+    throw new UnsupportedOperationException("This method is used only in the dynamic PS");
+  }
 }

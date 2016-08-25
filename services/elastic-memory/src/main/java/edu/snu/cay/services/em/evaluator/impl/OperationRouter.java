@@ -183,8 +183,6 @@ public final class OperationRouter<K> {
     initLatch.countDown();
 
     LOG.log(Level.FINE, "Operation router is initialized");
-    // wake up all waiting threads
-    this.notifyAll();
   }
 
   /**

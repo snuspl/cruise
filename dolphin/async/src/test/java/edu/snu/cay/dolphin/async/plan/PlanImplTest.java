@@ -86,12 +86,14 @@ public final class PlanImplTest {
     final Plan plan = planBuilder.build();
 
     // Start/Stop is generated for only Worker namespace
-    final int numEvalsToStart = numEvalsToAdd;
-    final int numEvalsToStop = numEvalsToDel;
+    final int numWorkersToStart = numEvalsToAdd;
+    final int numWorkersToStop = numEvalsToDel;
+    final int numServersToSync = numEvalsToDel;
 
-    // test whether a plan contains all the explicitly added steps and automatically generated start/stop steps
+    // test whether a plan contains all the explicitly added steps and automatically generated start/stop/sync steps
     assertEquals("Plan does not contain all the steps that we expect",
-        (numEvalsToAdd + numEvalsToDel + numTransfers) * 2 + (numEvalsToStart + numEvalsToStop), plan.getPlanSize());
+        (numEvalsToAdd + numEvalsToDel + numTransfers) * 2 + (numWorkersToStart + numWorkersToStop + numServersToSync),
+        plan.getPlanSize());
 
     for (final String namespace : namespaces) {
       final Collection<String> addSteps = plan.getEvaluatorsToAdd(namespace);
@@ -181,9 +183,9 @@ public final class PlanImplTest {
 
     for (final PlanOperation operation : prevOpsToExec) {
       numExecutedOps.incrementAndGet();
-      final Set<PlanOperation> opsFollowingDel = plan.onComplete(operation);
+      final Set<PlanOperation> followingOps = plan.onComplete(operation);
 
-      nextOpsToExec.addAll(opsFollowingDel);
+      nextOpsToExec.addAll(followingOps);
     }
 
     return nextOpsToExec;
@@ -201,10 +203,10 @@ public final class PlanImplTest {
 
     for (final PlanOperation operation : prevOpsToExec) {
       numExecutedOps.incrementAndGet();
-      final Set<PlanOperation> opsFollowingDel = plan.onComplete(operation);
-      assertEquals(1, opsFollowingDel.size());
+      final Set<PlanOperation> followingOps = plan.onComplete(operation);
+      assertEquals(1, followingOps.size());
 
-      nextOpsToExec.addAll(opsFollowingDel);
+      nextOpsToExec.addAll(followingOps);
     }
 
     assertEquals(prevOpsToExec.size(), nextOpsToExec.size());
@@ -224,10 +226,10 @@ public final class PlanImplTest {
 
     for (final PlanOperation operation : prevOpsToExec) {
       numExecutedOps.incrementAndGet();
-      final Set<PlanOperation> opsFollowingDel = plan.onComplete(operation);
-      assertEquals(2, opsFollowingDel.size());
+      final Set<PlanOperation> followingOps = plan.onComplete(operation);
+      assertEquals(2, followingOps.size());
 
-      nextOpsToExec.addAll(opsFollowingDel);
+      nextOpsToExec.addAll(followingOps);
     }
 
     assertEquals(prevOpsToExec.size() * 2, nextOpsToExec.size());
@@ -252,12 +254,12 @@ public final class PlanImplTest {
     // a single Del step can be executed after completing each Stop step
     for (final PlanOperation operation : prevOpsToExec) {
       numExecutedOps.incrementAndGet();
-      final Set<PlanOperation> opsFollowingDel = plan.onComplete(operation);
+      final Set<PlanOperation> followingOps = plan.onComplete(operation);
       if (idx++ == 0) {
-        assertTrue(opsFollowingDel.isEmpty());
+        assertTrue(followingOps.isEmpty());
       } else {
-        assertEquals(1, opsFollowingDel.size());
-        nextOpsToExec.addAll(opsFollowingDel);
+        assertEquals(1, followingOps.size());
+        nextOpsToExec.addAll(followingOps);
       }
     }
 
@@ -268,11 +270,12 @@ public final class PlanImplTest {
 
   /**
    * Tests a generated plan contains the correct dependency information
-   * that each Delete is executed before a single Add, and each worker-side Add is followed by a Start.
+   * that each Delete is executed before a single Add, and each server-side Delete is preceded by a Sync
+   * and each worker-side Add is followed by a Start.
    */
   @Test
-  public void testDelAddStartPlanDependency() {
-    // del -> add -> start
+  public void testSyncDelAddStartPlanDependency() {
+    // sync -> del -> add -> start
     final Plan plan = PlanImpl.newBuilder()
         .setNumAvailableExtraEvaluators(0)
         .addEvaluatorToAdd(Constants.NAMESPACE_WORKER, EVAL_PREFIX + 0) // Adding worker involves Start
@@ -286,12 +289,17 @@ public final class PlanImplTest {
     final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
     assertEquals(2, firstOpsToExec.size());
     for (final PlanOperation operation : firstOpsToExec) {
-      assertEquals(EMPlanOperation.DEL_OP, operation.getOpType());
+      assertEquals(DolphinPlanOperation.SYNC_OP, operation.getOpType());
     }
 
     Set<PlanOperation> nextOpsToExecute;
 
     nextOpsToExecute = testOneToOneDependency(firstOpsToExec, plan, numExecutedOps);
+    for (final PlanOperation nextOp : nextOpsToExecute) {
+      assertEquals(EMPlanOperation.DEL_OP, nextOp.getOpType());
+    }
+
+    nextOpsToExecute = testOneToOneDependency(nextOpsToExecute, plan, numExecutedOps);
     for (final PlanOperation nextOp : nextOpsToExecute) {
       assertEquals(EMPlanOperation.ADD_OP, nextOp.getOpType());
     }
@@ -340,6 +348,49 @@ public final class PlanImplTest {
     nextOpsToExecute = testOneToOneDependency(nextOpsToExecute, plan, numExecutedOps);
     for (final PlanOperation nextOp : nextOpsToExecute) {
       assertEquals(EMPlanOperation.ADD_OP, nextOp.getOpType());
+    }
+
+    nextOpsToExecute = executeOperations(nextOpsToExecute, plan, numExecutedOps);
+    assertTrue(nextOpsToExecute.isEmpty());
+
+    assertEquals(numExecutedOps.get(), plan.getPlanSize());
+  }
+
+  /**
+   * Tests a generated plan contains the correct dependency information
+   * that Sync is placed between Move and Del,
+   * when the source evaluator of Move is same with the target eval of Del step, and the eval is server.
+   */
+  @Test
+  public void testMoveSyncDelPlanDependency() {
+    // move -> sync -> del
+    final Plan plan = PlanImpl.newBuilder()
+        .addEvaluatorToDelete(Constants.NAMESPACE_SERVER, EVAL_PREFIX + 0)
+        .addTransferStep(Constants.NAMESPACE_SERVER,
+            new TransferStepImpl(EVAL_PREFIX + 0, EVAL_PREFIX + 1, new DataInfoImpl(1)))
+        .addTransferStep(Constants.NAMESPACE_SERVER,
+            new TransferStepImpl(EVAL_PREFIX + 0, EVAL_PREFIX + 2, new DataInfoImpl(1)))
+        .build();
+
+    final AtomicInteger numExecutedOps = new AtomicInteger(0); // increase 1 on every plan.onComplete()
+
+    // Stops should be executed first
+    final Set<PlanOperation> firstOpsToExec = plan.getInitialOps();
+    assertEquals(2, firstOpsToExec.size());
+    for (final PlanOperation operation : firstOpsToExec) {
+      assertEquals(EMPlanOperation.MOVE_OP, operation.getOpType());
+    }
+
+    Set<PlanOperation> nextOpsToExecute;
+
+    nextOpsToExecute = testTwoToOneDependency(firstOpsToExec, plan, numExecutedOps);
+    for (final PlanOperation nextOp : nextOpsToExecute) {
+      assertEquals(DolphinPlanOperation.SYNC_OP, nextOp.getOpType());
+    }
+
+    nextOpsToExecute = testOneToOneDependency(nextOpsToExecute, plan, numExecutedOps);
+    for (final PlanOperation nextOp : nextOpsToExecute) {
+      assertEquals(EMPlanOperation.DEL_OP, nextOp.getOpType());
     }
 
     nextOpsToExecute = executeOperations(nextOpsToExecute, plan, numExecutedOps);

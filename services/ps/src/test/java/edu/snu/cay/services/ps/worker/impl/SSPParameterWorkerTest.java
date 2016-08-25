@@ -71,11 +71,9 @@ public final class SSPParameterWorkerTest {
   private static final int INIT_WORKER_CLOCK = INIT_GLOBAL_MIN_CLOCK;
   private static final int STALENESS_BOUND = 5;
   private static final String WORKER_ID = "worker";
-  private ParameterWorkerTestUtil testUtil;
   private ParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
-  private AggregationSlave mockAggregationSlave;
   private AggregationMaster mockAggregationMaster;
   private ClockMsgCodec codec;
   private SSPWorkerClock.MessageHandler sspWorkerClockMessageHandler;
@@ -97,15 +95,14 @@ public final class SSPParameterWorkerTest {
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
-    this.testUtil = new ParameterWorkerTestUtil();
     this.mockSender = mock(WorkerMsgSender.class);
-    this.mockAggregationSlave = mock(AggregationSlave.class);
+    final AggregationSlave mockAggregationSlave = mock(AggregationSlave.class);
     this.mockAggregationMaster = mock(AggregationMaster.class);
 
     injector.bindVolatileInstance(WorkerMsgSender.class, this.mockSender);
     injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
     injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
-    injector.bindVolatileInstance(AggregationSlave.class, this.mockAggregationSlave);
+    injector.bindVolatileInstance(AggregationSlave.class, mockAggregationSlave);
     injector.bindVolatileInstance(AggregationMaster.class, this.mockAggregationMaster);
 
     this.workerClock = injector.getInstance(WorkerClock.class);
@@ -155,7 +152,7 @@ public final class SSPParameterWorkerTest {
    */
   @Test
   public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    testUtil.close(parameterWorker);
+    ParameterWorkerTestUtil.close(parameterWorker);
   }
 
   /**
@@ -166,7 +163,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadPush()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    testUtil.multiThreadPush(parameterWorker, mockSender);
+    ParameterWorkerTestUtil.multiThreadPush(parameterWorker, mockSender);
   }
 
   /**
@@ -180,7 +177,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    testUtil.multiThreadPull(parameterWorker);
+    ParameterWorkerTestUtil.multiThreadPull(parameterWorker);
   }
 
   /**
@@ -188,9 +185,9 @@ public final class SSPParameterWorkerTest {
    * creating multiple threads that try to pull several values from the server using {@link SSPParameterWorker}.
    */
   @Test
-  public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException,
-      ExecutionException, NetworkException {
-    testUtil.multiThreadMultiKeyPull(parameterWorker);
+  public void testMultiThreadMultiKeyPull()
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+    ParameterWorkerTestUtil.multiThreadMultiKeyPull(parameterWorker);
   }
 
   /**
@@ -209,31 +206,34 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPullReject()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    testUtil.pullReject(parameterWorker, workerHandler, mockSender);
+    ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
   }
 
   /**
    * Tests whether worker correctly resend the pull operation, when network exception happens.
    */
   @Test
-  public void testPullNetworkExceptionAndResend() throws NetworkException, InterruptedException {
-    testUtil.pullNetworkExceptionAndResend(parameterWorker, mockSender);
+  public void testPullNetworkExceptionAndResend()
+      throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
+    ParameterWorkerTestUtil.pullNetworkExceptionAndResend(parameterWorker, workerHandler, mockSender);
   }
 
   /**
    * Tests whether worker correctly resend the push operation, when network exception happens.
    */
   @Test
-  public void testPushNetworkExceptionAndResend() throws NetworkException, InterruptedException {
-    testUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
+  public void testPushNetworkExceptionAndResend()
+      throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
+    ParameterWorkerTestUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
   }
 
   /**
    * Tests whether worker correctly restart the pull operation, when the server does not respond within timeout.
    */
   @Test
-  public void testPullTimeoutAndRetry() throws NetworkException, InterruptedException {
-    testUtil.pullTimeoutAndRetry(parameterWorker, mockSender);
+  public void testPullTimeoutAndRetry()
+      throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
+    ParameterWorkerTestUtil.pullTimeoutAndRetry(parameterWorker, workerHandler, mockSender);
   }
 
   /**

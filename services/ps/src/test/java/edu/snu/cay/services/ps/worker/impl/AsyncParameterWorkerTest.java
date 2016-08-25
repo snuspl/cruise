@@ -54,7 +54,6 @@ public final class AsyncParameterWorkerTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
 
-  private ParameterWorkerTestUtil testUtil;
   private ParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
@@ -71,8 +70,6 @@ public final class AsyncParameterWorkerTest {
         .bindImplementation(ParameterWorker.class, AsyncParameterWorker.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
-
-    testUtil = new ParameterWorkerTestUtil();
 
     mockSender = mock(WorkerMsgSender.class);
 
@@ -96,7 +93,7 @@ public final class AsyncParameterWorkerTest {
    */
   @Test
   public void testClose() throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    testUtil.close(parameterWorker);
+    ParameterWorkerTestUtil.close(parameterWorker);
   }
 
   /**
@@ -107,8 +104,8 @@ public final class AsyncParameterWorkerTest {
    */
   @Test
   public void testMultiThreadPush()
-          throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    testUtil.multiThreadPush(parameterWorker, mockSender);
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+    ParameterWorkerTestUtil.multiThreadPush(parameterWorker, mockSender);
   }
 
   /**
@@ -122,7 +119,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    testUtil.multiThreadPull(parameterWorker);
+    ParameterWorkerTestUtil.multiThreadPull(parameterWorker);
   }
 
   /**
@@ -133,9 +130,9 @@ public final class AsyncParameterWorkerTest {
    * For each pull, {@code numKeysPerPull} keys are selected, based on the thread index and the pull count.
    */
   @Test
-  public void testMultiThreadMultiKeyPull() throws InterruptedException, TimeoutException,
-          ExecutionException, NetworkException {
-    testUtil.multiThreadMultiKeyPull(parameterWorker);
+  public void testMultiThreadMultiKeyPull()
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+    ParameterWorkerTestUtil.multiThreadMultiKeyPull(parameterWorker);
   }
 
   /**
@@ -156,32 +153,35 @@ public final class AsyncParameterWorkerTest {
    */
   @Test
   public void testPullReject()
-          throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    testUtil.pullReject(parameterWorker, workerHandler, mockSender);
+      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
+    ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
   }
 
   /**
    * Tests whether worker correctly resend the pull operation, when network exception happens.
    */
   @Test
-  public void testPullNetworkExceptionAndResend() throws NetworkException, InterruptedException {
-    testUtil.pullNetworkExceptionAndResend(parameterWorker, mockSender);
+  public void testPullNetworkExceptionAndResend()
+      throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
+    ParameterWorkerTestUtil.pullNetworkExceptionAndResend(parameterWorker, workerHandler, mockSender);
   }
 
   /**
    * Tests whether worker correctly resend the push operation, when network exception happens.
    */
   @Test
-  public void testPushNetworkExceptionAndResend() throws NetworkException, InterruptedException {
-    testUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
+  public void testPushNetworkExceptionAndResend()
+      throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
+    ParameterWorkerTestUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
   }
 
   /**
    * Tests whether worker correctly restart the pull operation, when the server does not respond within timeout.
    */
   @Test
-  public void testPullTimeoutAndRetry() throws NetworkException, InterruptedException {
-    testUtil.pullTimeoutAndRetry(parameterWorker, mockSender);
+  public void testPullTimeoutAndRetry()
+      throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
+    ParameterWorkerTestUtil.pullTimeoutAndRetry(parameterWorker, workerHandler, mockSender);
   }
 
   /**
@@ -190,7 +190,7 @@ public final class AsyncParameterWorkerTest {
    */
   @Test
   public void invalidateAll()
-          throws InterruptedException, ExecutionException, TimeoutException, NetworkException {
+      throws InterruptedException, ExecutionException, TimeoutException, NetworkException {
     final int numPulls = 1000;
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final ExecutorService pool = Executors.newSingleThreadExecutor();
