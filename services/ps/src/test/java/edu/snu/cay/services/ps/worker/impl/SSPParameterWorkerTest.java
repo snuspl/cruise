@@ -312,7 +312,7 @@ public final class SSPParameterWorkerTest {
     // when the worker clock is in staleness bound.
     while (workerClock.getWorkerClock() <= workerClock.getGlobalMinimumClock() + STALENESS_BOUND) {
       barrier.reset();
-      assertEquals(barrier.getNumberWaiting(), 0);
+
       for (int i = 0; i < numOfThreads; i++) {
         threads[i] = new WorkerStalenessCheckThread(barrier);
       }
@@ -320,7 +320,6 @@ public final class SSPParameterWorkerTest {
 
       // Check whether threads aren't blocked and return immediately after pull requests.
       barrier.await();
-      assertEquals(barrier.getNumberWaiting(), 0);
       workerClock.clock();
     }
 
