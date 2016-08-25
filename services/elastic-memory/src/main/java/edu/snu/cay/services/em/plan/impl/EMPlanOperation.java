@@ -36,6 +36,7 @@ public final class EMPlanOperation {
   public static final class AddPlanOperation implements PlanOperation {
     private final String namespace;
     private final String evalId;
+    private final String opType;
 
     /**
      * A constructor for ADD operation.
@@ -46,6 +47,7 @@ public final class EMPlanOperation {
     public AddPlanOperation(final String namespace, final String evalId) {
       this.namespace = namespace;
       this.evalId = evalId;
+      this.opType = ADD_OP;
     }
 
     @Override
@@ -55,7 +57,7 @@ public final class EMPlanOperation {
 
     @Override
     public String getOpType() {
-      return ADD_OP;
+      return opType;
     }
 
     @Override
@@ -86,6 +88,7 @@ public final class EMPlanOperation {
     public int hashCode() {
       int result = namespace.hashCode();
       result = 31 * result + evalId.hashCode();
+      result = 31 * result + opType.hashCode();
       return result;
     }
 
@@ -94,6 +97,7 @@ public final class EMPlanOperation {
       return "AddPlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
+          ", opType='" + opType +'\'' +
           '}';
     }
   }
@@ -101,6 +105,7 @@ public final class EMPlanOperation {
   public static final class DeletePlanOperation implements PlanOperation {
     private final String namespace;
     private final String evalId;
+    private final String opType;
 
     /**
      * A constructor for DELETE operation.
@@ -111,6 +116,7 @@ public final class EMPlanOperation {
     public DeletePlanOperation(final String namespace, final String evalId) {
       this.namespace = namespace;
       this.evalId = evalId;
+      this.opType = DEL_OP;
     }
 
     @Override
@@ -120,7 +126,7 @@ public final class EMPlanOperation {
 
     @Override
     public String getOpType() {
-      return DEL_OP;
+      return opType;
     }
 
     @Override
@@ -133,6 +139,7 @@ public final class EMPlanOperation {
       return "DeletePlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
+          ", opType='" + opType +'\'' +
           '}';
     }
 
@@ -154,6 +161,7 @@ public final class EMPlanOperation {
     public int hashCode() {
       int result = namespace.hashCode();
       result = 31 * result + evalId.hashCode();
+      result = 31 * result + opType.hashCode();
       return result;
     }
 
@@ -166,6 +174,7 @@ public final class EMPlanOperation {
   public static final class MovePlanOperation implements PlanOperation {
     private final String namespace;
     private final TransferStep transferStep;
+    private final String opType;
 
 
     /**
@@ -177,6 +186,7 @@ public final class EMPlanOperation {
     public MovePlanOperation(final String namespace, final TransferStep transferStep) {
       this.namespace = namespace;
       this.transferStep = transferStep;
+      this.opType = MOVE_OP;
     }
 
     @Override
@@ -186,7 +196,7 @@ public final class EMPlanOperation {
 
     @Override
     public String getOpType() {
-      return MOVE_OP;
+      return opType;
     }
 
     @Override
@@ -217,6 +227,7 @@ public final class EMPlanOperation {
     public int hashCode() {
       int result = namespace.hashCode();
       result = 31 * result + transferStep.hashCode();
+      result = 31 * result + opType.hashCode();
       return result;
     }
 
@@ -225,6 +236,7 @@ public final class EMPlanOperation {
       return "MovePlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", transferStep=" + transferStep +
+          ", opType='" + opType +'\'' +
           '}';
     }
   }

@@ -40,6 +40,7 @@ final class DolphinPlanOperation {
   static final class SyncPlanOperation implements PlanOperation {
     private final String namespace;
     private final String evalId;
+    private final String opType;
 
     /**
      * A constructor for SYNC operation.
@@ -49,6 +50,7 @@ final class DolphinPlanOperation {
     SyncPlanOperation(final String evalId) {
       this.namespace = Constants.NAMESPACE_SERVER;
       this.evalId = evalId;
+      this.opType = SYNC_OP;
     }
 
     @Override
@@ -58,7 +60,7 @@ final class DolphinPlanOperation {
 
     @Override
     public String getOpType() {
-      return SYNC_OP;
+      return opType;
     }
 
     @Override
@@ -89,6 +91,7 @@ final class DolphinPlanOperation {
     public int hashCode() {
       int result = namespace.hashCode();
       result = 31 * result + evalId.hashCode();
+      result = 31 * result + opType.hashCode();
       return result;
     }
 
@@ -97,6 +100,7 @@ final class DolphinPlanOperation {
       return "SyncPlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
+          ", opType='" + opType +'\'' +
           '}';
     }
   }
@@ -104,6 +108,7 @@ final class DolphinPlanOperation {
   static final class StartPlanOperation implements PlanOperation {
     private final String namespace;
     private final String evalId;
+    private final String opType;
 
     /**
      * A constructor for START operation.
@@ -113,6 +118,7 @@ final class DolphinPlanOperation {
     StartPlanOperation(final String evalId) {
       this.namespace = Constants.NAMESPACE_WORKER;
       this.evalId = evalId;
+      this.opType = START_OP;
     }
 
     @Override
@@ -122,7 +128,7 @@ final class DolphinPlanOperation {
 
     @Override
     public String getOpType() {
-      return START_OP;
+      return opType;
     }
 
     @Override
@@ -153,6 +159,7 @@ final class DolphinPlanOperation {
     public int hashCode() {
       int result = namespace.hashCode();
       result = 31 * result + evalId.hashCode();
+      result = 31 * result + opType.hashCode();
       return result;
     }
 
@@ -161,6 +168,7 @@ final class DolphinPlanOperation {
       return "StartPlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
+          ", opType='" + opType +'\'' +
           '}';
     }
   }
@@ -168,6 +176,7 @@ final class DolphinPlanOperation {
   static final class StopPlanOperation implements PlanOperation {
     private final String namespace;
     private final String evalId;
+    private final String opType;
 
     /**
      * A constructor for STOP operation.
@@ -177,6 +186,7 @@ final class DolphinPlanOperation {
     StopPlanOperation(final String evalId) {
       this.namespace = Constants.NAMESPACE_WORKER;
       this.evalId = evalId;
+      this.opType = STOP_OP;
     }
 
     @Override
@@ -186,7 +196,7 @@ final class DolphinPlanOperation {
 
     @Override
     public String getOpType() {
-      return STOP_OP;
+      return opType;
     }
 
     @Override
@@ -217,6 +227,7 @@ final class DolphinPlanOperation {
     public int hashCode() {
       int result = namespace.hashCode();
       result = 31 * result + evalId.hashCode();
+      result = 31 * result + opType.hashCode();
       return result;
     }
 
@@ -225,6 +236,7 @@ final class DolphinPlanOperation {
       return "StopPlanOperation{" +
           "namespace='" + namespace + '\'' +
           ", evalId='" + evalId + '\'' +
+          ", opType='" + opType +'\'' +
           '}';
     }
   }
