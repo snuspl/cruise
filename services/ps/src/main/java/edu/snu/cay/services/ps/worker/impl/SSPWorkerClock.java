@@ -125,7 +125,7 @@ public final class SSPWorkerClock implements WorkerClock {
       try {
         wait();
       } catch (InterruptedException e) {
-        LOG.log(Level.INFO, "Interrupt exception occurs while a thread is waiting", clockNetworkWaitingTime);
+        LOG.log(Level.WARNING, "Interrupt exception occurs while a thread is waiting", e);
       }
     }
     clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
