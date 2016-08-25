@@ -36,7 +36,6 @@ app.config.update(dict(
     PASSWORD='default'
 ))
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
-os.remove(app.config['DATABASE'])
 
 #
 # Database
@@ -151,10 +150,16 @@ def selectors():
 # Main
 #
 if __name__ == '__main__':
+    # remove the existing database
+    try:
+        os.remove(app.config['DATABASE'])
+    except:
+        pass
+    # initialize a new database
     with app.app_context():
         init_db()
+    # run a multi-threaded server.
     try:
-        # run a multi-threaded server.
         app.run(host='0.0.0.0', port=sys.argv[1], threaded=True)
     except Exception as err:
         print('Flask script: {0}'.format(err))

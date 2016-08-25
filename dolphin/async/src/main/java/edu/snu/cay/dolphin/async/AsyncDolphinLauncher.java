@@ -407,7 +407,7 @@ public final class AsyncDolphinLauncher {
    * @throws IOException when the port number is invalid or failed to find the host address.
    */
   private static String getHostAddress(final int port) throws IOException {
-    String hostAddress = "";
+    String hostAddress = "INVALID";
 
     // Find IP address of client PC.
     final Enumeration e = NetworkInterface.getNetworkInterfaces();

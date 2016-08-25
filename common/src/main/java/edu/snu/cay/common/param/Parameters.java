@@ -84,7 +84,7 @@ public final class Parameters {
   }
 
   @NamedParameter(doc = "Host address of the client machine, which is used as the host address of Dashboard server, " +
-      "empty if failed to find valid host address.", default_value = "")
+      "empty if failed to find valid host address.", default_value = "INVALID")
   public final class DashboardHostAddress implements Name<String> {
   }
 }

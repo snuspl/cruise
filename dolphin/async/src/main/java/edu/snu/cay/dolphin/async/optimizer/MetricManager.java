@@ -111,7 +111,7 @@ public final class MetricManager {
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
 
-    this.dashboardEnabled = !hostAddress.isEmpty();
+    this.dashboardEnabled = !hostAddress.equals("INVALID");
     this.dashboardURL = "http://" + hostAddress + ":" + port + "/";
 
     CloseableHttpAsyncClient tempReusableHttpClient;
