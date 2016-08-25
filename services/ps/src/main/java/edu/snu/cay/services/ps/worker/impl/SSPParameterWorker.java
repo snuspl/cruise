@@ -678,6 +678,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                   break;
                 } else {
                   future.reset();
+                  LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
+                      new Object[]{encodedKey.getKey(), retryCount});
                 }
               }
 
