@@ -21,6 +21,13 @@
 #include <cuda_runtime.h>
 #include <boost/thread.hpp>
 
+/*
+ * Native methods for JavaCuda.
+ * Please refer to followings:
+ * http://docs.nvidia.com/cuda/cuda-runtime-api
+ * http://docs.nvidia.com/cuda/cublas
+ * http://docs.nvidia.com/cuda/thrust
+ */
 class JavaCuda {
 public:
   static void* deviceMalloc(size_t size);

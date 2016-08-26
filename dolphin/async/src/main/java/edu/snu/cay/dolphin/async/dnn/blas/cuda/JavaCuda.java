@@ -23,6 +23,8 @@ import org.bytedeco.javacpp.annotation.Platform;
 
 /**
  * Java-Cuda JNI wrapper.
+ * Needs inclusion and linkage of following file & libraries.
+ * Note that the linkage order may be crucial: javacuda -> cublas -> cudart -> boost_thread
  */
 @Platform(include = "JavaCuda.h", link = {"boost_thread", "cudart", "cublas", "javacuda"})
 class JavaCuda extends Pointer {

@@ -38,13 +38,6 @@ struct float_compare {
   }
 };
 
-void freeCublasHandle(cublasHandle_t* handle) {
-  if (*handle != NULL) {
-    cublasDestroy(*handle);
-  }
-  delete handle;
-}
-
 std::pair<cublasOperation_t, bool> getCublasOperation(const char c) {
   switch (c) {
   case 'N':
@@ -61,8 +54,23 @@ std::pair<cublasOperation_t, bool> getCublasOperation(const char c) {
   }
 }
 
+void freeCublasHandle(cublasHandle_t* handle) {
+  if (*handle != NULL) {
+    cublasDestroy(*handle);
+  }
+  delete handle;
+}
+
 boost::thread_specific_ptr<cublasHandle_t> JavaCuda::cublasHandle(freeCublasHandle);
 
+/*
+ * Get cuBLAS handle which is required for every functions in cuBLAS.
+ * All threads have different cuBLAS handle pointer by using boost thread specific pointer.
+ * When a thread requests for cuBLAS handle, it checks whether thread specific pointer for cuBLAS handle is set.
+ * If not, new cuBLAS handle is created.
+ * Thread specific pointer is destroyed by freeCublasHandle().
+ * This destroying is automatically done by boost when the thread is killed.
+ */
 cublasHandle_t JavaCuda::getCublasHandle() {
   if (!cublasHandle.get()) {
     // allocate new cublas handle
