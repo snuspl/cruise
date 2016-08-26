@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.impl.range;
+package edu.snu.cay.services.em.evaluator.impl.rangekey;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
-import edu.snu.cay.services.em.evaluator.api.RangeOperation;
+import edu.snu.cay.services.em.evaluator.api.DataOperation;
+import edu.snu.cay.services.em.evaluator.api.RangeKeyOperation;
+import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.network.util.Pair;
@@ -25,7 +28,6 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
-import org.apache.reef.wake.EventHandler;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -43,24 +45,28 @@ import java.util.logging.Logger;
  * It 1) sends operation to remote stores and 2) sends the result of remote operation to the origin store,
  * and 3) receives and handles the received result.
  */
-final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage> {
-  private static final Logger LOG = Logger.getLogger(RemoteOpHandler.class.getName());
+public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
+  private static final Logger LOG = Logger.getLogger(RemoteOpHandlerImpl.class.getName());
   private static final long TIMEOUT_MS = 40000;
 
   /**
    * A map holding ongoing operations until they finish.
    * It only maintains operations requested from local clients.
    */
-  private final ConcurrentMap<String, RangeOperation<K, Object>> ongoingOp = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, RangeKeyOperation<K, Object>> ongoingOp = new ConcurrentHashMap<>();
 
   private Serializer serializer;
   private Codec<K> keyCodec;
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
+  private final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore;
+
   @Inject
-  private RemoteOpHandler(final Serializer serializer,
-                          @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                          final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
+  private RemoteOpHandlerImpl(final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore,
+                              final Serializer serializer,
+                              @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
+                              final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
+    this.memoryStore = memoryStore;
     this.serializer = serializer;
     this.keyCodec = keyCodec;
     this.msgSender = msgSender;
@@ -72,7 +78,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
    * @param evalToSubKeyRangesMap a map with an id of remote evaluator and a list of key ranges
    * @param <V> a type of data
    */
-  <V> void sendOpToRemoteStores(final RangeOperation<K, V> operation,
+  <V> void sendOpToRemoteStores(final RangeKeyOperation<K, V> operation,
                             final Map<String, List<Pair<K, K>>> evalToSubKeyRangesMap) {
     if (evalToSubKeyRangesMap.isEmpty()) {
       return;
@@ -146,16 +152,74 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
   }
 
   /**
-   * Handles the result of remote operation.
+   * Handles remote operation and its result.
    */
   @Override
   public void onNext(final AvroElasticMemoryMessage msg) {
+    switch (msg.getType()) {
+    case RemoteOpMsg:
+      onRemoteOpMsg(msg);
+      break;
+    case RemoteOpResultMsg:
+      onRemoteOpResultMsg(msg);
+      break;
+    default:
+      throw new RuntimeException("Illegal msg type: " + msg.getType());
+    }
+  }
+
+  /**
+   * Handles the data operation sent from the remote memory store.
+   */
+  private void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
+    final RemoteOpMsg remoteOpMsg = msg.getRemoteOpMsg();
+    final String origEvalId = remoteOpMsg.getOrigEvalId().toString();
+    final DataOpType operationType = remoteOpMsg.getOpType();
+    final List<KeyRange> avroKeyRangeList = (List<KeyRange>) remoteOpMsg.getDataKeys();
+    final List<KeyValuePair> dataKVPairList = (List<KeyValuePair>) remoteOpMsg.getDataValues();
+    final String operationId = msg.getOperationId().toString();
+
+    // decode data keys
+    final List<Pair<K, K>> dataKeyRanges = new ArrayList<>(avroKeyRangeList.size());
+    for (final KeyRange keyRange : avroKeyRangeList) {
+      final K minKey = keyCodec.decode(keyRange.getMin().array());
+      final K maxKey = keyCodec.decode(keyRange.getMax().array());
+      dataKeyRanges.add(new Pair<>(minKey, maxKey));
+    }
+
+    // decode data values
+    final Optional<NavigableMap<K, Object>> dataKeyValueMap;
+    if (operationType.equals(DataOpType.PUT)) {
+      final NavigableMap<K, Object> dataMap = new TreeMap<>();
+      dataKeyValueMap = Optional.of(dataMap);
+
+      final Codec dataCodec = serializer.getCodec();
+      for (final KeyValuePair dataKVPair : dataKVPairList) {
+        final K dataKey = keyCodec.decode(dataKVPair.getKey().array());
+        final Object dataValue = dataCodec.decode(dataKVPair.getValue().array());
+        dataMap.put(dataKey, dataValue);
+      }
+    } else {
+      dataKeyValueMap = Optional.empty();
+    }
+
+    final DataOperation operation = new RangeKeyOperationImpl<>(Optional.of(origEvalId),
+        operationId, operationType, dataKeyRanges, dataKeyValueMap);
+
+    // enqueue operation into memory store
+    memoryStore.get().onNext(operation);
+  }
+
+  /**
+   * Handles the result of data operation sent from the remote memory store.
+   */
+  private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
     final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
     final String operationId = msg.getOperationId().toString();
     final List<KeyValuePair> remoteOutput = (List<KeyValuePair>) remoteOpResultMsg.getDataValues();
     final List<KeyRange> failedAvroKeyRanges = remoteOpResultMsg.getFailedKeyRanges();
 
-    final RangeOperation<K, Object> operation = ongoingOp.get(operationId);
+    final RangeKeyOperation<K, Object> operation = ongoingOp.get(operationId);
 
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
@@ -189,8 +253,8 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
   /**
    * Registers an operation before sending it to remote memory store.
    */
-  private void registerOp(final RangeOperation operation) {
-    final RangeOperation unhandledOperation = ongoingOp.put(operation.getOpId(), operation);
+  private void registerOp(final RangeKeyOperation operation) {
+    final RangeKeyOperation unhandledOperation = ongoingOp.put(operation.getOpId(), operation);
     if (unhandledOperation != null) {
       LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}",
           unhandledOperation.getOpId());
@@ -207,7 +271,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
   /**
    * Sends the result to the original store.
    */
-  <V> void sendResultToOrigin(final RangeOperation<K, V> operation) {
+  <V> void sendResultToOrigin(final RangeKeyOperation<K, V> operation) {
 
     LOG.log(Level.FINEST, "Send result to origin. OpId: {0}, OrigId: {1}",
         new Object[]{operation.getOpId(), operation.getOrigEvalId()});

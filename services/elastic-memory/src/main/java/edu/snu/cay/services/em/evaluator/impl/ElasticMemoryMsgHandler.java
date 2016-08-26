@@ -13,28 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.impl.singlekey;
+package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
-import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
-import edu.snu.cay.utils.SingleMessageExtractor;
 import edu.snu.cay.utils.trace.HTraceUtils;
-import org.apache.reef.annotations.audience.EvaluatorSide;
+import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.io.network.Message;
-import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
-import org.apache.reef.wake.EventHandler;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
+import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.io.network.Message;
+import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
@@ -58,7 +57,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
   private final RemoteAccessibleMemoryStore<K> memoryStore;
   private final OperationRouter<K> router;
-  private final RemoteOpHandler<K> remoteOpHandler;
+  private final RemoteOpHandler remoteOpHandler;
   private final Codec<K> keyCodec;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
@@ -66,7 +65,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   @Inject
   private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore<K> memoryStore,
                                   final OperationRouter<K> router,
-                                  final RemoteOpHandler<K> remoteOpHandler,
+                                  final RemoteOpHandler remoteOpHandler,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                   final Serializer serializer) {
@@ -93,9 +92,6 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       break;
 
     case RemoteOpMsg:
-      onRemoteOpMsg(innerMsg);
-      break;
-
     case RemoteOpResultMsg:
       onRemoteOpResultMsg(innerMsg);
       break;
@@ -145,7 +141,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       final String operationId = msg.getOperationId().toString();
       final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
       final int blockId = ownershipMsg.getBlockId();
-      final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
+      final int oldOwnerId = ownershipMsg.getOldOwnerId();
       final int newOwnerId = ownershipMsg.getNewOwnerId();
 
       // Update the owner of the block to the new one.
@@ -162,35 +158,6 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
   /**
    * Handles the data operation sent from the remote memory store.
-   */
-  private void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
-    final RemoteOpMsg remoteOpMsg = msg.getRemoteOpMsg();
-    final String origEvalId = remoteOpMsg.getOrigEvalId().toString();
-    final DataOpType operationType = remoteOpMsg.getOpType();
-    final DataKey dataKey = (DataKey) remoteOpMsg.getDataKeys();
-    final DataValue dataValue = (DataValue) remoteOpMsg.getDataValues();
-    final String operationId = msg.getOperationId().toString();
-
-    // decode data keys
-    final K decodedKey = keyCodec.decode(dataKey.getKey().array());
-
-    // decode data values
-    final Optional<Object> decodedValue;
-    if (operationType.equals(DataOpType.PUT) || operationType.equals(DataOpType.UPDATE)) {
-      final Codec dataCodec = serializer.getCodec();
-      decodedValue = Optional.of(dataCodec.decode(dataValue.getValue().array()));
-    } else {
-      decodedValue = Optional.empty();
-    }
-
-    final DataOperation operation = new SingleKeyOperationImpl<>(Optional.of(origEvalId),
-        operationId, operationType, decodedKey, decodedValue);
-
-    // enqueue operation into memory store
-    memoryStore.onNext(operation);
-  }
-
-  /**
    * Handles the result of data operation sent from the remote memory store.
    */
   private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
@@ -245,8 +212,8 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       for (final int blockId : blockIds) {
         final Map<K, Object> blockData = memoryStore.getBlock(blockId);
         final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, codec);
-        sender.get().sendDataMsg(msg.getDestId().toString(), keyValuePairs,
-            blockId, operationId, TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
+        sender.get().sendDataMsg(msg.getDestId().toString(), keyValuePairs, blockId, operationId,
+            TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
       }
     }
   }

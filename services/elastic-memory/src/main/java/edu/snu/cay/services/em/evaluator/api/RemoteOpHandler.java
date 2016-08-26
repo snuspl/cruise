@@ -13,7 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.services.em.evaluator.api;
+
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import org.apache.reef.wake.EventHandler;
+
 /**
- * Evaluator-side Elastic Memory classes that are specific to range-based MemoryStore.
+ * An interface that handles msgs about remote access operations.
+ * It handles 1) remote op msg that other stores requested to this store
+ * and 2) the result msg of remote op that was requested by this store to other stores.
  */
-package edu.snu.cay.services.em.evaluator.impl.range;
+public interface RemoteOpHandler extends EventHandler<AvroElasticMemoryMessage> {
+}
