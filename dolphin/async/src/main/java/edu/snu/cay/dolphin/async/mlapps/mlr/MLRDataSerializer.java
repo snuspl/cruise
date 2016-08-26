@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.SparseVectorCodec;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.network.util.Pair;
@@ -29,12 +29,12 @@ import java.io.*;
  * Serializer that provides codec for (de-)serializing data used in MLR.
  */
 final class MLRDataSerializer implements Serializer {
-  private final DenseVectorCodec denseVectorCodec;
+  private final SparseVectorCodec sparseVectorCodec;
   private final MLRDataCodec mlrDataCodec = new MLRDataCodec();
 
   @Inject
-  private MLRDataSerializer(final DenseVectorCodec denseVectorCodec) {
-    this.denseVectorCodec = denseVectorCodec;
+  private MLRDataSerializer(final SparseVectorCodec sparseVectorCodec) {
+    this.sparseVectorCodec = sparseVectorCodec;
   }
 
   @Override
@@ -45,7 +45,7 @@ final class MLRDataSerializer implements Serializer {
   private final class MLRDataCodec implements Codec<Pair<Vector, Integer>>, StreamingCodec<Pair<Vector, Integer>> {
     @Override
     public byte[] encode(final Pair<Vector, Integer> mlrData) {
-      final int numBytes = denseVectorCodec.getNumBytes(mlrData.getFirst()) + Integer.SIZE;
+      final int numBytes = sparseVectorCodec.getNumBytes(mlrData.getFirst()) + Integer.SIZE;
       try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
            final DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(mlrData, daos);
@@ -67,7 +67,7 @@ final class MLRDataSerializer implements Serializer {
     @Override
     public void encodeToStream(final Pair<Vector, Integer> mlrData, final DataOutputStream daos) {
       try {
-        denseVectorCodec.encodeToStream(mlrData.getFirst(), daos);
+        sparseVectorCodec.encodeToStream(mlrData.getFirst(), daos);
         daos.writeInt(mlrData.getSecond());
       } catch (final IOException e) {
         throw new RuntimeException(e);
@@ -77,7 +77,7 @@ final class MLRDataSerializer implements Serializer {
     @Override
     public Pair<Vector, Integer> decodeFromStream(final DataInputStream dais) {
       try {
-        final Vector vector = denseVectorCodec.decodeFromStream(dais);
+        final Vector vector = sparseVectorCodec.decodeFromStream(dais);
         final int label = dais.readInt();
         return new Pair<>(vector, label);
       } catch (final IOException e) {
