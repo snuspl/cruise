@@ -154,7 +154,6 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
     }
   }
 
-
   /**
    * Handles the data operation sent from the remote memory store.
    */

@@ -93,7 +93,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
     case RemoteOpMsg:
     case RemoteOpResultMsg:
-      onRemoteOpResultMsg(innerMsg);
+      onRemoteOpAndRemoteOpResultMsg(innerMsg);
       break;
 
     case DataMsg:
@@ -157,10 +157,9 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   }
 
   /**
-   * Handles the data operation sent from the remote memory store.
-   * Handles the result of data operation sent from the remote memory store.
+   * Passes the remote op msg and result msg to {@link RemoteOpHandler}.
    */
-  private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
+  private void onRemoteOpAndRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
     remoteOpHandler.onNext(msg);
   }
 
