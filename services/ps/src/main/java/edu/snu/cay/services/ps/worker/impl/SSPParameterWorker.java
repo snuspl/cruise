@@ -212,6 +212,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   }
 
   private V pull(final EncodedKey<K> encodedKey) {
+    workerClock.waitIfExceedingStalenessBound();
+
     final PullOp pullOp = new PullOp(encodedKey);
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
