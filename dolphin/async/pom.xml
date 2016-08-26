@@ -106,10 +106,74 @@
       <groupId>org.jblas</groupId>
       <artifactId>jblas</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>javacpp</artifactId>
+    </dependency>
   </dependencies>
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.4.0</version>
+        <executions>
+          <execution>
+            <id>javacpp.cppbuild.install</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <arguments>
+                <argument>${project.basedir}/src/main/cpp/cppbuild.sh</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+        <configuration>
+          <skip>${javacpp.cppbuild.skip}</skip>
+          <workingDirectory>${project.basedir}/src/main/cpp</workingDirectory>
+          <executable>bash</executable>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.bytedeco</groupId>
+        <artifactId>javacpp</artifactId>
+        <version>${javacpp.version}</version>
+        <configuration>
+          <classPath>${project.build.outputDirectory}</classPath>
+          <includePaths>
+            <includePath>${project.basedir}/src/main/cpp/include/</includePath>
+            <includePath>/usr/local/cuda/include</includePath>
+            <includePath>/usr/include/boost</includePath>
+            <includePath>/usr/include/glog</includePath>
+          </includePaths>
+          <linkPaths>
+            <linkPath>${project.basedir}/src/main/cpp/lib/</linkPath>
+            <linkPath>/usr/local/cuda/lib64/</linkPath>
+            <linkPath>/usr/lib/x86_64-linux-gnu</linkPath>
+          </linkPaths>
+          <copyLibs>true</copyLibs>
+        </configuration>
+        <executions>
+          <execution>
+            <id>javacpp.compiler</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>build</goal>
+            </goals>
+            <configuration>
+              <skip>${javacpp.compiler.skip}</skip>
+              <classOrPackageNames>
+                <classOrPackageName>edu.snu.cay.dolphin.async.dnn.blas.cuda.JavaCuda</classOrPackageName>
+              </classOrPackageNames>
+              <copyLibs>true</copyLibs>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro-maven-plugin</artifactId>
@@ -176,4 +240,55 @@
       </plugin>
     </plugins>
   </build>
+
+  <properties>
+    <gpu>false</gpu>  <!-- -Dgpu=true for gpu support -->
+    <javacpp.cppbuild.skip>true</javacpp.cppbuild.skip>
+    <javacpp.compiler.skip>true</javacpp.compiler.skip>
+  </properties>
+
+  <profiles>
+    <profile>
+      <id>exclude_gpu</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>default-testCompile</id>
+                <phase>test-compile</phase>
+                <configuration>
+                  <testExcludes>
+                    <exclude>edu/snu/cay/dolphin/async/dnn/blas/cuda/*.java</exclude>
+                  </testExcludes>
+                </configuration>
+                <goals>
+                  <goal>testCompile</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>include_gpu</id>
+      <activation>
+        <property>
+          <name>gpu</name>
+          <value>true</value>
+        </property>
+      </activation>
+      <properties>
+        <javacpp.cppbuild.skip>false</javacpp.cppbuild.skip>
+        <javacpp.compiler.skip>false</javacpp.compiler.skip>
+      </properties>
+    </profile>
+  </profiles>
+
 </project>
