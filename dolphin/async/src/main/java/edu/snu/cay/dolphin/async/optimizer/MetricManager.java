@@ -16,12 +16,15 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
@@ -111,7 +114,7 @@ public final class MetricManager {
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
 
-    boolean tempDashboardEnabled = !hostAddress.equals("INVALID");
+    boolean tempDashboardEnabled = !hostAddress.equals(AsyncDolphinLauncher.INVALID_HOSTADDRESS);
     CloseableHttpAsyncClient tempReusableHttpClient = null;
 
     if (tempDashboardEnabled) {
@@ -127,7 +130,7 @@ public final class MetricManager {
         // run another thread to send metrics.
         runMetricsSenderThread();
       } catch (IOReactorException e) {
-        LOG.log(Level.WARNING, "Dashboard: ", e);
+        LOG.log(Level.WARNING, "Dashboard: Fail on initializing IOReactor - ", e);
         tempDashboardEnabled = false;
         tempReusableHttpClient = null;
       }
@@ -177,7 +180,7 @@ public final class MetricManager {
         metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
             workerId, metrics, System.currentTimeMillis()));
       } catch (InterruptedException e) {
-        LOG.log(Level.WARNING, "Dashboard: ", e);
+        LOG.log(Level.WARNING, "Dashboard: Interrupted while taking metrics to send from the queue - ", e);
       }
     }
   }
@@ -220,7 +223,7 @@ public final class MetricManager {
         metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
             serverId, metrics, System.currentTimeMillis()));
       } catch (InterruptedException e) {
-        LOG.log(Level.WARNING, "Dashboard: ", e);
+        LOG.log(Level.WARNING, "Dashboard: Interrupted while taking metrics to send from the queue - ", e);
       }
     }
   }
@@ -307,11 +310,33 @@ public final class MetricManager {
             final String request = metricsRequestQueue.take();
             sendMetricsToDashboard(request);
           } catch (InterruptedException e) {
-            LOG.log(Level.WARNING, "Dashboard:", e);
+            LOG.log(Level.WARNING, "Dashboard: Interrupted while sending metrics to the dashboard server - ", e);
           }
         }
       }
     });
+  }
+
+  private class DashboardResponseCallback implements FutureCallback<HttpResponse> {
+    @Override
+    public void completed(final HttpResponse result) {
+      final int code = result.getStatusLine().getStatusCode();
+      if (code != 200) {
+        LOG.log(Level.WARNING, "Dashboard: Post request failed. Code-{0}", code);
+      }
+    }
+
+    @Override
+    public void failed(final Exception ex) {
+      //TODO #772: deal with request failure.
+      LOG.log(Level.WARNING, "Dashboard: Post request failed - ", ex);
+    }
+
+    @Override
+    public void cancelled() {
+      //TODO #772: deal with request failure.
+      LOG.log(Level.WARNING, "Dashboard: Post request cancelled.");
+    }
   }
 
   /**
@@ -320,14 +345,14 @@ public final class MetricManager {
    */
   private void sendMetricsToDashboard(final String request) {
     try {
-
       LOG.log(Level.WARNING, "SendMetricsToDashboard");
       final HttpPost httpPost = new HttpPost(dashboardURL);
       httpPost.setHeader("Content-Type", "application/x-www-form-urlencoded");
       httpPost.setEntity(new StringEntity(request));
-      reusableHttpClient.execute(httpPost, null);
+      reusableHttpClient.execute(httpPost, new DashboardResponseCallback());
     } catch (IOException e) {
-      LOG.log(Level.WARNING, "Dashboard: post failed - ", e);
+      //TODO #772: deal with request failure.
+      LOG.log(Level.WARNING, "Dashboard: post request failed - ", e);
     }
   }
 }

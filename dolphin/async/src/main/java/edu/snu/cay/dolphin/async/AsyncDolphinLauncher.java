@@ -95,6 +95,7 @@ public final class AsyncDolphinLauncher {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinLauncher.class.getName());
   private static final String DASHBOARD_DIR = "/dashboard";
   private static final String DASHBOARD_SCRIPT = "dashboard.py";
+  public static final String INVALID_HOSTADDRESS = "INVALID";
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
   final class SerializedParameterConfiguration implements Name<String> {
