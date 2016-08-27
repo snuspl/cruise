@@ -136,12 +136,12 @@ public final class AsyncParameterWorkerTest {
   }
 
   /**
-   * Rule for suppressing massive INFO level logs in {@link AsyncParameterWorker#processPullReject},
+   * Rule for suppressing massive WARNING level logs in {@link AsyncParameterWorker#processPullReject},
    * which are intentionally called many times in {@link #testPullReject}.
    */
   @Rule
-  private TestRule watcher = new EnforceLoggingLevelRule("testPullReject",
-      AsyncParameterWorker.class.getName(), Level.WARNING);
+  private TestRule pullRejectWatcher = new EnforceLoggingLevelRule("testPullReject",
+      AsyncParameterWorker.class.getName(), Level.SEVERE);
 
   /**
    * Test the correct handling of pull rejects by {@link AsyncParameterWorker},
@@ -158,7 +158,16 @@ public final class AsyncParameterWorkerTest {
   }
 
   /**
-   * Tests whether worker correctly resend the pull operation, when network exception happens.
+   * Rule for suppressing massive WARNING level logs by {@link NetworkException}
+   * while {@link AsyncParameterWorker} tries to send a pull msg,
+   * which are intentionally caused many times in {@link #testPullNetworkExceptionAndResend()}.
+   */
+  @Rule
+  private TestRule pullResendWatcher = new EnforceLoggingLevelRule("testPullNetworkExceptionAndResend",
+      AsyncParameterWorker.class.getName(), Level.SEVERE);
+
+  /**
+   * Tests whether worker correctly resends the pull operation, when network exception happens.
    */
   @Test
   public void testPullNetworkExceptionAndResend()
@@ -167,7 +176,16 @@ public final class AsyncParameterWorkerTest {
   }
 
   /**
-   * Tests whether worker correctly resend the push operation, when network exception happens.
+   * Rule for suppressing massive WARNING level logs by {@link NetworkException}
+   * while {@link AsyncParameterWorker} tries to send a push msg,
+   * which are intentionally caused many times in {@link #testPushNetworkExceptionAndResend()}.
+   */
+  @Rule
+  private TestRule pushResendWatcher = new EnforceLoggingLevelRule("testPushNetworkExceptionAndResend",
+      AsyncParameterWorker.class.getName(), Level.SEVERE);
+
+  /**
+   * Tests whether worker correctly resends the push operation, when network exception happens.
    */
   @Test
   public void testPushNetworkExceptionAndResend()
