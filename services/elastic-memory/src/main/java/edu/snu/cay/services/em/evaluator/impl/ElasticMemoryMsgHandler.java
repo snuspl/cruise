@@ -91,9 +91,9 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       onRoutingTableUpdateMsg(innerMsg);
       break;
 
-    case RemoteOpMsg:
+    case RemoteOpReqMsg:
     case RemoteOpResultMsg:
-      onRemoteOpAndRemoteOpResultMsg(innerMsg);
+      onRemoteOpMsg(innerMsg);
       break;
 
     case DataMsg:
@@ -157,9 +157,9 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   }
 
   /**
-   * Passes the remote op msg and result msg to {@link RemoteOpHandler}.
+   * Passes the request and result msgs of remote op to {@link RemoteOpHandler}.
    */
-  private void onRemoteOpAndRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
+  private void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
     remoteOpHandler.onNext(msg);
   }
 

@@ -132,7 +132,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
           dataKVPairList = Collections.emptyList();
         }
 
-        msgSender.get().sendRemoteOpMsg(operation.getOrigEvalId().get(), targetEvalId,
+        msgSender.get().sendRemoteOpReqMsg(operation.getOrigEvalId().get(), targetEvalId,
             operation.getOpType(), avroKeyRangeList, dataKVPairList, operation.getOpId(), traceInfo);
       }
     }
@@ -157,8 +157,8 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   @Override
   public void onNext(final AvroElasticMemoryMessage msg) {
     switch (msg.getType()) {
-    case RemoteOpMsg:
-      onRemoteOpMsg(msg);
+    case RemoteOpReqMsg:
+      onRemoteOpReqMsg(msg);
       break;
     case RemoteOpResultMsg:
       onRemoteOpResultMsg(msg);
@@ -171,12 +171,12 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   /**
    * Handles the data operation sent from the remote memory store.
    */
-  private void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
-    final RemoteOpMsg remoteOpMsg = msg.getRemoteOpMsg();
-    final String origEvalId = remoteOpMsg.getOrigEvalId().toString();
-    final DataOpType operationType = remoteOpMsg.getOpType();
-    final List<KeyRange> avroKeyRangeList = (List<KeyRange>) remoteOpMsg.getDataKeys();
-    final List<KeyValuePair> dataKVPairList = (List<KeyValuePair>) remoteOpMsg.getDataValues();
+  private void onRemoteOpReqMsg(final AvroElasticMemoryMessage msg) {
+    final RemoteOpReqMsg remoteOpReqMsg = msg.getRemoteOpReqMsg();
+    final String origEvalId = remoteOpReqMsg.getOrigEvalId().toString();
+    final DataOpType operationType = remoteOpReqMsg.getOpType();
+    final List<KeyRange> avroKeyRangeList = (List<KeyRange>) remoteOpReqMsg.getDataKeys();
+    final List<KeyValuePair> dataKVPairList = (List<KeyValuePair>) remoteOpReqMsg.getDataValues();
     final String operationId = msg.getOperationId().toString();
 
     // decode data keys
