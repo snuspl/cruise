@@ -17,6 +17,9 @@ package edu.snu.cay.services.em.evaluator.impl.singlekey;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
+import edu.snu.cay.services.em.evaluator.api.DataOperation;
+import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
 import edu.snu.cay.services.em.evaluator.api.SingleKeyOperation;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
@@ -24,7 +27,6 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
-import org.apache.reef.wake.EventHandler;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -42,8 +44,8 @@ import java.util.logging.Logger;
  * It 1) sends operation to remote stores and 2) sends the result of remote operation to the origin store,
  * and 3) receives and handles the received result.
  */
-final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage> {
-  private static final Logger LOG = Logger.getLogger(RemoteOpHandler.class.getName());
+public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
+  private static final Logger LOG = Logger.getLogger(RemoteOpHandlerImpl.class.getName());
   private static final long TIMEOUT_MS = 40000;
 
   /**
@@ -61,10 +63,14 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
   private Codec<K> keyCodec;
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
+  private final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore;
+
   @Inject
-  private RemoteOpHandler(final Serializer serializer,
-                          @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                          final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
+  private RemoteOpHandlerImpl(final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore,
+                              final Serializer serializer,
+                              @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
+                              final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
+    this.memoryStore = memoryStore;
     this.serializer = serializer;
     this.keyCodec = keyCodec;
     this.msgSender = msgSender;
@@ -110,7 +116,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
         dataValue = null;
       }
 
-      msgSender.get().sendRemoteOpMsg(operation.getOrigEvalId().get(), targetEvalId,
+      msgSender.get().sendRemoteOpReqMsg(operation.getOrigEvalId().get(), targetEvalId,
           operation.getOpType(), new DataKey(encodedKey), dataValue,
           operation.getOpId(), traceInfo);
     }
@@ -136,7 +142,49 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
    */
   @Override
   public void onNext(final AvroElasticMemoryMessage msg) {
+    switch (msg.getType()) {
+    case RemoteOpReqMsg:
+      onRemoteOpReqMsg(msg);
+      break;
+    case RemoteOpResultMsg:
+      onRemoteOpResultMsg(msg);
+      break;
+    default:
+      throw new RuntimeException("Illegal msg type: " + msg.getType());
+    }
+  }
 
+  /**
+   * Handles the data operation sent from the remote memory store.
+   */
+  private void onRemoteOpReqMsg(final AvroElasticMemoryMessage msg) {
+    final RemoteOpReqMsg remoteOpReqMsg = msg.getRemoteOpReqMsg();
+    final String origEvalId = remoteOpReqMsg.getOrigEvalId().toString();
+    final DataOpType operationType = remoteOpReqMsg.getOpType();
+    final DataKey dataKey = (DataKey) remoteOpReqMsg.getDataKeys();
+    final DataValue dataValue = (DataValue) remoteOpReqMsg.getDataValues();
+    final String operationId = msg.getOperationId().toString();
+
+    // decode data keys
+    final K decodedKey = keyCodec.decode(dataKey.getKey().array());
+
+    // decode data values
+    final Optional<Object> decodedValue;
+    if (operationType.equals(DataOpType.PUT) || operationType.equals(DataOpType.UPDATE)) {
+      final Codec dataCodec = serializer.getCodec();
+      decodedValue = Optional.of(dataCodec.decode(dataValue.getValue().array()));
+    } else {
+      decodedValue = Optional.empty();
+    }
+
+    final DataOperation operation = new SingleKeyOperationImpl<>(Optional.of(origEvalId),
+        operationId, operationType, decodedKey, decodedValue);
+
+    // enqueue operation into memory store
+    memoryStore.get().onNext(operation);
+  }
+
+  private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
     final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
     final String operationId = msg.getOperationId().toString();
     final DataValue remoteOutput = (DataValue) remoteOpResultMsg.getDataValues();

@@ -31,32 +31,32 @@ import java.util.List;
 public interface ElasticMemoryMsgSender {
 
   /**
-   * Sends a RemoteOpMsg that requests the Evaluator specified with {@code destId} to
+   * Sends a RemoteOpReqMsg that requests the Evaluator specified with {@code destId} to
    * process a data operation, parceling operation metadata into the message.
    * Since the operation can be transmitted multiple times across the multiple evaluators,
    * the message retains {@code origId}, an id of the Evaluator where the operation is generated at the beginning.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRemoteOpMsg(final String origId,
-                       final String destId,
-                       final DataOpType operationType,
-                       final List<KeyRange> dataKeyRanges,
-                       final List<KeyValuePair> dataKVPairList,
-                       final String operationId,
-                       @Nullable final TraceInfo parentTraceInfo);
+  void sendRemoteOpReqMsg(final String origId,
+                          final String destId,
+                          final DataOpType operationType,
+                          final List<KeyRange> dataKeyRanges,
+                          final List<KeyValuePair> dataKVPairList,
+                          final String operationId,
+                          @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a RemoteOpMsg that requests the Evaluator specified with {@code destId} to
+   * Sends a RemoteOpReqMsg that requests the Evaluator specified with {@code destId} to
    * process a data operation, parceling operation metadata into the message.
    * Since the operation can be transmitted multiple times across the multiple evaluators,
    * the message retains {@code origId}, an id of the Evaluator where the operation is generated at the beginning.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                       final DataKey dataKey, final DataValue dataValue, final String operationId,
-                       @Nullable final TraceInfo parentTraceInfo);
+  void sendRemoteOpReqMsg(final String origId, final String destId, final DataOpType operationType,
+                          final DataKey dataKey, final DataValue dataValue, final String operationId,
+                          @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Sends a RemoteOpResultMsg that contains the result of the data operation specified with {@code operationId}.

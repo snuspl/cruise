@@ -425,17 +425,17 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final List<KeyRange> dataKeyRanges,
-                                final List<KeyValuePair> dataKVPairList, final String operationId,
-                                @Nullable final TraceInfo parentTraceInfo) {
+    public void sendRemoteOpReqMsg(final String origId, final String destId, final DataOpType operationType,
+                                   final List<KeyRange> dataKeyRanges,
+                                   final List<KeyValuePair> dataKVPairList, final String operationId,
+                                   @Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final DataKey dataKey, final DataValue dataValue,
-                                final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    public void sendRemoteOpReqMsg(final String origId, final String destId, final DataOpType operationType,
+                                   final DataKey dataKey, final DataValue dataValue,
+                                   final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 
     }
 

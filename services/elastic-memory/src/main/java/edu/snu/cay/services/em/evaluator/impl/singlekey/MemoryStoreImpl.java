@@ -53,7 +53,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   @GuardedBy("routerLock")
   private final OperationRouter<K> router;
   private final BlockResolver<K> blockResolver;
-  private final RemoteOpHandler<K> remoteOpHandler;
+  private final RemoteOpHandlerImpl<K> remoteOpHandlerImpl;
 
   /**
    * An update function to be used in {@link Block#update}.
@@ -72,13 +72,13 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter<K> router,
                           final BlockResolver<K> blockResolver,
-                          final RemoteOpHandler<K> remoteOpHandler,
+                          final RemoteOpHandlerImpl<K> remoteOpHandlerImpl,
                           final EMUpdateFunction<K, ?> updateFunction,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
     this.blockResolver = blockResolver;
-    this.remoteOpHandler = remoteOpHandler;
+    this.remoteOpHandlerImpl = remoteOpHandlerImpl;
     this.updateFunction = updateFunction;
     initBlocks();
     initExecutor(numStoreThreads);
@@ -203,7 +203,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
             isSuccess = false;
           }
 
-          remoteOpHandler.sendResultToOrigin(operation, Optional.ofNullable(output), isSuccess);
+          remoteOpHandlerImpl.sendResultToOrigin(operation, Optional.ofNullable(output), isSuccess);
         } else {
           LOG.log(Level.WARNING,
               "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
@@ -211,7 +211,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
               new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalId.get()});
 
           // send the failed result
-          remoteOpHandler.sendResultToOrigin(operation, Optional.<V>empty(), false);
+          remoteOpHandlerImpl.sendResultToOrigin(operation, Optional.<V>empty(), false);
         }
       } finally {
         routerLock.readLock().unlock();
@@ -311,7 +311,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     if (remoteEvalId.isPresent()) {
       // send operation to remote and wait until operation is finished
       final SingleKeyOperation<K, V> operation =
-          remoteOpHandler.sendOpToRemoteStore(DataOpType.PUT, id, Optional.of(value), remoteEvalId.get());
+          remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.PUT, id, Optional.of(value), remoteEvalId.get());
 
       return new Pair<>(id, operation.isSuccess());
     } else {
@@ -336,7 +336,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     if (remoteEvalId.isPresent()) {
       // send operation to remote and wait until operation is finished
       final SingleKeyOperation<K, V> operation =
-          remoteOpHandler.sendOpToRemoteStore(DataOpType.GET, id, Optional.<V>empty(), remoteEvalId.get());
+          remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.GET, id, Optional.<V>empty(), remoteEvalId.get());
 
       final V outputData = operation.getOutputData().get();
       return outputData == null ? null : new Pair<>(id, outputData);
@@ -383,7 +383,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
     if (remoteEvalId.isPresent()) {
       final SingleKeyOperation<K, V> operation =
-          remoteOpHandler.sendOpToRemoteStore(DataOpType.UPDATE, id, Optional.of(deltaValue), remoteEvalId.get());
+          remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.UPDATE, id, Optional.of(deltaValue), remoteEvalId.get());
 
       return new Pair<>(id, operation.getOutputData().get());
     } else {
@@ -403,7 +403,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     if (remoteEvalId.isPresent()) {
       // send operation to remote and wait until operation is finished
       final SingleKeyOperation<K, V> operation =
-          remoteOpHandler.sendOpToRemoteStore(DataOpType.REMOVE, id, Optional.<V>empty(), remoteEvalId.get());
+          remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.REMOVE, id, Optional.<V>empty(), remoteEvalId.get());
 
       final V outputData = operation.getOutputData().get();
       return outputData == null ? null : new Pair<>(id, outputData);

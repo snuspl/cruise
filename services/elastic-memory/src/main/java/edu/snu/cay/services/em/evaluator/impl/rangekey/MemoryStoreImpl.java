@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.impl.range;
+package edu.snu.cay.services.em.evaluator.impl.rangekey;
 
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.DataOperation;
-import edu.snu.cay.services.em.evaluator.api.RangeOperation;
+import edu.snu.cay.services.em.evaluator.api.RangeKeyOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.utils.LongRangeUtils;
@@ -66,7 +66,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   @GuardedBy("routerLock")
   private final OperationRouter<Long> router;
   private final BlockResolver<Long> blockResolver;
-  private final RemoteOpHandler<Long> remoteOpHandler;
+  private final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl;
 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
@@ -79,19 +79,19 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    * A queue for operations requested from remote clients.
    * Its element is composed of a operation, sub key ranges, and a corresponding block id.
    */
-  private final BlockingQueue<Tuple3<RangeOperation, List<Pair<Long, Long>>, Integer>> subOperationQueue
+  private final BlockingQueue<Tuple3<RangeKeyOperation, List<Pair<Long, Long>>, Integer>> subOperationQueue
       = new ArrayBlockingQueue<>(QUEUE_SIZE);
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter<Long> router,
                           final BlockResolver<Long> blockResolver,
-                          final RemoteOpHandler<Long> remoteOpHandler,
+                          final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
     this.blockResolver = blockResolver;
-    this.remoteOpHandler = remoteOpHandler;
+    this.remoteOpHandlerImpl = remoteOpHandlerImpl;
     initBlocks();
     initExecutor(numStoreThreads);
   }
@@ -166,7 +166,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         // First, poll and execute a single operation.
         // Poll with a timeout will prevent busy waiting, when the queue is empty.
         try {
-          final Tuple3<RangeOperation, List<Pair<Long, Long>>, Integer> subOperation =
+          final Tuple3<RangeKeyOperation, List<Pair<Long, Long>>, Integer> subOperation =
               subOperationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (subOperation == null) {
             continue;
@@ -178,8 +178,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       }
     }
 
-    private void handleSubOperation(final Tuple3<RangeOperation, List<Pair<Long, Long>>, Integer> subOperation) {
-      final RangeOperation operation = subOperation.getFirst();
+    private void handleSubOperation(final Tuple3<RangeKeyOperation, List<Pair<Long, Long>>, Integer> subOperation) {
+      final RangeKeyOperation operation = subOperation.getFirst();
       final List<Pair<Long, Long>> subKeyRanges = subOperation.getSecond();
       final int blockId = subOperation.getThird();
 
@@ -236,7 +236,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
      * Executes sub operation on data keys assigned to this block.
      * All operations both from remote and local clients are executed via this method.
      */
-    private Map<Long, V> executeSubOperation(final RangeOperation<Long, V> operation,
+    private Map<Long, V> executeSubOperation(final RangeKeyOperation<Long, V> operation,
                                              final List<Pair<Long, Long>> keyRanges) {
       final DataOpType operationType = operation.getOpType();
 
@@ -345,7 +345,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    */
   @Override
   public void onNext(final DataOperation dataOperation) {
-    final RangeOperation<Long, Object> operation = (RangeOperation<Long, Object>) dataOperation;
+    final RangeKeyOperation<Long, Object> operation = (RangeKeyOperation<Long, Object>) dataOperation;
 
     // split data key ranges into blocks
     final List<Pair<Long, Long>> dataKeyRanges = operation.getDataKeyRanges();
@@ -383,7 +383,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    * Enqueues sub operations requested from a remote client to {@code subOperationQueue}.
    * The enqueued operations are executed by {@code OperationThread}s.
    */
-  private void enqueueOperation(final RangeOperation operation,
+  private void enqueueOperation(final RangeKeyOperation operation,
                                 final Map<Integer, List<Pair<Long, Long>>> blockToKeyRangesMap) {
     final int numSubOps = blockToKeyRangesMap.size();
     operation.setNumSubOps(numSubOps);
@@ -406,7 +406,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   /**
    * Executes an operation requested from a local client.
    */
-  private <V> void executeOperation(final RangeOperation<Long, V> operation) {
+  private <V> void executeOperation(final RangeKeyOperation<Long, V> operation) {
 
     final List<Pair<Long, Long>> dataKeyRanges = operation.getDataKeyRanges();
 
@@ -433,13 +433,13 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     }
 
     // send remote operations and wait until all remote operations complete
-    remoteOpHandler.sendOpToRemoteStores(operation, remoteEvalToSubKeyRangesMap);
+    remoteOpHandlerImpl.sendOpToRemoteStores(operation, remoteEvalToSubKeyRangesMap);
   }
 
   /**
    * Executes sub local operations directly, not via queueing.
    */
-  private <V> Map<Long, V> executeLocalOperation(final RangeOperation<Long, V> operation,
+  private <V> Map<Long, V> executeLocalOperation(final RangeKeyOperation<Long, V> operation,
                                                  final Map<Integer, List<Pair<Long, Long>>> blockToSubKeyRangesMap) {
     if (blockToSubKeyRangesMap.isEmpty()) {
       return Collections.emptyMap();
@@ -477,7 +477,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    * Handles the result of data operation processed by local memory store.
    * It waits until all sub operations are finished and their outputs are fully aggregated.
    */
-  private <V> void submitLocalResult(final RangeOperation<Long, V> operation, final Map<Long, V> localOutput,
+  private <V> void submitLocalResult(final RangeKeyOperation<Long, V> operation, final Map<Long, V> localOutput,
                                      final List<Pair<Long, Long>> failedRanges) {
     final int numRemainingSubOps = operation.commitResult(localOutput, failedRanges);
 
@@ -485,7 +485,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         new Object[]{operation.getOpId(), numRemainingSubOps});
 
     if (!operation.isFromLocalClient() && numRemainingSubOps == 0) {
-      remoteOpHandler.sendResultToOrigin(operation);
+      remoteOpHandlerImpl.sendResultToOrigin(operation);
     }
   }
 
@@ -493,7 +493,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public <V> Pair<Long, Boolean> put(final Long id, @Nonnull final V value) {
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
+    final RangeKeyOperation<Long, V> operation = new RangeKeyOperationImpl<>(Optional.<String>empty(), operationId,
         DataOpType.PUT, id, Optional.of(value));
 
     executeOperation(operation);
@@ -520,7 +520,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       dataKeyValueMap.put(ids.get(idx), values.get(idx));
     }
 
-    final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
+    final RangeKeyOperation<Long, V> operation = new RangeKeyOperationImpl<>(Optional.<String>empty(), operationId,
         DataOpType.PUT, keyRangeList, Optional.of(dataKeyValueMap));
 
     executeOperation(operation);
@@ -593,7 +593,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
+    final RangeKeyOperation<Long, V> operation = new RangeKeyOperationImpl<>(Optional.<String>empty(), operationId,
         DataOpType.GET, id, Optional.<V>empty());
 
     executeOperation(operation);
@@ -639,7 +639,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
+    final RangeKeyOperation<Long, V> operation = new RangeKeyOperationImpl<>(Optional.<String>empty(), operationId,
         DataOpType.GET, new Pair<>(startId, endId), Optional.<NavigableMap<Long, V>>empty());
 
     executeOperation(operation);
@@ -656,7 +656,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public <V> Pair<Long, V> remove(final Long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
+    final RangeKeyOperation<Long, V> operation = new RangeKeyOperationImpl<>(Optional.<String>empty(), operationId,
         DataOpType.REMOVE, id, Optional.<V>empty());
 
     executeOperation(operation);
@@ -695,7 +695,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
+    final RangeKeyOperation<Long, V> operation = new RangeKeyOperationImpl<>(Optional.<String>empty(), operationId,
         DataOpType.REMOVE, new Pair<>(startId, endId), Optional.<NavigableMap<Long, V>>empty());
 
     executeOperation(operation);
