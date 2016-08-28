@@ -42,7 +42,7 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgSenderImpl.class.getName());
 
-  private static final String SEND_REMOTE_OP_REQ_MSG = "sendRemoteOpMsg";
+  private static final String SEND_REMOTE_OP_REQ_MSG = "sendRemoteOpReqMsg";
   private static final String SEND_REMOTE_OP_RESULT_MSG = "sendRemoteOpResultMsg";
   private static final String SEND_ROUTING_TABLE_INIT_REQ_MSG = "sendRoutingTableInitReqMsg";
   private static final String SEND_ROUTING_TABLE_INIT_MSG = "sendRoutingTableInitMsg";
