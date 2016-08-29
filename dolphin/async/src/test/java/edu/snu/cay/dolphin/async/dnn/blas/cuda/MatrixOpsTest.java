@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.dnn.blas.cuda;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,7 +34,11 @@ public final class MatrixOpsTest {
 
   @Before
   public void setUp() {
-    matrixFactory = new MatrixCudaFactory();
+    try {
+      matrixFactory = Tang.Factory.getTang().newInjector().getInstance(MatrixCudaFactory.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**

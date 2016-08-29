@@ -18,12 +18,18 @@ package edu.snu.cay.dolphin.async.dnn.blas.cuda;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 
+import javax.inject.Inject;
+
 import static edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl.FLOAT_SIZE;
 
 /**
  * Factory for CUDA backend Matrix implementation.
  */
 public final class MatrixCudaFactory implements MatrixFactory {
+
+  @Inject
+  private MatrixCudaFactory() {
+  }
 
   @Override
   public Matrix create(final int length) {
