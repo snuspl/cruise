@@ -52,8 +52,9 @@ public interface ParameterServer<K, P, V> {
    * @param key key object that the requested {@code value} is associated with
    * @param srcId network Id of the requester
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
+   * @param requestId
    */
-  void pull(final K key, final String srcId, final int keyHash);
+  void pull(final K key, final String srcId, final int keyHash, final int requestId);
 
   /**
    * Counts the number of pending operations.

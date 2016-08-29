@@ -102,9 +102,10 @@ public final class WorkerMsgSender<K, P> {
    * Sends a pull msg for {@code key} to a corresponding server.
    * @param destId an id of destination server
    * @param key a key to pull
+   * @param requestId
    * @throws NetworkException when fail to open a connection
    */
-  void sendPullMsg(final String destId, final EncodedKey<K> key) throws NetworkException {
+  void sendPullMsg(final String destId, final EncodedKey<K> key, final int requestId) throws NetworkException {
     final Identifier localEndPointId = psNetworkSetup.getMyId();
     if (localEndPointId == null) {
       throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
@@ -112,6 +113,7 @@ public final class WorkerMsgSender<K, P> {
 
     final PullMsg pullMsg = PullMsg.newBuilder()
         .setKey(ByteBuffer.wrap(key.getEncoded()))
+        .setRequestId(requestId)
         .build();
 
     send(destId,

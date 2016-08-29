@@ -103,7 +103,8 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
   private void onPullMsg(final String srcId, final PullMsg pullMsg) {
     final K key = keyCodec.decode(pullMsg.getKey().array());
     final int keyHash = hash(pullMsg.getKey().array());
-    parameterServer.pull(key, srcId, keyHash);
+    final int requestId = pullMsg.getRequestId();
+    parameterServer.pull(key, srcId, keyHash, requestId);
   }
 
   private int hash(final byte[] encodedKey) {

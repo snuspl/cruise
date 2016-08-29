@@ -33,6 +33,7 @@ import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import edu.snu.cay.utils.ThreadUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -157,7 +158,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.close(parameterWorker, mockSender, workerHandler);
   }
 
@@ -169,7 +170,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadPush()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.multiThreadPush(parameterWorker, mockSender);
   }
 
@@ -184,7 +185,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.multiThreadPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -195,7 +196,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadMultiKeyPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.multiThreadMultiKeyPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -215,7 +216,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPullReject()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
   }
 
@@ -234,7 +235,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPullNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.pullNetworkExceptionAndResend(parameterWorker, workerHandler, mockSender);
   }
 
@@ -253,7 +254,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPushNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
   }
 
@@ -272,9 +273,9 @@ public final class SSPParameterWorkerTest {
    */
   @Test(timeout = 10000)
   public void testDataStalenessCheck() throws NetworkException, InterruptedException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
 
-    final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
         ParameterWorkerTestUtil.startPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
@@ -285,14 +286,14 @@ public final class SSPParameterWorkerTest {
     for (int i = 0; i < numberOfKeys; i++) {
       parameterWorker.pull(i);
     }
-    verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject());
+    verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject(), anyInt());
 
     // The number of times sendPullMsg() call shouldn't be changed.
     // Since all the values associated with those keys have been already fetched from servers.
     for (int i = 0; i < numberOfKeys; i++) {
       parameterWorker.pull(i);
     }
-    verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject());
+    verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject(), anyInt());
 
     // Now we increase the worker clock until it gets beyond the staleness bound.
     // As a result, all the cached data is going to get stale.
@@ -318,7 +319,7 @@ public final class SSPParameterWorkerTest {
     for (int i = 0; i < numberOfKeys; i++) {
       parameterWorker.pull(i);
     }
-    verify(mockSender, times(2 * numberOfKeys)).sendPullMsg(anyString(), anyObject());
+    verify(mockSender, times(2 * numberOfKeys)).sendPullMsg(anyString(), anyObject(), anyInt());
 
     executorService.shutdownNow();
   }
@@ -330,9 +331,9 @@ public final class SSPParameterWorkerTest {
   @Test(timeout = 30000)
   public void testWorkerStalenessCheck() throws NetworkException, InterruptedException, BrokenBarrierException,
       InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
 
-    final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
         ParameterWorkerTestUtil.startPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
@@ -419,9 +420,9 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testInvalidateAll()
       throws InterruptedException, ExecutionException, TimeoutException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
 
-    final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
         ParameterWorkerTestUtil.startPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
@@ -448,7 +449,7 @@ public final class SSPParameterWorkerTest {
     sspParameterWorker.close(ParameterWorkerTestUtil.CLOSE_TIMEOUT);
 
     assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
-    verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject());
+    verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject(), anyInt());
 
     executorService.shutdownNow();
   }

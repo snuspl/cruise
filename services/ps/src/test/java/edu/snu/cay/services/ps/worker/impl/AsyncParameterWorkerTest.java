@@ -24,6 +24,7 @@ import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.EnforceLoggingLevelRule;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -80,7 +81,6 @@ public final class AsyncParameterWorkerTest {
     injector.bindVolatileInstance(WorkerMsgSender.class, mockSender);
     injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
     injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
-
     parameterWorker = injector.getInstance(ParameterWorker.class);
     workerHandler = injector.getInstance(WorkerHandler.class);
   }
@@ -91,7 +91,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.close(parameterWorker, mockSender, workerHandler);
   }
 
@@ -104,7 +104,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadPush()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.multiThreadPush(parameterWorker, mockSender);
   }
 
@@ -119,7 +119,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.multiThreadPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -133,7 +133,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadMultiKeyPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.multiThreadMultiKeyPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -156,7 +156,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPullReject()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
   }
 
@@ -175,7 +175,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPullNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.pullNetworkExceptionAndResend(parameterWorker, workerHandler, mockSender);
   }
 
@@ -194,7 +194,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPushNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
     ParameterWorkerTestUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
   }
 
@@ -215,9 +215,9 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testInvalidateAll()
       throws InterruptedException, ExecutionException, TimeoutException, NetworkException, InjectionException {
-    prepare(Long.MAX_VALUE);
+    prepare(0);
 
-    final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
         ParameterWorkerTestUtil.startPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
@@ -244,7 +244,7 @@ public final class AsyncParameterWorkerTest {
     asyncParameterWorker.close(ParameterWorkerTestUtil.CLOSE_TIMEOUT);
 
     assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
-    verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject());
+    verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject(), anyInt());
 
     executorService.shutdown();
   }
