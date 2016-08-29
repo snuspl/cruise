@@ -182,8 +182,9 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   }
 
   /**
-   * Determine data staleness
-   * by comparing the value of data staleness to the staleness bound.
+   * Determines whether the data is stale, which in turn should be fetched from server.
+   * @param dataStaleness Staleness of the data (worker's clock - cached data's clock)
+   * @return {@true} if the data is stale
    */
   private boolean isDataStale(final int dataStaleness) {
     return dataStaleness > stalenessBound;
@@ -569,12 +570,12 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
         while (true) {
           final Tagged<V> tagged = kvCache.get(encodedKey);
           final int staleness = workerClock.getWorkerClock() - tagged.getClock();
-          if (!isDataStale(staleness)) {
-            loadedValue = tagged.getValue();
-            break;
-          } else {
+          if (isDataStale(staleness)) {
             // Invalidate stale data before fetching new data from a server.
             kvCache.invalidate(encodedKey);
+          } else {
+            loadedValue = tagged.getValue();
+            break;
           }
         }
 
