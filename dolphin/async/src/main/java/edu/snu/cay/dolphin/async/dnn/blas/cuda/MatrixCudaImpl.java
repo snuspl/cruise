@@ -885,6 +885,61 @@ public final class MatrixCudaImpl implements Matrix {
     return this;
   }
 
+  // function for (transpose A) * B
+  public Matrix tmmul(final Matrix matrix) {
+    final MatrixCudaImpl other = toCudaImpl(matrix);
+    if (rows != other.getRows()) {
+      throw new IllegalArgumentException(
+          "The number of rows of left matrix should be equal to the number of rows of right matrix.");
+    }
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(columns, other.getColumns());
+    if (other.getColumns() == 1) {
+      // column vector
+      if (!JavaCuda.gemv('T',
+          rows, columns, 1.0f, devPtr, rows, other.getDevicePointer(), 1, 0.0f, newMatrix.getDevicePointer(), 1)) {
+        newMatrix.free();
+        throw new RuntimeException("Failed to perform matrix-vector multiplication");
+      }
+    } else {
+      if (!JavaCuda.gemm('T', 'N', columns, other.getColumns(), rows, 1.0f,
+          devPtr, rows, other.getDevicePointer(), other.getRows(), 0.0f, newMatrix.getDevicePointer(), columns)) {
+        newMatrix.free();
+        throw new RuntimeException("Failed to perform matrix-matrix multiplication");
+      }
+    }
+    return newMatrix;
+  }
+
+  public Matrix tmmuli(final Matrix matrix) {
+    final Matrix temp = this.tmmul(matrix);
+    this.copy(temp);
+    temp.free();
+    return this;
+  }
+
+  //function for A * (transpose B)
+  public Matrix mmult(final Matrix matrix) {
+    final MatrixCudaImpl other = toCudaImpl(matrix);
+    if (columns != other.getColumns()) {
+      throw new IllegalArgumentException(
+          "The number of columns of left matrix should be equal to the number of columns of right matrix.");
+    }
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, other.getRows());
+    if (!JavaCuda.gemm('N', 'T', rows, other.getRows(), columns, 1.0f,
+        devPtr, rows, other.getDevicePointer(), other.getRows(), 0.0f, newMatrix.getDevicePointer(), rows)) {
+      newMatrix.free();
+      throw new RuntimeException("Failed to perform matrix-matrix multiplication");
+    }
+    return newMatrix;
+  }
+
+  public Matrix mmulti(final Matrix matrix) {
+    final Matrix temp = this.mmult(matrix);
+    this.copy(temp);
+    temp.free();
+    return this;
+  }
+
   @Override
   public float max() {
     return JavaCuda.max(length, devPtr);
@@ -998,7 +1053,7 @@ public final class MatrixCudaImpl implements Matrix {
     multiplierFree();
   }
 
-  FloatPointer getDevicePointer() {
+  public FloatPointer getDevicePointer() {
     return devPtr;
   }
 

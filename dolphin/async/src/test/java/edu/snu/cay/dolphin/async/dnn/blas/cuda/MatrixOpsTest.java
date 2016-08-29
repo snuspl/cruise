@@ -304,4 +304,50 @@ public final class MatrixOpsTest {
     m2.free();
     m3.free();
   }
+
+  @Test
+  public void testMatrixTransposeMultiplication() {
+    final float[] input1 = {1.0F, 2.0F, 3.0F, 4.0F, 5.0F, 6.0F};
+    final float[] input2 = {0.1F, 0.2F, 0.3F, 0.4F, 0.5F, 0.6F, 0.7F, 0.8F, 0.9F, 1.0F, 1.1F, 1.2F};
+    final float[] input3 = {7.0F, 8.0F, 9.0F, 10.0F, 11.0F, 12.0F};
+    final float[] input4 = {1.0F, 2.0F};
+    //input1 * (input2 ^T)
+    final float[] outputt = {6.1F, 7.6F, 7.0F, 8.8F, 7.9F, 10.0F, 8.8F, 11.2F};
+    //(input1 ^T) * input3
+    final float[] toutput = {23.0F, 53.0F, 83.0F, 29.0F, 67.0F, 105.0F, 35.0F, 81.0F, 127.0F};
+    //(input1 ^T) * input4
+    final float[] voutput = {5.0F, 11.0F, 17.0F};
+
+    final Matrix m1 = matrixFactory.create(input1, 2, 3);
+    final Matrix m2 = matrixFactory.create(input2, 4, 3);
+    final Matrix m3 = matrixFactory.create(input3, 2, 3);
+    final Matrix m4 = matrixFactory.create(input4, 2, 1);
+
+    final Matrix m5 = matrixFactory.create(outputt, 2, 4);
+    final Matrix m6 = matrixFactory.create(toutput, 3, 3);
+    final Matrix m7 = matrixFactory.create(voutput, 3, 1);
+
+    final Matrix m8 = ((MatrixCudaImpl) m1).mmult(m2);
+    assertTrue(m8.compare(m5, FloatCompare.TOLERANCE));
+    assertArrayEquals(outputt, m8.toFloatArray());
+    m8.free();
+
+    final Matrix m9 = ((MatrixCudaImpl) m1).tmmul(m3);
+    assertTrue(m9.compare(m6, FloatCompare.TOLERANCE));
+    assertArrayEquals(toutput, m9.toFloatArray());
+    m9.free();
+
+    final Matrix m10 = ((MatrixCudaImpl) m1).tmmul(m4);
+    assertTrue(m10.compare(m7, FloatCompare.TOLERANCE));
+    assertArrayEquals(voutput, m10.toFloatArray());
+    m10.free();
+
+    m1.free();
+    m2.free();
+    m3.free();
+    m4.free();
+    m5.free();
+    m6.free();
+    m7.free();
+  }
 }

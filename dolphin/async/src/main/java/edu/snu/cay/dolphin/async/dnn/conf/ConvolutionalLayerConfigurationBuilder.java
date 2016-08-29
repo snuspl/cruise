@@ -17,8 +17,8 @@ package edu.snu.cay.dolphin.async.dnn.conf;
 
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.ConvolutionalLayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
-import edu.snu.cay.dolphin.async.dnn.layers.ConvolutionalLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.ConvolutionalGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -119,7 +119,7 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
         .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
         .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
         .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
-        .bindImplementation(LayerBase.class, ConvolutionalLayer.class)
+        .bindImplementation(LayerBase.class, ConvolutionalGpuLayer.class)
         .bindImplementation(LayerParameterInitializer.class, ConvolutionalLayerParameterInitializer.class)
         .build();
   }
