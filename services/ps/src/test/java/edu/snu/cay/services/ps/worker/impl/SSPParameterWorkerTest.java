@@ -241,7 +241,7 @@ public final class SSPParameterWorkerTest {
   /**
    * Tests whether worker correctly checks and handles data staleness when it receives a request for stale data.
    */
-  @Test
+  @Test(timeout = 10000)
   public void testDataStalenessCheck() throws NetworkException, InterruptedException {
     final int numberOfKeys = 3;
 
@@ -258,17 +258,24 @@ public final class SSPParameterWorkerTest {
     }
     verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject());
 
-    // Now we manipulate the global minimum clock to make all the data stale.
-    final int oldGlobalMinimumClock = workerClock.getGlobalMinimumClock();
-    final int deltaClock = STALENESS_BOUND + 1;
-    final byte[] initClockMsgData =
-        codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaClock));
-    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
+    // Now we manipulate the worker clock to make all the data stale.
+    final int oldWorkerClock = workerClock.getWorkerClock();
+    final int deltaWorkerClock = STALENESS_BOUND + 1;
+    for (int i = 0; i < deltaWorkerClock; i++) {
+      workerClock.clock();
+    }
+    assertEquals(oldWorkerClock + deltaWorkerClock, workerClock.getWorkerClock());
 
-    assertEquals(oldGlobalMinimumClock + deltaClock, workerClock.getGlobalMinimumClock());
+    // we also manipulate the global minimum clock to prevent thread-blocking during pull operations.
+    final int oldGlobalMinimumClock = workerClock.getGlobalMinimumClock();
+    final int deltaGlobMinClock = 1;
+    final byte[] initClockMsgData =
+        codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaGlobMinClock));
+    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
+    assertEquals(workerClock.getWorkerClock(), workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
 
     // The following for statement makes the number of times sendPullMsg() call increased by the number of keys.
-    // Since global minimum clock is now increased by more than staleness bound
+    // Since the worker clock is now increased by more than staleness bound
     // and all the data in worker cache have now been stale, so parameter worker should fetch fresh data from servers.
     for (int i = 0; i < numberOfKeys; i++) {
       parameterWorker.pull(i);

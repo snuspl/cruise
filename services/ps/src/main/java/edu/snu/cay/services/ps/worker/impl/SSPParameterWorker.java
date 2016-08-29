@@ -553,7 +553,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
 
         while (true) {
           final Tagged<V> tagged = kvCache.get(encodedKey);
-          final int staleness = workerClock.getGlobalMinimumClock() - tagged.getClock();
+          final int staleness = workerClock.getWorkerClock() - tagged.getClock();
           if (staleness <= stalenessBound) {
             loadedValue = tagged.getValue();
             break;
