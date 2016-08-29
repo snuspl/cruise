@@ -182,6 +182,15 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   }
 
   /**
+   * Determines whether the data is stale, which in turn should be fetched from server.
+   * @param dataStaleness Staleness of the data (worker's clock - cached data's clock)
+   * @return {@true} if the data is stale
+   */
+  private boolean isDataStale(final int dataStaleness) {
+    return dataStaleness > stalenessBound;
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
@@ -226,6 +235,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    */
   @Override
   public List<V> pull(final List<K> keys) {
+    workerClock.waitIfExceedingStalenessBound();
+
     // transform keys to encoded keys
     final List<EncodedKey<K>> encodedKeys = new ArrayList<>(keys.size());
     for (final K key : keys) {
@@ -481,12 +492,17 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
       // If it exists, update the local value, without updating the cache's write time
       if (tagged != null) {
         final V oldValue = tagged.getValue();
-        final V deltaValue = parameterUpdater.process(encodedKey.getKey(), preValue);
-        if (deltaValue == null) {
-          return;
+        final int staleness = workerClock.getWorkerClock() - tagged.getClock();
+        if (isDataStale(staleness)) {
+          kvCache.invalidate(encodedKey);
+        } else {
+          final V deltaValue = parameterUpdater.process(encodedKey.getKey(), preValue);
+          if (deltaValue == null) {
+            return;
+          }
+          final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
+          tagged.setValue(updatedValue);
         }
-        final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
-        tagged.setValue(updatedValue);
       }
 
       // Send to remote PS
@@ -553,13 +569,13 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
 
         while (true) {
           final Tagged<V> tagged = kvCache.get(encodedKey);
-          final int staleness = workerClock.getGlobalMinimumClock() - tagged.getClock();
-          if (staleness <= stalenessBound) {
-            loadedValue = tagged.getValue();
-            break;
-          } else {
+          final int staleness = workerClock.getWorkerClock() - tagged.getClock();
+          if (isDataStale(staleness)) {
             // Invalidate stale data before fetching new data from a server.
             kvCache.invalidate(encodedKey);
+          } else {
+            loadedValue = tagged.getValue();
+            break;
           }
         }
 
