@@ -182,6 +182,14 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   }
 
   /**
+   * Determine data staleness
+   * by comparing the value of data staleness to the staleness bound.
+   */
+  private boolean isDataStale(final int dataStaleness) {
+    return dataStaleness > stalenessBound;
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
@@ -484,7 +492,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
       if (tagged != null) {
         final V oldValue = tagged.getValue();
         final int staleness = workerClock.getWorkerClock() - tagged.getClock();
-        if (staleness > stalenessBound) {
+        if (isDataStale(staleness)) {
           kvCache.invalidate(encodedKey);
         } else {
           final V deltaValue = parameterUpdater.process(encodedKey.getKey(), preValue);
@@ -561,7 +569,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
         while (true) {
           final Tagged<V> tagged = kvCache.get(encodedKey);
           final int staleness = workerClock.getWorkerClock() - tagged.getClock();
-          if (staleness <= stalenessBound) {
+          if (!isDataStale(staleness)) {
             loadedValue = tagged.getValue();
             break;
           } else {
