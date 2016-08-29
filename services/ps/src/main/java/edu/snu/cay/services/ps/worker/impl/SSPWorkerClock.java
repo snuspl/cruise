@@ -58,7 +58,7 @@ public final class SSPWorkerClock implements WorkerClock {
 
   private final int stalenessBound;
 
-  private int workerClock;
+  private volatile int workerClock;
 
   /**
    * The minimum clock among all worker clocks.
