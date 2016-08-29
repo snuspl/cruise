@@ -86,6 +86,7 @@ public final class DynamicPSManager implements PSManager {
   private final long serverLogPeriod;
   private final long serverMetricsWindowMs;
   private final boolean isSSPModel;
+  private final int stalenessBound;
 
   @Inject
   private DynamicPSManager(@Parameter(NumServers.class)final int numServers,
@@ -114,6 +115,7 @@ public final class DynamicPSManager implements PSManager {
     this.serverLogPeriod = serverLogPeriod;
     this.serverMetricsWindowMs = serverMetricsWindowMs;
     this.isSSPModel = stalenessBound >= 0;
+    this.stalenessBound = stalenessBound;
   }
 
   /**
@@ -145,6 +147,7 @@ public final class DynamicPSManager implements PSManager {
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(pullRetryTimeoutMs))
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
+        .bindNamedParameter(StalenessBound.class, Integer.toString(stalenessBound))
         .build();
   }
 
