@@ -142,6 +142,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     this.sender = sender;
     this.pendingPulls = new ConcurrentHashMap<>();
     this.pullStats = Statistics.newInstances(numThreads);
+    this.pushStats = Statistics.newInstances(numThreads);
+    this.encodeStats = Statistics.newInstances(numThreads);
+    this.networkStats = Statistics.newInstances(numThreads);
+    this.pendingStats = Statistics.newInstances(numThreads);
     this.threadPool = Executors.newFixedThreadPool(numThreads);
     this.threads = initThreads(queueSize, cacheExpireTimeout, pullRetryTimeoutMs);
     this.encodedKeyCache = CacheBuilder.newBuilder()
@@ -153,10 +157,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           }
         });
 
-    this.pushStats = Statistics.newInstances(numThreads);
-    this.encodeStats = Statistics.newInstances(numThreads);
-    this.networkStats = Statistics.newInstances(numThreads);
-    this.pendingStats = Statistics.newInstances(numThreads);
     this.startTimes = new long[numThreads];
     final long currentTime = ticker.read();
     for (int i = 0; i < numThreads; ++i) {
