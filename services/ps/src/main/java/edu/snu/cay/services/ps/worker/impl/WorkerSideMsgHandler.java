@@ -105,6 +105,9 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
       onRoutingTableUpdateMsg(innerMsg.getRoutingTableUpdateMsg());
       break;
 
+    case RoutingTableSyncMsg:
+      onRoutingTableSyncMsg(innerMsg.getRoutingTableSyncMsg());
+
     default:
       throw new RuntimeException("Unexpected message type: " + innerMsg.getType().toString());
     }
@@ -133,9 +136,15 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();
     final int newOwnerId = routingTableUpdateMsg.getNewOwnerId();
     final String newEvalId = routingTableUpdateMsg.getNewEvalId().toString();
-    final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
+    final int blockId = routingTableUpdateMsg.getBlockId();
 
-    serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockIds));
+    serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockId));
+  }
+
+  private void onRoutingTableSyncMsg(final RoutingTableSyncMsg routingTableSyncMsg) {
+    final String serverId = routingTableSyncMsg.getServerId().toString();
+
+    serverResolver.syncRoutingTable(serverId);
   }
 
   private void onPullReplyMsg(final PullReplyMsg pullReplyMsg) {

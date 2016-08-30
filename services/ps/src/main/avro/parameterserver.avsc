@@ -120,7 +120,35 @@
     {"name": "oldOwnerId", "type": "int"},
     {"name": "newOwnerId", "type": "int"},
     {"name": "newEvalId", "type": "string"},
-    {"name": "blockIds", "type": {"type": "array", "items": "int"}}
+    {"name": "blockId", "type": "int"}
+  ]
+},
+
+/**
+ * This message is sent from the PS driver to ParameterWorkers
+ * to synchronize the deletion of a certain server in server resolvers.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "RoutingTableSyncMsg",
+  "fields":
+  [
+    {"name": "serverId", "type": "string"}
+  ]
+},
+
+/**
+ * This message is sent from ParameterWorkers to the PS driver
+ * to reply for RoutingTableSyncMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "RoutingTableSyncReplyMsg",
+  "fields":
+  [
+    {"name": "serverId", "type": "string"}
   ]
 },
 
@@ -146,7 +174,8 @@
        {"type": "enum",
         "name": "Type",
         "symbols": ["PushMsg", "PullMsg", "PullReplyMsg", "PushRejectMsg", "PullRejectMsg",
-         "WorkerRegisterMsg", "WorkerRegisterReplyMsg", "RoutingTableUpdateMsg", "WorkerDeregisterMsg"]}},
+         "WorkerRegisterMsg", "WorkerRegisterReplyMsg", "WorkerDeregisterMsg",
+          "RoutingTableUpdateMsg", "RoutingTableSyncMsg", "RoutingTableSyncReplyMsg"]}},
     {"name": "pushMsg", "type": ["null", "PushMsg"], "default": null},
     {"name": "pullMsg", "type": ["null", "PullMsg"], "default": null},
     {"name": "pullReplyMsg", "type": ["null", "PullReplyMsg"], "default": null},
@@ -154,8 +183,10 @@
     {"name": "pullRejectMsg", "type": ["null", "PullRejectMsg"], "default": null},
     {"name": "workerRegisterMsg", "type": ["null", "WorkerRegisterMsg"], "default": null},
     {"name": "workerRegisterReplyMsg", "type": ["null", "WorkerRegisterReplyMsg"], "default": null},
+    {"name": "workerDeregisterMsg", "type": ["null", "WorkerDeregisterMsg"], "default": null},
     {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},
-    {"name": "workerDeregisterMsg", "type": ["null", "WorkerDeregisterMsg"], "default": null}
+    {"name": "routingTableSyncMsg", "type": ["null", "RoutingTableSyncMsg"], "default": null},
+    {"name": "routingTableSyncReplyMsg", "type": ["null", "RoutingTableSyncReplyMsg"], "default": null}
   ]
 },
 

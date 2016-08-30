@@ -17,6 +17,7 @@ package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.OwnershipAckMsg;
+import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler;
@@ -52,6 +53,7 @@ import static org.mockito.Mockito.*;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(PSMessageSender.class)
 public final class EMRoutingTableManagerTest {
+  private static final int NUM_TOTAL_BLOCKS = 1024;
   private static final int NUM_SERVERS = 5;
   private static final int NUM_WORKERS = 5;
 
@@ -60,16 +62,19 @@ public final class EMRoutingTableManagerTest {
   private static final String WORKER_ID_PREFIX = "WORKER-";
 
   private EMRoutingTableManager emRoutingTableManager;
-  private BlockManager blockManager;
-  private ElasticMemory elasticMemory;
+
+  private ElasticMemory serverEM;
+  private BlockManager blockManager; // a sub component of serverEM
 
   private PSMessageSender mockPSSender;
+
   private ElasticMemoryMsgSender mockEMSender;
   private ElasticMemoryMsgHandler emMsgHandler;
 
   @Before
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
         .bindNamedParameter(NumServers.class, Integer.toString(NUM_SERVERS))
         .build();
 
@@ -84,7 +89,7 @@ public final class EMRoutingTableManagerTest {
     injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mockEMSender);
 
     emMsgHandler = injector.getInstance(ElasticMemoryMsgHandler.class);
-    elasticMemory = injector.getInstance(ElasticMemory.class);
+    serverEM = injector.getInstance(ElasticMemory.class);
     blockManager = injector.getInstance(BlockManager.class);
     emRoutingTableManager = injector.getInstance(EMRoutingTableManager.class);
   }
@@ -192,13 +197,19 @@ public final class EMRoutingTableManagerTest {
         return null;
       }).when(mockEMSender).sendCtrlMsg(anyString(), anyString(), anyListOf(Integer.class), anyString(), anyObject());
 
-    final int numFirstMoves = 2;
-    final int numFirstUpdates = numFirstMoves * NUM_WORKERS;
-    final int numSecondMoves = 5;
-    final int numSecondUpdates = numSecondMoves * NUM_WORKERS;
     final int numBlocksToMove = 5;
-    final String srcWorkerId = WORKER_ID_PREFIX + 0;
-    final String destWorkerId = WORKER_ID_PREFIX + 1;
+    final int numFirstMoves = 2;
+    final int numSecondMoves = 5;
+
+    // The below test assumes that requested number of blocks will be always moved for simplicity.
+    // So we should assure that the number of blocks in a src server is enough for two times of moves.
+    final int numBlocksInOneServer = NUM_TOTAL_BLOCKS / NUM_SERVERS;
+    assertTrue(numBlocksInOneServer > numBlocksToMove * (numFirstMoves + numSecondMoves));
+
+    final int numFirstUpdates = numFirstMoves * numBlocksToMove * NUM_WORKERS;
+    final int numSecondUpdates = numSecondMoves * numBlocksToMove * NUM_WORKERS;
+    final String srcServerId = SERVER_ID_PREFIX + 0;
+    final String destServerId = SERVER_ID_PREFIX + 1;
 
     final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(numFirstUpdates);
 
@@ -212,14 +223,14 @@ public final class EMRoutingTableManagerTest {
       }).when(mockPSSender).send(anyString(), anyObject());
 
     for (int i = 0; i < numFirstMoves; i++) {
-      elasticMemory.move(numBlocksToMove, srcWorkerId, destWorkerId, null);
+      serverEM.move(numBlocksToMove, srcServerId, destServerId, null);
     }
 
     countDownLatch.awaitAndReset(numSecondUpdates);
     verify(mockPSSender, times(numFirstUpdates)).send(anyString(), anyObject());
 
     for (int i = 0; i < numSecondMoves; i++) {
-      elasticMemory.move(numBlocksToMove, srcWorkerId, destWorkerId, null);
+      serverEM.move(numBlocksToMove, srcServerId, destServerId, null);
     }
 
     countDownLatch.await();

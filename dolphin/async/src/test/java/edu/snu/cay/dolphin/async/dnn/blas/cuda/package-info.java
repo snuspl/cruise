@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Evaluator-side test classes for range-based MemoryStore.
+ * Tests for CUDA based BLAS implementation.
  */
-package edu.snu.cay.services.em.evaluator.impl.range;
+package edu.snu.cay.dolphin.async.dnn.blas.cuda;

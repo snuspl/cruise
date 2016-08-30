@@ -237,11 +237,8 @@ public class DynamicServerResolverTest {
       final int newStoreId = (oldStoreId + 1) % NUM_SERVERS;
       final String newEvalId = storeIdToEndpointIdBiMap.get(newStoreId);
 
-      final List<Integer> blockIds = new ArrayList<>(1);
-      blockIds.add(blockId);
-
       final EMRoutingTableUpdate routingTableUpdate
-          = new EMRoutingTableUpdateImpl(oldStoreId, newStoreId, newEvalId, blockIds);
+          = new EMRoutingTableUpdateImpl(oldStoreId, newStoreId, newEvalId, blockId);
 
       serverResolver.updateRoutingTable(routingTableUpdate);
 
@@ -271,16 +268,16 @@ public class DynamicServerResolverTest {
     private final int oldOwnerId;
     private final int newOwnerId;
     private final String newEvalId;
-    private final List<Integer> blockIds;
+    private final int blockId;
 
     EMRoutingTableUpdateImpl(final int oldOwnerId,
                              final int newOwnerId,
                              final String newEvalId,
-                             final List<Integer> blockIds) {
+                             final int blockId) {
       this.oldOwnerId = oldOwnerId;
       this.newOwnerId = newOwnerId;
       this.newEvalId = newEvalId;
-      this.blockIds = blockIds;
+      this.blockId = blockId;
     }
 
     @Override
@@ -299,8 +296,8 @@ public class DynamicServerResolverTest {
     }
 
     @Override
-    public List<Integer> getBlockIds() {
-      return blockIds;
+    public int getBlockId() {
+      return blockId;
     }
   }
 }

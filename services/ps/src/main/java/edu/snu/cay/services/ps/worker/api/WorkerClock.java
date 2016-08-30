@@ -46,7 +46,7 @@ public interface WorkerClock {
    *    ._______________________________________.
    * global minimum clock                global minimum clock + staleness
    */
-  void waitIfExceedingStalenessBound() throws InterruptedException;
+  void waitIfExceedingStalenessBound();
 
   /**
    * Records log about total network waiting time consumed to send and receive clock related messages.

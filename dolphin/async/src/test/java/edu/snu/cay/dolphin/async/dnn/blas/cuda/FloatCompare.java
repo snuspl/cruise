@@ -13,7 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.dolphin.async.dnn.blas.cuda;
+
 /**
- * Evaluator-side Elastic Memory classes that are specific to range-based MemoryStore.
+ * Utility class for comparing floats with tolerance.
  */
-package edu.snu.cay.services.em.evaluator.impl.range;
+final class FloatCompare {
+  private static final float TOLERANCE = 2.4E-07F;
+
+  private FloatCompare() {
+  }
+
+  static void assertEquals(final float expected, final float actual) {
+    org.junit.Assert.assertEquals(expected, actual, TOLERANCE);
+  }
+
+  static void assertArrayEquals(final float[] expecteds, final float[] actuals) {
+    org.junit.Assert.assertArrayEquals(expecteds, actuals, TOLERANCE);
+  }
+}
