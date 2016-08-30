@@ -193,12 +193,12 @@ public final class SSPParameterWorkerTest {
   }
 
   /**
-   * Rule for suppressing massive INFO level logs in {@link AsyncParameterWorker#processPullReject},
+   * Rule for suppressing massive WARNING level logs in {@link SSPParameterWorker#processPullReject},
    * which are intentionally called many times in {@link #testPullReject}.
    */
   @Rule
-  private TestRule watcher = new EnforceLoggingLevelRule("testPullReject",
-      SSPParameterWorker.class.getName(), Level.WARNING);
+  private TestRule pullRejectWatcher = new EnforceLoggingLevelRule("testPullReject",
+      SSPParameterWorker.class.getName(), Level.SEVERE);
 
   /**
    * Test the correct handling of pull rejects by {@link SSPParameterWorker},
@@ -212,6 +212,15 @@ public final class SSPParameterWorkerTest {
   }
 
   /**
+   * Rule for suppressing massive WARNING level logs by {@link NetworkException}
+   * while {@link SSPParameterWorker} tries to send a pull msg,
+   * which are intentionally caused many times in {@link #testPullNetworkExceptionAndResend()}.
+   */
+  @Rule
+  private TestRule pullResendWatcher = new EnforceLoggingLevelRule("testPullNetworkExceptionAndResend",
+      SSPParameterWorker.class.getName(), Level.SEVERE);
+
+  /**
    * Tests whether worker correctly resend the pull operation, when network exception happens.
    */
   @Test
@@ -219,6 +228,15 @@ public final class SSPParameterWorkerTest {
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
     ParameterWorkerTestUtil.pullNetworkExceptionAndResend(parameterWorker, workerHandler, mockSender);
   }
+
+  /**
+   * Rule for suppressing massive WARNING level logs by {@link NetworkException}
+   * while {@link SSPParameterWorker} tries to send a push msg,
+   * which are intentionally caused many times in {@link #testPushNetworkExceptionAndResend()}.
+   */
+  @Rule
+  private TestRule pushResendWatcher = new EnforceLoggingLevelRule("testPushNetworkExceptionAndResend",
+      SSPParameterWorker.class.getName(), Level.SEVERE);
 
   /**
    * Tests whether worker correctly resend the push operation, when network exception happens.
@@ -241,7 +259,7 @@ public final class SSPParameterWorkerTest {
   /**
    * Tests whether worker correctly checks and handles data staleness when it receives a request for stale data.
    */
-  @Test
+  @Test(timeout = 10000)
   public void testDataStalenessCheck() throws NetworkException, InterruptedException {
     final int numberOfKeys = 3;
 
@@ -258,18 +276,27 @@ public final class SSPParameterWorkerTest {
     }
     verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject());
 
-    // Now we manipulate the global minimum clock to make all the data stale.
-    final int oldGlobalMinimumClock = workerClock.getGlobalMinimumClock();
-    final int deltaClock = STALENESS_BOUND + 1;
-    final byte[] initClockMsgData =
-        codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaClock));
-    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
+    // Now we increase the worker clock until it gets beyond the staleness bound.
+    // As a result, all the cached data is going to get stale.
+    final int oldWorkerClock = workerClock.getWorkerClock();
+    final int deltaWorkerClock = STALENESS_BOUND + 1;
+    for (int i = 0; i < deltaWorkerClock; i++) {
+      workerClock.clock();
+    }
+    assertEquals(oldWorkerClock + deltaWorkerClock, workerClock.getWorkerClock());
 
-    assertEquals(oldGlobalMinimumClock + deltaClock, workerClock.getGlobalMinimumClock());
+    // To prevent thread-blocking during pull operations, we increase the global minimum clock once.
+    // After increasing it the worker clock will get within the staleness bound again.
+    final int oldGlobalMinimumClock = workerClock.getGlobalMinimumClock();
+    final int deltaGlobalMinClock = 1;
+    final byte[] initClockMsgData =
+        codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaGlobalMinClock));
+    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
+    assertEquals(workerClock.getWorkerClock(), workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
 
     // The following for statement makes the number of times sendPullMsg() call increased by the number of keys.
-    // Since global minimum clock is now increased by more than staleness bound
-    // and all the data in worker cache have now been stale, so parameter worker should fetch fresh data from servers.
+    // Since all the data in worker cache have been stale,
+    // so parameter worker should fetch fresh data from servers for all the keys.
     for (int i = 0; i < numberOfKeys; i++) {
       parameterWorker.pull(i);
     }

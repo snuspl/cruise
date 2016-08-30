@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
@@ -95,6 +96,7 @@ public final class DynamicParameterServerTest {
         .bindNamedParameter(NumInitialEvals.class, "1")
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
+    injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
     injector.bindVolatileInstance(ServerSideReplySender.class, mock(ServerSideReplySender.class));
     injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));

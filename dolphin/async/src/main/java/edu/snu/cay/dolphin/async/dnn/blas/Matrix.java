@@ -396,4 +396,9 @@ public interface Matrix {
    * and the maximal absolute difference in all elements is smaller than the specified tolerance.
    */
   boolean compare(Matrix matrix, float tolerance);
+
+  /**
+   * Free the allocated memory if it exists.
+   */
+  void free();
 }
