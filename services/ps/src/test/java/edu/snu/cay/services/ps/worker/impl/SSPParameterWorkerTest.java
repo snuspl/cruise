@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
+import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
@@ -27,7 +28,6 @@ import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.EnforceLoggingLevelRule;
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
@@ -68,7 +68,11 @@ public final class SSPParameterWorkerTest {
   private static final int INIT_GLOBAL_MIN_CLOCK = 10;
   private static final int INIT_WORKER_CLOCK = INIT_GLOBAL_MIN_CLOCK;
   private static final int STALENESS_BOUND = 5;
-  private static final String WORKER_ID = "dummy";
+
+  // the value of both IDs are meaningless
+  private static final String DRIVER_ID = "driver";
+  private static final String WORKER_ID = "worker";
+
   private ParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
@@ -78,11 +82,14 @@ public final class SSPParameterWorkerTest {
   private WorkerClock workerClock;
 
   /**
-   * Setup test objects.
-   * A zero value for input parameter {@code retryTimeoutMs} makes {@link ParameterWorker} do not retry pull operations
-   * except when the operations are not rejected.
+   * Prepares PS components, including SSP components.
+   * It mocks several message senders and handlers for testing.
+   *
+   * @param retryTimeoutMs a timeout value to be bound to {@link PullRetryTimeoutMs}
+   * @throws InjectionException
+   * @throws NetworkException
    */
-  private void setup(final long retryTimeoutMs) throws InjectionException, NetworkException {
+  private void prepare(final long retryTimeoutMs) throws InjectionException, NetworkException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
@@ -97,14 +104,13 @@ public final class SSPParameterWorkerTest {
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
     this.mockSender = mock(WorkerMsgSender.class);
-
     injector.bindVolatileInstance(WorkerMsgSender.class, this.mockSender);
     injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
     injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
 
     this.mockAggregationMaster = mock(AggregationMaster.class);
-    injector.bindVolatileInstance(AggregationSlave.class, mock(AggregationSlave.class));
     injector.bindVolatileInstance(AggregationMaster.class, this.mockAggregationMaster);
+    injector.bindVolatileInstance(AggregationSlave.class, mock(AggregationSlave.class));
 
     this.workerClock = injector.getInstance(WorkerClock.class);
     this.sspWorkerClockMessageHandler = injector.getInstance(SSPWorkerClock.MessageHandler.class);
@@ -125,7 +131,7 @@ public final class SSPParameterWorkerTest {
     final AvroClockMsg initClockMsg =
         ClockManager.getReplyInitialClockMessage(INIT_GLOBAL_MIN_CLOCK, INIT_WORKER_CLOCK);
     final byte[] replyData = codec.encode(initClockMsg);
-    final AggregationMessage aggregationMessage = getTestAggregationMessage(WORKER_ID, replyData);
+    final AggregationMessage aggregationMessage = getTestAggregationMessage(DRIVER_ID, replyData);
     sspWorkerClockMessageHandler.onNext(aggregationMessage);
   }
 
@@ -139,7 +145,7 @@ public final class SSPParameterWorkerTest {
     // The message handler responds to the Aggregation message from Driver, which consists of the global minimum clock.
     doAnswer(invocation -> {
         final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
-        final AggregationMessage aggregationMessage = getTestAggregationMessage(WORKER_ID, initClockMsgData);
+        final AggregationMessage aggregationMessage = getTestAggregationMessage(DRIVER_ID, initClockMsgData);
         sspWorkerClockMessageHandler.onNext(aggregationMessage);
         return null;
       }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
@@ -151,7 +157,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.close(parameterWorker, mockSender, workerHandler);
   }
 
@@ -163,7 +169,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadPush()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.multiThreadPush(parameterWorker, mockSender);
   }
 
@@ -178,7 +184,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.multiThreadPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -189,7 +195,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadMultiKeyPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.multiThreadMultiKeyPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -209,7 +215,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPullReject()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
   }
 
@@ -228,7 +234,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPullNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.pullNetworkExceptionAndResend(parameterWorker, workerHandler, mockSender);
   }
 
@@ -247,7 +253,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPushNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
   }
 
@@ -257,9 +263,8 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPullTimeoutAndRetry()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    final long pullRetryTimeoutMs = 1000;
-    setup(pullRetryTimeoutMs);
-    ParameterWorkerTestUtil.pullTimeoutAndRetry(parameterWorker, workerHandler, mockSender, pullRetryTimeoutMs);
+    prepare(ParameterWorkerTestUtil.PULL_RETRY_TIMEOUT_MS);
+    ParameterWorkerTestUtil.pullTimeoutAndRetry(parameterWorker, workerHandler, mockSender);
   }
 
   /**
@@ -267,11 +272,11 @@ public final class SSPParameterWorkerTest {
    */
   @Test(timeout = 10000)
   public void testDataStalenessCheck() throws NetworkException, InterruptedException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
-        ParameterWorkerTestUtil.setupPullReplyingThread(pullKeyToReplyQueue, workerHandler);
+        ParameterWorkerTestUtil.setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
 
     final int numberOfKeys = 3;
@@ -325,21 +330,12 @@ public final class SSPParameterWorkerTest {
   @Test(timeout = 30000)
   public void testWorkerStalenessCheck() throws NetworkException, InterruptedException, BrokenBarrierException,
       InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
-        ParameterWorkerTestUtil.setupPullReplyingThread(pullKeyToReplyQueue, workerHandler);
+        ParameterWorkerTestUtil.setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
-
-    // Stub to simulate the behavior of SSPWorkerClock.MessageHandler.
-    // The message handler responds to the Aggregation message from Driver, which consists of the global minimum clock.
-    doAnswer(invocation -> {
-        final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
-        final AggregationMessage aggregationMessage = getTestAggregationMessage(WORKER_ID, initClockMsgData);
-        sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        return null;
-      }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
 
     final int numOfThreads = 3;
     final int key = 0;
@@ -423,11 +419,11 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testInvalidateAll()
       throws InterruptedException, ExecutionException, TimeoutException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
-        ParameterWorkerTestUtil.setupPullReplyingThread(pullKeyToReplyQueue, workerHandler);
+        ParameterWorkerTestUtil.setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
 
     final int numPulls = 1000;
@@ -457,9 +453,9 @@ public final class SSPParameterWorkerTest {
     executorService.shutdownNow();
   }
 
-  private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
+  private AggregationMessage getTestAggregationMessage(final String senderId, final byte[] data) {
     return AggregationMessage.newBuilder()
-        .setSourceId(workerId)
+        .setSourceId(senderId)
         .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))
         .build();

@@ -57,11 +57,14 @@ public final class AsyncParameterWorkerTest {
   private WorkerMsgSender<Integer, Integer> mockSender;
 
   /**
-   * Setup test objects.
-   * A zero value for input parameter {@code retryTimeoutMs} makes {@link ParameterWorker} do not retry pull operations
-   * except when the operations are not rejected.
+   * Prepares PS components.
+   * It mocks several message senders and handlers for testing.
+   *
+   * @param retryTimeoutMs a timeout value to be bound to {@link PullRetryTimeoutMs}
+   * @throws InjectionException
+   * @throws NetworkException
    */
-  private void setup(final long retryTimeoutMs) throws InjectionException, NetworkException {
+  private void prepare(final long retryTimeoutMs) throws InjectionException, NetworkException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(WORKER_QUEUE_SIZE))
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(WORKER_NUM_THREADS))
@@ -88,7 +91,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.close(parameterWorker, mockSender, workerHandler);
   }
 
@@ -101,7 +104,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadPush()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.multiThreadPush(parameterWorker, mockSender);
   }
 
@@ -116,7 +119,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.multiThreadPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -130,7 +133,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadMultiKeyPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.multiThreadMultiKeyPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -153,7 +156,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPullReject()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
   }
 
@@ -172,7 +175,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPullNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.pullNetworkExceptionAndResend(parameterWorker, workerHandler, mockSender);
   }
 
@@ -191,7 +194,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPushNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
     ParameterWorkerTestUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
   }
 
@@ -201,9 +204,8 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPullTimeoutAndRetry()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    final long pullRetryTimeoutMs = 1000;
-    setup(pullRetryTimeoutMs);
-    ParameterWorkerTestUtil.pullTimeoutAndRetry(parameterWorker, workerHandler, mockSender, pullRetryTimeoutMs);
+    prepare(ParameterWorkerTestUtil.PULL_RETRY_TIMEOUT_MS);
+    ParameterWorkerTestUtil.pullTimeoutAndRetry(parameterWorker, workerHandler, mockSender);
   }
 
   /**
@@ -213,11 +215,11 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testInvalidateAll()
       throws InterruptedException, ExecutionException, TimeoutException, NetworkException, InjectionException {
-    setup(0);
+    prepare(Long.MAX_VALUE);
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
-        ParameterWorkerTestUtil.setupPullReplyingThread(pullKeyToReplyQueue, workerHandler);
+        ParameterWorkerTestUtil.setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
 
     final int numPulls = 1000;

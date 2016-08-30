@@ -21,7 +21,6 @@ import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -45,6 +44,9 @@ final class ParameterWorkerTestUtil {
   private static final String MSG_THREADS_SHOULD_NOT_FINISH = "threads have finished but should not";
   private static final String MSG_RESULT_ASSERTION = "threads received incorrect values";
 
+  private static final int NUM_PULL_HANDLING_THREADS = 2;
+  static final long PULL_RETRY_TIMEOUT_MS = 1000;
+
   /**
    * Should not be instantiated.
    */
@@ -52,27 +54,33 @@ final class ParameterWorkerTestUtil {
   }
 
   /**
-   * Sets up a thread that processes and replies pull operations queued in {@code pullKeyToReplyQueue}.
+   * Sets up a thread that processes and replies pull operations queued in {@code keyToReplyQueue}.
    * It returns a {@link ExecutorService} through which the thread is executing.
    */
-  static ExecutorService setupPullReplyingThread(final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue,
-                                                 final WorkerHandler<Integer, ?, Integer> workerHandler) {
-    // start a thread that process pull requests from the pullKeyToReplyQueue
-    final ExecutorService executorService = Executors.newSingleThreadExecutor();
-    executorService.execute(new Runnable() {
+  static ExecutorService setupPullReplyingThreads(final BlockingQueue<EncodedKey<Integer>> keyToReplyQueue,
+                                                  final WorkerHandler<Integer, ?, Integer> workerHandler) {
+    final Runnable pullReplyingThread = new Runnable() {
       @Override
       public void run() {
         while (true) {
+          final EncodedKey<Integer> encodedKey;
           try {
-            final EncodedKey<Integer> encodedKey = pullKeyToReplyQueue.take();
-            workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
-
+            encodedKey = keyToReplyQueue.take();
           } catch (final InterruptedException e) {
             break; // it's an intended InterruptedException to quit the thread
           }
+
+          workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
         }
       }
-    });
+    };
+
+    // start a thread that process pull requests from the keyToReplyQueue
+    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    for (int i = 0; i < NUM_PULL_HANDLING_THREADS; i++) {
+      executorService.execute(pullReplyingThread);
+    }
 
     return executorService;
   }
@@ -87,9 +95,7 @@ final class ParameterWorkerTestUtil {
     // pull messages to asynchronous parameter worker should return values s.t. key == value
     doAnswer(invocationOnMock -> {
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-
         pullKeyQueue.add(encodedKey); // assume it always succeeds, otherwise it will throw IllegalArgumentException
-
         return null;
       }).when(workerMsgSender).sendPullMsg(anyString(), anyObject());
   }
@@ -101,7 +107,7 @@ final class ParameterWorkerTestUtil {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
-    final ExecutorService executorService = setupPullReplyingThread(pullKeyToReplyQueue, workerHandler);
+    final ExecutorService executorService = setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     setupSenderToEnqueuePullOps(pullKeyToReplyQueue, workerMsgSender);
 
     final ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -158,7 +164,7 @@ final class ParameterWorkerTestUtil {
     final int numPullPerThread = 1000;
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
-    final ExecutorService executorService = setupPullReplyingThread(pullKeyToReplyQueue, workerHandler);
+    final ExecutorService executorService = setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     setupSenderToEnqueuePullOps(pullKeyToReplyQueue, workerMsgSender);
 
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
@@ -199,7 +205,7 @@ final class ParameterWorkerTestUtil {
     final int numKeysPerPull = 3;
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
-    final ExecutorService executorService = setupPullReplyingThread(pullKeyToReplyQueue, workerHandler);
+    final ExecutorService executorService = setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     setupSenderToEnqueuePullOps(pullKeyToReplyQueue, workerMsgSender);
 
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
@@ -239,40 +245,48 @@ final class ParameterWorkerTestUtil {
     executorService.shutdownNow();
   }
 
-  private static ExecutorService setupPullRejectingThread(final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue,
-                                                          final WorkerHandler<Integer, ?, Integer> handler,
-                                                          final int numRejectPerKey) {
-    final Map<Integer, AtomicInteger> keyToNumPullCounter = new HashMap<>();
+  /**
+   * Sets up a thread that rejects pull operations queued in {@code keyToRejectQueue}.
+   * It returns a {@link ExecutorService} through which the thread is executing.
+   */
+  private static ExecutorService setupPullRejectingThreads(final BlockingQueue<EncodedKey<Integer>> keyToRejectQueue,
+                                                           final WorkerHandler<Integer, ?, Integer> handler,
+                                                           final int numRejectPerKey) {
+    final Map<Integer, AtomicInteger> keyToNumPullCounter = new ConcurrentHashMap<>();
 
-    // start a thread that process pull requests from the pullKeyToReplyQueue
-    final ExecutorService executorService = Executors.newSingleThreadExecutor();
-    executorService.execute(new Runnable() {
+    final Runnable pullRejectingThread = new Runnable() {
       @Override
       public void run() {
         while (true) {
+          final EncodedKey<Integer> encodedKey;
           try {
-            // send reject msg immediately to prevent worker from retrying pull operation
-            final EncodedKey<Integer> encodedKey = pullKeyToReplyQueue.take();
-
-            if (!keyToNumPullCounter.containsKey(encodedKey.getKey())) {
-              keyToNumPullCounter.put(encodedKey.getKey(), new AtomicInteger(0));
-            }
-
-            final int numAnswerForTheKey = keyToNumPullCounter.get(encodedKey.getKey()).getAndIncrement();
-
-            if (numAnswerForTheKey < numRejectPerKey) {
-              handler.processPullReject(encodedKey.getKey());
-            } else {
-              // pull messages should return values s.t. key == value
-              handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
-            }
-
+            encodedKey = keyToRejectQueue.take();
           } catch (final InterruptedException e) {
             break; // it's an intended InterruptedException to quit the thread
           }
+
+          if (!keyToNumPullCounter.containsKey(encodedKey.getKey())) {
+            keyToNumPullCounter.put(encodedKey.getKey(), new AtomicInteger(0));
+          }
+
+          final int numAnswerForTheKey = keyToNumPullCounter.get(encodedKey.getKey()).getAndIncrement();
+
+          if (numAnswerForTheKey < numRejectPerKey) {
+            handler.processPullReject(encodedKey.getKey());
+          } else {
+            // pull messages should return values s.t. key == value
+            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+          }
         }
       }
-    });
+    };
+
+    // start a thread that rejects pull requests from the keyToRejectQueue
+    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    for (int i = 0; i < NUM_PULL_HANDLING_THREADS; i++) {
+      executorService.execute(pullRejectingThread);
+    }
 
     return executorService;
   }
@@ -290,7 +304,7 @@ final class ParameterWorkerTestUtil {
     final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToRejectQueue = new LinkedBlockingQueue<>();
-    final ExecutorService executorService = setupPullRejectingThread(pullKeyToRejectQueue, handler, numRejectPerKey);
+    final ExecutorService executorService = setupPullRejectingThreads(pullKeyToRejectQueue, handler, numRejectPerKey);
     setupSenderToEnqueuePullOps(pullKeyToRejectQueue, sender);
 
     for (int index = 0; index < numPullThreads; ++index) {
@@ -333,6 +347,7 @@ final class ParameterWorkerTestUtil {
     doAnswer(invocationOnMock -> {
         sendLatch.countDown();
 
+        // skip at the last chance to prevent PS worker thread from throwing RuntimeException
         if (sendLatch.getCount() > 0) {
           throw new NetworkException("exception");
         }
@@ -367,6 +382,7 @@ final class ParameterWorkerTestUtil {
     doAnswer(invocationOnMock -> {
         sendLatch.countDown();
 
+        // skip at the last chance to prevent PS worker thread from throwing RuntimeException
         if (sendLatch.getCount() > 0) {
           throw new NetworkException("exception");
         }
@@ -390,8 +406,7 @@ final class ParameterWorkerTestUtil {
 
   static void pullTimeoutAndRetry(final ParameterWorker<Integer, ?, Integer> worker,
                                   final WorkerHandler<Integer, ?, Integer> handler,
-                                  final WorkerMsgSender<Integer, ?> sender,
-                                  final long pullRetryTimeoutMs)
+                                  final WorkerMsgSender<Integer, ?> sender)
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
     final CountDownLatch sendLatch = new CountDownLatch(AsyncParameterWorker.MAX_PULL_RETRY_COUNT);
     final long gracePeriodMs = 100; // a time period to make sure all retry requests have been sent.
@@ -399,7 +414,7 @@ final class ParameterWorkerTestUtil {
 
     final int key = 0;
 
-    // Do noy reply when worker sends a pull msg
+    // Do not reply when worker sends a pull msg
     doAnswer(invocationOnMock -> {
         sendLatch.countDown();
 
@@ -407,6 +422,7 @@ final class ParameterWorkerTestUtil {
           return null;
         }
 
+        // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
 
@@ -415,7 +431,7 @@ final class ParameterWorkerTestUtil {
 
     pool.execute(() -> worker.pull(key));
 
-    assertTrue(sendLatch.await((pullRetryTimeoutMs + gracePeriodMs) * AsyncParameterWorker.MAX_PULL_RETRY_COUNT,
+    assertTrue(sendLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriodMs) * AsyncParameterWorker.MAX_PULL_RETRY_COUNT,
         TimeUnit.MILLISECONDS));
 
     worker.close(CLOSE_TIMEOUT);
