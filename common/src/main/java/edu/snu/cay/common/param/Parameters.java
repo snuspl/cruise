@@ -75,6 +75,12 @@ public final class Parameters {
   public final class MiniBatches implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "The minimum cost benefit for which reconfiguration occurs.",
+      short_name = "reconfiguration_threshold",
+      default_value = "0")
+  public final class ReconfigurationThreshold implements Name<Double> {
+  }
+
   @NamedParameter(doc = "Port number for client-side localhost Dashboard server, " +
       "the number should be within (0, 65535), other numbers or occupied port numbers will lead to launch failure. " +
       "You need to install Flask in python first.",

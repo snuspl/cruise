@@ -172,6 +172,11 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     LOG.log(Level.INFO, "Calculate plan from {0}", optimizer.getClass().getName());
     final Plan plan = optimizer.optimize(evalParams, maxNumEvals);
 
+    if (plan.getPlanSize() == 0) {
+      LOG.log(Level.INFO, "Optimizer returned an empty plan");
+      return;
+    }
+
     // obtain the state of EMs, before executing the plan
     final Map<Integer, Integer> beforeServerStoreIdToNumBlocks = new HashMap<>();
     for (final Map.Entry<Integer, Set<Integer>> entry : serverEM.getStoreIdToBlockIds().entrySet()) {

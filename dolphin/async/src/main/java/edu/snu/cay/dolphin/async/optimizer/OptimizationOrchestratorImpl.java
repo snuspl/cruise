@@ -157,6 +157,11 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         final Plan plan;
         try {
           plan = optimizer.optimize(evaluatorParameters, maxNumEvals);
+
+          if (plan.getPlanSize() == 0) {
+            LOG.log(Level.INFO, "Optimizer returned an empty plan. No plan executed.");
+            return;
+          }
           LOG.log(Level.INFO, "Calculating the optimal plan is finished. Start executing plan: {0}", plan);
         } catch (final RuntimeException e) {
           LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);

@@ -52,9 +52,13 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
   private final int numMiniBatchPerItr;
 
+  private final double reconfigThreshold;
+
   @Inject
-  private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerItr) {
+  private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerItr,
+                                @Parameter(Parameters.ReconfigurationThreshold.class) final double reconfigThreshold) {
     this.numMiniBatchPerItr = numMiniBatchPerItr;
+    this.reconfigThreshold = reconfigThreshold;
   }
 
   /**
@@ -122,28 +126,37 @@ public final class AsyncDolphinOptimizer implements Optimizer {
      * 3. compare the total costs for each possible number of workers
      * 4. set optimalNumWorkers to be one that has the minimum total cost
      */
-    final int optimalNumWorkers = IntStream.range(1, availableEvaluators)
+    final Pair<Integer, Double> optimalCostPair = IntStream.range(1, availableEvaluators)
         .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
         .mapToObj(numWorkers ->
             new Pair<>(numWorkers,
                 totalCost(numWorkers, numDataBlocks, numModelBlocks,
                     availableEvaluators, workerSummaries, serverSummaries)))
         .reduce((p1, p2) -> p1.getSecond() > p2.getSecond() ? p2 : p1)
-        .get()
-        .getFirst();
-    final int optimalNumServers = availableEvaluators - optimalNumWorkers;
+        .get();
 
-    LOG.log(Level.INFO, "numAvailEval: {0}, numOptWorker: {1}, numOptServer: {2}",
-        new Object[]{availableEvaluators, optimalNumWorkers, optimalNumServers});
+    final int optimalNumWorkers = optimalCostPair.getFirst();
+    final int optimalNumServers = availableEvaluators - optimalNumWorkers;
+    final double optimalCost = optimalCostPair.getSecond();
+    final double currentCost = workerParams.stream()
+        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalTime()).average().orElse(0D);
+
+    LOG.log(Level.INFO, "\"numAvailEval\": {0}, \"numOptWorker\": {1}, \"numOptServer\": {2}, " +
+            "\"optimalCost\": {3}, \"currentCost\": {4}, \"reconfigurationThreshold\": {5}",
+        new Object[]{availableEvaluators, optimalNumWorkers, optimalNumServers,
+            optimalCost, currentCost, reconfigThreshold});
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    generatePlanForOptimalConfig(Constants.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
-        serverParams.size(), numModelBlocks, planBuilder);
-    generatePlanForOptimalConfig(Constants.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
-        workerParams.size(), numDataBlocks, planBuilder);
+    // A valid reconfiguration plan is generated only when optimizer determines that a reconfiguration should occur.
+    if (currentCost - optimalCost > reconfigThreshold) {
+      generatePlanForOptimalConfig(Constants.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
+          serverParams.size(), numModelBlocks, planBuilder);
+      generatePlanForOptimalConfig(Constants.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
+          workerParams.size(), numDataBlocks, planBuilder);
 
-    planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals);
+      planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals);
+    }
 
     return planBuilder.build();
   }

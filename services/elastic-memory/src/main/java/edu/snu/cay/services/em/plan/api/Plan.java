@@ -30,6 +30,7 @@ import java.util.Set;
  *    using {@link #getPlanSize()}.
  *   3. Wait the completion of operations. Goto step 2 again.
  *
+ * An empty plan is returned if there is no reconfiguration to be conducted.
  */
 public interface Plan {
 
