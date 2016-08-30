@@ -624,7 +624,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    * We should further explore this trade-off with real ML workloads.
    */
   private static class WorkerThread<K, P, V> implements Runnable {
-    private static final long QUEUE_TIMEOUT_MS = 0;
+    private static final long QUEUE_TIMEOUT_MS = 3000;
     private static final String STATE_RUNNING = "RUNNING";
     private static final String STATE_CLOSING = "CLOSING";
     private static final String STATE_CLOSED = "CLOSED";
