@@ -38,14 +38,13 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -154,55 +153,63 @@ public class SSPWorkerClockTest {
   /**
    * Tests whether waitIfExceedingStalenessBound() waits if the worker clock exceeds the staleness bound.
    */
-  @Test(timeout = 10000)
-  public void testWaitIfExceedingStalenessBound() throws InterruptedException {
+  @Test(timeout = 20000)
+  public void testWaitIfExceedingStalenessBound() throws InterruptedException, BrokenBarrierException {
     int globalMinimumClock = INIT_GLOBAL_MIN_CLOCK;
     final int numOfThreads = 3;
-    final int timeoutInMilliseconds = 500;
+    final int timeoutInMilliseconds = 1000;
+    final CyclicBarrier barrier = new CyclicBarrier(numOfThreads + 1);
     final Runnable[] threads = new Runnable[numOfThreads];
-    final Map<Runnable, CountDownLatch> threadLatchMap = new HashMap<>();
     final class WaitIfExceedingStalenessBoundThread implements Runnable {
+      private final CyclicBarrier cyclicBarrier;
+
+      // a definition of thread waiting at a barrier after returning from waitIfExceedingStalenessBound().
+      WaitIfExceedingStalenessBoundThread(final CyclicBarrier cyclicBarrier) {
+        this.cyclicBarrier = cyclicBarrier;
+      }
+
       @Override
       public void run() {
         sspWorkerClock.waitIfExceedingStalenessBound();
-        threadLatchMap.get(this).countDown();
+        try {
+          cyclicBarrier.await();
+        } catch (InterruptedException | BrokenBarrierException e) {
+          fail("Exception occurred while waiting: " + e.getMessage());
+        }
       }
     }
 
     sspWorkerClock.initialize();
 
-    // test whether waitIfExceedingStalenessBound() returns immediately when the worker clock is in staleness bound.
+    // TEST SCENARIO 1: check that waitIfExceedingStalenessBound() returns immediately
+    // when the worker clock is within staleness bound.
     while (sspWorkerClock.getWorkerClock() <= globalMinimumClock + STALENESS_BOUND) {
       for (int i = 0; i < numOfThreads; i++) {
-        threads[i] = new WaitIfExceedingStalenessBoundThread();
-        threadLatchMap.put(threads[i], new CountDownLatch(1));
+        threads[i] = new WaitIfExceedingStalenessBoundThread(barrier);
       }
       ThreadUtils.runConcurrently(threads);
 
-      // check whether waitIfExceedingStalenessBound() call is returned immediately.
-      for (final Runnable thread : threads) {
-        threadLatchMap.get(thread).await();
-      }
-      threadLatchMap.clear();
+      // check whether threads return from waitIfExceedingStalenessBound() immediately.
+      barrier.await();
       sspWorkerClock.clock();
     }
 
+    // TEST SCENARIO 2: check that thread is blocked in waitIfExceedingStalenessBound()
+    // when the worker clock is outside the staleness bound.
     sspWorkerClock.clock();
     assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + STALENESS_BOUND);
     for (int i = 0; i < numOfThreads; i++) {
-      threads[i] = new WaitIfExceedingStalenessBoundThread();
-      threadLatchMap.put(threads[i], new CountDownLatch(1));
+      threads[i] = new WaitIfExceedingStalenessBoundThread(barrier);
     }
     ThreadUtils.runConcurrently(threads);
 
-    // waitIfExceedingStalenessBound() call is blocked until the worker clock is within the staleness bound.
-    for (final Runnable thread : threads) {
-      threadLatchMap.get(thread).await(timeoutInMilliseconds, TimeUnit.MILLISECONDS);
-      assertTrue(threadLatchMap.get(thread).getCount() > 0);
-    }
+    // since threads are now blocked, there should be no thread waiting at the barrier.
+    Thread.sleep(timeoutInMilliseconds);
+    assertEquals(0, barrier.getNumberWaiting());
 
+    // TEST SCENARIO 3: check that threads keep being blocked
+    // since the worker clock is still beyond staleness bound even though global minimum clock is ticked.
     globalMinimumClock++;
-    // the worker clock is out of staleness bound even though global minimum clock is ticked.
     assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + STALENESS_BOUND);
 
     // send message with increased global minimum clock
@@ -210,13 +217,13 @@ public class SSPWorkerClockTest {
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
     sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToKeepWait));
 
-    for (final Runnable thread : threads) {
-      threadLatchMap.get(thread).await(timeoutInMilliseconds, TimeUnit.MILLISECONDS);
-      assertTrue(threadLatchMap.get(thread).getCount() > 0);
-    }
+    // since threads are still blocked, there should be no thread waiting at the barrier.
+    Thread.sleep(timeoutInMilliseconds);
+    assertEquals(0, barrier.getNumberWaiting());
 
+    // TEST SCENARIO 4: check that threads are released properly
+    // when the global minimum clock is increased and the worker clock gets into staleness bound.
     globalMinimumClock++;
-    // now, this increased global minimum clock is enough to terminate the thread.
     assertTrue(sspWorkerClock.getWorkerClock() <= globalMinimumClock + STALENESS_BOUND);
 
     // send message with increased global minimum clock
@@ -225,9 +232,7 @@ public class SSPWorkerClockTest {
     sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToTerminate));
 
     // waitIfExceedingStalenessBound() is returned finally
-    for (final Runnable thread : threads) {
-      threadLatchMap.get(thread).await();
-    }
+    barrier.await();
   }
 
   private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
