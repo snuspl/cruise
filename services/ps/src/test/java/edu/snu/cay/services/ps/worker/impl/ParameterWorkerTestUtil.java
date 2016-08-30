@@ -267,7 +267,7 @@ final class ParameterWorkerTestUtil {
         }
 
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), 0);
         return null;
       }).when(sender).sendPullMsg(anyString(), any(EncodedKey.class));
 
@@ -336,7 +336,7 @@ final class ParameterWorkerTestUtil {
         }
 
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), 0);
 
         return null;
       }).when(sender).sendPullMsg(anyString(), anyObject());
