@@ -713,7 +713,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                 // but small enough to quickly recover from 2C.
                 value = future.getValue(pullRetryTimeoutMs);
 
-                if (value != null) {
+                if (value.getFirst() != null) {
                   break;
                 } else {
                   future.reset();
