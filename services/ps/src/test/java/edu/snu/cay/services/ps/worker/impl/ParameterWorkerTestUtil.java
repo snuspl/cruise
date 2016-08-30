@@ -339,19 +339,19 @@ final class ParameterWorkerTestUtil {
                                             final WorkerHandler<Integer, ?, Integer> handler,
                                             final WorkerMsgSender<Integer, ?> sender)
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
-    final CountDownLatch sendLatch = new CountDownLatch(AsyncParameterWorker.MAX_RESEND_COUNT);
+    final AtomicInteger sendPullCounter = new AtomicInteger(0);
+    final CountDownLatch finishLatch = new CountDownLatch(1);
     final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
     // throw exception when worker sends a pull msg
     doAnswer(invocationOnMock -> {
-        sendLatch.countDown();
-
-        // skip at the last chance to prevent PS worker thread from throwing RuntimeException
-        if (sendLatch.getCount() > 0) {
+        if (sendPullCounter.getAndIncrement() < AsyncParameterWorker.MAX_RESEND_COUNT) {
           throw new NetworkException("exception");
         }
+        finishLatch.countDown();
 
+        // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
         return null;
@@ -364,28 +364,29 @@ final class ParameterWorkerTestUtil {
     worker.close(CLOSE_TIMEOUT);
     pool.shutdown();
 
-    assertTrue(sendLatch.await((AsyncParameterWorker.RESEND_INTERVAL_MS + gracePeriodMs)
+    assertTrue(finishLatch.await((AsyncParameterWorker.RESEND_INTERVAL_MS + gracePeriodMs)
         * AsyncParameterWorker.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
 
     // Check whether the expected number of pull requests have been made
-    verify(sender, times(AsyncParameterWorker.MAX_RESEND_COUNT)).sendPullMsg(anyString(), any(EncodedKey.class));
+    // (1 initial attempt + MAX_RESEND_COUNT retry).
+    verify(sender, times(AsyncParameterWorker.MAX_RESEND_COUNT + 1)).sendPullMsg(anyString(), any(EncodedKey.class));
   }
 
   static void pushNetworkExceptionAndResend(final ParameterWorker<Integer, Integer, ?> worker,
                                             final WorkerMsgSender<Integer, ?> sender)
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
-    final CountDownLatch sendLatch = new CountDownLatch(AsyncParameterWorker.MAX_RESEND_COUNT);
+    final AtomicInteger sendPushCounter = new AtomicInteger(0);
+    final CountDownLatch finishLatch = new CountDownLatch(1);
     final long gracePeriodMs = 100; // a time period to make sure all resend requests have been sent.
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
     // throw exception when worker sends a push msg
     doAnswer(invocationOnMock -> {
-        sendLatch.countDown();
-
         // skip at the last chance to prevent PS worker thread from throwing RuntimeException
-        if (sendLatch.getCount() > 0) {
+        if (sendPushCounter.getAndIncrement() < AsyncParameterWorker.MAX_RESEND_COUNT) {
           throw new NetworkException("exception");
         }
+        finishLatch.countDown();
         return null;
       }).when(sender).sendPushMsg(anyString(), any(EncodedKey.class), anyObject());
 
@@ -396,11 +397,12 @@ final class ParameterWorkerTestUtil {
     worker.close(CLOSE_TIMEOUT);
     pool.shutdown();
 
-    assertTrue(sendLatch.await((AsyncParameterWorker.RESEND_INTERVAL_MS + gracePeriodMs)
+    assertTrue(finishLatch.await((AsyncParameterWorker.RESEND_INTERVAL_MS + gracePeriodMs)
         * AsyncParameterWorker.MAX_RESEND_COUNT, TimeUnit.MILLISECONDS));
 
     // Check whether the expected number of push requests have been made
-    verify(sender, times(AsyncParameterWorker.MAX_RESEND_COUNT)).sendPushMsg(anyString(), any(EncodedKey.class),
+    // (1 initial attempt + MAX_RESEND_COUNT retry).
+    verify(sender, times(AsyncParameterWorker.MAX_RESEND_COUNT + 1)).sendPushMsg(anyString(), any(EncodedKey.class),
         anyObject());
   }
 
@@ -408,7 +410,8 @@ final class ParameterWorkerTestUtil {
                                   final WorkerHandler<Integer, ?, Integer> handler,
                                   final WorkerMsgSender<Integer, ?> sender)
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException {
-    final CountDownLatch sendLatch = new CountDownLatch(AsyncParameterWorker.MAX_PULL_RETRY_COUNT);
+    final AtomicInteger sendPullCounter = new AtomicInteger(0);
+    final CountDownLatch finishLatch = new CountDownLatch(1);
     final long gracePeriodMs = 100; // a time period to make sure all retry requests have been sent.
     final ExecutorService pool = Executors.newSingleThreadExecutor();
 
@@ -416,11 +419,10 @@ final class ParameterWorkerTestUtil {
 
     // Do not reply when worker sends a pull msg
     doAnswer(invocationOnMock -> {
-        sendLatch.countDown();
-
-        if (sendLatch.getCount() > 0) {
+        if (sendPullCounter.getAndIncrement() < AsyncParameterWorker.MAX_PULL_RETRY_COUNT) {
           return null;
         }
+        finishLatch.countDown();
 
         // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
@@ -431,14 +433,15 @@ final class ParameterWorkerTestUtil {
 
     pool.execute(() -> worker.pull(key));
 
-    assertTrue(sendLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriodMs) * AsyncParameterWorker.MAX_PULL_RETRY_COUNT,
-        TimeUnit.MILLISECONDS));
+    assertTrue(finishLatch.await((PULL_RETRY_TIMEOUT_MS + gracePeriodMs)
+        * AsyncParameterWorker.MAX_PULL_RETRY_COUNT, TimeUnit.MILLISECONDS));
 
     worker.close(CLOSE_TIMEOUT);
     pool.shutdown();
 
     // Check whether the expected number of pull requests have been made
     // (1 initial attempt + MAX_PULL_RETRY_COUNT retry).
-    verify(sender, times(AsyncParameterWorker.MAX_PULL_RETRY_COUNT)).sendPullMsg(anyString(), any(EncodedKey.class));
+    verify(sender, times(AsyncParameterWorker.MAX_PULL_RETRY_COUNT + 1)).sendPullMsg(anyString(),
+        any(EncodedKey.class));
   }
 }
