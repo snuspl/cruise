@@ -60,21 +60,6 @@ cudnnHandle_t JavaCudnn::getCudnnHandle() {
 
 cudnnTensorDescriptor_t* JavaCudnn::createTensorDesc(const int n, const int c, const int h, const int w,
                                                      const int nStride, const int cStride, const int hStride, const int wStride) {
-  //cudnnTensorDescriptor_t* tensorDesc = static_cast<cudnnTensorDescriptor_t*>(deviceMalloc(sizeof(cudnnTensorDescriptor_t)));
-  // if (tensorDesc != NULL) {
-  //   if (cudnnCheck(cudnnCreateTensorDescriptor(tensorDesc))) {
-  //     if (cudnnCheck(cudnnSetTensor4dDescriptorEx(*tensorDesc, CUDNN_DATA_FLOAT, n, c, h, w, nStride, cStride, hStride, wStride))) {
-  //       return tensorDesc;
-  //     } else {
-  //       return NULL;
-  //     }
-  //   } else {
-  //     return NULL;
-  //   }
-  // } else {
-  //   return NULL;
-  // }
-  //cudnnTensorDescriptor_t tensorDesc;
   cudnnTensorDescriptor_t* tensorDesc = ((cudnnTensorDescriptor_t*) std::malloc(sizeof(cudnnTensorDescriptor_t)));
   if (!cudnnCheck(cudnnCreateTensorDescriptor(tensorDesc)) || !cudnnCheck(cudnnSetTensor4dDescriptorEx(*tensorDesc, CUDNN_DATA_FLOAT, n, c, h, w, nStride, cStride, hStride, wStride))) {
     return NULL;
@@ -92,21 +77,6 @@ cudnnTensorDescriptor_t* JavaCudnn::createTensorDesc(const int n, const int c, c
 }
 
 cudnnFilterDescriptor_t* JavaCudnn::createFilterDesc(const int k, const int c, const int h, const int w) {
-  //cudnnFilterDescriptor_t* filterDesc = static_cast<cudnnFilterDescriptor_t*>(deviceMalloc(sizeof(cudnnFilterDescriptor_t)));
-  // if (filterDesc != NULL) {
-  //   if (cudnnCheck(cudnnCreateFilterDescriptor(filterDesc))) {
-  //     if (cudnnCheck(cudnnSetFilter4dDescriptor(*filterDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, k, c, h, w))) {
-  //       return filterDesc;
-  //     } else {
-  //       return NULL;
-  //     }
-  //   } else {
-  //     return NULL;
-  //   }
-  // } else {
-  //   return NULL;
-  // }
-  //cudnnFilterDescriptor_t filterDesc;
   cudnnFilterDescriptor_t* filterDesc = ((cudnnFilterDescriptor_t*) std::malloc(sizeof(cudnnFilterDescriptor_t)));
   if (!cudnnCheck(cudnnCreateFilterDescriptor(filterDesc)) || !cudnnCheck(cudnnSetFilter4dDescriptor(*filterDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, k, c, h, w))) {
     return NULL;
@@ -116,21 +86,6 @@ cudnnFilterDescriptor_t* JavaCudnn::createFilterDesc(const int k, const int c, c
 }
 
 cudnnConvolutionDescriptor_t* JavaCudnn::createConvDesc(const int padH, const int padW, const int strideH, const int strideW) {
-  //cudnnConvolutionDescriptor_t* convDesc = static_cast<cudnnConvolutionDescriptor_t*>(deviceMalloc(sizeof(cudnnConvolutionDescriptor_t)));
-  // if (convDesc != NULL) {
-  //   if (cudnnCheck(cudnnCheck(cudnnCreateConvolutionDescriptor(convDesc))) {
-  //     if (cudnnCheck(cudnnSetConvolution2dDescriptor(*convDesc, padH, padW, strideH, strideW, 1, 1, CUDNN_CROSS_CORRELATION))) {
-  //       return convDesc;
-  //     } else {
-  //       return NULL;
-  //     }
-  //   } else {
-  //     return NULL;
-  //   }
-  // } else {
-  //   return NULL;
-  // }
-  //cudnnConvolutionDescriptor_t convDesc;
   cudnnConvolutionDescriptor_t* convDesc = ((cudnnConvolutionDescriptor_t*) std::malloc(sizeof(cudnnConvolutionDescriptor_t)));
   if (!cudnnCheck(cudnnCreateConvolutionDescriptor(convDesc)) || !cudnnCheck(cudnnSetConvolution2dDescriptor(*convDesc, padH, padW, strideH, strideW, 1, 1, CUDNN_CROSS_CORRELATION))) {
     return NULL;

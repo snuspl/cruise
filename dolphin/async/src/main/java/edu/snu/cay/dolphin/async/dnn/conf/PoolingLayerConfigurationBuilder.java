@@ -18,7 +18,8 @@ package edu.snu.cay.dolphin.async.dnn.conf;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.PoolingLayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
-import edu.snu.cay.dolphin.async.dnn.layers.PoolingLayer;
+//import edu.snu.cay.dolphin.async.dnn.layers.PoolingLayer;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.PoolingGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -101,7 +102,7 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
         .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
         .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
         .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
-        .bindImplementation(LayerBase.class, PoolingLayer.class)
+        .bindImplementation(LayerBase.class, PoolingGpuLayer.class)
         .bindImplementation(LayerParameterInitializer.class, PoolingLayerParameterInitializer.class)
         .build();
   }

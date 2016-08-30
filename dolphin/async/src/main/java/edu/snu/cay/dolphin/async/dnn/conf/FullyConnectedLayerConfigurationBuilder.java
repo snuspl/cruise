@@ -17,8 +17,9 @@ package edu.snu.cay.dolphin.async.dnn.conf;
 
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.FullyConnectedLayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
-import edu.snu.cay.dolphin.async.dnn.layers.FullyConnectedLayer;
+//import edu.snu.cay.dolphin.async.dnn.layers.FullyConnectedLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.FullyConnectedGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -70,7 +71,7 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
         .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
         .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
         .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
-        .bindImplementation(LayerBase.class, FullyConnectedLayer.class)
+        .bindImplementation(LayerBase.class, FullyConnectedGpuLayer.class)
         .bindImplementation(LayerParameterInitializer.class, FullyConnectedLayerParameterInitializer.class)
         .build();
   }

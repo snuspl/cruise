@@ -45,11 +45,8 @@ import javax.inject.Inject;
 public final class PoolingGpuLayer extends LayerBase {
 
   private final int[] outputShape;
-  private final int poolingType; //0: MAX, 1:AVG
-  private final int inputHeight;
-  private final int inputWidth;
-  private final int inputChannel;
   private final MatrixFactory matrixFactory;
+  private final int poolingType;
 
   private Pointer inputDesc;
   private Pointer activationDesc;
@@ -82,7 +79,24 @@ public final class PoolingGpuLayer extends LayerBase {
                           final LayerParameterInitializer layerParameterInitializer,
                           final MatrixFactory matrixFactory) {
     super(index, inputShape);
+
+    final int outputChannel;
+    final int outputHeight;
+    final int outputWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
+    if (outputShape.length == 2) {
+      outputChannel = 1;
+      outputHeight = outputShape[0];
+      outputWidth = outputShape[1];
+    } else {
+      outputChannel = outputShape[0];
+      outputHeight = outputShape[1];
+      outputWidth = outputShape[2];
+    }
+
+    final int inputHeight;
+    final int inputWidth;
+    final int inputChannel;
     if ((poolingType.toUpperCase()).equals("MAX")) {
       this.poolingType = 0;
     } else {
@@ -91,13 +105,13 @@ public final class PoolingGpuLayer extends LayerBase {
     this.matrixFactory = matrixFactory;
 
     if (getInputShape().length == 2) {
-      this.inputChannel = 1;
-      this.inputHeight = getInputShape()[0];
-      this.inputWidth = getInputShape()[1];
+      inputChannel = 1;
+      inputHeight = getInputShape()[0];
+      inputWidth = getInputShape()[1];
     } else {
-      this.inputChannel = getInputShape()[0];
-      this.inputHeight = getInputShape()[1];
-      this.inputWidth = getInputShape()[2];
+      inputChannel = getInputShape()[0];
+      inputHeight = getInputShape()[1];
+      inputWidth = getInputShape()[2];
     }
 
     //setup
@@ -106,7 +120,7 @@ public final class PoolingGpuLayer extends LayerBase {
     this.poolDesc = JavaCudnn.createPoolDesc(
         this.poolingType, kernelHeight, kernelWidth, paddingHeight, paddingWidth, strideHeight, strideWidth);
     detectErrorPointer(poolDesc);
-    this.activationDesc = JavaCudnn.createTensorDesc(batchSize, outputShape[0], outputShape[1], outputShape[2]);
+    this.activationDesc = JavaCudnn.createTensorDesc(batchSize, outputChannel, outputHeight, outputWidth);
     detectErrorPointer(activationDesc);
   }
 

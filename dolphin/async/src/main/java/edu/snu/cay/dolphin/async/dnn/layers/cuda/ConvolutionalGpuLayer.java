@@ -202,7 +202,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     if (JavaCudnn.convGenWeightGradient(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) error).getDevicePointer(), convDesc, backwardFilterAlgo, workspace,
         backwardFilterWorkspaceSize, filterDesc, ((MatrixCudaImpl) weightGradient).getDevicePointer())) {
-      final Matrix biasGradient = matrixFactory.create(inputChannel, 1);
+      final Matrix biasGradient = matrixFactory.create(outputShape[0], 1);
       if (JavaCudnn.convGenBiasGradient(activationDesc, ((MatrixCudaImpl) error).getDevicePointer(),
           biasDesc, ((MatrixCudaImpl) biasGradient).getDevicePointer())) {
         return LayerParameter.newBuilder()

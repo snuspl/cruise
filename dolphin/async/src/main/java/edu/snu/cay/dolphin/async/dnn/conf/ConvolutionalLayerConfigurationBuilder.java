@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.conf;
 
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.ConvolutionalLayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
+//import edu.snu.cay.dolphin.async.dnn.layers.ConvolutionalLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.cuda.ConvolutionalGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;

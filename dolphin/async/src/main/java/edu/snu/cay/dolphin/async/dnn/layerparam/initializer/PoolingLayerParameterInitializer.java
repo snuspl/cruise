@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.dnn.layerparam.initializer;
 
-import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
 import org.apache.reef.tang.annotations.Parameter;
@@ -46,7 +45,6 @@ public final class PoolingLayerParameterInitializer implements LayerParameterIni
   private final LayerParameter emptyLayerParam;
 
   /**
-   * @param matrixFactory the factory to create new matrices
    * @param index the index of this layer
    * @param inputShape the shape of input data
    * @param paddingHeight the number of pixels to add to the top and bottom of the input images
@@ -57,8 +55,7 @@ public final class PoolingLayerParameterInitializer implements LayerParameterIni
    * @param kernelWidth the width of the filters
    */
   @Inject
-  private PoolingLayerParameterInitializer(final MatrixFactory matrixFactory,
-                                           @Parameter(LayerIndex.class) final int index,
+  private PoolingLayerParameterInitializer(@Parameter(LayerIndex.class) final int index,
                                            @Parameter(LayerInputShape.class) final String inputShape,
                                            @Parameter(PaddingHeight.class) final int paddingHeight,
                                            @Parameter(PaddingWidth.class) final int paddingWidth,
@@ -74,7 +71,7 @@ public final class PoolingLayerParameterInitializer implements LayerParameterIni
     this.strideWidth = strideWidth;
     this.kernelHeight = kernelHeight;
     this.kernelWidth = kernelWidth;
-    this.emptyLayerParam = LayerParameter.newEmptyInstance(matrixFactory);
+    this.emptyLayerParam = LayerParameter.newEmptyInstance();
 
     if (this.inputShape.length == 2) {
       this.inputChannel = 1;

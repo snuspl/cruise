@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.dnn.layerparam.initializer;
 
-import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
 import org.apache.reef.tang.annotations.Parameter;
@@ -37,17 +36,15 @@ public final class DefaultLayerParameterInitializer implements LayerParameterIni
   private final LayerParameter emptyLayerParam;
 
   /**
-   * @param matrixFactory the factory to create new matrices
    * @param index the index of this layer
    * @param inputShape the shape of input data
    */
   @Inject
-  public DefaultLayerParameterInitializer(final MatrixFactory matrixFactory,
-                                          @Parameter(LayerIndex.class) final int index,
+  public DefaultLayerParameterInitializer(@Parameter(LayerIndex.class) final int index,
                                           @Parameter(LayerInputShape.class) final String inputShape) {
     this.index = index;
     this.inputShape = shapeFromString(inputShape);
-    this.emptyLayerParam = LayerParameter.newEmptyInstance(matrixFactory);
+    this.emptyLayerParam = LayerParameter.newEmptyInstance();
   }
 
   /**

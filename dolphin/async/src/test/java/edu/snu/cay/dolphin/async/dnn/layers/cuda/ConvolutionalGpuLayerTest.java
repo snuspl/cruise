@@ -179,8 +179,8 @@ public class ConvolutionalGpuLayerTest {
 
       final Configuration layerConf3D = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-          .bindNamedParameter(NeuralNetworkConfigurationParameters.BatchSize.class, "2")
           .bindNamedParameter(LayerInputShape.class, "2,2,3")
+          .bindNamedParameter(NeuralNetworkConfigurationParameters.BatchSize.class, "2")
           .build();
 
       final ConvolutionalLayerConfigurationBuilder builder = ConvolutionalLayerConfigurationBuilder
