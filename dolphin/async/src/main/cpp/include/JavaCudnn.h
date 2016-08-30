@@ -83,7 +83,7 @@ public:
                              const cudnnTensorDescriptor_t* yDesc, void* y);
   static bool lrnBackPropagate(const cudnnLRNDescriptor_t* normDesc, const cudnnTensorDescriptor_t* yDesc, const void* y,
                                const cudnnTensorDescriptor_t* dyDesc, const void* dy, const cudnnTensorDescriptor_t* xDesc, const void* x,
-                               const cudnnTensorDescriptor_t* dxDesc, void* dx)          ;
+                               const cudnnTensorDescriptor_t* dxDesc, void* dx);
 
 private:
   static cudnnHandle_t getCudnnHandle();

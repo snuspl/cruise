@@ -15,8 +15,9 @@
  */
 package edu.snu.cay.dolphin.async.dnn.conf;
 
-import edu.snu.cay.dolphin.async.dnn.layers.LRNLayer;
+//import edu.snu.cay.dolphin.async.dnn.layers.LRNLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.LRNGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -77,7 +78,7 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
           .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
           .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
           .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
-          .bindImplementation(LayerBase.class, LRNLayer.class)
+          .bindImplementation(LayerBase.class, LRNGpuLayer.class)
           .build();
     }
   }
