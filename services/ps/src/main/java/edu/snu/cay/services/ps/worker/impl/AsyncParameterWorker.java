@@ -341,7 +341,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     /**
      * Block until a value is set or the maximum waiting time elapses.
      * @param timeout the maximum time to wait in milliseconds
-     * @return the value, or null when it fails to get the value in given timeout
+     * @return a pair of value and server processing time, or null when it fails to get the value in given timeout
      */
     synchronized Pair<V, Long> getValue(final long timeout) {
       if (value == null && !rejected) {
