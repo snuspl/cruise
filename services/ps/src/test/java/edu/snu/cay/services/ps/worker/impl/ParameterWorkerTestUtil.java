@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -40,6 +42,7 @@ import static org.mockito.Mockito.verify;
  * Common test codes for both {@link AsyncParameterWorker} and {@link SSPParameterWorker}.
  */
 final class ParameterWorkerTestUtil {
+  private static final Logger LOG = Logger.getLogger(ParameterWorkerTestUtil.class.getName());
   static final long CLOSE_TIMEOUT = 5000;
   static final long PULL_RETRY_TIMEOUT_MS = 1000;
   static final String MSG_THREADS_SHOULD_FINISH = "threads not finished (possible deadlock or infinite loop)";
@@ -261,7 +264,7 @@ final class ParameterWorkerTestUtil {
     // throw exception when worker sends a pull msg
     doAnswer(invocationOnMock -> {
         sendLatch.countDown();
-
+        LOG.log(Level.SEVERE, "count down the send latch to {0}", sendLatch.getCount());
         if (sendLatch.getCount() > 0) {
           throw new NetworkException("exception");
         }

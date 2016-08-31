@@ -184,7 +184,7 @@ public class SSPWorkerClockTest {
     // with INIT_WORKER_CLOCK and INIT_GLOBAL_MIN_CLOCK, respectively.
     sspWorkerClock.initialize();
 
-    // step 1: check that waitIfExceedingStalenessBound() returns immediately
+    // check that waitIfExceedingStalenessBound() returns immediately
     // when the worker clock is within staleness bound.
     while (sspWorkerClock.getWorkerClock() <= globalMinimumClock + STALENESS_BOUND) {
       for (int i = 0; i < numOfThreads; i++) {
@@ -192,42 +192,38 @@ public class SSPWorkerClockTest {
       }
       ThreadUtils.runConcurrently(threads);
 
-      // check whether threads return from waitIfExceedingStalenessBound() immediately.
+      // check whether threads return from waitIfExceedingStalenessBound().
       barrier.await();
       sspWorkerClock.clock();
     }
 
-    // step 2: check that thread is blocked in waitIfExceedingStalenessBound()
+    // check that thread is blocked in waitIfExceedingStalenessBound()
     // when the worker clock is outside the staleness bound.
     sspWorkerClock.clock(); // the worker clock == the global minimum clock + (STALENESS_BOUND + 2)
     assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + STALENESS_BOUND);
-    for (int i = 0; i < numOfThreads; i++) {
-      threads[i] = new WaitIfExceedingStalenessBoundThread(barrier);
-    }
     ThreadUtils.runConcurrently(threads);
 
     // since threads are now blocked, there should be no thread waiting at the barrier.
     Thread.sleep(timeoutInMilliseconds);
     assertEquals(0, barrier.getNumberWaiting());
 
-    // step 3: check that threads keep being blocked
+    // check that threads keep being blocked
     // since the worker clock is still beyond staleness bound even though global minimum clock is ticked.
     globalMinimumClock++; // the worker clock == the global minimum clock + (STALENESS_BOUND + 1)
-    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + STALENESS_BOUND);
 
     // send message with an increased global minimum clock
     final byte[] broadcastClockMsgToKeepWait =
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
     sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToKeepWait));
 
-    // since threads are still blocked, there should be no thread waiting at the barrier.
+    // since threads are still blocked in waitIfExceedingStalenessBound(),
+    // there should be no thread waiting at the barrier.
     Thread.sleep(timeoutInMilliseconds);
     assertEquals(0, barrier.getNumberWaiting());
 
-    // step 4: check that threads are released properly
+    // check that threads are released properly
     // when the global minimum clock is increased and the worker clock gets into staleness bound.
     globalMinimumClock++; // the worker clock == the global minimum clock + STALENESS_BOUND
-    assertTrue(sspWorkerClock.getWorkerClock() <= globalMinimumClock + STALENESS_BOUND);
 
     // send message with an increased global minimum clock
     final byte[] broadcastClockMsgToTerminate =

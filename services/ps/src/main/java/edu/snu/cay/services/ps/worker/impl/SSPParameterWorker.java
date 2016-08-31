@@ -566,7 +566,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     public void apply(final LoadingCache<EncodedKey<K>, Tagged<V>> kvCache) {
       try {
         final V loadedValue;
-
+        LOG.log(Level.SEVERE, "enter");
         while (true) {
           final Tagged<V> tagged = kvCache.get(encodedKey);
           final int staleness = workerClock.getWorkerClock() - tagged.getClock();
@@ -586,6 +586,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
       } catch (final ExecutionException e) {
         throw new RuntimeException(e);
       }
+      LOG.log(Level.SEVERE, "leave");
     }
 
     /**
@@ -668,6 +669,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
               final PullFuture<V> future = new PullFuture<>();
               pendingPulls.put(encodedKey.getKey(), future);
 
+              LOG.log(Level.SEVERE, "enter");
+
               V value;
 
               int retryCount = 0;
@@ -677,6 +680,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                 }
 
                 // 1. try sending msg to server
+                LOG.log(Level.SEVERE, "right before calling sendPullMsg");
                 sendPullMsg(encodedKey);
 
                 // 2. wait the result from the server.
