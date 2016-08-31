@@ -18,8 +18,7 @@ package edu.snu.cay.services.ps.server.api;
 /**
  * Sender for ParameterServer.
  */
-public interface
-ServerSideReplySender<K, P, V> {
+public interface ServerSideReplySender<K, P, V> {
   /**
    * Implementing classes must serialize K, V immediately within the calling thread,
    * to ensure atomicity of updates.
