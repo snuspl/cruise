@@ -76,7 +76,7 @@ final class ParameterWorkerTestUtil {
     };
 
     // start a thread that process pull requests from the keyToReplyQueue
-    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    final ExecutorService executorService = Executors.newFixedThreadPool(NUM_PULL_HANDLING_THREADS);
 
     for (int i = 0; i < NUM_PULL_HANDLING_THREADS; i++) {
       executorService.execute(pullReplyingThread);
@@ -282,7 +282,7 @@ final class ParameterWorkerTestUtil {
     };
 
     // start a thread that rejects pull requests from the keyToRejectQueue
-    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    final ExecutorService executorService = Executors.newFixedThreadPool(NUM_PULL_HANDLING_THREADS);
 
     for (int i = 0; i < NUM_PULL_HANDLING_THREADS; i++) {
       executorService.execute(pullRejectingThread);
