@@ -465,13 +465,16 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         kvStore.put(key, parameterUpdater.initValue(key));
       }
 
-      final long serverProcessingTime = ticker.read() - timestamp;
-      sender.sendPullReplyMsg(srcId, key, kvStore.get(key), serverProcessingTime);
+      // The request's time spent in queue + processing time before sending a reply.
+      final long elapsedTimeInServer = ticker.read() - timestamp;
+      sender.sendPullReplyMsg(srcId, key, kvStore.get(key), elapsedTimeInServer);
 
       final long processEndTime = ticker.read();
-      final long totalProcessingTime = processEndTime - waitEndTime;
-      pullStats[threadId].put(totalProcessingTime);
-      requestStats[threadId].put(totalProcessingTime);
+
+      // Elapsed time since the request has been dequeued.
+      final long actualProcessingTime = processEndTime - waitEndTime;
+      pullStats[threadId].put(actualProcessingTime);
+      requestStats[threadId].put(actualProcessingTime);
     }
   }
 

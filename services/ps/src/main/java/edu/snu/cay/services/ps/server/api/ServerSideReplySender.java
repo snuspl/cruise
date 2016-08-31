@@ -18,16 +18,17 @@ package edu.snu.cay.services.ps.server.api;
 /**
  * Sender for ParameterServer.
  */
-public interface ServerSideReplySender<K, P, V> {
+public interface
+ServerSideReplySender<K, P, V> {
   /**
    * Implementing classes must serialize K, V immediately within the calling thread,
    * to ensure atomicity of updates.
    * @param destId the destination's network address
    * @param key key, to be serialized immediately
    * @param value value, to be serialized immediately
-   * @param processingTime actual time spent processing the pull
+   * @param elapsedTimeInServer elapsed time since pull request's arrival at server
    */
-  void sendPullReplyMsg(String destId, K key, V value, long processingTime);
+  void sendPullReplyMsg(String destId, K key, V value, long elapsedTimeInServer);
 
   /**
    * Send a reject msg for push operation to the worker who requested.
