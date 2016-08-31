@@ -50,6 +50,9 @@ import java.util.logging.Logger;
 public final class MetricManager {
   private static final Logger LOG = Logger.getLogger(MetricManager.class.getName());
 
+  /**
+   * Size of the queue for saving unsent metrics to the Dashboard server.
+   */
   private static final int METRIC_QUEUE_SIZE = 1024;
 
   /**
@@ -114,7 +117,7 @@ public final class MetricManager {
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
 
-    boolean tempDashboardEnabled = !hostAddress.equals(AsyncDolphinLauncher.INVALID_HOSTADDRESS);
+    boolean tempDashboardEnabled = !hostAddress.equals(AsyncDolphinLauncher.HOST_ADDRESS);
     CloseableHttpAsyncClient tempReusableHttpClient = null;
 
     if (tempDashboardEnabled) {
@@ -130,7 +133,7 @@ public final class MetricManager {
         // run another thread to send metrics.
         runMetricsSenderThread();
       } catch (IOReactorException e) {
-        LOG.log(Level.WARNING, "Dashboard: Fail on initializing IOReactor - ", e);
+        LOG.log(Level.WARNING, "Dashboard: Fail on initializing IOReactor.", e);
         tempDashboardEnabled = false;
         tempReusableHttpClient = null;
       }
@@ -180,7 +183,7 @@ public final class MetricManager {
         metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
             workerId, metrics, System.currentTimeMillis()));
       } catch (InterruptedException e) {
-        LOG.log(Level.WARNING, "Dashboard: Interrupted while taking metrics to send from the queue - ", e);
+        LOG.log(Level.WARNING, "Dashboard: Interrupted while taking metrics to send from the queue.", e);
       }
     }
   }
@@ -223,7 +226,7 @@ public final class MetricManager {
         metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
             serverId, metrics, System.currentTimeMillis()));
       } catch (InterruptedException e) {
-        LOG.log(Level.WARNING, "Dashboard: Interrupted while taking metrics to send from the queue - ", e);
+        LOG.log(Level.WARNING, "Dashboard: Interrupted while taking metrics to send from the queue.", e);
       }
     }
   }
@@ -299,7 +302,7 @@ public final class MetricManager {
   }
 
   /**
-   * Runs a thread watching the metrics queue to send the oldest metrics information via http request.
+   * Runs a thread watching the metrics queue to send the metrics from the metricsRequestQueue via http request.
    */
   private void runMetricsSenderThread() {
     metricsSenderExecutor.execute(new Runnable() {
@@ -310,7 +313,7 @@ public final class MetricManager {
             final String request = metricsRequestQueue.take();
             sendMetricsToDashboard(request);
           } catch (InterruptedException e) {
-            LOG.log(Level.WARNING, "Dashboard: Interrupted while sending metrics to the dashboard server - ", e);
+            LOG.log(Level.WARNING, "Dashboard: Interrupted while sending metrics to the dashboard server.", e);
           }
         }
       }
@@ -329,7 +332,7 @@ public final class MetricManager {
     @Override
     public void failed(final Exception ex) {
       //TODO #772: deal with request failure.
-      LOG.log(Level.WARNING, "Dashboard: Post request failed - ", ex);
+      LOG.log(Level.WARNING, "Dashboard: Post request failed.", ex);
     }
 
     @Override
@@ -345,14 +348,13 @@ public final class MetricManager {
    */
   private void sendMetricsToDashboard(final String request) {
     try {
-      LOG.log(Level.WARNING, "SendMetricsToDashboard");
       final HttpPost httpPost = new HttpPost(dashboardURL);
       httpPost.setHeader("Content-Type", "application/x-www-form-urlencoded");
       httpPost.setEntity(new StringEntity(request));
       reusableHttpClient.execute(httpPost, new DashboardResponseCallback());
     } catch (IOException e) {
       //TODO #772: deal with request failure.
-      LOG.log(Level.WARNING, "Dashboard: post request failed - ", e);
+      LOG.log(Level.WARNING, "Dashboard: post request failed.", e);
     }
   }
 }

@@ -36,7 +36,6 @@ app.config.update(dict(
     USERNAME='admin',
     PASSWORD='default'
 ))
-app.config.from_envvar('DASHBOARD_SETTINGS', silent=True)
 
 #
 # Database
@@ -67,9 +66,9 @@ def close_db(e):
 #
 # Urls
 #
-# The main URL which receives metrics and visualizes the metrics to users.
+# The main URL which receives metrics.
 @app.route('/', methods=['POST'])
-def get_metrics():
+def store_metrics_in_db():
     db = get_db()
 
     # update database with new metrics
