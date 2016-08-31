@@ -72,7 +72,7 @@ final class ParameterWorkerTestUtil {
             break; // it's an intended InterruptedException to quit the thread
           }
 
-          workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+          workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), 0);
         }
       }
     };
@@ -277,7 +277,7 @@ final class ParameterWorkerTestUtil {
             handler.processPullReject(encodedKey.getKey());
           } else {
             // pull messages should return values s.t. key == value
-            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), 0);
           }
         }
       }
@@ -355,7 +355,7 @@ final class ParameterWorkerTestUtil {
 
         // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), 0);
         return null;
       }).when(sender).sendPullMsg(anyString(), any(EncodedKey.class));
 
@@ -428,7 +428,7 @@ final class ParameterWorkerTestUtil {
 
         // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey());
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), 0);
 
         return null;
       }).when(sender).sendPullMsg(anyString(), anyObject());

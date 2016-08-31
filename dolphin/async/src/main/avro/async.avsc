@@ -27,6 +27,10 @@
     // "metrics" should contain app-specific metrics. (ex. loss, DvT)
     {"name": "metrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
 
+    // Parameter worker metrics containing pull/push request time split into multiple components (ex. encode time).
+    {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics"],
+     "default":null},
+
     // iteration number
     {"name": "itrIdx", "type": "int", "default": 0},
 
