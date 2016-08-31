@@ -54,10 +54,12 @@ final class ParameterWorkerTestUtil {
   }
 
   /**
-   * Sets up a thread that processes and replies pull operations queued in {@code keyToReplyQueue}.
-   * It returns a {@link ExecutorService} through which the thread is executing.
+   * Starts threads that process pull operations.
+   * Worker enqueues pull operations in {@code keyToReplyQueue}, and processes reply messages that are assumed to be
+   * responses for the worker's pull request.
+   * @return an {@link ExecutorService} which the pull requests are processed with.
    */
-  static ExecutorService setupPullReplyingThreads(final BlockingQueue<EncodedKey<Integer>> keyToReplyQueue,
+  static ExecutorService startPullReplyingThreads(final BlockingQueue<EncodedKey<Integer>> keyToReplyQueue,
                                                   final WorkerHandler<Integer, ?, Integer> workerHandler) {
     final Runnable pullReplyingThread = new Runnable() {
       @Override
@@ -75,7 +77,7 @@ final class ParameterWorkerTestUtil {
       }
     };
 
-    // start a thread that process pull requests from the keyToReplyQueue
+    // start threads that process pull requests from the keyToReplyQueue
     final ExecutorService executorService = Executors.newFixedThreadPool(NUM_PULL_HANDLING_THREADS);
 
     for (int i = 0; i < NUM_PULL_HANDLING_THREADS; i++) {
@@ -107,7 +109,7 @@ final class ParameterWorkerTestUtil {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
-    final ExecutorService executorService = setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
+    final ExecutorService executorService = startPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     setupSenderToEnqueuePullOps(pullKeyToReplyQueue, workerMsgSender);
 
     final ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -164,7 +166,7 @@ final class ParameterWorkerTestUtil {
     final int numPullPerThread = 1000;
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
-    final ExecutorService executorService = setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
+    final ExecutorService executorService = startPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     setupSenderToEnqueuePullOps(pullKeyToReplyQueue, workerMsgSender);
 
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
@@ -205,7 +207,7 @@ final class ParameterWorkerTestUtil {
     final int numKeysPerPull = 3;
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
-    final ExecutorService executorService = setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
+    final ExecutorService executorService = startPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     setupSenderToEnqueuePullOps(pullKeyToReplyQueue, workerMsgSender);
 
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
@@ -246,10 +248,10 @@ final class ParameterWorkerTestUtil {
   }
 
   /**
-   * Sets up a thread that rejects pull operations queued in {@code keyToRejectQueue}.
-   * It returns a {@link ExecutorService} through which the thread is executing.
+   * Starts threads that reject pull operations queued in {@code keyToRejectQueue}.
+   * @return an {@link ExecutorService} through which the thread is executing.
    */
-  private static ExecutorService setupPullRejectingThreads(final BlockingQueue<EncodedKey<Integer>> keyToRejectQueue,
+  private static ExecutorService startPullRejectingThreads(final BlockingQueue<EncodedKey<Integer>> keyToRejectQueue,
                                                            final WorkerHandler<Integer, ?, Integer> handler,
                                                            final int numRejectPerKey) {
     final Map<Integer, AtomicInteger> keyToNumPullCounter = new ConcurrentHashMap<>();
@@ -281,7 +283,7 @@ final class ParameterWorkerTestUtil {
       }
     };
 
-    // start a thread that rejects pull requests from the keyToRejectQueue
+    // start threads that reject pull requests from the keyToRejectQueue
     final ExecutorService executorService = Executors.newFixedThreadPool(NUM_PULL_HANDLING_THREADS);
 
     for (int i = 0; i < NUM_PULL_HANDLING_THREADS; i++) {
@@ -304,7 +306,7 @@ final class ParameterWorkerTestUtil {
     final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToRejectQueue = new LinkedBlockingQueue<>();
-    final ExecutorService executorService = setupPullRejectingThreads(pullKeyToRejectQueue, handler, numRejectPerKey);
+    final ExecutorService executorService = startPullRejectingThreads(pullKeyToRejectQueue, handler, numRejectPerKey);
     setupSenderToEnqueuePullOps(pullKeyToRejectQueue, sender);
 
     for (int index = 0; index < numPullThreads; ++index) {

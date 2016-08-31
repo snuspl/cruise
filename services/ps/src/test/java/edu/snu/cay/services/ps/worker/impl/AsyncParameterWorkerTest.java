@@ -60,7 +60,7 @@ public final class AsyncParameterWorkerTest {
    * Prepares PS components.
    * It mocks several message senders and handlers for testing.
    *
-   * @param retryTimeoutMs a timeout value to be bound to {@link PullRetryTimeoutMs}
+   * @param retryTimeoutMs a timeout to retry sending request, which is bound to {@link PullRetryTimeoutMs}
    * @throws InjectionException
    * @throws NetworkException
    */
@@ -219,7 +219,7 @@ public final class AsyncParameterWorkerTest {
 
     final BlockingQueue<EncodedKey<Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
-        ParameterWorkerTestUtil.setupPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
+        ParameterWorkerTestUtil.startPullReplyingThreads(pullKeyToReplyQueue, workerHandler);
     ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
 
     final int numPulls = 1000;
