@@ -164,12 +164,8 @@ public class SSPWorkerClockTest {
     final class WaitIfExceedingStalenessBoundThread implements Runnable {
       @Override
       public void run() {
-        try {
-          sspWorkerClock.waitIfExceedingStalenessBound();
-          threadLatchMap.get(this).countDown();
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
+        sspWorkerClock.waitIfExceedingStalenessBound();
+        threadLatchMap.get(this).countDown();
       }
     }
 

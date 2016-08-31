@@ -124,6 +124,11 @@ final class MigrationManager {
     migration.markBlockAsMoved(blockId);
     blockManager.releaseBlockFromMove(blockId);
 
+    final String senderId = migration.getSenderId();
+    final String receiverId = migration.getReceiverId();
+
+    notifyUpdateToClients(senderId, receiverId, blockId);
+
     if (migration.isComplete()) {
       finishMigration(operationId);
     }
@@ -137,7 +142,6 @@ final class MigrationManager {
     final Migration migration = ongoingMigrations.remove(operationId);
     notifySuccess(operationId, migration.getBlockIds());
     broadcastSuccess(migration);
-    notifyUpdate(migration);
   }
 
   /**
@@ -165,15 +169,13 @@ final class MigrationManager {
   }
 
   /**
-   * Notify the update in the routing table to listening clients.
+   * Notify the update in the routing table to listening clients in granularity of block.
    */
-  private synchronized void notifyUpdate(final Migration migration) {
-    final int oldOwnerId = blockManager.getMemoryStoreId(migration.getSenderId());
-    final int newOwnerId = blockManager.getMemoryStoreId(migration.getReceiverId());
-    final String newEvalId = migration.getReceiverId();
-    final List<Integer> blockIds = migration.getBlockIds();
+  private synchronized void notifyUpdateToClients(final String senderId, final String receiverId, final int blockId) {
+    final int oldOwnerId = blockManager.getMemoryStoreId(senderId);
+    final int newOwnerId = blockManager.getMemoryStoreId(receiverId);
 
-    final EMRoutingTableUpdate update = new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockIds);
+    final EMRoutingTableUpdate update = new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, receiverId, blockId);
 
     for (final EventHandler<EMRoutingTableUpdate> callBack : updateCallbacks.values()) {
       callBack.onNext(update);

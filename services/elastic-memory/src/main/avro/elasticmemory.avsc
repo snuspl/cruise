@@ -72,7 +72,7 @@
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "RemoteOpMsg",
+  "name": "RemoteOpReqMsg",
   "fields":
   [
     {"name": "origEvalId", "type": "string"},
@@ -238,14 +238,14 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RoutingTableInitReqMsg", "RoutingTableInitMsg",
+        "symbols": ["RemoteOpReqMsg", "RemoteOpResultMsg", "RoutingTableInitReqMsg", "RoutingTableInitMsg",
          "RoutingTableUpdateMsg", "CtrlMsg", "DataMsg",
          "FailureMsg", "ResultMsg", "OwnershipMsg", "OwnershipAckMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
-    {"name": "remoteOpMsg", "type": ["null", "RemoteOpMsg"], "default": null},
+    {"name": "remoteOpReqMsg", "type": ["null", "RemoteOpReqMsg"], "default": null},
     {"name": "remoteOpResultMsg", "type": ["null", "RemoteOpResultMsg"], "default": null},
     {"name": "routingTableInitReqMsg", "type": ["null", "RoutingTableInitReqMsg"], "default": null},
     {"name": "routingTableInitMsg", "type": ["null", "RoutingTableInitMsg"], "default": null},

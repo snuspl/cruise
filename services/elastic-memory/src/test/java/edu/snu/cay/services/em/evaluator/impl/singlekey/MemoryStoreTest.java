@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -71,6 +72,7 @@ public final class MemoryStoreTest {
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
+    injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
     memoryStore = injector.getInstance(MemoryStore.class);
 
     // router should be initialized explicitly

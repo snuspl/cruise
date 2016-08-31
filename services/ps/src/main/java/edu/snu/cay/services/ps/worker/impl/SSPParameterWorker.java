@@ -182,6 +182,15 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   }
 
   /**
+   * Determines whether the data is stale, which in turn should be fetched from server.
+   * @param dataStaleness Staleness of the data (worker's clock - cached data's clock)
+   * @return {@true} if the data is stale
+   */
+  private boolean isDataStale(final int dataStaleness) {
+    return dataStaleness > stalenessBound;
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
@@ -212,6 +221,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   }
 
   private V pull(final EncodedKey<K> encodedKey) {
+    workerClock.waitIfExceedingStalenessBound();
+
     final PullOp pullOp = new PullOp(encodedKey);
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
@@ -224,6 +235,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    */
   @Override
   public List<V> pull(final List<K> keys) {
+    workerClock.waitIfExceedingStalenessBound();
+
     // transform keys to encoded keys
     final List<EncodedKey<K>> encodedKeys = new ArrayList<>(keys.size());
     for (final K key : keys) {
@@ -479,12 +492,17 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
       // If it exists, update the local value, without updating the cache's write time
       if (tagged != null) {
         final V oldValue = tagged.getValue();
-        final V deltaValue = parameterUpdater.process(encodedKey.getKey(), preValue);
-        if (deltaValue == null) {
-          return;
+        final int staleness = workerClock.getWorkerClock() - tagged.getClock();
+        if (isDataStale(staleness)) {
+          kvCache.invalidate(encodedKey);
+        } else {
+          final V deltaValue = parameterUpdater.process(encodedKey.getKey(), preValue);
+          if (deltaValue == null) {
+            return;
+          }
+          final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
+          tagged.setValue(updatedValue);
         }
-        final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
-        tagged.setValue(updatedValue);
       }
 
       // Send to remote PS
@@ -514,10 +532,10 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
           }
           break;
         } catch (final NetworkException e) {
-          LOG.log(Level.FINE, "NetworkException while sending push msg. Do retry", e);
+          LOG.log(Level.WARNING, "NetworkException while sending push msg. Do retry", e);
         }
 
-        LOG.log(Level.FINE, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
+        LOG.log(Level.WARNING, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
         try {
           Thread.sleep(RESEND_INTERVAL_MS);
         } catch (final InterruptedException e) {
@@ -551,13 +569,13 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
 
         while (true) {
           final Tagged<V> tagged = kvCache.get(encodedKey);
-          final int staleness = workerClock.getGlobalMinimumClock() - tagged.getClock();
-          if (staleness <= stalenessBound) {
-            loadedValue = tagged.getValue();
-            break;
-          } else {
+          final int staleness = workerClock.getWorkerClock() - tagged.getClock();
+          if (isDataStale(staleness)) {
             // Invalidate stale data before fetching new data from a server.
             kvCache.invalidate(encodedKey);
+          } else {
+            loadedValue = tagged.getValue();
+            break;
           }
         }
 
@@ -606,7 +624,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    * We should further explore this trade-off with real ML workloads.
    */
   private static class WorkerThread<K, P, V> implements Runnable {
-    private static final long QUEUE_TIMEOUT_MS = 0;
+    private static final long QUEUE_TIMEOUT_MS = 3000;
     private static final String STATE_RUNNING = "RUNNING";
     private static final String STATE_CLOSING = "CLOSING";
     private static final String STATE_CLOSED = "CLOSED";
@@ -678,6 +696,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                   break;
                 } else {
                   future.reset();
+                  LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
+                      new Object[]{encodedKey.getKey(), retryCount});
                 }
               }
 
@@ -708,10 +728,10 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                   pullStat.put(ticker.read() - beginTick);
                   break;
                 } catch (final NetworkException e) {
-                  LOG.log(Level.FINE, "NetworkException while sending pull msg. Do retry", e);
+                  LOG.log(Level.WARNING, "NetworkException while sending pull msg. Do retry", e);
                 }
 
-                LOG.log(Level.FINE, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
+                LOG.log(Level.WARNING, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
                 try {
                   Thread.sleep(RESEND_INTERVAL_MS);
                 } catch (final InterruptedException e) {
