@@ -29,7 +29,7 @@ public:
   static cudnnFilterDescriptor_t* createFilterDesc(const int k, const int c, const int h, const int w);
   static cudnnConvolutionDescriptor_t* createConvDesc(const int padH, const int padW, const int strideH, const int strideW);
   static cudnnPoolingDescriptor_t* createPoolDesc(const int mode, const int h, const int w, const int padH, const int padW, const int strideH, const int strideW);
-  static cudnnActivationDescriptor_t* createActivDesc(const int fun);
+  static cudnnActivationDescriptor_t* createActivDesc(const int func);
   static cudnnLRNDescriptor_t* createLRNDesc(const int localSize, const float alpha, const float beta, const float k);
 
 
@@ -84,6 +84,11 @@ public:
   static bool lrnBackPropagate(const cudnnLRNDescriptor_t* normDesc, const cudnnTensorDescriptor_t* yDesc, const void* y,
                                const cudnnTensorDescriptor_t* dyDesc, const void* dy, const cudnnTensorDescriptor_t* xDesc, const void* x,
                                const cudnnTensorDescriptor_t* dxDesc, void* dx);
+  static bool activWithLossFeedForward (const cudnnTensorDescriptor_t* xDesc, const void* x,
+                                        const cudnnTensorDescriptor_t* yDesc, void* y);
+  static bool activWithLossBackPropagate (const cudnnTensorDescriptor_t* yDesc, const void* y,
+                                          const cudnnTensorDescriptor_t* dyDesc, const void* dy,
+                                          const cudnnTensorDescriptor_t* dxDesc, void* dx);
 
 private:
   static cudnnHandle_t getCudnnHandle();

@@ -220,14 +220,14 @@ bool JavaCudnn::poolBackPropagate(const cudnnPoolingDescriptor_t* poolDesc, cons
   return cudnnCheck(cudnnPoolingBackward(getCudnnHandle(), *poolDesc, &CUDA_ONE, *yDesc, y, *dyDesc, dy, *xDesc, x, &CUDA_ZERO, *dxDesc, dx));
 }
 
-cudnnActivationDescriptor_t* JavaCudnn::createActivDesc(const int fun) {
+cudnnActivationDescriptor_t* JavaCudnn::createActivDesc(const int func) {
   cudnnActivationDescriptor_t* activDesc = ((cudnnActivationDescriptor_t*) std::malloc (sizeof(cudnnActivationDescriptor_t)));
   cudnnActivationMode_t mode;
-  if (fun == 0) {
+  if (func == 0) {
     mode = CUDNN_ACTIVATION_SIGMOID;
-  } else if (fun == 1) {
+  } else if (func == 1) {
     mode = CUDNN_ACTIVATION_RELU;
-  } else if (fun == 2) {
+  } else if (func == 2) {
     mode = CUDNN_ACTIVATION_TANH;
   } else {
     mode = CUDNN_ACTIVATION_CLIPPED_RELU;
@@ -267,4 +267,14 @@ bool JavaCudnn::lrnBackPropagate(const cudnnLRNDescriptor_t* normDesc, const cud
                                  const cudnnTensorDescriptor_t* dyDesc, const void* dy, const cudnnTensorDescriptor_t* xDesc, const void* x,
                                  const cudnnTensorDescriptor_t* dxDesc, void* dx) {
  return cudnnCheck(cudnnLRNCrossChannelBackward(getCudnnHandle(), *normDesc, CUDNN_LRN_CROSS_CHANNEL_DIM1, &CUDA_ONE, *yDesc, y, *dyDesc, dy, *xDesc, x, &CUDA_ZERO, *dxDesc, dx));
+}
+
+bool JavaCudnn::activWithLossFeedForward (const cudnnTensorDescriptor_t* xDesc, const void* x,
+                                          const cudnnTensorDescriptor_t* yDesc, void* y) {
+  return cudnnCheck(cudnnSoftmaxForward(getCudnnHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, &CUDA_ONE, *xDesc, x, &CUDA_ZERO, *yDesc, y));
+}
+bool JavaCudnn::activWithLossBackPropagate (const cudnnTensorDescriptor_t* yDesc, const void* y,
+                                            const cudnnTensorDescriptor_t* dyDesc, const void* dy,
+                                            const cudnnTensorDescriptor_t* dxDesc, void* dx) {
+  return cudnnCheck(cudnnSoftmaxBackward(getCudnnHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, &CUDA_ONE, *yDesc, y, *dyDesc, dy, &CUDA_ZERO, *dxDesc, dx));
 }

@@ -62,6 +62,7 @@ public final class PoolingGpuLayer extends LayerBase {
    * @param strideWidth the horizontal intervals at which to apply the filters to the input images
    * @param kernelHeight the height of the filters
    * @param kernelWidth the width of the filters
+   * @param batchSize the batch Size (number of images) of this layer
    * @param layerParameterInitializer the layer parameter initializer that generates the empty layer parameter
    * @param matrixFactory the factory to create new matrices
    */

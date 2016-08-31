@@ -15,8 +15,9 @@
  */
 package edu.snu.cay.dolphin.async.dnn.conf;
 
-import edu.snu.cay.dolphin.async.dnn.layers.ActivationLayer;
+//import edu.snu.cay.dolphin.async.dnn.layers.ActivationLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.ActivationGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -51,7 +52,7 @@ public final class ActivationLayerConfigurationBuilder implements Builder<Config
   public synchronized Configuration build() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
-        .bindImplementation(LayerBase.class, ActivationLayer.class)
+        .bindImplementation(LayerBase.class, ActivationGpuLayer.class)
         .build();
   }
 }

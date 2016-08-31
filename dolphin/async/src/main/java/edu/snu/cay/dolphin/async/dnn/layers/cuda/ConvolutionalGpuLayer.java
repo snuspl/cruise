@@ -80,6 +80,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
    * @param layerParameterInitializer the layer parameter initializer that generates the new layer parameter following
    *                                  the configuration defined by users
    * @param matrixFactory the factory to create new matrices
+   * @param batchSize the batch Size (number of images) of this layer
    */
   @Inject
   private ConvolutionalGpuLayer(@Parameter(LayerIndex.class) final int index,

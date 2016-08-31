@@ -28,61 +28,46 @@ import org.bytedeco.javacpp.Pointer;
 import javax.inject.Inject;
 
 /**
- * Local Response Normalization (LRN) layer.
- * This layer aids generalization done by activation layer.
- * The corresponding mathematical formula and explanation is at section 3.3 of the following paper.
- * https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
+ * Gpu Activation layer.
+ *
+ * This layer applies the specified activation function to each element of an input, maintaining the input's shape.
+ * This layer does not have parameters, in other words, is not learnable.
  */
-public final class LRNGpuLayer extends LayerBase {
-
-  private final int localSize;
-  private final float alpha;
-  private final float beta;
-  private final float k;
-
-  private final int inputChannel;
-  private final int inputHeight;
-  private final int inputWidth;
-  private MatrixFactory matrixFactory;
+public final class ActivationGpuLayer extends LayerBase {
 
   private Pointer inputDesc;
   private Pointer activationDesc;
-  private Pointer lrnDesc;
+  private Pointer activDesc;
+
+  private MatrixFactory matrixFactory;
 
   /**
    * @param index the index of this layer
    * @param inputShape the shape of input data
-   * @param localSize the number of channels to sum over
-   * @param alpha the scaling parameter
-   * @param beta the exponent to raise the power of
-   * @param k the constant to add
+   * @param activationFunction the type of the activation function
    * @param batchSize the batch Size (number of images) of this layer
+   * @param matrixFactory the factory to create new matrices
    */
   @Inject
-  private LRNGpuLayer(@Parameter(LayerIndex.class) final int index,
-                      @Parameter(LayerInputShape.class) final String inputShape,
-                      @Parameter(LocalSize.class) final int localSize,
-                      @Parameter(Alpha.class) final float alpha,
-                      @Parameter(Beta.class) final float beta,
-                      @Parameter(K.class) final float k,
-                      @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
-                      final MatrixFactory matrixFactory) {
+  private ActivationGpuLayer(@Parameter(LayerIndex.class) final int index,
+                             @Parameter(LayerInputShape.class) final String inputShape,
+                             @Parameter(ActivationFunction.class) final String activationFunction,
+                             @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
+                             final MatrixFactory matrixFactory) {
     super(index, inputShape);
-
-    this.localSize = localSize;
-    this.alpha = alpha;
-    this.beta = beta;
-    this.k = k;
     this.matrixFactory = matrixFactory;
 
+    final int inputChannel;
+    final int inputHeight;
+    final int inputWidth;
     if (getInputShape().length == 2) {
-      this.inputChannel = 1;
-      this.inputHeight = getInputShape()[0];
-      this.inputWidth = getInputShape()[1];
+      inputChannel = 1;
+      inputHeight = getInputShape()[0];
+      inputWidth = getInputShape()[1];
     } else {
-      this.inputChannel = getInputShape()[0];
-      this.inputHeight = getInputShape()[1];
-      this.inputWidth = getInputShape()[2];
+      inputChannel = getInputShape()[0];
+      inputHeight = getInputShape()[1];
+      inputWidth = getInputShape()[2];
     }
 
     //setup
@@ -90,8 +75,20 @@ public final class LRNGpuLayer extends LayerBase {
     detectErrorPointer(inputDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
     detectErrorPointer(activationDesc);
-    this.lrnDesc = JavaCudnn.createLRNDesc(localSize, alpha, beta, k);
-    detectErrorPointer(lrnDesc);
+    final int func; //0: sigmoid, 1: relu, 2: tanh, 3: clipped relu
+    if (activationFunction.toLowerCase().equals("sigmoid")) {
+      func = 0;
+    } else if (activationFunction.toLowerCase().equals("relu")) {
+      func = 1;
+    } else if (activationFunction.toLowerCase().equals("tanh")) {
+      func = 2;
+    } else if (activationFunction.toLowerCase().equals("clipped relu")) {
+      func = 3;
+    } else {
+      throw new IllegalArgumentException("Unsupported activation function");
+    }
+    this.activDesc = JavaCudnn.createActivDesc(func);
+    detectErrorPointer(activDesc);
   }
 
   private void detectErrorPointer(final Pointer ptr) {
@@ -112,13 +109,14 @@ public final class LRNGpuLayer extends LayerBase {
   }
 
   /**
-   * @param input input values for this layer.
-   * @return output values for this layer.
+   * Applies the specified activation function.
+   * @param input an input value for this layer.
+   * @return the activation.
    */
   @Override
   public Matrix feedForward(final Matrix input) {
     final Matrix output = matrixFactory.create(input.getRows(), input.getColumns());
-    if (JavaCudnn.lrnFeedForward(lrnDesc, inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
+    if (JavaCudnn.activFeedForward(activDesc, inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
     } else {
@@ -127,19 +125,19 @@ public final class LRNGpuLayer extends LayerBase {
   }
 
   /**
-   * @param input the input values for this layer
-   * @param activation the output values.
-   * @param nextError the errors of the next layer - the one closer to the output layer.
-   * @return errors for this layer with the specified input value.
+   * Computes an error for this activation layer.
+   * @param input the input value.
+   * @param activation the activation value.
+   * @param nextError an error of the next layer - the one closer to the output layer.
+   * @return an error for this activation layer.
    */
   @Override
-  public Matrix backPropagate(final Matrix input,
-                              final Matrix activation,
-                              final Matrix nextError) {
-    final Matrix error = matrixFactory.zeros(input.getRows(), input.getColumns());
-    if (JavaCudnn.lrnBackPropagate(lrnDesc, activationDesc, ((MatrixCudaImpl) activation).getDevicePointer(),
-        activationDesc, ((MatrixCudaImpl) nextError).getDevicePointer(), inputDesc,
-        ((MatrixCudaImpl) input).getDevicePointer(), inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
+  public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
+    final Matrix error = matrixFactory.create(nextError.getRows(), nextError.getColumns());
+    if (JavaCudnn.activBackPropagate(activDesc, activationDesc, ((MatrixCudaImpl) activation).getDevicePointer(),
+        activationDesc, ((MatrixCudaImpl) nextError).getDevicePointer(),
+        inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
+        inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
       return error;
     } else {
       throw new RuntimeException("Something went wrong in backPropagate");

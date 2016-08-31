@@ -16,8 +16,9 @@
 package edu.snu.cay.dolphin.async.dnn.conf;
 
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.SerializedLayerConfiguartion;
-import edu.snu.cay.dolphin.async.dnn.layers.ActivationWithLossLayer;
+//import edu.snu.cay.dolphin.async.dnn.layers.ActivationWithLossLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.ActivationWithLossGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -68,8 +69,9 @@ public final class ActivationWithLossLayerConfigurationBuilder implements Builde
 
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerConfigurationParameters.LossFunction.class, lossFunction)
+        .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
         .bindNamedParameter(SerializedLayerConfiguartion.class, configurationSerializer.toString(layerConf))
-        .bindImplementation(LayerBase.class, ActivationWithLossLayer.class)
+        .bindImplementation(LayerBase.class, ActivationWithLossGpuLayer.class)
         .build();
   }
 }

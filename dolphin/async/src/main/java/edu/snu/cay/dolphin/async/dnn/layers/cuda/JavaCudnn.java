@@ -46,6 +46,8 @@ class JavaCudnn extends Pointer {
       final int padH, final int padW, final int strideH, final int strideW);
   @Cast(value = "cudnnPoolingDescriptor_t*") static native Pointer createPoolDesc(
       final int mode, final int h, final int w, final int padH, final int padW, final int strideH, final int strideW);
+  @Cast(value = "cudnnActivationDescriptor_t*") static native Pointer createActivDesc(final int func);
+
   @Cast(value = "cudnnLRNDescriptor_t*") static native Pointer createLRNDesc(
       final int localSize, final float alpha, final float beta, final float k);
 
@@ -111,7 +113,6 @@ class JavaCudnn extends Pointer {
   @Cast(value = "bool") static native boolean convGenBiasGradient(
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dyDesc, final FloatPointer dy,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dbDesc, final FloatPointer db);
-
   @Cast(value = "bool") static native boolean poolFeedForward(
       @Cast(value = "cudnnPoolingDescriptor_t*") final Pointer poolDesc,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc, final FloatPointer x,
@@ -122,6 +123,16 @@ class JavaCudnn extends Pointer {
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dyDesc, final FloatPointer dy,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc, final FloatPointer x,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dxDesc, final FloatPointer dx);
+  @Cast(value = "bool") static native boolean activFeedForward(
+      @Cast(value = "cudnnActivationDescriptor_t*") final Pointer activDesc,
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer srcDesc, final FloatPointer src,
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer destDesc, final FloatPointer dest);
+  @Cast(value = "bool") static native boolean activBackPropagate(
+      @Cast(value = "cudnnActivationDescriptor_t*") final Pointer activDesc,
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer srcDesc, final FloatPointer src,
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer srcDiffDesc, final FloatPointer srcDiff,
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer destDesc, final FloatPointer dest,
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer destDiffDesc, final FloatPointer destDiff);
   @Cast(value = "bool") static native boolean lrnFeedForward(
       @Cast(value = "cudnnLRNDescriptor_t*") final Pointer normDesc,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc, final FloatPointer x,
@@ -131,5 +142,12 @@ class JavaCudnn extends Pointer {
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer yDesc, final FloatPointer y,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dyDesc, final FloatPointer dy,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc, final FloatPointer x,
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dxDesc, final FloatPointer dx);
+  @Cast(value = "bool") static native boolean activWithLossFeedForward(
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc, final FloatPointer x,
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer yDesc, final FloatPointer y);
+  @Cast(value = "bool") static native boolean activWithLossBackPropagate(
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer yDesc, final FloatPointer y,
+      @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dyDesc, final FloatPointer dy,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dxDesc, final FloatPointer dx);
 }
