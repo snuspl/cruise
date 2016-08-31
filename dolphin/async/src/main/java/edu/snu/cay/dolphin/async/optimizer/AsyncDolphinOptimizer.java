@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.optimizer;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
+import edu.snu.cay.dolphin.async.plan.EmptyPlan;
 import edu.snu.cay.dolphin.async.plan.PlanImpl;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
@@ -31,6 +32,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.function.BinaryOperator;
 import java.util.function.ToDoubleFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,13 +54,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
   private final int numMiniBatchPerItr;
 
-  private final double reconfigThreshold;
+  private final double optBenefitThreshold;
 
   @Inject
   private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerItr,
-                                @Parameter(Parameters.ReconfigurationThreshold.class) final double reconfigThreshold) {
+                                @Parameter(Parameters.OptimizationBenefitThreshold.class)
+                                final double optBenefitThreshold) {
     this.numMiniBatchPerItr = numMiniBatchPerItr;
-    this.reconfigThreshold = reconfigThreshold;
+    this.optBenefitThreshold = optBenefitThreshold;
   }
 
   /**
@@ -126,39 +129,55 @@ public final class AsyncDolphinOptimizer implements Optimizer {
      * 3. compare the total costs for each possible number of workers
      * 4. set optimalNumWorkers to be one that has the minimum total cost
      */
-    final Pair<Integer, Double> optimalCostPair = IntStream.range(1, availableEvaluators)
+    final Pair<Integer, Pair<Double, Double>> optimalCostPair = IntStream.range(1, availableEvaluators)
         .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
         .mapToObj(numWorkers ->
             new Pair<>(numWorkers,
                 totalCost(numWorkers, numDataBlocks, numModelBlocks,
                     availableEvaluators, workerSummaries, serverSummaries)))
-        .reduce((p1, p2) -> p1.getSecond() > p2.getSecond() ? p2 : p1)
+        .reduce(new BinaryOperator<Pair<Integer, Pair<Double, Double>>>() {
+          @Override
+          public Pair<Integer, Pair<Double, Double>> apply(final Pair<Integer, Pair<Double, Double>> p1,
+                                                           final Pair<Integer, Pair<Double, Double>> p2) {
+            final double cost1 = p1.getSecond().getFirst() + p1.getSecond().getSecond();
+            final double cost2 = p2.getSecond().getFirst() + p2.getSecond().getSecond();
+
+            return cost1 > cost2 ? p2 : p1;
+          }
+        })
         .get();
 
     final int optimalNumWorkers = optimalCostPair.getFirst();
     final int optimalNumServers = availableEvaluators - optimalNumWorkers;
-    final double optimalCost = optimalCostPair.getSecond();
-    final double currentCost = workerParams.stream()
-        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalTime()).average().orElse(0D);
 
-    LOG.log(Level.INFO, "\"numAvailEval\": {0}, \"numOptWorker\": {1}, \"numOptServer\": {2}, " +
-            "\"optimalCost\": {3}, \"currentCost\": {4}, \"reconfigurationThreshold\": {5}",
-        new Object[]{availableEvaluators, optimalNumWorkers, optimalNumServers,
-            optimalCost, currentCost, reconfigThreshold});
+    final double optimalCompCost = optimalCostPair.getSecond().getFirst();
+    final double optimalCommCost = optimalCostPair.getSecond().getSecond();
 
-    final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
+    final double currentCompCost = workerParams.stream()
+        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0D);
+    final double currentCommCost = workerParams.stream()
+        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D);
+
+    LOG.log(Level.INFO, "OptimizationInfo {0} \"numAvailEval\": {1}, \"numOptWorker\": {2}, \"numOptServer\": {3}, " +
+            "\"optimalCompCost\": {4}, \"currentCompCost\": {5}, \"optimalCommCost\": {6}, \"currentCommCost\": {7}," +
+            "\"optBenefitThreshold\": {8}",
+        new Object[]{System.currentTimeMillis(), availableEvaluators, optimalNumWorkers, optimalNumServers,
+            optimalCompCost, currentCompCost, optimalCommCost, currentCommCost, optBenefitThreshold});
 
     // A valid reconfiguration plan is generated only when optimizer determines that a reconfiguration should occur.
-    if (currentCost - optimalCost > reconfigThreshold) {
+    if ((currentCompCost - optimalCompCost) / currentCompCost > optBenefitThreshold) {
+      final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
       generatePlanForOptimalConfig(Constants.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
           serverParams.size(), numModelBlocks, planBuilder);
       generatePlanForOptimalConfig(Constants.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
           workerParams.size(), numDataBlocks, planBuilder);
 
       planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals);
-    }
 
-    return planBuilder.build();
+      return planBuilder.build();
+    } else {
+      return new EmptyPlan();
+    }
   }
 
   /**
@@ -275,10 +294,10 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    * @param servers list of server {@link EvaluatorSummary}
    * @return total cost for a given number of workers using the current metrics of the system
    */
-  private double totalCost(final int numWorker, final int numDataBlocks, final int numModelBlocks,
-                                  final int availableEvaluators,
-                                  final List<EvaluatorSummary> workers,
-                                  final List<EvaluatorSummary> servers) {
+  private Pair<Double, Double> totalCost(final int numWorker, final int numDataBlocks, final int numModelBlocks,
+                           final int availableEvaluators,
+                           final List<EvaluatorSummary> workers,
+                           final List<EvaluatorSummary> servers) {
     // Calculating compCost based on avg: (avgNumBlockPerWorker / avgThroughput)
     final double workerThroughputSum = workers.subList(0, numWorker).stream()
         .mapToDouble(worker -> worker.throughput)
@@ -291,7 +310,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .sum();
     final double commCost = numModelBlocks / serverThroughputSum * numWorker;
 
-    return compCost + (commCost * numMiniBatchPerItr);
+    return new Pair<>(compCost, commCost * numMiniBatchPerItr);
   }
 
   /**

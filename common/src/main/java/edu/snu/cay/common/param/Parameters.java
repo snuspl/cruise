@@ -75,10 +75,11 @@ public final class Parameters {
   public final class MiniBatches implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The minimum cost benefit for which reconfiguration occurs.",
-      short_name = "reconfiguration_threshold",
+  @NamedParameter(doc = "The minimum cost benefit (in a ratio) for which system optimization occurs. " +
+      "0 = optimization occurs for any benefit greater than 0.",
+      short_name = "opt_benefit_threshold",
       default_value = "0")
-  public final class ReconfigurationThreshold implements Name<Double> {
+  public final class OptimizationBenefitThreshold implements Name<Double> {
   }
 
   @NamedParameter(doc = "Port number for client-side localhost Dashboard server, " +

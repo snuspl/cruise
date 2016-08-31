@@ -168,11 +168,6 @@ public final class OptimizationOrchestrator {
             getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
             getNumAvailableEvals(computeMetrics.size() + 1));
 
-        if (plan.getPlanSize() == 0) {
-          LOG.log(Level.INFO, "Optimizer returned an empty plan. No plan executed.");
-          return;
-        }
-
         LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
 
         planExecutionResult = planExecutor.execute(plan);
