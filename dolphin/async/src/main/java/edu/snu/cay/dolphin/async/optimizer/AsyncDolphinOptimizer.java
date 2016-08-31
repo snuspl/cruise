@@ -129,7 +129,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
      * 3. compare the total costs for each possible number of workers
      * 4. set optimalNumWorkers to be one that has the minimum total cost
      */
-    final Pair<Integer, Pair<Double, Double>> optimalCostPair = IntStream.range(1, availableEvaluators)
+    final Pair<Integer, Pair<Double, Double>> optimalNumWorkersCostPair = IntStream.range(1, availableEvaluators)
         .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
         .mapToObj(numWorkers ->
             new Pair<>(numWorkers,
@@ -147,25 +147,28 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         })
         .get();
 
-    final int optimalNumWorkers = optimalCostPair.getFirst();
+    final int optimalNumWorkers = optimalNumWorkersCostPair.getFirst();
     final int optimalNumServers = availableEvaluators - optimalNumWorkers;
 
-    final double optimalCompCost = optimalCostPair.getSecond().getFirst();
-    final double optimalCommCost = optimalCostPair.getSecond().getSecond();
+    final double optimalCompCost = optimalNumWorkersCostPair.getSecond().getFirst();
+    final double optimalCommCost = optimalNumWorkersCostPair.getSecond().getSecond();
 
     final double currentCompCost = workerParams.stream()
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0D);
     final double currentCommCost = workerParams.stream()
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D);
 
-    LOG.log(Level.INFO, "OptimizationInfo {0} \"numAvailEval\": {1}, \"numOptWorker\": {2}, \"numOptServer\": {3}, " +
-            "\"optimalCompCost\": {4}, \"currentCompCost\": {5}, \"optimalCommCost\": {6}, \"currentCommCost\": {7}," +
-            "\"optBenefitThreshold\": {8}",
-        new Object[]{System.currentTimeMillis(), availableEvaluators, optimalNumWorkers, optimalNumServers,
-            optimalCompCost, currentCompCost, optimalCommCost, currentCommCost, optBenefitThreshold});
+    final String optimizationInfo = String.format("{\"numAvailEval\":%d, \"numOptWorker\":%d, \"numOptServer\":%d, " +
+            "\"optimalCompCost\":%f, \"currentCompCost\":%f, \"optimalCommCost\":%f, \"currentCommCost\":%f," +
+            "\"optBenefitThreshold\":%f}", availableEvaluators, optimalNumWorkers, optimalNumServers,
+        optimalCompCost, currentCompCost, optimalCommCost, currentCommCost, optBenefitThreshold);
+
+    LOG.log(Level.INFO, "OptimizationInfo {0}: {1}", new Object[]{System.currentTimeMillis(), optimizationInfo});
 
     // A valid reconfiguration plan is generated only when optimizer determines that a reconfiguration should occur.
-    if ((currentCompCost - optimalCompCost) / currentCompCost > optBenefitThreshold) {
+    if ((currentCompCost - optimalCompCost) / currentCompCost < optBenefitThreshold) {
+      return new EmptyPlan();
+    } else {
       final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
       generatePlanForOptimalConfig(Constants.NAMESPACE_SERVER, serverSummaries, optimalNumServers,
           serverParams.size(), numModelBlocks, planBuilder);
@@ -175,8 +178,6 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals);
 
       return planBuilder.build();
-    } else {
-      return new EmptyPlan();
     }
   }
 
