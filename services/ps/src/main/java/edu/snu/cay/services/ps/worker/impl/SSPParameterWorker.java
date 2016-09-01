@@ -680,7 +680,6 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                 }
 
                 // 1. try sending msg to server
-                LOG.log(Level.SEVERE, "right before calling sendPullMsg");
                 sendPullMsg(encodedKey);
 
                 // 2. wait the result from the server.
