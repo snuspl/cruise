@@ -151,6 +151,12 @@ public class SSPWorkerClockTest {
   }
 
   /**
+   * @return true if {@code sspWorkerClock} is within staleness bound
+   */
+  private boolean stalenessCheck(final SSPWorkerClock workerClock, final int globalMinimumClock) {
+    return (workerClock.getWorkerClock() <= globalMinimumClock + STALENESS_BOUND);
+  }
+  /**
    * Tests whether waitIfExceedingStalenessBound() waits if the worker clock exceeds the staleness bound.
    */
   @Test(timeout = 10000)
@@ -184,53 +190,50 @@ public class SSPWorkerClockTest {
     // with INIT_WORKER_CLOCK and INIT_GLOBAL_MIN_CLOCK, respectively.
     sspWorkerClock.initialize();
 
-    // check that waitIfExceedingStalenessBound() returns immediately
-    // when the worker clock is within staleness bound.
-    while (sspWorkerClock.getWorkerClock() <= globalMinimumClock + STALENESS_BOUND) {
+    // In case of when the worker clock is within staleness bound.
+    while (stalenessCheck(sspWorkerClock, globalMinimumClock)) {
       for (int i = 0; i < numOfThreads; i++) {
         threads[i] = new WaitIfExceedingStalenessBoundThread(barrier);
       }
       ThreadUtils.runConcurrently(threads);
 
-      // check whether threads return from waitIfExceedingStalenessBound().
+      // check whether threads return from waitIfExceedingStalenessBound() and wait at the barrier.
       barrier.await();
       sspWorkerClock.clock();
     }
 
-    // check that thread is blocked in waitIfExceedingStalenessBound()
-    // when the worker clock is outside the staleness bound.
-    sspWorkerClock.clock(); // the worker clock == the global minimum clock + (STALENESS_BOUND + 2)
-    assertTrue(sspWorkerClock.getWorkerClock() > globalMinimumClock + STALENESS_BOUND);
+    // the worker clock gets equal to the global minimum clock + (STALENESS_BOUND + 2)
+    sspWorkerClock.clock();
+    assertTrue(!stalenessCheck(sspWorkerClock, globalMinimumClock));
     ThreadUtils.runConcurrently(threads);
 
-    // since threads are now blocked, there should be no thread waiting at the barrier.
+    // since threads are now blocked in waitIfExceedingStalenessBound(),
+    // there should be no thread waiting at the barrier.
     Thread.sleep(timeoutInMilliseconds);
     assertEquals(0, barrier.getNumberWaiting());
 
-    // check that threads keep being blocked
-    // since the worker clock is still beyond staleness bound even though global minimum clock is ticked.
-    globalMinimumClock++; // the worker clock == the global minimum clock + (STALENESS_BOUND + 1)
-
     // send message with an increased global minimum clock
+    // the worker clock gets equal to the global minimum clock + (STALENESS_BOUND + 1)
+    globalMinimumClock++;
     final byte[] broadcastClockMsgToKeepWait =
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
     sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToKeepWait));
+    assertTrue(!stalenessCheck(sspWorkerClock, globalMinimumClock));
 
     // since threads are still blocked in waitIfExceedingStalenessBound(),
     // there should be no thread waiting at the barrier.
     Thread.sleep(timeoutInMilliseconds);
     assertEquals(0, barrier.getNumberWaiting());
 
-    // check that threads are released properly
-    // when the global minimum clock is increased and the worker clock gets into staleness bound.
-    globalMinimumClock++; // the worker clock == the global minimum clock + STALENESS_BOUND
-
     // send message with an increased global minimum clock
+    // the worker clock gets equal to the global minimum clock + STALENESS_BOUND
+    globalMinimumClock++;
     final byte[] broadcastClockMsgToTerminate =
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
     sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToTerminate));
+    assertTrue(stalenessCheck(sspWorkerClock, globalMinimumClock));
 
-    // waitIfExceedingStalenessBound() is returned finally
+    // now all thread are released out of waitIfExceedingStalenessBound() and waiting at the barrier.
     barrier.await();
   }
 
