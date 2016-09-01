@@ -32,7 +32,7 @@ function install_protobuf {
   sudo apt-get install -y automake autoconf g++ make
   
   cd /tmp
-  wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.bz2
+  wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.bz2
   tar xjf protobuf-2.5.0.tar.bz2
   rm protobuf-2.5.0.tar.bz2
   cd /tmp/protobuf-2.5.0
