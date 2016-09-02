@@ -163,10 +163,12 @@ public final class AsyncDolphinOptimizer implements Optimizer {
             "\"optBenefitThreshold\":%f}", availableEvaluators, optimalNumWorkers, optimalNumServers,
         optimalCompCost, currentCompCost, optimalCommCost, currentCommCost, optBenefitThreshold);
 
-    LOG.log(Level.INFO, "OptimizationInfo {0}: {1}", new Object[]{System.currentTimeMillis(), optimizationInfo});
+    LOG.log(Level.INFO, "OptimizationInfo {0} {1}", new Object[]{System.currentTimeMillis(), optimizationInfo});
 
+    final double currentTotalCost = currentCompCost + currentCommCost;
+    final double optimalTotalCost = optimalCompCost + optimalCommCost;
     // A valid reconfiguration plan is generated only when optimizer determines that a reconfiguration should occur.
-    if ((currentCompCost - optimalCompCost) / currentCompCost < optBenefitThreshold) {
+    if ((currentTotalCost - optimalTotalCost) / currentTotalCost < optBenefitThreshold) {
       return new EmptyPlan();
     } else {
       final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
