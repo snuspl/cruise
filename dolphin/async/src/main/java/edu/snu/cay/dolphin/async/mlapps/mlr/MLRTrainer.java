@@ -435,6 +435,7 @@ final class MLRTrainer implements Trainer {
         .setAvgPullTime(pullTracer.avgTimePerElem())
         .setTotalPushTime(pushTracer.totalElapsedTime())
         .setAvgPushTime(pushTracer.avgTimePerElem())
+        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
 
     return workerMetrics;

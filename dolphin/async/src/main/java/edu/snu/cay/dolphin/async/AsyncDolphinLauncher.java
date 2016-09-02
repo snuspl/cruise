@@ -287,6 +287,9 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(Dynamic.class);
     basicParameterClassList.add(ServerMetricsWindowMs.class);
 
+    // add SSP parameters
+    basicParameterClassList.add(StalenessBound.class);
+
     // add em parameters
     basicParameterClassList.add(OptimizerClass.class);
     basicParameterClassList.add(PlanExecutorClass.class);
