@@ -26,6 +26,7 @@ import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -108,12 +109,13 @@ final class MLRTrainer implements Trainer {
    */
   private final int trainErrorDatasetSize;
 
-  private final MemoryStore<Long> memoryStore;
-
   private final TrainingDataProvider<Long> trainingDataProvider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+  private final ParameterWorker parameterWorker;
+  private final MemoryStore<Long> memoryStore;
+
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -131,9 +133,10 @@ final class MLRTrainer implements Trainer {
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
                      @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
-                     final MemoryStore<Long> memoryStore,
                      final TrainingDataProvider<Long> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
+                     final ParameterWorker parameterWorker,
+                     final MemoryStore<Long> memoryStore,
                      final VectorFactory vectorFactory) {
     this.miniBatchParameterWorker = miniBatchParameterWorker;
     this.numClasses = numClasses;
@@ -150,6 +153,7 @@ final class MLRTrainer implements Trainer {
     this.decayPeriod = decayPeriod;
     this.trainErrorDatasetSize = trainErrorDatasetSize;
     this.metricsMsgSender = metricsMsgSender;
+    this.parameterWorker = parameterWorker;
     this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
     this.pushTracer = new Tracer();

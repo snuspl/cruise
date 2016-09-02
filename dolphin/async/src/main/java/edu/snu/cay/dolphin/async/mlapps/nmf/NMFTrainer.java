@@ -28,6 +28,7 @@ import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -61,11 +62,12 @@ final class NMFTrainer implements Trainer {
   private final boolean printMatrices;
   private final NMFModelGenerator modelGenerator;
 
-  private final MemoryStore<Long> memoryStore;
   private final TrainingDataProvider<Long> trainingDataProvider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+  private final ParameterWorker parameterWorker;
+  private final MemoryStore<Long> memoryStore;
 
   private final Tracer pushTracer;
   private final Tracer pullTracer;
@@ -85,9 +87,10 @@ final class NMFTrainer implements Trainer {
                      @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      final NMFModelGenerator modelGenerator,
-                     final MemoryStore<Long> memoryStore,
                      final TrainingDataProvider<Long> trainingDataProvider,
-                     final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
+                     final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
+                     final ParameterWorker parameterWorker,
+                     final MemoryStore<Long> memoryStore) {
     this.miniBatchParameterWorker = miniBatchParameterWorker;
     this.vectorFactory = vectorFactory;
     this.rank = rank;
@@ -96,12 +99,10 @@ final class NMFTrainer implements Trainer {
     this.numMiniBatchPerEpoch = numMiniBatchPerEpoch;
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
-    this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
     this.metricsMsgSender = metricsMsgSender;
-
-    //this.rMatrix = Maps.newHashMap();
-    //this.gradients = Maps.newHashMap();
+    this.parameterWorker = parameterWorker;
+    this.memoryStore = memoryStore;
 
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
