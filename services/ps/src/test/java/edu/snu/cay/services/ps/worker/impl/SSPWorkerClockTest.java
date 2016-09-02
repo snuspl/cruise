@@ -152,10 +152,10 @@ public class SSPWorkerClockTest {
   }
 
   /**
-   * @return true if {@code sspWorkerClock} is within staleness bound
+   * @return true if {@link SSPWorkerClock} is outside staleness bound
    */
-  private boolean stalenessCheck(final SSPWorkerClock workerClock, final int globalMinimumClock) {
-    return (workerClock.getWorkerClock() <= globalMinimumClock + STALENESS_BOUND);
+  private boolean isStale(final SSPWorkerClock workerClock, final int globalMinimumClock) {
+    return (workerClock.getWorkerClock() > globalMinimumClock + STALENESS_BOUND);
   }
   /**
    * Tests whether waitIfExceedingStalenessBound() waits if the worker clock exceeds the staleness bound.
@@ -192,7 +192,7 @@ public class SSPWorkerClockTest {
     sspWorkerClock.initialize();
 
     // In case of when the worker clock is within staleness bound.
-    while (stalenessCheck(sspWorkerClock, globalMinimumClock)) {
+    while (!isStale(sspWorkerClock, globalMinimumClock)) {
       for (int i = 0; i < numOfThreads; i++) {
         threads[i] = new WaitIfExceedingStalenessBoundThread(barrier);
       }
@@ -205,7 +205,7 @@ public class SSPWorkerClockTest {
 
     // the worker clock gets equal to the global minimum clock + (STALENESS_BOUND + 2)
     sspWorkerClock.clock();
-    assertFalse(stalenessCheck(sspWorkerClock, globalMinimumClock));
+    assertTrue(isStale(sspWorkerClock, globalMinimumClock));
     ThreadUtils.runConcurrently(threads);
 
     // since threads are now blocked in waitIfExceedingStalenessBound(),
@@ -219,7 +219,7 @@ public class SSPWorkerClockTest {
     final byte[] broadcastClockMsgToKeepWait =
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
     sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToKeepWait));
-    assertTrue(!stalenessCheck(sspWorkerClock, globalMinimumClock));
+    assertTrue(isStale(sspWorkerClock, globalMinimumClock));
 
     // since threads are still blocked in waitIfExceedingStalenessBound(),
     // there should be no thread waiting at the barrier.
@@ -232,7 +232,7 @@ public class SSPWorkerClockTest {
     final byte[] broadcastClockMsgToTerminate =
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
     sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToTerminate));
-    assertTrue(stalenessCheck(sspWorkerClock, globalMinimumClock));
+    assertFalse(isStale(sspWorkerClock, globalMinimumClock));
 
     // now all thread are released out of waitIfExceedingStalenessBound() and waiting at the barrier.
     barrier.await();
