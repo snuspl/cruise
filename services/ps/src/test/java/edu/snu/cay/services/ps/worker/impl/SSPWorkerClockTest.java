@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
@@ -204,7 +205,7 @@ public class SSPWorkerClockTest {
 
     // the worker clock gets equal to the global minimum clock + (STALENESS_BOUND + 2)
     sspWorkerClock.clock();
-    assertTrue(!stalenessCheck(sspWorkerClock, globalMinimumClock));
+    assertFalse(stalenessCheck(sspWorkerClock, globalMinimumClock));
     ThreadUtils.runConcurrently(threads);
 
     // since threads are now blocked in waitIfExceedingStalenessBound(),
