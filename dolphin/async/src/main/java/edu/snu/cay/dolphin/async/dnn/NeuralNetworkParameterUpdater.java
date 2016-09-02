@@ -114,4 +114,9 @@ public final class NeuralNetworkParameterUpdater implements ParameterUpdater<Int
     }
     return initialLayerParameters[key];
   }
+
+  @Override
+  public LayerParameter aggregate(final LayerParameter oldPreValue, final LayerParameter newPreValue) {
+    throw new UnsupportedOperationException();
+  }
 }

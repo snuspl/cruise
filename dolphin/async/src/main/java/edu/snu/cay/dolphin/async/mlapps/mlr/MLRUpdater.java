@@ -66,4 +66,9 @@ final class MLRUpdater implements ParameterUpdater<Integer, Vector, Vector> {
     }
     return vectorFactory.createDense(features);
   }
+
+  @Override
+  public Vector aggregate(final Vector oldPreValue, final Vector newPreValue) {
+    return oldPreValue.addi(newPreValue);
+  }
 }

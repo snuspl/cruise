@@ -15,21 +15,19 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.MiniBatchParameterWorker;
+import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -50,9 +48,8 @@ final class NMFTrainer implements Trainer {
 
   private static final Logger LOG = Logger.getLogger(NMFTrainer.class.getName());
 
-  private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
+  private final MiniBatchParameterWorker<Integer, Vector, Vector> miniBatchParameterWorker;
   private final VectorFactory vectorFactory;
-  private final NMFDataParser dataParser;
   private final int rank;
   private final double stepSize;
   private final double lambda;
@@ -60,14 +57,12 @@ final class NMFTrainer implements Trainer {
    * Mini-batch size used for mini-batch gradient descent.
    * If less than {@code 1}, a standard gradient descent method is used.
    */
-  private final int numMiniBatchPerIter;
+  private final int numMiniBatchPerEpoch;
   private final boolean printMatrices;
   private final NMFModelGenerator modelGenerator;
-  private final Map<Integer, Vector> rMatrix; // R matrix cache
-  private final Map<Integer, Vector> gradients; // R matrix gradients
 
-  private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
+  private final TrainingDataProvider<Long> trainingDataProvider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -76,34 +71,37 @@ final class NMFTrainer implements Trainer {
   private final Tracer pullTracer;
   private final Tracer computeTracer;
 
+  // Below variables are metrics related variables.
+  private long epochBegin;
+  private double lossSum;
+  private int elemCount;
+
   @Inject
-  private NMFTrainer(final NMFDataParser dataParser,
-                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+  private NMFTrainer(final MiniBatchParameterWorker<Integer, Vector, Vector> miniBatchParameterWorker,
                      final VectorFactory vectorFactory,
                      @Parameter(Rank.class) final int rank,
                      @Parameter(StepSize.class) final double stepSize,
                      @Parameter(Lambda.class) final double lambda,
-                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
+                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      final NMFModelGenerator modelGenerator,
-                     final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
+                     final TrainingDataProvider<Long> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
-    this.parameterWorker = parameterWorker;
+    this.miniBatchParameterWorker = miniBatchParameterWorker;
     this.vectorFactory = vectorFactory;
-    this.dataParser = dataParser;
     this.rank = rank;
     this.stepSize = stepSize;
     this.lambda = lambda;
-    this.numMiniBatchPerIter = numMiniBatchPerIter;
+    this.numMiniBatchPerEpoch = numMiniBatchPerEpoch;
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
-    this.idFactory = idFactory;
     this.memoryStore = memoryStore;
+    this.trainingDataProvider = trainingDataProvider;
     this.metricsMsgSender = metricsMsgSender;
 
-    this.rMatrix = Maps.newHashMap();
-    this.gradients = Maps.newHashMap();
+    //this.rMatrix = Maps.newHashMap();
+    //this.gradients = Maps.newHashMap();
 
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
@@ -112,113 +110,96 @@ final class NMFTrainer implements Trainer {
 
   @Override
   public void initialize() {
-    final List<NMFData> dataValues = dataParser.parse();
-
-    final List<Long> dataKeys;
-    try {
-      dataKeys = idFactory.getIds(dataValues.size());
-    } catch (final IdGenerationException e) {
-      throw new RuntimeException(e);
-    }
-
-    memoryStore.putList(dataKeys, dataValues);
-
+    final Map<Long, NMFData> dataMap = memoryStore.getAll();
+    final Collection<NMFData> dataValues = dataMap.values();
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerIter);
+    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerEpoch);
     LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues).size());
     LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
   }
 
   @Override
-  public void run(final int iteration) {
-    final long iterationBegin = System.currentTimeMillis();
-    double lossSum = 0.0;
-    int elemCount = 0;
+  public void onEpochStart(final int epoch) {
+    epochBegin = System.currentTimeMillis();
+    lossSum = 0.0;
+    elemCount = 0;
     resetTracers();
+  }
 
-    final Map<Long, NMFData> workloadMap = memoryStore.getAll();
-    final Collection<NMFData> workload = workloadMap.values();
-
+  @Override
+  public void onEpochEnd(final int epoch) {
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
+    final Map<Long, NMFData> workloadMap = memoryStore.getAll();
+    final Collection<NMFData> workload = workloadMap.values();
 
-    int numInstances = 0;
-    int batchIdx = 0;
-    int batchSize = workload.size() / numMiniBatchPerIter +
-        ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
-
-    pullRMatrix(getKeys(workload));
-
-    computeTracer.startTimer();
-    for (final NMFData datum : workload) {
-      if (numInstances >= batchSize) {
-        computeTracer.recordTime(numInstances);
-
-        // push gradients and pull fresh models
-        pushAndResetGradients();
-        pullRMatrix(getKeys(workload));
-
-        numInstances = 0;
-        ++batchIdx;
-
-        // Recalculate batchSize to take care of the (workload.size() % numMiniBatchPerIter) instances.
-        batchSize = workload.size() / numMiniBatchPerIter +
-            ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
-        computeTracer.startTimer();
-      }
-
-      final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
-      final Vector lGradSum;
-      if (lambda != 0.0D) {
-        // l2 regularization term. 2 * lambda * L_{i, *}
-        lGradSum = lVec.scale(2.0D * lambda);
-      } else {
-        lGradSum = vectorFactory.createDenseZeros(rank);
-      }
-
-      for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
-        final int colIdx = column.getFirst();
-        final Vector rVec = rMatrix.get(colIdx); // R_{*, j} : j-th column of R
-        final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
-
-        // compute gradients
-        // lGrad = 2 * e * R_{*, j}'
-        // rGrad = 2 * e * L_{i, *}'
-        final Vector lGrad;
-        final Vector rGrad;
-
-        lGrad = rVec.scale(2.0D * error);
-        rGrad = lVec.scale(2.0D * error);
-
-        // aggregate L matrix gradients
-        lGradSum.addi(lGrad);
-
-        // save R matrix gradients
-        saveRMatrixGradient(colIdx, rGrad);
-
-        // aggregate loss
-        lossSum += error * error;
-        ++elemCount;
-      }
-
-      // update L matrix
-      modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
-
-      ++numInstances;
-    }
-
-    computeTracer.recordTime(numInstances);
-
-    pushAndResetGradients();
-
-    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, workload.size());
+    final double elapsedTime = (System.currentTimeMillis() - epochBegin) / 1000.0D;
+    final Metrics appMetrics = buildAppMetrics(elapsedTime, workload.size());
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, numEMBlocks, workload.size(), elapsedTime);
+        buildMetricsMsg(epoch, appMetrics, numEMBlocks, workload.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
+  }
+
+  @Override
+  public void run(final int minibatch) {
+
+    int numInstances = 0;
+    Map<Long, NMFData> workloadMap = trainingDataProvider.getNextTrainingDataSplit();
+    while (workloadMap.isEmpty()) {
+      final List<NMFData> workload = new ArrayList<>(workloadMap.values());
+
+      computeTracer.startTimer();
+      for (final NMFData datum : workload) {
+
+        final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
+        final Vector lGradSum;
+        if (lambda != 0.0D) {
+          // l2 regularization term. 2 * lambda * L_{i, *}
+          lGradSum = lVec.scale(2.0D * lambda);
+        } else {
+          lGradSum = vectorFactory.createDenseZeros(rank);
+        }
+
+        final Map<Integer, Vector> rMatrix = pullRMatrix(getKeys(workload));
+
+        for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
+          final int colIdx = column.getFirst();
+          final Vector rVec = rMatrix.get(colIdx); // R_{*, j} : j-th column of R
+          final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
+
+          // compute gradients
+          // lGrad = 2 * e * R_{*, j}'
+          // rGrad = 2 * e * L_{i, *}'
+          final Vector lGrad;
+          final Vector rGrad;
+
+          lGrad = rVec.scale(2.0D * error);
+          rGrad = lVec.scale(2.0D * error);
+
+          // aggregate L matrix gradients
+          lGradSum.addi(lGrad);
+
+          // save R matrix gradients
+          pushRMatrixGradient(colIdx, rVec, rGrad);
+
+          // aggregate loss
+          lossSum += error * error;
+          ++elemCount;
+        }
+
+        // update L matrix
+        modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
+
+        ++numInstances;
+      }
+
+      computeTracer.recordTime(numInstances);
+
+      workloadMap = trainingDataProvider.getNextTrainingDataSplit();
+    }
   }
 
   @Override
@@ -243,7 +224,7 @@ final class NMFTrainer implements Trainer {
     LOG.log(Level.INFO, lsb.toString());
 
     // print transposed R matrix
-    pullRMatrix(getKeys(workload));
+    final Map<Integer, Vector> rMatrix = pullRMatrix(getKeys(workload));
     final StringBuilder rsb = new StringBuilder();
     for (final Map.Entry<Integer, Vector> entry : rMatrix.entrySet()) {
       rsb.append(String.format("R(*, %d):", entry.getKey()));
@@ -256,24 +237,15 @@ final class NMFTrainer implements Trainer {
     LOG.log(Level.INFO, rsb.toString());
   }
 
-  private void pullRMatrix(final List<Integer> keys) {
+  private Map<Integer, Vector> pullRMatrix(final List<Integer> keys) {
     pullTracer.startTimer();
-    final List<Vector> vectors = parameterWorker.pull(keys);
+    final Map<Integer, Vector> rMatrix = new HashMap<>();
+    final List<Vector> vectors = miniBatchParameterWorker.pull(keys);
     for (int i = 0; i < keys.size(); ++i) {
       rMatrix.put(keys.get(i), vectors.get(i));
     }
     pullTracer.recordTime(keys.size());
-  }
-
-  private void pushAndResetGradients() {
-    // push gradients
-    pushTracer.startTimer();
-    for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
-      parameterWorker.push(entry.getKey(), entry.getValue());
-    }
-    pushTracer.recordTime(gradients.size());
-    // clear gradients
-    gradients.clear();
+    return rMatrix;
   }
 
   /**
@@ -299,16 +271,15 @@ final class NMFTrainer implements Trainer {
     return keys;
   }
 
-  private void saveRMatrixGradient(final int key, final Vector newGrad) {
-    final Vector grad = gradients.get(key);
-    if (grad == null) {
+  private void pushRMatrixGradient(final int key, final Vector oldGrad, final Vector newGrad) {
+    if (oldGrad == null) {
       // l2 regularization term. 2 * lambda * R_{*, j}
       if (lambda != 0.0D) {
-        newGrad.axpy(2.0D * lambda, rMatrix.get(key));
+        newGrad.axpy(2.0D * lambda, oldGrad);
       }
-      gradients.put(key, newGrad);
+      miniBatchParameterWorker.push(key, newGrad);
     } else {
-      grad.addi(newGrad);
+      miniBatchParameterWorker.push(key, oldGrad.addi(newGrad));
     }
   }
 
@@ -329,7 +300,7 @@ final class NMFTrainer implements Trainer {
     return WorkerMetrics.newBuilder()
         .setMetrics(appMetrics)
         .setItrIdx(iteration)
-        .setNumMiniBatchPerItr(numMiniBatchPerIter)
+        .setNumMiniBatchPerItr(numMiniBatchPerEpoch)
         .setNumDataBlocks(numDataBlocks)
         .setProcessedDataItemCount(numProcessedDataItemCount)
         .setTotalTime(elapsedTime)
@@ -341,8 +312,7 @@ final class NMFTrainer implements Trainer {
         .build();
   }
 
-  private Metrics buildAppMetrics(final double lossSum, final long elemCount, final double elapsedTime,
-                                  final int numInstances) {
+  private Metrics buildAppMetrics(final double elapsedTime, final int numInstances) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
     appMetricMap.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);

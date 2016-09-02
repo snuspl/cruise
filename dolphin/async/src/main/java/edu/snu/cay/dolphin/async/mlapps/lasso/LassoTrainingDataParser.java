@@ -15,37 +15,19 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lasso;
 
-import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import edu.snu.cay.dolphin.async.TrainingDataParser;
 
 import javax.inject.Inject;
 
-/**
- * {@link ParameterUpdater} for the LassoREEF application.
- * Simply replace old values with new values.
- */
-final class LassoUpdater implements ParameterUpdater<Integer, Double, Double> {
+public final class LassoTrainingDataParser implements TrainingDataParser {
 
   @Inject
-  private LassoUpdater() {
+  public LassoTrainingDataParser() {
+
   }
 
   @Override
-  public Double process(final Integer key, final Double preValue) {
-    return preValue;
-  }
+  public void parseData() {
 
-  @Override
-  public Double update(final Double oldValue, final Double newValue) {
-    return newValue;
-  }
-
-  @Override
-  public Double initValue(final Integer key) {
-    return 0D;
-  }
-
-  @Override
-  public Double aggregate(final Double oldPreValue, final Double newPreValue) {
-    throw new UnsupportedOperationException();
   }
 }

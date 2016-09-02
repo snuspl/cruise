@@ -173,10 +173,13 @@ public final class AsyncDolphinLauncher {
       // pass the worker class implementation as well as user-defined parameters
       final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
-          .bindNamedParameter(Iterations.class,
-              Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
+          .bindImplementation(TrainingDataParser.class, asyncDolphinConfiguration.getTrainingDataParserClass())
+          .bindNamedParameter(Epochs.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(Epochs.class)))
           .bindNamedParameter(MiniBatches.class,
               Integer.toString(basicParameterInjector.getNamedInstance(MiniBatches.class)))
+          .bindNamedParameter(TrainingDataSplits.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(TrainingDataSplits.class)))
           .build();
       final Configuration workerConf = Configurations.merge(basicWorkerConf,
           asyncDolphinConfiguration.getWorkerConfiguration());
@@ -263,9 +266,10 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(Splits.class);
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
-    basicParameterClassList.add(Iterations.class);
+    basicParameterClassList.add(Epochs.class);
     basicParameterClassList.add(JVMHeapSlack.class);
     basicParameterClassList.add(MiniBatches.class);
+    basicParameterClassList.add(TrainingDataSplits.class);
     basicParameterClassList.add(DashboardPort.class);
 
     // add ps parameters

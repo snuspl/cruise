@@ -44,13 +44,18 @@ public interface Trainer {
    */
   void initialize();
 
+  void onEpochStart(int epoch);
+
+  void onEpochEnd(int epoch);
+
   /**
-   * Main method of this trainer. The number of times this method is called can be adjusted with the parameter
-   * {@link edu.snu.cay.common.param.Parameters.Iterations}.
+   * Main method of this trainer.
+   * The number of times this method is called can be adjusted with the parameter
+   * {@link edu.snu.cay.common.param.Parameters.Epochs} and {@link edu.snu.cay.common.param.Parameters.MiniBatches}.
    *
-   * @param iteration the index of current iteration
+   * @param minibatch the index of current minibatch
    */
-  void run(int iteration);
+  void run(int minibatch);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

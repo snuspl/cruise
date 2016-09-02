@@ -58,9 +58,9 @@ public final class Parameters {
   public final class LocalRuntimeMaxNumEvaluators implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Maximum number of iterations to run before termination",
-                  short_name = "max_iter")
-  public final class Iterations implements Name<Integer> {
+  @NamedParameter(doc = "Maximum number of epochs to run before termination",
+                  short_name = "max_epoch")
+  public final class Epochs implements Name<Integer> {
   }
 
   @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap",
@@ -75,6 +75,13 @@ public final class Parameters {
   public final class MiniBatches implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "Number of training data splits of a mini-batch",
+      short_name = "num_splits_per_mini_batch",
+      default_value = "1")
+  public final class TrainingDataSplits implements Name<Integer> {
+
+
+  }
   @NamedParameter(doc = "Port number for client-side localhost Dashboard server, " +
       "the number should be within (0, 65535), other numbers or occupied port numbers will lead to launch failure. " +
       "You need to install Flask in python first.",

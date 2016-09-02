@@ -87,6 +87,11 @@ public final class StaticParameterServerTest {
       public Integer initValue(final Integer key) {
         return 0;
       }
+
+      @Override
+      public Integer aggregate(final Integer oldPreValue, final Integer newPreValue) {
+        return oldPreValue + newPreValue;
+      }
     });
 
     mockSender = injector.getInstance(ServerSideReplySender.class);

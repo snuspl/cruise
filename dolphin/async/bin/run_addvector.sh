@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_addvector.sh -split 3 -num_workers 3 -num_servers 2 -num_partitions 4 -max_iter 100 -delta 4 -num_keys 100 -num_mini_batch 2 -compute_time_ms 300 -vector_size 5 -max_num_eval_local 5 -input run_addvector.sh -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
+# ./run_addvector.sh -split 3 -num_workers 3 -num_servers 2 -num_partitions 4 -max_epoch 100 -delta 4 -num_keys 100 -num_mini_batch 2 -compute_time_ms 300 -vector_size 5 -max_num_eval_local 5 -input run_addvector.sh -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

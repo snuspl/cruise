@@ -88,6 +88,7 @@ public final class NeuralNetworkREEF {
 
       AsyncDolphinLauncher.launch("NeuralNetworkREEF", args, AsyncDolphinConfiguration.newBuilder()
           .setTrainerClass(NeuralNetworkTrainer.class)
+          .setTrainingDataParserClass(NeuralNetworkTrainingDataParser.class)
           .setUpdaterClass(NeuralNetworkParameterUpdater.class)
           .setPreValueCodecClass(LayerParameterCodec.class)
           .setValueCodecClass(LayerParameterCodec.class)

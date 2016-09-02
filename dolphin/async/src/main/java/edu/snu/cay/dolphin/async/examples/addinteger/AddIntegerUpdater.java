@@ -44,4 +44,9 @@ final class AddIntegerUpdater implements ParameterUpdater<Integer, Integer, Inte
   public Integer initValue(final Integer key) {
     return 0;
   }
+
+  @Override
+  public Integer aggregate(final Integer oldPreValue, final Integer newPreValue) {
+    throw new UnsupportedOperationException();
+  }
 }

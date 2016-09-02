@@ -46,4 +46,12 @@ public interface ParameterUpdater<K, P, V> {
    * @return the initial value that was generated
    */
   V initValue(K key);
+
+  /**
+   * Aggregate pre-values.
+   * @param oldPreValue the current pre-value
+   * @param newPreValue new pre-value
+   * @return aggregated delta value
+   */
+  P aggregate(P oldPreValue, P newPreValue);
 }

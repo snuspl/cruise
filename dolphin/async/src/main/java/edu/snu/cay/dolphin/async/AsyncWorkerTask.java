@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import  edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
@@ -37,10 +37,14 @@ final class AsyncWorkerTask implements Task {
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
 
   private final String taskId;
-  private final int maxIterations;
+  private final int maxEpochs;
+  private final int numMiniBatchPerEpoch;
   private final WorkerSynchronizer synchronizer;
+  private final TrainingDataParser trainingDataParser;
   private final Trainer trainer;
   private final WorkerClock workerClock;
+  private final TrainingDataProvider trainingDataProvider;
+  private final MiniBatchParameterWorker miniBatchParameterWorker;
 
   /**
    * A boolean flag shared among all trainer threads.
@@ -50,20 +54,30 @@ final class AsyncWorkerTask implements Task {
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
-                          @Parameter(Iterations.class) final int maxIterations,
+                          @Parameter(Parameters.Epochs.class) final int maxEpochs,
+                          @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                           final WorkerSynchronizer synchronizer,
+                          final TrainingDataParser trainingDataParser,
                           final Trainer trainer,
-                          final WorkerClock workerClock) {
+                          final WorkerClock workerClock,
+                          final TrainingDataProvider trainingDataProvider,
+                          final MiniBatchParameterWorker miniBatchParameterWorker) {
     this.taskId = taskId;
-    this.maxIterations = maxIterations;
+    this.maxEpochs = maxEpochs;
+    this.numMiniBatchPerEpoch = numMiniBatchPerEpoch;
     this.synchronizer = synchronizer;
+    this.trainingDataParser = trainingDataParser;
     this.trainer = trainer;
     this.workerClock = workerClock;
+    this.trainingDataProvider = trainingDataProvider;
+    this.miniBatchParameterWorker = miniBatchParameterWorker;
   }
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
+
+    trainingDataParser.parseData();
 
     // TODO #681: Need to add numWorkerThreads concept after multi-thread trainer is enabled
     trainer.initialize();
@@ -75,20 +89,36 @@ final class AsyncWorkerTask implements Task {
     // initialize the worker clock
     workerClock.initialize();
 
-    final int initialClock = workerClock.getWorkerClock();
-
     // By starting iteration from the initial clock, which is dynamically fetched from driver,
     // it prevents workers added by EM from starting from iteration 0 and deferring job completion.
     // More specifically, added workers start from the minimum iteration of other existing workers.
-    for (int iteration = initialClock; iteration < maxIterations; ++iteration) {
+    for (int epoch = 0; epoch < maxEpochs; ++epoch) {
       if (aborted) {
         LOG.log(Level.INFO, "Abort a thread to completely close the task");
         // record total network waiting time of worker clock when the task is aborted
         workerClock.recordClockNetworkWaitingTime();
         return null;
       }
-      trainer.run(iteration);
-      workerClock.clock();
+
+      if (workerClock.getWorkerClock() > maxEpochs * numMiniBatchPerEpoch) {
+        break;
+      }
+
+      trainingDataProvider.onEpochStart();
+      trainer.onEpochStart(epoch);
+
+      for (int minibatch = 0; minibatch < numMiniBatchPerEpoch; minibatch++) {
+        if (workerClock.getWorkerClock() > maxEpochs * numMiniBatchPerEpoch) {
+          break;
+        }
+
+        trainer.run(minibatch);
+        miniBatchParameterWorker.onMiniBatchEnd();
+        trainingDataProvider.onMiniBatchEnd();
+        workerClock.clock();
+      }
+
+      trainer.onEpochEnd(epoch);
     }
 
     // Synchronize all workers before cleanup for workers
