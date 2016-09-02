@@ -97,10 +97,11 @@ public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReply
    * Send an Avro message via NetworkConnectionService.
    */
   @Override
-  public void sendPullReplyMsg(final String destId, final K key, final V value) {
+  public void sendPullReplyMsg(final String destId, final K key, final V value, final long processingTime) {
     final PullReplyMsg pullReplyMsg = PullReplyMsg.newBuilder()
         .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
         .setValue(ByteBuffer.wrap(valueCodec.encode(value)))
+        .setServerProcessingTime(processingTime)
         .build();
 
     send(destId,

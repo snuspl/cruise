@@ -57,6 +57,7 @@
     <breeze.version>0.12</breeze.version>
     <guava.version>11.0.2</guava.version>
     <jblas.version>1.2.4</jblas.version>
+    <javacpp.version>1.2.2</javacpp.version>
     <build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
   </properties>
 
@@ -187,6 +188,11 @@
         <artifactId>jblas</artifactId>
         <version>${jblas.version}</version>
       </dependency>
+      <dependency>
+        <groupId>org.bytedeco</groupId>
+        <artifactId>javacpp</artifactId>
+        <version>${javacpp.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -275,6 +281,11 @@
               <exclude>**/*.iml</exclude>
               <!-- Maven build files -->
               <exclude>**/target/**</exclude>
+              <!-- C++ build files -->
+              <exclude>**/CMakeCache.txt</exclude>
+              <exclude>**/CMakeFiles/**</exclude>
+              <exclude>**/Makefile</exclude>
+              <exclude>**/cmake_install.cmake</exclude>
               <!-- REEF run files -->
               <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
               <!-- Output files -->

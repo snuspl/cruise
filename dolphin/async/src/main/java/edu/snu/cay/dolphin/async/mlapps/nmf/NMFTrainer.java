@@ -309,6 +309,7 @@ final class NMFTrainer implements Trainer {
         .setAvgPullTime(pullTracer.avgTimePerRecord())
         .setTotalPushTime(pushTracer.totalElapsedTime())
         .setAvgPushTime(pushTracer.avgTimePerRecord())
+        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
   }
 

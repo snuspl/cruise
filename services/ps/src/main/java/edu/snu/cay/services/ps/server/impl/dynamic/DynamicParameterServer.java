@@ -505,11 +505,17 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         } else {
           value = kvPair.getSecond();
         }
-        sender.sendPullReplyMsg(srcId, hashedKey.getKey(), value);
+
+        // The request's time spent in queue + processing time before sending a reply.
+        final long elapsedTimeInServer = ticker.read() - timestamp;
+        sender.sendPullReplyMsg(srcId, hashedKey.getKey(), value, elapsedTimeInServer);
+
         final long processEndTime = ticker.read();
-        final long processingTime = processEndTime - waitEndTime;
-        pullStats[threadId].put(processingTime);
-        requestStats[threadId].put(processingTime);
+
+        // Elapsed time since the request has been dequeued.
+        final long actualProcessingTime = processEndTime - waitEndTime;
+        pullStats[threadId].put(actualProcessingTime);
+        requestStats[threadId].put(actualProcessingTime);
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }

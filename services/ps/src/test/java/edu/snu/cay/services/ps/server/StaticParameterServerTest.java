@@ -148,14 +148,14 @@ public final class StaticParameterServerTest {
     System.out.println("Ops completed in " + (endTime - startTime) + " milliseconds");
 
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
-    verify(mockSender, times(numPulls * numPullThreads)).sendPullReplyMsg(anyString(), anyInt(), anyInt());
+    verify(mockSender, times(numPulls * numPullThreads)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyLong());
 
     final AtomicMarkableReference<Integer> replayValue = new AtomicMarkableReference<>(null, false);
     doAnswer(invocation -> {
         final int value = invocation.getArgumentAt(2, Integer.class);
         replayValue.set(value, true);
         return null;
-      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt());
+      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyLong());
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
@@ -188,7 +188,7 @@ public final class StaticParameterServerTest {
         // sleep to guarantee the queue not empty when closing server
         Thread.sleep(1000);
         return null;
-      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt());
+      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyLong());
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
@@ -197,10 +197,10 @@ public final class StaticParameterServerTest {
 
     // closing server should guarantee all the queued operations to be processed, if time allows
     server.close(CLOSE_TIMEOUT);
-    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt());
+    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyLong());
 
     // server should not process further operations after being closed
     server.pull(0, WORKER_ID, 0);
-    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt());
+    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyLong());
   }
 }

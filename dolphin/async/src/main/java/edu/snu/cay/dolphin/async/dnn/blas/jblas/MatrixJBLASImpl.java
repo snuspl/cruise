@@ -483,4 +483,8 @@ final class MatrixJBLASImpl implements Matrix {
       throw new IllegalArgumentException("The given matrix should be JBLAS based");
     }
   }
+
+  @Override
+  public void free() {
+  }
 }
