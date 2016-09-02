@@ -19,16 +19,18 @@ import com.google.common.base.Ticker;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics;
 import edu.snu.cay.services.ps.PSParameters.KeyCodecName;
+import edu.snu.cay.services.ps.common.Statistics;
+import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.services.ps.worker.parameters.*;
-import edu.snu.cay.services.ps.common.resolver.ServerResolver;
-import edu.snu.cay.services.ps.common.Statistics;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -116,10 +118,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    */
   private final InjectionFuture<WorkerMsgSender<K, P>> sender;
 
-  private final long logPeriod;
+  private final Statistics[] pullStats;
   private final Statistics[] pushStats;
   private final Statistics[] encodeStats;
-  private final Statistics[] pullStats;
+  private final Statistics[] networkStats;
+  private final Statistics[] pendingStats;
   private final long[] startTimes;
   private final Ticker ticker = Ticker.systemTicker();
 
@@ -130,7 +133,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                                @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
                                @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                                @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                               @Parameter(WorkerLogPeriod.class) final long logPeriod,
                                final ParameterUpdater<K, P, V> parameterUpdater,
                                final ServerResolver serverResolver,
                                final InjectionFuture<WorkerMsgSender<K, P>> sender) {
@@ -140,6 +142,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     this.sender = sender;
     this.pendingPulls = new ConcurrentHashMap<>();
     this.pullStats = Statistics.newInstances(numThreads);
+    this.pushStats = Statistics.newInstances(numThreads);
+    this.encodeStats = Statistics.newInstances(numThreads);
+    this.networkStats = Statistics.newInstances(numThreads);
+    this.pendingStats = Statistics.newInstances(numThreads);
     this.threadPool = Executors.newFixedThreadPool(numThreads);
     this.threads = initThreads(queueSize, cacheExpireTimeout, pullRetryTimeoutMs);
     this.encodedKeyCache = CacheBuilder.newBuilder()
@@ -151,15 +157,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           }
         });
 
-    this.logPeriod = TimeUnit.NANOSECONDS.convert(logPeriod, TimeUnit.MILLISECONDS);
-    this.pushStats = Statistics.newInstances(numThreads);
-    this.encodeStats = Statistics.newInstances(numThreads);
     this.startTimes = new long[numThreads];
     final long currentTime = ticker.read();
     for (int i = 0; i < numThreads; ++i) {
       startTimes[i] = currentTime;
     }
-    LOG.log(Level.INFO, "Parameter worker log period = {0} ms", logPeriod);
   }
 
   /**
@@ -173,7 +175,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     final WorkerThread<K, P, V>[] initialized = new WorkerThread[numThreads];
     for (int i = 0; i < numThreads; i++) {
       initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize,
-          cacheExpireTimeout, pullRetryTimeoutMs, pullStats[i]);
+          cacheExpireTimeout, pullRetryTimeoutMs, pullStats[i], networkStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -207,9 +209,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   V pull(final EncodedKey<K> encodedKey) {
-    final PullOp pullOp = new PullOp(encodedKey);
     final int partitionId = getPartitionIndex(encodedKey.getHash());
     final int threadId = partitionId % numThreads;
+    final PullOp pullOp = new PullOp(encodedKey, threadId);
     threads[threadId].enqueue(pullOp);
     return pullOp.get();
   }
@@ -232,10 +234,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
     final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
     for (final EncodedKey<K> encodedKey : encodedKeys) {
-      final PullOp pullOp = new PullOp(encodedKey);
-      pullOps.add(pullOp);
       final int partitionId = getPartitionIndex(encodedKey.getHash());
       final int threadId = partitionId % numThreads;
+      final PullOp pullOp = new PullOp(encodedKey, threadId);
+      pullOps.add(pullOp);
       threads[threadId].enqueue(pullOp);
     }
     final List<V> values = new ArrayList<>(pullOps.size());
@@ -284,10 +286,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
    */
   @Override
-  public void processPullReply(final K key, final V value) {
+  public void processPullReply(final K key, final V value, final long elapsedTimeInServer) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
-      future.setValue(value);
+      future.setValue(value, elapsedTimeInServer);
 
     } else {
       // Because we assign each key to a dedicated thread, there can be at most one active pendingPull for a key.
@@ -334,13 +336,15 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private static final class PullFuture<V> {
     private boolean rejected = false;
     private V value = null;
+    private long serverProcessingTime;
 
     /**
      * Block until a value is set or the maximum waiting time elapses.
      * @param timeout the maximum time to wait in milliseconds
-     * @return the value, or null when it fails to get the value in given timeout
+     * @return a pair containing the value and the elapsed time for the request in server.
+     *          The value is null when it fails to get the value in given timeout.
      */
-    synchronized V getValue(final long timeout) {
+    synchronized Pair<V, Long> getValue(final long timeout) {
       if (value == null && !rejected) {
         try {
           wait(timeout);
@@ -348,15 +352,17 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           LOG.log(Level.WARNING, "InterruptedException on wait", e);
         }
       }
-      return value;
+      return new Pair<>(value, serverProcessingTime);
     }
 
     /**
      * Set the value and unblock all waiting gets.
-     * @param value the value
+     * @param pValue the value
+     * @param pServerProcessingTime pull processing time recorded at server-side
      */
-    synchronized void setValue(final V value) {
-      this.value = value;
+    synchronized void setValue(final V pValue, final long pServerProcessingTime) {
+      this.value = pValue;
+      this.serverProcessingTime = pServerProcessingTime;
       notify();
     }
 
@@ -381,20 +387,81 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     }
   }
 
-  private void printStatistics(final int threadId, final long elapsedTime) {
-    final Statistics pushStat = pushStats[threadId];
-    final Statistics encodeStat = encodeStats[threadId];
-    final Statistics pullStat = pullStats[threadId];
-    LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Worker Thread Id: {1}, PS Worker Push Avg: {2}, " +
-            "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
-            "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
-        new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
-            String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
-            String.format("%g", encodeStat.sum()), String.format("%g", pullStat.avg()),
-            String.format("%g", pullStat.sum()), String.format("%g", pullStat.count())});
-    startTimes[threadId] = ticker.read();
-    pushStat.reset();
-    encodeStat.reset();
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public ParameterWorkerMetrics buildParameterWorkerMetrics() {
+    final double totalPullTime = getTotalProcTime(pullStats);
+    final double totalPushTime = getTotalProcTime(pushStats);
+    final double totalEncodeTime = getTotalProcTime(encodeStats);
+    final double totalNetworkTime = getTotalProcTime(networkStats);
+    final double totalPendingTime = getTotalProcTime(pendingStats);
+    final int totalPullCount = getTotalProcCount(pullStats);
+    final int totalPushCount = getTotalProcCount(pushStats);
+    final int totalEncodeCount = getTotalProcCount(encodeStats);
+    final int totalNetworkStatCount = getTotalProcCount(networkStats);
+    final int totalPendingStatCount = getTotalProcCount(pendingStats);
+    resetStats();
+
+    final ParameterWorkerMetrics metricMessage = ParameterWorkerMetrics.newBuilder()
+        .setNumThreads(numThreads)
+        .setTotalPullTime(totalPullTime)
+        .setTotalPushTime(totalPushTime)
+        .setTotalEncodeTime(totalEncodeTime)
+        .setTotalNetworkTime(totalNetworkTime)
+        .setTotalPendingTime(totalPendingTime)
+        .setTotalPullCount(totalPullCount)
+        .setTotalPushCount(totalPushCount)
+        .setTotalEncodeCount(totalEncodeCount)
+        .setTotalNetworkStatCount(totalNetworkStatCount)
+        .setTotalPendingStatCount(totalPendingStatCount)
+        .build();
+
+    return metricMessage;
+  }
+
+  /**
+   * Computes the total number of requests across all threads in this worker.
+   */
+  private int getTotalProcCount(final Statistics[] procTimeStats) {
+    int processedCount = 0;
+
+    synchronized (procTimeStats) {
+      for (final Statistics stat : procTimeStats) {
+        processedCount += stat.count();
+      }
+    }
+
+    return processedCount;
+  }
+
+  /**
+   * Computes the time spent on processing {@link #getTotalProcCount(Statistics[])} with the threads in this worker.
+   */
+  private double getTotalProcTime(final Statistics[] procTimeStats) {
+    double procTimeSum = 0D;
+
+    synchronized (procTimeStats) {
+      for (final Statistics stat : procTimeStats) {
+        procTimeSum += stat.sum();
+      }
+    }
+
+    return procTimeSum;
+  }
+
+  /**
+   * Resets all {@link Statistics} for the next round of metrics.
+   */
+  private void resetStats() {
+    for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
+      pullStats[threadIdx].reset();
+      pushStats[threadIdx].reset();
+      encodeStats[threadIdx].reset();
+      networkStats[threadIdx].reset();
+      pendingStats[threadIdx].reset();
+    }
   }
 
   /**
@@ -436,11 +503,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private final EncodedKey<K> encodedKey;
     private final P preValue;
     private final int threadId;
+    private final long enqueueTime;
 
     PushOp(final EncodedKey<K> encodedKey, final P preValue, final int threadId) {
       this.encodedKey = encodedKey;
       this.preValue = preValue;
       this.threadId = threadId;
+      this.enqueueTime = ticker.read();
     }
 
     /**
@@ -451,6 +520,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     @Override
     public void apply(final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache) {
       final long pushStartTime = ticker.read();
+      pendingStats[threadId].put(pushStartTime - enqueueTime);
       final Wrapped<V> wrapped = kvCache.getIfPresent(encodedKey);
 
       // If it exists, update the local value, without updating the cache's write time
@@ -486,9 +556,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           pushStats[threadId].put(endTime - pushStartTime);
           encodeStats[threadId].put(endTime - encodeStartTime);
           final long elapsedTime = endTime - startTimes[threadId];
-          if (logPeriod > 0 && elapsedTime > logPeriod) {
-            printStatistics(threadId, elapsedTime);
-          }
           break;
         } catch (final NetworkException e) {
           LOG.log(Level.WARNING, "NetworkException while sending push msg. Do retry", e);
@@ -511,9 +578,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private class PullOp implements Op<K, V> {
     private final EncodedKey<K> encodedKey;
     private V value;
+    private int threadId;
+    private long enqueueTime;
 
-    PullOp(final EncodedKey<K> encodedKey) {
+    PullOp(final EncodedKey<K> encodedKey, final int threadId) {
       this.encodedKey = encodedKey;
+      this.threadId = threadId;
+      this.enqueueTime = ticker.read();
     }
 
     /**
@@ -522,6 +593,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      */
     @Override
     public void apply(final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache) {
+      final long pullStartTime = ticker.read();
+      pendingStats[threadId].put(pullStartTime - enqueueTime);
       try {
         final V loadedValue = kvCache.get(encodedKey).getValue();
         synchronized (this) {
@@ -587,8 +660,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                  final int queueSize,
                  final long cacheExpireTimeout,
                  final long pullRetryTimeoutMs,
-                 final Statistics pullStat) {
-      this.kvCache = initCache(pendingPulls, serverResolver, sender, cacheExpireTimeout, pullRetryTimeoutMs, pullStat);
+                 final Statistics pullStat,
+                 final Statistics networkStat) {
+      this.kvCache = initCache(pendingPulls, serverResolver, sender, cacheExpireTimeout, pullRetryTimeoutMs,
+          pullStat, networkStat);
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
       this.localOps = new ArrayList<>(drainSize);
@@ -600,7 +675,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                                                               final InjectionFuture<WorkerMsgSender<K, P>> sender,
                                                               final long cacheExpireTimeout,
                                                               final long pullRetryTimeoutMs,
-                                                              final Statistics pullStat) {
+                                                              final Statistics pullStat,
+                                                              final Statistics networkStat) {
       return CacheBuilder.newBuilder()
           .concurrencyLevel(1)
           .expireAfterWrite(cacheExpireTimeout, TimeUnit.MILLISECONDS)
@@ -611,13 +687,16 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
               final PullFuture<V> future = new PullFuture<>();
               pendingPulls.put(encodedKey.getKey(), future);
 
-              V value;
+              Pair<V, Long> value;
 
               int retryCount = 0;
+              long startTime;
               while (true) {
                 if (retryCount++ > MAX_PULL_RETRY_COUNT) {
                   throw new RuntimeException("Fail to load a value for pull");
                 }
+
+                startTime = ticker.read();
 
                 // 1. try sending msg to server
                 sendPullMsg(encodedKey);
@@ -635,7 +714,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                 // but small enough to quickly recover from 2C.
                 value = future.getValue(pullRetryTimeoutMs);
 
-                if (value != null) {
+                if (value.getFirst() != null) {
                   break;
                 } else {
                   future.reset();
@@ -644,8 +723,16 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                 }
               }
 
+              final long workerPullTime = ticker.read() - startTime;
+
+              // Actual processing time recorded in server
+              final long serverProcessingTime = value.getSecond();
+
+              pullStat.put(workerPullTime);
+              networkStat.put(workerPullTime - serverProcessingTime);
+
               pendingPulls.remove(encodedKey.getKey());
-              return new Wrapped<>(value);
+              return new Wrapped<>(value.getFirst());
             }
 
             /**

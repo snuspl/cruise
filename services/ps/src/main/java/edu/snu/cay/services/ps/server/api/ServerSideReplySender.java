@@ -25,8 +25,9 @@ public interface ServerSideReplySender<K, P, V> {
    * @param destId the destination's network address
    * @param key key, to be serialized immediately
    * @param value value, to be serialized immediately
+   * @param elapsedTimeInServer elapsed time since pull request's arrival at server
    */
-  void sendPullReplyMsg(String destId, K key, V value);
+  void sendPullReplyMsg(String destId, K key, V value, long elapsedTimeInServer);
 
   /**
    * Send a reject msg for push operation to the worker who requested.

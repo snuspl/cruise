@@ -192,6 +192,7 @@
               <outputDirectory>${project.basedir}/target/generated-sources/avro/</outputDirectory>
               <imports>
                 <import>${project.parent.basedir}/common/src/main/avro/metric.avsc</import>
+                <import>${project.parent.basedir}/services/ps/src/main/avro/parameterserver.avsc</import>
               </imports>
             </configuration>
           </execution>
