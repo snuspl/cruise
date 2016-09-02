@@ -54,7 +54,7 @@ final class AsyncWorkerTask implements Task {
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
-                          @Parameter(Parameters.Epochs.class) final int maxEpochs,
+                          @Parameter(Parameters.Iterations.class) final int maxEpochs,
                           @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                           final WorkerSynchronizer synchronizer,
                           final TrainingDataParser trainingDataParser,

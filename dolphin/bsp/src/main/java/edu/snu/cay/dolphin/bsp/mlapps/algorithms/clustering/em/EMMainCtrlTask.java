@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.mlapps.algorithms.clustering.em;
 
-import edu.snu.cay.common.param.Parameters.Epochs;
+import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.bsp.core.KeyValueStore;
 import edu.snu.cay.dolphin.bsp.core.UserControllerTask;
 import edu.snu.cay.dolphin.bsp.mlapps.converge.ClusteringConvCond;
@@ -101,7 +101,7 @@ public final class EMMainCtrlTask extends UserControllerTask
   public EMMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
                         final KeyValueStore keyValueStore,
                         final OutputStreamProvider outputStreamProvider,
-                        @Parameter(Epochs.class) final int maxIterations,
+                        @Parameter(Iterations.class) final int maxIterations,
                         @Parameter(IsCovarianceShared.class) final boolean isCovarianceShared) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;

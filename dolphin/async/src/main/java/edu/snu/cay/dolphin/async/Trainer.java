@@ -51,7 +51,7 @@ public interface Trainer {
   /**
    * Main method of this trainer.
    * The number of times this method is called can be adjusted with the parameter
-   * {@link edu.snu.cay.common.param.Parameters.Epochs} and {@link edu.snu.cay.common.param.Parameters.MiniBatches}.
+   * {@link edu.snu.cay.common.param.Parameters.Iterations} and {@link edu.snu.cay.common.param.Parameters.MiniBatches}.
    *
    * @param minibatch the index of current minibatch
    */

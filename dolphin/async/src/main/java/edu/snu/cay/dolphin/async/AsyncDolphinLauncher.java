@@ -174,8 +174,8 @@ public final class AsyncDolphinLauncher {
       final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
           .bindImplementation(TrainingDataParser.class, asyncDolphinConfiguration.getTrainingDataParserClass())
-          .bindNamedParameter(Epochs.class,
-              Integer.toString(basicParameterInjector.getNamedInstance(Epochs.class)))
+          .bindNamedParameter(Iterations.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
           .bindNamedParameter(MiniBatches.class,
               Integer.toString(basicParameterInjector.getNamedInstance(MiniBatches.class)))
           .bindNamedParameter(TrainingDataSplits.class,
@@ -266,7 +266,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(Splits.class);
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
-    basicParameterClassList.add(Epochs.class);
+    basicParameterClassList.add(Iterations.class);
     basicParameterClassList.add(JVMHeapSlack.class);
     basicParameterClassList.add(MiniBatches.class);
     basicParameterClassList.add(TrainingDataSplits.class);

@@ -15,8 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.mlapps.algorithms.regression;
 
-import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.common.param.Parameters.Epochs;
+import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.bsp.mlapps.loss.Loss;
 import edu.snu.cay.dolphin.bsp.core.UserParameters;
 import edu.snu.cay.dolphin.bsp.mlapps.data.RowSerializer;
@@ -45,7 +44,7 @@ public final class LinearRegParameters implements UserParameters {
                               @Parameter(StepSize.class) final double stepSize,
                               @Parameter(Lambda.class) final double lambda,
                               @Parameter(Dimension.class) final int dimension,
-                              @Parameter(Epochs.class) final int maxIterations) {
+                              @Parameter(Iterations.class) final int maxIterations) {
     this.convThreshold = convThreshold;
     this.stepSize = stepSize;
     this.lambda = lambda;
@@ -60,7 +59,7 @@ public final class LinearRegParameters implements UserParameters {
         .bindNamedParameter(StepSize.class, String.valueOf(stepSize))
         .bindNamedParameter(Dimension.class, String.valueOf(dimension))
         .bindNamedParameter(Lambda.class, String.valueOf(lambda))
-        .bindNamedParameter(Parameters.Epochs.class, String.valueOf(maxIterations))
+        .bindNamedParameter(Iterations.class, String.valueOf(maxIterations))
         .bindImplementation(Loss.class, SquareLoss.class)
         .bindImplementation(Regularization.class, L2Regularization.class)
         .build();
@@ -89,7 +88,7 @@ public final class LinearRegParameters implements UserParameters {
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
-        .bindNamedParameter(Epochs.class, String.valueOf(maxIterations))
+        .bindNamedParameter(Iterations.class, String.valueOf(maxIterations))
         .build();
   }
 
@@ -99,7 +98,7 @@ public final class LinearRegParameters implements UserParameters {
     cl.registerShortNameOfClass(StepSize.class);
     cl.registerShortNameOfClass(Dimension.class);
     cl.registerShortNameOfClass(Lambda.class);
-    cl.registerShortNameOfClass(Epochs.class);
+    cl.registerShortNameOfClass(Iterations.class);
     cl.registerShortNameOfClass(ConvergenceThreshold.class);
     return cl;
   }

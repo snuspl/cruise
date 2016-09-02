@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.bsp.mlapps.algorithms.regression;
 
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.bsp.core.UserControllerTask;
 import edu.snu.cay.dolphin.bsp.mlapps.converge.LinearModelConvCond;
 import edu.snu.cay.dolphin.bsp.mlapps.data.LinearModel;
@@ -47,7 +47,7 @@ public class LinearRegMainCtrlTask extends UserControllerTask
   public LinearRegMainCtrlTask(final OutputStreamProvider outputStreamProvider,
                                final LinearModelConvCond convergeCondition,
                                final VectorFactory vectorFactory,
-                               @Parameter(Parameters.Epochs.class) final int maxIter,
+                               @Parameter(Iterations.class) final int maxIter,
                                @Parameter(Dimension.class) final int dimension) {
     this.outputStreamProvider = outputStreamProvider;
     this.convergeCondition = convergeCondition;

@@ -86,7 +86,7 @@ final class AddIntegerTrainer implements Trainer {
                             @Parameter(AddIntegerREEF.NumUpdatesPerItr.class) final int numberOfUpdates,
                             @Parameter(AddIntegerREEF.NumWorkers.class) final int numberOfWorkers,
                             @Parameter(AddIntegerREEF.ComputeTimeMs.class) final long computeTime,
-                            @Parameter(Parameters.Epochs.class) final int numEpochs,
+                            @Parameter(Parameters.Iterations.class) final int numEpochs,
                             final MemoryStore<Long> memoryStore,
                             final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;

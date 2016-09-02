@@ -98,7 +98,7 @@ final class AddVectorTrainer implements Trainer {
                            @Parameter(AddVectorREEF.NumKeys.class) final int numberOfKeys,
                            @Parameter(AddVectorREEF.NumWorkers.class) final int numberOfWorkers,
                            @Parameter(AddVectorREEF.ComputeTimeMs.class) final long computeTime,
-                           @Parameter(Parameters.Epochs.class) final int numEpochs,
+                           @Parameter(Parameters.Iterations.class) final int numEpochs,
                            @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                            final MemoryStore<Long> memoryStore,
                            final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
