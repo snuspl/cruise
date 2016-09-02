@@ -267,6 +267,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(JVMHeapSlack.class);
     basicParameterClassList.add(MiniBatches.class);
     basicParameterClassList.add(DashboardPort.class);
+    basicParameterClassList.add(OptimizationBenefitThreshold.class);
 
     // add ps parameters
     basicParameterClassList.add(NumServers.class);
