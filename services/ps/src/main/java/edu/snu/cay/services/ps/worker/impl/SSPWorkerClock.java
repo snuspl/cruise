@@ -58,7 +58,7 @@ public final class SSPWorkerClock implements WorkerClock {
 
   private final int stalenessBound;
 
-  private int workerClock;
+  private volatile int workerClock;
 
   /**
    * The minimum clock among all worker clocks.
@@ -120,7 +120,6 @@ public final class SSPWorkerClock implements WorkerClock {
 
   @Override
   public synchronized void waitIfExceedingStalenessBound() {
-    final long beginTime = System.currentTimeMillis();
     while (workerClock > globalMinimumClock + stalenessBound) {
       try {
         wait();
@@ -128,7 +127,6 @@ public final class SSPWorkerClock implements WorkerClock {
         LOG.log(Level.WARNING, "Interrupt exception occurs while a thread is waiting", e);
       }
     }
-    clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
   }
 
   @Override

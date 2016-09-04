@@ -29,7 +29,6 @@ import java.util.Set;
  *   2-2. If step 2 returns an empty set, check whether the whole plan is completed,
  *    using {@link #getPlanSize()}.
  *   3. Wait the completion of operations. Goto step 2 again.
- *
  */
 public interface Plan {
 

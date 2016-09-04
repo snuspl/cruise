@@ -19,6 +19,8 @@ import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
+import edu.snu.cay.services.em.evaluator.impl.ElasticMemoryMsgHandler;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.NetworkContextRegister;
 import edu.snu.cay.services.em.ns.NetworkDriverRegister;
@@ -148,12 +150,14 @@ public final class ElasticMemoryConfiguration {
     // implementations for MemoryStore and MsgHandler class differ regarding to range support
     // MemoryStore specialized to single-key operations is better in throughput and latency
     final Class memoryStoreClass = rangeSupport ?
-        edu.snu.cay.services.em.evaluator.impl.range.MemoryStoreImpl.class :
+        edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl.class :
         edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl.class;
 
-    final Class evalMsgHandlerClass = rangeSupport ?
-        edu.snu.cay.services.em.evaluator.impl.range.ElasticMemoryMsgHandler.class :
-        edu.snu.cay.services.em.evaluator.impl.singlekey.ElasticMemoryMsgHandler.class;
+    final Class remoteOpHandlerClass = rangeSupport ?
+        edu.snu.cay.services.em.evaluator.impl.rangekey.RemoteOpHandlerImpl.class :
+        edu.snu.cay.services.em.evaluator.impl.singlekey.RemoteOpHandlerImpl.class;
+
+    final Class evalMsgHandlerClass = ElasticMemoryMsgHandler.class;
 
     final Configuration networkConf = getNetworkConfigurationBuilder()
         .bindNamedParameter(EMMessageHandler.class, evalMsgHandlerClass)
@@ -168,6 +172,7 @@ public final class ElasticMemoryConfiguration {
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, memoryStoreClass)
         .bindImplementation(RemoteAccessibleMemoryStore.class, memoryStoreClass)
+        .bindImplementation(RemoteOpHandler.class, remoteOpHandlerClass)
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(memoryStoreId))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
