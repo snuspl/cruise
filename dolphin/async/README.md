@@ -1,9 +1,6 @@
 # Dolphin: A machine learning framework in Cay with runtime optimization
   This module involves Asynchronous version of Dolphin based on Parameter Server.
 
-### Development of a Unified High-Performance Stack for Diverse Big Data Analytics
-
-
 ## Dashboard
 
 - Dolphin async provides a dashboard service which visualizes the procedure of dolphin applications.
