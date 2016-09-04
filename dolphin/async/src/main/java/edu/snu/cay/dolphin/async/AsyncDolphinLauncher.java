@@ -95,7 +95,7 @@ public final class AsyncDolphinLauncher {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinLauncher.class.getName());
   private static final String DASHBOARD_DIR = "/dashboard";
   private static final String DASHBOARD_SCRIPT = "dashboard.py";
-  public static final String HOST_ADDRESS = "INVALID";
+  public static final String INVALID_HOST_ADDRESS = "INVALID";
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
   final class SerializedParameterConfiguration implements Name<String> {
@@ -411,7 +411,7 @@ public final class AsyncDolphinLauncher {
    * @throws IOException when the port number is invalid or failed to find the host address.
    */
   private static String getHostAddress(final int port) throws IOException {
-    String hostAddress = HOST_ADDRESS;
+    String hostAddress = INVALID_HOST_ADDRESS;
 
     // Find IP address of client PC.
     final Enumeration e = NetworkInterface.getNetworkInterfaces();

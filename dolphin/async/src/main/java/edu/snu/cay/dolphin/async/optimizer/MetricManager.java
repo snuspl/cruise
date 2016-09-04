@@ -117,7 +117,7 @@ public final class MetricManager {
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
 
-    boolean tempDashboardEnabled = !hostAddress.equals(AsyncDolphinLauncher.HOST_ADDRESS);
+    boolean tempDashboardEnabled = !hostAddress.equals(AsyncDolphinLauncher.INVALID_HOST_ADDRESS);
     CloseableHttpAsyncClient tempReusableHttpClient = null;
 
     if (tempDashboardEnabled) {
