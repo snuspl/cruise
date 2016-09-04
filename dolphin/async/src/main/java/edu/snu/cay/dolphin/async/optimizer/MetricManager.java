@@ -23,6 +23,7 @@ import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.StringEntity;
@@ -349,7 +350,7 @@ public final class MetricManager {
     @Override
     public void completed(final HttpResponse result) {
       final int code = result.getStatusLine().getStatusCode();
-      if (code != 200) {
+      if (code != HttpStatus.SC_OK) {
         LOG.log(Level.WARNING, "Dashboard: Post request failed. Code-{0}", code);
       }
     }
