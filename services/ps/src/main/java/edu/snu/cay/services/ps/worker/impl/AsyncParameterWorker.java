@@ -513,11 +513,12 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * A generic operation requested from parameter worker clients.
+   * Operations are queued at each Partition.
    */
   private interface Op {
 
     /**
-     * Method to apply.
+     * Method to apply when dequeued by the Partition.
      * @throws InterruptedException when the executing thread is interrupted
      */
     void apply() throws InterruptedException;

@@ -29,7 +29,7 @@ public interface WorkerHandler<K, P, V> {
    * Reply to the worker with a {@code value} that was previously requested by {@link ParameterWorker#pull(Object)}.
    * @param key key object representing what was sent
    * @param value value sent from the server
-   * @param requestId
+   * @param requestId pull request id assigned by ParameterWorker
    * @param elapsedTimeInServer elapsed time since pull request's arrival at server
    */
   void processPullReply(K key, V value, int requestId, long elapsedTimeInServer);
