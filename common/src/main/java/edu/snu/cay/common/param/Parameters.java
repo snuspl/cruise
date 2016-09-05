@@ -82,6 +82,14 @@ public final class Parameters {
 
 
   }
+
+  @NamedParameter(doc = "The minimum cost benefit (in a ratio) for which system optimization occurs. " +
+      "0 = optimization occurs for any benefit greater than 0.",
+      short_name = "opt_benefit_threshold",
+      default_value = "0")
+  public final class OptimizationBenefitThreshold implements Name<Double> {
+  }
+
   @NamedParameter(doc = "Port number for client-side localhost Dashboard server, " +
       "the number should be within (0, 65535), other numbers or occupied port numbers will lead to launch failure. " +
       "You need to install Flask in python first.",
