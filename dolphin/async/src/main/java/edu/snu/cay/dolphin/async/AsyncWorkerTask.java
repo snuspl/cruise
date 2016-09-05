@@ -40,10 +40,10 @@ final class AsyncWorkerTask implements Task {
   private final int maxEpochs;
   private final int numMiniBatchPerEpoch;
   private final WorkerSynchronizer synchronizer;
-  private final TrainingDataParser trainingDataParser;
+  private final MemoryStoreInitializer memoryStoreInitializer;
   private final Trainer trainer;
   private final WorkerClock workerClock;
-  private final TrainingDataProvider trainingDataProvider;
+  private final TrainingDataDivider trainingDataDivider;
   private final MiniBatchParameterWorker miniBatchParameterWorker;
 
   /**
@@ -57,19 +57,19 @@ final class AsyncWorkerTask implements Task {
                           @Parameter(Parameters.Iterations.class) final int maxEpochs,
                           @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                           final WorkerSynchronizer synchronizer,
-                          final TrainingDataParser trainingDataParser,
+                          final MemoryStoreInitializer memoryStoreInitializer,
                           final Trainer trainer,
                           final WorkerClock workerClock,
-                          final TrainingDataProvider trainingDataProvider,
+                          final TrainingDataDivider trainingDataDivider,
                           final MiniBatchParameterWorker miniBatchParameterWorker) {
     this.taskId = taskId;
     this.maxEpochs = maxEpochs;
     this.numMiniBatchPerEpoch = numMiniBatchPerEpoch;
     this.synchronizer = synchronizer;
-    this.trainingDataParser = trainingDataParser;
+    this.memoryStoreInitializer = memoryStoreInitializer;
     this.trainer = trainer;
     this.workerClock = workerClock;
-    this.trainingDataProvider = trainingDataProvider;
+    this.trainingDataDivider = trainingDataDivider;
     this.miniBatchParameterWorker = miniBatchParameterWorker;
   }
 
@@ -77,7 +77,7 @@ final class AsyncWorkerTask implements Task {
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
-    trainingDataParser.parseData();
+    memoryStoreInitializer.initialize();
 
     // TODO #681: Need to add numWorkerThreads concept after multi-thread trainer is enabled
     trainer.initialize();
@@ -104,7 +104,7 @@ final class AsyncWorkerTask implements Task {
         break;
       }
 
-      trainingDataProvider.onEpochStart();
+      trainingDataDivider.onEpochStart();
       trainer.onEpochStart(epoch);
 
       for (int minibatch = 0; minibatch < numMiniBatchPerEpoch; minibatch++) {
@@ -114,7 +114,7 @@ final class AsyncWorkerTask implements Task {
 
         trainer.run(minibatch);
         miniBatchParameterWorker.onMiniBatchEnd();
-        trainingDataProvider.onMiniBatchEnd();
+        trainingDataDivider.onMiniBatchEnd();
         workerClock.clock();
       }
 

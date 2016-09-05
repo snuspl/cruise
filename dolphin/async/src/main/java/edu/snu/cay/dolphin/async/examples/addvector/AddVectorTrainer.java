@@ -147,7 +147,7 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int minibatch) {
+  public void run(final int miniBatch) {
     // run mini-batches
     // 1. pull model to compute with
     pullTracer.startTimer();

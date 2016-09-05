@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
+import edu.snu.cay.dolphin.async.TrainingDataDivider;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -44,7 +44,7 @@ final class LDATrainer implements Trainer {
 
   private final MemoryStore<Long> memoryStore;
 
-  private final TrainingDataProvider<Long> trainingDataProvider;
+  private final TrainingDataDivider<Long> trainingDataDivider;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
 
@@ -52,13 +52,13 @@ final class LDATrainer implements Trainer {
   private LDATrainer(final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
                      final MemoryStore<Long> memoryStore,
-                     final TrainingDataProvider<Long> trainingDataProvider,
+                     final TrainingDataDivider<Long> trainingDataDivider,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
                      @Parameter(NumVocabs.class) final int numVocabs) {
     this.sampler = sampler;
     this.statCalculator = statCalculator;
     this.memoryStore = memoryStore;
-    this.trainingDataProvider = trainingDataProvider;
+    this.trainingDataDivider = trainingDataDivider;
     this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
@@ -94,9 +94,9 @@ final class LDATrainer implements Trainer {
   }
 
   @Override
-  public void run(final int minibatch) {
+  public void run(final int miniBatch) {
 
-    Map<Long, Document> workloadMap = trainingDataProvider.getNextTrainingDataSplit();
+    Map<Long, Document> workloadMap = trainingDataDivider.getNextTrainingDataSplit();
     while (!workloadMap.isEmpty()) {
       final Collection<Document> workload = workloadMap.values();
 
@@ -113,7 +113,7 @@ final class LDATrainer implements Trainer {
         }
       }
 
-      workloadMap = trainingDataProvider.getNextTrainingDataSplit();
+      workloadMap = trainingDataDivider.getNextTrainingDataSplit();
     }
   }
 

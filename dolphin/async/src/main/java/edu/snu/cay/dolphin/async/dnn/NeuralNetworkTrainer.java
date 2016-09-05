@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
+import edu.snu.cay.dolphin.async.TrainingDataDivider;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkData;
@@ -43,7 +43,7 @@ final class NeuralNetworkTrainer implements Trainer {
   private final Validator trainingValidator;
 
   private final MemoryStore<Long> memoryStore;
-  private final TrainingDataProvider<Long> trainingDataProvider;
+  private final TrainingDataDivider<Long> trainingDataDivider;
 
   /**
    * @param neuralNetwork the neural network model
@@ -52,12 +52,12 @@ final class NeuralNetworkTrainer implements Trainer {
   @Inject
   private NeuralNetworkTrainer(final NeuralNetwork neuralNetwork,
                                final MemoryStore<Long> memoryStore,
-                               final TrainingDataProvider<Long> trainingDataProvider) {
+                               final TrainingDataDivider<Long> trainingDataDivider) {
     this.neuralNetwork = neuralNetwork;
     this.trainingValidator = new Validator(neuralNetwork);
     this.crossValidator = new Validator(neuralNetwork);
     this.memoryStore = memoryStore;
-    this.trainingDataProvider = trainingDataProvider;
+    this.trainingDataDivider = trainingDataDivider;
   }
 
   @Override
@@ -84,8 +84,8 @@ final class NeuralNetworkTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int minibatch) {
-    Map<Long, NeuralNetworkData> workloadMap = trainingDataProvider.getNextTrainingDataSplit();
+  public void run(final int miniBatch) {
+    Map<Long, NeuralNetworkData> workloadMap = trainingDataDivider.getNextTrainingDataSplit();
     while (!workloadMap.isEmpty()) {
       final Collection<NeuralNetworkData> workload = workloadMap.values();
       final Collection<NeuralNetworkData> validationWorkload = Collections.emptyList();
@@ -117,7 +117,7 @@ final class NeuralNetworkTrainer implements Trainer {
         crossValidator.validate(input, labels);
       }
 
-      workloadMap = trainingDataProvider.getNextTrainingDataSplit();
+      workloadMap = trainingDataDivider.getNextTrainingDataSplit();
     }
   }
 

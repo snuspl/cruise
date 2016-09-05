@@ -53,9 +53,9 @@ public interface Trainer {
    * The number of times this method is called can be adjusted with the parameter
    * {@link edu.snu.cay.common.param.Parameters.Iterations} and {@link edu.snu.cay.common.param.Parameters.MiniBatches}.
    *
-   * @param minibatch the index of current minibatch
+   * @param miniBatch the index of current miniBatch
    */
-  void run(int minibatch);
+  void run(int miniBatch);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

@@ -33,7 +33,7 @@ import java.util.Map;
  * @param <K> type of the key (or id), it should be the same type with keys of MemoryStore.
  */
 @TaskSide
-public final class TrainingDataProvider<K> {
+public final class TrainingDataDivider<K> {
   private final int numMiniBatchesPerEpoch;
 
   private final int numTrainingSplitsPerMiniBatch;
@@ -50,9 +50,9 @@ public final class TrainingDataProvider<K> {
   private int currentMiniBatch;
 
   @Inject
-  public TrainingDataProvider(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
-                              @Parameter(Parameters.TrainingDataSplits.class) final int numTrainingSplitsPerMiniBatch,
-                              final MemoryStore<K> memoryStore) {
+  public TrainingDataDivider(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
+                             @Parameter(Parameters.TrainingDataSplits.class) final int numTrainingSplitsPerMiniBatch,
+                             final MemoryStore<K> memoryStore) {
     this.numMiniBatchesPerEpoch = numMiniBatchPerEpoch;
     this.numTrainingSplitsPerMiniBatch = numTrainingSplitsPerMiniBatch;
     this.memoryStore = memoryStore;

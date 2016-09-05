@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.TrainingDataParser;
+import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -28,8 +28,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class MLRTrainingDataParser implements TrainingDataParser {
-  private static final Logger LOG = Logger.getLogger(MLRTrainingDataParser.class.getName());
+public final class MLRMemoryStoreInitializer implements MemoryStoreInitializer {
+  private static final Logger LOG = Logger.getLogger(MLRMemoryStoreInitializer.class.getName());
 
   /**
    * Number of instances to compute training loss with.
@@ -45,10 +45,10 @@ public final class MLRTrainingDataParser implements TrainingDataParser {
   private final MemoryStore<Long> memoryStore;
 
   @Inject
-  MLRTrainingDataParser(@Parameter(MLRParameters.TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
-                        final MLRParser mlrParser,
-                        final DataIdFactory<Long> idFactory,
-                        final MemoryStore<Long> memoryStore) {
+  MLRMemoryStoreInitializer(@Parameter(MLRParameters.TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
+                            final MLRParser mlrParser,
+                            final DataIdFactory<Long> idFactory,
+                            final MemoryStore<Long> memoryStore) {
     this.trainErrorDatasetSize = trainErrorDatasetSize;
     this.mlrParser = mlrParser;
     this.idFactory = idFactory;
@@ -56,7 +56,7 @@ public final class MLRTrainingDataParser implements TrainingDataParser {
   }
 
   @Override
-  public void parseData() {
+  public void initialize() {
     // The input dataset, given as a list of pairs which are in the form, (input vector, label).
     final List<Pair<Vector, Integer>> dataValues = mlrParser.parse();
 

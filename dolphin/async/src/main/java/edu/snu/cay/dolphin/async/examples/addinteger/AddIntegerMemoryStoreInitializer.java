@@ -13,18 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async;
+package edu.snu.cay.dolphin.async.examples.addinteger;
 
-import org.apache.reef.annotations.audience.TaskSide;
+import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
 
-/**
- * A parser which is used to parse training data.
- */
-@TaskSide
-public interface TrainingDataParser {
+import javax.inject.Inject;
 
-  /**
-   * Parse training data and put the parsed data into memory store.
-   */
-  void parseData();
+public final class AddIntegerMemoryStoreInitializer implements MemoryStoreInitializer {
+
+  @Inject
+  public AddIntegerMemoryStoreInitializer() {
+
+  }
+
+  @Override
+  public void initialize() {
+
+  }
 }

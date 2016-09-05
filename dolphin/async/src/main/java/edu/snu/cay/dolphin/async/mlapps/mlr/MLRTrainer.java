@@ -21,7 +21,7 @@ import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.MiniBatchParameterWorker;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
+import edu.snu.cay.dolphin.async.TrainingDataDivider;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
@@ -109,7 +109,7 @@ final class MLRTrainer implements Trainer {
    */
   private final int trainErrorDatasetSize;
 
-  private final TrainingDataProvider<Long> trainingDataProvider;
+  private final TrainingDataDivider<Long> trainingDataDivider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -133,7 +133,7 @@ final class MLRTrainer implements Trainer {
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
                      @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
-                     final TrainingDataProvider<Long> trainingDataProvider,
+                     final TrainingDataDivider<Long> trainingDataDivider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final ParameterWorker parameterWorker,
                      final MemoryStore<Long> memoryStore,
@@ -155,7 +155,7 @@ final class MLRTrainer implements Trainer {
     this.metricsMsgSender = metricsMsgSender;
     this.parameterWorker = parameterWorker;
     this.memoryStore = memoryStore;
-    this.trainingDataProvider = trainingDataProvider;
+    this.trainingDataDivider = trainingDataDivider;
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
@@ -219,9 +219,9 @@ final class MLRTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int minibatch) {
+  public void run(final int miniBatch) {
 
-    Map<Long, Pair<Vector, Integer>> workloadMap = trainingDataProvider.getNextTrainingDataSplit();
+    Map<Long, Pair<Vector, Integer>> workloadMap = trainingDataDivider.getNextTrainingDataSplit();
     while (!workloadMap.isEmpty()) {
       final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
 
@@ -259,7 +259,7 @@ final class MLRTrainer implements Trainer {
 
       computeTracer.recordTime(numInstances);
 
-      workloadMap = trainingDataProvider.getNextTrainingDataSplit();
+      workloadMap = trainingDataDivider.getNextTrainingDataSplit();
     }
   }
 

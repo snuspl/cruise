@@ -57,6 +57,7 @@ final class LDAUpdater implements ParameterUpdater<Integer, int[], int[]> {
 
   @Override
   public int[] aggregate(final int[] oldPreValue, final int[] newPreValue) {
+    // LDA is implemented stochastic gradient descent way, so aggregation is not necessary.
     throw new UnsupportedOperationException();
   }
 }

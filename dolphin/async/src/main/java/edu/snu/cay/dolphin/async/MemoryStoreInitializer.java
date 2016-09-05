@@ -13,21 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.lasso;
+package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.dolphin.async.TrainingDataParser;
+import org.apache.reef.annotations.audience.TaskSide;
 
-import javax.inject.Inject;
+/**
+ * Insert initial values into memory store.
+ */
+@TaskSide
+public interface MemoryStoreInitializer {
 
-public final class LassoTrainingDataParser implements TrainingDataParser {
-
-  @Inject
-  public LassoTrainingDataParser() {
-
-  }
-
-  @Override
-  public void parseData() {
-
-  }
+  /**
+   * Initialize memory store with parsed training data.
+   */
+  void initialize();
 }

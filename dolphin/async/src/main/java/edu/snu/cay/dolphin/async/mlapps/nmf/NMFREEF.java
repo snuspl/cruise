@@ -36,7 +36,7 @@ public final class NMFREEF {
   public static void main(final String[] args) {
     AsyncDolphinLauncher.launch("MatrixFactorizationREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(NMFTrainer.class)
-        .setTrainingDataParserClass(NMFTrainingDataParser.class)
+        .setMemoryStoreInitializer(NMFMemoryStoreInitializer.class)
         .setUpdaterClass(NMFUpdater.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)

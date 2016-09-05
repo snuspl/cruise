@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
-import edu.snu.cay.dolphin.async.TrainingDataParser;
+import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -26,8 +26,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class LDATrainingDataParser implements TrainingDataParser {
-  private static final Logger LOG = Logger.getLogger(LDATrainingDataParser.class.getName());
+public final class LDAMemoryStoreInitializer implements MemoryStoreInitializer {
+  private static final Logger LOG = Logger.getLogger(LDAMemoryStoreInitializer.class.getName());
 
   private final LDADataParser dataParser;
   private final DataIdFactory<Long> idFactory;
@@ -37,19 +37,20 @@ public final class LDATrainingDataParser implements TrainingDataParser {
   private final int numVocabs;
 
   @Inject
-  public LDATrainingDataParser(final LDADataParser dataParser,
-                               final LDABatchParameterWorker batchParameterWorker,
-                               final DataIdFactory<Long> idFactory,
-                               final MemoryStore<Long> memoryStore,
-                               @Parameter(LDAParameters.NumVocabs.class) final int numVocabs) {
+  public LDAMemoryStoreInitializer(final LDADataParser dataParser,
+                                   final LDABatchParameterWorker batchParameterWorker,
+                                   final DataIdFactory<Long> idFactory,
+                                   final MemoryStore<Long> memoryStore,
+                                   @Parameter(LDAParameters.NumVocabs.class) final int numVocabs) {
     this.dataParser = dataParser;
     this.batchParameterWorker = batchParameterWorker;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.numVocabs = numVocabs;
   }
+
   @Override
-  public void parseData() {
+  public void initialize() {
     final List<Document> documents = dataParser.parse();
     final List<Long> dataKeys;
 

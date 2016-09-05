@@ -15,19 +15,19 @@
  */
 package edu.snu.cay.dolphin.async.examples.addvector;
 
-import edu.snu.cay.dolphin.async.TrainingDataParser;
+import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
 
 import javax.inject.Inject;
 
-public final class AddVectorTrainingDataParser implements TrainingDataParser {
+public final class AddVectorMemoryStoreInitializer implements MemoryStoreInitializer {
 
   @Inject
-  public AddVectorTrainingDataParser() {
+  public AddVectorMemoryStoreInitializer() {
 
   }
 
   @Override
-  public void parseData() {
+  public void initialize() {
 
   }
 }
