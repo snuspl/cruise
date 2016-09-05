@@ -162,7 +162,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D);
 
     final String optimizationInfo = String.format("{\"numAvailEval\":%d, " +
-            "\"currNumWorker\":%d, \"currNumServer\":%d, \"optNumWorker\":%d, \"optNumServer\":%d, " +
+            "\"optNumWorker\":%d, \"currNumWorker\":%d, \"optNumServer\":%d, \"currNumServer\":%d, " +
             "\"optCompCost\":%f, \"currCompCost\":%f, \"optCommCost\":%f, \"currCommCost\":%f," +
             "\"optBenefitThreshold\":%f}", availableEvaluators,
         currentNumWorkers, currentNumServers, optimalNumWorkers, optimalNumServers,
@@ -313,15 +313,15 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final double compCost = numDataBlocks / workerThroughputSum;
 
     // Calculating commCost based on avg: (avgNumBlockPerServer / avgThroughput)
-    final int numServers = availableEvaluators - numWorker;
-    final double serverThroughputSum = servers.subList(0, numServers).stream()
+    final int numServer = availableEvaluators - numWorker;
+    final double serverThroughputSum = servers.subList(0, numServer).stream()
         .mapToDouble(server -> server.throughput)
         .sum();
     final double commCost = numModelBlocks / serverThroughputSum * numWorker * numMiniBatchPerItr;
     final double totalCost = compCost + commCost;
-    LOG.log(Level.INFO, "Estimated Cost: (server, worker) = ({0}, {1}), totalCost = {2}, " +
-        "(compCost, commCost) = ({3}, {4})",
-        new Object[] {numServers, numWorker, totalCost, compCost, commCost});
+    final String costInfo = String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +
+        "\"compCost\": %f, \"commCost\": %f}", numServer, numWorker, totalCost, compCost, commCost);
+    LOG.log(Level.INFO, "CostInfo {0} {1}", new Object[]{System.currentTimeMillis(), costInfo});
     return new Pair<>(compCost, commCost);
   }
 
