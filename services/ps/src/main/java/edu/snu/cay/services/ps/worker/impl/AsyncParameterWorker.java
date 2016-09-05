@@ -267,7 +267,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * Handles incoming pull replies, by setting the value of pull ops.
-   * See {@link PullRequest#resolvePendingOps(Object, long)}.
+   * See {@link PullRequest#completePendingOps(Object, long)}.
    * This will notify the waiting {@link WorkerThread} to continue,
    * when the number of pending pulls on the thread becomes less than {@link #MAX_PENDING_PULL_COUNT_PER_THREAD}.
    */
@@ -285,7 +285,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
       final PullRequest pullRequest = pendingPullRequests.get(key);
       if (checkPullRequest(pullRequest, requestId)) {
-        pendingPullRequests.remove(key).resolvePendingOps(value, elapsedTimeInServer);
+        pendingPullRequests.remove(key).completePendingOps(value, elapsedTimeInServer);
         if (pendingPullRequests.size() == MAX_PENDING_PULL_COUNT_PER_THREAD - 1) {
           workerThread.notify();
         }
@@ -361,7 +361,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     }
     final WorkerThread workerThread = threads[getThreadIndex(encodedKey.getHash())];
     workerThread.enqueueRetryOp(new PushOp(workerThread, encodedKey, preValue));
-    workerThread.interrupt();
+    workerThread.interruptToTriggerRetry();
   }
 
   /**
@@ -545,12 +545,14 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private final WorkerThread workerThread;
     private final EncodedKey<K> encodedKey;
     private final P preValue;
+
     private final long enqueueTime;
 
     PushOp(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final P preValue) {
       this.workerThread = workerThread;
       this.encodedKey = encodedKey;
       this.preValue = preValue;
+
       this.enqueueTime = ticker.read();
     }
 
@@ -559,11 +561,14 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       synchronized (workerThread) {
         final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
         while (pendingPullRequests.containsKey(encodedKey.getKey())) {
-          pendingPullRequests.get(encodedKey.getKey()).waitForResolve();
+          pendingPullRequests.get(encodedKey.getKey()).waitForComplete();
         }
+
         final long pushStartTime = ticker.read();
         workerThread.pendingStat.put(pushStartTime - enqueueTime);
+
         sendPushMsg(encodedKey, preValue);
+
         final long endTime = ticker.read();
         workerThread.pushStat.put(endTime - pushStartTime);
       }
@@ -596,6 +601,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     PullOp(final WorkerThread workerThread, final EncodedKey<K> encodedKey) {
       this.workerThread = workerThread;
       this.encodedKey = encodedKey;
+
       this.enqueueTime = ticker.read();
     }
 
@@ -604,19 +610,26 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       synchronized (workerThread) {
         final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
         PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
+
+        // send new pull request
         if (pullRequest == null) {
           while (pendingPullRequests.size() >= MAX_PENDING_PULL_COUNT_PER_THREAD) {
             workerThread.wait();
           }
+
           this.pullStartTime = ticker.read();
           workerThread.pendingStat.put(pullStartTime - enqueueTime);
+
           requestId = workerThread.getNewRequestId();
           pullRequest = new PullRequest(workerThread, encodedKey, this);
           pendingPullRequests.put(encodedKey.getKey(), pullRequest);
           sendPullMsg(encodedKey, requestId);
+
+          // use existing pull request, do not send another pull request
         } else {
           this.pullStartTime = ticker.read();
           workerThread.pendingStat.put(pullStartTime - enqueueTime);
+
           pullRequest.addPendingOp(this);
         }
       }
@@ -664,6 +677,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     public synchronized void setResult(final V newValue) {
       final long endTime = ticker.read();
       workerThread.pullStat.put(endTime - pullStartTime);
+
       this.value = newValue;
       notify();
     }
@@ -726,9 +740,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * Retry this pull request if the timeout exceeded. Does not provide strong guarantee of timeout.
      * This method does not care about retry count, and only depends on whether the timeout is exceeded or not.
      * The worker may not send pull retry message immediately. It depends on the implementation of {@link WorkerThread}.
-     * @return true if retry is necessary
+     * @return true if timeout exceeded
      */
-    boolean retryIfNecessary() {
+    boolean retryIfTimeout() {
       if (needRetry) {
         LOG.log(Level.INFO, "Pull request time out for key: {0}, requestId: {1}, retryCount: {2}",
             new Object[]{encodedKey.getKey(), requestId, retryCount});
@@ -745,22 +759,29 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @param pullOp a pending pull operation
      */
     void addPendingOp(final PullOp pullOp) {
-      pendingOps.add(pullOp);
+      synchronized(workerThread) {
+        pendingOps.add(pullOp);
+      }
     }
 
     /**
-     * Resolve pending pull operations in {@link #pendingOps}.
+     * Complete pending pull operations in {@link #pendingOps}
+     * by notifying client threads using {@link PullOp#setResult(Object)}.
      * @param value value received from server
      * @param elapsedTimeInServer elapsed time since pull request's arrival at server
      */
-    void resolvePendingOps(final V value, final long elapsedTimeInServer) {
-      final long pullTime = ticker.read() - pullStartTime;
-      workerThread.networkStat.put(pullTime - elapsedTimeInServer);
-      for (final PullOp pullOp : pendingOps) {
-        pullOp.setResult(value);
-      }
-      if (waiting) {
-        workerThread.notify();
+    void completePendingOps(final V value, final long elapsedTimeInServer) {
+      synchronized(workerThread) {
+
+        final long pullTime = ticker.read() - pullStartTime;
+        workerThread.networkStat.put(pullTime - elapsedTimeInServer);
+
+        for (final PullOp pullOp : pendingOps) {
+          pullOp.setResult(value);
+        }
+        if (waiting) {
+          workerThread.notify();
+        }
       }
     }
 
@@ -769,16 +790,18 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      */
     void rejectPullRequest() {
       workerThread.enqueueRetryOp(pendingOps.get(0));
-      workerThread.interrupt();
+      workerThread.interruptToTriggerRetry();
     }
 
     /**
-     * Wait until this pull request is resolved.
+     * Wait until this pull request is completed.
      * @throws InterruptedException when the executing thread is interrupted
      */
-    void waitForResolve() throws InterruptedException {
-      waiting = true;
-      workerThread.wait();
+    void waitForComplete() throws InterruptedException {
+      synchronized(workerThread) {
+        waiting = true;
+        workerThread.wait();
+      }
     }
   }
 
@@ -883,7 +906,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       return requestId++;
     }
 
-    void interrupt() {
+    void interruptToTriggerRetry() {
       currentThread.interrupt();
     }
 
@@ -999,7 +1022,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   /**
    * A thread which checks timeout of remaining pendingPullRequests.
    * Traverse all remaining pendingPullRequests in {@link #threads} for every {@code pullRetryTimeoutMs} milliseconds
-   * and enqueue {@link PullOp} if necessary. See {@link PullRequest#retryIfNecessary()}.
+   * and enqueue {@link PullOp} if necessary. See {@link PullRequest#retryIfTimeout()}.
    *
    * If {@code pullRetryTimeoutMs} is equal to 0, this thread do nothing. In other words, there is no timeout mechanism.
    */
@@ -1048,13 +1071,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           boolean needInterrupt = false;
           for (final PullRequest pullRequest : pendingPullRequests.values()) {
             if (needInterrupt) {
-              pullRequest.retryIfNecessary();
+              pullRequest.retryIfTimeout();
             } else {
-              needInterrupt = pullRequest.retryIfNecessary();
+              needInterrupt = pullRequest.retryIfTimeout();
             }
           }
           if (needInterrupt) {
-            workerThread.interrupt();
+            workerThread.interruptToTriggerRetry();
           }
         }
 
