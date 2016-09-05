@@ -257,6 +257,7 @@ public final class AsyncDolphinLauncher {
     // add all basic parameters
     // TODO #681: Need to add configuration for numWorkerThreads after multi-thread worker is enabled
     final List<Class<? extends Name<?>>> basicParameterClassList = new LinkedList<>();
+    basicParameterClassList.add(DriverMemory.class);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -356,6 +357,7 @@ public final class AsyncDolphinLauncher {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
+        .set(DriverConfiguration.DRIVER_MEMORY, injector.getNamedInstance(DriverMemory.class))
         .set(DriverConfiguration.ON_DRIVER_STARTED, AsyncDolphinDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AsyncDolphinDriver.AllocatedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, AsyncDolphinDriver.FailedEvaluatorHandler.class)
