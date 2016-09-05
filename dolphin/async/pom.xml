@@ -266,10 +266,7 @@
                 <configuration>
                   <testExcludes>
                     <exclude>edu/snu/cay/dolphin/async/dnn/blas/cuda/*.java</exclude>
-<<<<<<< HEAD
                     <exclude>edu/snu/cay/dolphin/async/dnn/layers/cuda/*.java</exclude>
-=======
->>>>>>> master
                   </testExcludes>
                 </configuration>
                 <goals>

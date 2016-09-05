@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async.dnn.conf;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.PoolingLayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
-//import edu.snu.cay.dolphin.async.dnn.layers.PoolingLayer;
+import edu.snu.cay.dolphin.async.dnn.layers.PoolingLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.cuda.PoolingGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
@@ -44,6 +44,7 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
   private int strideWidth = 1;
   private int kernelHeight;
   private int kernelWidth;
+  private boolean useGpu = false;
 
   public synchronized PoolingLayerConfigurationBuilder setPoolingType(final String poolingType) {
     this.poolingType = poolingType;
@@ -80,6 +81,11 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
     return this;
   }
 
+  public synchronized PoolingLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
+    this.useGpu = useGpu;
+    return this;
+  }
+
   public synchronized PoolingLayerConfigurationBuilder fromProtoConfiguration(
       final NeuralNetworkProtos.LayerConfiguration protoConf) {
     poolingType = protoConf.getPoolingParam().getPoolingType();
@@ -94,16 +100,30 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
 
   @Override
   public synchronized Configuration build() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(LayerConfigurationParameters.PoolingType.class, poolingType)
-        .bindNamedParameter(LayerConfigurationParameters.PaddingHeight.class, String.valueOf(paddingHeight))
-        .bindNamedParameter(LayerConfigurationParameters.PaddingWidth.class, String.valueOf(paddingWidth))
-        .bindNamedParameter(LayerConfigurationParameters.StrideHeight.class, String.valueOf(strideHeight))
-        .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
-        .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
-        .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
-        .bindImplementation(LayerBase.class, PoolingGpuLayer.class)
-        .bindImplementation(LayerParameterInitializer.class, PoolingLayerParameterInitializer.class)
-        .build();
+    if (!useGpu) {
+      return Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerConfigurationParameters.PoolingType.class, poolingType)
+          .bindNamedParameter(LayerConfigurationParameters.PaddingHeight.class, String.valueOf(paddingHeight))
+          .bindNamedParameter(LayerConfigurationParameters.PaddingWidth.class, String.valueOf(paddingWidth))
+          .bindNamedParameter(LayerConfigurationParameters.StrideHeight.class, String.valueOf(strideHeight))
+          .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
+          .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
+          .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
+          .bindImplementation(LayerBase.class, PoolingLayer.class)
+          .bindImplementation(LayerParameterInitializer.class, PoolingLayerParameterInitializer.class)
+          .build();
+    } else {
+      return Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerConfigurationParameters.PoolingType.class, poolingType)
+          .bindNamedParameter(LayerConfigurationParameters.PaddingHeight.class, String.valueOf(paddingHeight))
+          .bindNamedParameter(LayerConfigurationParameters.PaddingWidth.class, String.valueOf(paddingWidth))
+          .bindNamedParameter(LayerConfigurationParameters.StrideHeight.class, String.valueOf(strideHeight))
+          .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
+          .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
+          .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
+          .bindImplementation(LayerBase.class, PoolingGpuLayer.class)
+          .bindImplementation(LayerParameterInitializer.class, PoolingLayerParameterInitializer.class)
+          .build();
+    }
   }
 }

@@ -42,6 +42,10 @@ public final class LayerConfigurationParameters {
   public static final class LayerInputShape implements Name<String> {
   }
 
+  @NamedParameter(doc = "use of GPU")
+  public static final class UseGpu implements Name<Boolean> {
+  }
+
   /**
    * For fully connected layers.
    */

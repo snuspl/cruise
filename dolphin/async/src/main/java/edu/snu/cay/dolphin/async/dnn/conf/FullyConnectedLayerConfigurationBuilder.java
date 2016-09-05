@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.conf;
 
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.FullyConnectedLayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
-//import edu.snu.cay.dolphin.async.dnn.layers.FullyConnectedLayer;
+import edu.snu.cay.dolphin.async.dnn.layers.FullyConnectedLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.cuda.FullyConnectedGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
@@ -41,6 +41,7 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
   private int numOutput;
   private float initWeight;
   private float initBias;
+  private boolean useGpu = false;
 
   public synchronized FullyConnectedLayerConfigurationBuilder setNumOutput(final int numOutput) {
     this.numOutput = numOutput;
@@ -57,6 +58,11 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
     return this;
   }
 
+  public synchronized FullyConnectedLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
+    this.useGpu = useGpu;
+    return this;
+  }
+
   public synchronized FullyConnectedLayerConfigurationBuilder fromProtoConfiguration(
       final NeuralNetworkProtos.LayerConfiguration protoConf) {
     numOutput = protoConf.getFullyConnectedParam().getNumOutput();
@@ -67,12 +73,22 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
 
   @Override
   public synchronized Configuration build() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
-        .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
-        .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
-        .bindImplementation(LayerBase.class, FullyConnectedGpuLayer.class)
-        .bindImplementation(LayerParameterInitializer.class, FullyConnectedLayerParameterInitializer.class)
-        .build();
+    if (!useGpu) {
+      return Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
+          .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
+          .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
+          .bindImplementation(LayerBase.class, FullyConnectedLayer.class)
+          .bindImplementation(LayerParameterInitializer.class, FullyConnectedLayerParameterInitializer.class)
+          .build();
+    } else {
+      return Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
+          .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
+          .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
+          .bindImplementation(LayerBase.class, FullyConnectedGpuLayer.class)
+          .bindImplementation(LayerParameterInitializer.class, FullyConnectedLayerParameterInitializer.class)
+          .build();
+    }
   }
 }

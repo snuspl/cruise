@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn.conf;
 
-//import edu.snu.cay.dolphin.async.dnn.layers.LRNLayer;
+import edu.snu.cay.dolphin.async.dnn.layers.LRNLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.cuda.LRNGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
@@ -38,6 +38,7 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
   private float alpha = 1;
   private float beta = 0.75f;
   private float k = 1;
+  private boolean useGpu = false;
 
   public synchronized LRNLayerConfigurationBuilder setLocalSize(final int localSize) {
     this.localSize = localSize;
@@ -59,6 +60,11 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
     return this;
   }
 
+  public synchronized LRNLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
+    this.useGpu = useGpu;
+    return this;
+  }
+
   public synchronized LRNLayerConfigurationBuilder fromProtoConfiguration(
       final NeuralNetworkProtos.LayerConfiguration protoConf) {
     localSize = protoConf.getLrnParam().getLocalSize();
@@ -73,13 +79,23 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
     if (localSize % 2 == 0) {
       throw new IllegalArgumentException("local size should be an odd number");
     } else {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.LocalSize.class, String.valueOf(localSize))
-          .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
-          .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
-          .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
-          .bindImplementation(LayerBase.class, LRNGpuLayer.class)
-          .build();
+      if (!useGpu) {
+        return Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(LayerConfigurationParameters.LocalSize.class, String.valueOf(localSize))
+            .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
+            .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
+            .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
+            .bindImplementation(LayerBase.class, LRNLayer.class)
+            .build();
+      } else {
+        return Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(LayerConfigurationParameters.LocalSize.class, String.valueOf(localSize))
+            .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
+            .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
+            .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
+            .bindImplementation(LayerBase.class, LRNGpuLayer.class)
+            .build();
+      }
     }
   }
 }

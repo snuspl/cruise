@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn.conf;
 
-//import edu.snu.cay.dolphin.async.dnn.layers.ActivationLayer;
+import edu.snu.cay.dolphin.async.dnn.layers.ActivationLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.cuda.ActivationGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
@@ -36,6 +36,7 @@ public final class ActivationLayerConfigurationBuilder implements Builder<Config
   }
 
   private String activationFunction;
+  private boolean useGpu = false;
 
   public synchronized ActivationLayerConfigurationBuilder setActivationFunction(final String activationFunction) {
     this.activationFunction = activationFunction;
@@ -48,11 +49,23 @@ public final class ActivationLayerConfigurationBuilder implements Builder<Config
     return this;
   }
 
+  public synchronized ActivationLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
+    this.useGpu = useGpu;
+    return this;
+  }
+
   @Override
   public synchronized Configuration build() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
-        .bindImplementation(LayerBase.class, ActivationGpuLayer.class)
-        .build();
+    if (!useGpu) {
+      return Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
+          .bindImplementation(LayerBase.class, ActivationLayer.class)
+          .build();
+    } else {
+      return Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
+          .bindImplementation(LayerBase.class, ActivationGpuLayer.class)
+          .build();
+    }
   }
 }
