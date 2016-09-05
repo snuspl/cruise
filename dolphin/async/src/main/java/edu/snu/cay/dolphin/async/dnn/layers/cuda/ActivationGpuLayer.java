@@ -75,17 +75,18 @@ public final class ActivationGpuLayer extends LayerBase {
     detectErrorPointer(inputDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
     detectErrorPointer(activationDesc);
-    final int func; //0: sigmoid, 1: relu, 2: tanh, 3: clipped relu
-    if (activationFunction.toLowerCase().equals("sigmoid")) {
-      func = 0;
-    } else if (activationFunction.toLowerCase().equals("relu")) {
-      func = 1;
-    } else if (activationFunction.toLowerCase().equals("tanh")) {
-      func = 2;
-    } else if (activationFunction.toLowerCase().equals("clipped relu")) {
-      func = 3;
-    } else {
-      throw new IllegalArgumentException("Unsupported activation function");
+    final char func;
+    switch (activationFunction.toLowerCase()) {
+    case "sigmoid": func = 'S';
+      break;
+    case "relu": func = 'R';
+      break;
+    case "tanh": func = 'T';
+      break;
+    case "clipped relu": func = 'C';
+      break;
+    default:
+      throw new IllegalArgumentException("Unsupported function: " + activationFunction);
     }
     this.activDesc = JavaCudnn.createActivDesc(func);
     detectErrorPointer(activDesc);
@@ -120,7 +121,7 @@ public final class ActivationGpuLayer extends LayerBase {
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
     } else {
-      throw new RuntimeException("Something went wrong in feedForward");
+      throw new RuntimeException("Failed to feedForward");
     }
   }
 
@@ -140,7 +141,7 @@ public final class ActivationGpuLayer extends LayerBase {
         inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
       return error;
     } else {
-      throw new RuntimeException("Something went wrong in backPropagate");
+      throw new RuntimeException("Failed to backPropagate");
     }
   }
 

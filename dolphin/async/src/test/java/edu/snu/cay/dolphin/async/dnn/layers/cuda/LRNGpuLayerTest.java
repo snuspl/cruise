@@ -108,8 +108,7 @@ public class LRNGpuLayerTest {
           .setAlpha(3)
           .setBeta(2)
           .setK(1)
-          .setLocalSize(3)
-          .setUseGpu(true);
+          .setLocalSize(3);
 
       final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
 

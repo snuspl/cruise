@@ -267,16 +267,14 @@ public final class PoolingGpuLayerTest {
           .setKernelHeight(2)
           .setKernelWidth(2)
           .setStrideHeight(1)
-          .setStrideWidth(1)
-          .setUseGpu(true);
+          .setStrideWidth(1);
 
       final PoolingLayerConfigurationBuilder averageBuilder = PoolingLayerConfigurationBuilder.newConfigurationBuilder()
           .setPoolingType("AVERAGE")
           .setKernelHeight(2)
           .setKernelWidth(2)
           .setStrideHeight(1)
-          .setStrideWidth(1)
-          .setUseGpu(true);
+          .setStrideWidth(1);
 
       final PoolingLayerConfigurationBuilder remainderExistingMaxBuilder =
           PoolingLayerConfigurationBuilder.newConfigurationBuilder()
@@ -284,8 +282,7 @@ public final class PoolingGpuLayerTest {
               .setKernelHeight(2)
               .setKernelWidth(2)
               .setStrideHeight(2)
-              .setStrideWidth(2)
-              .setUseGpu(true);
+              .setStrideWidth(2);
 
       final PoolingLayerConfigurationBuilder remainderExistingAverageBuilder =
           PoolingLayerConfigurationBuilder.newConfigurationBuilder()
@@ -293,8 +290,7 @@ public final class PoolingGpuLayerTest {
               .setKernelHeight(2)
               .setKernelWidth(2)
               .setStrideHeight(2)
-              .setStrideWidth(2)
-              .setUseGpu(true);
+              .setStrideWidth(2);
 
       final PoolingLayerConfigurationBuilder maxWithPaddingBuilder =
           PoolingLayerConfigurationBuilder.newConfigurationBuilder()
@@ -304,8 +300,7 @@ public final class PoolingGpuLayerTest {
               .setKernelHeight(2)
               .setKernelWidth(2)
               .setStrideHeight(1)
-              .setStrideWidth(1)
-              .setUseGpu(true);
+              .setStrideWidth(1);
 
       final PoolingLayerConfigurationBuilder averageWithPaddingBuilder =
           PoolingLayerConfigurationBuilder.newConfigurationBuilder()
@@ -315,8 +310,7 @@ public final class PoolingGpuLayerTest {
               .setKernelHeight(2)
               .setKernelWidth(2)
               .setStrideHeight(1)
-              .setStrideWidth(1)
-              .setUseGpu(true);
+              .setStrideWidth(1);
 
       final PoolingLayerConfigurationBuilder max3DBuilder =
           PoolingLayerConfigurationBuilder.newConfigurationBuilder()
@@ -326,8 +320,7 @@ public final class PoolingGpuLayerTest {
               .setKernelHeight(2)
               .setKernelWidth(2)
               .setStrideHeight(1)
-              .setStrideWidth(1)
-              .setUseGpu(true);
+              .setStrideWidth(1);
 
       final PoolingLayerConfigurationBuilder average3DBuilder =
           PoolingLayerConfigurationBuilder.newConfigurationBuilder()
@@ -337,8 +330,7 @@ public final class PoolingGpuLayerTest {
               .setKernelHeight(2)
               .setKernelWidth(2)
               .setStrideHeight(1)
-              .setStrideWidth(1)
-              .setUseGpu(true);
+              .setStrideWidth(1);
 
       final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
 

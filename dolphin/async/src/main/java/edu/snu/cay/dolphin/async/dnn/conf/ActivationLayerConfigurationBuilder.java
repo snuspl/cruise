@@ -36,7 +36,7 @@ public final class ActivationLayerConfigurationBuilder implements Builder<Config
   }
 
   private String activationFunction;
-  private boolean useGpu = false;
+  private Class<? extends LayerBase> layerClass = ActivationGpuLayer.class;
 
   public synchronized ActivationLayerConfigurationBuilder setActivationFunction(final String activationFunction) {
     this.activationFunction = activationFunction;
@@ -49,23 +49,20 @@ public final class ActivationLayerConfigurationBuilder implements Builder<Config
     return this;
   }
 
-  public synchronized ActivationLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
-    this.useGpu = useGpu;
+  public synchronized ActivationLayerConfigurationBuilder setCpuOnly(final boolean cpuOnly) {
+    if (cpuOnly) {
+      layerClass = ActivationLayer.class;
+    } else {
+      layerClass = ActivationGpuLayer.class;
+    }
     return this;
   }
 
   @Override
   public synchronized Configuration build() {
-    if (!useGpu) {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
-          .bindImplementation(LayerBase.class, ActivationLayer.class)
-          .build();
-    } else {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
-          .bindImplementation(LayerBase.class, ActivationGpuLayer.class)
-          .build();
-    }
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
+        .bindImplementation(LayerBase.class, layerClass)
+        .build();
   }
 }

@@ -41,7 +41,7 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
   private int numOutput;
   private float initWeight;
   private float initBias;
-  private boolean useGpu = false;
+  private Class<? extends LayerBase> layerClass = FullyConnectedGpuLayer.class;
 
   public synchronized FullyConnectedLayerConfigurationBuilder setNumOutput(final int numOutput) {
     this.numOutput = numOutput;
@@ -58,8 +58,12 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
     return this;
   }
 
-  public synchronized FullyConnectedLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
-    this.useGpu = useGpu;
+  public synchronized FullyConnectedLayerConfigurationBuilder setCpuOnly(final boolean cpuOnly) {
+    if (cpuOnly) {
+      layerClass = FullyConnectedLayer.class;
+    } else {
+      layerClass = FullyConnectedGpuLayer.class;
+    }
     return this;
   }
 
@@ -73,22 +77,12 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
 
   @Override
   public synchronized Configuration build() {
-    if (!useGpu) {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
-          .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
-          .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
-          .bindImplementation(LayerBase.class, FullyConnectedLayer.class)
-          .bindImplementation(LayerParameterInitializer.class, FullyConnectedLayerParameterInitializer.class)
-          .build();
-    } else {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
-          .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
-          .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
-          .bindImplementation(LayerBase.class, FullyConnectedGpuLayer.class)
-          .bindImplementation(LayerParameterInitializer.class, FullyConnectedLayerParameterInitializer.class)
-          .build();
-    }
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
+        .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
+        .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
+        .bindImplementation(LayerBase.class, layerClass)
+        .bindImplementation(LayerParameterInitializer.class, FullyConnectedLayerParameterInitializer.class)
+        .build();
   }
 }

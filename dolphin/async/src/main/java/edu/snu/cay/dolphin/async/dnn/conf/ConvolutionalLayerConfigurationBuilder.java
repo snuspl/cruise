@@ -47,7 +47,7 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
   private float initWeight;
   private float initBias;
   private int numOutput;
-  private boolean useGpu = false;
+  private Class<? extends LayerBase> layerClass = ConvolutionalGpuLayer.class;
 
   public synchronized ConvolutionalLayerConfigurationBuilder setPaddingHeight(final int paddingHeight) {
     this.paddingHeight = paddingHeight;
@@ -94,8 +94,12 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
     return this;
   }
 
-  public synchronized ConvolutionalLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
-    this.useGpu = useGpu;
+  public synchronized ConvolutionalLayerConfigurationBuilder setCpuOnly(final boolean cpuOnly) {
+    if (cpuOnly) {
+      layerClass = ConvolutionalLayer.class;
+    } else {
+      layerClass = ConvolutionalGpuLayer.class;
+    }
     return this;
   }
 
@@ -115,34 +119,18 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
 
   @Override
   public synchronized Configuration build() {
-    if (!useGpu) {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.PaddingHeight.class, String.valueOf(paddingHeight))
-          .bindNamedParameter(LayerConfigurationParameters.PaddingWidth.class, String.valueOf(paddingWidth))
-          .bindNamedParameter(LayerConfigurationParameters.StrideHeight.class, String.valueOf(strideHeight))
-          .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
-          .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
-          .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
-          .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
-          .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
-          .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
-          .bindImplementation(LayerBase.class, ConvolutionalLayer.class)
-          .bindImplementation(LayerParameterInitializer.class, ConvolutionalLayerParameterInitializer.class)
-          .build();
-    } else {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.PaddingHeight.class, String.valueOf(paddingHeight))
-          .bindNamedParameter(LayerConfigurationParameters.PaddingWidth.class, String.valueOf(paddingWidth))
-          .bindNamedParameter(LayerConfigurationParameters.StrideHeight.class, String.valueOf(strideHeight))
-          .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
-          .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
-          .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
-          .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
-          .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
-          .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
-          .bindImplementation(LayerBase.class, ConvolutionalGpuLayer.class)
-          .bindImplementation(LayerParameterInitializer.class, ConvolutionalLayerParameterInitializer.class)
-          .build();
-    }
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(LayerConfigurationParameters.PaddingHeight.class, String.valueOf(paddingHeight))
+        .bindNamedParameter(LayerConfigurationParameters.PaddingWidth.class, String.valueOf(paddingWidth))
+        .bindNamedParameter(LayerConfigurationParameters.StrideHeight.class, String.valueOf(strideHeight))
+        .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
+        .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
+        .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
+        .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
+        .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
+        .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
+        .bindImplementation(LayerBase.class, layerClass)
+        .bindImplementation(LayerParameterInitializer.class, ConvolutionalLayerParameterInitializer.class)
+        .build();
   }
 }

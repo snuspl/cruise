@@ -102,25 +102,26 @@ public final class NeuralNetworkTest {
       .setInputShape(input.getLength())
       .setStepSize(1e-2f)
       .setRandomSeed(10)
-      .addLayerConfiguration(
-          FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
-              .setNumOutput(numHiddenUnits)
-              .setInitWeight(0.0001f)
-              .setInitBias(0.0002f)
-              .build())
-      .addLayerConfiguration(
-          ActivationLayerConfigurationBuilder.newConfigurationBuilder()
-              .setActivationFunction("sigmoid")
-              .build())
-      .addLayerConfiguration(
-          FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
-              .setNumOutput(expectedOutput.getLength())
-              .setInitWeight(0.2f)
-              .setInitBias(0.3f)
-              .build())
+      .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
+          .setNumOutput(numHiddenUnits)
+          .setInitWeight(0.0001f)
+          .setInitBias(0.0002f)
+          .setCpuOnly(true)
+          .build())
+      .addLayerConfiguration(ActivationLayerConfigurationBuilder.newConfigurationBuilder()
+          .setActivationFunction("sigmoid")
+          .setCpuOnly(true)
+          .build())
+      .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
+          .setNumOutput(expectedOutput.getLength())
+          .setInitWeight(0.2f)
+          .setInitBias(0.3f)
+          .setCpuOnly(true)
+          .build())
       .addLayerConfiguration(ActivationWithLossLayerConfigurationBuilder.newConfigurationBuilder()
           .setActivationFunction("sigmoid")
           .setLossFunction("crossentropy")
+          .setCpuOnly(true)
           .build())
       .build();
 
@@ -139,28 +140,33 @@ public final class NeuralNetworkTest {
       matrixFactory.create(new float[]{6.99425825888e-01f, -4.28507738839e-01f, 5.79580557810e-01f})};
 
   @Before
-  public void buildNeuralNetwork() throws InjectionException {
-    final Injector injector = Tang.Factory.getTang().newInjector(blasConfiguration, neuralNetworkConfiguration);
-    mockParameterWorker = mock(ParameterWorker.class);
-    injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
-    neuralNetwork = injector.getInstance(NeuralNetwork.class);
+  public void buildNeuralNetwork() {
+    try {
+      final Injector injector = Tang.Factory.getTang().newInjector(blasConfiguration, neuralNetworkConfiguration);
+      mockParameterWorker = mock(ParameterWorker.class);
+      injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
+      neuralNetwork = injector.getInstance(NeuralNetwork.class);
 
-    doAnswer(invocation -> {
-        final LayerParameter layerParameterOne = LayerParameter.newBuilder()
-            .setWeightParam(weightOne)
-            .setBiasParam(biasOne)
-            .build();
-        final LayerParameter layerParameterTwo = LayerParameter.newBuilder()
-            .setWeightParam(weightTwo)
-            .setBiasParam(biasTwo)
-            .build();
-        final List<LayerParameter> result = new ArrayList<>();
-        result.add(layerParameterOne);
-        result.add(layerParameterTwo);
-        return result;
-      }).when(mockParameterWorker).pull(anyObject());
+      doAnswer(invocation -> {
+          final LayerParameter layerParameterOne = LayerParameter.newBuilder()
+              .setWeightParam(weightOne)
+              .setBiasParam(biasOne)
+              .build();
+          final LayerParameter layerParameterTwo = LayerParameter.newBuilder()
+              .setWeightParam(weightTwo)
+              .setBiasParam(biasTwo)
+              .build();
+          final List<LayerParameter> result = new ArrayList<>();
+          result.add(layerParameterOne);
+          result.add(layerParameterTwo);
+          return result;
+        }).when(mockParameterWorker).pull(anyObject());
 
-    neuralNetwork.updateParameters();
+      neuralNetwork.updateParameters();
+    } catch (final InjectionException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   /**

@@ -263,74 +263,82 @@ public final class PoolingLayerTest {
         .build();
 
     final PoolingLayerConfigurationBuilder maxBuilder = PoolingLayerConfigurationBuilder.newConfigurationBuilder()
-        .setPoolingType("MAX")
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(1)
-        .setStrideWidth(1);
+            .setPoolingType("MAX")
+            .setKernelHeight(2)
+            .setKernelWidth(2)
+            .setStrideHeight(1)
+            .setStrideWidth(1)
+            .setCpuOnly(true);
 
     final PoolingLayerConfigurationBuilder averageBuilder = PoolingLayerConfigurationBuilder.newConfigurationBuilder()
-        .setPoolingType("AVERAGE")
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(1)
-        .setStrideWidth(1);
+            .setPoolingType("AVERAGE")
+            .setKernelHeight(2)
+            .setKernelWidth(2)
+            .setStrideHeight(1)
+            .setStrideWidth(1)
+            .setCpuOnly(true);
 
     final PoolingLayerConfigurationBuilder remainderExistingMaxBuilder =
         PoolingLayerConfigurationBuilder.newConfigurationBuilder()
-        .setPoolingType("MAX")
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(2)
-        .setStrideWidth(2);
+            .setPoolingType("MAX")
+            .setKernelHeight(2)
+            .setKernelWidth(2)
+            .setStrideHeight(2)
+            .setStrideWidth(2)
+            .setCpuOnly(true);
 
     final PoolingLayerConfigurationBuilder remainderExistingAverageBuilder =
         PoolingLayerConfigurationBuilder.newConfigurationBuilder()
-        .setPoolingType("AVERAGE")
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(2)
-        .setStrideWidth(2);
+            .setPoolingType("AVERAGE")
+            .setKernelHeight(2)
+            .setKernelWidth(2)
+            .setStrideHeight(2)
+            .setStrideWidth(2)
+            .setCpuOnly(true);
 
     final PoolingLayerConfigurationBuilder maxWithPaddingBuilder =
         PoolingLayerConfigurationBuilder.newConfigurationBuilder()
-        .setPoolingType("MAX")
-        .setPaddingHeight(1)
-        .setPaddingWidth(1)
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(1)
-        .setStrideWidth(1);
+            .setPoolingType("MAX")
+            .setPaddingHeight(1)
+            .setPaddingWidth(1)
+            .setKernelHeight(2)
+            .setKernelWidth(2)
+            .setStrideHeight(1)
+            .setStrideWidth(1)
+            .setCpuOnly(true);
 
     final PoolingLayerConfigurationBuilder averageWithPaddingBuilder =
         PoolingLayerConfigurationBuilder.newConfigurationBuilder()
-        .setPoolingType("AVERAGE")
-        .setPaddingHeight(1)
-        .setPaddingWidth(1)
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(1)
-        .setStrideWidth(1);
+            .setPoolingType("AVERAGE")
+            .setPaddingHeight(1)
+            .setPaddingWidth(1)
+            .setKernelHeight(2)
+            .setKernelWidth(2)
+            .setStrideHeight(1)
+            .setStrideWidth(1)
+            .setCpuOnly(true);
 
     final PoolingLayerConfigurationBuilder max3DBuilder =
         PoolingLayerConfigurationBuilder.newConfigurationBuilder()
-        .setPoolingType("MAX")
-        .setPaddingHeight(1)
-        .setPaddingWidth(1)
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(1)
-        .setStrideWidth(1);
+            .setPoolingType("MAX")
+            .setPaddingHeight(1)
+            .setPaddingWidth(1)
+            .setKernelHeight(2)
+            .setKernelWidth(2)
+            .setStrideHeight(1)
+            .setStrideWidth(1)
+            .setCpuOnly(true);
 
     final PoolingLayerConfigurationBuilder average3DBuilder =
         PoolingLayerConfigurationBuilder.newConfigurationBuilder()
-        .setPoolingType("AVERAGE")
-        .setPaddingHeight(1)
-        .setPaddingWidth(1)
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(1)
-        .setStrideWidth(1);
+            .setPoolingType("AVERAGE")
+            .setPaddingHeight(1)
+            .setPaddingWidth(1)
+            .setKernelHeight(2)
+            .setKernelWidth(2)
+            .setStrideHeight(1)
+            .setStrideWidth(1)
+            .setCpuOnly(true);
 
     this.maxPoolingLayer =
         Tang.Factory.getTang().newInjector(layerConf, maxBuilder.build())

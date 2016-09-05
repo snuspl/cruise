@@ -72,6 +72,7 @@ public final class ActivationLayerTest {
 
     final Configuration sigmoidActivationLayerConf = ActivationLayerConfigurationBuilder.newConfigurationBuilder()
         .setActivationFunction("sigmoid")
+        .setCpuOnly(true)
         .build();
 
     this.sigmoidActivationLayer =

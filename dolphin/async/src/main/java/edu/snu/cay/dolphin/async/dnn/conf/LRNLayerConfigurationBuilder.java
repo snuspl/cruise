@@ -38,7 +38,7 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
   private float alpha = 1;
   private float beta = 0.75f;
   private float k = 1;
-  private boolean useGpu = false;
+  private Class<? extends LayerBase> layerClass = LRNGpuLayer.class;
 
   public synchronized LRNLayerConfigurationBuilder setLocalSize(final int localSize) {
     this.localSize = localSize;
@@ -60,8 +60,12 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
     return this;
   }
 
-  public synchronized LRNLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
-    this.useGpu = useGpu;
+  public synchronized LRNLayerConfigurationBuilder setCpuOnly(final boolean onlyCpu) {
+    if (onlyCpu) {
+      layerClass = LRNLayer.class;
+    } else {
+      layerClass = LRNGpuLayer.class;
+    }
     return this;
   }
 
@@ -79,23 +83,13 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
     if (localSize % 2 == 0) {
       throw new IllegalArgumentException("local size should be an odd number");
     } else {
-      if (!useGpu) {
-        return Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(LayerConfigurationParameters.LocalSize.class, String.valueOf(localSize))
-            .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
-            .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
-            .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
-            .bindImplementation(LayerBase.class, LRNLayer.class)
-            .build();
-      } else {
-        return Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(LayerConfigurationParameters.LocalSize.class, String.valueOf(localSize))
-            .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
-            .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
-            .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
-            .bindImplementation(LayerBase.class, LRNGpuLayer.class)
-            .build();
-      }
+      return Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerConfigurationParameters.LocalSize.class, String.valueOf(localSize))
+          .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
+          .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
+          .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
+          .bindImplementation(LayerBase.class, layerClass)
+          .build();
     }
   }
 }

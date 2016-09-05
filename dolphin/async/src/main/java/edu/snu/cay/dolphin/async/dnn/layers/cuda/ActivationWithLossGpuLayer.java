@@ -116,7 +116,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
     } else {
-      throw new RuntimeException("Something went wrong in feedForward");
+      throw new RuntimeException("Failed to feedForward");
     }
   }
 

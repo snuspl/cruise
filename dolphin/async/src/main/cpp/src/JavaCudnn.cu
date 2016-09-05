@@ -109,41 +109,53 @@ cudnnConvolutionDescriptor_t* JavaCudnn::createConvDesc(const int padH, const in
   }
 }
 
-cudnnPoolingDescriptor_t* JavaCudnn::createPoolDesc(const int mode, const int h, const int w,
+cudnnPoolingDescriptor_t* JavaCudnn::createPoolDesc(const char mode, const int h, const int w,
                                                     const int padH, const int padW, const int strideH, const int strideW) {
   cudnnPoolingDescriptor_t* poolDesc = ((cudnnPoolingDescriptor_t*) std::malloc (sizeof(cudnnPoolingDescriptor_t)));
-  if(mode == 0) {
-    if (!cudnnCheck(cudnnCreatePoolingDescriptor(poolDesc)) ||
-        !cudnnCheck(cudnnSetPooling2dDescriptor(*poolDesc, CUDNN_POOLING_MAX, CUDNN_PROPAGATE_NAN, h, w, padH, padW, strideH, strideW))) {
-      return NULL;
-    } else {
-      return poolDesc;
-    }
+  cudnnPoolingMode_t poolingMode;
+
+  switch (mode) {
+  case 'M':
+    poolingMode = CUDNN_POOLING_MAX;
+    break;
+  case 'A':
+    poolingMode = CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
+    break;
+  default:
+    return NULL;
+  }
+
+  if (!cudnnCheck(cudnnCreatePoolingDescriptor(poolDesc)) ||
+      !cudnnCheck(cudnnSetPooling2dDescriptor(*poolDesc, poolingMode, CUDNN_PROPAGATE_NAN, h, w, padH, padW, strideH, strideW))) {
+    return NULL;
   } else {
-    if (!cudnnCheck(cudnnCreatePoolingDescriptor(poolDesc)) ||
-        !cudnnCheck(cudnnSetPooling2dDescriptor(*poolDesc, CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING, CUDNN_PROPAGATE_NAN, h, w, padH, padW, strideH, strideW))) {
-      return NULL;
-    } else {
-      return poolDesc;
-    }
+    return poolDesc;
   }
 }
 
-cudnnActivationDescriptor_t* JavaCudnn::createActivDesc(const int func) {
+cudnnActivationDescriptor_t* JavaCudnn::createActivDesc(const char func) {
   cudnnActivationDescriptor_t* activDesc = ((cudnnActivationDescriptor_t*) std::malloc (sizeof(cudnnActivationDescriptor_t)));
-  cudnnActivationMode_t mode;
-  if (func == 0) {
-    mode = CUDNN_ACTIVATION_SIGMOID;
-  } else if (func == 1) {
-    mode = CUDNN_ACTIVATION_RELU;
-  } else if (func == 2) {
-    mode = CUDNN_ACTIVATION_TANH;
-  } else {
-    mode = CUDNN_ACTIVATION_CLIPPED_RELU;
+  cudnnActivationMode_t activationMode;
+
+  switch (func) {
+  case 'S':
+    activationMode = CUDNN_ACTIVATION_SIGMOID;
+    break;
+  case 'R':
+    activationMode = CUDNN_ACTIVATION_RELU;
+    break;
+  case 'T':
+    activationMode = CUDNN_ACTIVATION_TANH;
+    break;
+  case 'C':
+    activationMode = CUDNN_ACTIVATION_CLIPPED_RELU;
+    break;
+  default:
+    return NULL;
   }
 
   if(!cudnnCheck(cudnnCreateActivationDescriptor(activDesc)) ||
-     !cudnnCheck(cudnnSetActivationDescriptor(*activDesc, mode, CUDNN_PROPAGATE_NAN, 0.0))) {
+     !cudnnCheck(cudnnSetActivationDescriptor(*activDesc, activationMode, CUDNN_PROPAGATE_NAN, 0.0))) {
     return NULL;
   } else {
     return activDesc;

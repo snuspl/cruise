@@ -191,8 +191,7 @@ public class ConvolutionalGpuLayerTest {
           .setKernelWidth(2)
           .setStrideHeight(1)
           .setStrideWidth(1)
-          .setNumOutput(1)
-          .setUseGpu(true);
+          .setNumOutput(1);
 
       final ConvolutionalLayerConfigurationBuilder builderWithPadding = ConvolutionalLayerConfigurationBuilder
           .newConfigurationBuilder()
@@ -204,8 +203,7 @@ public class ConvolutionalGpuLayerTest {
           .setKernelWidth(2)
           .setStrideHeight(1)
           .setStrideWidth(1)
-          .setNumOutput(1)
-          .setUseGpu(true);
+          .setNumOutput(1);
 
       final ConvolutionalLayerConfigurationBuilder builder3D = ConvolutionalLayerConfigurationBuilder
           .newConfigurationBuilder()
@@ -216,8 +214,7 @@ public class ConvolutionalGpuLayerTest {
           .setStrideHeight(1)
           .setStrideWidth(1)
           .setPaddingWidth(1)
-          .setNumOutput(2)
-          .setUseGpu(true);
+          .setNumOutput(2);
 
       final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
 

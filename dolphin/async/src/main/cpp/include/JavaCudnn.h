@@ -28,8 +28,8 @@ public:
   static cudnnTensorDescriptor_t* createTensorDesc(const int n, const int c, const int h, const int w);
   static cudnnFilterDescriptor_t* createFilterDesc(const int k, const int c, const int h, const int w);
   static cudnnConvolutionDescriptor_t* createConvDesc(const int padH, const int padW, const int strideH, const int strideW);
-  static cudnnPoolingDescriptor_t* createPoolDesc(const int mode, const int h, const int w, const int padH, const int padW, const int strideH, const int strideW);
-  static cudnnActivationDescriptor_t* createActivDesc(const int func);
+  static cudnnPoolingDescriptor_t* createPoolDesc(const char mode, const int h, const int w, const int padH, const int padW, const int strideH, const int strideW);
+  static cudnnActivationDescriptor_t* createActivDesc(const char func);
   static cudnnLRNDescriptor_t* createLRNDesc(const int localSize, const float alpha, const float beta, const float k);
 
   static cudnnConvolutionFwdAlgo_t* getConvForwardAlgo(const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,
@@ -105,8 +105,6 @@ private:
 private:
   static boost::thread_specific_ptr<cudnnHandle_t> cudnnHandle;
 };
-
-const int CUDA_NUM_THREADS = 512;
 
 // Specify workspace limit for kernels directly until we have a planning strategy and a rewrite of GPU memory management
 const size_t CUDA_MEM_LIM = 8*1024*1024;

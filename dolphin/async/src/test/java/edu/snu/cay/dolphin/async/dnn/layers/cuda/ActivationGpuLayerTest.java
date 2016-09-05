@@ -76,7 +76,6 @@ public final class ActivationGpuLayerTest {
 
       final Configuration sigmoidActivationLayerConf = ActivationLayerConfigurationBuilder.newConfigurationBuilder()
           .setActivationFunction("sigmoid")
-          .setUseGpu(true)
           .build();
 
       final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);

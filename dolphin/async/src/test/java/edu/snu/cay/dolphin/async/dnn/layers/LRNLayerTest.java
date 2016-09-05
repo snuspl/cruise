@@ -105,7 +105,8 @@ public class LRNLayerTest {
         .setAlpha(3)
         .setBeta(2)
         .setK(1)
-        .setLocalSize(3);
+        .setLocalSize(3)
+        .setCpuOnly(true);
 
     this.lrnLayerSizeTwo =
         Tang.Factory.getTang().newInjector(layerConfSizeTwo, builder.build())

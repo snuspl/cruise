@@ -42,8 +42,8 @@ public final class LayerConfigurationParameters {
   public static final class LayerInputShape implements Name<String> {
   }
 
-  @NamedParameter(doc = "use of GPU")
-  public static final class UseGpu implements Name<Boolean> {
+  @NamedParameter(doc = "whether use only cpu")
+  public static final class CpuOnly implements Name<Boolean> {
   }
 
   /**

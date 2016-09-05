@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.cuda.ActivationWithLossGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
@@ -40,7 +41,7 @@ public final class ActivationWithLossLayerConfigurationBuilder implements Builde
 
   private String activationFunction;
   private String lossFunction;
-  private boolean useGpu = false;
+  private Class<? extends LayerBase> layerClass = ActivationWithLossGpuLayer.class;
 
   private ConfigurationSerializer configurationSerializer = new AvroConfigurationSerializer();
 
@@ -62,31 +63,31 @@ public final class ActivationWithLossLayerConfigurationBuilder implements Builde
     return this;
   }
 
-  public synchronized ActivationWithLossLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
-    this.useGpu = useGpu;
+  public synchronized ActivationWithLossLayerConfigurationBuilder setCpuOnly(final boolean cpuOnly) {
+    if (cpuOnly) {
+      layerClass = ActivationWithLossLayer.class;
+    } else {
+      layerClass = ActivationWithLossGpuLayer.class;
+    }
     return this;
   }
 
   @Override
   public synchronized Configuration build() {
-    final Configuration layerConf = ActivationLayerConfigurationBuilder.newConfigurationBuilder()
-        .setActivationFunction(activationFunction)
-        .build();
+    final JavaConfigurationBuilder configurationBuilder = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(LayerConfigurationParameters.LossFunction.class, lossFunction)
+        .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
+        .bindImplementation(LayerBase.class, layerClass);
 
-    if (!useGpu) {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.LossFunction.class, lossFunction)
-          .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
-          .bindNamedParameter(SerializedLayerConfiguartion.class, configurationSerializer.toString(layerConf))
-          .bindImplementation(LayerBase.class, ActivationWithLossLayer.class)
+    if (layerClass == ActivationWithLossLayer.class) {
+      final Configuration layerConf = ActivationLayerConfigurationBuilder.newConfigurationBuilder()
+          .setActivationFunction(activationFunction)
+          .setCpuOnly(true)
           .build();
-    } else {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.LossFunction.class, lossFunction)
-          .bindNamedParameter(LayerConfigurationParameters.ActivationFunction.class, String.valueOf(activationFunction))
-          .bindNamedParameter(SerializedLayerConfiguartion.class, configurationSerializer.toString(layerConf))
-          .bindImplementation(LayerBase.class, ActivationWithLossGpuLayer.class)
-          .build();
+      configurationBuilder
+          .bindNamedParameter(SerializedLayerConfiguartion.class, configurationSerializer.toString(layerConf));
     }
+
+    return configurationBuilder.build();
   }
 }

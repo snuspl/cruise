@@ -66,7 +66,6 @@ public final class ActivationWithLossGpuLayerTest {
           ActivationWithLossLayerConfigurationBuilder.newConfigurationBuilder()
               .setActivationFunction("softmax")
               .setLossFunction("crossEntropy")
-              .setUseGpu(true)
               .build();
 
       final int numInput = 3;

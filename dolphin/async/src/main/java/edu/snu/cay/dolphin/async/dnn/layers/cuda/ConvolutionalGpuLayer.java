@@ -172,7 +172,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
     } else {
-      throw new RuntimeException("Something went wrong in feedForward");
+      throw new RuntimeException("Failed to feedForward");
     }
   }
 
@@ -192,7 +192,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
         backwardDataWorkspaceSize, inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
       return error;
     } else {
-      throw new RuntimeException("Something went wrong in backPropagate");
+      throw new RuntimeException("Failed to backPropagate");
     }
   }
 
@@ -200,21 +200,20 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
     final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
-    if (JavaCudnn.convGenWeightGradient(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
+    if (!JavaCudnn.convGenWeightGradient(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) error).getDevicePointer(), convDesc, backwardFilterAlgo, workspace,
         backwardFilterWorkspaceSize, filterDesc, ((MatrixCudaImpl) weightGradient).getDevicePointer())) {
-      final Matrix biasGradient = matrixFactory.create(outputShape[0], 1);
-      if (JavaCudnn.convGenBiasGradient(activationDesc, ((MatrixCudaImpl) error).getDevicePointer(),
-          biasDesc, ((MatrixCudaImpl) biasGradient).getDevicePointer())) {
-        return LayerParameter.newBuilder()
-            .setWeightParam(weightGradient)
-            .setBiasParam(biasGradient)
-            .build();
-      } else {
-        throw new RuntimeException("Something went wrong in generateParameterGradient for bias");
-      }
+      throw new RuntimeException("Failed to generateParameterGradient for weight");
+    }
+    final Matrix biasGradient = matrixFactory.create(outputShape[0], 1);
+    if (JavaCudnn.convGenBiasGradient(activationDesc, ((MatrixCudaImpl) error).getDevicePointer(),
+        biasDesc, ((MatrixCudaImpl) biasGradient).getDevicePointer())) {
+      return LayerParameter.newBuilder()
+          .setWeightParam(weightGradient)
+          .setBiasParam(biasGradient)
+          .build();
     } else {
-      throw new RuntimeException("Something went wrong in generateParameterGradient for weight");
+      throw new RuntimeException("Failed to generateParameterGradient for bias");
     }
   }
 }

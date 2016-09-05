@@ -45,13 +45,10 @@ class JavaCudnn extends Pointer {
   @Cast(value = "cudnnConvolutionDescriptor_t*") static native Pointer createConvDesc(
       final int padH, final int padW, final int strideH, final int strideW);
   @Cast(value = "cudnnPoolingDescriptor_t*") static native Pointer createPoolDesc(
-      final int mode, final int h, final int w, final int padH, final int padW, final int strideH, final int strideW);
-  @Cast(value = "cudnnActivationDescriptor_t*") static native Pointer createActivDesc(final int func);
-
+      final char mode, final int h, final int w, final int padH, final int padW, final int strideH, final int strideW);
+  @Cast(value = "cudnnActivationDescriptor_t*") static native Pointer createActivDesc(final char func);
   @Cast(value = "cudnnLRNDescriptor_t*") static native Pointer createLRNDesc(
       final int localSize, final float alpha, final float beta, final float k);
-
-  @Cast(value = "void*") static native Pointer getWorkspace(@Cast(value = "size_t") final long workspaceSizeInBytes);
 
   @Cast(value = "cudnnConvolutionFwdAlgo_t*") static native Pointer getConvForwardAlgo(
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc,
@@ -69,6 +66,7 @@ class JavaCudnn extends Pointer {
       @Cast(value = "cudnnConvolutionDescriptor_t*") final Pointer convDesc,
       @Cast(value = "cudnnFilterDescriptor_t*") final Pointer dwDesc);
 
+  @Cast(value = "void*") static native Pointer getWorkspace(@Cast(value = "size_t") final long workspaceSizeInBytes);
   @Cast(value = "size_t") static native long getConvForwardWorkspaceSizeInBytes(
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc,
       @Cast(value = "cudnnFilterDescriptor_t*") final Pointer wDesc,

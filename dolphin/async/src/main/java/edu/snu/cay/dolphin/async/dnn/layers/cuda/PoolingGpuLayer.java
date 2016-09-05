@@ -46,7 +46,7 @@ public final class PoolingGpuLayer extends LayerBase {
 
   private final int[] outputShape;
   private final MatrixFactory matrixFactory;
-  private final int poolingType;
+  private final char poolingType;
 
   private Pointer inputDesc;
   private Pointer activationDesc;
@@ -99,9 +99,9 @@ public final class PoolingGpuLayer extends LayerBase {
     final int inputWidth;
     final int inputChannel;
     if ((poolingType.toUpperCase()).equals("MAX")) {
-      this.poolingType = 0;
+      this.poolingType = 'M';
     } else {
-      this.poolingType = 1;
+      this.poolingType = 'A';
     }
     this.matrixFactory = matrixFactory;
 
@@ -155,7 +155,7 @@ public final class PoolingGpuLayer extends LayerBase {
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
     } else {
-      throw new RuntimeException("Something went wrong in feedForward");
+      throw new RuntimeException("Failed to feedForward");
     }
   }
 
@@ -175,7 +175,7 @@ public final class PoolingGpuLayer extends LayerBase {
         ((MatrixCudaImpl) input).getDevicePointer(), inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
       return error;
     } else {
-      throw new RuntimeException("Something went wrong in backPropagate");
+      throw new RuntimeException("Failed to backPropagate");
     }
   }
 

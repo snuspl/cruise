@@ -44,7 +44,7 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
   private int strideWidth = 1;
   private int kernelHeight;
   private int kernelWidth;
-  private boolean useGpu = false;
+  private Class<? extends LayerBase> layerClass = PoolingGpuLayer.class;
 
   public synchronized PoolingLayerConfigurationBuilder setPoolingType(final String poolingType) {
     this.poolingType = poolingType;
@@ -81,8 +81,12 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
     return this;
   }
 
-  public synchronized PoolingLayerConfigurationBuilder setUseGpu(final boolean useGpu) {
-    this.useGpu = useGpu;
+  public synchronized PoolingLayerConfigurationBuilder setCpuOnly(final boolean cpuOnly) {
+    if (cpuOnly) {
+      layerClass = PoolingLayer.class;
+    } else {
+      layerClass = PoolingGpuLayer.class;
+    }
     return this;
   }
 
@@ -100,30 +104,16 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
 
   @Override
   public synchronized Configuration build() {
-    if (!useGpu) {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.PoolingType.class, poolingType)
-          .bindNamedParameter(LayerConfigurationParameters.PaddingHeight.class, String.valueOf(paddingHeight))
-          .bindNamedParameter(LayerConfigurationParameters.PaddingWidth.class, String.valueOf(paddingWidth))
-          .bindNamedParameter(LayerConfigurationParameters.StrideHeight.class, String.valueOf(strideHeight))
-          .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
-          .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
-          .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
-          .bindImplementation(LayerBase.class, PoolingLayer.class)
-          .bindImplementation(LayerParameterInitializer.class, PoolingLayerParameterInitializer.class)
-          .build();
-    } else {
-      return Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(LayerConfigurationParameters.PoolingType.class, poolingType)
-          .bindNamedParameter(LayerConfigurationParameters.PaddingHeight.class, String.valueOf(paddingHeight))
-          .bindNamedParameter(LayerConfigurationParameters.PaddingWidth.class, String.valueOf(paddingWidth))
-          .bindNamedParameter(LayerConfigurationParameters.StrideHeight.class, String.valueOf(strideHeight))
-          .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
-          .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
-          .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
-          .bindImplementation(LayerBase.class, PoolingGpuLayer.class)
-          .bindImplementation(LayerParameterInitializer.class, PoolingLayerParameterInitializer.class)
-          .build();
-    }
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(LayerConfigurationParameters.PoolingType.class, poolingType)
+        .bindNamedParameter(LayerConfigurationParameters.PaddingHeight.class, String.valueOf(paddingHeight))
+        .bindNamedParameter(LayerConfigurationParameters.PaddingWidth.class, String.valueOf(paddingWidth))
+        .bindNamedParameter(LayerConfigurationParameters.StrideHeight.class, String.valueOf(strideHeight))
+        .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
+        .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
+        .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
+        .bindImplementation(LayerBase.class, layerClass)
+        .bindImplementation(LayerParameterInitializer.class, PoolingLayerParameterInitializer.class)
+        .build();
   }
 }

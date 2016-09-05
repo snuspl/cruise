@@ -122,7 +122,7 @@ public final class LRNGpuLayer extends LayerBase {
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
     } else {
-      throw new RuntimeException("Something went wrong in feedForward");
+      throw new RuntimeException("Failed to feedForward");
     }
   }
 
@@ -142,7 +142,7 @@ public final class LRNGpuLayer extends LayerBase {
         ((MatrixCudaImpl) input).getDevicePointer(), inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
       return error;
     } else {
-      throw new RuntimeException("Something went wrong in backPropagate");
+      throw new RuntimeException("Failed to backPropagate");
     }
   }
 
