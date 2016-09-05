@@ -32,9 +32,6 @@ public:
   static cudnnActivationDescriptor_t* createActivDesc(const int func);
   static cudnnLRNDescriptor_t* createLRNDesc(const int localSize, const float alpha, const float beta, const float k);
 
-
-  static void* getWorkspace (const size_t workspaceSizeInBytes);
-
   static cudnnConvolutionFwdAlgo_t* getConvForwardAlgo(const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,
                                                        const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* yDesc);
   static cudnnConvolutionBwdDataAlgo_t* getConvBackwardDataAlgo(const cudnnFilterDescriptor_t* wDesc, const cudnnTensorDescriptor_t* dyDesc,
@@ -42,6 +39,7 @@ public:
   static cudnnConvolutionBwdFilterAlgo_t* getConvBackwardFilterAlgo(const cudnnTensorDescriptor_t* xDesc, const cudnnTensorDescriptor_t* dyDesc,
                                                                     const cudnnConvolutionDescriptor_t* convDesc, const cudnnFilterDescriptor_t* dwDesc);
 
+  static void* getWorkspace (const size_t workspaceSizeInBytes);
   static size_t getConvForwardWorkspaceSizeInBytes(const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,
                                                    const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* yDesc,
                                                    const cudnnConvolutionFwdAlgo_t* algo);
@@ -70,25 +68,36 @@ public:
                                     const cudnnFilterDescriptor_t* dwDesc, void* dw);
   static bool convGenBiasGradient(const cudnnTensorDescriptor_t* dyDesc, const void* dy,
                                   const cudnnTensorDescriptor_t* dbDesc, void* db);
+  static bool poolFeedForward(const cudnnPoolingDescriptor_t* poolDesc,
+                              const cudnnTensorDescriptor_t* xDesc, const void* x,
+                              const cudnnTensorDescriptor_t* yDesc, void* y);
+  static bool poolBackPropagate(const cudnnPoolingDescriptor_t* poolDesc,
+                                const cudnnTensorDescriptor_t* yDesc, const void* y,
+                                const cudnnTensorDescriptor_t* dyDesc, const void* dy,
+                                const cudnnTensorDescriptor_t* xDesc, const void* x,
+                                const cudnnTensorDescriptor_t* dxDesc, void* dx);
 
-  static bool poolFeedForward(const cudnnPoolingDescriptor_t* poolDesc, const cudnnTensorDescriptor_t* xDesc, const void* x, const cudnnTensorDescriptor_t* yDesc, void* y);
-  static bool poolBackPropagate(const cudnnPoolingDescriptor_t* poolDesc, const cudnnTensorDescriptor_t* yDesc, const void* y, const cudnnTensorDescriptor_t* dyDesc, const void* dy,
-                                const cudnnTensorDescriptor_t* xDesc, const void* x, const cudnnTensorDescriptor_t* dxDesc, void* dx);
-
-  static bool activFeedForward(const cudnnActivationDescriptor_t* activDesc, const cudnnTensorDescriptor_t* srcDesc, const void* src, const cudnnTensorDescriptor_t* destDesc, void* dest);
-  static bool activBackPropagate(const cudnnActivationDescriptor_t* activDesc, const cudnnTensorDescriptor_t* srcDesc, const void* src,
-                                 const cudnnTensorDescriptor_t* srcDiffDesc, const void* srcDiff, const cudnnTensorDescriptor_t* destDesc,
-                                 const void* dest, const cudnnTensorDescriptor_t* destDiffDesc, void* destDiff);
-  static bool lrnFeedForward(const cudnnLRNDescriptor_t* normDesc, const cudnnTensorDescriptor_t* xDesc, const void* x,
-                             const cudnnTensorDescriptor_t* yDesc, void* y);
-  static bool lrnBackPropagate(const cudnnLRNDescriptor_t* normDesc, const cudnnTensorDescriptor_t* yDesc, const void* y,
-                               const cudnnTensorDescriptor_t* dyDesc, const void* dy, const cudnnTensorDescriptor_t* xDesc, const void* x,
-                               const cudnnTensorDescriptor_t* dxDesc, void* dx);
+  static bool activFeedForward(const cudnnActivationDescriptor_t* activDesc,
+                               const cudnnTensorDescriptor_t* srcDesc, const void* src,
+                               const cudnnTensorDescriptor_t* destDesc, void* dest);
+  static bool activBackPropagate(const cudnnActivationDescriptor_t* activDesc,
+                                 const cudnnTensorDescriptor_t* srcDesc, const void* src,
+                                 const cudnnTensorDescriptor_t* srcDiffDesc, const void* srcDiff,
+                                 const cudnnTensorDescriptor_t* destDesc, const void* dest,
+                                 const cudnnTensorDescriptor_t* destDiffDesc, void* destDiff);
   static bool activWithLossFeedForward (const cudnnTensorDescriptor_t* xDesc, const void* x,
                                         const cudnnTensorDescriptor_t* yDesc, void* y);
   static bool activWithLossBackPropagate (const cudnnTensorDescriptor_t* yDesc, const void* y,
                                           const cudnnTensorDescriptor_t* dyDesc, const void* dy,
                                           const cudnnTensorDescriptor_t* dxDesc, void* dx);
+  static bool lrnFeedForward(const cudnnLRNDescriptor_t* normDesc,
+                             const cudnnTensorDescriptor_t* xDesc, const void* x,
+                             const cudnnTensorDescriptor_t* yDesc, void* y);
+  static bool lrnBackPropagate(const cudnnLRNDescriptor_t* normDesc,
+                               const cudnnTensorDescriptor_t* yDesc, const void* y,
+                               const cudnnTensorDescriptor_t* dyDesc, const void* dy,
+                               const cudnnTensorDescriptor_t* xDesc, const void* x,
+                               const cudnnTensorDescriptor_t* dxDesc, void* dx);
 
 private:
   static cudnnHandle_t getCudnnHandle();
@@ -99,8 +108,7 @@ private:
 
 const int CUDA_NUM_THREADS = 512;
 
-// Specify workspace limit for kernels directly until we have a
-// planning strategy and a rewrite of GPU memory management
+// Specify workspace limit for kernels directly until we have a planning strategy and a rewrite of GPU memory management
 const size_t CUDA_MEM_LIM = 8*1024*1024;
 
 const float CUDA_ONE = 1.0;
