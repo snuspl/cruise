@@ -102,7 +102,7 @@ public final class WorkerMsgSender<K, P> {
    * Sends a pull msg for {@code key} to a corresponding server.
    * @param destId an id of destination server
    * @param key a key to pull
-   * @param requestId
+   * @param requestId pull request id assigned by ParameterWorker
    * @throws NetworkException when fail to open a connection
    */
   void sendPullMsg(final String destId, final EncodedKey<K> key, final int requestId) throws NetworkException {
