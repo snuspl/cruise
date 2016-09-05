@@ -299,7 +299,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   /**
    * Handles incoming pull rejects, by retrying pull request.
    * See {@link PullRequest#rejectPullRequest()}.
-   * This will interrupt the WorkerThread after enqueueing {@link PullRetryOp}, to handle the retry op first.
+   * This will interrupt the WorkerThread after enqueueing {@link PullOp}, to handle the retry op first.
    */
   @Override
   public void processPullReject(final K key, final int requestId) {
@@ -349,7 +349,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * Handles incoming push rejects, by retrying push request.
-   * This will interrupt the WorkerThread after enqueueing {@link PushRetryOp}, to handle the retry op first.
+   * This will interrupt the WorkerThread after enqueueing {@link PushOp}, to handle the retry op first.
    */
   @Override
   public void processPushReject(final K key, final P preValue) {
@@ -360,7 +360,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       throw new RuntimeException("Exception while loading encoded key from cache", e);
     }
     final WorkerThread workerThread = threads[getThreadIndex(encodedKey.getHash())];
-    workerThread.enqueueRetryOp(new PushRetryOp(encodedKey, preValue));
+    workerThread.enqueueRetryOp(new PushOp(workerThread, encodedKey, preValue));
     workerThread.interrupt();
   }
 
@@ -529,6 +529,12 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @throws InterruptedException when the executing thread is interrupted
      */
     void apply() throws InterruptedException;
+
+    /**
+     * Method to retry operation when dequeued by the WorkerThread.
+     * This method can not be interrupted.
+     */
+    void retry();
   }
 
   /**
@@ -562,6 +568,15 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         workerThread.pushStat.put(endTime - pushStartTime);
       }
     }
+
+    /**
+     * Simply re-send rejected push message.
+     */
+    @Override
+    public void retry() {
+      // because we do not have worker-side model cache for now, cannot guarantee read-my-update
+      sendPushMsg(encodedKey, preValue);
+    }
   }
 
   /**
@@ -573,6 +588,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private final WorkerThread workerThread;
     private final EncodedKey<K> encodedKey;
     private V value;
+    private int requestId;
+
     private final long enqueueTime;
     private long pullStartTime;
 
@@ -589,20 +606,42 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
         if (pullRequest == null) {
           while (pendingPullRequests.size() >= MAX_PENDING_PULL_COUNT_PER_THREAD) {
-            // catch interrupt
             workerThread.wait();
           }
           this.pullStartTime = ticker.read();
           workerThread.pendingStat.put(pullStartTime - enqueueTime);
-          final int requestId = workerThread.getNewRequestId();
-          pullRequest = new PullRequest(workerThread, encodedKey, requestId);
+          requestId = workerThread.getNewRequestId();
+          pullRequest = new PullRequest(workerThread, encodedKey, this);
           pendingPullRequests.put(encodedKey.getKey(), pullRequest);
           sendPullMsg(encodedKey, requestId);
         } else {
           this.pullStartTime = ticker.read();
           workerThread.pendingStat.put(pullStartTime - enqueueTime);
+          pullRequest.addPendingOp(this);
         }
-        pullRequest.addPendingOp(this);
+      }
+    }
+
+    /**
+     * Check the existence of corresponding pullRequest, and re-send pull message.
+     */
+    @Override
+    public void retry() {
+      synchronized (workerThread) {
+        final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
+        final PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
+        if (checkPullRequest(pullRequest, requestId)) {
+          final int retryCount = pullRequest.getAndIncrementRetryCount();
+          if (retryCount >= MAX_PULL_RETRY_COUNT) {
+            throw new RuntimeException("Fail to load a value for pull");
+          }
+          LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
+              new Object[]{encodedKey.getKey(), retryCount + 1});
+          sendPullMsg(encodedKey, requestId);
+        } else {
+          LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
+              new Object[]{encodedKey.getKey(), requestId});
+        }
       }
     }
 
@@ -631,74 +670,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   /**
-   * A generic retry operation requested from RetryThread or [Pull|Push]Reject.
-   * Operations are queued at each WorkerThread.
-   */
-  private interface RetryOp {
-
-    /**
-     * Method to apply when dequeued by the WorkerThread.
-     */
-    void apply();
-  }
-
-  /**
-   * A push retry operation.
-   * Simply re-send rejected push message.
-   */
-  private final class PushRetryOp implements RetryOp {
-    private final EncodedKey<K> encodedKey;
-    private final P preValue;
-
-    PushRetryOp(final EncodedKey<K> encodedKey, final P preValue) {
-      this.encodedKey = encodedKey;
-      this.preValue = preValue;
-    }
-
-    @Override
-    public void apply() {
-      // because we do not have worker-side model cache for now, cannot guarantee read-my-update
-      sendPushMsg(encodedKey, preValue);
-    }
-  }
-
-  /**
-   * A pull retry operation.
-   * Check the existence of corresponding pullRequest, and re-send pull message.
-   */
-  private final class PullRetryOp implements RetryOp {
-    private final WorkerThread workerThread;
-    private final EncodedKey<K> encodedKey;
-    private final int requestId;
-
-    PullRetryOp(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final int requestId) {
-      this.workerThread = workerThread;
-      this.encodedKey = encodedKey;
-      this.requestId = requestId;
-    }
-
-    @Override
-    public void apply() {
-      synchronized (workerThread) {
-        final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
-        final PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
-        if (checkPullRequest(pullRequest, requestId)) {
-          final int retryCount = pullRequest.getAndIncrementRetryCount();
-          if (retryCount >= MAX_PULL_RETRY_COUNT) {
-            throw new RuntimeException("Fail to load a value for pull");
-          }
-          LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
-              new Object[]{encodedKey.getKey(), retryCount + 1});
-          sendPullMsg(encodedKey, requestId);
-        } else {
-          LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
-              new Object[]{encodedKey.getKey(), requestId});
-        }
-      }
-    }
-  }
-
-  /**
    * An object for managing pending pull request.
    * Multiple invocations of {@link ParameterWorker#pull(Object)} for the same key should not instantiate
    * multiple {@link PullRequest} objects, unless preceding request is resolved by receiving proper reply.
@@ -716,11 +687,12 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private boolean waiting;
     private final long pullStartTime;
 
-    PullRequest(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final int requestId) {
+    PullRequest(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final PullOp pullOp) {
       this.workerThread = workerThread;
       this.encodedKey = encodedKey;
       this.pendingOps = new ArrayList<>();
-      this.requestId = requestId;
+      this.pendingOps.add(pullOp);
+      this.requestId = pullOp.requestId;
       this.retryCount = 0;
       this.needRetry = false;
       this.waiting = false;
@@ -760,7 +732,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       if (needRetry) {
         LOG.log(Level.INFO, "Pull request time out for key: {0}, requestId: {1}, retryCount: {2}",
             new Object[]{encodedKey.getKey(), requestId, retryCount});
-        workerThread.enqueueRetryOp(new PullRetryOp(workerThread, encodedKey, requestId));
+        workerThread.enqueueRetryOp(pendingOps.get(0));
         return true;
       } else {
         needRetry = true;
@@ -796,7 +768,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * Reject this pull request, which will be retried later.
      */
     void rejectPullRequest() {
-      workerThread.enqueueRetryOp(new PullRetryOp(workerThread, encodedKey, requestId));
+      workerThread.enqueueRetryOp(pendingOps.get(0));
       workerThread.interrupt();
     }
 
@@ -828,11 +800,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     private final Map<K, PullRequest> pendingPullRequests;
     private final BlockingQueue<Op> queue;
-    private final BlockingQueue<RetryOp> retryQueue;
+    private final BlockingQueue<Op> retryQueue;
 
     // Operations drained from the queue, and processed locally.
     private final ArrayList<Op> localOps;
-    private final ArrayList<RetryOp> localRetryOps;
+    private final ArrayList<Op> localRetryOps;
     // Max number of operations to drain per iteration.
     private final int drainSize;
 
@@ -898,7 +870,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      *
      * @param op the retry operation to enqueue
      */
-    void enqueueRetryOp(final RetryOp op) {
+    void enqueueRetryOp(final Op op) {
       try {
         retryQueue.put(op);
       } catch (final InterruptedException e) {
@@ -925,8 +897,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private void processRetryOps() {
       if (!retryQueue.isEmpty()) {
         retryQueue.drainTo(localRetryOps, drainSize);
-        for (final RetryOp retryOp : localRetryOps) {
-          retryOp.apply();
+        for (final Op retryOp : localRetryOps) {
+          retryOp.retry();
         }
         localRetryOps.clear();
       }
@@ -1027,7 +999,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   /**
    * A thread which checks timeout of remaining pendingPullRequests.
    * Traverse all remaining pendingPullRequests in {@link #threads} for every {@code pullRetryTimeoutMs} milliseconds
-   * and enqueue {@link PullRetryOp} if necessary. See {@link PullRequest#retryIfNecessary()}.
+   * and enqueue {@link PullOp} if necessary. See {@link PullRequest#retryIfNecessary()}.
    *
    * If {@code pullRetryTimeoutMs} is equal to 0, this thread do nothing. In other words, there is no timeout mechanism.
    */
