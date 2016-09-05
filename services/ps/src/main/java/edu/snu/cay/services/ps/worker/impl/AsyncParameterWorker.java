@@ -759,7 +759,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @param pullOp a pending pull operation
      */
     void addPendingOp(final PullOp pullOp) {
-      synchronized(workerThread) {
+      synchronized (workerThread) {
         pendingOps.add(pullOp);
       }
     }
@@ -771,7 +771,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @param elapsedTimeInServer elapsed time since pull request's arrival at server
      */
     void completePendingOps(final V value, final long elapsedTimeInServer) {
-      synchronized(workerThread) {
+      synchronized (workerThread) {
 
         final long pullTime = ticker.read() - pullStartTime;
         workerThread.networkStat.put(pullTime - elapsedTimeInServer);
@@ -798,7 +798,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @throws InterruptedException when the executing thread is interrupted
      */
     void waitForComplete() throws InterruptedException {
-      synchronized(workerThread) {
+      synchronized (workerThread) {
         waiting = true;
         workerThread.wait();
       }
