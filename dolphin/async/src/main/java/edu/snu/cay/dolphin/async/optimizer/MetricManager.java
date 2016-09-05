@@ -110,7 +110,7 @@ public final class MetricManager {
 
   private static final class DashboardSetupStatus {
     /**
-     * If the Dashboard server is in use.
+     * {@code true} if the Dashboard server is in use.
      */
     private final boolean dashboardEnabled;
 
@@ -132,22 +132,22 @@ public final class MetricManager {
       this.reusableHttpClient = reusableHttpClient;
     }
 
-    private static DashboardSetupStatus getFailedStatus() {
+    private static DashboardSetupStatus getFailed() {
       return new DashboardSetupStatus(false, null, null);
     }
 
-    private static DashboardSetupStatus getSucceededSatus(final String dashboardURL,
-                                                          final CloseableHttpAsyncClient reusableHttpClient) {
+    private static DashboardSetupStatus getSuccessful(final String dashboardURL,
+                                                      final CloseableHttpAsyncClient reusableHttpClient) {
       return new DashboardSetupStatus(true, dashboardURL, reusableHttpClient);
     }
   }
 
   private DashboardSetupStatus initDashboard(final String hostAddress, final int port) {
-    final boolean isValidHostAddr = !hostAddress.equals(AsyncDolphinLauncher.INVALID_HOST_ADDRESS);
+    final boolean invalidHostAddr = hostAddress.equals(AsyncDolphinLauncher.INVALID_HOST_ADDRESS);
 
-    if (!isValidHostAddr) {
+    if (invalidHostAddr) {
       LOG.log(Level.INFO, "Dashboard is not in use");
-      return DashboardSetupStatus.getFailedStatus();
+      return DashboardSetupStatus.getFailed();
 
     } else {
       final String dashboardURL = "http://" + hostAddress + ":" + port + "/";
@@ -163,10 +163,10 @@ public final class MetricManager {
         // run another thread to send metrics.
         runMetricsSenderThread();
 
-        return DashboardSetupStatus.getSucceededSatus(dashboardURL, reusableHttpClient);
+        return DashboardSetupStatus.getSuccessful(dashboardURL, reusableHttpClient);
       } catch (IOReactorException e) {
         LOG.log(Level.WARNING, "Dashboard: Fail on initializing IOReactor.", e);
-        return DashboardSetupStatus.getFailedStatus();
+        return DashboardSetupStatus.getFailed();
       }
     }
   }
@@ -204,7 +204,7 @@ public final class MetricManager {
     }
 
     // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
-    if (this.dashboardSetupStatus.dashboardEnabled) {
+    if (dashboardSetupStatus.dashboardEnabled) {
       try {
         metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
             workerId, metrics, System.currentTimeMillis()));
@@ -247,7 +247,7 @@ public final class MetricManager {
     }
 
     // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
-    if (this.dashboardSetupStatus.dashboardEnabled) {
+    if (dashboardSetupStatus.dashboardEnabled) {
       try {
         metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
             serverId, metrics, System.currentTimeMillis()));
@@ -374,10 +374,10 @@ public final class MetricManager {
    */
   private void sendMetricsToDashboard(final String request) {
     try {
-      final HttpPost httpPost = new HttpPost(this.dashboardSetupStatus.dashboardURL);
+      final HttpPost httpPost = new HttpPost(dashboardSetupStatus.dashboardURL);
       httpPost.setHeader("Content-Type", "application/x-www-form-urlencoded");
       httpPost.setEntity(new StringEntity(request));
-      this.dashboardSetupStatus.reusableHttpClient.execute(httpPost, new DashboardResponseCallback());
+      dashboardSetupStatus.reusableHttpClient.execute(httpPost, new DashboardResponseCallback());
     } catch (IOException e) {
       //TODO #772: deal with request failure.
       LOG.log(Level.WARNING, "Dashboard: post request failed.", e);
