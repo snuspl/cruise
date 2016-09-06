@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.util.Optional;
+import org.htrace.Span;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -32,6 +33,7 @@ import org.apache.reef.wake.IdentifierFactory;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -42,16 +44,16 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgSenderImpl.class.getName());
 
-  private static final String SEND_REMOTE_OP_REQ_MSG = "sendRemoteOpReqMsg";
-  private static final String SEND_REMOTE_OP_RESULT_MSG = "sendRemoteOpResultMsg";
-  private static final String SEND_ROUTING_TABLE_INIT_REQ_MSG = "sendRoutingTableInitReqMsg";
-  private static final String SEND_ROUTING_TABLE_INIT_MSG = "sendRoutingTableInitMsg";
-  private static final String SEND_ROUTING_TABLE_UPDATE_MSG = "sendRoutingTableUpdateMsg";
-  private static final String SEND_CTRL_MSG = "sendCtrlMsg";
-  private static final String SEND_DATA_MSG = "sendDataMsg";
-  private static final String SEND_OWNERSHIP_MSG = "sendOwnershipMsg";
-  private static final String SEND_FAILURE_MSG = "sendFailureMsg";
-  private static final String SEND_OWNERSHIP_ACK_MSG = "sendOwnershipAckMsg";
+  private static final String SEND_REMOTE_OP_REQ_MSG = "send_remote_op_req_msg";
+  private static final String SEND_REMOTE_OP_RESULT_MSG = "send_remote_op_result_msg";
+  private static final String SEND_ROUTING_TABLE_INIT_REQ_MSG = "send_routing_table_init_req_msg";
+  private static final String SEND_ROUTING_TABLE_INIT_MSG = "send_routing_table_init_msg";
+  private static final String SEND_ROUTING_TABLE_UPDATE_MSG = "send_routing_table_update_msg";
+  private static final String SEND_CTRL_MSG = "send_ctrl_msg";
+  private static final String SEND_DATA_MSG = "send_data_msg";
+  private static final String SEND_OWNERSHIP_MSG = "send_ownership_msg";
+  private static final String SEND_FAILURE_MSG = "send_failure_msg";
+  private static final String SEND_OWNERSHIP_ACK_MSG = "send_ownership_ack_msg";
 
   private final EMNetworkSetup emNetworkSetup;
   private final IdentifierFactory identifierFactory;
@@ -177,7 +179,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
     }
-
   }
 
   private AvroElasticMemoryMessage generateRemoteOpResultMsg(final String destId,
@@ -253,8 +254,10 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
                                         final String oldEvalId, final String newEvalId,
                                         @Nullable final TraceInfo parentTraceInfo) {
+    Span detached = null;
+
     try (final TraceScope sendRoutingTableUpdateMsgScope =
-             Trace.startSpan(SEND_ROUTING_TABLE_UPDATE_MSG, parentTraceInfo)) {
+             Trace.startSpan(SEND_ROUTING_TABLE_UPDATE_MSG + ". destId: " + destId, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
 
@@ -264,16 +267,21 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setBlockIds(blocks)
           .build();
 
+      detached = sendRoutingTableUpdateMsgScope.detach();
+
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.RoutingTableUpdateMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(destId)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
               .setRoutingTableUpdateMsg(routingTableUpdateMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
+
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
@@ -281,7 +289,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   public void sendCtrlMsg(final String destId, final String targetEvalId,
                           final List<Integer> blocks, final String operationId,
                           @Nullable final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo)) {
+    try (final TraceScope sendCtrlMsgScope = Trace.startSpan("[1]" + SEND_CTRL_MSG, parentTraceInfo)) {
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
           .setBlockIds(blocks)
@@ -293,7 +301,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setSrcId(destId)
               .setDestId(targetEvalId)
               .setOperationId(operationId)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(sendCtrlMsgScope.getSpan())))
               .setCtrlMsg(ctrlMsg)
               .build());
     }
@@ -301,8 +309,26 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendDataMsg(final String destId, final List<KeyValuePair> keyValuePairs, final int blockId,
-                          final String operationId, final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo)) {
+                          final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    int totalKeyBytes = 0;
+    int totalValueBytes = 0;
+
+    for (final KeyValuePair keyValuePair : keyValuePairs) {
+      final int keyByteLength = keyValuePair.getKey().array().length;
+      final int valueByteLength = keyValuePair.getValue().array().length;
+      totalKeyBytes += keyByteLength;
+      totalValueBytes += valueByteLength;
+    }
+
+    LOG.log(Level.INFO, "SendDataMsg: op_id: {0}, dest_id: {1}, block_id: {2}," +
+        " num_kv_pairs: {3}, k_bytes: {4}, v_bytes: {5}",
+        new Object[]{operationId, destId, blockId, keyValuePairs.size(), totalKeyBytes, totalValueBytes});
+
+    Span detached = null;
+
+    try (final TraceScope sendDataMsgScope = Trace.startSpan("[2]" + SEND_DATA_MSG
+        + String.format(". op_id: %s, dest: %s, num_kv_pairs: %d, (k_bytes, v_bytes): (%d, %d)",
+        operationId, destId, keyValuePairs.size(), totalKeyBytes, totalValueBytes), parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
           new Object[]{destId});
@@ -312,18 +338,22 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setBlockId(blockId)
           .build();
 
+      detached = sendDataMsgScope.detach();
+
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.DataMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(destId)
               .setOperationId(operationId)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
               .setDataMsg(dataMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
           new Object[]{destId});
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
@@ -331,7 +361,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   public void sendOwnershipMsg(final Optional<String> destIdOptional, final String operationId,
                                final int blockId, final int oldOwnerId, final int newOwnerId,
                                @Nullable final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendUpdateAckMsgScope = Trace.startSpan(SEND_OWNERSHIP_MSG, parentTraceInfo)) {
+    try (final TraceScope sendOwnershipMsgScope = Trace.startSpan("[3][4]" + SEND_OWNERSHIP_MSG, parentTraceInfo)) {
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
               .setBlockId(blockId)
@@ -356,7 +386,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   @Override
   public void sendOwnershipAckMsg(final String operationId, final int blockId,
                                   @Nullable final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan(SEND_OWNERSHIP_ACK_MSG, parentTraceInfo)) {
+    try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan("[5]" + SEND_OWNERSHIP_ACK_MSG, parentTraceInfo)) {
       final OwnershipAckMsg ownershipAckMsg = OwnershipAckMsg.newBuilder()
           .setBlockId(blockId)
           .build();

@@ -186,7 +186,8 @@
     {"name": "workerDeregisterMsg", "type": ["null", "WorkerDeregisterMsg"], "default": null},
     {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},
     {"name": "routingTableSyncMsg", "type": ["null", "RoutingTableSyncMsg"], "default": null},
-    {"name": "routingTableSyncReplyMsg", "type": ["null", "RoutingTableSyncReplyMsg"], "default": null}
+    {"name": "routingTableSyncReplyMsg", "type": ["null", "RoutingTableSyncReplyMsg"], "default": null},
+    {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null}
   ]
 },
 

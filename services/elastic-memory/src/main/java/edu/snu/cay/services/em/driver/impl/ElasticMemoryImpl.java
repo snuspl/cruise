@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.common.parameters.HTraceOption;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -29,11 +30,13 @@ import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.EventHandler;
+import org.htrace.Sampler;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
-import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -63,17 +66,22 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final InjectionFuture<EMDeleteExecutor> deleteExecutor;
   private final BlockManager blockManager;
 
+  private final Sampler emSampler;
+
   @Inject
   private ElasticMemoryImpl(final EvaluatorManager evaluatorManager,
                             final MigrationManager migrationManager,
                             final InjectionFuture<EMDeleteExecutor> deleteExecutor,
                             final BlockManager blockManager,
+                            @Parameter(HTraceOption.class) final boolean emHtrace,
                             final HTrace hTrace) {
-    hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
     this.migrationManager = migrationManager;
     this.deleteExecutor = deleteExecutor;
     this.blockManager = blockManager;
+
+    hTrace.initialize();
+    this.emSampler = emHtrace ? Sampler.ALWAYS : Sampler.NEVER;
   }
 
   /**
@@ -147,11 +155,10 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-    try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
-      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
+    try (final TraceScope moveTraceScope = Trace.startSpan(MOVE, emSampler)) {
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
-      migrationManager.startMigration(operationId, srcEvalId, destEvalId, numBlocks, traceInfo,
-          finishedCallback);
+      migrationManager.startMigration(operationId, srcEvalId, destEvalId, numBlocks,
+          TraceInfo.fromSpan(moveTraceScope.getSpan()), finishedCallback);
     }
   }
 

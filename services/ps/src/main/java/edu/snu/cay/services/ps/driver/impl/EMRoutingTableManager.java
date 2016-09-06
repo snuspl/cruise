@@ -19,14 +19,20 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.impl.EMRoutingTableUpdateImpl;
 import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
+import org.htrace.Span;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -286,9 +292,29 @@ public final class EMRoutingTableManager {
   /**
    * Broadcasts update in routing tables of Server-side EM to all active {@code ParameterWorker}s.
    */
-  private synchronized void broadcastMsg(final AvroPSMsg updateMsg) {
+  private synchronized void broadcastMsg(final RoutingTableUpdateMsg routingTableUpdateMsg,
+                                         final TraceInfo parentTraceInfo) {
     for (final String workerId : activeWorkerIds) {
-      sender.get().send(workerId, updateMsg);
+      Span detached = null;
+
+      try (final TraceScope traceScope = Trace.startSpan("send_routing_table_update_msg. workerId: " + workerId,
+          parentTraceInfo)) {
+
+        detached = traceScope.detach();
+        final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
+
+        final AvroPSMsg updateMsg =
+            AvroPSMsg.newBuilder()
+                .setType(Type.RoutingTableUpdateMsg)
+                .setRoutingTableUpdateMsg(routingTableUpdateMsg)
+                .setTraceInfo(HTraceUtils.toAvro(traceInfo))
+                .build();
+
+        sender.get().send(workerId, updateMsg);
+
+      } finally {
+        Trace.continueSpan(detached).close();
+      }
     }
   }
 
@@ -303,6 +329,9 @@ public final class EMRoutingTableManager {
       final int newOwnerId = emRoutingTableUpdate.getNewOwnerId();
       final String newEvalID = emRoutingTableUpdate.getNewEvalId();
       final int blockId = emRoutingTableUpdate.getBlockId();
+      final TraceInfo parentTraceInfo = ((EMRoutingTableUpdateImpl) emRoutingTableUpdate).getTraceInfo();
+
+      Trace.setProcessId(EMRoutingTableManager.class.getSimpleName());
 
       final RoutingTableUpdateMsg routingTableUpdateMsg = RoutingTableUpdateMsg.newBuilder()
           .setOldOwnerId(oldOwnerId)
@@ -311,13 +340,7 @@ public final class EMRoutingTableManager {
           .setBlockId(blockId)
           .build();
 
-      final AvroPSMsg updateMsg =
-          AvroPSMsg.newBuilder()
-              .setType(Type.RoutingTableUpdateMsg)
-              .setRoutingTableUpdateMsg(routingTableUpdateMsg)
-              .build();
-
-      broadcastMsg(updateMsg);
+      broadcastMsg(routingTableUpdateMsg, parentTraceInfo);
     }
   }
 }

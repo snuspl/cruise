@@ -130,6 +130,7 @@
               <outputDirectory>${project.basedir}/target/generated-sources/avro</outputDirectory>
               <imports>
                 <import>${project.parent.basedir}/common/src/main/avro/metric.avsc</import>
+                <import>${project.parent.basedir}/utils/src/main/avro/traceinfo.avsc</import>
               </imports>
             </configuration>
           </execution>
