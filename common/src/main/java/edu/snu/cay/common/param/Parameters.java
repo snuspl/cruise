@@ -22,6 +22,11 @@ import org.apache.reef.tang.annotations.NamedParameter;
  * Common parameter classes for application frameworks.
  */
 public final class Parameters {
+  @NamedParameter(doc = "Desired memory size for the driver (MBs)",
+                  short_name = "driver_memory",
+                  default_value = "256")
+  public final class DriverMemory implements Name<Integer> {
+  }
 
   @NamedParameter(doc = "Desired memory size for each evaluator (MBs)",
                   short_name = "eval_size",
