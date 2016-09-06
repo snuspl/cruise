@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.ps.common;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * Class calculating statistics such as average and sum.
  */
@@ -40,7 +42,7 @@ public final class Statistics {
   }
 
   public double sum() {
-    return sum / 1e9D;
+    return TimeUnit.SECONDS.convert(sum, TimeUnit.NANOSECONDS);
   }
 
   public double count() {

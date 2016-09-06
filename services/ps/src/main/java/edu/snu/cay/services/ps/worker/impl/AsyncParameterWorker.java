@@ -620,8 +620,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           this.pullStartTime = ticker.read();
           workerThread.pendingStat.put(pullStartTime - enqueueTime);
 
-          requestId = workerThread.getNewRequestId();
           pullRequest = new PullRequest(workerThread, encodedKey, this);
+          requestId = pullRequest.getRequestId();
           pendingPullRequests.put(encodedKey.getKey(), pullRequest);
           sendPullMsg(encodedKey, requestId);
 
@@ -706,7 +706,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       this.encodedKey = encodedKey;
       this.pendingOps = new ArrayList<>();
       this.pendingOps.add(pullOp);
-      this.requestId = pullOp.requestId;
+
+      this.requestId = workerThread.getNewRequestId();
       this.retryCount = 0;
       this.needRetry = false;
       this.waiting = false;
@@ -795,6 +796,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     /**
      * Wait until this pull request is completed.
+     * Should precede completePendingOps.
      * @throws InterruptedException when the executing thread is interrupted
      */
     void waitForComplete() throws InterruptedException {
@@ -1057,17 +1059,26 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         return;
       }
 
-      try {
-        Thread.sleep(pullRetryTimeoutMs);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.FINE, "Interrupt while sleeping for retry interval");
-      }
+      long elapsedTimeInMs = 0;
 
       while (stateMachine.getCurrentState().equals(STATE_RUNNING)) {
+        // if previous scan took more than pullRetryTimeoutMs, do not sleep
+        if (elapsedTimeInMs < pullRetryTimeoutMs) {
+          try {
+            // ensure that scan & retry do not occur with period smaller than pullRetryTimeoutMs
+            Thread.sleep(pullRetryTimeoutMs - elapsedTimeInMs);
+          } catch (final InterruptedException e) {
+            LOG.log(Level.FINE, "Interrupt while sleeping for retry interval");
+          }
+        }
+
         final long startTime = ticker.read();
 
+        // scan all pendingPullRequests in WorkerThreads, and check timeout
         for (final WorkerThread workerThread : threads) {
           final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
+
+          // batching thread interrupt; interrupt the WorkerThread only once after scanning finishes
           boolean needInterrupt = false;
           for (final PullRequest pullRequest : pendingPullRequests.values()) {
             if (needInterrupt) {
@@ -1081,15 +1092,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           }
         }
 
-        final long elapsedTimeInMs = (long)((ticker.read() - startTime) / 1e6);
-
-        if (elapsedTimeInMs < pullRetryTimeoutMs) {
-          try {
-            Thread.sleep(pullRetryTimeoutMs - elapsedTimeInMs);
-          } catch (final InterruptedException e) {
-            LOG.log(Level.FINE, "Interrupt while sleeping for retry interval");
-          }
-        }
+        elapsedTimeInMs = TimeUnit.MILLISECONDS.convert(ticker.read() - startTime, TimeUnit.NANOSECONDS);
       }
 
       finishClose();
