@@ -101,7 +101,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
 
       send(destId, generateRemoteOpReqMsg(origEvalId, destId, operationType,
-          dataKeyRanges, dataKVPairList, operationId, parentTraceInfo));
+          dataKeyRanges, dataKVPairList, operationId, TraceInfo.fromSpan(sendRemoteOpReqMsgScope.getSpan())));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
           operationType});
@@ -121,7 +121,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
 
       send(destId, generateRemoteOpReqMsg(origEvalId, destId, operationType,
-          dataKey, dataValue, operationId, parentTraceInfo));
+          dataKey, dataValue, operationId, TraceInfo.fromSpan(sendRemoteOpReqMsgScope.getSpan())));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
           operationType});
@@ -161,7 +161,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       final boolean isSuccess = failedRanges.isEmpty();
 
       send(destId,
-          generateRemoteOpResultMsg(destId, dataKVPairList, isSuccess, failedRanges, operationId, parentTraceInfo));
+          generateRemoteOpResultMsg(destId, dataKVPairList, isSuccess, failedRanges, operationId,
+              TraceInfo.fromSpan(sendRemoteOpResultMsgScope.getSpan())));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
     }
@@ -175,7 +176,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
 
       send(destId,
-          generateRemoteOpResultMsg(destId, dataValue, isSuccess, null, operationId, parentTraceInfo));
+          generateRemoteOpResultMsg(destId, dataValue, isSuccess, null, operationId,
+              TraceInfo.fromSpan(sendRemoteOpResultMsgScope.getSpan())));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
     }
@@ -217,7 +219,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setType(Type.RoutingTableInitReqMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(driverId)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(sendRoutingInitReqMsgScope.getSpan())))
               .setRoutingTableInitReqMsg(routingTableInitReqMsg)
               .build());
 
@@ -242,7 +244,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setType(Type.RoutingTableInitMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(destId)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(sendRoutingTableInitMsgScope.getSpan())))
               .setRoutingTableInitMsg(routingTableInitMsg)
               .build());
 
@@ -327,8 +329,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     Span detached = null;
 
     try (final TraceScope sendDataMsgScope = Trace.startSpan("[2]" + SEND_DATA_MSG
-        + String.format(". op_id: %s, dest: %s, num_kv_pairs: %d, (k_bytes, v_bytes): (%d, %d)",
-        operationId, destId, keyValuePairs.size(), totalKeyBytes, totalValueBytes), parentTraceInfo)) {
+        + String.format(". op_id: %s, dest: %s, block_id: %d, num_kv_pairs: %d, (k_bytes, v_bytes): (%d, %d)",
+        operationId, destId, blockId, keyValuePairs.size(), totalKeyBytes, totalValueBytes), parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
           new Object[]{destId});
@@ -361,7 +363,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   public void sendOwnershipMsg(final Optional<String> destIdOptional, final String operationId,
                                final int blockId, final int oldOwnerId, final int newOwnerId,
                                @Nullable final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendOwnershipMsgScope = Trace.startSpan("[3][4]" + SEND_OWNERSHIP_MSG, parentTraceInfo)) {
+    try (final TraceScope sendOwnershipMsgScope = Trace.startSpan("[3][4]" + SEND_OWNERSHIP_MSG
+        + ". blockId: " + blockId, parentTraceInfo)) {
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
               .setBlockId(blockId)
@@ -378,7 +381,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setDestId(destId)
               .setOperationId(operationId)
               .setOwnershipMsg(ownershipMsg)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(sendOwnershipMsgScope.getSpan())))
               .build());
     }
   }
@@ -386,7 +389,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   @Override
   public void sendOwnershipAckMsg(final String operationId, final int blockId,
                                   @Nullable final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan("[5]" + SEND_OWNERSHIP_ACK_MSG, parentTraceInfo)) {
+    try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan("[5]" + SEND_OWNERSHIP_ACK_MSG
+        + ". blockId: " + blockId, parentTraceInfo)) {
       final OwnershipAckMsg ownershipAckMsg = OwnershipAckMsg.newBuilder()
           .setBlockId(blockId)
           .build();
@@ -397,7 +401,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setDestId(driverId)
               .setOperationId(operationId)
               .setOwnershipAckMsg(ownershipAckMsg)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(sendOwnershipAckMsgScope.getSpan())))
               .build());
     }
   }
@@ -421,7 +425,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setDestId(driverId)
               .setOperationId(operationId)
               .setFailureMsg(failureMsg)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(sendFailureMsgScope.getSpan())))
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",

@@ -140,15 +140,15 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   }
 
   private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId("src_eval");
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("[4]" + ON_OWNERSHIP_MSG,
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+    final String operationId = msg.getOperationId().toString();
+    final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
+    final int blockId = ownershipMsg.getBlockId();
+    final int oldOwnerId = ownershipMsg.getOldOwnerId();
+    final int newOwnerId = ownershipMsg.getNewOwnerId();
 
-      final String operationId = msg.getOperationId().toString();
-      final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
-      final int blockId = ownershipMsg.getBlockId();
-      final int oldOwnerId = ownershipMsg.getOldOwnerId();
-      final int newOwnerId = ownershipMsg.getNewOwnerId();
+    Trace.setProcessId("src_eval");
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("[4]" + ON_OWNERSHIP_MSG + ". blockId: " + blockId,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       // Update the owner of the block to the new one.
       // Operations being executed keep a read lock on router while being executed.
@@ -173,13 +173,14 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
    * Puts the data message contents into own memory store.
    */
   private void onDataMsg(final AvroElasticMemoryMessage msg) {
+    final DataMsg dataMsg = msg.getDataMsg();
+    final Codec codec = serializer.getCodec();
+    final String operationId = msg.getOperationId().toString();
+    final int blockId = dataMsg.getBlockId();
+
     Trace.setProcessId("dst_eval");
-    try (final TraceScope onDataMsgScope = Trace.startSpan("[2]" + ON_DATA_MSG,
+    try (final TraceScope onDataMsgScope = Trace.startSpan("[2]" + ON_DATA_MSG + ". blockId: " + blockId,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final DataMsg dataMsg = msg.getDataMsg();
-      final Codec codec = serializer.getCodec();
-      final String operationId = msg.getOperationId().toString();
-      final int blockId = dataMsg.getBlockId();
 
       final Map<K, Object> dataMap = toDataMap(dataMsg.getKeyValuePairs(), codec);
       memoryStore.putBlock(blockId, dataMap);

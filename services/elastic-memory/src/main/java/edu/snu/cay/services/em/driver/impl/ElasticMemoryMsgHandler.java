@@ -103,27 +103,28 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   private void onOwnershipAckMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId("driver");
-    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan("[5]" + ON_OWNERSHIP_ACK_MSG,
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+    final String operationId = msg.getOperationId().toString();
+    final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
+    final int blockId = ownershipAckMsg.getBlockId();
 
-      final String operationId = msg.getOperationId().toString();
-      final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
-      final int blockId = ownershipAckMsg.getBlockId();
+    Trace.setProcessId("driver");
+    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan("[5]" + ON_OWNERSHIP_ACK_MSG
+        + ". blockId: " + blockId,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       migrationManager.markBlockAsMoved(operationId, blockId, TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
     }
   }
 
   private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId("driver");
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("[3]" + ON_OWNERSHIP_MSG,
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+    final String operationId = msg.getOperationId().toString();
+    final int blockId = msg.getOwnershipMsg().getBlockId();
+    final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
+    final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
 
-      final String operationId = msg.getOperationId().toString();
-      final int blockId = msg.getOwnershipMsg().getBlockId();
-      final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
-      final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
+    Trace.setProcessId("driver");
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("[3]" + ON_OWNERSHIP_MSG + ". blockId: " + blockId,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       // Update the owner and send ownership message to the old Owner.
       migrationManager.updateOwner(operationId, blockId, oldOwnerId, newOwnerId,
