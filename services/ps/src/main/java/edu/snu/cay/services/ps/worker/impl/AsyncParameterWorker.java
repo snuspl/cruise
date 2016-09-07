@@ -693,14 +693,22 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * without making multiple {@link PullRequest} objects and sending more than one pull requests to server.
    */
   private final class PullRequest {
+
+    /* Variables for indicating state of the pull request */
+    // initial state, or retry message is already sent
+    private static final int INIT = 0;
+    // a state indicates that this request will be retried if it is not completed until next scanning of RetryThread
+    private static final int NEED_RETRY = 1;
+    // a state indicates that RetryThread enqueued corresponding PullOp to retryQueue
+    private static final int RETRY_REQUESTED = 2;
+
     private final WorkerThread workerThread;
     private final EncodedKey<K> encodedKey;
     private final ArrayList<PullOp> pendingOps;
 
     private final int requestId;
     private int retryCount;
-    private boolean needRetry;
-    private boolean waitingRetry;
+    private int state;
     private boolean waiting;
     private final long pullStartTime;
 
@@ -712,8 +720,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
       this.requestId = workerThread.getNewRequestId();
       this.retryCount = 0;
-      this.needRetry = false;
-      this.waitingRetry = false;
+      this.state = INIT;
       this.waiting = false;
       this.pullStartTime = ticker.read();
     }
@@ -732,7 +739,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     /**
      * Should be invoked when pull operation is retried.
-     * Marks {@link #waitingRetry} as false,
+     * Change the state of this pull request to {@link #INIT},
      * and retrieves retry count for this pending pull request and increases by one.
      * If retrial is necessary due to timeout or rejection from the server,
      * {@link ParameterWorker} does not make another {@link PullRequest} and calls this method
@@ -740,31 +747,35 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @return retry count
      */
     int markRetry() {
-      waitingRetry = false;
+      if (state != RETRY_REQUESTED) {
+        throw new RuntimeException("Retry for key " + encodedKey.getKey() +
+            " is never requested, but WorkerThread attempts to retry it");
+      }
+      state = INIT;
       return retryCount++;
     }
 
     /**
-     * Retry this pull request if the timeout exceeded. Does not provide strong guarantee of timeout.
+     * Request retry of this pull request if the timeout exceeded. Does not provide strong guarantee of timeout.
      * This method does not care about retry count, and only depends on whether the timeout is exceeded or not.
      * The worker may not send pull retry message immediately. It depends on the implementation of {@link WorkerThread}.
      * @return true if timeout exceeded
      */
-    boolean retryIfTimeout() {
-      // if waitingRetry is true, corresponding PullOp is already enqueued in retryQueue(not processed yet), thus skip
-      if (waitingRetry) {
+    boolean requestRetryIfTimeout() {
+      switch (state) {
+      case INIT:
+        state = NEED_RETRY;
         return false;
-      }
-      if (needRetry) {
+      case NEED_RETRY:
         LOG.log(Level.INFO, "Pull request time out for key: {0}, requestId: {1}, retryCount: {2}",
             new Object[]{encodedKey.getKey(), requestId, retryCount});
-        waitingRetry = true;
-        needRetry = false;
+        state = RETRY_REQUESTED;
         workerThread.enqueueRetryOp(pendingOps.get(0));
         return true;
-      } else {
-        needRetry = true;
+      case RETRY_REQUESTED:
         return false;
+      default:
+        throw new RuntimeException("Unknown state of pull request");
       }
     }
 
@@ -1037,7 +1048,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   /**
    * A thread which checks timeout of remaining pendingPullRequests.
    * Traverse all remaining pendingPullRequests in {@link #threads} for every {@code pullRetryTimeoutMs} milliseconds
-   * and enqueue {@link PullOp} if necessary. See {@link PullRequest#retryIfTimeout()}.
+   * and enqueue {@link PullOp} if necessary. See {@link PullRequest#requestRetryIfTimeout()}.
    *
    * If {@code pullRetryTimeoutMs} is equal to 0, this thread do nothing. In other words, there is no timeout mechanism.
    */
@@ -1094,7 +1105,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           // batching thread interrupt; interrupt the WorkerThread only once after scanning finishes
           boolean needInterrupt = false;
           for (final PullRequest pullRequest : pendingPullRequests.values()) {
-            needInterrupt |= pullRequest.retryIfTimeout();
+            needInterrupt |= pullRequest.requestRetryIfTimeout();
           }
           if (needInterrupt) {
             workerThread.interruptToTriggerRetry();
