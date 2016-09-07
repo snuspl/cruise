@@ -112,12 +112,9 @@ public final class PoolingGpuLayer extends LayerBase {
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    JavaCudnn.checkNullPointer(inputDesc);
     this.poolDesc = JavaCudnn.createPoolDesc(
         this.poolingType, kernelHeight, kernelWidth, paddingHeight, paddingWidth, strideHeight, strideWidth);
-    JavaCudnn.checkNullPointer(poolDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, outputChannel, outputHeight, outputWidth);
-    JavaCudnn.checkNullPointer(activationDesc);
   }
 
   @Override

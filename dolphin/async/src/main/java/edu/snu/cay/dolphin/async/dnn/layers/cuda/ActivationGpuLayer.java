@@ -73,9 +73,7 @@ public final class ActivationGpuLayer extends LayerBase {
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    JavaCudnn.checkNullPointer(inputDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    JavaCudnn.checkNullPointer(activationDesc);
     final char func;
     switch (activationFunction.toLowerCase()) {
     case "sigmoid": func = 'S';
@@ -90,7 +88,6 @@ public final class ActivationGpuLayer extends LayerBase {
       throw new IllegalArgumentException("Unsupported function: " + activationFunction);
     }
     this.activDesc = JavaCudnn.createActivDesc(func);
-    JavaCudnn.checkNullPointer(activDesc);
   }
 
   @Override

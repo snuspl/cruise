@@ -63,8 +63,9 @@ cudnnHandle_t JavaCudnn::getCudnnHandle() {
 
 // Functions for creating descriptors.
 
-cudnnTensorDescriptor_t* JavaCudnn::createTensorDesc(const int n, const int c, const int h, const int w,
-                                                     const int nStride, const int cStride, const int hStride, const int wStride) {
+cudnnTensorDescriptor_t* JavaCudnn::cudnnCreateTensorDesc(
+    const int n, const int c, const int h, const int w,
+    const int nStride, const int cStride, const int hStride, const int wStride) {
   cudnnTensorDescriptor_t* tensorDesc = ((cudnnTensorDescriptor_t*) std::malloc(sizeof(cudnnTensorDescriptor_t)));
   if (!cudnnCheck(cudnnCreateTensorDescriptor(tensorDesc)) ||
       !cudnnCheck(cudnnSetTensor4dDescriptorEx(*tensorDesc, CUDNN_DATA_FLOAT, n, c, h, w, nStride, cStride, hStride, wStride))) {
@@ -74,15 +75,17 @@ cudnnTensorDescriptor_t* JavaCudnn::createTensorDesc(const int n, const int c, c
   }
 }
 
-cudnnTensorDescriptor_t* JavaCudnn::createTensorDesc(const int n, const int c, const int h, const int w) {
+cudnnTensorDescriptor_t* JavaCudnn::cudnnCreateTensorDesc(
+    const int n, const int c, const int h, const int w) {
   int wStride = 1;
   int hStride = w * wStride;
   int cStride = h * hStride;
   int nStride = c * cStride;
-  return createTensorDesc(n, c, h, w, nStride, cStride, hStride, wStride);
+  return cudnnCreateTensorDesc(n, c, h, w, nStride, cStride, hStride, wStride);
 }
 
-cudnnFilterDescriptor_t* JavaCudnn::createFilterDesc(const int k, const int c, const int h, const int w) {
+cudnnFilterDescriptor_t* JavaCudnn::cudnnCreateFilterDesc(
+    const int k, const int c, const int h, const int w) {
   cudnnFilterDescriptor_t* filterDesc = ((cudnnFilterDescriptor_t*) std::malloc(sizeof(cudnnFilterDescriptor_t)));
   if (!cudnnCheck(cudnnCreateFilterDescriptor(filterDesc)) ||
       !cudnnCheck(cudnnSetFilter4dDescriptor(*filterDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, k, c, h, w))) {
@@ -92,7 +95,8 @@ cudnnFilterDescriptor_t* JavaCudnn::createFilterDesc(const int k, const int c, c
   }
 }
 
-cudnnConvolutionDescriptor_t* JavaCudnn::createConvDesc(const int padH, const int padW, const int strideH, const int strideW) {
+cudnnConvolutionDescriptor_t* JavaCudnn::cudnnCreateConvDesc(
+    const int padH, const int padW, const int strideH, const int strideW) {
   cudnnConvolutionDescriptor_t* convDesc = ((cudnnConvolutionDescriptor_t*) std::malloc(sizeof(cudnnConvolutionDescriptor_t)));
   if (!cudnnCheck(cudnnCreateConvolutionDescriptor(convDesc)) ||
       !cudnnCheck(cudnnSetConvolution2dDescriptor(*convDesc, padH, padW, strideH, strideW, 1, 1, CUDNN_CROSS_CORRELATION))) {
@@ -102,8 +106,8 @@ cudnnConvolutionDescriptor_t* JavaCudnn::createConvDesc(const int padH, const in
   }
 }
 
-cudnnPoolingDescriptor_t* JavaCudnn::createPoolDesc(const char mode, const int h, const int w,
-                                                    const int padH, const int padW, const int strideH, const int strideW) {
+cudnnPoolingDescriptor_t* JavaCudnn::cudnnCreatePoolDesc(
+    const char mode, const int h, const int w, const int padH, const int padW, const int strideH, const int strideW) {
   cudnnPoolingDescriptor_t* poolDesc = ((cudnnPoolingDescriptor_t*) std::malloc (sizeof(cudnnPoolingDescriptor_t)));
   cudnnPoolingMode_t poolingMode;
 
@@ -126,7 +130,7 @@ cudnnPoolingDescriptor_t* JavaCudnn::createPoolDesc(const char mode, const int h
   }
 }
 
-cudnnActivationDescriptor_t* JavaCudnn::createActivDesc(const char func) {
+cudnnActivationDescriptor_t* JavaCudnn::cudnnCreateActivDesc(const char func) {
   cudnnActivationDescriptor_t* activDesc = ((cudnnActivationDescriptor_t*) std::malloc (sizeof(cudnnActivationDescriptor_t)));
   cudnnActivationMode_t activationMode;
 
@@ -155,7 +159,7 @@ cudnnActivationDescriptor_t* JavaCudnn::createActivDesc(const char func) {
   }
 }
 
-cudnnLRNDescriptor_t* JavaCudnn::createLRNDesc(const int localSize, const float alpha, const float beta, const float k) {
+cudnnLRNDescriptor_t* JavaCudnn::cudnnCreateLRNDesc(const int localSize, const float alpha, const float beta, const float k) {
   cudnnLRNDescriptor_t* normDesc = ((cudnnLRNDescriptor_t*) std::malloc (sizeof(cudnnLRNDescriptor_t)));
   if(!cudnnCheck(cudnnCreateLRNDescriptor(normDesc)) || !cudnnCheck(cudnnSetLRNDescriptor(*normDesc, localSize, alpha, beta, k))) {
     return NULL;
@@ -166,54 +170,57 @@ cudnnLRNDescriptor_t* JavaCudnn::createLRNDesc(const int localSize, const float 
 
 // Functions for getting algorithm.
 
-cudnnConvolutionFwdAlgo_t* JavaCudnn::getConvForwardAlgo(const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,
-                                                         const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* yDesc) {
+cudnnConvolutionFwdAlgo_t* JavaCudnn::cudnnGetConvForwardAlgo(
+    const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,
+    const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* yDesc) {
   cudnnConvolutionFwdAlgo_t* algo = ((cudnnConvolutionFwdAlgo_t*) std::malloc (sizeof(cudnnConvolutionFwdAlgo_t)));
   *algo = (cudnnConvolutionFwdAlgo_t) 0;
 
-  if (cudnnCheck(cudnnGetConvolutionForwardAlgorithm(getCudnnHandle(), *xDesc, *wDesc, *convDesc, *yDesc,
-                                                     CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, CUDA_MEM_LIM, algo))) {
+  if (cudnnCheck(cudnnGetConvolutionForwardAlgorithm(
+      getCudnnHandle(), *xDesc, *wDesc, *convDesc, *yDesc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, CUDA_MEM_LIM, algo))) {
     return algo;
   } else {
     return NULL;
   }
 }
 
-cudnnConvolutionBwdDataAlgo_t* JavaCudnn::getConvBackwardDataAlgo(const cudnnFilterDescriptor_t* wDesc, const cudnnTensorDescriptor_t* dyDesc,
-                                                                  const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* dxDesc) {
+cudnnConvolutionBwdDataAlgo_t* JavaCudnn::cudnnGetConvBackwardDataAlgo(
+    const cudnnFilterDescriptor_t* wDesc, const cudnnTensorDescriptor_t* dyDesc,
+    const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* dxDesc) {
   cudnnConvolutionBwdDataAlgo_t* algo = ((cudnnConvolutionBwdDataAlgo_t*) std::malloc (sizeof(cudnnConvolutionBwdDataAlgo_t)));
   *algo = (cudnnConvolutionBwdDataAlgo_t) 0;
-  if (cudnnCheck(cudnnGetConvolutionBackwardDataAlgorithm(getCudnnHandle(), *wDesc, *dyDesc, *convDesc, *dxDesc,
-                                                          CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, CUDA_MEM_LIM, algo))) {
+  if (cudnnCheck(cudnnGetConvolutionBackwardDataAlgorithm(
+      getCudnnHandle(), *wDesc, *dyDesc, *convDesc, *dxDesc, CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, CUDA_MEM_LIM, algo))) {
    return algo;
- } else {
-  return NULL;
- }
+  } else {
+   return NULL;
+  }
 }
 
-cudnnConvolutionBwdFilterAlgo_t* JavaCudnn::getConvBackwardFilterAlgo(const cudnnTensorDescriptor_t* xDesc, const cudnnTensorDescriptor_t* dyDesc,
-                                                                      const cudnnConvolutionDescriptor_t* convDesc, const cudnnFilterDescriptor_t* dwDesc) {
+cudnnConvolutionBwdFilterAlgo_t* JavaCudnn::cudnnGetConvBackwardFilterAlgo(
+    const cudnnTensorDescriptor_t* xDesc, const cudnnTensorDescriptor_t* dyDesc,
+    const cudnnConvolutionDescriptor_t* convDesc, const cudnnFilterDescriptor_t* dwDesc) {
   cudnnConvolutionBwdFilterAlgo_t* algo = ((cudnnConvolutionBwdFilterAlgo_t*) std::malloc (sizeof(cudnnConvolutionBwdFilterAlgo_t)));
   *algo = (cudnnConvolutionBwdFilterAlgo_t) 0;
 
-  if (cudnnCheck(cudnnGetConvolutionBackwardFilterAlgorithm(getCudnnHandle(), *xDesc, *dyDesc, *convDesc, *dwDesc,
-                                                            CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT, CUDA_MEM_LIM, algo))) {
+  if (cudnnCheck(cudnnGetConvolutionBackwardFilterAlgorithm(
+      getCudnnHandle(), *xDesc, *dyDesc, *convDesc, *dwDesc, CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT, CUDA_MEM_LIM, algo))) {
     return algo;
-  }
-  else {
-   return NULL;
+  } else {
+    return NULL;
   }
 }
 
 // Functions for getting workspace.
 
-void* JavaCudnn::getWorkspace(size_t workspaceSizeInBytes) {
+void* JavaCudnn::cudnnGetWorkspace(size_t workspaceSizeInBytes) {
   return JavaCuda::deviceMalloc(workspaceSizeInBytes);
 }
 
-size_t JavaCudnn::getConvForwardWorkspaceSizeInBytes(const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,
-                                                     const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* yDesc,
-                                                     const cudnnConvolutionFwdAlgo_t* algo) {
+size_t JavaCudnn::getConvForwardWorkspaceSizeInBytes(
+    const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,
+    const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* yDesc,
+    const cudnnConvolutionFwdAlgo_t* algo) {
   size_t fwdWorkspace = 0;
   if (cudnnCheck(cudnnGetConvolutionForwardWorkspaceSize(getCudnnHandle(), *xDesc, *wDesc, *convDesc, *yDesc, *algo, &fwdWorkspace))) {
     return fwdWorkspace;
@@ -222,9 +229,10 @@ size_t JavaCudnn::getConvForwardWorkspaceSizeInBytes(const cudnnTensorDescriptor
   }
 }
 
-size_t JavaCudnn::getConvBackwardDataWorkspaceSizeInBytes(const cudnnFilterDescriptor_t* wDesc, const cudnnTensorDescriptor_t* dyDesc,
-                                                          const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* dxDesc,
-                                                          const cudnnConvolutionBwdDataAlgo_t* algo) {
+size_t JavaCudnn::getConvBackwardDataWorkspaceSizeInBytes(
+    const cudnnFilterDescriptor_t* wDesc, const cudnnTensorDescriptor_t* dyDesc,
+    const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* dxDesc,
+    const cudnnConvolutionBwdDataAlgo_t* algo) {
   size_t bwdDataWorkspace = 0;
   if (cudnnCheck(cudnnGetConvolutionBackwardDataWorkspaceSize(getCudnnHandle(), *wDesc, *dyDesc, *convDesc, *dxDesc, *algo, &bwdDataWorkspace))) {
     return bwdDataWorkspace;
@@ -233,9 +241,10 @@ size_t JavaCudnn::getConvBackwardDataWorkspaceSizeInBytes(const cudnnFilterDescr
   }
 }
 
-size_t JavaCudnn::getConvBackwardFilterWorkspaceSizeInBytes(const cudnnTensorDescriptor_t* xDesc, const cudnnTensorDescriptor_t* dyDesc,
-                                                            const cudnnConvolutionDescriptor_t* convDesc, const cudnnFilterDescriptor_t* dwDesc,
-                                                            const cudnnConvolutionBwdFilterAlgo_t* algo) {
+size_t JavaCudnn::getConvBackwardFilterWorkspaceSizeInBytes(
+    const cudnnTensorDescriptor_t* xDesc, const cudnnTensorDescriptor_t* dyDesc,
+    const cudnnConvolutionDescriptor_t* convDesc, const cudnnFilterDescriptor_t* dwDesc,
+    const cudnnConvolutionBwdFilterAlgo_t* algo) {
   size_t bwdFilterWorkspace = 0;
   if (cudnnCheck(cudnnGetConvolutionBackwardFilterWorkspaceSize(getCudnnHandle(), *xDesc, *dyDesc, *convDesc, *dwDesc, *algo, &bwdFilterWorkspace))) {
     return bwdFilterWorkspace;
@@ -246,93 +255,102 @@ size_t JavaCudnn::getConvBackwardFilterWorkspaceSizeInBytes(const cudnnTensorDes
 
 // FeedForward, BackPropagate, generateParameterGradient functions.
 
-bool JavaCudnn::convFeedForward(const cudnnTensorDescriptor_t* xDesc, const void* x,
-                                const cudnnFilterDescriptor_t* wDesc, const void* w,
-                                const cudnnTensorDescriptor_t* bDesc, const void* b,
-                                const cudnnConvolutionDescriptor_t* convDesc, const cudnnConvolutionFwdAlgo_t* algo,
-                                void* workspace, size_t workspaceSizeInBytes,
-                                const cudnnTensorDescriptor_t* yDesc, void* y) {
-  if (cudnnCheck(cudnnConvolutionForward(getCudnnHandle(), &CUDA_ONE ,*xDesc, x, *wDesc, w, *convDesc, *algo,
-                                         workspace, workspaceSizeInBytes, &CUDA_ZERO, *yDesc, y))) {
+bool JavaCudnn::convFeedForward(
+    const cudnnTensorDescriptor_t* xDesc, const void* x, const cudnnFilterDescriptor_t* wDesc, const void* w,
+    const cudnnTensorDescriptor_t* bDesc, const void* b, const cudnnConvolutionDescriptor_t* convDesc,
+    const cudnnConvolutionFwdAlgo_t* algo, void* workspace, size_t workspaceSizeInBytes,
+    const cudnnTensorDescriptor_t* yDesc, void* y) {
+  if (cudnnCheck(cudnnConvolutionForward(
+      getCudnnHandle(), &CUDA_ONE ,*xDesc, x, *wDesc, w, *convDesc, *algo, workspace, workspaceSizeInBytes, &CUDA_ZERO, *yDesc, y))) {
     return cudnnCheck(cudnnAddTensor(getCudnnHandle(), &CUDA_ONE, *bDesc, b, &CUDA_ONE, *yDesc, y));
   } else {
     return false;
   }
 }
 
-bool JavaCudnn::convBackPropagate(const cudnnFilterDescriptor_t* wDesc, const void* w,
-                                  const cudnnTensorDescriptor_t* dyDesc, const void* dy,
-                                  const cudnnConvolutionDescriptor_t* convDesc, const cudnnConvolutionBwdDataAlgo_t* algo,
-                                  void* workspace, size_t workspaceSizeInBytes,
-                                  const cudnnTensorDescriptor_t* dxDesc, void* dx) {
-  return cudnnCheck(cudnnConvolutionBackwardData(getCudnnHandle(), &CUDA_ONE, *wDesc, w, *dyDesc, dy, *convDesc, *algo,
-                                                 workspace, workspaceSizeInBytes, &CUDA_ZERO, *dxDesc, dx));
+bool JavaCudnn::convBackPropagate(
+    const cudnnFilterDescriptor_t* wDesc, const void* w, const cudnnTensorDescriptor_t* dyDesc, const void* dy,
+    const cudnnConvolutionDescriptor_t* convDesc,
+    const cudnnConvolutionBwdDataAlgo_t* algo, void* workspace, size_t workspaceSizeInBytes,
+    const cudnnTensorDescriptor_t* dxDesc, void* dx) {
+  return cudnnCheck(cudnnConvolutionBackwardData(
+      getCudnnHandle(), &CUDA_ONE, *wDesc, w, *dyDesc, dy, *convDesc, *algo, workspace, workspaceSizeInBytes, &CUDA_ZERO, *dxDesc, dx));
 }
 
-bool JavaCudnn::convGenWeightGradient(const cudnnTensorDescriptor_t* xDesc, const void* x,
-                                      const cudnnTensorDescriptor_t* dyDesc, const void* dy,
-                                      const cudnnConvolutionDescriptor_t* convDesc, const cudnnConvolutionBwdFilterAlgo_t* algo,
-                                      void* workspace, size_t workspaceSizeInBytes,
-                                      const cudnnFilterDescriptor_t* dwDesc, void* dw) {
-  return cudnnCheck(cudnnConvolutionBackwardFilter(getCudnnHandle(), &CUDA_ONE, *xDesc, x, *dyDesc, dy, *convDesc, *algo,
-                                                   workspace, workspaceSizeInBytes, &CUDA_ONE, *dwDesc, dw));
+bool JavaCudnn::convGenWeightGradient(
+    const cudnnTensorDescriptor_t* xDesc, const void* x, const cudnnTensorDescriptor_t* dyDesc, const void* dy,
+    const cudnnConvolutionDescriptor_t* convDesc,
+    const cudnnConvolutionBwdFilterAlgo_t* algo, void* workspace, size_t workspaceSizeInBytes,
+    const cudnnFilterDescriptor_t* dwDesc, void* dw) {
+  return cudnnCheck(cudnnConvolutionBackwardFilter(
+      getCudnnHandle(), &CUDA_ONE, *xDesc, x, *dyDesc, dy, *convDesc, *algo, workspace, workspaceSizeInBytes, &CUDA_ONE, *dwDesc, dw));
 }
 
-bool JavaCudnn::convGenBiasGradient(const cudnnTensorDescriptor_t* dyDesc, const void* dy, const cudnnTensorDescriptor_t* dbDesc, void* db) {
+bool JavaCudnn::convGenBiasGradient(
+    const cudnnTensorDescriptor_t* dyDesc, const void* dy, const cudnnTensorDescriptor_t* dbDesc, void* db) {
   return cudnnCheck(cudnnConvolutionBackwardBias(getCudnnHandle(), &CUDA_ONE, *dyDesc, dy, &CUDA_ONE, *dbDesc, db));
 }
 
-bool JavaCudnn::poolFeedForward(const cudnnPoolingDescriptor_t* poolDesc,
-                                const cudnnTensorDescriptor_t* xDesc, const void* x,
-                                const cudnnTensorDescriptor_t* yDesc, void* y) {
+bool JavaCudnn::poolFeedForward(
+    const cudnnPoolingDescriptor_t* poolDesc,
+    const cudnnTensorDescriptor_t* xDesc, const void* x,
+    const cudnnTensorDescriptor_t* yDesc, void* y) {
   return cudnnCheck(cudnnPoolingForward(getCudnnHandle(), *poolDesc, &CUDA_ONE, *xDesc, x, &CUDA_ZERO, *yDesc, y));
 }
 
-bool JavaCudnn::poolBackPropagate(const cudnnPoolingDescriptor_t* poolDesc,
-                                  const cudnnTensorDescriptor_t* yDesc, const void* y,
-                                  const cudnnTensorDescriptor_t* dyDesc, const void* dy,
-                                  const cudnnTensorDescriptor_t* xDesc, const void* x,
-                                  const cudnnTensorDescriptor_t* dxDesc, void* dx) {
+bool JavaCudnn::poolBackPropagate(
+    const cudnnPoolingDescriptor_t* poolDesc,
+    const cudnnTensorDescriptor_t* yDesc, const void* y,
+    const cudnnTensorDescriptor_t* dyDesc, const void* dy,
+    const cudnnTensorDescriptor_t* xDesc, const void* x,
+    const cudnnTensorDescriptor_t* dxDesc, void* dx) {
   return cudnnCheck(cudnnPoolingBackward(getCudnnHandle(), *poolDesc, &CUDA_ONE, *yDesc, y, *dyDesc, dy, *xDesc, x, &CUDA_ZERO, *dxDesc, dx));
 }
 
-bool JavaCudnn::activFeedForward(const cudnnActivationDescriptor_t* activDesc,
-                                 const cudnnTensorDescriptor_t* srcDesc, const void* src,
-                                 const cudnnTensorDescriptor_t* destDesc, void* dest) {
+bool JavaCudnn::activFeedForward(
+    const cudnnActivationDescriptor_t* activDesc,
+    const cudnnTensorDescriptor_t* srcDesc, const void* src,
+    const cudnnTensorDescriptor_t* destDesc, void* dest) {
   return cudnnCheck(cudnnActivationForward(getCudnnHandle(), *activDesc, &CUDA_ONE, *srcDesc, src, &CUDA_ZERO, *destDesc, dest));
 }
 
-bool JavaCudnn::activBackPropagate(const cudnnActivationDescriptor_t* activDesc,
-                                   const cudnnTensorDescriptor_t* srcDesc, const void* src,
-                                   const cudnnTensorDescriptor_t* srcDiffDesc, const void* srcDiff,
-                                   const cudnnTensorDescriptor_t* destDesc, const void* dest,
-                                   const cudnnTensorDescriptor_t* destDiffDesc, void* destDiff ) {
-  return cudnnCheck(cudnnActivationBackward(getCudnnHandle(), *activDesc, &CUDA_ONE, *srcDesc, src,
-                                            *srcDiffDesc, srcDiff, *destDesc, dest, &CUDA_ZERO, *destDiffDesc, destDiff));
+bool JavaCudnn::activBackPropagate(
+    const cudnnActivationDescriptor_t* activDesc,
+    const cudnnTensorDescriptor_t* srcDesc, const void* src,
+    const cudnnTensorDescriptor_t* srcDiffDesc, const void* srcDiff,
+    const cudnnTensorDescriptor_t* destDesc, const void* dest,
+    const cudnnTensorDescriptor_t* destDiffDesc, void* destDiff ) {
+  return cudnnCheck(cudnnActivationBackward(
+      getCudnnHandle(), *activDesc, &CUDA_ONE, *srcDesc, src, *srcDiffDesc, srcDiff, *destDesc, dest, &CUDA_ZERO, *destDiffDesc, destDiff));
 }
 
-bool JavaCudnn::activWithLossFeedForward (const cudnnTensorDescriptor_t* xDesc, const void* x,
-                                          const cudnnTensorDescriptor_t* yDesc, void* y) {
-  return cudnnCheck(cudnnSoftmaxForward(getCudnnHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, &CUDA_ONE,
-                                        *xDesc, x, &CUDA_ZERO, *yDesc, y));
+bool JavaCudnn::activWithLossFeedForward (
+    const cudnnTensorDescriptor_t* xDesc, const void* x, const cudnnTensorDescriptor_t* yDesc, void* y) {
+  return cudnnCheck(cudnnSoftmaxForward(
+      getCudnnHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, &CUDA_ONE, *xDesc, x, &CUDA_ZERO, *yDesc, y));
 }
-bool JavaCudnn::activWithLossBackPropagate (const cudnnTensorDescriptor_t* yDesc, const void* y,
-                                            const cudnnTensorDescriptor_t* dyDesc, const void* dy,
-                                            const cudnnTensorDescriptor_t* dxDesc, void* dx) {
-  return cudnnCheck(cudnnSoftmaxBackward(getCudnnHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, &CUDA_ONE,
-                                         *yDesc, y, *dyDesc, dy, &CUDA_ZERO, *dxDesc, dx));
-}
-
-bool JavaCudnn::lrnFeedForward(const cudnnLRNDescriptor_t* normDesc, const cudnnTensorDescriptor_t* xDesc, const void* x,
-                               const cudnnTensorDescriptor_t* yDesc, void* y) {
- return cudnnCheck(cudnnLRNCrossChannelForward(getCudnnHandle(), *normDesc, CUDNN_LRN_CROSS_CHANNEL_DIM1, &CUDA_ONE, *xDesc, x, &CUDA_ZERO, *yDesc, y));
+bool JavaCudnn::activWithLossBackPropagate (
+    const cudnnTensorDescriptor_t* yDesc, const void* y,
+    const cudnnTensorDescriptor_t* dyDesc, const void* dy,
+    const cudnnTensorDescriptor_t* dxDesc, void* dx) {
+  return cudnnCheck(cudnnSoftmaxBackward(
+      getCudnnHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, &CUDA_ONE, *yDesc, y, *dyDesc, dy, &CUDA_ZERO, *dxDesc, dx));
 }
 
-bool JavaCudnn::lrnBackPropagate(const cudnnLRNDescriptor_t* normDesc,
-                                 const cudnnTensorDescriptor_t* yDesc, const void* y,
-                                 const cudnnTensorDescriptor_t* dyDesc, const void* dy,
-                                 const cudnnTensorDescriptor_t* xDesc, const void* x,
-                                 const cudnnTensorDescriptor_t* dxDesc, void* dx) {
- return cudnnCheck(cudnnLRNCrossChannelBackward(getCudnnHandle(), *normDesc, CUDNN_LRN_CROSS_CHANNEL_DIM1, &CUDA_ONE,
-                                                *yDesc, y, *dyDesc, dy, *xDesc, x, &CUDA_ZERO, *dxDesc, dx));
+bool JavaCudnn::lrnFeedForward(
+    const cudnnLRNDescriptor_t* normDesc,
+    const cudnnTensorDescriptor_t* xDesc, const void* x,
+    const cudnnTensorDescriptor_t* yDesc, void* y) {
+ return cudnnCheck(cudnnLRNCrossChannelForward(
+     getCudnnHandle(), *normDesc, CUDNN_LRN_CROSS_CHANNEL_DIM1, &CUDA_ONE, *xDesc, x, &CUDA_ZERO, *yDesc, y));
+}
+
+bool JavaCudnn::lrnBackPropagate(
+    const cudnnLRNDescriptor_t* normDesc,
+    const cudnnTensorDescriptor_t* yDesc, const void* y,
+    const cudnnTensorDescriptor_t* dyDesc, const void* dy,
+    const cudnnTensorDescriptor_t* xDesc, const void* x,
+    const cudnnTensorDescriptor_t* dxDesc, void* dx) {
+ return cudnnCheck(cudnnLRNCrossChannelBackward(
+     getCudnnHandle(), *normDesc, CUDNN_LRN_CROSS_CHANNEL_DIM1, &CUDA_ONE, *yDesc, y, *dyDesc, dy, *xDesc, x, &CUDA_ZERO, *dxDesc, dx));
 }

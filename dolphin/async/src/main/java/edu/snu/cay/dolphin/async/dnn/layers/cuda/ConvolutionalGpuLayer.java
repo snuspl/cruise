@@ -108,22 +108,14 @@ public final class ConvolutionalGpuLayer extends LayerBase {
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    JavaCudnn.checkNullPointer(inputDesc);
     this.filterDesc = JavaCudnn.createFilterDesc(outputShape[0], inputChannel, kernelHeight, kernelWidth);
-    JavaCudnn.checkNullPointer(filterDesc);
     this.convDesc = JavaCudnn.createConvDesc(paddingHeight, paddingWidth, strideHeight, strideWidth);
-    JavaCudnn.checkNullPointer(convDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, outputShape[0], outputShape[1], outputShape[2]);
-    JavaCudnn.checkNullPointer(activationDesc);
     this.biasDesc = JavaCudnn.createTensorDesc(1, outputShape[0], 1, 1);
-    JavaCudnn.checkNullPointer(biasDesc);
 
     this.forwardAlgo = JavaCudnn.getConvForwardAlgo(inputDesc, filterDesc, convDesc, activationDesc);
-    JavaCudnn.checkNullPointer(forwardAlgo);
     this.backwardDataAlgo = JavaCudnn.getConvBackwardDataAlgo(filterDesc, activationDesc, convDesc, inputDesc);
-    JavaCudnn.checkNullPointer(backwardDataAlgo);
     this.backwardFilterAlgo = JavaCudnn.getConvBackwardFilterAlgo(inputDesc, activationDesc, convDesc, filterDesc);
-    JavaCudnn.checkNullPointer(backwardFilterAlgo);
 
     this.forwardWorkspaceSize = JavaCudnn.getConvForwardWorkspaceSizeInBytes(
         inputDesc, filterDesc, convDesc, activationDesc, forwardAlgo);

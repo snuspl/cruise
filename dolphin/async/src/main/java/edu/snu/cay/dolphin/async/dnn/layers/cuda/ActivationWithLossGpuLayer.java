@@ -78,9 +78,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
     //setup
     if (activationFunction.toLowerCase().equals("softmax")) {
       this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-      JavaCudnn.checkNullPointer(inputDesc);
       this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-      JavaCudnn.checkNullPointer(activationDesc);
     } else {
       throw new IllegalArgumentException("Unsupported activation function");
     }

@@ -30,19 +30,9 @@ import javax.inject.Inject;
 /**
  * Local Response Normalization (LRN) layer.
  * This layer aids generalization done by activation layer.
- * The corresponding mathematical formula and explanation is at section 3.3 of the following paper.
- * https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
+ * We use cuDNN library to implement this layer.
  */
 public final class LRNGpuLayer extends LayerBase {
-
-  private final int localSize;
-  private final float alpha;
-  private final float beta;
-  private final float k;
-
-  private final int inputChannel;
-  private final int inputHeight;
-  private final int inputWidth;
   private MatrixFactory matrixFactory;
 
   private Pointer inputDesc;
@@ -68,30 +58,26 @@ public final class LRNGpuLayer extends LayerBase {
                       @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
                       final MatrixFactory matrixFactory) {
     super(index, inputShape);
-
-    this.localSize = localSize;
-    this.alpha = alpha;
-    this.beta = beta;
-    this.k = k;
     this.matrixFactory = matrixFactory;
 
+    final int inputChannel;
+    final int inputHeight;
+    final int inputWidth;
+
     if (getInputShape().length == 2) {
-      this.inputChannel = 1;
-      this.inputHeight = getInputShape()[0];
-      this.inputWidth = getInputShape()[1];
+      inputChannel = 1;
+      inputHeight = getInputShape()[0];
+      inputWidth = getInputShape()[1];
     } else {
-      this.inputChannel = getInputShape()[0];
-      this.inputHeight = getInputShape()[1];
-      this.inputWidth = getInputShape()[2];
+      inputChannel = getInputShape()[0];
+      inputHeight = getInputShape()[1];
+      inputWidth = getInputShape()[2];
     }
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    JavaCudnn.checkNullPointer(inputDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    JavaCudnn.checkNullPointer(activationDesc);
     this.lrnDesc = JavaCudnn.createLRNDesc(localSize, alpha, beta, k);
-    JavaCudnn.checkNullPointer(lrnDesc);
   }
 
   @Override

@@ -323,22 +323,15 @@ public final class MatrixOpsTest {
     final Matrix m3 = matrixFactory.create(input3, 2, 3);
     final Matrix m4 = matrixFactory.create(input4, 2, 1);
 
-    final Matrix m5 = matrixFactory.create(outputt, 2, 4);
-    final Matrix m6 = matrixFactory.create(toutput, 3, 3);
-    final Matrix m7 = matrixFactory.create(voutput, 3, 1);
-
     final Matrix m8 = ((MatrixCudaImpl) m1).mmult(m2);
-    assertTrue(m8.compare(m5, FloatCompare.TOLERANCE));
     assertArrayEquals(outputt, m8.toFloatArray());
     m8.free();
 
     final Matrix m9 = ((MatrixCudaImpl) m1).tmmul(m3);
-    assertTrue(m9.compare(m6, FloatCompare.TOLERANCE));
     assertArrayEquals(toutput, m9.toFloatArray());
     m9.free();
 
     final Matrix m10 = ((MatrixCudaImpl) m1).tmmul(m4);
-    assertTrue(m10.compare(m7, FloatCompare.TOLERANCE));
     assertArrayEquals(voutput, m10.toFloatArray());
     m10.free();
 
@@ -346,8 +339,5 @@ public final class MatrixOpsTest {
     m2.free();
     m3.free();
     m4.free();
-    m5.free();
-    m6.free();
-    m7.free();
   }
 }

@@ -35,44 +35,103 @@ class JavaCudnn extends Pointer {
   }
   private native void allocate();
 
-  public static void checkNullPointer(final Pointer ptr) {
+  private static void checkNullPointer(final Pointer ptr) {
     if (ptr == null) {
       throw new RuntimeException("Null was passed for pointer");
     }
   }
 
-  @Cast(value = "cudnnTensorDescriptor_t*") static native Pointer createTensorDesc(
+  @Cast(value = "cudnnTensorDescriptor_t*") static native Pointer cudnnCreateTensorDesc(
       final int n, final int c, final int h, final int w,
       final int nStride, final int cStride, final int hStride, final int wStride);
-  @Cast(value = "cudnnTensorDescriptor_t*") static native Pointer createTensorDesc(
+  @Cast(value = "cudnnTensorDescriptor_t*") static native Pointer cudnnCreateTensorDesc(
       final int n, final int c, final int h, final int w);
-  @Cast(value = "cudnnFilterDescriptor_t*") static native Pointer createFilterDesc(
+  static Pointer createTensorDesc(final int n, final int c, final int h, final int w) {
+    final Pointer pointer = cudnnCreateTensorDesc(n, c, h, w);
+    checkNullPointer(pointer);
+    return pointer;
+  }
+  @Cast(value = "cudnnFilterDescriptor_t*") static native Pointer cudnnCreateFilterDesc(
       final int k, final int c, final int h, final int w);
-  @Cast(value = "cudnnConvolutionDescriptor_t*") static native Pointer createConvDesc(
+  static Pointer createFilterDesc(final int k, final int c, final int h, final int w) {
+    final Pointer pointer = cudnnCreateFilterDesc(k, c, h, w);
+    checkNullPointer(pointer);
+    return pointer;
+  }
+  @Cast(value = "cudnnConvolutionDescriptor_t*") static native Pointer cudnnCreateConvDesc(
       final int padH, final int padW, final int strideH, final int strideW);
-  @Cast(value = "cudnnPoolingDescriptor_t*") static native Pointer createPoolDesc(
+  static Pointer createConvDesc(final int padH, final int padW, final int strideH, final int strideW) {
+    final Pointer pointer = cudnnCreateConvDesc(padH, padW, strideH, strideW);
+    checkNullPointer(pointer);
+    return pointer;
+  }
+  @Cast(value = "cudnnPoolingDescriptor_t*") static native Pointer cudnnCreatePoolDesc(
       final char mode, final int h, final int w, final int padH, final int padW, final int strideH, final int strideW);
-  @Cast(value = "cudnnActivationDescriptor_t*") static native Pointer createActivDesc(final char func);
-  @Cast(value = "cudnnLRNDescriptor_t*") static native Pointer createLRNDesc(
+  static Pointer createPoolDesc(final char mode, final int h, final int w, final int padH, final int padW,
+                                final int strideH, final int strideW) {
+    final Pointer pointer = cudnnCreatePoolDesc(mode, h, w, padH, padW, strideH, strideW);
+    checkNullPointer(pointer);
+    return pointer;
+  }
+  @Cast(value = "cudnnActivationDescriptor_t*") static native Pointer cudnnCreateActivDesc(final char func);
+  static Pointer createActivDesc(final char func) {
+    final Pointer pointer = cudnnCreateActivDesc(func);
+    checkNullPointer(pointer);
+    return pointer;
+  }
+  @Cast(value = "cudnnLRNDescriptor_t*") static native Pointer cudnnCreateLRNDesc(
       final int localSize, final float alpha, final float beta, final float k);
+  static Pointer createLRNDesc(final int localSize, final float alpha, final float beta, final float k) {
+    final Pointer pointer = cudnnCreateLRNDesc(localSize, alpha, beta, k);
+    checkNullPointer(pointer);
+    return pointer;
+  }
 
-  @Cast(value = "cudnnConvolutionFwdAlgo_t*") static native Pointer getConvForwardAlgo(
+  @Cast(value = "cudnnConvolutionFwdAlgo_t*") static native Pointer cudnnGetConvForwardAlgo(
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc,
       @Cast(value = "cudnnFilterDescriptor_t*") final Pointer wDesc,
       @Cast(value = "cudnnConvolutionDescriptor_t*") final Pointer convDesc,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer yDesc);
-  @Cast(value = "cudnnConvolutionBwdDataAlgo_t*") static native Pointer getConvBackwardDataAlgo(
+  static Pointer getConvForwardAlgo(
+      final Pointer xDesc, final Pointer wDesc, final Pointer convDesc, final Pointer yDesc) {
+    final Pointer pointer = cudnnGetConvForwardAlgo(xDesc, wDesc, convDesc, yDesc);
+    checkNullPointer(pointer);
+    return pointer;
+  }
+  @Cast(value = "cudnnConvolutionBwdDataAlgo_t*") static native Pointer cudnnGetConvBackwardDataAlgo(
       @Cast(value = "cudnnFilterDescriptor_t*") final Pointer wDesc,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dyDesc,
       @Cast(value = "cudnnConvolutionDescriptor_t*") final Pointer convDesc,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dxDesc);
-  @Cast(value = "cudnnConvolutionBwdFilterAlgo_t*") static native Pointer getConvBackwardFilterAlgo(
+  static Pointer getConvBackwardDataAlgo(
+      final Pointer wDesc, final Pointer dyDesc, final Pointer convDesc, final Pointer dxDesc) {
+    final Pointer pointer = cudnnGetConvBackwardDataAlgo(wDesc, dyDesc, convDesc, dxDesc);
+    checkNullPointer(pointer);
+    return pointer;
+  }
+  @Cast(value = "cudnnConvolutionBwdFilterAlgo_t*") static native Pointer cudnnGetConvBackwardFilterAlgo(
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc,
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer dyDesc,
       @Cast(value = "cudnnConvolutionDescriptor_t*") final Pointer convDesc,
       @Cast(value = "cudnnFilterDescriptor_t*") final Pointer dwDesc);
+  static Pointer getConvBackwardFilterAlgo(
+      final Pointer xDesc, final Pointer dyDesc, final Pointer convDesc, final Pointer dwDesc) {
+    final Pointer pointer = cudnnGetConvBackwardFilterAlgo(xDesc, dyDesc, convDesc, dwDesc);
+    checkNullPointer(pointer);
+    return pointer;
+  }
 
-  @Cast(value = "void*") static native Pointer getWorkspace(@Cast(value = "size_t") final long workspaceSizeInBytes);
+  @Cast(value = "void*") static native Pointer cudnnGetWorkspace(
+      @Cast(value = "size_t") final long workspaceSizeInBytes);
+  static Pointer getWorkspace(final long workspace) {
+    if (workspace == 0) {
+      return null;
+    } else {
+      final Pointer pointer = cudnnGetWorkspace(workspace);
+      checkNullPointer(pointer);
+      return pointer;
+    }
+  }
   @Cast(value = "size_t") static native long getConvForwardWorkspaceSizeInBytes(
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc,
       @Cast(value = "cudnnFilterDescriptor_t*") final Pointer wDesc,
