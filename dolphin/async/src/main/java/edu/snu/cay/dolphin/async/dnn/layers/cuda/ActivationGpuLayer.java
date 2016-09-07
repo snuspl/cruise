@@ -28,10 +28,11 @@ import org.bytedeco.javacpp.Pointer;
 import javax.inject.Inject;
 
 /**
- * Gpu Activation layer.
+ * Gpu activation layer.
  *
  * This layer applies the specified activation function to each element of an input, maintaining the input's shape.
  * This layer does not have parameters, in other words, is not learnable.
+ * We use cuDNN library to implement this layer.
  */
 public final class ActivationGpuLayer extends LayerBase {
 
@@ -72,9 +73,9 @@ public final class ActivationGpuLayer extends LayerBase {
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    detectErrorPointer(inputDesc);
+    JavaCudnn.checkNullPointer(inputDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    detectErrorPointer(activationDesc);
+    JavaCudnn.checkNullPointer(activationDesc);
     final char func;
     switch (activationFunction.toLowerCase()) {
     case "sigmoid": func = 'S';
@@ -89,13 +90,7 @@ public final class ActivationGpuLayer extends LayerBase {
       throw new IllegalArgumentException("Unsupported function: " + activationFunction);
     }
     this.activDesc = JavaCudnn.createActivDesc(func);
-    detectErrorPointer(activDesc);
-  }
-
-  private void detectErrorPointer(final Pointer ptr) {
-    if (ptr == null) {
-      throw new RuntimeException("Null was passed for pointer");
-    }
+    JavaCudnn.checkNullPointer(activDesc);
   }
 
   @Override

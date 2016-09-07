@@ -30,17 +30,12 @@ import org.bytedeco.javacpp.Pointer;
 import javax.inject.Inject;
 
 /**
- * Gpu Pooling layer.
+ * Gpu pooling layer.
  *
  * This layer is not learnable.
  * This layer resizes input matrix spatially, using max pooling or average pooling.
  * This layer works for 2D and 3D inputs.
- * In a forward pass,
- * max pooling picks the maximum value in certain range (kernelHeight * kernelWidth) and these values make up output.
- * Average pooling gets the average of values in certain range (kernelHeight * kernelWidth)
- * and these values make up output.
- * In a backward pass,
- * error of each input pixel comes from errors of output pixels affected by the input pixel in feedforward step.
+ * We use cuDNN library to implement this layer.
  */
 public final class PoolingGpuLayer extends LayerBase {
 
@@ -117,18 +112,12 @@ public final class PoolingGpuLayer extends LayerBase {
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    detectErrorPointer(inputDesc);
+    JavaCudnn.checkNullPointer(inputDesc);
     this.poolDesc = JavaCudnn.createPoolDesc(
         this.poolingType, kernelHeight, kernelWidth, paddingHeight, paddingWidth, strideHeight, strideWidth);
-    detectErrorPointer(poolDesc);
+    JavaCudnn.checkNullPointer(poolDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, outputChannel, outputHeight, outputWidth);
-    detectErrorPointer(activationDesc);
-  }
-
-  private void detectErrorPointer(final Pointer ptr) {
-    if (ptr == null) {
-      throw new RuntimeException("Null was passed for pointer");
-    }
+    JavaCudnn.checkNullPointer(activationDesc);
   }
 
   @Override

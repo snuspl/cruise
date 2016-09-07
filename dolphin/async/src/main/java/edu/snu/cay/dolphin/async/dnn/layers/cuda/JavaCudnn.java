@@ -35,6 +35,12 @@ class JavaCudnn extends Pointer {
   }
   private native void allocate();
 
+  public static void checkNullPointer(final Pointer ptr) {
+    if (ptr == null) {
+      throw new RuntimeException("Null was passed for pointer");
+    }
+  }
+
   @Cast(value = "cudnnTensorDescriptor_t*") static native Pointer createTensorDesc(
       final int n, final int c, final int h, final int w,
       final int nStride, final int cStride, final int hStride, final int wStride);

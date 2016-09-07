@@ -42,10 +42,6 @@ public final class LayerConfigurationParameters {
   public static final class LayerInputShape implements Name<String> {
   }
 
-  @NamedParameter(doc = "whether use only cpu")
-  public static final class CpuOnly implements Name<Boolean> {
-  }
-
   /**
    * For fully connected layers.
    */

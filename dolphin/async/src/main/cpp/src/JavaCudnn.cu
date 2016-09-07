@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include "JavaCudnn.h"
+#include "JavaCuda.h"
 
 /*
  * Many cuDNN routines like cudnnConvolutionForward take pointers to scaling factors (in host memory),
@@ -37,14 +38,6 @@
 
 bool cudnnCheck(const cudnnStatus_t condition) {
   return (condition == CUDNN_STATUS_SUCCESS);
-}
-
-void* deviceMalloc(const size_t size) {
-  void* devPtr;
-  if (cudaSuccess != cudaMalloc(&devPtr, size)) {
-    devPtr = NULL;
-  }
-  return devPtr;
 }
 
 void freeCudnnHandle(cudnnHandle_t* handle) {
@@ -215,7 +208,7 @@ cudnnConvolutionBwdFilterAlgo_t* JavaCudnn::getConvBackwardFilterAlgo(const cudn
 // Functions for getting workspace.
 
 void* JavaCudnn::getWorkspace(size_t workspaceSizeInBytes) {
-  return std::malloc(workspaceSizeInBytes);
+  return JavaCuda::deviceMalloc(workspaceSizeInBytes);
 }
 
 size_t JavaCudnn::getConvForwardWorkspaceSizeInBytes(const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,

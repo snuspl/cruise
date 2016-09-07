@@ -29,8 +29,7 @@ import javax.inject.Inject;
  * Fully connected Gpu layer.
  *
  * This layer is learnable having the updatable parameter (weight and bias).
- * This layer computes the inner product between an input and its weight matrix,
- * and adds the bias vector to its output.
+ * We use cuDNN library to implement this layer.
  */
 public final class FullyConnectedGpuLayer extends LayerBase {
 

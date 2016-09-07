@@ -87,17 +87,11 @@ public final class LRNGpuLayer extends LayerBase {
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    detectErrorPointer(inputDesc);
+    JavaCudnn.checkNullPointer(inputDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    detectErrorPointer(activationDesc);
+    JavaCudnn.checkNullPointer(activationDesc);
     this.lrnDesc = JavaCudnn.createLRNDesc(localSize, alpha, beta, k);
-    detectErrorPointer(lrnDesc);
-  }
-
-  private void detectErrorPointer(final Pointer ptr) {
-    if (ptr == null) {
-      throw new RuntimeException("Null was passed for pointer");
-    }
+    JavaCudnn.checkNullPointer(lrnDesc);
   }
 
   @Override

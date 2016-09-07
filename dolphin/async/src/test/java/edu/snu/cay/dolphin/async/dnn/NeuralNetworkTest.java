@@ -140,33 +140,28 @@ public final class NeuralNetworkTest {
       matrixFactory.create(new float[]{6.99425825888e-01f, -4.28507738839e-01f, 5.79580557810e-01f})};
 
   @Before
-  public void buildNeuralNetwork() {
-    try {
-      final Injector injector = Tang.Factory.getTang().newInjector(blasConfiguration, neuralNetworkConfiguration);
-      mockParameterWorker = mock(ParameterWorker.class);
-      injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
-      neuralNetwork = injector.getInstance(NeuralNetwork.class);
+  public void buildNeuralNetwork() throws InjectionException {
+    final Injector injector = Tang.Factory.getTang().newInjector(blasConfiguration, neuralNetworkConfiguration);
+    mockParameterWorker = mock(ParameterWorker.class);
+    injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
+    neuralNetwork = injector.getInstance(NeuralNetwork.class);
 
-      doAnswer(invocation -> {
-          final LayerParameter layerParameterOne = LayerParameter.newBuilder()
-              .setWeightParam(weightOne)
-              .setBiasParam(biasOne)
-              .build();
-          final LayerParameter layerParameterTwo = LayerParameter.newBuilder()
-              .setWeightParam(weightTwo)
-              .setBiasParam(biasTwo)
-              .build();
-          final List<LayerParameter> result = new ArrayList<>();
-          result.add(layerParameterOne);
-          result.add(layerParameterTwo);
-          return result;
-        }).when(mockParameterWorker).pull(anyObject());
+    doAnswer(invocation -> {
+        final LayerParameter layerParameterOne = LayerParameter.newBuilder()
+            .setWeightParam(weightOne)
+            .setBiasParam(biasOne)
+            .build();
+        final LayerParameter layerParameterTwo = LayerParameter.newBuilder()
+            .setWeightParam(weightTwo)
+            .setBiasParam(biasTwo)
+            .build();
+        final List<LayerParameter> result = new ArrayList<>();
+        result.add(layerParameterOne);
+        result.add(layerParameterTwo);
+        return result;
+      }).when(mockParameterWorker).pull(anyObject());
 
-      neuralNetwork.updateParameters();
-    } catch (final InjectionException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+    neuralNetwork.updateParameters();
   }
 
   /**

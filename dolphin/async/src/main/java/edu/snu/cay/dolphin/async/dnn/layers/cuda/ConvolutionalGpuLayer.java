@@ -34,12 +34,7 @@ import javax.inject.Inject;
  *
  * This layer is learnable having the updatable parameter (weight and bias).
  * This layer works for 2D and 3D inputs.
- * In a forward pass,
- * feedForward function computes the product between weight and the input within kernel range
- * and produce activation matrix.
- * In a backward pass,
- * the error of each input pixel comes from the product
- * between weight and errors of output pixels affected by the input pixel in feedforward step.
+ * We use cuDNN library to implement this layer.
  */
 public final class ConvolutionalGpuLayer extends LayerBase {
 
@@ -113,36 +108,38 @@ public final class ConvolutionalGpuLayer extends LayerBase {
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    detectErrorPointer(inputDesc);
+    JavaCudnn.checkNullPointer(inputDesc);
     this.filterDesc = JavaCudnn.createFilterDesc(outputShape[0], inputChannel, kernelHeight, kernelWidth);
-    detectErrorPointer(filterDesc);
+    JavaCudnn.checkNullPointer(filterDesc);
     this.convDesc = JavaCudnn.createConvDesc(paddingHeight, paddingWidth, strideHeight, strideWidth);
-    detectErrorPointer(convDesc);
+    JavaCudnn.checkNullPointer(convDesc);
     this.activationDesc = JavaCudnn.createTensorDesc(batchSize, outputShape[0], outputShape[1], outputShape[2]);
-    detectErrorPointer(activationDesc);
+    JavaCudnn.checkNullPointer(activationDesc);
     this.biasDesc = JavaCudnn.createTensorDesc(1, outputShape[0], 1, 1);
-    detectErrorPointer(biasDesc);
+    JavaCudnn.checkNullPointer(biasDesc);
 
     this.forwardAlgo = JavaCudnn.getConvForwardAlgo(inputDesc, filterDesc, convDesc, activationDesc);
-    detectErrorPointer(forwardAlgo);
+    JavaCudnn.checkNullPointer(forwardAlgo);
     this.backwardDataAlgo = JavaCudnn.getConvBackwardDataAlgo(filterDesc, activationDesc, convDesc, inputDesc);
-    detectErrorPointer(backwardDataAlgo);
+    JavaCudnn.checkNullPointer(backwardDataAlgo);
     this.backwardFilterAlgo = JavaCudnn.getConvBackwardFilterAlgo(inputDesc, activationDesc, convDesc, filterDesc);
-    detectErrorPointer(backwardFilterAlgo);
+    JavaCudnn.checkNullPointer(backwardFilterAlgo);
 
     this.forwardWorkspaceSize = JavaCudnn.getConvForwardWorkspaceSizeInBytes(
         inputDesc, filterDesc, convDesc, activationDesc, forwardAlgo);
+    setMaxWorkspaceSize(forwardWorkspaceSize);
     this.backwardDataWorkspaceSize = JavaCudnn.getConvBackwardDataWorkspaceSizeInBytes(
         filterDesc, activationDesc, convDesc, inputDesc, backwardDataAlgo);
+    setMaxWorkspaceSize(backwardDataWorkspaceSize);
     this.backwardFilterWorkspaceSize = JavaCudnn.getConvBackwardFilterWorkspaceSizeInBytes(
         inputDesc, activationDesc, convDesc, filterDesc, backwardFilterAlgo);
+    setMaxWorkspaceSize(backwardFilterWorkspaceSize);
     this.workspace = JavaCudnn.getWorkspace(maxWorkspaceSize);
-    detectErrorPointer(workspace);
   }
 
-  private void detectErrorPointer(final Pointer ptr) {
-    if (ptr == null) {
-      throw new RuntimeException("Null was passed for pointer");
+  private void setMaxWorkspaceSize(final long workspaceSize) {
+    if (workspaceSize > maxWorkspaceSize) {
+      maxWorkspaceSize = workspaceSize;
     }
   }
 

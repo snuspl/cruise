@@ -21,6 +21,13 @@
 #include <boost/thread.hpp>
 #include <cudnn.h>
 
+/*
+ * Native methods for JavaCudnn.
+ * Please refer to followings:
+ * https://developer.nvidia.com/cudnn
+ * https://developer.nvidia.com/rdp/cudnn-download (requires registration)
+ */
+
 class JavaCudnn {
 public:
   static cudnnTensorDescriptor_t* createTensorDesc(const int n, const int c, const int h, const int w,

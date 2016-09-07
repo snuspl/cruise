@@ -32,11 +32,7 @@ import javax.inject.Inject;
  *
  * This layer is intended to be the last layer, in most cases.
  * This layer is not learnable.
- * <br/>
- * In a forward pass,
- * this layer applies the specified activation function to each element of an input.
- * In a backward pass,
- * this layer computes the derivative of the specified loss function.
+ * We use cuDNN library to implement this layer.
  */
 public final class ActivationWithLossGpuLayer extends LayerBase {
 
@@ -62,8 +58,6 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
                                      @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class)
                                        final int batchSize,
                                      final MatrixFactory matrixFactory) {
-
-
     super(index, inputShape);
     this.lossFunction = lossFunction;
     this.matrixFactory = matrixFactory;
@@ -81,21 +75,14 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
       inputWidth = getInputShape()[2];
     }
 
-
     //setup
     if (activationFunction.toLowerCase().equals("softmax")) {
       this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-      detectErrorPointer(inputDesc);
+      JavaCudnn.checkNullPointer(inputDesc);
       this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-      detectErrorPointer(activationDesc);
+      JavaCudnn.checkNullPointer(activationDesc);
     } else {
       throw new IllegalArgumentException("Unsupported activation function");
-    }
-  }
-
-  private void detectErrorPointer(final Pointer ptr) {
-    if (ptr == null) {
-      throw new RuntimeException("Null was passed for pointer");
     }
   }
 
