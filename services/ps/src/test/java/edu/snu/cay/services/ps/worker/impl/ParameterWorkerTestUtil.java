@@ -446,7 +446,7 @@ final class ParameterWorkerTestUtil {
 
     pool.execute(() -> worker.pull(key));
 
-    assertTrue(finishLatch.await(PULL_RETRY_TIMEOUT_MS + (PULL_RETRY_TIMEOUT_MS + gracePeriodMs)
+    assertTrue(finishLatch.await(PULL_RETRY_TIMEOUT_MS * 2 + (PULL_RETRY_TIMEOUT_MS * 2 + gracePeriodMs)
         * AsyncParameterWorker.MAX_PULL_RETRY_COUNT, TimeUnit.MILLISECONDS));
     worker.close(CLOSE_TIMEOUT);
     pool.shutdown();
