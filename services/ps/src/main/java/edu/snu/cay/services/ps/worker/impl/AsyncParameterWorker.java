@@ -644,7 +644,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
         final PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
         if (checkPullRequest(pullRequest, requestId)) {
-          final int retryCount = pullRequest.getAndIncrementRetryCount();
+          final int retryCount = pullRequest.markRetry();
           if (retryCount >= MAX_PULL_RETRY_COUNT) {
             throw new RuntimeException("Fail to load a value for pull");
           }
@@ -698,6 +698,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private final int requestId;
     private int retryCount;
     private boolean needRetry;
+    private boolean waitingRetry;
     private boolean waiting;
     private final long pullStartTime;
 
@@ -710,6 +711,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       this.requestId = workerThread.getNewRequestId();
       this.retryCount = 0;
       this.needRetry = false;
+      this.waitingRetry = false;
       this.waiting = false;
       this.pullStartTime = ticker.read();
     }
@@ -727,13 +729,16 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     }
 
     /**
-     * Retrieves retry count for this pending pull request and increases by one.
+     * Should be invoked when pull operation is retried.
+     * Marks {@link #waitingRetry} as false,
+     * and retrieves retry count for this pending pull request and increases by one.
      * If retrial is necessary due to timeout or rejection from the server,
      * {@link ParameterWorker} does not make another {@link PullRequest} and calls this method
      * to check whether retrial count exceeded maximum number of retries or not.
      * @return retry count
      */
-    int getAndIncrementRetryCount() {
+    int markRetry() {
+      waitingRetry = false;
       return retryCount++;
     }
 
@@ -744,9 +749,15 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @return true if timeout exceeded
      */
     boolean retryIfTimeout() {
+      // if waitingRetry is true, corresponding PullOp is already enqueued in retryQueue(not processed yet), thus skip
+      if (waitingRetry) {
+        return false;
+      }
       if (needRetry) {
         LOG.log(Level.INFO, "Pull request time out for key: {0}, requestId: {1}, retryCount: {2}",
             new Object[]{encodedKey.getKey(), requestId, retryCount});
+        waitingRetry = true;
+        needRetry = false;
         workerThread.enqueueRetryOp(pendingOps.get(0));
         return true;
       } else {
