@@ -646,13 +646,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
         final PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
         if (checkPullRequest(pullRequest, requestId)) {
-          final int retryCount = pullRequest.markRetry();
-          if (retryCount >= MAX_PULL_RETRY_COUNT) {
-            throw new RuntimeException("Fail to load a value for pull");
-          }
-          LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
-              new Object[]{encodedKey.getKey(), retryCount + 1});
-          sendPullMsg(encodedKey, requestId);
+          pullRequest.processRetry();
         } else {
           LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
               new Object[]{encodedKey.getKey(), requestId});
@@ -738,21 +732,26 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     }
 
     /**
-     * Should be invoked when pull operation is retried.
+     * Process pull retry by sending pull message once again, only if the state is {@link #RETRY_REQUESTED}.
+     * Check whether retrial count exceeded maximum number of retries or not.
      * Change the state of this pull request to {@link #INIT},
-     * and retrieves retry count for this pending pull request and increases by one.
-     * If retrial is necessary due to timeout or rejection from the server,
-     * {@link ParameterWorker} does not make another {@link PullRequest} and calls this method
-     * to check whether retrial count exceeded maximum number of retries or not.
-     * @return retry count
+     * and increases retry count for this pending pull request by one.
      */
-    int markRetry() {
+    void processRetry() {
+      // check whether retry is requested
+      // this can happen because RetryThread does not acquire lock while invoking requestRetryIfTimeout()
       if (state != RETRY_REQUESTED) {
-        throw new RuntimeException("Retry for key " + encodedKey.getKey() +
-            " is never requested, but WorkerThread attempts to retry it");
+        return;
       }
+
+      if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
+        throw new RuntimeException("Fail to load a value for pull");
+      }
+
+      LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
+          new Object[]{encodedKey.getKey(), retryCount});
+      sendPullMsg(encodedKey, requestId);
       state = INIT;
-      return retryCount++;
     }
 
     /**
@@ -811,11 +810,15 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     }
 
     /**
-     * Reject this pull request, which will be retried later.
+     * Reject this pull request, and request for retry.
      */
     void rejectPullRequest() {
-      workerThread.enqueueRetryOp(pendingOps.get(0));
-      workerThread.interruptToTriggerRetry();
+      // if state is RETRY_REQUESTED, retry was already requested due to timeout or previous reject, so skip this turn
+      if (state != RETRY_REQUESTED) {
+        state = RETRY_REQUESTED;
+        workerThread.enqueueRetryOp(pendingOps.get(0));
+        workerThread.interruptToTriggerRetry();
+      }
     }
 
     /**
