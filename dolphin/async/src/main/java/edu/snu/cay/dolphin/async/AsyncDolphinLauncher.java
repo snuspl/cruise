@@ -279,6 +279,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
     basicParameterClassList.add(PullRetryTimeoutMs.class);
+    basicParameterClassList.add(MaxPendingPullsPerThread.class);
     basicParameterClassList.add(WorkerKeyCacheSize.class);
     basicParameterClassList.add(WorkerLogPeriod.class);
     basicParameterClassList.add(Dynamic.class);

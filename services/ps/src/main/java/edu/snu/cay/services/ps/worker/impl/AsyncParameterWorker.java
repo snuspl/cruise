@@ -76,9 +76,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   static final int MAX_PULL_RETRY_COUNT = 10;
 
   /**
-   * The maximum number of pending pulls allowed for each thread.
+   * The maximum number of pending pulls allowed for each WorkerThread.
    */
-  private static final int MAX_PENDING_PULL_COUNT_PER_THREAD = 10000;
+  private final int maxPendingPullsPerThread;
 
   /**
    * Resolve to a server's Network Connection Service identifier based on hashed key.
@@ -127,11 +127,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private AsyncParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
                                @Parameter(WorkerQueueSize.class) final int queueSize,
                                @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
+                               @Parameter(MaxPendingPullsPerThread.class) final int maxPendingPullsPerThread,
                                @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                                @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                final ServerResolver serverResolver,
                                final InjectionFuture<WorkerMsgSender<K, P>> sender) {
     this.numThreads = numThreads;
+    this.maxPendingPullsPerThread = maxPendingPullsPerThread;
     this.serverResolver = serverResolver;
     this.sender = sender;
     this.pullStats = Statistics.newInstances(numThreads);
@@ -269,7 +271,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * Handles incoming pull replies, by setting the value of pull ops.
    * See {@link PullRequest#completePendingOps(Object, long)}.
    * This will notify the waiting {@link WorkerThread} to continue,
-   * when the number of pending pulls on the thread becomes less than {@link #MAX_PENDING_PULL_COUNT_PER_THREAD}.
+   * when the number of pending pulls on the thread becomes less than {@link #maxPendingPullsPerThread}.
    */
   @Override
   public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer) {
@@ -286,7 +288,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       final PullRequest pullRequest = pendingPullRequests.get(key);
       if (checkPullRequest(pullRequest, requestId)) {
         pendingPullRequests.remove(key).completePendingOps(value, elapsedTimeInServer);
-        if (pendingPullRequests.size() == MAX_PENDING_PULL_COUNT_PER_THREAD - 1) {
+        if (pendingPullRequests.size() == maxPendingPullsPerThread - 1) {
           workerThread.notify();
         }
       } else {
@@ -586,7 +588,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * A pull operation.
-   * Should wait if the number of pendingPullRequests on this thread exceeds {@link #MAX_PENDING_PULL_COUNT_PER_THREAD}.
+   * Should wait if the number of pendingPullRequests on this thread exceeds {@link #maxPendingPullsPerThread}.
    * Also exposes a blocking {@link #getResult()} method to retrieve the result of the pull.
    */
   private final class PullOp implements Op {
@@ -613,7 +615,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
         // send new pull request
         if (pullRequest == null) {
-          while (pendingPullRequests.size() >= MAX_PENDING_PULL_COUNT_PER_THREAD) {
+          while (pendingPullRequests.size() >= maxPendingPullsPerThread) {
             workerThread.wait();
           }
 
