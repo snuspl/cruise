@@ -689,11 +689,23 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final class PullRequest {
 
     /* Variables for indicating state of the pull request */
+
     // initial state, or retry message is already sent
+    // INIT -> NEED_RETRY: RetryThread iterates all pendingPullRequests
+    // and mark all requests with state INIT as NEED_RETRY
+    // INIT -> RETRY_REQUESTED: when pull reject message arrives
+    // enqueue pull retry operation and change to RETRY_REQUESTED
     private static final int INIT = 0;
+
     // a state indicates that this request will be retried if it is not completed until next scanning of RetryThread
+    // NEED_RETRY -> RETRY_REQUESTED: when RetryThread process pendingPullRequest of state NEED_RETRY
+    // or pull reject message arrives
+    // enqueue pull retry operation and change to RETRY_REQUESTED
     private static final int NEED_RETRY = 1;
+
     // a state indicates that RetryThread enqueued corresponding PullOp to retryQueue
+    // RETRY_REQUESTED -> INIT: when WorkerThread dequeues corresponding operation from retryQueue
+    // and sends pull message to server
     private static final int RETRY_REQUESTED = 2;
 
     private final WorkerThread workerThread;
