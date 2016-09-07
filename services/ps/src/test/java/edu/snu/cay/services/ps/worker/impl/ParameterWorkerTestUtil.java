@@ -446,6 +446,7 @@ final class ParameterWorkerTestUtil {
 
     pool.execute(() -> worker.pull(key));
 
+    // need to wait for PULL_RETRY_TIMEOUT_MS * 2 for one retry, because of the implementation of parameter worker
     assertTrue(finishLatch.await(PULL_RETRY_TIMEOUT_MS * 2 + (PULL_RETRY_TIMEOUT_MS * 2 + gracePeriodMs)
         * AsyncParameterWorker.MAX_PULL_RETRY_COUNT, TimeUnit.MILLISECONDS));
     worker.close(CLOSE_TIMEOUT);

@@ -74,6 +74,7 @@ public final class DynamicParameterServerTest {
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
   private static final String WORKER_ID = "WORKER";
+  private static final int REQUEST_ID = 0;
 
   private DynamicParameterServer<Integer, Integer, Integer> server;
   private ServerSideReplySender<Integer, Integer, Integer> mockSender;
@@ -163,7 +164,7 @@ public final class DynamicParameterServerTest {
         public void run() {
           for (int index = 0; index < numPulls; index++) {
             final int key = threadId;
-            server.pull(key, WORKER_ID, key, 0); // Just use key as hash for this test.
+            server.pull(key, WORKER_ID, key, REQUEST_ID); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -190,7 +191,7 @@ public final class DynamicParameterServerTest {
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
-      server.pull(key, WORKER_ID, key, 0); // Just use key as hash for this test.
+      server.pull(key, WORKER_ID, key, REQUEST_ID); // Just use key as hash for this test.
 
       waitForOps();
       while (!replayValue.isMarked()) {
@@ -238,7 +239,7 @@ public final class DynamicParameterServerTest {
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
-      server.pull(key, WORKER_ID, key, 0);
+      server.pull(key, WORKER_ID, key, REQUEST_ID);
     }
 
     // closing server should reject all the remaining queued operations, if time allows
@@ -250,7 +251,7 @@ public final class DynamicParameterServerTest {
     assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
 
     // server should not process further operations after being closed
-    server.pull(0, WORKER_ID, 0, 0);
+    server.pull(0, WORKER_ID, 0, REQUEST_ID);
     assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
   }
 }

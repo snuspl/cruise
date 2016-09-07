@@ -23,4 +23,9 @@ import org.apache.reef.tang.annotations.NamedParameter;
     default_value = "5000",
     short_name = "pull_retry_timeout_ms")
 public final class PullRetryTimeoutMs implements Name<Long> {
+  public static final int TIMEOUT_NO_RETRY = 0;
+
+  // should not be instantiated
+  private PullRetryTimeoutMs() {
+  }
 }

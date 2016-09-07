@@ -41,6 +41,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 
+import static edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs.TIMEOUT_NO_RETRY;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -91,7 +92,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.close(parameterWorker, mockSender, workerHandler);
   }
 
@@ -104,7 +105,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadPush()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.multiThreadPush(parameterWorker, mockSender);
   }
 
@@ -119,7 +120,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.multiThreadPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -133,7 +134,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testMultiThreadMultiKeyPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.multiThreadMultiKeyPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -156,7 +157,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPullReject()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
   }
 
@@ -175,7 +176,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPullNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.pullNetworkExceptionAndResend(parameterWorker, workerHandler, mockSender);
   }
 
@@ -194,7 +195,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testPushNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
   }
 
@@ -215,7 +216,7 @@ public final class AsyncParameterWorkerTest {
   @Test
   public void testInvalidateAll()
       throws InterruptedException, ExecutionException, TimeoutException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
 
     final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =

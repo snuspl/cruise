@@ -52,6 +52,7 @@ public final class StaticParameterServerTest {
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
   private static final String WORKER_ID = "WORKER";
+  private static final int REQUEST_ID = 0;
 
   private StaticParameterServer<Integer, Integer, Integer> server;
   private ServerSideReplySender<Integer, Integer, Integer> mockSender;
@@ -128,7 +129,7 @@ public final class StaticParameterServerTest {
         public void run() {
           for (int index = 0; index < numPulls; index++) {
             final int key = threadId;
-            server.pull(key, WORKER_ID, key, 0); // Just use key as hash for this test.
+            server.pull(key, WORKER_ID, key, REQUEST_ID); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -155,7 +156,7 @@ public final class StaticParameterServerTest {
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
-      server.pull(key, WORKER_ID, key, 0); // Just use key as hash for this test.
+      server.pull(key, WORKER_ID, key, REQUEST_ID); // Just use key as hash for this test.
 
       waitForOps();
       while (!replayValue.isMarked()) {
