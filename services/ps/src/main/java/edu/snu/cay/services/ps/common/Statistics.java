@@ -42,7 +42,7 @@ public final class Statistics {
   }
 
   public double sum() {
-    return TimeUnit.SECONDS.convert(sum, TimeUnit.NANOSECONDS);
+    return sum / 1e9D;
   }
 
   public double count() {

@@ -1081,11 +1081,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           // batching thread interrupt; interrupt the WorkerThread only once after scanning finishes
           boolean needInterrupt = false;
           for (final PullRequest pullRequest : pendingPullRequests.values()) {
-            if (needInterrupt) {
-              pullRequest.retryIfTimeout();
-            } else {
-              needInterrupt = pullRequest.retryIfTimeout();
-            }
+            needInterrupt |= pullRequest.retryIfTimeout();
           }
           if (needInterrupt) {
             workerThread.interruptToTriggerRetry();
