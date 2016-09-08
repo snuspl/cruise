@@ -26,6 +26,7 @@ import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.worker.api.*;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.StateMachine;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
@@ -88,9 +89,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final ServerResolver serverResolver;
 
   /**
-   * Number of threads.
+   * Number of WorkerThreads.
    */
-  private final int numThreads;
+  private final int numWorkerThreads;
 
   /**
    * Thread pool, where each thread is submitted.
@@ -122,11 +123,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final Statistics[] pullStats;
   private final Statistics[] pushStats;
   private final Statistics[] networkStats;
-  private final Statistics[] pendingStats;
+  private final Statistics[] waitingStats;
   private final Ticker ticker = Ticker.systemTicker();
 
   @Inject
-  private AsyncParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
+  private AsyncParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numWorkerThreads,
                                @Parameter(WorkerQueueSize.class) final int queueSize,
                                @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
                                @Parameter(MaxPendingPullsPerThread.class) final int maxPendingPullsPerThread,
@@ -134,17 +135,17 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                                @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                final ServerResolver serverResolver,
                                final InjectionFuture<WorkerMsgSender<K, P>> sender) {
-    this.numThreads = numThreads;
+    this.numWorkerThreads = numWorkerThreads;
     this.maxPendingPullsPerThread = maxPendingPullsPerThread;
     this.serverResolver = serverResolver;
     this.sender = sender;
-    this.pullStats = Statistics.newInstances(numThreads);
-    this.pushStats = Statistics.newInstances(numThreads);
-    this.networkStats = Statistics.newInstances(numThreads);
-    this.pendingStats = Statistics.newInstances(numThreads);
-    // numThreads + 1 for retry thread
-    this.threadPool = Executors.newFixedThreadPool(numThreads + 1);
-    this.workerThreads = initThreads(queueSize);
+    this.pullStats = Statistics.newInstances(numWorkerThreads);
+    this.pushStats = Statistics.newInstances(numWorkerThreads);
+    this.networkStats = Statistics.newInstances(numWorkerThreads);
+    this.waitingStats = Statistics.newInstances(numWorkerThreads);
+    // numWorkerThreads + 1 for retry thread
+    this.threadPool = Executors.newFixedThreadPool(numWorkerThreads + 1);
+    this.workerThreads = initWorkerThreads(queueSize);
     this.retryThread = new RetryThread(pullRetryTimeoutMs);
     this.threadPool.submit(retryThread);
     this.encodedKeyCache = CacheBuilder.newBuilder()
@@ -161,11 +162,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * Call after initializing threadPool.
    */
   @SuppressWarnings("unchecked")
-  private WorkerThread[] initThreads(final int queueSize) {
-    LOG.log(Level.INFO, "Initializing {0} PW threads", numThreads);
-    final WorkerThread[] initialized = (WorkerThread[]) Array.newInstance(WorkerThread.class, numThreads);
-    for (int i = 0; i < numThreads; i++) {
-      initialized[i] = new WorkerThread(queueSize, pullStats[i], pushStats[i], networkStats[i], pendingStats[i]);
+  private WorkerThread[] initWorkerThreads(final int queueSize) {
+    LOG.log(Level.INFO, "Initializing {0} PW threads", numWorkerThreads);
+    final WorkerThread[] initialized = (WorkerThread[]) Array.newInstance(WorkerThread.class, numWorkerThreads);
+    for (int i = 0; i < numWorkerThreads; i++) {
+      initialized[i] = new WorkerThread(queueSize, pullStats[i], pushStats[i], networkStats[i], waitingStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -241,7 +242,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   private int getThreadIndex(final int keyHash) {
-    return keyHash % numThreads;
+    return keyHash % numWorkerThreads;
   }
 
   /**
@@ -253,13 +254,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     final Future result = Executors.newSingleThreadExecutor().submit(() -> {
         // Close all threads
-        for (int i = 0; i < numThreads; i++) {
+        for (int i = 0; i < numWorkerThreads; i++) {
           workerThreads[i].startClose();
         }
         retryThread.startClose();
 
         // Wait for close to complete on all threads
-        for (int i = 0; i < numThreads; i++) {
+        for (int i = 0; i < numWorkerThreads; i++) {
           workerThreads[i].waitForClose();
         }
         retryThread.waitForClose();
@@ -371,7 +372,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * Sends a push msg for the {@code encodedKey} to the target server.
-   * Does not respond to thread interrupt, to make the code simple by introducing atomicity to message sending.
+   * To send push message atomically, do not respond to WorkerThread interrupt.
    * @param encodedKey encoded key
    * @param preValue preValue
    */
@@ -405,6 +406,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         LOG.log(Level.FINEST, "Interrupted while waiting for routing table to be updated", e);
       }
     }
+    // restore thread interrupt state
     if (interrupted) {
       Thread.currentThread().interrupt();
     }
@@ -412,7 +414,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * Sends a pull msg for the {@code encodedKey} to the target server.
-   * Does not respond to thread interrupt, to make the code simple by introducing atomicity to message sending.
+   * To send push message atomically, do not respond to WorkerThread interrupt.
    * @param encodedKey encoded key
    * @param requestId pull request id
    */
@@ -446,6 +448,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         LOG.log(Level.FINEST, "Interrupted while waiting for routing table to be updated", e);
       }
     }
+    // restore thread interrupt state
     if (interrupted) {
       Thread.currentThread().interrupt();
     }
@@ -456,69 +459,39 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    */
   @Override
   public ParameterWorkerMetrics buildParameterWorkerMetrics() {
-    final double totalPullTime = getTotalProcTime(pullStats);
-    final double totalPushTime = getTotalProcTime(pushStats);
-    final double totalNetworkTime = getTotalProcTime(networkStats);
-    final double totalPendingTime = getTotalProcTime(pendingStats);
-    final int totalPullCount = getTotalProcCount(pullStats);
-    final int totalPushCount = getTotalProcCount(pushStats);
-    final int totalNetworkStatCount = getTotalProcCount(networkStats);
-    final int totalPendingStatCount = getTotalProcCount(pendingStats);
-    resetStats();
+    final Pair<Integer, Double> totalPullStat = getTotalStatAndReset(pullStats);
+    final Pair<Integer, Double> totalPushStat = getTotalStatAndReset(pushStats);
+    final Pair<Integer, Double> totalNetworkStat = getTotalStatAndReset(networkStats);
+    final Pair<Integer, Double> totalWaitingStat = getTotalStatAndReset(waitingStats);
 
     return ParameterWorkerMetrics.newBuilder()
-        .setNumThreads(numThreads)
-        .setTotalPullTime(totalPullTime)
-        .setTotalPushTime(totalPushTime)
-        .setTotalNetworkTime(totalNetworkTime)
-        .setTotalPendingTime(totalPendingTime)
-        .setTotalPullCount(totalPullCount)
-        .setTotalPushCount(totalPushCount)
-        .setTotalNetworkStatCount(totalNetworkStatCount)
-        .setTotalPendingStatCount(totalPendingStatCount)
+        .setNumThreads(numWorkerThreads)
+        .setTotalPullCount(totalPullStat.getLeft())
+        .setTotalPullTime(totalPullStat.getRight())
+        .setTotalPushCount(totalPushStat.getLeft())
+        .setTotalPushTime(totalPushStat.getRight())
+        .setTotalNetworkStatCount(totalNetworkStat.getLeft())
+        .setTotalNetworkTime(totalNetworkStat.getRight())
+        .setTotalWaitingStatCount(totalWaitingStat.getLeft())
+        .setTotalWaitingTime(totalWaitingStat.getRight())
         .build();
   }
 
   /**
-   * Computes the total number of requests across all threads in this worker.
+   * Computes the total number and time spent on processing requests with the WorkerThreads in this worker.
+   * Computes stats across all WorkerThreads in this worker and resets them.
    */
-  private int getTotalProcCount(final Statistics[] procTimeStats) {
+  private Pair<Integer, Double> getTotalStatAndReset(final Statistics[] stats) {
     int processedCount = 0;
-
-    synchronized (procTimeStats) {
-      for (final Statistics stat : procTimeStats) {
-        processedCount += stat.count();
-      }
-    }
-
-    return processedCount;
-  }
-
-  /**
-   * Computes the time spent on processing {@link #getTotalProcCount(Statistics[])} with the threads in this worker.
-   */
-  private double getTotalProcTime(final Statistics[] procTimeStats) {
     double procTimeSum = 0D;
 
-    synchronized (procTimeStats) {
-      for (final Statistics stat : procTimeStats) {
-        procTimeSum += stat.sum();
-      }
+    for (final Statistics stat : stats) {
+      processedCount += stat.count();
+      procTimeSum += stat.sum();
+      stat.reset();
     }
 
-    return procTimeSum;
-  }
-
-  /**
-   * Resets all {@link Statistics} for the next round of metrics.
-   */
-  private void resetStats() {
-    for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
-      pullStats[threadIdx].reset();
-      pushStats[threadIdx].reset();
-      networkStats[threadIdx].reset();
-      pendingStats[threadIdx].reset();
-    }
+    return Pair.of(processedCount, procTimeSum);
   }
 
   /**
@@ -570,7 +543,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         }
 
         final long pushStartTime = ticker.read();
-        workerThread.pendingStat.put(pushStartTime - enqueueTime);
+        workerThread.waitingStat.put(pushStartTime - enqueueTime);
 
         sendPushMsg(encodedKey, preValue);
 
@@ -623,7 +596,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           }
 
           this.pullStartTime = ticker.read();
-          workerThread.pendingStat.put(pullStartTime - enqueueTime);
+          workerThread.waitingStat.put(pullStartTime - enqueueTime);
 
           pullRequest = new PullRequest(workerThread, encodedKey, this);
           requestId = pullRequest.getRequestId();
@@ -633,7 +606,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           // use existing pull request, do not send another pull request
         } else {
           this.pullStartTime = ticker.read();
-          workerThread.pendingStat.put(pullStartTime - enqueueTime);
+          workerThread.waitingStat.put(pullStartTime - enqueueTime);
 
           pullRequest.addPendingOp(this);
         }
@@ -884,13 +857,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private final Statistics pullStat;
     private final Statistics pushStat;
     private final Statistics networkStat;
-    private final Statistics pendingStat;
+    private final Statistics waitingStat;
 
     WorkerThread(final int queueSize,
                  final Statistics pullStat,
                  final Statistics pushStat,
                  final Statistics networkStat,
-                 final Statistics pendingStat) {
+                 final Statistics waitingStat) {
       this.drainSize = queueSize / 10;
       this.pendingPullRequests = new ConcurrentHashMap<>();
       this.queue = new ArrayBlockingQueue<>(queueSize);
@@ -902,7 +875,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       this.pullStat = pullStat;
       this.pushStat = pushStat;
       this.networkStat = networkStat;
-      this.pendingStat = pendingStat;
+      this.waitingStat = waitingStat;
     }
 
     private StateMachine initStateMachine() {
@@ -948,6 +921,12 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       }
     }
 
+    /**
+     * Generate and return new request id for new {@link PullRequest}.
+     * Because each WorkerThread handles disjoint key space, it is guaranteed that different {@link PullRequest}s
+     * for the same key always have different request id.
+     * @return new request id
+     */
     int getNewRequestId() {
       return requestId++;
     }
