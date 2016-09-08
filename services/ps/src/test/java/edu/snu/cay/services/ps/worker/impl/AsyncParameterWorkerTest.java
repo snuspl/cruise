@@ -24,6 +24,7 @@ import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.EnforceLoggingLevelRule;
+import edu.snu.cay.utils.ThreadUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -39,8 +40,10 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
+import static edu.snu.cay.services.ps.worker.impl.ParameterWorkerTestUtil.*;
 import static edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs.TIMEOUT_NO_RETRY;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -242,9 +245,9 @@ public final class AsyncParameterWorkerTest {
     pool.shutdown();
 
     final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
-    asyncParameterWorker.close(ParameterWorkerTestUtil.CLOSE_TIMEOUT);
+    asyncParameterWorker.close(CLOSE_TIMEOUT);
 
-    assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
+    assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject(), anyInt());
 
     executorService.shutdown();
@@ -282,6 +285,7 @@ public final class AsyncParameterWorkerTest {
     // in other words, push is waiting for pull to be replied
     verify(mockSender, times(1)).sendPullMsg(anyString(), anyObject(), anyInt());
     verify(mockSender, times(0)).sendPushMsg(anyString(), anyObject(), anyInt());
+    assertEquals(MSG_THREADS_SHOULD_NOT_FINISH, 1, countDownLatch.getCount()); // have not received pull reply yet
 
     final Pair<EncodedKey<Integer>, Integer> request = pullKeyToReplyQueue.take();
     final EncodedKey<Integer> encodedKey = request.getLeft();
@@ -290,9 +294,56 @@ public final class AsyncParameterWorkerTest {
     Thread.sleep(gracePeriodMs);
 
     final boolean allThreadsFinished = countDownLatch.await(waitingMs, TimeUnit.SECONDS);
-    parameterWorker.close(ParameterWorkerTestUtil.CLOSE_TIMEOUT);
+    parameterWorker.close(CLOSE_TIMEOUT);
 
-    assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
+    assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     verify(mockSender, times(1)).sendPushMsg(anyString(), anyObject(), anyInt());
+  }
+
+  /**
+   * Test whether parameter worker handles multiple pull operations with one request to server if available.
+   */
+  @Test
+  public void testMultiplePull()
+      throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
+    prepare(TIMEOUT_NO_RETRY);
+
+    final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
+    ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
+
+    final int numPullThreads = 8;
+    final int key = 0;
+
+    final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
+    final Runnable[] threads = new Runnable[numPullThreads];
+    final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
+
+    for (int index = 0; index < numPullThreads; ++index) {
+      threads[index] = () -> {
+        final Integer val = parameterWorker.pull(key);
+        if (val == null || !val.equals(key)) {
+          correctResultReturned.set(false);
+        }
+        countDownLatch.countDown();
+      };
+    }
+
+    ThreadUtils.runConcurrently(threads);
+
+    // have not received pull reply yet
+    assertEquals(MSG_THREADS_SHOULD_NOT_FINISH, 8, countDownLatch.getCount());
+
+    final Pair<EncodedKey<Integer>, Integer> request = pullKeyToReplyQueue.take();
+    final EncodedKey<Integer> encodedKey = request.getLeft();
+    final int requestId = request.getRight();
+    workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+    parameterWorker.close(CLOSE_TIMEOUT);
+
+    assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
+    assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
+    // should send pull request only once
+    verify(mockSender, times(1)).sendPullMsg(anyString(), anyObject(), anyInt());
   }
 }
