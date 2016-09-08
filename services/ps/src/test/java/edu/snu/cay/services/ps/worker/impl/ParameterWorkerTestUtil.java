@@ -257,7 +257,7 @@ final class ParameterWorkerTestUtil {
    * Starts threads that reject pull operations queued in {@code keyToRejectQueue}.
    * @return an {@link ExecutorService} through which the thread is executing.
    */
-  private static ExecutorService startPullRejectingThreads(
+  static ExecutorService startPullRejectingThreads(
       final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> keyToRejectQueue,
       final WorkerHandler<Integer, ?, Integer> handler,
       final int numRejectPerKey) {

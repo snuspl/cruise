@@ -249,4 +249,50 @@ public final class AsyncParameterWorkerTest {
 
     executorService.shutdown();
   }
+
+  /**
+   * Test whether parameter worker waits for corresponding pull reply before processing push operation.
+   */
+  @Test
+  public void testPushAfterPull()
+      throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
+    prepare(TIMEOUT_NO_RETRY);
+
+    final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
+    ParameterWorkerTestUtil.setupSenderToEnqueuePullOps(pullKeyToReplyQueue, mockSender);
+    final ExecutorService pool = Executors.newSingleThreadExecutor();
+    final int key = 0;
+    final int pushValue = 1;
+    final long gracePeriodMs = 100;
+    final long waitingMs = 3000;
+
+    final CountDownLatch countDownLatch = new CountDownLatch(1);
+
+    pool.execute(() -> {
+        parameterWorker.pull(key);
+        countDownLatch.countDown();
+      }
+    );
+    pool.shutdown();
+    Thread.sleep(gracePeriodMs);
+    parameterWorker.push(key, pushValue);
+    Thread.sleep(waitingMs);
+
+    // assert that mockSender sent 1 pull message and 0 push message
+    // in other words, push is waiting for pull to be replied
+    verify(mockSender, times(1)).sendPullMsg(anyString(), anyObject(), anyInt());
+    verify(mockSender, times(0)).sendPushMsg(anyString(), anyObject(), anyInt());
+
+    final Pair<EncodedKey<Integer>, Integer> request = pullKeyToReplyQueue.take();
+    final EncodedKey<Integer> encodedKey = request.getLeft();
+    final int requestId = request.getRight();
+    workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+    Thread.sleep(gracePeriodMs);
+
+    final boolean allThreadsFinished = countDownLatch.await(waitingMs, TimeUnit.SECONDS);
+    parameterWorker.close(ParameterWorkerTestUtil.CLOSE_TIMEOUT);
+
+    assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
+    verify(mockSender, times(1)).sendPushMsg(anyString(), anyObject(), anyInt());
+  }
 }
