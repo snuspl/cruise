@@ -104,7 +104,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final WorkerThread[] workerThreads;
 
   /**
-   * A thread that retries the pull request by enqueueing a retry operation to its corresponding queue.
+   * A thread that retries the pull request by enqueueing an operation for retry to its corresponding queue.
    */
   private final RetryThread retryThread;
 
@@ -305,7 +305,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * Handles incoming pull rejects, by retrying pull request.
-   * See {@link PullRequest#rejectPullRequest()}.
+   * See {@link PullRequest#reject()}.
    * This will interrupt the WorkerThread after enqueueing {@link PullOp}, to handle the retry op first.
    */
   @Override
@@ -322,7 +322,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
       final PullRequest pullRequest = pendingPullRequests.get(key);
       if (pendingPullRequestExists(pullRequest, requestId)) {
-        pullRequest.rejectPullRequest();
+        pullRequest.reject();
       } else {
         LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
             new Object[]{key, requestId});
@@ -349,8 +349,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       LOG.log(Level.FINE, "Pull request id not matched, received: {0}, actual: {1}",
           new Object[]{requestId, pullRequest.getRequestId()});
       return false;
+    } else {
+      return true;
     }
-    return true;
   }
 
   /**
@@ -459,10 +460,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    */
   @Override
   public ParameterWorkerMetrics buildParameterWorkerMetrics() {
-    final Pair<Integer, Double> totalPullStat = getTotalStatAndReset(pullStats);
-    final Pair<Integer, Double> totalPushStat = getTotalStatAndReset(pushStats);
-    final Pair<Integer, Double> totalNetworkStat = getTotalStatAndReset(networkStats);
-    final Pair<Integer, Double> totalWaitingStat = getTotalStatAndReset(waitingStats);
+    final Pair<Integer, Double> totalPullStat = summarizeAndResetStats(pullStats);
+    final Pair<Integer, Double> totalPushStat = summarizeAndResetStats(pushStats);
+    final Pair<Integer, Double> totalNetworkStat = summarizeAndResetStats(networkStats);
+    final Pair<Integer, Double> totalWaitingStat = summarizeAndResetStats(waitingStats);
 
     return ParameterWorkerMetrics.newBuilder()
         .setNumThreads(numWorkerThreads)
@@ -479,9 +480,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * Computes the total number and time spent on processing requests with the WorkerThreads in this worker.
-   * Computes stats across all WorkerThreads in this worker and resets them.
+   * Summarizes stats across all WorkerThreads in this worker and resets them.
    */
-  private Pair<Integer, Double> getTotalStatAndReset(final Statistics[] stats) {
+  private Pair<Integer, Double> summarizeAndResetStats(final Statistics[] stats) {
     int processedCount = 0;
     double procTimeSum = 0D;
 
@@ -557,7 +558,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      */
     @Override
     public void retry() {
-      // because we do not have worker-side model cache for now, cannot guarantee read-my-update
+      // TODO #803: Once we implement worker-side cache, we can guarantee read-my-update even with retrying push.
       sendPushMsg(encodedKey, preValue);
     }
   }
@@ -589,7 +590,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
         PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
 
-        // send new pull request
+        // send a new pull request if no request for the key has been made yet
         if (pullRequest == null) {
           while (pendingPullRequests.size() >= maxPendingPullsPerThread) {
             workerThread.wait();
@@ -603,7 +604,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           pendingPullRequests.put(encodedKey.getKey(), pullRequest);
           sendPullMsg(encodedKey, requestId);
 
-          // use existing pull request, do not send another pull request
+          // wait with other operations that were previously requested, if the pull request has been sent already
         } else {
           this.pullStartTime = ticker.read();
           workerThread.waitingStat.put(pullStartTime - enqueueTime);
@@ -614,7 +615,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     }
 
     /**
-     * Check the existence of corresponding pullRequest, and re-send pull message.
+     * Re-send message for pull request, if the corresponding request exists.
      */
     @Override
     public void retry() {
@@ -664,7 +665,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    */
   private final class PullRequest {
 
-    /* A pull request is in one of the following three states:
+    /*
+     * A pull request is in one of the following three states:
      *
      * 1) INIT: When a pull request is created initially, or message for retrying a pull request has been sent.
      *
@@ -672,13 +674,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * the pull request is marked as NEED_RETRY.
      * RetryThread will later enqueues pull requests in this state to the RetryQueue of the corresponding WorkerThread.
      *
-     * 3) RETRY_REQUESTED: When a pull request is retried (enqueued in RetryQueue precisely), when
-     *   (a) RetryThread enqueues pull requests in NEED_RETRY state, or
+     * 3) RETRY_REQUESTED: When a pull request is retried (enqueued in RetryQueue precisely),
+     *   (a) when RetryThread enqueues pull requests in NEED_RETRY state, or
      *   (b) when WorkerThread enqueues the rejected pull requests.
      */
-    private static final int INIT = 0;
-    private static final int NEED_RETRY = 1;
-    private static final int RETRY_REQUESTED = 2;
+    private static final int INIT_STATE = 0;
+    private static final int NEED_RETRY_STATE = 1;
+    private static final int RETRY_REQUESTED_STATE = 2;
 
     private final WorkerThread workerThread;
     private final EncodedKey<K> encodedKey;
@@ -686,7 +688,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     private final int requestId;
     private int retryCount;
-    private int state;
+    private int state; // accessors are synchronized
     private boolean waiting;
     private final long pullStartTime;
 
@@ -698,7 +700,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
       this.requestId = workerThread.getNewRequestId();
       this.retryCount = 0;
-      this.state = INIT;
+      this.state = INIT_STATE;
       this.waiting = false;
       this.pullStartTime = ticker.read();
     }
@@ -716,18 +718,12 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     }
 
     /**
-     * Process pull retry by sending pull message once again, only if the state is {@link #RETRY_REQUESTED}.
-     * Check whether retrial count exceeded maximum number of retries or not.
-     * Change the state of this pull request to {@link #INIT},
-     * and increase retry count for this pending pull request by one.
+     * Process pull retry by sending pull message once again, only if the state is {@link #RETRY_REQUESTED_STATE}.
+     * After sending the request message for retry, the state of this pull request is reset to {@link #INIT_STATE},
+     * and the retry count is incremented.
+     * @throws RuntimeException if the retrial count exceeded maximum number of retries
      */
-    void processRetry() {
-      // check whether retry is requested
-      // this can happen because RetryThread does not acquire lock while invoking requestRetryIfTimeout()
-      if (state != RETRY_REQUESTED) {
-        return;
-      }
-
+    synchronized void processRetry() {
       if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
         throw new RuntimeException("Fail to load a value for pull");
       }
@@ -735,7 +731,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
           new Object[]{encodedKey.getKey(), retryCount});
       sendPullMsg(encodedKey, requestId);
-      state = INIT;
+      state = INIT_STATE;
     }
 
     /**
@@ -746,18 +742,18 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * by enqueueing retry operation to corresponding retryQueue.
      * @return true if timeout exceeded
      */
-    boolean requestRetryIfTimeout() {
+    synchronized boolean requestRetryIfTimeout() {
       switch (state) {
-      case INIT:
-        state = NEED_RETRY;
+      case INIT_STATE:
+        state = NEED_RETRY_STATE;
         return false;
-      case NEED_RETRY:
+      case NEED_RETRY_STATE:
         LOG.log(Level.INFO, "Pull request time out for key: {0}, requestId: {1}, retryCount: {2}",
             new Object[]{encodedKey.getKey(), requestId, retryCount});
-        state = RETRY_REQUESTED;
+        state = RETRY_REQUESTED_STATE;
         workerThread.enqueueRetryOp(pendingOps.get(0));
         return true;
-      case RETRY_REQUESTED:
+      case RETRY_REQUESTED_STATE:
         return false;
       default:
         throw new RuntimeException("Unknown state of pull request");
@@ -798,10 +794,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     /**
      * Reject this pull request, and request for retry.
      */
-    void rejectPullRequest() {
+    synchronized void reject() {
       // if state is RETRY_REQUESTED, retry was already requested due to timeout or previous reject, so skip this turn
-      if (state != RETRY_REQUESTED) {
-        state = RETRY_REQUESTED;
+      if (state != RETRY_REQUESTED_STATE) {
+        state = RETRY_REQUESTED_STATE;
         workerThread.enqueueRetryOp(pendingOps.get(0));
         workerThread.interruptToTriggerRetry();
       }
@@ -809,7 +805,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     /**
      * Wait until this pull request is completed.
-     * Should precede completePendingOps.
+     * Should precede completePendingOps. If not, the waiting thread will be never awoken.
      * @throws InterruptedException when the executing thread is interrupted
      */
     void waitForComplete() throws InterruptedException {

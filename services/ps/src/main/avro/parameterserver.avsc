@@ -274,7 +274,7 @@
     // number of pull requests processed
     {"name": "totalPullCount", "type": "int", "default": 0},
 
-    // number of requests waiting/put in queue
+    // number of requests waited/put in queue
     {"name": "totalWaitingStatCount", "type": "int", "default": 0},
 
     // number of pull request/reply pairs processed
