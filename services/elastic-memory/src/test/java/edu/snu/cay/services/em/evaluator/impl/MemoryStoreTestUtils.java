@@ -15,7 +15,10 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
+import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyObserver;
+import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyParameter;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -211,6 +214,40 @@ public final class MemoryStoreTestUtils {
       }
 
       countDownLatch.countDown();
+    }
+  }
+
+  public static final class BlockPutNotifyObserverImpl implements BlockUpdateNotifyObserver<Long> {
+    private final CountDownLatch countDownLatch;
+
+    public BlockPutNotifyObserverImpl(final CountDownLatch countDownLatch) {
+      this.countDownLatch = countDownLatch;
+    }
+
+    @Override
+    public void onNext(final BlockUpdateNotifyParameter<Long> parameter) {
+      final int notifyType = parameter.getNotifyType();
+
+      if (notifyType == MemoryStoreImpl.NOTIFY_TYPE_BLOCK_PUT) {
+        countDownLatch.countDown();
+      }
+    }
+  }
+
+  public static final class BlockRemoveNotifyObserverImpl implements BlockUpdateNotifyObserver<Long> {
+    private final CountDownLatch countDownLatch;
+
+    public BlockRemoveNotifyObserverImpl(final CountDownLatch countDownLatch) {
+      this.countDownLatch = countDownLatch;
+    }
+
+    @Override
+    public void onNext(final BlockUpdateNotifyParameter<Long> parameter) {
+      final int notifyType = parameter.getNotifyType();
+
+      if (notifyType == MemoryStoreImpl.NOTIFY_TYPE_BLOCK_REMOVE) {
+        countDownLatch.countDown();
+      }
     }
   }
 }
