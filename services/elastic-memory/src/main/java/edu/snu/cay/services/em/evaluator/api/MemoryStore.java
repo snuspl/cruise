@@ -133,6 +133,10 @@ public interface MemoryStore<K> {
    */
   <V> Map<K, V> removeRange(K startId, K endId);
 
+  boolean registerBlockUpdateObserver(final BlockUpdateNotifyObserver handler);
+
+  boolean unregisterBlockUpdateObserver(final BlockUpdateNotifyObserver handler);
+
   /**
    * @return number of blocks in the MemoryStore
    */

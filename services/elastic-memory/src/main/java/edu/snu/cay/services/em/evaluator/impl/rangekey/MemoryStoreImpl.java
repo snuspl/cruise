@@ -17,10 +17,8 @@ package edu.snu.cay.services.em.evaluator.impl.rangekey;
 
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
-import edu.snu.cay.services.em.evaluator.api.BlockResolver;
-import edu.snu.cay.services.em.evaluator.api.DataOperation;
-import edu.snu.cay.services.em.evaluator.api.RangeKeyOperation;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.*;
+import edu.snu.cay.services.em.evaluator.impl.BlockUpdateNotifyParameterImpl;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.Tuple3;
@@ -58,6 +56,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private static final int QUEUE_SIZE = 1024;
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
+  public static final int NOTIFY_TYPE_BLOCK_REMOVE = 0;
+  public static final int NOTIFY_TYPE_BLOCK_PUT = 1;
+
   /**
    * Maintains blocks associated with blockIds.
    */
@@ -69,6 +70,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl;
 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
+
+  /**
+   * Block update notification handler list registered by clients.
+   */
+  private final List<BlockUpdateNotifyObserver> blockUpdateNotifyObserverList = new ArrayList<>();
 
   /**
    * A counter for issuing ids for operations requested from local clients.
@@ -134,6 +140,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     if (blocks.putIfAbsent(blockId, block) != null) {
       throw new RuntimeException("Block with id " + blockId + " already exists.");
     }
+
+    notifyBlockPut(blockId, block);
   }
 
   @Override
@@ -151,6 +159,34 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     final Block block = blocks.remove(blockId);
     if (null == block) {
       throw new RuntimeException("Block with id " + blockId + "does not exist.");
+    }
+
+    notifyBlockRemove(blockId, block);
+  }
+
+  @Override
+  public boolean registerBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
+    return blockUpdateNotifyObserverList.add(observer);
+  }
+
+  @Override
+  public boolean unregisterBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
+    return blockUpdateNotifyObserverList.remove(observer);
+  }
+
+  private void notifyBlockRemove(final int blockId, final Block block) {
+    final Map<Long, Object> kvData = block.getAll();
+    final Set<Long> keySet = kvData.keySet();
+    for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverList) {
+      observer.onNext(new BlockUpdateNotifyParameterImpl(NOTIFY_TYPE_BLOCK_REMOVE, blockId, keySet));
+    }
+  }
+
+  private void notifyBlockPut(final int blockId, final Block block) {
+    final Map<Long, Object> kvData = block.getAll();
+    final Set<Long> keySet = kvData.keySet();
+    for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverList) {
+      observer.onNext(new BlockUpdateNotifyParameterImpl(NOTIFY_TYPE_BLOCK_PUT, blockId, keySet));
     }
   }
 

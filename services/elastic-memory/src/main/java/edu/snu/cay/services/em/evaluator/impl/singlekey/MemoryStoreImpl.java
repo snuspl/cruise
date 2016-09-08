@@ -45,6 +45,8 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   private static final int QUEUE_SIZE = 1024;
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
+  public static final int NOTIFY_TYPE_BLOCK_REMOVE = 0;
+  public static final int NOTIFY_TYPE_BLOCK_PUT = 1;
   /**
    * Maintains blocks associated with blockIds.
    */
@@ -140,6 +142,18 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     if (null == block) {
       throw new RuntimeException("Block with id " + blockId + "does not exist.");
     }
+  }
+
+  @Override
+  public boolean registerBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
+    throw new UnsupportedOperationException("This class doesn't support "
+        + this.getClass().getEnclosingMethod().getName());
+  }
+
+  @Override
+  public boolean unregisterBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
+    throw new UnsupportedOperationException("This class doesn't support "
+        + this.getClass().getEnclosingMethod().getName());
   }
 
   /**

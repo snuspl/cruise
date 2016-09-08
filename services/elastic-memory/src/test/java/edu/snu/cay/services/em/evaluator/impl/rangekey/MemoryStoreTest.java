@@ -19,6 +19,8 @@ import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyObserver;
+import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyParameter;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
@@ -34,8 +36,11 @@ import org.htrace.SpanReceiver;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -45,6 +50,7 @@ import static org.mockito.Mockito.mock;
  * Test class for checking the thread safeness of MemoryStore.
  */
 public final class MemoryStoreTest {
+  private static final Logger LOG = Logger.getLogger(MemoryStoreTest.class.getName());
   private static final int NUM_TOTAL_BLOCKS = 32;
   private static final int TIMEOUT = 60;
 
@@ -334,5 +340,73 @@ public final class MemoryStoreTest {
         memoryStore.removeAll().size());
     // check that removeAll works as expected
     assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll().size());
+  }
+
+  final class BlockPutNotifyObserverImpl implements BlockUpdateNotifyObserver<Long> {
+    private final CountDownLatch countDownLatch;
+
+    BlockPutNotifyObserverImpl(final CountDownLatch countDownLatch) {
+      this.countDownLatch = countDownLatch;
+    }
+
+    @Override
+    public void onNext(final BlockUpdateNotifyParameter<Long> parameter) {
+      final int notifyType = parameter.getNotifyType();
+      final int targetBlockId = parameter.getUpdatedBlockId();
+
+      LOG.log(Level.INFO, "updated block id: {0}", targetBlockId);
+      assertTrue(notifyType == MemoryStoreImpl.NOTIFY_TYPE_BLOCK_PUT);
+
+      countDownLatch.countDown();
+    }
+  }
+
+  private void multipleBlockPutNotify() throws InterruptedException {
+    final int numOfObserver = 3;
+    final int numOfBlockPut = 10;
+    final int timeoutInMillisecond = 500;
+    int blockId = 0x80;
+    final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
+    final List<BlockPutNotifyObserverImpl> blockUpdateNotifyObserverList = new ArrayList<>(numOfObserver);
+    final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
+
+    // register block update notification observers to the Memory Store
+    for (int i = 0; i < numOfObserver; i++) {
+      final BlockPutNotifyObserverImpl observer = new BlockPutNotifyObserverImpl(countDownLatch);
+      blockUpdateNotifyObserverList.add(observer);
+      memoryStore.registerBlockUpdateObserver(observer);
+    }
+
+    for (int i = 0; i < numOfBlockPut; i++) {
+      final Map<Long, Object> data = new HashMap<>();
+
+      data.put((long)i, new Integer(i));
+      memoryStoreImpl.putBlock(blockId++, data);
+    }
+
+    // after sleeping some time
+    Thread.sleep(timeoutInMillisecond);
+    // wait for count down latch with a bound of time
+    countDownLatch.await();
+
+    final Iterator<BlockPutNotifyObserverImpl> iterator = blockUpdateNotifyObserverList.iterator();
+    while (iterator.hasNext()) {
+      final BlockPutNotifyObserverImpl observer = iterator.next();
+      memoryStore.unregisterBlockUpdateObserver(observer);
+    }
+  }
+
+  private void multiThreadRemoveNotify() {
+
+  }
+
+  @Test(timeout = 2000)
+  public void testMultiThreadPutNotify()throws InterruptedException {
+    multipleBlockPutNotify();
+  }
+
+  @Test
+  public void testMultiThreadRemoveNotify() {
+    multiThreadRemoveNotify();
   }
 }
