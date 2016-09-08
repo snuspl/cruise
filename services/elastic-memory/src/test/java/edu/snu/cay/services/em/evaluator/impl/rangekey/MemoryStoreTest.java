@@ -355,6 +355,8 @@ public final class MemoryStoreTest {
       memoryStore.registerBlockUpdateObserver(observer);
     }
 
+    // put blocks to the Memory Store
+    // and it will call onNext callback of MemoryStoreTestUtils.BlockPutNotifyObserverImpl class
     for (int i = 0; i < numOfBlockPut; i++) {
       final Map<Long, Object> data = new HashMap<>();
 
@@ -399,14 +401,17 @@ public final class MemoryStoreTest {
       memoryStoreImpl.putBlock(blockIdBase + i, data);
     }
 
+    // remove all the blocks stored in the Memory Store
+    // and it will call onNext callback of MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl class
     for (int i = 0; i < numOfBlockPut; i++) {
       memoryStoreImpl.removeBlock(blockIdBase + i);
     }
 
-    // wait for count down latch with a bound of time
+    // wait for count down latch with a bounded time
     countDownLatch.await(timeoutInMillisecond, TimeUnit.MILLISECONDS);
     assertEquals(0, countDownLatch.getCount());
 
+    // unregister all the observers from the Memory Store
     final Iterator<MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl> iterator
         = blockUpdateNotifyObserverList.iterator();
     while (iterator.hasNext()) {
