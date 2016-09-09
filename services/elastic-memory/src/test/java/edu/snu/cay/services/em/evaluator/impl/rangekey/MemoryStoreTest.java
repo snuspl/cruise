@@ -340,8 +340,9 @@ public final class MemoryStoreTest {
   private void multipleBlockPutNotify() throws InterruptedException {
     final int numOfObserver = 3;
     final int numOfBlockPut = 10;
+    final int numOfKeysPerBlock = 10;
     final int timeoutInMillisecond = 500;
-    int blockId = 0x80;
+    final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
     final List<MemoryStoreTestUtils.BlockPutNotifyObserverImpl> blockUpdateNotifyObserverList
         = new ArrayList<>(numOfObserver);
@@ -350,7 +351,7 @@ public final class MemoryStoreTest {
     // register block update notification observers to the Memory Store
     for (int i = 0; i < numOfObserver; i++) {
       final MemoryStoreTestUtils.BlockPutNotifyObserverImpl observer
-          = new MemoryStoreTestUtils.BlockPutNotifyObserverImpl(countDownLatch);
+          = new MemoryStoreTestUtils.BlockPutNotifyObserverImpl(countDownLatch, numOfKeysPerBlock);
       blockUpdateNotifyObserverList.add(observer);
       memoryStore.registerBlockUpdateObserver(observer);
     }
@@ -358,10 +359,17 @@ public final class MemoryStoreTest {
     // put blocks to the Memory Store
     // and it will call onNext callback of MemoryStoreTestUtils.BlockPutNotifyObserverImpl class
     for (int i = 0; i < numOfBlockPut; i++) {
-      final Map<Long, Object> data = new HashMap<>();
+      final int blockId = blockIdBase + i;
 
-      data.put((long)i, new Integer(i));
-      memoryStoreImpl.putBlock(blockId++, data);
+      // generate a hash map of key-value pairs to store in a block
+      final Map<Long, Object> data = new HashMap<>();
+      final long keyIdStart = (blockId * numOfKeysPerBlock);
+      for (int j = 0; j < numOfKeysPerBlock; j++) {
+        final long keyId = keyIdStart + j;
+        data.put(keyId, new Long(keyId));
+      }
+
+      memoryStoreImpl.putBlock(blockId, data);
     }
 
     // wait for count down latch with a bound of time
@@ -378,6 +386,7 @@ public final class MemoryStoreTest {
   private void multipleBlockRemoveNotify() throws InterruptedException {
     final int numOfObserver = 3;
     final int numOfBlockPut = 10;
+    final int numOfKeysPerBlock = 10;
     final int timeoutInMillisecond = 500;
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
@@ -388,23 +397,32 @@ public final class MemoryStoreTest {
     // register block update notification observers to the Memory Store
     for (int i = 0; i < numOfObserver; i++) {
       final MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl observer
-          = new MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl(countDownLatch);
+          = new MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl(countDownLatch, numOfKeysPerBlock);
       blockUpdateNotifyObserverList.add(observer);
       memoryStore.registerBlockUpdateObserver(observer);
     }
 
+
     // put blocks to be deleted to the Memory Store
     for (int i = 0; i < numOfBlockPut; i++) {
-      final Map<Long, Object> data = new HashMap<>();
+      final int blockId = blockIdBase + i;
 
-      data.put((long)i, new Integer(i));
-      memoryStoreImpl.putBlock(blockIdBase + i, data);
+      // generate a hash map of key-value pairs to store in a block
+      final Map<Long, Object> data = new HashMap<>();
+      final long keyIdStart = (numOfKeysPerBlock * blockId);
+      for (int j = 0; j < numOfKeysPerBlock; j++) {
+        final long keyId = keyIdStart + j;
+        data.put(keyId, new Long(keyId));
+      }
+
+      memoryStoreImpl.putBlock(blockId, data);
     }
 
     // remove all the blocks stored in the Memory Store
     // and it will call onNext callback of MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl class
     for (int i = 0; i < numOfBlockPut; i++) {
-      memoryStoreImpl.removeBlock(blockIdBase + i);
+      final int blockId = blockIdBase + i;
+      memoryStoreImpl.removeBlock(blockId);
     }
 
     // wait for count down latch with a bounded time

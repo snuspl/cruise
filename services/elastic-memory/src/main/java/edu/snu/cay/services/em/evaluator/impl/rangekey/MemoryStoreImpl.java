@@ -72,9 +72,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
   /**
-   * Block update notification handler list registered by clients.
+   * Block update notification handler set registered by clients.
    */
-  private final List<BlockUpdateNotifyObserver> blockUpdateNotifyObserverList = new ArrayList<>();
+  private final Set<BlockUpdateNotifyObserver> blockUpdateNotifyObserverSet
+      = Collections.newSetFromMap(new ConcurrentHashMap <>());
 
   /**
    * A counter for issuing ids for operations requested from local clients.
@@ -166,18 +167,18 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   @Override
   public boolean registerBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
-    return blockUpdateNotifyObserverList.add(observer);
+    return blockUpdateNotifyObserverSet.add(observer);
   }
 
   @Override
   public boolean unregisterBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
-    return blockUpdateNotifyObserverList.remove(observer);
+    return blockUpdateNotifyObserverSet.remove(observer);
   }
 
   private void notifyBlockRemove(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverList) {
+    for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverSet) {
       observer.onNext(new BlockUpdateNotifyParameterImpl(NOTIFY_TYPE_BLOCK_REMOVE, blockId, keySet));
     }
   }
@@ -185,7 +186,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private void notifyBlockPut(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverList) {
+    for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverSet) {
       observer.onNext(new BlockUpdateNotifyParameterImpl(NOTIFY_TYPE_BLOCK_PUT, blockId, keySet));
     }
   }

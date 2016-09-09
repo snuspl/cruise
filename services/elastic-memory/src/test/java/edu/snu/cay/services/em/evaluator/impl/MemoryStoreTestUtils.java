@@ -23,6 +23,9 @@ import edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 /**
  * Utilities for testing MemoryStore.
  */
@@ -219,16 +222,29 @@ public final class MemoryStoreTestUtils {
 
   public static final class BlockPutNotifyObserverImpl implements BlockUpdateNotifyObserver<Long> {
     private final CountDownLatch countDownLatch;
+    private final int numOfKeysPerBlock;
 
-    public BlockPutNotifyObserverImpl(final CountDownLatch countDownLatch) {
+    public BlockPutNotifyObserverImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
       this.countDownLatch = countDownLatch;
+      this.numOfKeysPerBlock = numOfKeysPerBlock;
     }
 
     @Override
     public void onNext(final BlockUpdateNotifyParameter<Long> parameter) {
       final int notifyType = parameter.getNotifyType();
+      final int blockId = parameter.getUpdatedBlockId();
+      final Set keySet = parameter.getKeySet();
 
       if (notifyType == MemoryStoreImpl.NOTIFY_TYPE_BLOCK_PUT) {
+        // check the update block has the same key set with an expected key set.
+        assertEquals(numOfKeysPerBlock, keySet.size());
+
+        final int keyIdBase = blockId * numOfKeysPerBlock;
+        for (int j = 0; j < numOfKeysPerBlock; j++) {
+          final int keyId = keyIdBase + j;
+          assertTrue(keySet.contains(new Long((long)keyId)));
+        }
+
         countDownLatch.countDown();
       }
     }
@@ -236,16 +252,29 @@ public final class MemoryStoreTestUtils {
 
   public static final class BlockRemoveNotifyObserverImpl implements BlockUpdateNotifyObserver<Long> {
     private final CountDownLatch countDownLatch;
+    private final int numOfKeysPerBlock;
 
-    public BlockRemoveNotifyObserverImpl(final CountDownLatch countDownLatch) {
+    public BlockRemoveNotifyObserverImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
       this.countDownLatch = countDownLatch;
+      this.numOfKeysPerBlock = numOfKeysPerBlock;
     }
 
     @Override
     public void onNext(final BlockUpdateNotifyParameter<Long> parameter) {
       final int notifyType = parameter.getNotifyType();
+      final int blockId = parameter.getUpdatedBlockId();
+      final Set keySet = parameter.getKeySet();
 
       if (notifyType == MemoryStoreImpl.NOTIFY_TYPE_BLOCK_REMOVE) {
+        // check the update block has the same key set with an expected key set.
+        assertEquals(numOfKeysPerBlock, keySet.size());
+
+        final int keyIdBase = blockId * numOfKeysPerBlock;
+        for (int j = 0; j < numOfKeysPerBlock; j++) {
+          final int keyId = keyIdBase + j;
+          assertTrue(keySet.contains(new Long((long)keyId)));
+        }
+
         countDownLatch.countDown();
       }
     }
