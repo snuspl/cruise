@@ -273,8 +273,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   /**
    * Handles incoming pull replies, by setting the value of pull ops.
    * See {@link PullRequest#completePendingOps(Object, long)}.
-   * This will notify the waiting {@link WorkerThread} to continue,
-   * when the number of pending pulls on the thread becomes less than {@link #maxPendingPullsPerThread}.
+   * WorkerThread will be notified if the thread is waiting for completion of this pull request in case
+   * 1) when push for the same key is requested or
+   * 2) when the number of pending pulls on the thread has reached the limit (maxPendingPullsPerThread).
    */
   @Override
   public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer) {
@@ -674,9 +675,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      *
      * 1) INIT: When a pull request is created initially, or message for retrying a pull request has been sent.
      *
-     * 2) NEED_RETRY: When response for a request has not arrived for longer than timeout,
+     * 2) NEED_RETRY: When response for a request has not arrived until the upcoming timeout-checking,
      * the pull request is marked as NEED_RETRY.
-     * RetryThread will later enqueues pull requests in this state to the RetryQueue of the corresponding WorkerThread.
+     * RetryThread will later(in the next timeout-checking) enqueues pull requests
+     * in this state to the RetryQueue of the corresponding WorkerThread.
      *
      * 3) RETRY_REQUESTED: When a pull request is retried (enqueued in RetryQueue precisely),
      *   (a) when RetryThread enqueues pull requests in NEED_RETRY state, or
@@ -777,6 +779,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     /**
      * Complete pending pull operations in {@link #pendingOps}
      * by notifying client threads using {@link PullOp#setResult(Object)}.
+     * Also, notify WorkerThread if it is waiting for completion of this pull request
+     * to process push operation for the same key.
      * @param value value received from server
      * @param elapsedTimeInServer elapsed time since pull request's arrival at server
      */
@@ -809,7 +813,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     /**
      * Wait until this pull request is completed.
-     * Should precede completePendingOps. If not, the waiting thread will be never awoken.
+     * Should precede {@link #completePendingOps(Object, long)}. If not, the waiting thread will be never awoken.
      * @throws InterruptedException when the executing thread is interrupted
      */
     void waitForComplete() throws InterruptedException {
