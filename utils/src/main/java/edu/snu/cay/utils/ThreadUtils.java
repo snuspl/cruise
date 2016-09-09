@@ -34,12 +34,17 @@ public final class ThreadUtils {
    * Use a thread pool to concurrently execute threads.
    * Note that this method does NOT wait for the termination of all threads before returning.
    */
-  public static void runConcurrently(final Runnable[] threads) throws InterruptedException {
+  public static List<Future> runConcurrently(final Runnable[] threads) throws InterruptedException {
+
+    final List<Future> futures = new ArrayList<>(threads.length);
+
     final ExecutorService pool = Executors.newFixedThreadPool(threads.length);
     for (final Runnable thread : threads) {
-      pool.submit(thread);
+      final Future future = pool.submit(thread);
+      futures.add(future);
     }
     pool.shutdown();
+    return futures;
   }
 
   /**
@@ -57,6 +62,7 @@ public final class ThreadUtils {
       final Future<T> future = pool.submit(thread);
       futures.add(future);
     }
+    pool.shutdown();
     return futures;
   }
 }
