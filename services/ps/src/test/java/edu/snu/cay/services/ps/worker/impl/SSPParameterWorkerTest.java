@@ -53,6 +53,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 
+import static edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs.TIMEOUT_NO_RETRY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -158,7 +159,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.close(parameterWorker, mockSender, workerHandler);
   }
 
@@ -170,7 +171,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadPush()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.multiThreadPush(parameterWorker, mockSender);
   }
 
@@ -185,7 +186,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.multiThreadPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -196,7 +197,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testMultiThreadMultiKeyPull()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.multiThreadMultiKeyPull(parameterWorker, mockSender, workerHandler);
   }
 
@@ -216,7 +217,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPullReject()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
   }
 
@@ -235,7 +236,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPullNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.pullNetworkExceptionAndResend(parameterWorker, workerHandler, mockSender);
   }
 
@@ -254,7 +255,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testPushNetworkExceptionAndResend()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.pushNetworkExceptionAndResend(parameterWorker, mockSender);
   }
 
@@ -273,7 +274,7 @@ public final class SSPParameterWorkerTest {
    */
   @Test(timeout = 10000)
   public void testDataStalenessCheck() throws NetworkException, InterruptedException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
 
     final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
@@ -331,7 +332,7 @@ public final class SSPParameterWorkerTest {
   @Test(timeout = 30000)
   public void testWorkerStalenessCheck() throws NetworkException, InterruptedException, BrokenBarrierException,
       InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
 
     final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =
@@ -420,7 +421,7 @@ public final class SSPParameterWorkerTest {
   @Test
   public void testInvalidateAll()
       throws InterruptedException, ExecutionException, TimeoutException, NetworkException, InjectionException {
-    prepare(0);
+    prepare(TIMEOUT_NO_RETRY);
 
     final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToReplyQueue = new LinkedBlockingQueue<>();
     final ExecutorService executorService =

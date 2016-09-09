@@ -742,10 +742,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     /**
      * Request retry of this pull request if the timeout exceeded.
-     * Do not provide strong guarantee of timeout and do not care about retry count.
      * The worker does not send pull retry message immediately.
      * This procedure just requests for retry of this pull request
      * by enqueueing retry operation to corresponding retryQueue.
+     * We do not guarantee a strict timeout, as we check timeout
+     * and send pull retry message asynchronously.
      * @return true if timeout exceeded
      */
     synchronized boolean requestRetryIfTimeout() {
