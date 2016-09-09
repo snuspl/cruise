@@ -206,10 +206,10 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   }
 
   @Override
-  public void pull(final K key, final String srcId, final int keyHash) {
+  public void pull(final K key, final String srcId, final int keyHash, final int requestId) {
     final int partitionId = serverResolver.resolvePartition(keyHash);
     final int threadId = localPartitions.indexOf(partitionId) % numThreads;
-    threads.get(threadId).enqueue(new PullOp(key, srcId, threadId));
+    threads.get(threadId).enqueue(new PullOp(key, srcId, threadId, requestId));
   }
 
   /**
@@ -442,12 +442,14 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     private final String srcId;
     private final long timestamp;
     private final int threadId;
+    private final int requestId;
 
-    PullOp(final K key, final String srcId, final int threadId) {
+    PullOp(final K key, final String srcId, final int threadId, final int requestId) {
       this.key = key;
       this.srcId = srcId;
       this.timestamp = ticker.read();
       this.threadId = threadId;
+      this.requestId = requestId;
     }
 
     /**
@@ -467,7 +469,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
 
       // The request's time spent in queue + processing time before sending a reply.
       final long elapsedTimeInServer = ticker.read() - timestamp;
-      sender.sendPullReplyMsg(srcId, key, kvStore.get(key), elapsedTimeInServer);
+      sender.sendPullReplyMsg(srcId, key, kvStore.get(key), requestId, elapsedTimeInServer);
 
       final long processEndTime = ticker.read();
 

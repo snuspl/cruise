@@ -221,13 +221,13 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   @Override
-  public void pull(final K key, final String srcId, final int keyHash) {
+  public void pull(final K key, final String srcId, final int keyHash, final int requestId) {
     final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
     final int blockId = blockResolver.resolveBlock(hashedKey);
     final int threadId = threadResolver.resolveThread(blockId);
-    LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
-        new Object[] {key, blockId, threadId, keyHash});
-    threads.get(threadId).enqueue(new PullOp(hashedKey, srcId, threadId));
+    LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}, RequestId: {4}",
+        new Object[] {key, blockId, threadId, keyHash, requestId});
+    threads.get(threadId).enqueue(new PullOp(hashedKey, srcId, threadId, requestId));
   }
 
   /**
@@ -471,12 +471,14 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     private final long timestamp;
     private final String srcId;
     private final int threadId;
+    private final int requestId;
 
-    PullOp(final HashedKey<K> hashedKey, final String srcId, final int threadId) {
+    PullOp(final HashedKey<K> hashedKey, final String srcId, final int threadId, final int requestId) {
       this.hashedKey = hashedKey;
       this.srcId = srcId;
       this.timestamp = ticker.read();
       this.threadId = threadId;
+      this.requestId = requestId;
     }
 
     /**
@@ -508,7 +510,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
         // The request's time spent in queue + processing time before sending a reply.
         final long elapsedTimeInServer = ticker.read() - timestamp;
-        sender.sendPullReplyMsg(srcId, hashedKey.getKey(), value, elapsedTimeInServer);
+        sender.sendPullReplyMsg(srcId, hashedKey.getKey(), value, requestId, elapsedTimeInServer);
 
         final long processEndTime = ticker.read();
 
@@ -523,7 +525,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     @Override
     public void reject() {
-      sender.sendPullRejectMsg(srcId, hashedKey.getKey());
+      sender.sendPullRejectMsg(srcId, hashedKey.getKey(), requestId);
     }
   }
 

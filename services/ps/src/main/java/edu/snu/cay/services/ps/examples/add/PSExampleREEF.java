@@ -60,6 +60,7 @@ public final class PSExampleREEF {
   private final int workerQueueSize;
   private final long workerExpireTimeout;
   private final long pullRetryTimoutMs;
+  private final int maxPendingPullsPerThread;
   private final int workerKeyCacheSize;
 
   @Inject
@@ -76,6 +77,7 @@ public final class PSExampleREEF {
                         @Parameter(WorkerQueueSize.class) final int workerQueueSize,
                         @Parameter(WorkerExpireTimeout.class) final long workerExpireTimeout,
                         @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
+                        @Parameter(MaxPendingPullsPerThread.class) final int maxPendingPullsPerThread,
                         @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize) {
     this.timeout = timeout;
     this.numWorkers = numWorkers;
@@ -90,6 +92,7 @@ public final class PSExampleREEF {
     this.workerQueueSize = workerQueueSize;
     this.workerExpireTimeout = workerExpireTimeout;
     this.pullRetryTimoutMs = pullRetryTimeoutMs;
+    this.maxPendingPullsPerThread = maxPendingPullsPerThread;
     this.workerKeyCacheSize = workerKeyCacheSize;
   }
 
@@ -123,6 +126,7 @@ public final class PSExampleREEF {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(pullRetryTimoutMs))
+        .bindNamedParameter(MaxPendingPullsPerThread.class, Integer.toString(maxPendingPullsPerThread))
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .build();
 
@@ -167,6 +171,7 @@ public final class PSExampleREEF {
     cl.registerShortNameOfClass(WorkerQueueSize.class);
     cl.registerShortNameOfClass(WorkerExpireTimeout.class);
     cl.registerShortNameOfClass(PullRetryTimeoutMs.class);
+    cl.registerShortNameOfClass(MaxPendingPullsPerThread.class);
     cl.registerShortNameOfClass(WorkerKeyCacheSize.class);
 
     cl.processCommandLine(args);
