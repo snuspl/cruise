@@ -17,17 +17,25 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyParameter;
-
 import java.util.Set;
 
 /**
  * An implementation of the interface BlockUpdateNotifyParameter class.
  */
 public class BlockUpdateNotifyParameterImpl<K> implements BlockUpdateNotifyParameter<K> {
+  public static final int NOTIFY_TYPE_BLOCK_REMOVE = 0;
+  public static final int NOTIFY_TYPE_BLOCK_PUT = 1;
+
   private final int notifyType;
   private final int blockId;
   private final Set<K> keySet;
 
+  /**
+   * a constructor of {@link BlockUpdateNotifyParameterImpl}.
+   * @param notifyType the type of block update event either
+   * @param blockId the updated block id
+   * @param keySet the set of keys stored in the updated block
+   */
   public BlockUpdateNotifyParameterImpl(final int notifyType, final int blockId, final Set<K> keySet) {
     this.notifyType = notifyType;
     this.blockId = blockId;

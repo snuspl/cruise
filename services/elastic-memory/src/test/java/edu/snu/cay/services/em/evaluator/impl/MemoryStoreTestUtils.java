@@ -18,7 +18,6 @@ package edu.snu.cay.services.em.evaluator.impl;
 import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyObserver;
 import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyParameter;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -224,6 +223,12 @@ public final class MemoryStoreTestUtils {
     private final CountDownLatch countDownLatch;
     private final int numOfKeysPerBlock;
 
+    /**
+     * a constructor of {@link BlockPutNotifyObserverImpl}.
+     * @param countDownLatch a count down latch which will count down by 1 at each block put event
+     * @param numOfKeysPerBlock the number of keys in a block
+     *                          used to check the updated block's key set is same with an expected key set.
+     */
     public BlockPutNotifyObserverImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
       this.countDownLatch = countDownLatch;
       this.numOfKeysPerBlock = numOfKeysPerBlock;
@@ -235,7 +240,7 @@ public final class MemoryStoreTestUtils {
       final int blockId = parameter.getUpdatedBlockId();
       final Set keySet = parameter.getKeySet();
 
-      if (notifyType == MemoryStoreImpl.NOTIFY_TYPE_BLOCK_PUT) {
+      if (notifyType == BlockUpdateNotifyParameterImpl.NOTIFY_TYPE_BLOCK_PUT) {
         // check the update block has the same key set with an expected key set.
         assertEquals(numOfKeysPerBlock, keySet.size());
 
@@ -254,6 +259,12 @@ public final class MemoryStoreTestUtils {
     private final CountDownLatch countDownLatch;
     private final int numOfKeysPerBlock;
 
+    /**
+     * a constructor of {@link BlockRemoveNotifyObserverImpl}.
+     * @param countDownLatch a count down latch which will count down by 1 at each block remove event
+     * @param numOfKeysPerBlock the number of keys in a block
+     *                          used to check the updated block's key set is same with an expected key set.
+     */
     public BlockRemoveNotifyObserverImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
       this.countDownLatch = countDownLatch;
       this.numOfKeysPerBlock = numOfKeysPerBlock;
@@ -265,7 +276,7 @@ public final class MemoryStoreTestUtils {
       final int blockId = parameter.getUpdatedBlockId();
       final Set keySet = parameter.getKeySet();
 
-      if (notifyType == MemoryStoreImpl.NOTIFY_TYPE_BLOCK_REMOVE) {
+      if (notifyType == BlockUpdateNotifyParameterImpl.NOTIFY_TYPE_BLOCK_REMOVE) {
         // check the update block has the same key set with an expected key set.
         assertEquals(numOfKeysPerBlock, keySet.size());
 

@@ -23,19 +23,19 @@ import java.util.Set;
 public interface BlockUpdateNotifyParameter<K> {
   /**
    * getter for a block update notification type, block put or remove.
-   * @return a block update notification type
+   * @return a block update notification type.
    */
   int getNotifyType();
 
   /**
    * getter for the id of the block which is updated.
-   * @return a block id
+   * @return a block id.
    */
   int getUpdatedBlockId();
 
   /**
    * getter for the set of the keys in the updated block.
-   * @return
+   * @return a set of keys stored in the updated block.
    */
   Set<K> getKeySet();
 }

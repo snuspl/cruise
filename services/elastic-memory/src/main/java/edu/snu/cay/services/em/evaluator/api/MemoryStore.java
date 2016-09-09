@@ -133,12 +133,22 @@ public interface MemoryStore<K> {
    */
   <V> Map<K, V> removeRange(K startId, K endId);
 
+  /**
+   * Register observer for block update event to this store.
+   * @param handler a client-defined block update notification observer to be registered.
+   * @return returns true if the observer is registered successfully.
+   */
   boolean registerBlockUpdateObserver(final BlockUpdateNotifyObserver handler);
 
+  /**
+   * Unregister observer for block update event to this store.
+   * @param handler a client-defined block update notification observer to be unregistered.
+   * @return returns true if the observer is unregistered successfully.
+   */
   boolean unregisterBlockUpdateObserver(final BlockUpdateNotifyObserver handler);
 
   /**
-   * @return number of blocks in the MemoryStore
+   * @return  number of blocks in the MemoryStore
    */
   int getNumBlocks();
 }

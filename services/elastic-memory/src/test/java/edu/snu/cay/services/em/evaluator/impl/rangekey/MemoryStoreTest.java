@@ -337,6 +337,12 @@ public final class MemoryStoreTest {
     assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll().size());
   }
 
+  /**
+   * Test for block put event notification feature of Memory Store.
+   * Check that all registered observers receive block update notifications with correct parameters
+   * including event type, id and key set of the updated block, when block put events occur.
+   * @throws InterruptedException
+   */
   private void multipleBlockPutNotify() throws InterruptedException {
     final int numOfObserver = 3;
     final int numOfBlockPut = 10;
@@ -383,6 +389,12 @@ public final class MemoryStoreTest {
     }
   }
 
+  /**
+   * Test for block remove event notification feature of Memory Store.
+   * Check that all registered observers receive block update notifications with correct parameters
+   * including event type, id and key set of the updated block, when block remove events occur.
+   * @throws InterruptedException
+   */
   private void multipleBlockRemoveNotify() throws InterruptedException {
     final int numOfObserver = 3;
     final int numOfBlockPut = 10;

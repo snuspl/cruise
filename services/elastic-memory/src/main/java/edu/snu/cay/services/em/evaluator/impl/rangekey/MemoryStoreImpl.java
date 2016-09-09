@@ -56,9 +56,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private static final int QUEUE_SIZE = 1024;
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
-  public static final int NOTIFY_TYPE_BLOCK_REMOVE = 0;
-  public static final int NOTIFY_TYPE_BLOCK_PUT = 1;
-
   /**
    * Maintains blocks associated with blockIds.
    */
@@ -179,7 +176,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
     for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverSet) {
-      observer.onNext(new BlockUpdateNotifyParameterImpl(NOTIFY_TYPE_BLOCK_REMOVE, blockId, keySet));
+      observer.onNext(
+          new BlockUpdateNotifyParameterImpl(BlockUpdateNotifyParameterImpl.NOTIFY_TYPE_BLOCK_REMOVE, blockId, keySet));
     }
   }
 
@@ -187,7 +185,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
     for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverSet) {
-      observer.onNext(new BlockUpdateNotifyParameterImpl(NOTIFY_TYPE_BLOCK_PUT, blockId, keySet));
+      observer.onNext(
+          new BlockUpdateNotifyParameterImpl(BlockUpdateNotifyParameterImpl.NOTIFY_TYPE_BLOCK_PUT, blockId, keySet));
     }
   }
 
