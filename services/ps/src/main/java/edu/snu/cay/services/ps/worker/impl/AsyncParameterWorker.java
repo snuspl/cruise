@@ -1052,6 +1052,14 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    *
    * If {@code pullRetryTimeoutMs} is equal to {@link PullRetryTimeoutMs#TIMEOUT_NO_RETRY}, this thread do nothing.
    * In other words, there is no timeout mechanism.
+   *
+   * Timeout of pull request may happen because of the followings:
+   * 1) minimum processing time for pull is longer than timeout
+   * 2) server is overloaded
+   * 3) pull request or reply message is missing due to network or other problems
+   *
+   * We should adjust timeout to be large enough to avoid 1) and not to worsen 2),
+   * but small enough to quickly recover from 3).
    */
   private final class RetryThread implements Runnable {
     private static final String STATE_RUNNING = "RUNNING";
