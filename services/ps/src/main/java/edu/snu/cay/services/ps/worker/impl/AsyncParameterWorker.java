@@ -540,7 +540,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       synchronized (workerThread) {
         final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
         while (pendingPullRequests.containsKey(encodedKey.getKey())) {
-          pendingPullRequests.get(encodedKey.getKey()).waitForComplete();
+          final PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
+          LOG.log(Level.WARNING,
+              "PushOp is waiting for completion of previous pull request for the same key: {0}, pullRequestId: {1}",
+              new Object[]{encodedKey.getKey(), pullRequest.getRequestId()});
+          pullRequest.waitForComplete();
         }
 
         final long pushStartTime = ticker.read();
