@@ -313,6 +313,7 @@ public final class AsyncParameterWorkerTest {
 
     final int numPullThreads = 8;
     final int key = 0;
+    final long waitingMs = 1000;
 
     final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
     final Runnable[] threads = new Runnable[numPullThreads];
@@ -329,6 +330,8 @@ public final class AsyncParameterWorkerTest {
     }
 
     ThreadUtils.runConcurrently(threads);
+    // wait for all pull operations are processed
+    Thread.sleep(waitingMs);
 
     // have not received pull reply yet
     assertEquals(MSG_THREADS_SHOULD_NOT_FINISH, 8, countDownLatch.getCount());
