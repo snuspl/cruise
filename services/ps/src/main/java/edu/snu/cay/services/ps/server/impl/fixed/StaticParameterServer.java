@@ -263,16 +263,16 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     final ServerThreadMetrics threadMetrics = ServerThreadMetrics.newBuilder()
         .setThreadId(threadId)
         .setNumPendingOps(threads.get(threadId).opsPending())
-        .setTotalTime(timeSinceLastPrintStat / 1e9D)
+        .setTotalTimeSec(timeSinceLastPrintStat / 1e9D)
         .setPullCount((int)pullStat.count())
-        .setTotalPullTime(pullStat.sum())
-        .setTotalPullWaitTime(pullWaitStat.sum())
+        .setTotalPullTimeSec(pullStat.sum() / 1e9D)
+        .setTotalPullWaitTimeSec(pullWaitStat.sum() / 1e9D)
         .setPushCount((int)pushStat.count())
-        .setTotalPushTime(pushStat.sum())
-        .setTotalPushWaitTime(pushWaitStat.sum())
+        .setTotalPushTimeSec(pushStat.sum() / 1e9D)
+        .setTotalPushWaitTimeSec(pushWaitStat.sum() / 1e9D)
         .setReqCount((int)requestStat.count())
-        .setTotalReqTime(requestStat.sum())
-        .setTotalReqWaitTime(requestWaitStat.sum())
+        .setTotalReqTimeSec(requestStat.sum() / 1e9D)
+        .setTotalReqWaitTimeSec(requestWaitStat.sum() / 1e9D)
         .build();
 
     LOG.log(Level.FINE, "ServerThreadMetrics {0}", threadMetrics);
@@ -292,9 +292,9 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         Thread.sleep(metricsWindowMs);
 
         // After time has elapsed as long as a windowIndex, get the collected metrics and build a MetricsMessage.
-        final double totalPullTime = getTotalProcTime(pullStats);
-        final double totalPushTime = getTotalProcTime(pushStats);
-        final double totalReqProcTime = getTotalProcTime(requestStats);
+        final double totalPullTimeSec = getTotalProcTimeSec(pullStats);
+        final double totalPushTime = getTotalProcTimeSec(pushStats);
+        final double totalReqProcTime = getTotalProcTimeSec(requestStats);
         final int totalPullCount = getTotalProcCount(pullStats);
         final int totalPushCount = getTotalProcCount(pushStats);
         final int totalReqCount = getTotalProcCount(requestStats);
@@ -305,9 +305,9 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
             .setWindowIndex(windowIndex)
             .setNumModelBlocks(0) // EM is not used here.
             .setMetricWindowMs(metricsWindowMs)
-            .setTotalPullProcessingTime(totalPullTime)
-            .setTotalPushProcessingTime(totalPushTime)
-            .setTotalReqProcessingTime(totalReqProcTime)
+            .setTotalPullProcessingTimeSec(totalPullTimeSec)
+            .setTotalPushProcessingTimeSec(totalPushTime)
+            .setTotalReqProcessingTimeSec(totalReqProcTime)
             .setTotalPullProcessed(totalPullCount)
             .setTotalPushProcessed(totalPushCount)
             .setTotalReqProcessed(totalReqCount)
@@ -351,7 +351,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
    * {@code Double.POSITIVE_INFINITY} is returned when all threads
    * have not processed any requests so far.
    */
-  private double getTotalProcTime(final Statistics[] procTimeStats) {
+  private double getTotalProcTimeSec(final Statistics[] procTimeStats) {
     double procTimeSum = 0D;
 
     synchronized (procTimeStats) {
@@ -360,7 +360,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       }
     }
 
-    return procTimeSum;
+    return procTimeSum / 1e9D;
   }
 
   /**
