@@ -48,6 +48,10 @@ final class ParameterWorkerTestUtil {
   private static final int NUM_PULL_HANDLING_THREADS = 2;
   static final long PULL_RETRY_TIMEOUT_MS = 1000;
 
+  // Those metrics are not used in the tests, so can be set 0,
+  private static final long SERVER_PROCESSING_TIME = 0;
+  private static final int NUM_RECEIVED_BYTES = 0;
+
   /**
    * Should not be instantiated.
    */
@@ -76,7 +80,8 @@ final class ParameterWorkerTestUtil {
 
           final EncodedKey<Integer> encodedKey = request.getLeft();
           final int requestId = request.getRight();
-          workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+          workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
+              SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES);
         }
       }
     };
@@ -285,7 +290,8 @@ final class ParameterWorkerTestUtil {
             handler.processPullReject(encodedKey.getKey(), requestId);
           } else {
             // pull messages should return values s.t. key == value
-            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
+                SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES);
           }
         }
       }
@@ -364,7 +370,8 @@ final class ParameterWorkerTestUtil {
         // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         final int requestId = (int) invocationOnMock.getArguments()[2];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
+            SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES);
         return null;
       }).when(sender).sendPullMsg(anyString(), any(EncodedKey.class), anyInt());
 
@@ -439,7 +446,8 @@ final class ParameterWorkerTestUtil {
         // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         final int requestId = (int) invocationOnMock.getArguments()[2];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
+            SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES);
 
         return null;
       }).when(sender).sendPullMsg(anyString(), anyObject(), anyInt());

@@ -278,7 +278,15 @@
     {"name": "totalWaitingStatCount", "type": "int", "default": 0},
 
     // number of pull request/reply pairs processed
-    {"name": "totalNetworkStatCount", "type": "int", "default": 0}
+    {"name": "totalNetworkStatCount", "type": "int", "default": 0},
+
+    {"name": "totalSentBytesStatCount", "type": "int", "default": 0},
+
+    {"name": "totalSentBytes", "type": "int", "default": 0},
+
+    {"name": "totalReceivedBytesStatCount", "type": "int", "default": 0},
+
+    {"name": "totalReceivedBytes", "type": "int", "default": 0}
   ]
 },
 

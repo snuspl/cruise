@@ -311,7 +311,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
    */
   @Override
-  public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer) {
+  public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer,
+                               final int numReceivedBytes) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);

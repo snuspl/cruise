@@ -83,12 +83,17 @@ public final class WorkerMsgSender<K, P> {
    * @param destId an id of destination server
    * @param key a key to push
    * @param preValue a previous value to push
+   * @return The number of bytes. Although the result is not same with the total size of the exact message,
+   * the approximation is close to the actual message size if the size of key and preValue is large enough.
    * @throws NetworkException when fail to open a connection
    */
-  void sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) throws NetworkException {
+  int sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) throws NetworkException {
+    final byte[] serializedKey = key.getEncoded();
+    final byte[] serializedPreValue = preValueCodec.encode(preValue);
+    final int numSendingBytes = serializedKey.length + serializedPreValue.length;
     final PushMsg pushMsg = PushMsg.newBuilder()
-        .setKey(ByteBuffer.wrap(key.getEncoded()))
-        .setPreValue(ByteBuffer.wrap(preValueCodec.encode(preValue)))
+        .setKey(ByteBuffer.wrap(serializedKey))
+        .setPreValue(ByteBuffer.wrap(serializedPreValue))
         .build();
 
     send(destId,
@@ -96,6 +101,7 @@ public final class WorkerMsgSender<K, P> {
             .setType(Type.PushMsg)
             .setPushMsg(pushMsg)
             .build());
+    return numSendingBytes;
   }
 
   /**
