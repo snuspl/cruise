@@ -41,6 +41,9 @@ final class Migration {
    */
   private final Set<Integer> movedBlockIds;
 
+  /**
+   * Maintains this migration's scope, to stitch the trace when the migration is complete.
+   */
   private final TraceScope traceScope;
 
   /**

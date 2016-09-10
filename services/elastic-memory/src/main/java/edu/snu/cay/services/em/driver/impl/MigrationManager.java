@@ -118,12 +118,13 @@ final class MigrationManager {
    * Mark one block as moved.
    * @param operationId Identifier of {@code move} operation.
    * @param blockId Identifier of the moved block.
+   * @param parentTraceInfo Information for Trace from parent.
    */
-  synchronized void markBlockAsMoved(final String operationId, final int blockId, final TraceInfo parentTraceInfo) {
+  synchronized void markBlockAsMoved(final String operationId, final int blockId,
+                                     @Nullable final TraceInfo parentTraceInfo) {
     final Migration migration = ongoingMigrations.get(operationId);
     if (migration == null) {
-      LOG.log(Level.WARNING, "Migration with ID {0} was not registered, or it has already been finished.",
-          operationId);
+      LOG.log(Level.WARNING, "Migration with ID {0} was not registered, or it has already been finished.", operationId);
       return;
     }
 
@@ -144,8 +145,9 @@ final class MigrationManager {
   /**
    * Finish migration of the data.
    * @param operationId Identifier of {@code move} operation.
+   * @param parentTraceInfo Information for Trace from parent.
    */
-  private void finishMigration(final String operationId, final TraceInfo parentTraceInfo) {
+  private void finishMigration(final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     final Migration migration = ongoingMigrations.remove(operationId);
     notifySuccess(operationId, migration.getBlockIds());
     broadcastSuccess(migration, parentTraceInfo);
@@ -157,10 +159,10 @@ final class MigrationManager {
    * It only sends messages to evaluators except the source and destination of the migration,
    * because their routing tables are already updated during the migration.
    */
-  private void broadcastSuccess(final Migration migration, final TraceInfo parentTraceInfo) {
+  private void broadcastSuccess(final Migration migration, @Nullable final TraceInfo parentTraceInfo) {
     Trace.setProcessId(MigrationManager.class.getSimpleName());
 
-    try (final TraceScope traceScope = Trace.startSpan("broadcast_table_update", parentTraceInfo)) {
+    try (final TraceScope broadcastSuccessScope = Trace.startSpan("broadcast_table_update", parentTraceInfo)) {
       final Set<String> activeEvaluatorIds = blockManager.getActiveEvaluators();
       final String senderId = migration.getSenderId();
       final String receiverId = migration.getReceiverId();
@@ -171,8 +173,10 @@ final class MigrationManager {
 
       LOG.log(Level.FINE, "Broadcast the result of migration to other active evaluators: {0}", activeEvaluatorIds);
 
+      final TraceInfo traceInfo = TraceInfo.fromSpan(broadcastSuccessScope.getSpan());
+
       for (final String evalId : activeEvaluatorIds) {
-        sender.get().sendRoutingTableUpdateMsg(evalId, blockIds, senderId, receiverId, parentTraceInfo);
+        sender.get().sendRoutingTableUpdateMsg(evalId, blockIds, senderId, receiverId, traceInfo);
       }
     }
   }
@@ -181,7 +185,7 @@ final class MigrationManager {
    * Notify the update in the routing table to listening clients in granularity of block.
    */
   private synchronized void notifyUpdateToClients(final String senderId, final String receiverId, final int blockId,
-                                                  final TraceInfo parentTraceInfo) {
+                                                  @Nullable final TraceInfo parentTraceInfo) {
     Trace.setProcessId(MigrationManager.class.getSimpleName());
 
     try (final TraceScope notifyUpdateToClientsScope = Trace.startSpan("notify_update_to_clients", parentTraceInfo)) {
@@ -189,7 +193,8 @@ final class MigrationManager {
       final int newOwnerId = blockManager.getMemoryStoreId(receiverId);
 
       final EMRoutingTableUpdate update =
-          new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, receiverId, blockId, parentTraceInfo);
+          new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, receiverId, blockId,
+              TraceInfo.fromSpan(notifyUpdateToClientsScope.getSpan()));
 
       for (final EventHandler<EMRoutingTableUpdate> callBack : updateCallbacks.values()) {
         callBack.onNext(update);

@@ -18,8 +18,8 @@ package edu.snu.cay.services.em.common.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Option to turn on and off htrace on elastic memory service",
-                short_name = "em_htrace",
+@NamedParameter(doc = "Option to turn on and off trace on elastic memory service",
+                short_name = "em_trace_enabled",
                 default_value = "false")
-public class HTraceOption implements Name<Boolean> {
+public class EMTraceEnabled implements Name<Boolean> {
 }

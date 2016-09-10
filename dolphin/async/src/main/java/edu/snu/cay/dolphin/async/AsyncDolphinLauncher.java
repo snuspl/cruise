@@ -23,7 +23,7 @@ import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
-import edu.snu.cay.services.em.common.parameters.HTraceOption;
+import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -293,7 +293,7 @@ public final class AsyncDolphinLauncher {
     // add em parameters
     basicParameterClassList.add(OptimizerClass.class);
     basicParameterClassList.add(PlanExecutorClass.class);
-    basicParameterClassList.add(HTraceOption.class);
+    basicParameterClassList.add(EMTraceEnabled.class);
     basicParameterClassList.add(NumTotalBlocks.class);
 
     // add trace parameters

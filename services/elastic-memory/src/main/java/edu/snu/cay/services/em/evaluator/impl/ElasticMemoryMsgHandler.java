@@ -51,10 +51,7 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
-  private static final String ON_DATA_MSG = "on_data_msg";
-  private static final String ON_CTRL_MSG = "on_ctrl_msg";
-  private static final String ON_OWNERSHIP_MSG = "on_ownership_msg";
-  private static final String ON_TABLE_UPDATE_MSG = "on_table_update_msg";
+  private static final String TRACE_PROCESS_ID = "eval";
 
   private final RemoteAccessibleMemoryStore<K> memoryStore;
   private final OperationRouter<K> router;
@@ -121,8 +118,8 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   }
 
   private void onRoutingTableUpdateMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId("eval");
-    try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan(ON_TABLE_UPDATE_MSG,
+    Trace.setProcessId(TRACE_PROCESS_ID);
+    try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_table_update_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
 
@@ -146,8 +143,8 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     final int oldOwnerId = ownershipMsg.getOldOwnerId();
     final int newOwnerId = ownershipMsg.getNewOwnerId();
 
-    Trace.setProcessId("src_eval");
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("[4]" + ON_OWNERSHIP_MSG + ". blockId: " + blockId,
+    Trace.setProcessId("src-" + TRACE_PROCESS_ID);
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("[4]on_ownership_msg. blockId: " + blockId,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       // Update the owner of the block to the new one.
@@ -178,11 +175,16 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     final String operationId = msg.getOperationId().toString();
     final int blockId = dataMsg.getBlockId();
 
-    Trace.setProcessId("dst_eval");
-    try (final TraceScope onDataMsgScope = Trace.startSpan("[2]" + ON_DATA_MSG + ". blockId: " + blockId,
+    Trace.setProcessId("dst-" + TRACE_PROCESS_ID);
+    try (final TraceScope onDataMsgScope = Trace.startSpan("[2]on_data_msg. blockId: " + blockId,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+      final TraceInfo traceInfo = TraceInfo.fromSpan(onDataMsgScope.getSpan());
 
-      final Map<K, Object> dataMap = toDataMap(dataMsg.getKeyValuePairs(), codec);
+      final Map<K, Object> dataMap;
+      try (final TraceScope decodeDataScope = Trace.startSpan("decode_data", traceInfo)) {
+        dataMap = toDataMap(dataMsg.getKeyValuePairs(), codec);
+      }
+
       memoryStore.putBlock(blockId, dataMap);
 
       // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
@@ -192,8 +194,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       memoryStore.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
       // Notify the driver that the ownership has been updated by setting empty destination id.
-      sender.get().sendOwnershipMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId,
-          TraceInfo.fromSpan(onDataMsgScope.getSpan()));
+      sender.get().sendOwnershipMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
     }
   }
 
@@ -209,8 +210,8 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
    * sends the data message to the correct evaluator.
    */
   private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId("src_eval");
-    try (final TraceScope onCtrlMsgScope = Trace.startSpan("[1]" + ON_CTRL_MSG,
+    Trace.setProcessId("src-" + TRACE_PROCESS_ID);
+    try (final TraceScope onCtrlMsgScope = Trace.startSpan("[1]on_ctrl_msg",
       HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final String operationId = msg.getOperationId().toString();
       final String destId = msg.getDestId().toString();
@@ -220,13 +221,18 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
       final Codec codec = serializer.getCodec();
 
+      final TraceInfo traceInfo = TraceInfo.fromSpan(onCtrlMsgScope.getSpan());
+
       // Send the data as unit of block
       for (final int blockId : blockIds) {
         final Map<K, Object> blockData = memoryStore.getBlock(blockId);
-        final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, codec);
 
-        sender.get().sendDataMsg(destId, keyValuePairs, blockId, operationId,
-            TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
+        final List<KeyValuePair> keyValuePairs;
+        try (final TraceScope encodeDataScope = Trace.startSpan("encode_data", traceInfo)) {
+          keyValuePairs = toKeyValuePairs(blockData, codec);
+        }
+
+        sender.get().sendDataMsg(destId, keyValuePairs, blockId, operationId, traceInfo);
       }
     }
   }

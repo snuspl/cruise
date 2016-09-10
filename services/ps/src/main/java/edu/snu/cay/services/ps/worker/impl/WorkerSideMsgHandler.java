@@ -33,6 +33,7 @@ import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Logger;
@@ -43,6 +44,8 @@ import java.util.logging.Logger;
 @EvaluatorSide
 public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message<AvroPSMsg>> {
   private static final Logger LOG = Logger.getLogger(WorkerSideMsgHandler.class.getName());
+
+  private static final String TRACE_PROCESS_ID = "worker";
 
   /**
    * This evaluator's asynchronous handler that is expecting Parameter Server pull message results.
@@ -138,8 +141,9 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     serverResolver.initRoutingTable(new EMRoutingTable(storeIdToBlockIds, storeIdToEndpointId));
   }
 
-  private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg, final TraceInfo traceInfo) {
-    Trace.setProcessId("worker");
+  private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg,
+                                       @Nullable final TraceInfo traceInfo) {
+    Trace.setProcessId(TRACE_PROCESS_ID);
     try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_routing_table_update_msg", traceInfo)) {
 
       final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();

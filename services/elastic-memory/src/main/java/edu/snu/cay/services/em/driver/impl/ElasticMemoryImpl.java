@@ -19,7 +19,7 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
-import edu.snu.cay.services.em.common.parameters.HTraceOption;
+import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -66,22 +66,29 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final InjectionFuture<EMDeleteExecutor> deleteExecutor;
   private final BlockManager blockManager;
 
-  private final Sampler emSampler;
+  /**
+   * Used to enable/disable trace spans.
+   */
+  private final Sampler traceSampler;
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorManager evaluatorManager,
                             final MigrationManager migrationManager,
                             final InjectionFuture<EMDeleteExecutor> deleteExecutor,
                             final BlockManager blockManager,
-                            @Parameter(HTraceOption.class) final boolean emHtrace,
+                            @Parameter(EMTraceEnabled.class) final boolean emTraceEnabled,
                             final HTrace hTrace) {
     this.evaluatorManager = evaluatorManager;
     this.migrationManager = migrationManager;
     this.deleteExecutor = deleteExecutor;
     this.blockManager = blockManager;
 
-    hTrace.initialize();
-    this.emSampler = emHtrace ? Sampler.ALWAYS : Sampler.NEVER;
+    if (emTraceEnabled) {
+      hTrace.initialize();
+      traceSampler = Sampler.ALWAYS;
+    } else {
+      traceSampler = Sampler.NEVER;
+    }
   }
 
   /**
@@ -155,7 +162,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-    try (final TraceScope moveTraceScope = Trace.startSpan(MOVE, emSampler)) {
+    try (final TraceScope moveTraceScope = Trace.startSpan(MOVE, traceSampler)) {
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
       migrationManager.startMigration(operationId, srcEvalId, destEvalId, numBlocks,
           TraceInfo.fromSpan(moveTraceScope.getSpan()), finishedCallback);

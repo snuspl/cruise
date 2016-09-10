@@ -42,10 +42,7 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
-  private static final String ON_ROUTING_INIT_REQ_MSG = "on_routing_table_init_req_msg";
-  private static final String ON_OWNERSHIP_MSG = "on_ownership_msg";
-  private static final String ON_OWNERSHIP_ACK_MSG = "on_ownership_ack_msg";
-  private static final String ON_FAILURE_MSG = "on_failure_msg";
+  private static final String TRACE_PROCESS_ID = "driver";
 
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
@@ -91,8 +88,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   private void onRoutingTableInitReqMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId("driver");
-    try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan(ON_ROUTING_INIT_REQ_MSG,
+    Trace.setProcessId(TRACE_PROCESS_ID);
+    try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan("on_routing_table_init_req_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final List<Integer> blockLocations = blockManager.getBlockLocations();
@@ -107,9 +104,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
     final int blockId = ownershipAckMsg.getBlockId();
 
-    Trace.setProcessId("driver");
-    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan("[5]" + ON_OWNERSHIP_ACK_MSG
-        + ". blockId: " + blockId,
+    Trace.setProcessId(TRACE_PROCESS_ID);
+    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan("[5]on_ownership_ack_msg. blockId: " + blockId,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       migrationManager.markBlockAsMoved(operationId, blockId, TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
@@ -122,8 +118,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
     final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
 
-    Trace.setProcessId("driver");
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("[3]" + ON_OWNERSHIP_MSG + ". blockId: " + blockId,
+    Trace.setProcessId(TRACE_PROCESS_ID);
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("[3]on_ownership_msg. blockId: " + blockId,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       // Update the owner and send ownership message to the old Owner.
@@ -133,9 +129,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   private void onFailureMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId("driver");
+    Trace.setProcessId(TRACE_PROCESS_ID);
     try (final TraceScope onFailureMsgScope =
-             Trace.startSpan(ON_FAILURE_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+             Trace.startSpan("on_failure_msg", HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final FailureMsg failureMsg = msg.getFailureMsg();
 
       final String operationId = failureMsg.getOperationId().toString();
