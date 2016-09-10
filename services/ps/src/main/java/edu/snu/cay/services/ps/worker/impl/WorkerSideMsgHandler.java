@@ -164,8 +164,9 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   private void onPullReplyMsg(final PullReplyMsg pullReplyMsg) {
     final K key = keyCodec.decode(pullReplyMsg.getKey().array());
     final V value = valueCodec.decode(pullReplyMsg.getValue().array());
+    final int requestId = pullReplyMsg.getRequestId();
     final long serverProcessingTime = pullReplyMsg.getServerProcessingTime();
-    workerHandler.processPullReply(key, value, serverProcessingTime);
+    workerHandler.processPullReply(key, value, requestId, serverProcessingTime);
   }
 
   private void onPushRejectMsg(final PushRejectMsg pushRejectMsg) {
@@ -176,6 +177,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
 
   private void onPullRejectMsg(final PullRejectMsg pullRejectMsg) {
     final K key = keyCodec.decode(pullRejectMsg.getKey().array());
-    workerHandler.processPullReject(key);
+    final int requestId = pullRejectMsg.getRequestId();
+    workerHandler.processPullReject(key, requestId);
   }
 }

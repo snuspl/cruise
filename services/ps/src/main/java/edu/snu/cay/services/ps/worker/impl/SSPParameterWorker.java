@@ -311,7 +311,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
    */
   @Override
-  public void processPullReply(final K key, final V value, final long elapsedTimeInServer) {
+  public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);
@@ -330,7 +330,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
    */
   @Override
-  public void processPullReject(final K key) {
+  public void processPullReject(final K key, final int requestId) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       LOG.log(Level.INFO, "Pull operation for key {0} is rejected." +
@@ -730,7 +730,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
 
                 try {
                   final long beginTick = ticker.read();
-                  sender.get().sendPullMsg(serverId, encodedKey);
+                  sender.get().sendPullMsg(serverId, encodedKey, 0);
                   pullStat.put(ticker.read() - beginTick);
                   break;
                 } catch (final NetworkException e) {
