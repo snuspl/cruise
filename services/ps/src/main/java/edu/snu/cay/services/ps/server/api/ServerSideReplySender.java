@@ -15,6 +15,10 @@
  */
 package edu.snu.cay.services.ps.server.api;
 
+import org.htrace.TraceInfo;
+
+import javax.annotation.Nullable;
+
 /**
  * Sender for ParameterServer.
  */
@@ -28,7 +32,8 @@ public interface ServerSideReplySender<K, P, V> {
    * @param requestId pull request id assigned by ParameterWorker
    * @param elapsedTimeInServer elapsed time since pull request's arrival at server
    */
-  void sendPullReplyMsg(String destId, K key, V value, int requestId, long elapsedTimeInServer);
+  void sendPullReplyMsg(String destId, K key, V value, int requestId, long elapsedTimeInServer,
+                        @Nullable final TraceInfo traceInfo);
 
   /**
    * Send a reject msg for push operation to the worker who requested.

@@ -19,6 +19,7 @@ import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -27,7 +28,12 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
+import org.htrace.Span;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 
@@ -98,19 +104,28 @@ public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReply
    */
   @Override
   public void sendPullReplyMsg(final String destId, final K key, final V value,
-                               final int requestId, final long processingTime) {
-    final PullReplyMsg pullReplyMsg = PullReplyMsg.newBuilder()
-        .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
-        .setValue(ByteBuffer.wrap(valueCodec.encode(value)))
-        .setRequestId(requestId)
-        .setServerProcessingTime(processingTime)
-        .build();
+                               final int requestId, final long processingTime, @Nullable final TraceInfo traceInfo) {
+    Span detached = null;
+    try (final TraceScope sendPullReplyScope = Trace.startSpan("send_pull_reply." +
+        " key: " + key + ", request_id: " + requestId, traceInfo)) {
+      final PullReplyMsg pullReplyMsg = PullReplyMsg.newBuilder()
+          .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
+          .setValue(ByteBuffer.wrap(valueCodec.encode(value)))
+          .setRequestId(requestId)
+          .setServerProcessingTime(processingTime)
+          .build();
 
-    send(destId,
-        AvroPSMsg.newBuilder()
-            .setType(Type.PullReplyMsg)
-            .setPullReplyMsg(pullReplyMsg)
-            .build());
+      detached = sendPullReplyScope.detach();
+
+      send(destId,
+          AvroPSMsg.newBuilder()
+              .setType(Type.PullReplyMsg)
+              .setPullReplyMsg(pullReplyMsg)
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+              .build());
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
   }
 
   @Override

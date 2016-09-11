@@ -32,6 +32,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.htrace.TraceInfo;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -129,7 +130,7 @@ public final class StaticParameterServerTest {
         public void run() {
           for (int index = 0; index < numPulls; index++) {
             final int key = threadId;
-            server.pull(key, WORKER_ID, key, REQUEST_ID); // Just use key as hash for this test.
+            server.pull(key, WORKER_ID, key, REQUEST_ID, null); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -145,18 +146,18 @@ public final class StaticParameterServerTest {
 
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     verify(mockSender, times(numPulls * numPullThreads))
-        .sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong());
+        .sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     final AtomicMarkableReference<Integer> replayValue = new AtomicMarkableReference<>(null, false);
     doAnswer(invocation -> {
         final int value = invocation.getArgumentAt(2, Integer.class);
         replayValue.set(value, true);
         return null;
-      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong());
+      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
-      server.pull(key, WORKER_ID, key, REQUEST_ID); // Just use key as hash for this test.
+      server.pull(key, WORKER_ID, key, REQUEST_ID, null); // Just use key as hash for this test.
 
       waitForOps();
       while (!replayValue.isMarked()) {
@@ -185,19 +186,21 @@ public final class StaticParameterServerTest {
         // sleep to guarantee the queue not empty when closing server
         Thread.sleep(1000);
         return null;
-      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong());
+      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
-      server.pull(key, WORKER_ID, key, 0);
+      server.pull(key, WORKER_ID, key, 0, null);
     }
 
     // closing server should guarantee all the queued operations to be processed, if time allows
     server.close(CLOSE_TIMEOUT);
-    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong());
+    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
+        any(TraceInfo.class));
 
     // server should not process further operations after being closed
-    server.pull(0, WORKER_ID, 0, 0);
-    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong());
+    server.pull(0, WORKER_ID, 0, 0, null);
+    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
+        any(TraceInfo.class));
   }
 }

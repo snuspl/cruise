@@ -34,7 +34,9 @@ import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
+import org.htrace.TraceInfo;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -311,7 +313,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
    */
   @Override
-  public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer) {
+  public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer,
+                               @Nullable final TraceInfo traceInfo) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);
@@ -730,7 +733,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
 
                 try {
                   final long beginTick = ticker.read();
-                  sender.get().sendPullMsg(serverId, encodedKey, 0);
+                  sender.get().sendPullMsg(serverId, encodedKey, 0, null);
                   pullStat.put(ticker.read() - beginTick);
                   break;
                 } catch (final NetworkException e) {

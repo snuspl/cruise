@@ -20,6 +20,7 @@ import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
+import org.htrace.TraceInfo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -76,7 +77,7 @@ final class ParameterWorkerTestUtil {
 
           final EncodedKey<Integer> encodedKey = request.getLeft();
           final int requestId = request.getRight();
-          workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+          workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, null);
         }
       }
     };
@@ -92,7 +93,7 @@ final class ParameterWorkerTestUtil {
   }
 
   /**
-   * Mocks {@link WorkerMsgSender#sendPullMsg(String, EncodedKey, int)}
+   * Mocks {@link WorkerMsgSender#sendPullMsg(String, EncodedKey, int, TraceInfo)}
    * to enqueue incoming operations into {@code pullKeyQueue}.
    */
   static void setupSenderToEnqueuePullOps(final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyQueue,
@@ -105,7 +106,7 @@ final class ParameterWorkerTestUtil {
         // assume it always succeeds, otherwise it will throw IllegalArgumentException
         pullKeyQueue.add(Pair.of(encodedKey, requestId));
         return null;
-      }).when(workerMsgSender).sendPullMsg(anyString(), anyObject(), anyInt());
+      }).when(workerMsgSender).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
   }
 
   static void close(final ParameterWorker<Integer, ?, Integer> worker,
@@ -285,7 +286,7 @@ final class ParameterWorkerTestUtil {
             handler.processPullReject(encodedKey.getKey(), requestId);
           } else {
             // pull messages should return values s.t. key == value
-            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, null);
           }
         }
       }
@@ -340,7 +341,7 @@ final class ParameterWorkerTestUtil {
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
     verify(sender, times(numPullPerThread * numPullThreads * (numRejectPerKey + 1)))
-        .sendPullMsg(anyString(), anyObject(), anyInt());
+        .sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
 
     executorService.shutdownNow();
   }
@@ -364,9 +365,9 @@ final class ParameterWorkerTestUtil {
         // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         final int requestId = (int) invocationOnMock.getArguments()[2];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, null);
         return null;
-      }).when(sender).sendPullMsg(anyString(), any(EncodedKey.class), anyInt());
+      }).when(sender).sendPullMsg(anyString(), any(EncodedKey.class), anyInt(), any(TraceInfo.class));
 
     final int key = 0;
 
@@ -381,7 +382,7 @@ final class ParameterWorkerTestUtil {
     // Check whether the expected number of pull requests have been made
     // (1 initial attempt + MAX_RESEND_COUNT retry).
     verify(sender, times(AsyncParameterWorker.MAX_RESEND_COUNT + 1))
-        .sendPullMsg(anyString(), any(EncodedKey.class), anyInt());
+        .sendPullMsg(anyString(), any(EncodedKey.class), anyInt(), any(TraceInfo.class));
   }
 
   static void pushNetworkExceptionAndResend(final ParameterWorker<Integer, Integer, ?> worker,
@@ -439,10 +440,10 @@ final class ParameterWorkerTestUtil {
         // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         final int requestId = (int) invocationOnMock.getArguments()[2];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0);
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, null);
 
         return null;
-      }).when(sender).sendPullMsg(anyString(), anyObject(), anyInt());
+      }).when(sender).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
 
     pool.execute(() -> worker.pull(key));
 
@@ -456,6 +457,6 @@ final class ParameterWorkerTestUtil {
     // Check whether the expected number of pull requests have been made
     // (1 initial attempt + MAX_PULL_RETRY_COUNT retry).
     verify(sender, times(AsyncParameterWorker.MAX_PULL_RETRY_COUNT + 1))
-        .sendPullMsg(anyString(), any(EncodedKey.class), anyInt());
+        .sendPullMsg(anyString(), any(EncodedKey.class), anyInt(), any(TraceInfo.class));
   }
 }
