@@ -32,6 +32,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.htrace.SpanReceiver;
 import org.htrace.TraceInfo;
 import org.junit.Rule;
 import org.junit.Test;
@@ -86,6 +87,7 @@ public final class AsyncParameterWorkerTest {
     injector.bindVolatileInstance(WorkerMsgSender.class, mockSender);
     injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
     injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
+    injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     parameterWorker = injector.getInstance(ParameterWorker.class);
     workerHandler = injector.getInstance(WorkerHandler.class);
   }
