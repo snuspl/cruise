@@ -51,8 +51,6 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
-  private static final String TRACE_PROCESS_ID = "eval";
-
   private final RemoteAccessibleMemoryStore<K> memoryStore;
   private final OperationRouter<K> router;
   private final RemoteOpHandler remoteOpHandler;
@@ -118,7 +116,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   }
 
   private void onRoutingTableUpdateMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId(TRACE_PROCESS_ID);
+    Trace.setProcessId("eval");
     try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_table_update_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
@@ -143,8 +141,8 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     final int oldOwnerId = ownershipMsg.getOldOwnerId();
     final int newOwnerId = ownershipMsg.getNewOwnerId();
 
-    Trace.setProcessId("src-" + TRACE_PROCESS_ID);
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("[4]on_ownership_msg. blockId: " + blockId,
+    Trace.setProcessId("src_eval");
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("on_ownership_msg. blockId: " + blockId,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       // Update the owner of the block to the new one.
@@ -175,8 +173,8 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     final String operationId = msg.getOperationId().toString();
     final int blockId = dataMsg.getBlockId();
 
-    Trace.setProcessId("dst-" + TRACE_PROCESS_ID);
-    try (final TraceScope onDataMsgScope = Trace.startSpan("[2]on_data_msg. blockId: " + blockId,
+    Trace.setProcessId("dst_eval");
+    try (final TraceScope onDataMsgScope = Trace.startSpan("on_data_msg. blockId: " + blockId,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(onDataMsgScope.getSpan());
 
@@ -210,8 +208,8 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
    * sends the data message to the correct evaluator.
    */
   private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId("src-" + TRACE_PROCESS_ID);
-    try (final TraceScope onCtrlMsgScope = Trace.startSpan("[1]on_ctrl_msg",
+    Trace.setProcessId("src_eval");
+    try (final TraceScope onCtrlMsgScope = Trace.startSpan("on_ctrl_msg",
       HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final String operationId = msg.getOperationId().toString();
       final String destId = msg.getDestId().toString();

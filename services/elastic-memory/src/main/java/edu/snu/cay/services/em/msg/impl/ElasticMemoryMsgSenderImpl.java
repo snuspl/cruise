@@ -350,6 +350,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
+    // sending ctrl msg is the starting point of the migration protocol
     try (final TraceScope sendCtrlMsgScope = Trace.startSpan("[1]send_ctrl_msg", parentTraceInfo)) {
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
@@ -394,6 +395,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
+    // sending data msg is the second step of the migration protocol
     try (final TraceScope sendDataMsgScope = Trace.startSpan("[2]send_data_msg"
         + String.format(". op_id: %s, dest: %s, block_id: %d, num_kv_pairs: %d, (k_bytes, v_bytes): (%d, %d)",
         operationId, destId, blockId, keyValuePairs.size(), totalKeyBytes, totalValueBytes), parentTraceInfo)) {
@@ -435,7 +437,11 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendOwnershipMsgScope = Trace.startSpan("[3][4]send_ownership_msg"
+    // sending ownership msg to driver is the third step and to src eval is the fourth step of the migration protocol
+    final String destId = destIdOptional.isPresent() ? destIdOptional.get() : driverId;
+    final String traceSpanPrefix = destIdOptional.isPresent() ? "[4]" : "[3]";
+
+    try (final TraceScope sendOwnershipMsgScope = Trace.startSpan(traceSpanPrefix + "send_ownership_msg"
         + ". blockId: " + blockId, parentTraceInfo)) {
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
@@ -443,8 +449,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setOldOwnerId(oldOwnerId)
               .setNewOwnerId(newOwnerId)
               .build();
-
-      final String destId = destIdOptional.isPresent() ? destIdOptional.get() : driverId;
 
       detached = sendOwnershipMsgScope.detach();
 

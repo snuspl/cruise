@@ -85,6 +85,13 @@ final class Migration {
   }
 
   /**
+   * @return the scope of the migration
+   */
+  TraceScope getTraceScope() {
+    return traceScope;
+  }
+
+  /**
    * Marks one block as moved.
    * @param blockId id of the block to mark as moved.
    */
@@ -96,10 +103,6 @@ final class Migration {
     } else {
       movedBlockIds.add(blockId);
     }
-  }
-
-  TraceScope getTraceScope() {
-    return traceScope;
   }
 
   /**

@@ -21,5 +21,5 @@ import org.apache.reef.tang.annotations.NamedParameter;
 @NamedParameter(doc = "Option to turn on and off trace on elastic memory service",
                 short_name = "em_trace_enabled",
                 default_value = "false")
-public class EMTraceEnabled implements Name<Boolean> {
+public final class EMTraceEnabled implements Name<Boolean> {
 }

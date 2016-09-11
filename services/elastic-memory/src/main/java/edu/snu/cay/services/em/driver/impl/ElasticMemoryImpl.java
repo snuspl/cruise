@@ -51,7 +51,7 @@ import java.util.logging.Logger;
 @Private
 public final class ElasticMemoryImpl implements ElasticMemory {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryImpl.class.getName());
-  private static final String MOVE = "move";
+  private static final String OP_MOVE = "move";
 
   private final MigrationManager migrationManager;
 
@@ -162,8 +162,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-    try (final TraceScope moveTraceScope = Trace.startSpan(MOVE, traceSampler)) {
-      final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
+    try (final TraceScope moveTraceScope = Trace.startSpan(OP_MOVE, traceSampler)) {
+      final String operationId = OP_MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
       migrationManager.startMigration(operationId, srcEvalId, destEvalId, numBlocks,
           TraceInfo.fromSpan(moveTraceScope.getSpan()), finishedCallback);
     }

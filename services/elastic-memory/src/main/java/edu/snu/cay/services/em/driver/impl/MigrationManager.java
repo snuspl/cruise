@@ -44,7 +44,6 @@ import java.util.logging.Logger;
 @DriverSide
 final class MigrationManager {
   private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
-  private static final String MIGRATION = "migration";
 
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
   private final BlockManager blockManager;
@@ -89,7 +88,7 @@ final class MigrationManager {
                                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     Trace.setProcessId(MigrationManager.class.getSimpleName());
 
-    final TraceScope migrationTraceScope = Trace.startSpan(MIGRATION + String.format(". op_id: %s, sender: %s," +
+    final TraceScope migrationTraceScope = Trace.startSpan(String.format("migration. op_id: %s, sender: %s," +
         " receiver: %s, num_blocks: %d ", operationId, senderId, receiverId, numBlocks), parentTraceInfo);
 
     if (ongoingMigrations.containsKey(operationId)) {

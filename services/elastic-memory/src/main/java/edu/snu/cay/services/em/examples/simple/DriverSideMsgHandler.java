@@ -174,7 +174,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
 
       // start move
       final TraceScope moveTraceScope =
-          Trace.startSpan(String.format("SimpleMove. srcId: %s, dstId: %s", srcId, destId), Sampler.ALWAYS);
+          Trace.startSpan(String.format("simple_move. srcId: %s, dstId: %s", srcId, destId), Sampler.ALWAYS);
 
       elasticMemory.move(numToMove, srcId, destId,
           new EventHandler<AvroElasticMemoryMessage>() {
