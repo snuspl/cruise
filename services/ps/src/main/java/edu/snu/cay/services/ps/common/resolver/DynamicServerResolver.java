@@ -90,6 +90,10 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   private void checkInitialization() {
     while (true) {
+      if (initLatch.getCount() == 0) {
+        break;
+      }
+
       try {
         initLatch.await();
         break;
