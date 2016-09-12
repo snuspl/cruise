@@ -106,7 +106,7 @@ public final class WorkerMsgSender<K, P> {
    * @param destId an id of destination server
    * @param key a key to pull
    * @param requestId pull request id assigned by ParameterWorker
-   * @param traceInfo
+   * @param traceInfo Information for Trace
    * @throws NetworkException when fail to open a connection
    */
   void sendPullMsg(final String destId, final EncodedKey<K> key, final int requestId,

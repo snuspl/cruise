@@ -466,6 +466,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * To send push message atomically, do not respond to WorkerThread interrupt.
    * @param encodedKey encoded key
    * @param requestId pull request id
+   * @param traceInfo Information for Trace
    */
   private void sendPullMsg(final EncodedKey<K> encodedKey, final int requestId, @Nullable final TraceInfo traceInfo) {
     int resendCount = 0;

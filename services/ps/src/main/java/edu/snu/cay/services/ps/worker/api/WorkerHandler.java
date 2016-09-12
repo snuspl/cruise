@@ -34,6 +34,7 @@ public interface WorkerHandler<K, P, V> {
    * @param value value sent from the server
    * @param requestId pull request id assigned by ParameterWorker
    * @param elapsedTimeInServer elapsed time since pull request's arrival at server
+   * @param traceInfo Information for Trace
    */
   void processPullReply(K key, V value, int requestId, long elapsedTimeInServer, @Nullable final TraceInfo traceInfo);
 
