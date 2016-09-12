@@ -114,6 +114,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
 
     case RoutingTableSyncMsg:
       onRoutingTableSyncMsg(innerMsg.getRoutingTableSyncMsg());
+      break;
 
     default:
       throw new RuntimeException("Unexpected message type: " + innerMsg.getType().toString());
