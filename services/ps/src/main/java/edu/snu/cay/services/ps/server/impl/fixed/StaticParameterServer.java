@@ -293,8 +293,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
 
         // After time has elapsed as long as a windowIndex, get the collected metrics and build a MetricsMessage.
         final double totalPullTimeSec = getTotalProcTimeSec(pullStats);
-        final double totalPushTime = getTotalProcTimeSec(pushStats);
-        final double totalReqProcTime = getTotalProcTimeSec(requestStats);
+        final double totalPushTimeSec = getTotalProcTimeSec(pushStats);
+        final double totalReqProcTimeSec = getTotalProcTimeSec(requestStats);
         final int totalPullCount = getTotalProcCount(pullStats);
         final int totalPushCount = getTotalProcCount(pushStats);
         final int totalReqCount = getTotalProcCount(requestStats);
@@ -306,8 +306,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
             .setNumModelBlocks(0) // EM is not used here.
             .setMetricWindowMs(metricsWindowMs)
             .setTotalPullProcessingTimeSec(totalPullTimeSec)
-            .setTotalPushProcessingTimeSec(totalPushTime)
-            .setTotalReqProcessingTimeSec(totalReqProcTime)
+            .setTotalPushProcessingTimeSec(totalPushTimeSec)
+            .setTotalReqProcessingTimeSec(totalReqProcTimeSec)
             .setTotalPullProcessed(totalPullCount)
             .setTotalPushProcessed(totalPushCount)
             .setTotalReqProcessed(totalReqCount)
