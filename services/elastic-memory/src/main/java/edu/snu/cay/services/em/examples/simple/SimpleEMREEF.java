@@ -17,6 +17,7 @@
 package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
@@ -80,6 +81,7 @@ public final class SimpleEMREEF {
     cl.registerShortNameOfClass(RangeSupportName.class);
     HTraceParameters.registerShortNames(cl);
     cl.registerShortNameOfClass(NumMoves.class);
+    cl.registerShortNameOfClass(EMTraceEnabled.class);
 
     cl.processCommandLine(args);
     return TANG.newInjector(cb.build());
@@ -111,6 +113,10 @@ public final class SimpleEMREEF {
    */
   private static int getNumMoves(final Injector injector) throws InjectionException {
     return injector.getNamedInstance(NumMoves.class);
+  }
+
+  private static boolean getEMTraceEnabled(final Injector injector) throws InjectionException {
+    return injector.getNamedInstance(EMTraceEnabled.class);
   }
 
   private static Configuration getDriverConfiguration() {
@@ -167,6 +173,7 @@ public final class SimpleEMREEF {
 
     final Configuration exampleConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumMoves.class, Integer.toString(getNumMoves(injector)))
+        .bindNamedParameter(EMTraceEnabled.class, Boolean.toString(getEMTraceEnabled(injector)))
         .build();
 
     final LauncherStatus status = runSimpleEM(runtimeConf,

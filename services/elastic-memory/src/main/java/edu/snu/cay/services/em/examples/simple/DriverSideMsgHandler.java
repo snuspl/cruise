@@ -27,9 +27,6 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
-import org.htrace.Sampler;
-import org.htrace.Trace;
-import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -172,10 +169,6 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
 
       final boolean[] moveSucceeded = {false};
 
-      // start move
-      final TraceScope moveTraceScope =
-          Trace.startSpan(String.format("simple_move. srcId: %s, dstId: %s", srcId, destId), Sampler.ALWAYS);
-
       elasticMemory.move(numToMove, srcId, destId,
           new EventHandler<AvroElasticMemoryMessage>() {
             @Override
@@ -185,7 +178,6 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
                   new Object[]{emMsg.getOperationId(), moveSucceeded[0],
                       emMsg.getResultMsg() == null ? "" : emMsg.getResultMsg().getResult()});
               finishedLatch.countDown();
-              moveTraceScope.close();
             }
           }
       );
