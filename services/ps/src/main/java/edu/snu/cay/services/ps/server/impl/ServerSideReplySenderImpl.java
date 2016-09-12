@@ -106,8 +106,8 @@ public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReply
   public void sendPullReplyMsg(final String destId, final K key, final V value,
                                final int requestId, final long processingTime, @Nullable final TraceInfo traceInfo) {
     Span detached = null;
-    try (final TraceScope sendPullReplyScope = Trace.startSpan("send_pull_reply." +
-        " key: " + key + ", request_id: " + requestId, traceInfo)) {
+    try (final TraceScope sendPullReplyScope = Trace.startSpan(
+        String.format("send_pull_reply. key: %s, request_id: %d", key, requestId), traceInfo)) {
       final PullReplyMsg pullReplyMsg = PullReplyMsg.newBuilder()
           .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
           .setValue(ByteBuffer.wrap(valueCodec.encode(value)))

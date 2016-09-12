@@ -218,10 +218,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   private V pull(final EncodedKey<K> encodedKey) {
     final boolean traceEnabled = RAND.nextDouble() < traceProbability;
-    final TraceScope pullScope = traceEnabled ?
-        Trace.startSpan("pull. key: " + encodedKey.getKey(), pwTraceScope.getSpan()) : NullScope.INSTANCE;
     Span detached = null;
-    try {
+    try (final TraceScope pullScope = traceEnabled ?
+        Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()), pwTraceScope.getSpan()) :
+        NullScope.INSTANCE) {
       final int threadId = getThreadIndex(encodedKey.getHash());
       if (traceEnabled) {
         detached = pullScope.detach();
@@ -230,7 +230,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       workerThreads[threadId].enqueue(pullOp);
       return pullOp.getResult();
     } finally {
-      pullScope.close();
       Trace.continueSpan(detached).close();
     }
   }
@@ -252,14 +251,14 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   private List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
     final boolean traceEnabled = RAND.nextDouble() < traceProbability;
-    final TraceScope pullListScope = traceEnabled ?
-        Trace.startSpan("pull_list. num_keys: " + encodedKeys.size(), pwTraceScope.getSpan()) : NullScope.INSTANCE;
-    try {
+    try (final TraceScope pullListScope = traceEnabled ?
+        Trace.startSpan(String.format("pull_list. num_keys: %d", encodedKeys.size()), pwTraceScope.getSpan()) :
+        NullScope.INSTANCE) {
       final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
 
       for (final EncodedKey<K> encodedKey : encodedKeys) {
         Span detached = null;
-        try (final TraceScope pullEnqueueScope = Trace.startSpan("pull. key: " + encodedKey.getKey(),
+        try (final TraceScope pullEnqueueScope = Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()),
             pullListScope.getSpan())) {
           final int threadId = getThreadIndex(encodedKey.getHash());
 
@@ -276,8 +275,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         values.add(pullOp.getResult());
       }
       return values;
-    } finally {
-      pullListScope.close();
     }
   }
 
@@ -326,8 +323,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   @Override
   public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer,
                                @Nullable final TraceInfo traceInfo) {
-    try (final TraceScope processPullReplyScope = Trace.startSpan("process_pull_reply." +
-        " key: " + key + ", request_id: " + requestId, traceInfo)) {
+    try (final TraceScope processPullReplyScope = Trace.startSpan(
+        String.format("process_pull_reply. key: %s, request_id: %d", key, requestId), traceInfo)) {
       final EncodedKey<K> encodedKey;
       try {
         encodedKey = encodedKeyCache.get(key);
@@ -475,8 +472,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     boolean interrupted = false;
 
     Span detached = null;
-    try (final TraceScope sendPullMsgScope = Trace.startSpan("send_pull_msg. key: "
-        + encodedKey.getKey() + ", request_id: " + requestId, traceInfo)) {
+    try (final TraceScope sendPullMsgScope = Trace.startSpan(
+        String.format("send_pull_msg. key: %s, request_id: %d", encodedKey.getKey(), requestId), traceInfo)) {
       while (true) {
         if (resendCount++ > MAX_RESEND_COUNT) {
           throw new RuntimeException("Fail to send a pull msg");
@@ -661,8 +658,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           while (pendingPullRequests.size() >= maxPendingPullsPerThread) {
             workerThread.wait();
           }
-          try (final TraceScope startPullRequestScope = Trace.startSpan("start_pull_request. key: "
-              + encodedKey.getKey(), parentTraceInfo)) {
+          try (final TraceScope startPullRequestScope = Trace.startSpan(
+              String.format("start_pull_request. key: %s", encodedKey.getKey()), parentTraceInfo)) {
             this.pullStartTime = ticker.read();
             workerThread.waitingStat.put(pullStartTime - enqueueTime);
 
@@ -674,8 +671,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           }
           // wait with other operations that were previously requested, if the pull request has been sent already
         } else {
-          try (final TraceScope ridePullRequestScope = Trace.startSpan("ride_pull_request. key: "
-              + encodedKey.getKey() + ", request_id: " + pullRequest.requestId, parentTraceInfo)) {
+          try (final TraceScope ridePullRequestScope = Trace.startSpan(String.format("ride_pull_request." +
+              " key: %s, request_id: %d", encodedKey.getKey(), pullRequest.requestId), parentTraceInfo)) {
             this.pullStartTime = ticker.read();
             workerThread.waitingStat.put(pullStartTime - enqueueTime);
 
@@ -802,8 +799,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * Start pull request by sending pull message to server.
      */
     void startRequest() {
-      pullRequestScope = Trace.startSpan("pull_request. key: " + encodedKey.getKey() + ", request_id: " + requestId,
-          parentTraceInfo);
+      pullRequestScope = Trace.startSpan(
+          String.format("pull_request. key: %s, request_id: %d", encodedKey.getKey(), requestId), parentTraceInfo);
       sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(pullRequestScope.getSpan()));
     }
 
@@ -814,8 +811,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @throws RuntimeException if the retrial count exceeded maximum number of retries
      */
     synchronized void processRetry() {
-      try (final TraceScope retryScope = Trace.startSpan("pull_retry." + " key: " + encodedKey.getKey()
-          + ", request_id: " + requestId + ", retry_count: " + (retryCount + 1), pullRequestScope.getSpan())) {
+      try (final TraceScope retryScope = Trace.startSpan(String.format("pull_retry." +
+          " key: %s, request_id: %d, retry_count: %d", encodedKey.getKey(), requestId, retryCount + 1),
+          pullRequestScope.getSpan())) {
         if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
           throw new RuntimeException("Fail to load a value for pull");
         }

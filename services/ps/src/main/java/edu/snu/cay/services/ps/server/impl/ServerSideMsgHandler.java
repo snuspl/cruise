@@ -71,6 +71,8 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
     this.parameterServer = parameterServer;
     this.keyCodec = keyCodec;
     this.preValueCodec = preValueCodec;
+
+    Trace.setProcessId("parameter_server");
   }
 
   /**
@@ -81,7 +83,6 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
   public void onNext(final Message<AvroPSMsg> msg) {
     LOG.entering(ServerSideMsgHandler.class.getSimpleName(), "onNext");
 
-    Trace.setProcessId("parameter_server");
     final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
     final TraceInfo traceInfo = HTraceUtils.fromAvro(innerMsg.getTraceInfo());
     switch (innerMsg.getType()) {

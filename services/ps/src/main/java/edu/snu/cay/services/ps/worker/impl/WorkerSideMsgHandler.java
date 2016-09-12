@@ -78,6 +78,8 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     this.keyCodec = keyCodec;
     this.preValueCodec = preValueCodec;
     this.valueCodec = valueCodec;
+
+    Trace.setProcessId("parameter_worker");
   }
 
   /**
@@ -88,7 +90,6 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   public void onNext(final Message<AvroPSMsg> msg) {
     LOG.entering(WorkerSideMsgHandler.class.getSimpleName(), "onNext", msg);
 
-    Trace.setProcessId("parameter_worker");
     final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
     final TraceInfo traceInfo = HTraceUtils.fromAvro(innerMsg.getTraceInfo());
     switch (innerMsg.getType()) {

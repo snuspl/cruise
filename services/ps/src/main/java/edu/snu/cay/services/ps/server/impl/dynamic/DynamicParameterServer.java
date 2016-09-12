@@ -229,7 +229,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   public void pull(final K key, final String srcId, final int keyHash, final int requestId,
                    @Nullable final TraceInfo traceInfo) {
     Span detached = null;
-    try (TraceScope pullScope = Trace.startSpan("pull. key: " + key, traceInfo)) {
+    try (TraceScope pullScope = Trace.startSpan(String.format("pull. key: %s", key), traceInfo)) {
       final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
       final int blockId = blockResolver.resolveBlock(hashedKey);
       final int threadId = threadResolver.resolveThread(blockId);
@@ -484,7 +484,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     private final String srcId;
     private final int threadId;
     private final int requestId;
-
     private final TraceInfo parentTraceInfo;
 
     PullOp(final HashedKey<K> hashedKey, final String srcId, final int threadId, final int requestId,
@@ -503,8 +502,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
      */
     @Override
     public void apply() {
-      try (final TraceScope pullApplyScope = Trace.startSpan("process_pull." +
-          " key: " + hashedKey.getKey() + ", request_id: " + requestId, parentTraceInfo)) {
+      try (final TraceScope pullApplyScope = Trace.startSpan(String.format("process_pull." +
+          " key: %s, request_id: %d", hashedKey.getKey(), requestId), parentTraceInfo)) {
         try {
           final long waitEndTime = ticker.read();
           final long waitTime = waitEndTime - timestamp;
