@@ -86,7 +86,7 @@ final class MigrationManager {
                                    final int numBlocks,
                                    @Nullable final TraceInfo parentTraceInfo,
                                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-    Trace.setProcessId(MigrationManager.class.getSimpleName());
+    Trace.setProcessId("migration_manager");
 
     final TraceScope migrationTraceScope = Trace.startSpan(String.format("migration. op_id: %s, sender: %s," +
         " receiver: %s, num_blocks: %d ", operationId, senderId, receiverId, numBlocks), parentTraceInfo);
