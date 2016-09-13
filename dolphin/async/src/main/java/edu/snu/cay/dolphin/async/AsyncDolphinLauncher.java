@@ -35,6 +35,7 @@ import edu.snu.cay.services.ps.PSConfigurationBuilder;
 import edu.snu.cay.services.ps.common.parameters.Dynamic;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.services.ps.common.parameters.PSTraceProbability;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
@@ -287,6 +288,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(WorkerLogPeriod.class);
     basicParameterClassList.add(Dynamic.class);
     basicParameterClassList.add(ServerMetricsWindowMs.class);
+    basicParameterClassList.add(PSTraceProbability.class);
 
     // add SSP parameters
     basicParameterClassList.add(StalenessBound.class);

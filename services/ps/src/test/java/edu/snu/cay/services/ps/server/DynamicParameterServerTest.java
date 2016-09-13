@@ -40,6 +40,7 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.htrace.SpanReceiver;
+import org.htrace.TraceInfo;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -75,6 +76,7 @@ public final class DynamicParameterServerTest {
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
   private static final String WORKER_ID = "WORKER";
   private static final int REQUEST_ID = 0;
+  private static final TraceInfo EMPTY_TRACE = null;
 
   private DynamicParameterServer<Integer, Integer, Integer> server;
   private ServerSideReplySender<Integer, Integer, Integer> mockSender;
@@ -164,7 +166,7 @@ public final class DynamicParameterServerTest {
         public void run() {
           for (int index = 0; index < numPulls; index++) {
             final int key = threadId;
-            server.pull(key, WORKER_ID, key, REQUEST_ID); // Just use key as hash for this test.
+            server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -180,18 +182,18 @@ public final class DynamicParameterServerTest {
 
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     verify(mockSender, times(numPulls * numPullThreads))
-        .sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong());
+        .sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     final AtomicMarkableReference<Integer> replayValue = new AtomicMarkableReference<>(null, false);
     doAnswer(invocation -> {
         final int value = invocation.getArgumentAt(2, Integer.class);
         replayValue.set(value, true);
         return null;
-      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong());
+      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
-      server.pull(key, WORKER_ID, key, REQUEST_ID); // Just use key as hash for this test.
+      server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test.
 
       waitForOps();
       while (!replayValue.isMarked()) {
@@ -227,7 +229,7 @@ public final class DynamicParameterServerTest {
         // sleep to guarantee the queue not empty when closing server
         Thread.sleep(1000);
         return null;
-      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong());
+      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
     doAnswer(invocation -> {
         rejectedOps.getAndIncrement();
         return null;
@@ -239,19 +241,19 @@ public final class DynamicParameterServerTest {
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
-      server.pull(key, WORKER_ID, key, REQUEST_ID);
+      server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE);
     }
 
     // closing server should reject all the remaining queued operations, if time allows
     server.close(CLOSE_TIMEOUT);
     verify(mockSender, atMost(numPulls - 1))
-        .sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong());
+        .sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     LOG.log(Level.INFO, "Handled ops: {0}, Rejected ops: {1}", new Object[]{repliedOps.get(), rejectedOps.get()});
     assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
 
     // server should not process further operations after being closed
-    server.pull(0, WORKER_ID, 0, REQUEST_ID);
+    server.pull(0, WORKER_ID, 0, REQUEST_ID, EMPTY_TRACE);
     assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
   }
 }

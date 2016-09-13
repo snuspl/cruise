@@ -22,13 +22,18 @@ import edu.snu.cay.services.ps.avro.PullMsg;
 import edu.snu.cay.services.ps.avro.PushMsg;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.utils.SingleMessageExtractor;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.hadoop.util.hash.MurmurHash;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.logging.Logger;
 
@@ -66,6 +71,8 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
     this.parameterServer = parameterServer;
     this.keyCodec = keyCodec;
     this.preValueCodec = preValueCodec;
+
+    Trace.setProcessId("parameter_server");
   }
 
   /**
@@ -77,13 +84,14 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
     LOG.entering(ServerSideMsgHandler.class.getSimpleName(), "onNext");
 
     final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
+    final TraceInfo traceInfo = HTraceUtils.fromAvro(innerMsg.getTraceInfo());
     switch (innerMsg.getType()) {
     case PushMsg:
       onPushMsg(msg.getSrcId().toString(), innerMsg.getPushMsg());
       break;
 
     case PullMsg:
-      onPullMsg(msg.getSrcId().toString(), innerMsg.getPullMsg());
+      onPullMsg(msg.getSrcId().toString(), innerMsg.getPullMsg(), traceInfo);
       break;
 
     default:
@@ -100,11 +108,13 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
     parameterServer.push(key, preValue, srcId, keyHash);
   }
 
-  private void onPullMsg(final String srcId, final PullMsg pullMsg) {
-    final K key = keyCodec.decode(pullMsg.getKey().array());
-    final int keyHash = hash(pullMsg.getKey().array());
-    final int requestId = pullMsg.getRequestId();
-    parameterServer.pull(key, srcId, keyHash, requestId);
+  private void onPullMsg(final String srcId, final PullMsg pullMsg, @Nullable final TraceInfo traceInfo) {
+    try (final TraceScope onPullMsgScope = Trace.startSpan("on_pull_msg", traceInfo)) {
+      final K key = keyCodec.decode(pullMsg.getKey().array());
+      final int keyHash = hash(pullMsg.getKey().array());
+      final int requestId = pullMsg.getRequestId();
+      parameterServer.pull(key, srcId, keyHash, requestId, TraceInfo.fromSpan(onPullMsgScope.getSpan()));
+    }
   }
 
   private int hash(final byte[] encodedKey) {

@@ -31,7 +31,12 @@ import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
+import org.htrace.Span;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
@@ -221,13 +226,23 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   @Override
-  public void pull(final K key, final String srcId, final int keyHash, final int requestId) {
-    final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
-    final int blockId = blockResolver.resolveBlock(hashedKey);
-    final int threadId = threadResolver.resolveThread(blockId);
-    LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}, RequestId: {4}",
-        new Object[] {key, blockId, threadId, keyHash, requestId});
-    threads.get(threadId).enqueue(new PullOp(hashedKey, srcId, threadId, requestId));
+  public void pull(final K key, final String srcId, final int keyHash, final int requestId,
+                   @Nullable final TraceInfo traceInfo) {
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+    try (TraceScope pullScope = Trace.startSpan(String.format("pull. key: %s", key), traceInfo)) {
+      final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
+      final int blockId = blockResolver.resolveBlock(hashedKey);
+      final int threadId = threadResolver.resolveThread(blockId);
+      LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}, RequestId: {4}",
+          new Object[]{key, blockId, threadId, keyHash, requestId});
+      detached = pullScope.detach();
+      threads.get(threadId).enqueue(new PullOp(hashedKey, srcId, threadId, requestId, TraceInfo.fromSpan(detached)));
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
   }
 
   /**
@@ -473,13 +488,16 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     private final String srcId;
     private final int threadId;
     private final int requestId;
+    private final TraceInfo parentTraceInfo;
 
-    PullOp(final HashedKey<K> hashedKey, final String srcId, final int threadId, final int requestId) {
+    PullOp(final HashedKey<K> hashedKey, final String srcId, final int threadId, final int requestId,
+           final TraceInfo parentTraceInfo) {
       this.hashedKey = hashedKey;
       this.srcId = srcId;
       this.timestamp = ticker.read();
       this.threadId = threadId;
       this.requestId = requestId;
+      this.parentTraceInfo = parentTraceInfo;
     }
 
     /**
@@ -488,39 +506,42 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
      */
     @Override
     public void apply() {
-      try {
-        final long waitEndTime = ticker.read();
-        final long waitTime = waitEndTime - timestamp;
-        pullWaitStats[threadId].put(waitTime);
-        requestWaitStats[threadId].put(waitTime);
+      try (final TraceScope pullApplyScope = Trace.startSpan(String.format("process_pull." +
+          " key: %s, request_id: %d", hashedKey.getKey(), requestId), parentTraceInfo)) {
+        try {
+          final long waitEndTime = ticker.read();
+          final long waitTime = waitEndTime - timestamp;
+          pullWaitStats[threadId].put(waitTime);
+          requestWaitStats[threadId].put(waitTime);
 
-        final Pair<HashedKey<K>, V> kvPair = memoryStore.get(hashedKey);
-        final V value;
-        if (kvPair == null) {
-          final V initValue = parameterUpdater.initValue(hashedKey.getKey());
-          final Pair<HashedKey<K>, Boolean> result =
-              memoryStore.put(hashedKey, initValue);
-          final boolean isSuccess = result.getSecond();
-          if (!isSuccess) {
-            throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");
+          final Pair<HashedKey<K>, V> kvPair = memoryStore.get(hashedKey);
+          final V value;
+          if (kvPair == null) {
+            final V initValue = parameterUpdater.initValue(hashedKey.getKey());
+            final Pair<HashedKey<K>, Boolean> result =
+                memoryStore.put(hashedKey, initValue);
+            final boolean isSuccess = result.getSecond();
+            if (!isSuccess) {
+              throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");
+            }
+            value = initValue;
+          } else {
+            value = kvPair.getSecond();
           }
-          value = initValue;
-        } else {
-          value = kvPair.getSecond();
+
+          // The request's time spent in queue + processing time before sending a reply.
+          final long elapsedTimeInServer = ticker.read() - timestamp;
+          sender.sendPullReplyMsg(srcId, hashedKey.getKey(), value, requestId, elapsedTimeInServer, parentTraceInfo);
+
+          final long processEndTime = ticker.read();
+
+          // Elapsed time since the request has been dequeued.
+          final long actualProcessingTime = processEndTime - waitEndTime;
+          pullStats[threadId].put(actualProcessingTime);
+          requestStats[threadId].put(actualProcessingTime);
+        } catch (final Exception e) {
+          LOG.log(Level.WARNING, "Exception occurred", e);
         }
-
-        // The request's time spent in queue + processing time before sending a reply.
-        final long elapsedTimeInServer = ticker.read() - timestamp;
-        sender.sendPullReplyMsg(srcId, hashedKey.getKey(), value, requestId, elapsedTimeInServer);
-
-        final long processEndTime = ticker.read();
-
-        // Elapsed time since the request has been dequeued.
-        final long actualProcessingTime = processEndTime - waitEndTime;
-        pullStats[threadId].put(actualProcessingTime);
-        requestStats[threadId].put(actualProcessingTime);
-      } catch (final Exception e) {
-        LOG.log(Level.WARNING, "Exception occurred", e);
       }
     }
 

@@ -30,7 +30,9 @@ import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.Parameter;
+import org.htrace.TraceInfo;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
@@ -206,7 +208,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   }
 
   @Override
-  public void pull(final K key, final String srcId, final int keyHash, final int requestId) {
+  public void pull(final K key, final String srcId, final int keyHash, final int requestId,
+                   @Nullable final TraceInfo traceInfo) {
     final int partitionId = serverResolver.resolvePartition(keyHash);
     final int threadId = localPartitions.indexOf(partitionId) % numThreads;
     threads.get(threadId).enqueue(new PullOp(key, srcId, threadId, requestId));
@@ -469,7 +472,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
 
       // The request's time spent in queue + processing time before sending a reply.
       final long elapsedTimeInServer = ticker.read() - timestamp;
-      sender.sendPullReplyMsg(srcId, key, kvStore.get(key), requestId, elapsedTimeInServer);
+      sender.sendPullReplyMsg(srcId, key, kvStore.get(key), requestId, elapsedTimeInServer, null);
 
       final long processEndTime = ticker.read();
 

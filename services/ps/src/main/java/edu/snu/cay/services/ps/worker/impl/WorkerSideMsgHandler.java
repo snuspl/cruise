@@ -78,6 +78,8 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     this.keyCodec = keyCodec;
     this.preValueCodec = preValueCodec;
     this.valueCodec = valueCodec;
+
+    Trace.setProcessId("parameter_worker");
   }
 
   /**
@@ -90,10 +92,9 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
 
     final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
     final TraceInfo traceInfo = HTraceUtils.fromAvro(innerMsg.getTraceInfo());
-
     switch (innerMsg.getType()) {
     case PullReplyMsg:
-      onPullReplyMsg(innerMsg.getPullReplyMsg());
+      onPullReplyMsg(innerMsg.getPullReplyMsg(), traceInfo);
       break;
 
     case PushRejectMsg:
@@ -160,12 +161,15 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     serverResolver.syncRoutingTable(serverId);
   }
 
-  private void onPullReplyMsg(final PullReplyMsg pullReplyMsg) {
-    final K key = keyCodec.decode(pullReplyMsg.getKey().array());
-    final V value = valueCodec.decode(pullReplyMsg.getValue().array());
-    final int requestId = pullReplyMsg.getRequestId();
-    final long serverProcessingTime = pullReplyMsg.getServerProcessingTime();
-    workerHandler.processPullReply(key, value, requestId, serverProcessingTime);
+  private void onPullReplyMsg(final PullReplyMsg pullReplyMsg, @Nullable final TraceInfo traceInfo) {
+    try (final TraceScope onPullReplyScope = Trace.startSpan("on_pull_reply", traceInfo)) {
+      final K key = keyCodec.decode(pullReplyMsg.getKey().array());
+      final V value = valueCodec.decode(pullReplyMsg.getValue().array());
+      final int requestId = pullReplyMsg.getRequestId();
+      final long serverProcessingTime = pullReplyMsg.getServerProcessingTime();
+      workerHandler.processPullReply(key, value, requestId, serverProcessingTime,
+          TraceInfo.fromSpan(onPullReplyScope.getSpan()));
+    }
   }
 
   private void onPushRejectMsg(final PushRejectMsg pushRejectMsg) {
