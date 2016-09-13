@@ -218,6 +218,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   private V pull(final EncodedKey<K> encodedKey) {
     final boolean traceEnabled = RAND.nextDouble() < traceProbability;
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
     Span detached = null;
     try (final TraceScope pullScope = traceEnabled ?
         Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()), pwTraceScope.getSpan()) :
@@ -257,6 +261,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
 
       for (final EncodedKey<K> encodedKey : encodedKeys) {
+        // We should detach the span when we transit to another thread (local or remote),
+        // and the detached span should call Trace.continueSpan(detached).close() explicitly
+        // for stitching the spans from other threads as its children
         Span detached = null;
         try (final TraceScope pullEnqueueScope = Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()),
             pullListScope.getSpan())) {
@@ -472,6 +479,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     int resendCount = 0;
     boolean interrupted = false;
 
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
     Span detached = null;
     try (final TraceScope sendPullMsgScope = Trace.startSpan(
         String.format("send_pull_msg. key: %s, request_id: %d", encodedKey.getKey(), requestId), traceInfo)) {

@@ -54,6 +54,7 @@ public final class StaticParameterServerTest {
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
   private static final String WORKER_ID = "WORKER";
   private static final int REQUEST_ID = 0;
+  private static final TraceInfo EMPTY_TRACE = null;
 
   private StaticParameterServer<Integer, Integer, Integer> server;
   private ServerSideReplySender<Integer, Integer, Integer> mockSender;
@@ -130,7 +131,7 @@ public final class StaticParameterServerTest {
         public void run() {
           for (int index = 0; index < numPulls; index++) {
             final int key = threadId;
-            server.pull(key, WORKER_ID, key, REQUEST_ID, null); // Just use key as hash for this test.
+            server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -157,7 +158,7 @@ public final class StaticParameterServerTest {
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
-      server.pull(key, WORKER_ID, key, REQUEST_ID, null); // Just use key as hash for this test.
+      server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test.
 
       waitForOps();
       while (!replayValue.isMarked()) {
@@ -190,7 +191,7 @@ public final class StaticParameterServerTest {
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
-      server.pull(key, WORKER_ID, key, 0, null);
+      server.pull(key, WORKER_ID, key, 0, EMPTY_TRACE);
     }
 
     // closing server should guarantee all the queued operations to be processed, if time allows
@@ -199,7 +200,7 @@ public final class StaticParameterServerTest {
         any(TraceInfo.class));
 
     // server should not process further operations after being closed
-    server.pull(0, WORKER_ID, 0, 0, null);
+    server.pull(0, WORKER_ID, 0, 0, EMPTY_TRACE);
     verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
         any(TraceInfo.class));
   }

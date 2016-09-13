@@ -105,6 +105,9 @@ public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReply
   @Override
   public void sendPullReplyMsg(final String destId, final K key, final V value,
                                final int requestId, final long processingTime, @Nullable final TraceInfo traceInfo) {
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
     Span detached = null;
     try (final TraceScope sendPullReplyScope = Trace.startSpan(
         String.format("send_pull_reply. key: %s, request_id: %d", key, requestId), traceInfo)) {

@@ -228,6 +228,9 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   @Override
   public void pull(final K key, final String srcId, final int keyHash, final int requestId,
                    @Nullable final TraceInfo traceInfo) {
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
     Span detached = null;
     try (TraceScope pullScope = Trace.startSpan(String.format("pull. key: %s", key), traceInfo)) {
       final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
