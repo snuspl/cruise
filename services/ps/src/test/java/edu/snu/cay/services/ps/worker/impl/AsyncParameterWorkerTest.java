@@ -57,12 +57,12 @@ import static org.mockito.Mockito.*;
 @PrepareForTest(WorkerMsgSender.class)
 public final class AsyncParameterWorkerTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
-  private static final int WORKER_NUM_THREADS = 2;
-  private static final TraceInfo EMPTY_TRACE = null;
 
   // Those metrics are not used in the tests, so can be set 0,
   private static final long SERVER_PROCESSING_TIME = 0;
   private static final int NUM_RECEIVED_BYTES = 0;
+  private static final int WORKER_NUM_THREADS = 2;
+  private static final TraceInfo EMPTY_TRACE = null;
 
   private ParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
