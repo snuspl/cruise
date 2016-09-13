@@ -390,12 +390,12 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
             param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessed()).sum());
         aggregatedMetricBuilder.setTotalReqProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessed()).sum());
-        aggregatedMetricBuilder.setTotalPullProcessingTime(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTime()).sum());
-        aggregatedMetricBuilder.setTotalPushProcessingTime(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessingTime()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessingTime(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessingTime()).sum());
+        aggregatedMetricBuilder.setTotalPullProcessingTimeSec(serverMetric.stream().mapToDouble(
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTimeSec()).sum());
+        aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessingTimeSec()).sum());
+        aggregatedMetricBuilder.setTotalReqProcessingTimeSec(serverMetric.stream().mapToDouble(
+            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessingTimeSec()).sum());
 
         final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 

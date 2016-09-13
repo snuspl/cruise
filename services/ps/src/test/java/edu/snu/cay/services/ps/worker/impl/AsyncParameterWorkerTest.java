@@ -32,6 +32,8 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.htrace.SpanReceiver;
+import org.htrace.TraceInfo;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -56,6 +58,7 @@ import static org.mockito.Mockito.*;
 public final class AsyncParameterWorkerTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
+  private static final TraceInfo EMPTY_TRACE = null;
 
   // Those metrics are not used in the tests, so can be set 0,
   private static final long SERVER_PROCESSING_TIME = 0;
@@ -89,6 +92,7 @@ public final class AsyncParameterWorkerTest {
     injector.bindVolatileInstance(WorkerMsgSender.class, mockSender);
     injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
     injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
+    injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     parameterWorker = injector.getInstance(ParameterWorker.class);
     workerHandler = injector.getInstance(WorkerHandler.class);
   }
@@ -252,7 +256,7 @@ public final class AsyncParameterWorkerTest {
     asyncParameterWorker.close(CLOSE_TIMEOUT);
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
-    verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject(), anyInt());
+    verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
 
     executorService.shutdown();
   }
@@ -287,7 +291,7 @@ public final class AsyncParameterWorkerTest {
 
     // assert that mockSender sent 1 pull message and 0 push message
     // in other words, push is waiting for pull to be replied
-    verify(mockSender, times(1)).sendPullMsg(anyString(), anyObject(), anyInt());
+    verify(mockSender, times(1)).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
     verify(mockSender, times(0)).sendPushMsg(anyString(), anyObject(), anyInt());
     assertEquals(MSG_THREADS_SHOULD_NOT_FINISH, 1, countDownLatch.getCount()); // have not received pull reply yet
 
@@ -295,7 +299,7 @@ public final class AsyncParameterWorkerTest {
     final EncodedKey<Integer> encodedKey = request.getLeft();
     final int requestId = request.getRight();
     workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
-        SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES);
+        SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES, EMPTY_TRACE);
     Thread.sleep(gracePeriodMs);
 
     final boolean allThreadsFinished = countDownLatch.await(waitingMs, TimeUnit.SECONDS);
@@ -345,7 +349,7 @@ public final class AsyncParameterWorkerTest {
     final EncodedKey<Integer> encodedKey = request.getLeft();
     final int requestId = request.getRight();
     workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
-        SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES);
+        SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES, EMPTY_TRACE);
 
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
     parameterWorker.close(CLOSE_TIMEOUT);
@@ -353,6 +357,6 @@ public final class AsyncParameterWorkerTest {
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
     // should send pull request only once
-    verify(mockSender, times(1)).sendPullMsg(anyString(), anyObject(), anyInt());
+    verify(mockSender, times(1)).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
   }
 }

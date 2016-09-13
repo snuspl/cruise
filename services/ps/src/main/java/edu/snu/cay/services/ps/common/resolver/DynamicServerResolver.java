@@ -89,13 +89,23 @@ public final class DynamicServerResolver implements ServerResolver {
    * otherwise waits the initialization within a bounded time.
    */
   private void checkInitialization() {
+    boolean interrupted = false;
     while (true) {
+      if (initLatch.getCount() == 0) {
+        break;
+      }
+
       try {
         initLatch.await();
         break;
       } catch (final InterruptedException e) {
+        interrupted = true;
         LOG.log(Level.WARNING, "Interrupted while waiting for routing table initialization from driver", e);
       }
+    }
+    // restore thread interrupt state
+    if (interrupted) {
+      Thread.currentThread().interrupt();
     }
   }
 

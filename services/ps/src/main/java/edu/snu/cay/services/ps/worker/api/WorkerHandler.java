@@ -16,6 +16,9 @@
 package edu.snu.cay.services.ps.worker.api;
 
 import org.apache.reef.annotations.audience.Private;
+import org.htrace.TraceInfo;
+
+import javax.annotation.Nullable;
 
 /**
  * Process response messages received from the server.
@@ -31,9 +34,11 @@ public interface WorkerHandler<K, P, V> {
    * @param value value sent from the server
    * @param requestId pull request id assigned by ParameterWorker
    * @param elapsedTimeInServer elapsed time since pull request's arrival at server
-   * @param numReceivedBytes number of received data in bytes for the response of a pull request
+   * @param numReceivedBytes number of received data in bytes for response of a pull request
+   * @param traceInfo Information for Trace
    */
-  void processPullReply(K key, V value, int requestId, long elapsedTimeInServer, int numReceivedBytes);
+  void processPullReply(K key, V value, int requestId, long elapsedTimeInServer, int numReceivedBytes,
+                        @Nullable final TraceInfo traceInfo);
 
   /**
    * Notify the reject of Pull operation to the waiting worker thread.

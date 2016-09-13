@@ -22,22 +22,28 @@ import com.google.common.cache.LoadingCache;
 import edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics;
 import edu.snu.cay.services.ps.PSParameters.KeyCodecName;
 import edu.snu.cay.services.ps.common.Statistics;
+import edu.snu.cay.services.ps.common.parameters.PSTraceProbability;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.worker.api.*;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.StateMachine;
+import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
+import org.htrace.*;
 
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -58,6 +64,7 @@ import static edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs.TIMEO
 @EvaluatorSide
 public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
   private static final Logger LOG = Logger.getLogger(AsyncParameterWorker.class.getName());
+  private static final Random RAND = new Random();
 
   /**
    * The maximum number to resend push/pull requests
@@ -128,6 +135,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final Statistics[] receivedBytesStats;
   private final Ticker ticker = Ticker.systemTicker();
 
+  private final TraceScope pwTraceScope;
+  private final double traceProbability;
+
   @Inject
   private AsyncParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numWorkerThreads,
                                @Parameter(WorkerQueueSize.class) final int queueSize,
@@ -136,7 +146,14 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                                @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                                @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                final ServerResolver serverResolver,
-                               final InjectionFuture<WorkerMsgSender<K, P>> sender) {
+                               final InjectionFuture<WorkerMsgSender<K, P>> sender,
+                               @Parameter(PSTraceProbability.class) final double traceProbability,
+                               final HTrace hTrace) {
+    Trace.setProcessId("parameter_worker");
+    hTrace.initialize();
+    this.pwTraceScope = Trace.startSpan("parameter_worker", Sampler.ALWAYS);
+    this.traceProbability = traceProbability;
+
     this.numWorkerThreads = numWorkerThreads;
     this.maxPendingPullsPerThread = maxPendingPullsPerThread;
     this.serverResolver = serverResolver;
@@ -205,10 +222,25 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   private V pull(final EncodedKey<K> encodedKey) {
-    final int threadId = getThreadIndex(encodedKey.getHash());
-    final PullOp pullOp = new PullOp(workerThreads[threadId], encodedKey);
-    workerThreads[threadId].enqueue(pullOp);
-    return pullOp.getResult();
+    final boolean traceEnabled = RAND.nextDouble() < traceProbability;
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+    try (final TraceScope pullScope = traceEnabled ?
+        Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()), pwTraceScope.getSpan()) :
+        NullScope.INSTANCE) {
+      final int threadId = getThreadIndex(encodedKey.getHash());
+      if (traceEnabled) {
+        detached = pullScope.detach();
+      }
+      final PullOp pullOp = new PullOp(workerThreads[threadId], encodedKey, TraceInfo.fromSpan(detached));
+      workerThreads[threadId].enqueue(pullOp);
+      return pullOp.getResult();
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
   }
 
   @Override
@@ -227,18 +259,35 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   private List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
-    final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
-    for (final EncodedKey<K> encodedKey : encodedKeys) {
-      final int threadId = getThreadIndex(encodedKey.getHash());
-      final PullOp pullOp = new PullOp(workerThreads[threadId], encodedKey);
-      pullOps.add(pullOp);
-      workerThreads[threadId].enqueue(pullOp);
+    final boolean traceEnabled = RAND.nextDouble() < traceProbability;
+    try (final TraceScope pullListScope = traceEnabled ?
+        Trace.startSpan(String.format("pull_list. num_keys: %d", encodedKeys.size()), pwTraceScope.getSpan()) :
+        NullScope.INSTANCE) {
+      final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
+
+      for (final EncodedKey<K> encodedKey : encodedKeys) {
+        // We should detach the span when we transit to another thread (local or remote),
+        // and the detached span should call Trace.continueSpan(detached).close() explicitly
+        // for stitching the spans from other threads as its children
+        Span detached = null;
+        try (final TraceScope pullEnqueueScope = Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()),
+            pullListScope.getSpan())) {
+          final int threadId = getThreadIndex(encodedKey.getHash());
+
+          detached = pullEnqueueScope.detach();
+          final PullOp pullOp = new PullOp(workerThreads[threadId], encodedKey, TraceInfo.fromSpan(detached));
+          pullOps.add(pullOp);
+          workerThreads[threadId].enqueue(pullOp);
+        } finally {
+          Trace.continueSpan(detached).close();
+        }
+      }
+      final List<V> values = new ArrayList<>(pullOps.size());
+      for (final PullOp pullOp : pullOps) {
+        values.add(pullOp.getResult());
+      }
+      return values;
     }
-    final List<V> values = new ArrayList<>(pullOps.size());
-    for (final PullOp pullOp : pullOps) {
-      values.add(pullOp.getResult());
-    }
-    return values;
   }
 
   public void invalidateAll() {
@@ -273,6 +322,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     );
 
     result.get(timeoutMs, TimeUnit.MILLISECONDS);
+    pwTraceScope.close();
   }
 
   /**
@@ -284,28 +334,30 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    */
   @Override
   public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer,
-                               final int numReceivedBytes) {
-    final EncodedKey<K> encodedKey;
-    try {
-      encodedKey = encodedKeyCache.get(key);
-    } catch (final ExecutionException e) {
-      throw new RuntimeException("Exception while loading encoded key from cache", e);
-    }
-    final WorkerThread workerThread = workerThreads[getThreadIndex(encodedKey.getHash())];
-
-    synchronized (workerThread) {
-      final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
-      final PullRequest pullRequest = pendingPullRequests.get(key);
-      if (pendingPullRequestExists(pullRequest, requestId)) {
-        pendingPullRequests.remove(key).completePendingOps(value, elapsedTimeInServer, numReceivedBytes);
-        // if number of pendingPullRequests becomes maxPendingPullsPerThread - 1 by this reply,
-        // should notify waiting WorkerThread (may not exist) which wants to make another pullRequest
-        if (pendingPullRequests.size() == maxPendingPullsPerThread - 1) {
-          workerThread.notify();
+                               final int numReceivedBytes, @Nullable final TraceInfo traceInfo) {
+    try (final TraceScope processPullReplyScope = Trace.startSpan(
+        String.format("process_pull_reply. key: %s, request_id: %d", key, requestId), traceInfo)) {
+      final EncodedKey<K> encodedKey;
+      try {
+        encodedKey = encodedKeyCache.get(key);
+      } catch (final ExecutionException e) {
+        throw new RuntimeException("Exception while loading encoded key from cache", e);
+      }
+      final WorkerThread workerThread = workerThreads[getThreadIndex(encodedKey.getHash())];
+      synchronized (workerThread) {
+        final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
+        final PullRequest pullRequest = pendingPullRequests.get(key);
+        if (pendingPullRequestExists(pullRequest, requestId)) {
+          pendingPullRequests.remove(key).completePendingOps(value, elapsedTimeInServer, numReceivedBytes);
+          // if number of pendingPullRequests becomes maxPendingPullsPerThread - 1 by this reply,
+          // should notify waiting WorkerThread (may not exist) which wants to make another pullRequest
+          if (pendingPullRequests.size() == maxPendingPullsPerThread - 1) {
+            workerThread.notify();
+          }
+        } else {
+          LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
+              new Object[]{key, requestId});
         }
-      } else {
-        LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
-            new Object[]{key, requestId});
       }
     }
   }
@@ -429,37 +481,50 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * To send push message atomically, do not respond to WorkerThread interrupt.
    * @param encodedKey encoded key
    * @param requestId pull request id
+   * @param traceInfo Information for Trace
    */
-  private void sendPullMsg(final EncodedKey<K> encodedKey, final int requestId) {
+  private void sendPullMsg(final EncodedKey<K> encodedKey, final int requestId, @Nullable final TraceInfo traceInfo) {
     int resendCount = 0;
     boolean interrupted = false;
-    while (true) {
-      if (resendCount++ > MAX_RESEND_COUNT) {
-        throw new RuntimeException("Fail to send a pull msg");
-      }
 
-      // Re-resolve server for every retry, because msg sender throws NetworkException
-      // when routing table is obsolete and indicates non-existing server.
-      final String serverId = serverResolver.resolveServer(encodedKey.getHash());
-      LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
-          new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+    try (final TraceScope sendPullMsgScope = Trace.startSpan(
+        String.format("send_pull_msg. key: %s, request_id: %d", encodedKey.getKey(), requestId), traceInfo)) {
+      while (true) {
+        if (resendCount++ > MAX_RESEND_COUNT) {
+          throw new RuntimeException("Fail to send a pull msg");
+        }
 
-      try {
-        sender.get().sendPullMsg(serverId, encodedKey, requestId);
-        break;
-      } catch (final NetworkException e) {
-        LOG.log(Level.WARNING, "NetworkException while sending pull msg. Do retry", e);
-      }
+        // Re-resolve server for every retry, because msg sender throws NetworkException
+        // when routing table is obsolete and indicates non-existing server.
+        final String serverId = serverResolver.resolveServer(encodedKey.getHash());
+        LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
+            new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
 
-      LOG.log(Level.WARNING, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
-      try {
-        // may not sleep for RESEND_INTERVAL_MS due to interrupt
-        Thread.sleep(RESEND_INTERVAL_MS);
-      } catch (final InterruptedException e) {
-        interrupted = true;
-        LOG.log(Level.FINEST, "Interrupted while waiting for routing table to be updated", e);
+        detached = sendPullMsgScope.detach();
+        try {
+          sender.get().sendPullMsg(serverId, encodedKey, requestId, TraceInfo.fromSpan(detached));
+          break;
+        } catch (final NetworkException e) {
+          LOG.log(Level.WARNING, "NetworkException while sending pull msg. Do retry", e);
+        }
+
+        LOG.log(Level.WARNING, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
+        try {
+          // may not sleep for RESEND_INTERVAL_MS due to interrupt
+          Thread.sleep(RESEND_INTERVAL_MS);
+        } catch (final InterruptedException e) {
+          interrupted = true;
+          LOG.log(Level.FINEST, "Interrupted while waiting for routing table to be updated", e);
+        }
       }
+    } finally {
+      Trace.continueSpan(detached).close();
     }
+
     // restore thread interrupt state
     if (interrupted) {
       Thread.currentThread().interrupt();
@@ -484,17 +549,17 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     return ParameterWorkerMetrics.newBuilder()
         .setNumThreads(numWorkerThreads)
         .setTotalPullCount(totalPullStat.getLeft())
-        .setTotalPullTime(totalPullStat.getRight())
+        .setTotalPullTimeSec(totalPullStat.getRight() / 1e9D)
         .setTotalPushCount(totalPushStat.getLeft())
-        .setTotalPushTime(totalPushStat.getRight())
+        .setTotalPushTimeSec(totalPushStat.getRight() / 1e9D)
         .setTotalNetworkStatCount(totalNetworkStat.getLeft())
-        .setTotalNetworkTime(totalNetworkStat.getRight())
+        .setTotalNetworkTimeSec(totalNetworkStat.getRight() / 1e9D)
         .setTotalWaitingStatCount(totalWaitingStat.getLeft())
-        .setTotalWaitingTime(totalWaitingStat.getRight())
         .setTotalSentBytes(totalSentBytesStat.getRight().intValue())
         .setTotalSentBytesStatCount(totalSentBytesStat.getLeft())
         .setTotalReceivedBytes(totalReceivedBytesStat.getRight().intValue())
         .setTotalReceivedBytesStatCount(totalReceivedBytesStat.getLeft())
+        .setTotalWaitingTimeSec(totalWaitingStat.getRight() / 1e9D)
         .build();
   }
 
@@ -603,13 +668,15 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private V value;
     private int requestId;
 
+    private final TraceInfo parentTraceInfo;
     private final long enqueueTime;
     private long pullStartTime;
 
-    PullOp(final WorkerThread workerThread, final EncodedKey<K> encodedKey) {
+    PullOp(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final TraceInfo parentTraceInfo) {
       this.workerThread = workerThread;
       this.encodedKey = encodedKey;
 
+      this.parentTraceInfo = parentTraceInfo;
       this.enqueueTime = ticker.read();
     }
 
@@ -624,24 +691,30 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           while (pendingPullRequests.size() >= maxPendingPullsPerThread) {
             workerThread.wait();
           }
+          try (final TraceScope startPullRequestScope = Trace.startSpan(
+              String.format("start_pull_request. key: %s", encodedKey.getKey()), parentTraceInfo)) {
+            this.pullStartTime = ticker.read();
+            workerThread.waitingStat.put(pullStartTime - enqueueTime);
 
-          this.pullStartTime = ticker.read();
-          workerThread.waitingStat.put(pullStartTime - enqueueTime);
-
-          pullRequest = new PullRequest(workerThread, encodedKey, this);
-          requestId = pullRequest.getRequestId();
-          pendingPullRequests.put(encodedKey.getKey(), pullRequest);
-          sendPullMsg(encodedKey, requestId);
-
+            pullRequest = new PullRequest(workerThread, encodedKey, this,
+                TraceInfo.fromSpan(startPullRequestScope.getSpan()));
+            requestId = pullRequest.getRequestId();
+            pendingPullRequests.put(encodedKey.getKey(), pullRequest);
+            pullRequest.startRequest();
+          }
           // wait with other operations that were previously requested, if the pull request has been sent already
         } else {
-          this.pullStartTime = ticker.read();
-          workerThread.waitingStat.put(pullStartTime - enqueueTime);
+          try (final TraceScope ridePullRequestScope = Trace.startSpan(String.format("ride_pull_request." +
+              " key: %s, request_id: %d", encodedKey.getKey(), pullRequest.requestId), parentTraceInfo)) {
+            this.pullStartTime = ticker.read();
+            workerThread.waitingStat.put(pullStartTime - enqueueTime);
 
-          pullRequest.addPendingOp(this);
+            pullRequest.addPendingOp(this);
+          }
         }
       }
     }
+
 
     /**
      * Re-send message for pull request, if the corresponding request exists.
@@ -718,11 +791,17 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     private final int requestId;
     private int retryCount;
-    private int state; // accessors are synchronized
-    private boolean waiting;
-    private final long pullStartTime;
 
-    PullRequest(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final PullOp pullOp) {
+    @GuardedBy("this")
+    private int state;
+    private boolean waiting;
+
+    private final long pullStartTime;
+    private final TraceInfo parentTraceInfo;
+    private TraceScope pullRequestScope;
+
+    PullRequest(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final PullOp pullOp,
+                final TraceInfo parentTraceInfo) {
       this.workerThread = workerThread;
       this.encodedKey = encodedKey;
       this.pendingOps = new ArrayList<>();
@@ -732,7 +811,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       this.retryCount = 0;
       this.state = INIT_STATE;
       this.waiting = false;
+
       this.pullStartTime = ticker.read();
+      this.parentTraceInfo = parentTraceInfo;
     }
 
     /**
@@ -748,20 +829,33 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     }
 
     /**
+     * Start pull request by sending pull message to server.
+     */
+    void startRequest() {
+      pullRequestScope = Trace.startSpan(
+          String.format("pull_request. key: %s, request_id: %d", encodedKey.getKey(), requestId), parentTraceInfo);
+      sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(pullRequestScope.getSpan()));
+    }
+
+    /**
      * Process pull retry by sending pull message once again, only if the state is {@link #RETRY_REQUESTED_STATE}.
      * After sending the request message for retry, the state of this pull request is reset to {@link #INIT_STATE},
      * and the retry count is incremented.
      * @throws RuntimeException if the retrial count exceeded maximum number of retries
      */
     synchronized void processRetry() {
-      if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
-        throw new RuntimeException("Fail to load a value for pull");
-      }
+      try (final TraceScope retryScope = Trace.startSpan(String.format("pull_retry." +
+          " key: %s, request_id: %d, retry_count: %d", encodedKey.getKey(), requestId, retryCount + 1),
+          pullRequestScope.getSpan())) {
+        if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
+          throw new RuntimeException("Fail to load a value for pull");
+        }
 
-      LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
-          new Object[]{encodedKey.getKey(), retryCount});
-      sendPullMsg(encodedKey, requestId);
-      state = INIT_STATE;
+        LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
+            new Object[]{encodedKey.getKey(), retryCount});
+        sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(retryScope.getSpan()));
+        state = INIT_STATE;
+      }
     }
 
     /**
@@ -808,11 +902,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      */
     void completePendingOps(final V value, final long elapsedTimeInServer, final int numReceivedBytes) {
       synchronized (workerThread) {
-
         final long pullTime = ticker.read() - pullStartTime;
         workerThread.networkStat.put(pullTime - elapsedTimeInServer);
-        LOG.log(Level.SEVERE, "Received {0} bytes", numReceivedBytes);
         workerThread.receivedBytesStat.put(numReceivedBytes);
+
+        if (pullRequestScope != null) {
+          pullRequestScope.close();
+        }
 
         for (final PullOp pullOp : pendingOps) {
           pullOp.setResult(value);

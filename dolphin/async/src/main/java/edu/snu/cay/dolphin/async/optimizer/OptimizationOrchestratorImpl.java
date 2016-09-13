@@ -281,12 +281,12 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessed()).sum());
         aggregatedMetricBuilder.setTotalReqProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalReqProcessed()).sum());
-        aggregatedMetricBuilder.setTotalPullProcessingTime(serverMetric.stream().mapToDouble(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessingTime()).sum());
-        aggregatedMetricBuilder.setTotalPushProcessingTime(serverMetric.stream().mapToDouble(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessingTime()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessingTime(serverMetric.stream().mapToDouble(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalReqProcessingTime()).sum());
+        aggregatedMetricBuilder.setTotalPullProcessingTimeSec(serverMetric.stream().mapToDouble(
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessingTimeSec()).sum());
+        aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessingTimeSec()).sum());
+        aggregatedMetricBuilder.setTotalReqProcessingTimeSec(serverMetric.stream().mapToDouble(
+            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalReqProcessingTimeSec()).sum());
 
         final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 

@@ -189,7 +189,8 @@
     {"name": "workerDeregisterMsg", "type": ["null", "WorkerDeregisterMsg"], "default": null},
     {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},
     {"name": "routingTableSyncMsg", "type": ["null", "RoutingTableSyncMsg"], "default": null},
-    {"name": "routingTableSyncReplyMsg", "type": ["null", "RoutingTableSyncReplyMsg"], "default": null}
+    {"name": "routingTableSyncReplyMsg", "type": ["null", "RoutingTableSyncReplyMsg"], "default": null},
+    {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null}
   ]
 },
 
@@ -205,16 +206,16 @@
   [
     {"name": "threadId", "type": "int"},
     {"name": "numPendingOps", "type": "int"},
-    {"name": "totalTime", "type": "double", "default": 0.0},
+    {"name": "totalTimeSec", "type": "double", "default": 0.0},
     {"name": "pullCount", "type": "int", "default": 0},
-    {"name": "totalPullTime", "type": "double", "default": 0.0},
-    {"name": "totalPullWaitTime", "type": "double", "default": 0.0},
+    {"name": "totalPullTimeSec", "type": "double", "default": 0.0},
+    {"name": "totalPullWaitTimeSec", "type": "double", "default": 0.0},
     {"name": "pushCount", "type": "int", "default": 0},
-    {"name": "totalPushTime", "type": "double", "default": 0.0},
-    {"name": "totalPushWaitTime", "type": "double", "default": 0.0},
+    {"name": "totalPushTimeSec", "type": "double", "default": 0.0},
+    {"name": "totalPushWaitTimeSec", "type": "double", "default": 0.0},
     {"name": "reqCount", "type": "int", "default": 0},
-    {"name": "totalReqTime", "type": "double", "default": 0.0},
-    {"name": "totalReqWaitTime", "type": "double", "default": 0.0}
+    {"name": "totalReqTimeSec", "type": "double", "default": 0.0},
+    {"name": "totalReqWaitTimeSec", "type": "double", "default": 0.0}
   ]
 },
 
@@ -237,9 +238,9 @@
     {"name": "totalPullProcessed", "type": "int", "default":0},
     {"name": "totalPushProcessed", "type": "int", "default":0},
     {"name": "totalReqProcessed", "type": "int", "default":0},
-    {"name": "totalPullProcessingTime", "type": "double", "default":0.0},
-    {"name": "totalPushProcessingTime", "type": "double", "default":0.0},
-    {"name": "totalReqProcessingTime", "type": "double", "default":0.0}
+    {"name": "totalPullProcessingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalPushProcessingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalReqProcessingTimeSec", "type": "double", "default":0.0}
   ]
 },
 
@@ -257,16 +258,16 @@
     {"name": "numThreads", "type": "int", "default": 0},
 
     // total push time for this epoch (seconds) : time between a push request's dequeue and network send
-    {"name": "totalPushTime", "type": "double", "default": 0.0},
+    {"name": "totalPushTimeSec", "type": "double", "default": 0.0},
 
     // total pull time for this epoch (seconds) : time between a pull request's dequeue and client notify
-    {"name": "totalPullTime", "type": "double", "default": 0.0},
+    {"name": "totalPullTimeSec", "type": "double", "default": 0.0},
 
     // total waiting time for this epoch (seconds) : time spent in queue for a request
-    {"name": "totalWaitingTime", "type": "double", "default": 0.0},
+    {"name": "totalWaitingTimeSec", "type": "double", "default": 0.0},
 
     // total network time for this epoch (seconds) : time spent in the network for a pull request/reply transmission
-    {"name": "totalNetworkTime", "type": "double", "default": 0.0},
+    {"name": "totalNetworkTimeSec", "type": "double", "default": 0.0},
 
     // number of push requests processed
     {"name": "totalPushCount", "type": "int", "default": 0},

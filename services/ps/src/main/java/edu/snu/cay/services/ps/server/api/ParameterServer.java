@@ -16,7 +16,9 @@
 package edu.snu.cay.services.ps.server.api;
 
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.htrace.TraceInfo;
 
+import javax.annotation.Nullable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -53,8 +55,10 @@ public interface ParameterServer<K, P, V> {
    * @param srcId network Id of the requester
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    * @param requestId pull request id assigned by ParameterWorker
+   * @param traceInfo Information for Trace
    */
-  void pull(final K key, final String srcId, final int keyHash, final int requestId);
+  void pull(final K key, final String srcId, final int keyHash, final int requestId,
+            @Nullable final TraceInfo traceInfo);
 
   /**
    * Counts the number of pending operations.
