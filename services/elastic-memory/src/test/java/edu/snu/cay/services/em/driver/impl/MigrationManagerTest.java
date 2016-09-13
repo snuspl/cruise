@@ -494,7 +494,7 @@ public class MigrationManagerTest {
                                  final int blockId, final int oldOwnerId, final int newOwnerId,
                                  @Nullable final TraceInfo parentTraceInfo) {
       // invoke a handler logic of response for OwnershipMsg
-      migrationManager.markBlockAsMoved(operationId, blockId);
+      migrationManager.markBlockAsMoved(operationId, blockId, parentTraceInfo);
     }
 
     @Override

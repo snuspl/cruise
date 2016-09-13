@@ -23,12 +23,17 @@ import edu.snu.cay.services.ps.PSParameters.ValueCodecName;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.SingleMessageExtractor;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Logger;
@@ -84,6 +89,8 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     LOG.entering(WorkerSideMsgHandler.class.getSimpleName(), "onNext", msg);
 
     final AvroPSMsg innerMsg = SingleMessageExtractor.extract(msg);
+    final TraceInfo traceInfo = HTraceUtils.fromAvro(innerMsg.getTraceInfo());
+
     switch (innerMsg.getType()) {
     case PullReplyMsg:
       onPullReplyMsg(innerMsg.getPullReplyMsg());
@@ -102,7 +109,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
       break;
 
     case RoutingTableUpdateMsg:
-      onRoutingTableUpdateMsg(innerMsg.getRoutingTableUpdateMsg());
+      onRoutingTableUpdateMsg(innerMsg.getRoutingTableUpdateMsg(), traceInfo);
       break;
 
     case RoutingTableSyncMsg:
@@ -133,13 +140,18 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     serverResolver.initRoutingTable(new EMRoutingTable(storeIdToBlockIds, storeIdToEndpointId));
   }
 
-  private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg) {
-    final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();
-    final int newOwnerId = routingTableUpdateMsg.getNewOwnerId();
-    final String newEvalId = routingTableUpdateMsg.getNewEvalId().toString();
-    final int blockId = routingTableUpdateMsg.getBlockId();
+  private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg,
+                                       @Nullable final TraceInfo traceInfo) {
+    Trace.setProcessId("worker");
+    try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_routing_table_update_msg", traceInfo)) {
 
-    serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockId));
+      final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();
+      final int newOwnerId = routingTableUpdateMsg.getNewOwnerId();
+      final String newEvalId = routingTableUpdateMsg.getNewEvalId().toString();
+      final int blockId = routingTableUpdateMsg.getBlockId();
+
+      serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockId));
+    }
   }
 
   private void onRoutingTableSyncMsg(final RoutingTableSyncMsg routingTableSyncMsg) {
