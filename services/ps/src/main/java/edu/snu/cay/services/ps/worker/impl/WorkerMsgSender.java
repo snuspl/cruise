@@ -113,17 +113,21 @@ public final class WorkerMsgSender<K, P> {
    * @param key a key to pull
    * @param requestId pull request id assigned by ParameterWorker
    * @param traceInfo Information for Trace
+   * @return The number of bytes. Although the result is not same with the total size of the exact message,
+   * the approximation is close to the actual message size if the size of key and preValue is large enough.   *
    * @throws NetworkException when fail to open a connection
    */
-  void sendPullMsg(final String destId, final EncodedKey<K> key, final int requestId,
+  int sendPullMsg(final String destId, final EncodedKey<K> key, final int requestId,
                    @Nullable final TraceInfo traceInfo) throws NetworkException {
     final Identifier localEndPointId = psNetworkSetup.getMyId();
     if (localEndPointId == null) {
       throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
     }
 
+    final byte[] serializedKey = key.getEncoded();
+    final int numSendingBytes = serializedKey.length;
     final PullMsg pullMsg = PullMsg.newBuilder()
-        .setKey(ByteBuffer.wrap(key.getEncoded()))
+        .setKey(ByteBuffer.wrap(serializedKey))
         .setRequestId(requestId)
         .build();
 
@@ -133,6 +137,8 @@ public final class WorkerMsgSender<K, P> {
             .setPullMsg(pullMsg)
             .setTraceInfo(HTraceUtils.toAvro(traceInfo))
             .build());
+
+    return numSendingBytes;
   }
 
   /**

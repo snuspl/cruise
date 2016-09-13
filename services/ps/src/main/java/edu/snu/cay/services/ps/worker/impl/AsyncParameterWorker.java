@@ -483,9 +483,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * @param encodedKey encoded key
    * @param requestId pull request id
    * @param traceInfo Information for Trace
+   * @return the number of bytes sent in the push message
    */
-  private void sendPullMsg(final EncodedKey<K> encodedKey, final int requestId, @Nullable final TraceInfo traceInfo) {
+  private int sendPullMsg(final EncodedKey<K> encodedKey, final int requestId, @Nullable final TraceInfo traceInfo) {
     int resendCount = 0;
+    int numSentBytes;
     boolean interrupted = false;
 
     // We should detach the span when we transit to another thread (local or remote),
@@ -507,7 +509,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
         detached = sendPullMsgScope.detach();
         try {
-          sender.get().sendPullMsg(serverId, encodedKey, requestId, TraceInfo.fromSpan(detached));
+          numSentBytes = sender.get().sendPullMsg(serverId, encodedKey, requestId, TraceInfo.fromSpan(detached));
           break;
         } catch (final NetworkException e) {
           LOG.log(Level.WARNING, "NetworkException while sending pull msg. Do retry", e);
@@ -530,6 +532,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     if (interrupted) {
       Thread.currentThread().interrupt();
     }
+
+    return numSentBytes;
   }
 
   /**
@@ -834,7 +838,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     void startRequest() {
       pullRequestScope = Trace.startSpan(
           String.format("pull_request. key: %s, request_id: %d", encodedKey.getKey(), requestId), parentTraceInfo);
-      sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(pullRequestScope.getSpan()));
+      final int numSentBytes = sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(pullRequestScope.getSpan()));
+      workerThread.sentBytesStat.put(numSentBytes);
     }
 
     /**
@@ -853,7 +858,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
         LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
             new Object[]{encodedKey.getKey(), retryCount});
-        sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(retryScope.getSpan()));
+        final int numSentBytes = sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(retryScope.getSpan()));
+        workerThread.sentBytesStat.put(numSentBytes);
         state = INIT_STATE;
       }
     }
