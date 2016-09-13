@@ -338,32 +338,30 @@ public final class MemoryStoreTest {
   }
 
   /**
-   * Test for block put event notification feature of Memory Store.
-   * Check that all registered observers receive block update notifications with correct parameters
-   * including event type, id and key set of the updated block, when block put events occur.
+   * Test for block add event notification feature of Memory Store.
+   * Check that all registered listeners receive block update notifications with correct parameters
+   * including id and key set of the updated block, when block put events occur.
    * @throws InterruptedException
    */
-  private void multipleBlockPutNotify() throws InterruptedException {
-    final int numOfObserver = 3;
+  @Test(timeout = 2000)
+  public void testMultipleBlockAddNotify() throws InterruptedException  {
+    final int numOfListener = 3;
     final int numOfBlockPut = 10;
     final int numOfKeysPerBlock = 10;
     final int timeoutInMillisecond = 500;
     final int blockIdBase = 0x80;
-    final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
-    final List<MemoryStoreTestUtils.BlockAddNotifyListenerImpl> blockUpdateNotifyObserverList
-        = new ArrayList<>(numOfObserver);
+    final CountDownLatch countDownLatch = new CountDownLatch(numOfListener * numOfBlockPut);
     final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
 
     // register block update notification observers to the Memory Store
-    for (int i = 0; i < numOfObserver; i++) {
-      final MemoryStoreTestUtils.BlockAddNotifyListenerImpl observer
-          = new MemoryStoreTestUtils.BlockAddNotifyListenerImpl(countDownLatch, numOfKeysPerBlock);
-      blockUpdateNotifyObserverList.add(observer);
-      memoryStore.registerBlockUpdateListener(observer);
+    for (int i = 0; i < numOfListener; i++) {
+      final MemoryStoreTestUtils.BlockAddListenerImpl listener
+          = new MemoryStoreTestUtils.BlockAddListenerImpl(countDownLatch, numOfKeysPerBlock);
+      memoryStore.registerBlockUpdateListener(listener);
     }
 
     // put blocks to the Memory Store
-    // and it will call onNext callback of MemoryStoreTestUtils.BlockPutNotifyObserverImpl class
+    // and it will call onAddedBlock callback of MemoryStoreTestUtils.BlockAddListenerImpl class
     for (int i = 0; i < numOfBlockPut; i++) {
       final int blockId = blockIdBase + i;
 
@@ -385,27 +383,25 @@ public final class MemoryStoreTest {
 
   /**
    * Test for block remove event notification feature of Memory Store.
-   * Check that all registered observers receive block update notifications with correct parameters
-   * including event type, id and key set of the updated block, when block remove events occur.
+   * Check that all registered listeners receive block update notifications with correct parameters
+   * including id and key set of the updated block, when block remove events occur.
    * @throws InterruptedException
    */
-  private void multipleBlockRemoveNotify() throws InterruptedException {
+  @Test(timeout = 2000)
+  public void testMultipleBlockRemoveNotify() throws InterruptedException {
     final int numOfObserver = 3;
     final int numOfBlockPut = 10;
     final int numOfKeysPerBlock = 10;
     final int timeoutInMillisecond = 500;
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
-    final List<MemoryStoreTestUtils.BlockRemoveNotifyListenerImpl> blockUpdateNotifyObserverList
-        = new ArrayList<>(numOfObserver);
     final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
 
     // register block update notification observers to the Memory Store
     for (int i = 0; i < numOfObserver; i++) {
-      final MemoryStoreTestUtils.BlockRemoveNotifyListenerImpl observer
-          = new MemoryStoreTestUtils.BlockRemoveNotifyListenerImpl(countDownLatch, numOfKeysPerBlock);
-      blockUpdateNotifyObserverList.add(observer);
-      memoryStore.registerBlockUpdateListener(observer);
+      final MemoryStoreTestUtils.BlockRemoveListenerImpl listener
+          = new MemoryStoreTestUtils.BlockRemoveListenerImpl(countDownLatch, numOfKeysPerBlock);
+      memoryStore.registerBlockUpdateListener(listener);
     }
 
 
@@ -425,7 +421,7 @@ public final class MemoryStoreTest {
     }
 
     // remove all the blocks stored in the Memory Store
-    // and it will call onNext callback of MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl class
+    // and it will call onRemovedBlock callback of MemoryStoreTestUtils.BlockRemoveListenerImpl class
     for (int i = 0; i < numOfBlockPut; i++) {
       final int blockId = blockIdBase + i;
       memoryStoreImpl.removeBlock(blockId);
@@ -434,15 +430,5 @@ public final class MemoryStoreTest {
     // wait for count down latch with a bounded time
     countDownLatch.await(timeoutInMillisecond, TimeUnit.MILLISECONDS);
     assertEquals(0, countDownLatch.getCount());
-  }
-
-  @Test(timeout = 2000)
-  public void testMultipleBlockPutNotify() throws InterruptedException {
-    multipleBlockPutNotify();
-  }
-
-  @Test(timeout = 2000)
-  public void testMultipleBlockRemoveNotify() throws InterruptedException {
-    multipleBlockRemoveNotify();
   }
 }

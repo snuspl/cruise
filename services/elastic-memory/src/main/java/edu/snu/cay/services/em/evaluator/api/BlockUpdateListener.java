@@ -22,7 +22,7 @@ import java.util.Set;
  * Interface for notifying block update(put/remove) events to clients from the MemoryStore.
  * The MemoryStore will call the onNext method in this class which clients have defined.
  */
-public interface BlockUpdateNotifyListener<K> {
+public interface BlockUpdateListener<K> {
   /**
    * a callback function called at each event of block addition to the Memory Store.
    * @param blockId the id of an added block

@@ -138,7 +138,7 @@ public interface MemoryStore<K> {
    * @param listener a client-defined block update notification listener to be registered.
    * @return returns true if the listener is registered successfully.
    */
-  boolean registerBlockUpdateListener(final BlockUpdateNotifyListener listener);
+  boolean registerBlockUpdateListener(final BlockUpdateListener listener);
 
   /**
    * @return  number of blocks in the MemoryStore

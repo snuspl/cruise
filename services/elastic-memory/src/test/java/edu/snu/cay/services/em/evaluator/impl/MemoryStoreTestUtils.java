@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyListener;
+import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 
 import java.util.*;
@@ -218,17 +218,17 @@ public final class MemoryStoreTestUtils {
     }
   }
 
-  public static final class BlockAddNotifyListenerImpl implements BlockUpdateNotifyListener<Long> {
+  public static final class BlockAddListenerImpl implements BlockUpdateListener<Long> {
     private final CountDownLatch countDownLatch;
     private final int numOfKeysPerBlock;
 
     /**
-     * a constructor of {@link BlockAddNotifyListenerImpl}.
+     * a constructor of {@link BlockAddListenerImpl}.
      * @param countDownLatch a count down latch which will count down by 1 at each block put event
      * @param numOfKeysPerBlock the number of keys in a block
      *                          used to check the updated block's key set is same with an expected key set.
      */
-    public BlockAddNotifyListenerImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
+    public BlockAddListenerImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
       this.countDownLatch = countDownLatch;
       this.numOfKeysPerBlock = numOfKeysPerBlock;
     }
@@ -254,17 +254,17 @@ public final class MemoryStoreTestUtils {
     }
   }
 
-  public static final class BlockRemoveNotifyListenerImpl implements BlockUpdateNotifyListener<Long> {
+  public static final class BlockRemoveListenerImpl implements BlockUpdateListener<Long> {
     private final CountDownLatch countDownLatch;
     private final int numOfKeysPerBlock;
 
     /**
-     * a constructor of {@link BlockRemoveNotifyListenerImpl}.
+     * a constructor of {@link BlockRemoveListenerImpl}.
      * @param countDownLatch a count down latch which will count down by 1 at each block remove event
      * @param numOfKeysPerBlock the number of keys in a block
      *                          used to check the updated block's key set is same with an expected key set.
      */
-    public BlockRemoveNotifyListenerImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
+    public BlockRemoveListenerImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
       this.countDownLatch = countDownLatch;
       this.numOfKeysPerBlock = numOfKeysPerBlock;
     }

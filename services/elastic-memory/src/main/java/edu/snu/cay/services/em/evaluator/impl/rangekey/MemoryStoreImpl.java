@@ -70,7 +70,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   /**
    * Block update notification handler set registered by clients.
    */
-  private final Set<BlockUpdateNotifyListener> blockUpdateNotifyListenerSet
+  private final Set<BlockUpdateListener> blockUpdateNotifyListenerSet
       = Collections.newSetFromMap(new ConcurrentHashMap <>());
 
   /**
@@ -162,14 +162,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public boolean registerBlockUpdateListener(final BlockUpdateNotifyListener listener) {
+  public boolean registerBlockUpdateListener(final BlockUpdateListener listener) {
     return blockUpdateNotifyListenerSet.add(listener);
   }
 
   private void notifyBlockRemove(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateNotifyListener listener : blockUpdateNotifyListenerSet) {
+    for (final BlockUpdateListener listener : blockUpdateNotifyListenerSet) {
       listener.onRemovedBlock(blockId, keySet);
     }
   }
@@ -177,7 +177,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private void notifyBlockPut(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateNotifyListener listener : blockUpdateNotifyListenerSet) {
+    for (final BlockUpdateListener listener : blockUpdateNotifyListenerSet) {
       listener.onAddedBlock(blockId, keySet);
     }
   }
