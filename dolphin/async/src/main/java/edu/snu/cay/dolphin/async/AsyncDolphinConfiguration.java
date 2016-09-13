@@ -119,12 +119,9 @@ public final class AsyncDolphinConfiguration {
     return serverConfiguration;
   }
 
-
   public static Builder newBuilder() {
     return new Builder();
   }
-
-
 
   public static class Builder implements org.apache.reef.util.Builder<AsyncDolphinConfiguration> {
     private Class<? extends Trainer> trainerClass;
