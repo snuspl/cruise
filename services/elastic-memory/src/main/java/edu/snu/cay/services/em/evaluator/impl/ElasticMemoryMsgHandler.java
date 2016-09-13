@@ -142,7 +142,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     final int newOwnerId = ownershipMsg.getNewOwnerId();
 
     Trace.setProcessId("src_eval");
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("on_ownership_msg. blockId: " + blockId,
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       // Update the owner of the block to the new one.
@@ -174,7 +174,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     final int blockId = dataMsg.getBlockId();
 
     Trace.setProcessId("dst_eval");
-    try (final TraceScope onDataMsgScope = Trace.startSpan("on_data_msg. blockId: " + blockId,
+    try (final TraceScope onDataMsgScope = Trace.startSpan(String.format("on_data_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(onDataMsgScope.getSpan());
 

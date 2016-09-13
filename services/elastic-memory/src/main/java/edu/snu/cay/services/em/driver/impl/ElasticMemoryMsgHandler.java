@@ -105,7 +105,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final int blockId = ownershipAckMsg.getBlockId();
 
     Trace.setProcessId(TRACE_PROCESS_ID);
-    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan("on_ownership_ack_msg. blockId: " + blockId,
+    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
+        String.format("on_ownership_ack_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       migrationManager.markBlockAsMoved(operationId, blockId, TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
@@ -119,7 +120,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
 
     Trace.setProcessId(TRACE_PROCESS_ID);
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan("on_ownership_msg. blockId: " + blockId,
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(
+        String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       // Update the owner and send ownership message to the old Owner.

@@ -312,7 +312,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     Span detached = null;
 
     try (final TraceScope sendRoutingTableUpdateMsgScope =
-             Trace.startSpan("send_routing_table_update_msg" + ". destId: " + destId, parentTraceInfo)) {
+             Trace.startSpan(String.format("send_routing_table_update_msg. destId: %s", destId), parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
 
@@ -396,9 +396,10 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     Span detached = null;
 
     // sending data msg is the second step of the migration protocol
-    try (final TraceScope sendDataMsgScope = Trace.startSpan("[2]send_data_msg"
-        + String.format(". op_id: %s, dest: %s, block_id: %d, num_kv_pairs: %d, (k_bytes, v_bytes): (%d, %d)",
-        operationId, destId, blockId, keyValuePairs.size(), totalKeyBytes, totalValueBytes), parentTraceInfo)) {
+    try (final TraceScope sendDataMsgScope = Trace.startSpan(String.format(
+        "[2]send_data_msg. op_id: %s, dest: %s, block_id: %d, num_kv_pairs: %d, (k_bytes, v_bytes): (%d, %d)",
+        operationId, destId, blockId, keyValuePairs.size(), totalKeyBytes, totalValueBytes),
+        parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
           new Object[]{destId});
@@ -439,10 +440,10 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     // sending ownership msg to driver is the third step and to src eval is the fourth step of the migration protocol
     final String destId = destIdOptional.isPresent() ? destIdOptional.get() : driverId;
-    final String traceSpanPrefix = destIdOptional.isPresent() ? "[4]" : "[3]";
+    final int stepIndex = destIdOptional.isPresent() ? 4 : 3;
 
-    try (final TraceScope sendOwnershipMsgScope = Trace.startSpan(traceSpanPrefix + "send_ownership_msg"
-        + ". blockId: " + blockId, parentTraceInfo)) {
+    try (final TraceScope sendOwnershipMsgScope = Trace.startSpan(
+        String.format("[%d]send_ownership_msg. blockId: %d", stepIndex, blockId), parentTraceInfo)) {
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
               .setBlockId(blockId)

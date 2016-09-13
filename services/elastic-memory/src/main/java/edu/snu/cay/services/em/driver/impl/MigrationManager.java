@@ -88,8 +88,10 @@ final class MigrationManager {
                                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     Trace.setProcessId(MigrationManager.class.getSimpleName());
 
-    final TraceScope migrationTraceScope = Trace.startSpan(String.format("migration. op_id: %s, sender: %s," +
-        " receiver: %s, num_blocks: %d ", operationId, senderId, receiverId, numBlocks), parentTraceInfo);
+    final TraceScope migrationTraceScope = Trace.startSpan(
+        String.format("migration. op_id: %s, sender: %s, receiver: %s, num_blocks: %d ",
+            operationId, senderId, receiverId, numBlocks),
+        parentTraceInfo);
 
     if (ongoingMigrations.containsKey(operationId)) {
       LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
