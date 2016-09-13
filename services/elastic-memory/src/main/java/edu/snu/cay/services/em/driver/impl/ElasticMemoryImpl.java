@@ -162,6 +162,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
+    Trace.setProcessId("elastic_memory");
     try (final TraceScope moveScope = Trace.startSpan(OP_MOVE, traceSampler)) {
       final String operationId = OP_MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
       migrationManager.startMigration(operationId, srcEvalId, destEvalId, numBlocks,
