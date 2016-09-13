@@ -47,6 +47,7 @@ final class ParameterWorkerTestUtil {
   static final String MSG_RESULT_ASSERTION = "threads received incorrect values";
 
   private static final int NUM_PULL_HANDLING_THREADS = 2;
+  private static final TraceInfo EMPTY_TRACE = null;
   static final long PULL_RETRY_TIMEOUT_MS = 1000;
 
   /**
@@ -77,7 +78,7 @@ final class ParameterWorkerTestUtil {
 
           final EncodedKey<Integer> encodedKey = request.getLeft();
           final int requestId = request.getRight();
-          workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, null);
+          workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, EMPTY_TRACE);
         }
       }
     };
@@ -286,7 +287,7 @@ final class ParameterWorkerTestUtil {
             handler.processPullReject(encodedKey.getKey(), requestId);
           } else {
             // pull messages should return values s.t. key == value
-            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, null);
+            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, EMPTY_TRACE);
           }
         }
       }
@@ -365,7 +366,7 @@ final class ParameterWorkerTestUtil {
         // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         final int requestId = (int) invocationOnMock.getArguments()[2];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, null);
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, EMPTY_TRACE);
         return null;
       }).when(sender).sendPullMsg(anyString(), any(EncodedKey.class), anyInt(), any(TraceInfo.class));
 
@@ -440,7 +441,7 @@ final class ParameterWorkerTestUtil {
         // reply at the last chance to prevent PS worker thread from throwing RuntimeException
         final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
         final int requestId = (int) invocationOnMock.getArguments()[2];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, null);
+        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, EMPTY_TRACE);
 
         return null;
       }).when(sender).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));

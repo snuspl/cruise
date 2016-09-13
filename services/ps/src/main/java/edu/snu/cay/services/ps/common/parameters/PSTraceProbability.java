@@ -18,6 +18,8 @@ package edu.snu.cay.services.ps.common.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "The probability to leave trace", short_name = "ps_trace_probability", default_value = "0.0")
+@NamedParameter(doc = "The probability (i.e., sample rate) to leave trace in parameter server",
+                short_name = "ps_trace_probability",
+                default_value = "0.0")
 public final class PSTraceProbability implements Name<Double> {
 }
