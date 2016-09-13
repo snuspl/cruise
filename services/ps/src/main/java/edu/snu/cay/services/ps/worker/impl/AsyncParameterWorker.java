@@ -536,13 +536,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     return ParameterWorkerMetrics.newBuilder()
         .setNumThreads(numWorkerThreads)
         .setTotalPullCount(totalPullStat.getLeft())
-        .setTotalPullTime(totalPullStat.getRight())
+        .setTotalPullTimeSec(totalPullStat.getRight() / 1e9D)
         .setTotalPushCount(totalPushStat.getLeft())
-        .setTotalPushTime(totalPushStat.getRight())
+        .setTotalPushTimeSec(totalPushStat.getRight() / 1e9D)
         .setTotalNetworkStatCount(totalNetworkStat.getLeft())
-        .setTotalNetworkTime(totalNetworkStat.getRight())
+        .setTotalNetworkTimeSec(totalNetworkStat.getRight() / 1e9D)
         .setTotalWaitingStatCount(totalWaitingStat.getLeft())
-        .setTotalWaitingTime(totalWaitingStat.getRight())
+        .setTotalWaitingTimeSec(totalWaitingStat.getRight() / 1e9D)
         .build();
   }
 

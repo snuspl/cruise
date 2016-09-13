@@ -106,7 +106,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTime() /
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTimeSec() /
                 (double) ((ServerMetrics) param.getMetrics()).getNumModelBlocks(),
             NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();

@@ -422,9 +422,9 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
             "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
             "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
         new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
-            String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
-            String.format("%g", encodeStat.sum()), String.format("%g", pullStat.avg()),
-            String.format("%g", pullStat.sum()), String.format("%g", pullStat.count())});
+            String.format("%g", pushStat.sum() / 1e9D), pushStat.count(), String.format("%g", encodeStat.avg() / 1e9D),
+            String.format("%g", encodeStat.sum() / 1e9D), String.format("%g", pullStat.avg() / 1e9D),
+            String.format("%g", pullStat.sum() / 1e9D), String.format("%g", pullStat.count())});
     startTimes[threadId] = ticker.read();
     pushStat.reset();
     encodeStat.reset();

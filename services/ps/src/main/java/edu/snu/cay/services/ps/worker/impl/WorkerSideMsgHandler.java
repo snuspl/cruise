@@ -110,11 +110,12 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
       break;
 
     case RoutingTableUpdateMsg:
-      onRoutingTableUpdateMsg(innerMsg.getRoutingTableUpdateMsg());
+      onRoutingTableUpdateMsg(innerMsg.getRoutingTableUpdateMsg(), traceInfo);
       break;
 
     case RoutingTableSyncMsg:
       onRoutingTableSyncMsg(innerMsg.getRoutingTableSyncMsg());
+      break;
 
     default:
       throw new RuntimeException("Unexpected message type: " + innerMsg.getType().toString());
@@ -140,13 +141,18 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     serverResolver.initRoutingTable(new EMRoutingTable(storeIdToBlockIds, storeIdToEndpointId));
   }
 
-  private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg) {
-    final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();
-    final int newOwnerId = routingTableUpdateMsg.getNewOwnerId();
-    final String newEvalId = routingTableUpdateMsg.getNewEvalId().toString();
-    final int blockId = routingTableUpdateMsg.getBlockId();
+  private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg,
+                                       @Nullable final TraceInfo traceInfo) {
+    Trace.setProcessId("worker");
+    try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_routing_table_update_msg", traceInfo)) {
 
-    serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockId));
+      final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();
+      final int newOwnerId = routingTableUpdateMsg.getNewOwnerId();
+      final String newEvalId = routingTableUpdateMsg.getNewEvalId().toString();
+      final int blockId = routingTableUpdateMsg.getBlockId();
+
+      serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockId));
+    }
   }
 
   private void onRoutingTableSyncMsg(final RoutingTableSyncMsg routingTableSyncMsg) {
