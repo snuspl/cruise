@@ -43,7 +43,7 @@ final class AsyncWorkerTask implements Task {
   private final MemoryStoreInitializer memoryStoreInitializer;
   private final Trainer trainer;
   private final WorkerClock workerClock;
-  private final TrainingDataDivider trainingDataDivider;
+  private final TrainingDataSplitter trainingDataSplitter;
   private final MiniBatchParameterWorker miniBatchParameterWorker;
 
   /**
@@ -60,7 +60,7 @@ final class AsyncWorkerTask implements Task {
                           final MemoryStoreInitializer memoryStoreInitializer,
                           final Trainer trainer,
                           final WorkerClock workerClock,
-                          final TrainingDataDivider trainingDataDivider,
+                          final TrainingDataSplitter trainingDataSplitter,
                           final MiniBatchParameterWorker miniBatchParameterWorker) {
     this.taskId = taskId;
     this.maxEpochs = maxEpochs;
@@ -69,7 +69,7 @@ final class AsyncWorkerTask implements Task {
     this.memoryStoreInitializer = memoryStoreInitializer;
     this.trainer = trainer;
     this.workerClock = workerClock;
-    this.trainingDataDivider = trainingDataDivider;
+    this.trainingDataSplitter = trainingDataSplitter;
     this.miniBatchParameterWorker = miniBatchParameterWorker;
   }
 
@@ -100,24 +100,29 @@ final class AsyncWorkerTask implements Task {
         return null;
       }
 
+      // Dynamically added worker's clock is not started from 0, but final clock should be same with other workers.
       if (workerClock.getWorkerClock() > maxEpochs * numMiniBatchPerEpoch) {
         break;
       }
 
-      trainingDataDivider.onEpochStart();
-      trainer.onEpochStart(epoch);
+      trainingDataSplitter.prepareSplitsForEpoch();
 
+      trainer.onEpochStart(epoch);
       for (int minibatch = 0; minibatch < numMiniBatchPerEpoch; minibatch++) {
+
+        // Dynamically added worker's clock is not started from 0, but final clock should be same with other workers.
         if (workerClock.getWorkerClock() > maxEpochs * numMiniBatchPerEpoch) {
           break;
         }
 
-        trainer.run(minibatch);
+        trainer.run();
+
+        // notify a mini-batch is ended
         miniBatchParameterWorker.onMiniBatchEnd();
-        trainingDataDivider.onMiniBatchEnd();
+        trainingDataSplitter.onMiniBatchEnd();
+
         workerClock.clock();
       }
-
       trainer.onEpochEnd(epoch);
     }
 

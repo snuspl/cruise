@@ -15,12 +15,11 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
-import edu.snu.cay.dolphin.async.TrainingDataDivider;
+import edu.snu.cay.dolphin.async.TrainingDataSplitter;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkData;
 import edu.snu.cay.dolphin.async.dnn.util.Validator;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 
 import javax.inject.Inject;
 import java.util.Collection;
@@ -42,31 +41,23 @@ final class NeuralNetworkTrainer implements Trainer {
   private final Validator crossValidator;
   private final Validator trainingValidator;
 
-  private final MemoryStore<Long> memoryStore;
-  private final TrainingDataDivider<Long> trainingDataDivider;
+  private final TrainingDataSplitter<Long> trainingDataSplitter;
 
   /**
    * @param neuralNetwork the neural network model
-   * @param memoryStore the key-value store for neural network data
    */
   @Inject
   private NeuralNetworkTrainer(final NeuralNetwork neuralNetwork,
-                               final MemoryStore<Long> memoryStore,
-                               final TrainingDataDivider<Long> trainingDataDivider) {
+                               final TrainingDataSplitter<Long> trainingDataSplitter) {
     this.neuralNetwork = neuralNetwork;
     this.trainingValidator = new Validator(neuralNetwork);
     this.crossValidator = new Validator(neuralNetwork);
-    this.memoryStore = memoryStore;
-    this.trainingDataDivider = trainingDataDivider;
+    this.trainingDataSplitter = trainingDataSplitter;
   }
 
   @Override
   public void initialize() {
 
-    final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
-    final Collection<NeuralNetworkData> workload = workloadMap.values();
-
-    LOG.log(Level.INFO, "Number of input instances = {0}", workload.size());
   }
 
   @Override
@@ -84,8 +75,8 @@ final class NeuralNetworkTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int miniBatch) {
-    Map<Long, NeuralNetworkData> workloadMap = trainingDataDivider.getNextTrainingDataSplit();
+  public void run() {
+    Map<Long, NeuralNetworkData> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
     while (!workloadMap.isEmpty()) {
       final Collection<NeuralNetworkData> workload = workloadMap.values();
       final Collection<NeuralNetworkData> validationWorkload = Collections.emptyList();
@@ -117,7 +108,7 @@ final class NeuralNetworkTrainer implements Trainer {
         crossValidator.validate(input, labels);
       }
 
-      workloadMap = trainingDataDivider.getNextTrainingDataSplit();
+      workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
     }
   }
 

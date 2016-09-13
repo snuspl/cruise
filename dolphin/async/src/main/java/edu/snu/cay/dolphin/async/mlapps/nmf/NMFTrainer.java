@@ -20,7 +20,7 @@ import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.MiniBatchParameterWorker;
-import edu.snu.cay.dolphin.async.TrainingDataDivider;
+import edu.snu.cay.dolphin.async.TrainingDataSplitter;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
@@ -62,7 +62,7 @@ final class NMFTrainer implements Trainer {
   private final boolean printMatrices;
   private final NMFModelGenerator modelGenerator;
 
-  private final TrainingDataDivider<Long> trainingDataDivider;
+  private final TrainingDataSplitter<Long> trainingDataSplitter;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -87,7 +87,7 @@ final class NMFTrainer implements Trainer {
                      @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      final NMFModelGenerator modelGenerator,
-                     final TrainingDataDivider<Long> trainingDataDivider,
+                     final TrainingDataSplitter<Long> trainingDataSplitter,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final ParameterWorker parameterWorker,
                      final MemoryStore<Long> memoryStore) {
@@ -99,7 +99,7 @@ final class NMFTrainer implements Trainer {
     this.numMiniBatchPerEpoch = numMiniBatchPerEpoch;
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
-    this.trainingDataDivider = trainingDataDivider;
+    this.trainingDataSplitter = trainingDataSplitter;
     this.metricsMsgSender = metricsMsgSender;
     this.parameterWorker = parameterWorker;
     this.memoryStore = memoryStore;
@@ -145,10 +145,10 @@ final class NMFTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int miniBatch) {
+  public void run() {
 
     int numInstances = 0;
-    Map<Long, NMFData> workloadMap = trainingDataDivider.getNextTrainingDataSplit();
+    Map<Long, NMFData> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
     while (workloadMap.isEmpty()) {
       final List<NMFData> workload = new ArrayList<>(workloadMap.values());
 
@@ -199,7 +199,7 @@ final class NMFTrainer implements Trainer {
 
       computeTracer.recordTime(numInstances);
 
-      workloadMap = trainingDataDivider.getNextTrainingDataSplit();
+      workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
     }
   }
 

@@ -125,7 +125,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int miniBatch) {
+  public void run() {
     // sleep to simulate computation
     computeTracer.startTimer();
     try {

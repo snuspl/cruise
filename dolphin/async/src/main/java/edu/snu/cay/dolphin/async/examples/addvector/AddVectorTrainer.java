@@ -90,7 +90,7 @@ final class AddVectorTrainer implements Trainer {
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
-  private long epochBegin;
+  private long epochBeginTimeMS;
 
   @Inject
   private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
@@ -131,13 +131,13 @@ final class AddVectorTrainer implements Trainer {
 
   @Override
   public void onEpochStart(final int epoch) {
-    epochBegin = System.currentTimeMillis();
+    epochBeginTimeMS = System.currentTimeMillis();
     resetTracers();
   }
 
   @Override
   public void onEpochEnd(final int epoch) {
-    final double elapsedTime = (System.currentTimeMillis() - epochBegin) / 1000.0D;
+    final double elapsedTime = (System.currentTimeMillis() - epochBeginTimeMS) / 1000.0D;
     // send empty metrics to trigger optimization
     final WorkerMetrics workerMetrics =
         buildMetricsMsg(epoch, memoryStore.getNumBlocks(), elapsedTime);
@@ -147,7 +147,7 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int miniBatch) {
+  public void run() {
     // run mini-batches
     // 1. pull model to compute with
     pullTracer.startTimer();

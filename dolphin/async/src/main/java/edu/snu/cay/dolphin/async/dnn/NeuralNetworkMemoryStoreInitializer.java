@@ -24,8 +24,11 @@ import edu.snu.cay.services.em.exceptions.IdGenerationException;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class NeuralNetworkMemoryStoreInitializer implements MemoryStoreInitializer {
+  private static final Logger LOG = Logger.getLogger(NeuralNetworkMemoryStoreInitializer.class.getName());
 
   private final NeuralNetworkDataParser dataParser;
   private final DataIdFactory<Long> idFactory;
@@ -56,5 +59,7 @@ public final class NeuralNetworkMemoryStoreInitializer implements MemoryStoreIni
       throw new RuntimeException("Failed to generate ids for MemoryStore", e);
     }
     memoryStore.putList(dataKeys, dataValues);
+
+    LOG.log(Level.INFO, "Number of input instances = {0}", dataKeys.size());
   }
 }
