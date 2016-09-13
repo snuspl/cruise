@@ -42,8 +42,6 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
-  private static final String TRACE_PROCESS_ID = "driver";
-
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
 
@@ -62,6 +60,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   public void onNext(final Message<AvroElasticMemoryMessage> msg) {
     LOG.entering(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
 
+    Trace.setProcessId("driver");
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
     case RoutingTableInitReqMsg:
@@ -88,7 +87,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   private void onRoutingTableInitReqMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId(TRACE_PROCESS_ID);
     try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan("on_routing_table_init_req_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
@@ -104,7 +102,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
     final int blockId = ownershipAckMsg.getBlockId();
 
-    Trace.setProcessId(TRACE_PROCESS_ID);
     try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
         String.format("on_ownership_ack_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
@@ -119,7 +116,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
     final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
 
-    Trace.setProcessId(TRACE_PROCESS_ID);
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(
         String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
@@ -131,7 +127,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   private void onFailureMsg(final AvroElasticMemoryMessage msg) {
-    Trace.setProcessId(TRACE_PROCESS_ID);
     try (final TraceScope onFailureMsgScope =
              Trace.startSpan("on_failure_msg", HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final FailureMsg failureMsg = msg.getFailureMsg();

@@ -18,8 +18,6 @@ package edu.snu.cay.services.em.driver.impl;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import org.htrace.TraceInfo;
 
-import javax.annotation.Nullable;
-
 /**
  * An implementation class of {@link EMRoutingTableUpdate}.
  */
@@ -31,13 +29,14 @@ public final class EMRoutingTableUpdateImpl implements EMRoutingTableUpdate {
   private final TraceInfo traceInfo;
 
   EMRoutingTableUpdateImpl(final int oldOwnerId, final int newOwnerId, final String newEvalId,
-                           final int blockId, @Nullable final TraceInfo traceInfo) {
+                           final int blockId, final TraceInfo traceInfo) {
     this.oldOwnerId = oldOwnerId;
     this.newOwnerId = newOwnerId;
     this.newEvalId = newEvalId;
     this.blockId = blockId;
     this.traceInfo = traceInfo;
   }
+
 
   @Override
   public int getOldOwnerId() {

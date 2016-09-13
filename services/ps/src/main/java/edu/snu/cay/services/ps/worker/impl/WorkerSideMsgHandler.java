@@ -45,8 +45,6 @@ import java.util.logging.Logger;
 public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message<AvroPSMsg>> {
   private static final Logger LOG = Logger.getLogger(WorkerSideMsgHandler.class.getName());
 
-  private static final String TRACE_PROCESS_ID = "worker";
-
   /**
    * This evaluator's asynchronous handler that is expecting Parameter Server pull message results.
    */
@@ -116,6 +114,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
 
     case RoutingTableSyncMsg:
       onRoutingTableSyncMsg(innerMsg.getRoutingTableSyncMsg());
+      break;
 
     default:
       throw new RuntimeException("Unexpected message type: " + innerMsg.getType().toString());
@@ -143,7 +142,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
 
   private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg,
                                        @Nullable final TraceInfo traceInfo) {
-    Trace.setProcessId(TRACE_PROCESS_ID);
+    Trace.setProcessId("worker");
     try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_routing_table_update_msg", traceInfo)) {
 
       final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();
