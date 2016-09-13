@@ -350,16 +350,16 @@ public final class MemoryStoreTest {
     final int timeoutInMillisecond = 500;
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
-    final List<MemoryStoreTestUtils.BlockPutNotifyObserverImpl> blockUpdateNotifyObserverList
+    final List<MemoryStoreTestUtils.BlockAddNotifyListenerImpl> blockUpdateNotifyObserverList
         = new ArrayList<>(numOfObserver);
     final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
 
     // register block update notification observers to the Memory Store
     for (int i = 0; i < numOfObserver; i++) {
-      final MemoryStoreTestUtils.BlockPutNotifyObserverImpl observer
-          = new MemoryStoreTestUtils.BlockPutNotifyObserverImpl(countDownLatch, numOfKeysPerBlock);
+      final MemoryStoreTestUtils.BlockAddNotifyListenerImpl observer
+          = new MemoryStoreTestUtils.BlockAddNotifyListenerImpl(countDownLatch, numOfKeysPerBlock);
       blockUpdateNotifyObserverList.add(observer);
-      memoryStore.registerBlockUpdateObserver(observer);
+      memoryStore.registerBlockUpdateListener(observer);
     }
 
     // put blocks to the Memory Store
@@ -381,12 +381,6 @@ public final class MemoryStoreTest {
     // wait for count down latch with a bound of time
     countDownLatch.await(timeoutInMillisecond, TimeUnit.MILLISECONDS);
     assertEquals(0, countDownLatch.getCount());
-
-    final Iterator<MemoryStoreTestUtils.BlockPutNotifyObserverImpl> iterator = blockUpdateNotifyObserverList.iterator();
-    while (iterator.hasNext()) {
-      final MemoryStoreTestUtils.BlockPutNotifyObserverImpl observer = iterator.next();
-      memoryStore.unregisterBlockUpdateObserver(observer);
-    }
   }
 
   /**
@@ -402,16 +396,16 @@ public final class MemoryStoreTest {
     final int timeoutInMillisecond = 500;
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
-    final List<MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl> blockUpdateNotifyObserverList
+    final List<MemoryStoreTestUtils.BlockRemoveNotifyListenerImpl> blockUpdateNotifyObserverList
         = new ArrayList<>(numOfObserver);
     final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
 
     // register block update notification observers to the Memory Store
     for (int i = 0; i < numOfObserver; i++) {
-      final MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl observer
-          = new MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl(countDownLatch, numOfKeysPerBlock);
+      final MemoryStoreTestUtils.BlockRemoveNotifyListenerImpl observer
+          = new MemoryStoreTestUtils.BlockRemoveNotifyListenerImpl(countDownLatch, numOfKeysPerBlock);
       blockUpdateNotifyObserverList.add(observer);
-      memoryStore.registerBlockUpdateObserver(observer);
+      memoryStore.registerBlockUpdateListener(observer);
     }
 
 
@@ -440,14 +434,6 @@ public final class MemoryStoreTest {
     // wait for count down latch with a bounded time
     countDownLatch.await(timeoutInMillisecond, TimeUnit.MILLISECONDS);
     assertEquals(0, countDownLatch.getCount());
-
-    // unregister all the observers from the Memory Store
-    final Iterator<MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl> iterator
-        = blockUpdateNotifyObserverList.iterator();
-    while (iterator.hasNext()) {
-      final MemoryStoreTestUtils.BlockRemoveNotifyObserverImpl observer = iterator.next();
-      memoryStore.unregisterBlockUpdateObserver(observer);
-    }
   }
 
   @Test(timeout = 2000)

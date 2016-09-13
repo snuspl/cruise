@@ -15,13 +15,26 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
-import org.apache.reef.wake.EventHandler;
+import java.util.Set;
 
 
 /**
  * Interface for notifying block update(put/remove) events to clients from the MemoryStore.
  * The MemoryStore will call the onNext method in this class which clients have defined.
  */
-public interface BlockUpdateNotifyObserver<K> extends EventHandler<BlockUpdateNotifyParameter<K>> {
+public interface BlockUpdateNotifyListener<K> {
+  /**
+   * a callback function called at each event of block addition to the Memory Store.
+   * @param blockId the id of an added block
+   * @param addedKeys a set of keys added at the block addition event
+   */
+  void onAddedBlock(int blockId, Set<K> addedKeys);
+
+  /**
+   * a callback function called at each event of block removal from Memory Store.
+   * @param blockId the id of a removed block
+   * @param removedKeys a set of keys removed at the block removal event
+   */
+  void onRemovedBlock(int blockId, Set<K> removedKeys);
 
 }

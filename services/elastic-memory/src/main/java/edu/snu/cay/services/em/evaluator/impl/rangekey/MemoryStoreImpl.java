@@ -18,7 +18,6 @@ package edu.snu.cay.services.em.evaluator.impl.rangekey;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.*;
-import edu.snu.cay.services.em.evaluator.impl.BlockUpdateNotifyParameterImpl;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.Tuple3;
@@ -71,7 +70,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   /**
    * Block update notification handler set registered by clients.
    */
-  private final Set<BlockUpdateNotifyObserver> blockUpdateNotifyObserverSet
+  private final Set<BlockUpdateNotifyListener> blockUpdateNotifyListenerSet
       = Collections.newSetFromMap(new ConcurrentHashMap <>());
 
   /**
@@ -163,30 +162,23 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public boolean registerBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
-    return blockUpdateNotifyObserverSet.add(observer);
-  }
-
-  @Override
-  public boolean unregisterBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
-    return blockUpdateNotifyObserverSet.remove(observer);
+  public boolean registerBlockUpdateListener(final BlockUpdateNotifyListener listener) {
+    return blockUpdateNotifyListenerSet.add(listener);
   }
 
   private void notifyBlockRemove(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverSet) {
-      observer.onNext(
-          new BlockUpdateNotifyParameterImpl(BlockUpdateNotifyParameterImpl.NOTIFY_TYPE_BLOCK_REMOVE, blockId, keySet));
+    for (final BlockUpdateNotifyListener listener : blockUpdateNotifyListenerSet) {
+      listener.onRemovedBlock(blockId, keySet);
     }
   }
 
   private void notifyBlockPut(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateNotifyObserver observer : blockUpdateNotifyObserverSet) {
-      observer.onNext(
-          new BlockUpdateNotifyParameterImpl(BlockUpdateNotifyParameterImpl.NOTIFY_TYPE_BLOCK_PUT, blockId, keySet));
+    for (final BlockUpdateNotifyListener listener : blockUpdateNotifyListenerSet) {
+      listener.onAddedBlock(blockId, keySet);
     }
   }
 

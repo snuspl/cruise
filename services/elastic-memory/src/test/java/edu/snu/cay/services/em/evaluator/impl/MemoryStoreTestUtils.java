@@ -15,8 +15,7 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyObserver;
-import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyParameter;
+import edu.snu.cay.services.em.evaluator.api.BlockUpdateNotifyListener;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 
 import java.util.*;
@@ -219,75 +218,74 @@ public final class MemoryStoreTestUtils {
     }
   }
 
-  public static final class BlockPutNotifyObserverImpl implements BlockUpdateNotifyObserver<Long> {
+  public static final class BlockAddNotifyListenerImpl implements BlockUpdateNotifyListener<Long> {
     private final CountDownLatch countDownLatch;
     private final int numOfKeysPerBlock;
 
     /**
-     * a constructor of {@link BlockPutNotifyObserverImpl}.
+     * a constructor of {@link BlockAddNotifyListenerImpl}.
      * @param countDownLatch a count down latch which will count down by 1 at each block put event
      * @param numOfKeysPerBlock the number of keys in a block
      *                          used to check the updated block's key set is same with an expected key set.
      */
-    public BlockPutNotifyObserverImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
+    public BlockAddNotifyListenerImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
       this.countDownLatch = countDownLatch;
       this.numOfKeysPerBlock = numOfKeysPerBlock;
     }
 
     @Override
-    public void onNext(final BlockUpdateNotifyParameter<Long> parameter) {
-      final int notifyType = parameter.getNotifyType();
-      final int blockId = parameter.getUpdatedBlockId();
-      final Set keySet = parameter.getKeySet();
+    public void onAddedBlock(final int blockId, final Set<Long> addedKeys) {
 
-      if (notifyType == BlockUpdateNotifyParameterImpl.NOTIFY_TYPE_BLOCK_PUT) {
-        // check the update block has the same key set with an expected key set.
-        assertEquals(numOfKeysPerBlock, keySet.size());
+      // check the update block has the same key set with an expected key set.
+      assertEquals(numOfKeysPerBlock, addedKeys.size());
 
-        final int keyIdBase = blockId * numOfKeysPerBlock;
-        for (int j = 0; j < numOfKeysPerBlock; j++) {
-          final int keyId = keyIdBase + j;
-          assertTrue(keySet.contains(new Long((long)keyId)));
-        }
-
-        countDownLatch.countDown();
+      final int keyIdBase = blockId * numOfKeysPerBlock;
+      for (int j = 0; j < numOfKeysPerBlock; j++) {
+        final int keyId = keyIdBase + j;
+        assertTrue(addedKeys.contains(new Long((long)keyId)));
       }
+
+      countDownLatch.countDown();
+    }
+
+    @Override
+    public void onRemovedBlock(final int blockId, final Set<Long> removedKeys) {
+      // do nothing
     }
   }
 
-  public static final class BlockRemoveNotifyObserverImpl implements BlockUpdateNotifyObserver<Long> {
+  public static final class BlockRemoveNotifyListenerImpl implements BlockUpdateNotifyListener<Long> {
     private final CountDownLatch countDownLatch;
     private final int numOfKeysPerBlock;
 
     /**
-     * a constructor of {@link BlockRemoveNotifyObserverImpl}.
+     * a constructor of {@link BlockRemoveNotifyListenerImpl}.
      * @param countDownLatch a count down latch which will count down by 1 at each block remove event
      * @param numOfKeysPerBlock the number of keys in a block
      *                          used to check the updated block's key set is same with an expected key set.
      */
-    public BlockRemoveNotifyObserverImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
+    public BlockRemoveNotifyListenerImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
       this.countDownLatch = countDownLatch;
       this.numOfKeysPerBlock = numOfKeysPerBlock;
     }
 
     @Override
-    public void onNext(final BlockUpdateNotifyParameter<Long> parameter) {
-      final int notifyType = parameter.getNotifyType();
-      final int blockId = parameter.getUpdatedBlockId();
-      final Set keySet = parameter.getKeySet();
+    public void onAddedBlock(final int blockId, final Set<Long> addedKeys) {
+      // do nothing
+    }
 
-      if (notifyType == BlockUpdateNotifyParameterImpl.NOTIFY_TYPE_BLOCK_REMOVE) {
-        // check the update block has the same key set with an expected key set.
-        assertEquals(numOfKeysPerBlock, keySet.size());
+    @Override
+    public void onRemovedBlock(final int blockId, final Set<Long> removedKeys) {
+      // check the update block has the same key set with an expected key set.
+      assertEquals(numOfKeysPerBlock, removedKeys.size());
 
-        final int keyIdBase = blockId * numOfKeysPerBlock;
-        for (int j = 0; j < numOfKeysPerBlock; j++) {
-          final int keyId = keyIdBase + j;
-          assertTrue(keySet.contains(new Long((long)keyId)));
-        }
-
-        countDownLatch.countDown();
+      final int keyIdBase = blockId * numOfKeysPerBlock;
+      for (int j = 0; j < numOfKeysPerBlock; j++) {
+        final int keyId = keyIdBase + j;
+        assertTrue(removedKeys.contains(new Long((long)keyId)));
       }
+
+      countDownLatch.countDown();
     }
   }
 }

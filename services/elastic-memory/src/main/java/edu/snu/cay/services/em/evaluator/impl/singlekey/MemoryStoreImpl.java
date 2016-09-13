@@ -145,13 +145,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public boolean registerBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
-    throw new UnsupportedOperationException("This class doesn't support "
-        + this.getClass().getEnclosingMethod().getName());
-  }
-
-  @Override
-  public boolean unregisterBlockUpdateObserver(final BlockUpdateNotifyObserver observer) {
+  public boolean registerBlockUpdateListener(final BlockUpdateNotifyListener listener) {
     throw new UnsupportedOperationException("This class doesn't support "
         + this.getClass().getEnclosingMethod().getName());
   }
