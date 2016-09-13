@@ -162,7 +162,6 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   }
 
   private void onPullReplyMsg(final PullReplyMsg pullReplyMsg, @Nullable final TraceInfo traceInfo) {
-
     try (final TraceScope onPullReplyScope = Trace.startSpan("on_pull_reply", traceInfo)) {
       final byte[] serializedKey = pullReplyMsg.getKey().array();
       final byte[] serializedValue = pullReplyMsg.getValue().array();

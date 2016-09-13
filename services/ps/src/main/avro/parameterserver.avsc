@@ -281,12 +281,16 @@
     // number of pull request/reply pairs processed
     {"name": "totalNetworkStatCount", "type": "int", "default": 0},
 
+    // number of events of sending bytes by push
     {"name": "totalSentBytesStatCount", "type": "int", "default": 0},
 
+    // number of data in bytes sent by push
     {"name": "totalSentBytes", "type": "int", "default": 0},
 
+    // number of events of receiving bytes by pull
     {"name": "totalReceivedBytesStatCount", "type": "int", "default": 0},
 
+    // number of data in bytes received by pull
     {"name": "totalReceivedBytes", "type": "int", "default": 0}
   ]
 },

@@ -435,6 +435,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * To send push message atomically, do not respond to WorkerThread interrupt.
    * @param encodedKey encoded key
    * @param preValue preValue
+   * @return the number of bytes sent in the push message
    */
   private int sendPushMsg(final EncodedKey<K> encodedKey, final P preValue) {
     int resendCount = 0;
@@ -651,7 +652,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       // TODO #803: Once we implement worker-side cache, we can guarantee read-my-update even with retrying push.
       synchronized (workerThread) {
         final int numSentBytes = sendPushMsg(encodedKey, preValue);
-        LOG.log(Level.SEVERE, "Sent {0} bytes", numSentBytes);
         workerThread.sentBytesStat.put(numSentBytes);
       }
     }
