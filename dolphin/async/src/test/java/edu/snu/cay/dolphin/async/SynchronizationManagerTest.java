@@ -49,8 +49,13 @@ import static org.mockito.Mockito.*;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({AggregationMaster.class, AggregationSlave.class})
 public class SynchronizationManagerTest {
-  private static final String WORKER_ID_PREFIX = "worker";
+  private static final String WORKER_ID_PREFIX = "worker-";
   private static final long SYNC_WAIT_TIME_MS = 1000;
+
+  private static final String MSG_SHOULD_WAIT_OTHER_WORKERS =
+      "Cannot enter next state before all workers reach the same global barrier";
+  private static final String MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP = "Cannot enter CLEANUP state before being allowed";
+  private static final String MSG_SHOULD_RELEASE_WORKERS = "All workers should be released";
 
   private Tuple3<SynchronizationManager, AggregationMaster, EventHandler<AggregationMessage>> driverComponents;
 
@@ -75,6 +80,7 @@ public class SynchronizationManagerTest {
     final AggregationMaster mockedAggregationMaster = mock(AggregationMaster.class);
     injector.bindVolatileInstance(AggregationMaster.class, mockedAggregationMaster);
 
+    // TODO #452: Decouple numWorkers from data input splits
     final DataLoadingService mockedDataLoadingService = mock(DataLoadingService.class);
     injector.bindVolatileInstance(DataLoadingService.class, mockedDataLoadingService);
     when(mockedDataLoadingService.getNumberOfPartitions()).thenReturn(numInitialWorkers);
@@ -176,24 +182,38 @@ public class SynchronizationManagerTest {
 
     // 1. INIT -> RUN : all workers should be synchronized
     final CountDownLatch firstLatch = callGlobalBarriers(workerIds.subList(0, 2));
-    assertFalse("Cannot enter next state before all workers call global barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS,
         firstLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
 
-    callGlobalBarrier(workerIds.get(2));
-    assertTrue("All workers should be released after sync",
+    try {
+      callGlobalBarrier(workerIds.get(2)).get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
+    } catch (final TimeoutException e) {
+      fail(MSG_SHOULD_RELEASE_WORKERS);
+    }
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         firstLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
 
     // 2. RUN -> CLEANUP : all workers should be synchronized and driver should allow them to enter the next state
     final CountDownLatch secondLatch = callGlobalBarriers(workerIds.subList(1, 3));
-    assertFalse("Cannot enter next state before all workers call the global barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
 
-    callGlobalBarrier(workerIds.get(0));
-    assertFalse("Cannot enter CLEANUP state before being allowed",
-        secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    final Future future = callGlobalBarrier(workerIds.get(0));
+    try {
+      future.get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
+      fail(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP);
+    } catch (final TimeoutException e) {
+      // expected exception
+    }
+    assertEquals(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP, 2, secondLatch.getCount()); // worker-1, worker-2 are waiting
 
     synchronizationManager.allowWorkersCleanup();
-    assertTrue("All workers should be released",
+    try {
+      future.get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
+    } catch (final TimeoutException e) {
+      fail(MSG_SHOULD_RELEASE_WORKERS);
+    }
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
   }
 
@@ -208,20 +228,21 @@ public class SynchronizationManagerTest {
 
     // pass INIT barrier
     final CountDownLatch firstLatch = callGlobalBarriers(workerIds);
-    assertTrue("Workers should be released",
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         firstLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS)); // enter RUN state
 
     // one worker will be deleted without calling global barrier
     final CountDownLatch secondLatch = callGlobalBarriers(workerIds.subList(0, 2));
-    assertFalse("Cannot enter next state before all workers call the global barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
 
     synchronizationManager.onWorkerDeleted(workerIds.get(2));
-    assertFalse("Cannot enter CLEANUP state before being allowed",
+    assertFalse(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP, 2, secondLatch.getCount()); // worker-0, worker-1 are waiting
 
     synchronizationManager.allowWorkersCleanup();
-    assertTrue("Workers should be released",
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
   }
 
@@ -236,31 +257,36 @@ public class SynchronizationManagerTest {
 
     // pass INIT barrier
     final CountDownLatch firstLatch = callGlobalBarriers(workerIds);
-    assertTrue("Workers should be released",
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         firstLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS)); // enter RUN state
 
     // one worker will be deleted after calling global barrier
     final CountDownLatch secondLatch = callGlobalBarriers(workerIds.subList(1, 3));
-    assertFalse("Cannot enter next state before all workers call the global barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
 
     synchronizationManager.onWorkerDeleted(workerIds.get(2));
     secondLatch.countDown(); // count down latch on behalf of deleted worker
-    assertFalse("Cannot enter next state before all workers call the global barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, 1, secondLatch.getCount()); // worker-1 is waiting
 
     final Future future = callGlobalBarrier(workerIds.get(0));
-    assertFalse("Cannot enter CLEANUP state before being allowed",
-        secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    try {
+      future.get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
+      fail(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP);
+    } catch (final TimeoutException e) {
+      // expected exception
+    }
+    assertEquals(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP, 1, secondLatch.getCount()); // worker-1 is waiting
 
     synchronizationManager.allowWorkersCleanup();
-    assertTrue("Workers should be released",
-        secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
     try {
       future.get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
     } catch (final TimeoutException e) {
-      fail("Workers should be released");
+      fail(MSG_SHOULD_RELEASE_WORKERS);
     }
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS, secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
   }
 
   @Test
@@ -274,30 +300,42 @@ public class SynchronizationManagerTest {
 
     // pass INIT barrier
     final CountDownLatch firstLatch = callGlobalBarriers(workerIds);
-    assertTrue("Workers should be released",
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         firstLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS)); // enter RUN state
 
     final String newWorkerId = WORKER_ID_PREFIX + 3;
     setupWorker(newWorkerId);
 
     final CountDownLatch secondLatch = callGlobalBarriers(workerIds);
-    assertFalse("Cannot enter next state before the newly added worker reaches the same barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, numInitialWorkers, secondLatch.getCount()); // waiting for new worker
 
     try {
       callGlobalBarrier(newWorkerId).get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS); // will pass first barrier directly
     } catch (final TimeoutException e) {
-      fail("Workers should be released");
+      fail(MSG_SHOULD_RELEASE_WORKERS);
     }
-    assertFalse("Cannot enter next state before the newly added worker reaches the same barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, numInitialWorkers, secondLatch.getCount()); // waiting for new worker
 
-    callGlobalBarrier(newWorkerId); // will be synced with other workers
-    assertFalse("Cannot enter CLEANUP state before being allowed",
-        secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    final Future future = callGlobalBarrier(newWorkerId); // will reach the same barrier of other workers
+    try {
+      future.get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
+      fail(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP);
+    } catch (final TimeoutException e) {
+      // expected exception
+    }
+    assertEquals(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP, numInitialWorkers, secondLatch.getCount());
 
     synchronizationManager.allowWorkersCleanup();
-    assertTrue("Workers should be released",
+    try {
+      future.get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
+    } catch (final TimeoutException e) {
+      fail(MSG_SHOULD_RELEASE_WORKERS);
+    }
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
   }
 
@@ -312,32 +350,38 @@ public class SynchronizationManagerTest {
 
     // pass INIT barrier
     final CountDownLatch firstLatch = callGlobalBarriers(workerIds);
-    assertTrue("Workers should be released",
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         firstLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS)); // enter RUN state
 
     final CountDownLatch secondLatch = callGlobalBarriers(workerIds);
-    assertFalse("Cannot enter CLEANUP state before being allowed",
+    assertFalse(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP, numInitialWorkers, secondLatch.getCount());
 
-    // worker is added in CLEANUP state, it's possible because other workers can finish their task
-    // when the optimization is ongoing, which adds a new worker.
+    // A new worker is added when other workers waiting at the final barrier (RUN -> CLEANUP state).
     final String newWorkerId = WORKER_ID_PREFIX + 3;
     setupWorker(newWorkerId);
 
     synchronizationManager.allowWorkersCleanup();
-    assertFalse("Cannot enter next state before the newly added worker reaches the same barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, numInitialWorkers, secondLatch.getCount()); // waiting for new worker
 
     try {
       callGlobalBarrier(newWorkerId).get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS); // will pass first barrier directly
     } catch (final TimeoutException e) {
-      fail("Workers should be released");
+      fail(MSG_SHOULD_RELEASE_WORKERS);
     }
-    assertFalse("Cannot enter next state before the newly added worker reaches the same barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, numInitialWorkers, secondLatch.getCount()); // waiting for new worker
 
-    callGlobalBarrier(newWorkerId);
-    assertTrue("Workers should be released",
+    try {
+      callGlobalBarrier(newWorkerId).get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
+    } catch (final TimeoutException e) {
+      fail(MSG_SHOULD_RELEASE_WORKERS);
+    }
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
   }
 
@@ -352,39 +396,53 @@ public class SynchronizationManagerTest {
 
     // pass INIT barrier
     final CountDownLatch firstLatch = callGlobalBarriers(workerIds);
-    assertTrue("Workers should be released",
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         firstLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS)); // enter RUN state
 
     final String newWorkerId = WORKER_ID_PREFIX + 3;
     setupWorker(newWorkerId);
 
     final CountDownLatch secondLatch = callGlobalBarriers(workerIds.subList(0, 2));
-    assertFalse("Cannot enter next state before all workers call the global barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS, // should wait worker-2, worker-3
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, 2, secondLatch.getCount()); // worker-0, worker-1 are waiting
 
     synchronizationManager.onWorkerDeleted(workerIds.get(1)); // deleted after calling barrier
     secondLatch.countDown(); // count down latch on behalf of deleted worker
-    assertFalse("Cannot enter next state before all workers call the global barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS, // should wait worker-2, worker-3
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, 1, secondLatch.getCount()); // worker-0 is waiting
 
     synchronizationManager.onWorkerDeleted(workerIds.get(2)); // deleted before calling barrier
-    assertFalse("Cannot enter next state before the newly added worker reaches the same barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS, // should wait worker-3
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, 1, secondLatch.getCount()); // worker-0 is waiting
 
     try {
       callGlobalBarrier(newWorkerId).get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS); // will pass first barrier directly
     } catch (final TimeoutException e) {
-      fail("Workers should be released");
+      fail(MSG_SHOULD_RELEASE_WORKERS);
     }
-    assertFalse("Cannot enter next state before the newly added worker reaches the same barrier",
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS, // should wait for worker-3 to reach the second barrier
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, 1, secondLatch.getCount()); // worker-0 is waiting
 
-    callGlobalBarrier(newWorkerId); // will be synced with other workers
-    assertFalse("Cannot enter CLEANUP state before being allowed",
-        secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    final Future future = callGlobalBarrier(newWorkerId);
+    try {
+      future.get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS); // will be synced with other workers
+      fail(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP);
+    } catch (final TimeoutException e) {
+      // expected exception
+    }
+    assertEquals(MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP, 1, secondLatch.getCount()); // worker-0 is waiting
 
     synchronizationManager.allowWorkersCleanup();
-    assertTrue("Workers should be released",
+    try {
+      future.get(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS);
+    } catch (final TimeoutException e) {
+      fail(MSG_SHOULD_RELEASE_WORKERS);
+    }
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS,
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
   }
 

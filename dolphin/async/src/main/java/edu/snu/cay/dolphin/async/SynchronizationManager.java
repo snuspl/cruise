@@ -231,8 +231,9 @@ final class SynchronizationManager {
           }
         }
 
-        // numWorkers may have changed while waiting for allowCleanupLatch, by the last reconfiguration plan.
+        // numWorkers may have changed while waiting for allowCleanup, by the last reconfiguration plan.
         // We should handle the case differently if new workers have been added.
+        // Here we assume that optimizers never generate a plan that includes both Add and Del of workers.
         final int numAddedWorkers = numWorkers - numWorkersBeforeSleep;
         if (numAddedWorkers > 0) {
 
