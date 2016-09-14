@@ -33,6 +33,7 @@ public final class ThreadUtils {
   /**
    * Use a thread pool to concurrently execute threads.
    * Note that this method does NOT wait for the termination of all threads before returning.
+   * @return a list of futures
    */
   public static List<Future> runConcurrently(final Runnable[] threads) throws InterruptedException {
 
