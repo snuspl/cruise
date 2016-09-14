@@ -550,7 +550,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     final Double receivedBytes = totalReceivedBytesStat.getRight();
     final Double sentBytes = totalSentBytesStat.getRight();
-    LOG.log(Level.SEVERE, "Received {0} / Sent {1}", new Object[] {receivedBytes, sentBytes});
     return ParameterWorkerMetrics.newBuilder()
         .setNumThreads(numWorkerThreads)
         .setTotalPullCount(totalPullStat.getLeft())
