@@ -86,8 +86,8 @@ public final class WorkerMsgSender<K, P> {
    * @param destId an id of destination server
    * @param key a key to push
    * @param preValue a previous value to push
-   * @return The number of bytes. Although the result is not same with the total size of the exact message,
-   * the approximation is close to the actual message size if the size of key and preValue is large enough.
+   * @return The number of bytes in the message. Note that the actual message sent across the wire includes
+   * header of around 70 bytes.
    * @throws NetworkException when fail to open a connection
    */
   int sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) throws NetworkException {
@@ -113,8 +113,8 @@ public final class WorkerMsgSender<K, P> {
    * @param key a key to pull
    * @param requestId pull request id assigned by ParameterWorker
    * @param traceInfo Information for Trace
-   * @return The number of bytes. Although the result is not same with the total size of the exact message,
-   * the approximation is close to the actual message size if the size of key and preValue is large enough.   *
+   * @return The number of bytes in the message. Note that the actual message sent across the wire includes
+   * header of around 70 bytes.
    * @throws NetworkException when fail to open a connection
    */
   int sendPullMsg(final String destId, final EncodedKey<K> key, final int requestId,
