@@ -548,8 +548,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     final Pair<Integer, Double> totalSentBytesStat = summarizeAndResetStats(sentBytesStats);
     final Pair<Integer, Double> totalReceivedBytesStat = summarizeAndResetStats(receivedBytesStats);
 
-    final Double receivedBytes = totalReceivedBytesStat.getRight();
-    final Double sentBytes = totalSentBytesStat.getRight();
     return ParameterWorkerMetrics.newBuilder()
         .setNumThreads(numWorkerThreads)
         .setTotalPullCount(totalPullStat.getLeft())
