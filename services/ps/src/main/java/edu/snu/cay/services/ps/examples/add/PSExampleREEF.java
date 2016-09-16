@@ -23,6 +23,7 @@ import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.parameters.*;
+import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -138,7 +139,9 @@ public final class PSExampleREEF {
         .setValueCodecClass(IntegerCodec.class)
         .build();
 
-    return Configurations.merge(driverConf, parametersConf, psConf);
+    final Configuration traceConf = HTraceParameters.getStaticConfiguration();
+
+    return Configurations.merge(driverConf, parametersConf, psConf, traceConf);
   }
 
   private Configuration getRuntimeConfiguration() {
@@ -173,6 +176,7 @@ public final class PSExampleREEF {
     cl.registerShortNameOfClass(PullRetryTimeoutMs.class);
     cl.registerShortNameOfClass(MaxPendingPullsPerThread.class);
     cl.registerShortNameOfClass(WorkerKeyCacheSize.class);
+    HTraceParameters.registerShortNames(cl);
 
     cl.processCommandLine(args);
 

@@ -23,6 +23,7 @@ import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
 import edu.snu.cay.services.ps.examples.add.parameters.StartKey;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -71,6 +72,7 @@ public final class PSExampleDriver {
   private final int numUpdatesPerWorker;
   private final int startKey;
   private final int numKeys;
+  private final HTraceParameters traceParameters;
 
   private final AtomicInteger runningServerContextCount = new AtomicInteger(0);
   private final AtomicInteger runningWorkerContextCount = new AtomicInteger(0);
@@ -95,7 +97,8 @@ public final class PSExampleDriver {
                           @Parameter(NumWorkers.class) final int numWorkers,
                           @Parameter(NumUpdates.class) final int numUpdates,
                           @Parameter(StartKey.class) final int startKey,
-                          @Parameter(NumKeys.class) final int numKeys) {
+                          @Parameter(NumKeys.class) final int numKeys,
+                          final HTraceParameters traceParameters) {
     if (numUpdates % numWorkers != 0) {
       throw new IllegalArgumentException(
           String.format("numUpdates %d must be divisible by numWorkers %d", numUpdates, numWorkers));
@@ -113,6 +116,7 @@ public final class PSExampleDriver {
     this.numUpdatesPerWorker = numUpdates / numWorkers;
     this.startKey = startKey;
     this.numKeys = numKeys;
+    this.traceParameters = traceParameters;
   }
 
   /**
@@ -151,8 +155,9 @@ public final class PSExampleDriver {
             psDriver.getServerContextConfiguration());
 
         final Configuration serviceConf = psDriver.getServerServiceConfiguration(contextId);
+        final Configuration traceConf = traceParameters.getConfiguration();
 
-        allocatedEvaluator.submitContextAndService(contextConf, serviceConf);
+        allocatedEvaluator.submitContextAndService(contextConf, Configurations.merge(serviceConf, traceConf));
       }
     };
   }
@@ -188,6 +193,7 @@ public final class PSExampleDriver {
         );
 
         final Configuration serviceConf = psDriver.getWorkerServiceConfiguration(contextId);
+        final Configuration traceConf = traceParameters.getConfiguration();
 
         final Configuration taskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_PREFIX + workerIndex)
@@ -200,7 +206,7 @@ public final class PSExampleDriver {
             .bindNamedParameter(NumKeys.class, Integer.toString(numKeys))
             .build();
 
-        allocatedEvaluator.submitContextAndServiceAndTask(contextConf, serviceConf,
+        allocatedEvaluator.submitContextAndServiceAndTask(contextConf, Configurations.merge(serviceConf, traceConf),
             Configurations.merge(taskConf, parametersConf));
       }
     };
