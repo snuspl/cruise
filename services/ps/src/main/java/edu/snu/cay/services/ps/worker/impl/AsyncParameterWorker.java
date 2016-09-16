@@ -131,6 +131,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final Statistics[] pushStats;
   private final Statistics[] networkStats;
   private final Statistics[] waitingStats;
+  private final Statistics[] sentBytesStats;
+  private final Statistics[] receivedBytesStats;
   private final Ticker ticker = Ticker.systemTicker();
 
   private final TraceScope pwTraceScope;
@@ -160,6 +162,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     this.pushStats = Statistics.newInstances(numWorkerThreads);
     this.networkStats = Statistics.newInstances(numWorkerThreads);
     this.waitingStats = Statistics.newInstances(numWorkerThreads);
+    this.sentBytesStats = Statistics.newInstances(numWorkerThreads);
+    this.receivedBytesStats = Statistics.newInstances(numWorkerThreads);
     // numWorkerThreads + 1 for retry thread
     this.threadPool = Executors.newFixedThreadPool(numWorkerThreads + 1);
     this.workerThreads = initWorkerThreads(queueSize);
@@ -183,7 +187,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     LOG.log(Level.INFO, "Initializing {0} PW threads", numWorkerThreads);
     final WorkerThread[] initialized = (WorkerThread[]) Array.newInstance(WorkerThread.class, numWorkerThreads);
     for (int i = 0; i < numWorkerThreads; i++) {
-      initialized[i] = new WorkerThread(queueSize, pullStats[i], pushStats[i], networkStats[i], waitingStats[i]);
+      initialized[i] = new WorkerThread(queueSize, pullStats[i], pushStats[i], networkStats[i], waitingStats[i],
+          sentBytesStats[i], receivedBytesStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -322,14 +327,14 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * Handles incoming pull replies, by setting the value of pull ops.
-   * See {@link PullRequest#completePendingOps(Object, long)}.
+   * See {@link PullRequest#completePendingOps(Object, long, int)}.
    * WorkerThread will be notified if the thread is waiting for completion of this pull request in case
    * 1) when push for the same key is requested or
    * 2) when the number of pending pulls on the thread has reached the limit (maxPendingPullsPerThread).
    */
   @Override
   public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer,
-                               @Nullable final TraceInfo traceInfo) {
+                               final int numReceivedBytes, @Nullable final TraceInfo traceInfo) {
     try (final TraceScope processPullReplyScope = Trace.startSpan(
         String.format("process_pull_reply. key: %s, request_id: %d", key, requestId), traceInfo)) {
       final EncodedKey<K> encodedKey;
@@ -339,12 +344,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         throw new RuntimeException("Exception while loading encoded key from cache", e);
       }
       final WorkerThread workerThread = workerThreads[getThreadIndex(encodedKey.getHash())];
-
       synchronized (workerThread) {
         final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
         final PullRequest pullRequest = pendingPullRequests.get(key);
         if (pendingPullRequestExists(pullRequest, requestId)) {
-          pendingPullRequests.remove(key).completePendingOps(value, elapsedTimeInServer);
+          pendingPullRequests.remove(key).completePendingOps(value, elapsedTimeInServer, numReceivedBytes);
           // if number of pendingPullRequests becomes maxPendingPullsPerThread - 1 by this reply,
           // should notify waiting WorkerThread (may not exist) which wants to make another pullRequest
           if (pendingPullRequests.size() == maxPendingPullsPerThread - 1) {
@@ -431,9 +435,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * To send push message atomically, do not respond to WorkerThread interrupt.
    * @param encodedKey encoded key
    * @param preValue preValue
+   * @return the number of bytes sent in the push message
    */
-  private void sendPushMsg(final EncodedKey<K> encodedKey, final P preValue) {
+  private int sendPushMsg(final EncodedKey<K> encodedKey, final P preValue) {
     int resendCount = 0;
+    int numSentBytes;
     boolean interrupted = false;
     while (true) {
       if (resendCount++ > MAX_RESEND_COUNT) {
@@ -447,7 +453,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
 
       try {
-        sender.get().sendPushMsg(serverId, encodedKey, preValue);
+        numSentBytes = sender.get().sendPushMsg(serverId, encodedKey, preValue);
         break;
       } catch (final NetworkException e) {
         LOG.log(Level.WARNING, "NetworkException while sending push msg. Do retry", e);
@@ -462,10 +468,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         LOG.log(Level.FINEST, "Interrupted while waiting for routing table to be updated", e);
       }
     }
+
     // restore thread interrupt state
     if (interrupted) {
       Thread.currentThread().interrupt();
     }
+
+    return numSentBytes;
   }
 
   /**
@@ -474,9 +483,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * @param encodedKey encoded key
    * @param requestId pull request id
    * @param traceInfo Information for Trace
+   * @return the number of bytes sent in the push message
    */
-  private void sendPullMsg(final EncodedKey<K> encodedKey, final int requestId, @Nullable final TraceInfo traceInfo) {
+  private int sendPullMsg(final EncodedKey<K> encodedKey, final int requestId, @Nullable final TraceInfo traceInfo) {
     int resendCount = 0;
+    int numSentBytes;
     boolean interrupted = false;
 
     // We should detach the span when we transit to another thread (local or remote),
@@ -498,7 +509,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
         detached = sendPullMsgScope.detach();
         try {
-          sender.get().sendPullMsg(serverId, encodedKey, requestId, TraceInfo.fromSpan(detached));
+          numSentBytes = sender.get().sendPullMsg(serverId, encodedKey, requestId, TraceInfo.fromSpan(detached));
           break;
         } catch (final NetworkException e) {
           LOG.log(Level.WARNING, "NetworkException while sending pull msg. Do retry", e);
@@ -521,6 +532,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     if (interrupted) {
       Thread.currentThread().interrupt();
     }
+
+    return numSentBytes;
   }
 
   /**
@@ -532,6 +545,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     final Pair<Integer, Double> totalPushStat = summarizeAndResetStats(pushStats);
     final Pair<Integer, Double> totalNetworkStat = summarizeAndResetStats(networkStats);
     final Pair<Integer, Double> totalWaitingStat = summarizeAndResetStats(waitingStats);
+    final Pair<Integer, Double> totalSentBytesStat = summarizeAndResetStats(sentBytesStats);
+    final Pair<Integer, Double> totalReceivedBytesStat = summarizeAndResetStats(receivedBytesStats);
 
     return ParameterWorkerMetrics.newBuilder()
         .setNumThreads(numWorkerThreads)
@@ -543,6 +558,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         .setTotalNetworkTimeSec(totalNetworkStat.getRight() / 1e9D)
         .setTotalWaitingStatCount(totalWaitingStat.getLeft())
         .setTotalWaitingTimeSec(totalWaitingStat.getRight() / 1e9D)
+        .setTotalSentBytes(totalSentBytesStat.getRight().intValue())
+        .setTotalSentBytesStatCount(totalSentBytesStat.getLeft())
+        .setTotalReceivedBytes(totalReceivedBytesStat.getRight().intValue())
+        .setTotalReceivedBytesStatCount(totalReceivedBytesStat.getLeft())
         .build();
   }
 
@@ -618,7 +637,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         final long pushStartTime = ticker.read();
         workerThread.waitingStat.put(pushStartTime - enqueueTime);
 
-        sendPushMsg(encodedKey, preValue);
+        final int numSentBytes = sendPushMsg(encodedKey, preValue);
+        workerThread.sentBytesStat.put(numSentBytes);
 
         final long endTime = ticker.read();
         workerThread.pushStat.put(endTime - pushStartTime);
@@ -631,7 +651,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     @Override
     public void retry() {
       // TODO #803: Once we implement worker-side cache, we can guarantee read-my-update even with retrying push.
-      sendPushMsg(encodedKey, preValue);
+      synchronized (workerThread) {
+        final int numSentBytes = sendPushMsg(encodedKey, preValue);
+        workerThread.sentBytesStat.put(numSentBytes);
+      }
     }
   }
 
@@ -812,7 +835,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     void startRequest() {
       pullRequestScope = Trace.startSpan(
           String.format("pull_request. key: %s, request_id: %d", encodedKey.getKey(), requestId), parentTraceInfo);
-      sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(pullRequestScope.getSpan()));
+      final int numSentBytes = sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(pullRequestScope.getSpan()));
+      workerThread.sentBytesStat.put(numSentBytes);
     }
 
     /**
@@ -831,7 +855,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
         LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
             new Object[]{encodedKey.getKey(), retryCount});
-        sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(retryScope.getSpan()));
+        final int numSentBytes = sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(retryScope.getSpan()));
+        workerThread.sentBytesStat.put(numSentBytes);
         state = INIT_STATE;
       }
     }
@@ -876,11 +901,14 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * to process push operation for the same key.
      * @param value value received from server
      * @param elapsedTimeInServer elapsed time since pull request's arrival at server
+     * @param numReceivedBytes the number of total messages in bytes.
      */
-    void completePendingOps(final V value, final long elapsedTimeInServer) {
+    void completePendingOps(final V value, final long elapsedTimeInServer, final int numReceivedBytes) {
       synchronized (workerThread) {
         final long pullTime = ticker.read() - pullStartTime;
         workerThread.networkStat.put(pullTime - elapsedTimeInServer);
+        workerThread.receivedBytesStat.put(numReceivedBytes);
+
         if (pullRequestScope != null) {
           pullRequestScope.close();
         }
@@ -908,7 +936,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     /**
      * Wait until this pull request is completed.
-     * Should precede {@link #completePendingOps(Object, long)}. If not, the waiting thread will be never awoken.
+     * Should precede {@link #completePendingOps(Object, long, int)}. If not, the waiting thread will be never awoken.
      * @throws InterruptedException when the executing thread is interrupted
      */
     void waitForComplete() throws InterruptedException {
@@ -953,12 +981,16 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private final Statistics pushStat;
     private final Statistics networkStat;
     private final Statistics waitingStat;
+    private final Statistics sentBytesStat;
+    private final Statistics receivedBytesStat;
 
     WorkerThread(final int queueSize,
                  final Statistics pullStat,
                  final Statistics pushStat,
                  final Statistics networkStat,
-                 final Statistics waitingStat) {
+                 final Statistics waitingStat,
+                 final Statistics sentBytesStat,
+                 final Statistics receivedBytesStat) {
       this.drainSize = queueSize / 10;
       this.pendingPullRequests = new ConcurrentHashMap<>();
       this.queue = new ArrayBlockingQueue<>(queueSize);
@@ -971,6 +1003,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       this.pushStat = pushStat;
       this.networkStat = networkStat;
       this.waitingStat = waitingStat;
+      this.sentBytesStat = sentBytesStat;
+      this.receivedBytesStat = receivedBytesStat;
     }
 
     private StateMachine initStateMachine() {

@@ -314,7 +314,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    */
   @Override
   public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer,
-                               @Nullable final TraceInfo traceInfo) {
+                               final int numReceivedBytes, @Nullable final TraceInfo traceInfo) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);

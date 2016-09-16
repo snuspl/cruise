@@ -163,11 +163,15 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
 
   private void onPullReplyMsg(final PullReplyMsg pullReplyMsg, @Nullable final TraceInfo traceInfo) {
     try (final TraceScope onPullReplyScope = Trace.startSpan("on_pull_reply", traceInfo)) {
-      final K key = keyCodec.decode(pullReplyMsg.getKey().array());
-      final V value = valueCodec.decode(pullReplyMsg.getValue().array());
+      final byte[] serializedKey = pullReplyMsg.getKey().array();
+      final byte[] serializedValue = pullReplyMsg.getValue().array();
+      final K key = keyCodec.decode(serializedKey);
+      final V value = valueCodec.decode(serializedValue);
+      final int numReceivedBytes = serializedKey.length + serializedValue.length;
       final int requestId = pullReplyMsg.getRequestId();
       final long serverProcessingTime = pullReplyMsg.getServerProcessingTime();
-      workerHandler.processPullReply(key, value, requestId, serverProcessingTime,
+
+      workerHandler.processPullReply(key, value, requestId, serverProcessingTime, numReceivedBytes,
           TraceInfo.fromSpan(onPullReplyScope.getSpan()));
     }
   }

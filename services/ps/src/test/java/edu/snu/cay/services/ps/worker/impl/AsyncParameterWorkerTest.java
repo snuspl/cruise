@@ -57,6 +57,10 @@ import static org.mockito.Mockito.*;
 @PrepareForTest(WorkerMsgSender.class)
 public final class AsyncParameterWorkerTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
+
+  // Those metrics are not used in the tests, so can be set 0,
+  private static final long SERVER_PROCESSING_TIME = 0;
+  private static final int NUM_RECEIVED_BYTES = 0;
   private static final int WORKER_NUM_THREADS = 2;
   private static final TraceInfo EMPTY_TRACE = null;
 
@@ -294,7 +298,8 @@ public final class AsyncParameterWorkerTest {
     final Pair<EncodedKey<Integer>, Integer> request = pullKeyToReplyQueue.take();
     final EncodedKey<Integer> encodedKey = request.getLeft();
     final int requestId = request.getRight();
-    workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, EMPTY_TRACE);
+    workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
+        SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES, EMPTY_TRACE);
     Thread.sleep(gracePeriodMs);
 
     final boolean allThreadsFinished = countDownLatch.await(waitingMs, TimeUnit.SECONDS);
@@ -343,7 +348,8 @@ public final class AsyncParameterWorkerTest {
     final Pair<EncodedKey<Integer>, Integer> request = pullKeyToReplyQueue.take();
     final EncodedKey<Integer> encodedKey = request.getLeft();
     final int requestId = request.getRight();
-    workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId, 0, EMPTY_TRACE);
+    workerHandler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
+        SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES, EMPTY_TRACE);
 
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
     parameterWorker.close(CLOSE_TIMEOUT);
