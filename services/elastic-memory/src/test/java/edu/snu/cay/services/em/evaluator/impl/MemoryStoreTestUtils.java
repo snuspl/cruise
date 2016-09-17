@@ -218,18 +218,23 @@ public final class MemoryStoreTestUtils {
     }
   }
 
-  public static final class BlockAddListenerImpl implements BlockUpdateListener<Long> {
-    private final CountDownLatch countDownLatch;
+  public static final class BlockUpdateListenerImpl implements BlockUpdateListener<Long> {
+    private final CountDownLatch countDownLatchForBlockAdd;
+    private final CountDownLatch countDownLatchForBlockRemove;
     private final int numOfKeysPerBlock;
 
     /**
-     * a constructor of {@link BlockAddListenerImpl}.
-     * @param countDownLatch a count down latch which will count down by 1 at each block put event
+     * a constructor of {@link BlockUpdateListenerImpl}.
+     * @param countDownLatchForBlockAdd a count down latch which will count down by 1 at each block add event
+     * @param countDownLatchForBlockRemove a count down latch which will count down by 1 at each block remove event
      * @param numOfKeysPerBlock the number of keys in a block
      *                          used to check the updated block's key set is same with an expected key set.
      */
-    public BlockAddListenerImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
-      this.countDownLatch = countDownLatch;
+    public BlockUpdateListenerImpl(final CountDownLatch countDownLatchForBlockAdd,
+                                   final CountDownLatch countDownLatchForBlockRemove,
+                                   final int numOfKeysPerBlock) {
+      this.countDownLatchForBlockAdd = countDownLatchForBlockAdd;
+      this.countDownLatchForBlockRemove = countDownLatchForBlockRemove;
       this.numOfKeysPerBlock = numOfKeysPerBlock;
     }
 
@@ -245,33 +250,9 @@ public final class MemoryStoreTestUtils {
         assertTrue(addedKeys.contains(new Long((long)keyId)));
       }
 
-      countDownLatch.countDown();
-    }
-
-    @Override
-    public void onRemovedBlock(final int blockId, final Set<Long> removedKeys) {
-      // do nothing
-    }
-  }
-
-  public static final class BlockRemoveListenerImpl implements BlockUpdateListener<Long> {
-    private final CountDownLatch countDownLatch;
-    private final int numOfKeysPerBlock;
-
-    /**
-     * a constructor of {@link BlockRemoveListenerImpl}.
-     * @param countDownLatch a count down latch which will count down by 1 at each block remove event
-     * @param numOfKeysPerBlock the number of keys in a block
-     *                          used to check the updated block's key set is same with an expected key set.
-     */
-    public BlockRemoveListenerImpl(final CountDownLatch countDownLatch, final int numOfKeysPerBlock) {
-      this.countDownLatch = countDownLatch;
-      this.numOfKeysPerBlock = numOfKeysPerBlock;
-    }
-
-    @Override
-    public void onAddedBlock(final int blockId, final Set<Long> addedKeys) {
-      // do nothing
+      if (countDownLatchForBlockAdd != null) {
+        countDownLatchForBlockAdd.countDown();
+      }
     }
 
     @Override
@@ -285,7 +266,9 @@ public final class MemoryStoreTestUtils {
         assertTrue(removedKeys.contains(new Long((long)keyId)));
       }
 
-      countDownLatch.countDown();
+      if (countDownLatchForBlockRemove != null) {
+        countDownLatchForBlockRemove.countDown();
+      }
     }
   }
 }
