@@ -42,6 +42,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.wake.IdentifierFactory;
+import org.htrace.TraceInfo;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -287,14 +288,14 @@ public final class SSPParameterWorkerTest {
     for (int i = 0; i < numberOfKeys; i++) {
       parameterWorker.pull(i);
     }
-    verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject(), anyInt());
+    verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
 
     // The number of times sendPullMsg() call shouldn't be changed.
     // Since all the values associated with those keys have been already fetched from servers.
     for (int i = 0; i < numberOfKeys; i++) {
       parameterWorker.pull(i);
     }
-    verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject(), anyInt());
+    verify(mockSender, times(numberOfKeys)).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
 
     // Now we increase the worker clock until it gets beyond the staleness bound.
     // As a result, all the cached data is going to get stale.
@@ -320,7 +321,7 @@ public final class SSPParameterWorkerTest {
     for (int i = 0; i < numberOfKeys; i++) {
       parameterWorker.pull(i);
     }
-    verify(mockSender, times(2 * numberOfKeys)).sendPullMsg(anyString(), anyObject(), anyInt());
+    verify(mockSender, times(2 * numberOfKeys)).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
 
     executorService.shutdownNow();
   }
@@ -450,7 +451,7 @@ public final class SSPParameterWorkerTest {
     sspParameterWorker.close(ParameterWorkerTestUtil.CLOSE_TIMEOUT);
 
     assertTrue(ParameterWorkerTestUtil.MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
-    verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject(), anyInt());
+    verify(mockSender, times(numPulls)).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
 
     executorService.shutdownNow();
   }

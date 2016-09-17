@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.services.ps.common.parameters.PSTraceProbability;
 import edu.snu.cay.services.ps.common.resolver.DynamicServerResolver;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
@@ -82,6 +83,7 @@ public final class DynamicPSManager implements PSManager {
   private final long serverMetricsWindowMs;
   private final boolean isSSPModel;
   private final int stalenessBound;
+  private final double traceProbability;
 
   @Inject
   private DynamicPSManager(@Parameter(NumServers.class)final int numServers,
@@ -97,7 +99,8 @@ public final class DynamicPSManager implements PSManager {
                            @Parameter(ServerMetricsWindowMs.class) final long serverMetricsWindowMs,
                            @Parameter(ServerLogPeriod.class) final long serverLogPeriod,
                            @Parameter(WorkerLogPeriod.class) final long workerLogPeriod,
-                           @Parameter(StalenessBound.class) final int stalenessBound) {
+                           @Parameter(StalenessBound.class) final int stalenessBound,
+                           @Parameter(PSTraceProbability.class) final double traceProbability) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.workerNumThreads = workerNumThrs;
@@ -113,6 +116,7 @@ public final class DynamicPSManager implements PSManager {
     this.serverMetricsWindowMs = serverMetricsWindowMs;
     this.isSSPModel = stalenessBound >= 0;
     this.stalenessBound = stalenessBound;
+    this.traceProbability = traceProbability;
   }
 
   /**
@@ -146,6 +150,7 @@ public final class DynamicPSManager implements PSManager {
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
         .bindNamedParameter(StalenessBound.class, Integer.toString(stalenessBound))
+        .bindNamedParameter(PSTraceProbability.class, Double.toString(traceProbability))
         .build();
   }
 

@@ -18,6 +18,7 @@ package edu.snu.cay.services.ps.worker.impl;
 import edu.snu.cay.services.ps.PSParameters.PreValueCodecName;
 import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -27,7 +28,9 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
+import org.htrace.TraceInfo;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 
@@ -83,12 +86,17 @@ public final class WorkerMsgSender<K, P> {
    * @param destId an id of destination server
    * @param key a key to push
    * @param preValue a previous value to push
+   * @return The number of bytes in the message. Note that the actual message sent across the wire includes
+   * header of around 70 bytes.
    * @throws NetworkException when fail to open a connection
    */
-  void sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) throws NetworkException {
+  int sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) throws NetworkException {
+    final byte[] serializedKey = key.getEncoded();
+    final byte[] serializedPreValue = preValueCodec.encode(preValue);
+    final int numSendingBytes = serializedKey.length + serializedPreValue.length;
     final PushMsg pushMsg = PushMsg.newBuilder()
-        .setKey(ByteBuffer.wrap(key.getEncoded()))
-        .setPreValue(ByteBuffer.wrap(preValueCodec.encode(preValue)))
+        .setKey(ByteBuffer.wrap(serializedKey))
+        .setPreValue(ByteBuffer.wrap(serializedPreValue))
         .build();
 
     send(destId,
@@ -96,6 +104,7 @@ public final class WorkerMsgSender<K, P> {
             .setType(Type.PushMsg)
             .setPushMsg(pushMsg)
             .build());
+    return numSendingBytes;
   }
 
   /**
@@ -103,16 +112,22 @@ public final class WorkerMsgSender<K, P> {
    * @param destId an id of destination server
    * @param key a key to pull
    * @param requestId pull request id assigned by ParameterWorker
+   * @param traceInfo Information for Trace
+   * @return The number of bytes in the message. Note that the actual message sent across the wire includes
+   * header of around 70 bytes.
    * @throws NetworkException when fail to open a connection
    */
-  void sendPullMsg(final String destId, final EncodedKey<K> key, final int requestId) throws NetworkException {
+  int sendPullMsg(final String destId, final EncodedKey<K> key, final int requestId,
+                   @Nullable final TraceInfo traceInfo) throws NetworkException {
     final Identifier localEndPointId = psNetworkSetup.getMyId();
     if (localEndPointId == null) {
       throw new RuntimeException("ConnectionFactory has not been registered, or has been removed accidentally");
     }
 
+    final byte[] serializedKey = key.getEncoded();
+    final int numSendingBytes = serializedKey.length;
     final PullMsg pullMsg = PullMsg.newBuilder()
-        .setKey(ByteBuffer.wrap(key.getEncoded()))
+        .setKey(ByteBuffer.wrap(serializedKey))
         .setRequestId(requestId)
         .build();
 
@@ -120,7 +135,10 @@ public final class WorkerMsgSender<K, P> {
         AvroPSMsg.newBuilder()
             .setType(Type.PullMsg)
             .setPullMsg(pullMsg)
+            .setTraceInfo(HTraceUtils.toAvro(traceInfo))
             .build());
+
+    return numSendingBytes;
   }
 
   /**
