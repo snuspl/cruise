@@ -22,7 +22,6 @@ import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
-import edu.snu.cay.services.em.evaluator.api.MoveHandler;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -356,7 +355,7 @@ public final class MemoryStoreTest {
     // since they're already used for initially assigned blocks in the Memory Store initialization process.
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfListener * numOfBlockPut);
-    final MoveHandler moveHandler = (MoveHandler) memoryStore;
+    final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
 
     // register block update notification observers to the Memory Store
     for (int i = 0; i < numOfListener; i++) {
@@ -378,7 +377,7 @@ public final class MemoryStoreTest {
         data.put(keyId, new Object());
       }
 
-      moveHandler.putBlock(blockId, data);
+      memoryStoreImpl.putBlock(blockId, data);
     }
 
     // wait for count down latch with a bound of time
@@ -402,7 +401,7 @@ public final class MemoryStoreTest {
     // since they're already used for initially assigned blocks in the Memory Store initialization process.
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
-    final MoveHandler moveHandler = (MoveHandler) memoryStore;
+    final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
 
     // register block update notification observers to the Memory Store
     for (int i = 0; i < numOfObserver; i++) {
@@ -423,14 +422,14 @@ public final class MemoryStoreTest {
         data.put(keyId, new Object());
       }
 
-      moveHandler.putBlock(blockId, data);
+      memoryStoreImpl.putBlock(blockId, data);
     }
 
     // remove all the blocks stored in the Memory Store
     // and it will call onRemovedBlock callback of MemoryStoreTestUtils.BlockRemoveListenerImpl class
     for (int i = 0; i < numOfBlockPut; i++) {
       final int blockId = blockIdBase + i;
-      moveHandler.removeBlock(blockId);
+      memoryStoreImpl.removeBlock(blockId);
     }
 
     // wait for count down latch with a bounded time
