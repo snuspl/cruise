@@ -42,11 +42,6 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
-  private static final String ON_ROUTING_INIT_REQ_MSG = "onRoutingTableInitReqMsg";
-  private static final String ON_OWNERSHIP_MSG = "onOwnershipMsg";
-  private static final String ON_OWNERSHIP_ACK_MSG = "onOwnershipAckMsg";
-  private static final String ON_FAILURE_MSG = "onFailureMsg";
-
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
 
@@ -65,6 +60,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   public void onNext(final Message<AvroElasticMemoryMessage> msg) {
     LOG.entering(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
 
+    Trace.setProcessId("driver");
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
     case RoutingTableInitReqMsg:
@@ -91,46 +87,48 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   private void onRoutingTableInitReqMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan(ON_ROUTING_INIT_REQ_MSG,
+    try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan("on_routing_table_init_req_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final List<Integer> blockLocations = blockManager.getBlockLocations();
 
-      final TraceInfo traceInfo = TraceInfo.fromSpan(onRoutingTableInitReqMsgScope.getSpan());
-      msgSender.get().sendRoutingTableInitMsg(msg.getSrcId().toString(), blockLocations, traceInfo);
+      msgSender.get().sendRoutingTableInitMsg(msg.getSrcId().toString(), blockLocations,
+          TraceInfo.fromSpan(onRoutingTableInitReqMsgScope.getSpan()));
     }
   }
 
   private void onOwnershipAckMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(ON_OWNERSHIP_ACK_MSG,
+    final String operationId = msg.getOperationId().toString();
+    final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
+    final int blockId = ownershipAckMsg.getBlockId();
+
+    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
+        String.format("on_ownership_ack_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      final String operationId = msg.getOperationId().toString();
-      final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
-
-      final int blockId = ownershipAckMsg.getBlockId();
-      migrationManager.markBlockAsMoved(operationId, blockId);
+      migrationManager.markBlockAsMoved(operationId, blockId, TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
     }
   }
 
   private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(ON_OWNERSHIP_MSG,
+    final String operationId = msg.getOperationId().toString();
+    final int blockId = msg.getOwnershipMsg().getBlockId();
+    final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
+    final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
+
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(
+        String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      final String operationId = msg.getOperationId().toString();
-      final int blockId = msg.getOwnershipMsg().getBlockId();
-      final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
-      final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
-
       // Update the owner and send ownership message to the old Owner.
-      final TraceInfo traceInfo = TraceInfo.fromSpan(onOwnershipMsgScope.getSpan());
-      migrationManager.updateOwner(operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
+      migrationManager.updateOwner(operationId, blockId, oldOwnerId, newOwnerId,
+          TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
     }
   }
 
   private void onFailureMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onFailureMsgScope =
-             Trace.startSpan(ON_FAILURE_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+             Trace.startSpan("on_failure_msg", HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final FailureMsg failureMsg = msg.getFailureMsg();
 
       final String operationId = failureMsg.getOperationId().toString();

@@ -75,7 +75,7 @@ public final class AsyncDolphinOptimizerTest {
       final DataInfo dataInfo = new DataInfoImpl(numModelBlocksArray[index]);
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setTotalPullProcessed(numModelBlocksArray[index])
-          .setTotalPullProcessingTime(processingTimeArray[index]).build();
+          .setTotalPullProcessingTimeSec(processingTimeArray[index]).build();
 
       evalParamList.add(new ServerEvaluatorParameters(SERVER_PREFIX + index, dataInfo, serverMetrics));
     }

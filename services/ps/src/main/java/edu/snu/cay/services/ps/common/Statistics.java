@@ -40,7 +40,7 @@ public final class Statistics {
   }
 
   public double sum() {
-    return sum / 1e9D;
+    return sum;
   }
 
   public double count() {

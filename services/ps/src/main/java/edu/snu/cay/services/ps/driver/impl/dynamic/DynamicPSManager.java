@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.services.ps.common.parameters.PSTraceProbability;
 import edu.snu.cay.services.ps.common.resolver.DynamicServerResolver;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
@@ -44,13 +45,7 @@ import edu.snu.cay.services.ps.worker.impl.SSPWorkerClock;
 import edu.snu.cay.services.ps.worker.impl.SSPParameterWorker;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStartHandler;
 import edu.snu.cay.services.ps.worker.impl.dynamic.TaskStopHandler;
-import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
-import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
-import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
-import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
-import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.parameters.WorkerLogPeriod;
-import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.worker.parameters.*;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -81,12 +76,14 @@ public final class DynamicPSManager implements PSManager {
   private final int serverQueueSize;
   private final long workerExpireTimeout;
   private final long pullRetryTimeoutMs;
+  private final int maxPendingPullsPerThread;
   private final int workerKeyCacheSize;
   private final long workerLogPeriod;
   private final long serverLogPeriod;
   private final long serverMetricsWindowMs;
   private final boolean isSSPModel;
   private final int stalenessBound;
+  private final double traceProbability;
 
   @Inject
   private DynamicPSManager(@Parameter(NumServers.class)final int numServers,
@@ -97,11 +94,13 @@ public final class DynamicPSManager implements PSManager {
                            @Parameter(ServerQueueSize.class) final int serverQueueSize,
                            @Parameter(WorkerExpireTimeout.class) final long workerExpireTimeout,
                            @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
+                           @Parameter(MaxPendingPullsPerThread.class) final int maxPendingPullsPerThread,
                            @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize,
                            @Parameter(ServerMetricsWindowMs.class) final long serverMetricsWindowMs,
                            @Parameter(ServerLogPeriod.class) final long serverLogPeriod,
                            @Parameter(WorkerLogPeriod.class) final long workerLogPeriod,
-                           @Parameter(StalenessBound.class) final int stalenessBound) {
+                           @Parameter(StalenessBound.class) final int stalenessBound,
+                           @Parameter(PSTraceProbability.class) final double traceProbability) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.workerNumThreads = workerNumThrs;
@@ -110,12 +109,14 @@ public final class DynamicPSManager implements PSManager {
     this.serverQueueSize = serverQueueSize;
     this.workerExpireTimeout = workerExpireTimeout;
     this.pullRetryTimeoutMs = pullRetryTimeoutMs;
+    this.maxPendingPullsPerThread = maxPendingPullsPerThread;
     this.workerKeyCacheSize = workerKeyCacheSize;
     this.workerLogPeriod = workerLogPeriod;
     this.serverLogPeriod = serverLogPeriod;
     this.serverMetricsWindowMs = serverMetricsWindowMs;
     this.isSSPModel = stalenessBound >= 0;
     this.stalenessBound = stalenessBound;
+    this.traceProbability = traceProbability;
   }
 
   /**
@@ -145,9 +146,11 @@ public final class DynamicPSManager implements PSManager {
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
         .bindNamedParameter(PullRetryTimeoutMs.class, Long.toString(pullRetryTimeoutMs))
+        .bindNamedParameter(MaxPendingPullsPerThread.class, Integer.toString(maxPendingPullsPerThread))
         .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .bindNamedParameter(WorkerLogPeriod.class, Long.toString(workerLogPeriod))
         .bindNamedParameter(StalenessBound.class, Integer.toString(stalenessBound))
+        .bindNamedParameter(PSTraceProbability.class, Double.toString(traceProbability))
         .build();
   }
 
