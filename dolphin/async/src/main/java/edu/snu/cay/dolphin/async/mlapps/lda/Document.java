@@ -15,6 +15,9 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import com.google.common.primitives.Ints;
+
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -23,13 +26,13 @@ import java.util.Random;
  */
 final class Document {
 
-  private final int[] words;
+  private final List<Integer> words;
   private final int[] assignments;
   private final int[] topicCounts;
   private final int numTopics;
 
   Document(final int[] words, final int numTopics) {
-    this.words = words;
+    this.words = Ints.asList(words);
     this.assignments = new int[words.length];
     this.topicCounts = new int[numTopics];
     this.numTopics = numTopics;
@@ -47,11 +50,15 @@ final class Document {
   }
 
   int size() {
-    return words.length;
+    return words.size();
   }
 
   int getWord(final int index) {
-    return words[index];
+    return words.get(index);
+  }
+
+  List<Integer> getWords() {
+    return words;
   }
 
   int getAssignment(final int index) {
