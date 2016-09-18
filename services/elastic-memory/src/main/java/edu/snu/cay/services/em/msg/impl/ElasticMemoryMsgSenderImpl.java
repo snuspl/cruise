@@ -97,7 +97,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       detached = sendRemoteOpReqMsgScope.detach();
 
-      send(destId, generateRemoteOpReqMsg(origEvalId, destId, operationType,
+      send(destId, generateRemoteOpReqMsg(origEvalId, operationType,
           dataKeyRanges, dataKVPairList, operationId, TraceInfo.fromSpan(detached)));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
@@ -127,7 +127,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       detached = sendRemoteOpReqMsgScope.detach();
 
-      send(destId, generateRemoteOpReqMsg(origEvalId, destId, operationType,
+      send(destId, generateRemoteOpReqMsg(origEvalId, operationType,
           dataKey, dataValue, operationId, TraceInfo.fromSpan(detached)));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
@@ -137,7 +137,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     }
   }
 
-  private AvroElasticMemoryMessage generateRemoteOpReqMsg(final String origId, final String destId,
+  private AvroElasticMemoryMessage generateRemoteOpReqMsg(final String origId,
                                                           final DataOpType operationType,
                                                           final Object dataKeys, final Object dataValues,
                                                           final String operationId,
@@ -176,7 +176,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       detached = sendRemoteOpResultMsgScope.detach();
 
       send(destId,
-          generateRemoteOpResultMsg(destId, dataKVPairList, isSuccess, failedRanges, operationId,
+          generateRemoteOpResultMsg(dataKVPairList, isSuccess, failedRanges, operationId,
               TraceInfo.fromSpan(detached)));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
@@ -201,7 +201,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       detached = sendRemoteOpResultMsgScope.detach();
 
       send(destId,
-          generateRemoteOpResultMsg(destId, dataValue, isSuccess, null, operationId,
+          generateRemoteOpResultMsg(dataValue, isSuccess, null, operationId,
               TraceInfo.fromSpan(detached)));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
@@ -210,8 +210,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     }
   }
 
-  private AvroElasticMemoryMessage generateRemoteOpResultMsg(final String destId,
-                                                             final Object dataValues, final boolean isSuccess,
+  private AvroElasticMemoryMessage generateRemoteOpResultMsg(final Object dataValues, final boolean isSuccess,
                                                              final List<KeyRange> failedRanges,
                                                              final String operationId,
                                                              @Nullable final TraceInfo parentTraceInfo) {
@@ -464,8 +463,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendBlockMovedMsgScope = Trace.startSpan("[5]send_block_moved_msg"
-        + ". blockId: " + blockId, parentTraceInfo)) {
+    try (final TraceScope sendBlockMovedMsgScope = Trace.startSpan(
+        String.format("[5]send_block_moved_msg. blockId : %d", blockId), parentTraceInfo)) {
       final BlockMovedMsg blockMovedMsg = BlockMovedMsg.newBuilder()
           .setBlockId(blockId)
           .build();

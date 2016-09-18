@@ -105,8 +105,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final int blockId = blockMovedMsg.getBlockId();
 
     try (final TraceScope onBlockMovedMsgScope = Trace.startSpan(
-        String.format("on_block_moved_msg. blockId: %d", blockId),
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+        String.format("on_block_moved_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       migrationManager.markBlockAsMoved(operationId, blockId, TraceInfo.fromSpan(onBlockMovedMsgScope.getSpan()));
     }

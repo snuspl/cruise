@@ -171,12 +171,10 @@ public final class EMRoutingTableManagerTest {
 
     // mock EM msg sender to simulate migration
     doAnswer(invocation -> {
-        final String srcId = invocation.getArgumentAt(0, String.class);
-        final String destId = invocation.getArgumentAt(1, String.class);
         final List<Integer> blocks = invocation.getArgumentAt(2, List.class);
         final String opId = invocation.getArgumentAt(3, String.class);
 
-        // ownershipAckMsg will finish the migration
+        // blockMovedMsg will finish the migration
         for (final int blockId : blocks) {
           final BlockMovedMsg blockMovedMsg = BlockMovedMsg.newBuilder()
               .setBlockId(blockId)
