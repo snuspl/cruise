@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.utils.trace.HTrace;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
@@ -144,8 +145,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
   @Override
   public boolean registerBlockUpdateListener(final BlockUpdateListener listener) {
-    throw new UnsupportedOperationException("This class doesn't support "
-        + this.getClass().getEnclosingMethod().getName());
+    throw new NotImplementedException();
   }
 
   /**

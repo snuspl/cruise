@@ -340,10 +340,9 @@ public final class MemoryStoreTest {
   }
 
   /**
-   * Test for block add event notification feature of Memory Store.
-   * Check that all registered listeners receive block update notifications with correct parameters
-   * including id and key set of the updated block, when block put events occur.
-   * @throws InterruptedException
+   * Test for MemoryStore's event listener for block addition.
+   * Checks that all registered listeners receive block update notifications with correct parameters
+   * including the updated block's id and key set, when {@link MoveHandler#putBlock(int, Map)} occurs.
    */
   @Test(timeout = 2000)
   public void testMultipleBlockAddNotify() throws InterruptedException  {
@@ -351,9 +350,8 @@ public final class MemoryStoreTest {
     final int numOfBlockPut = 10;
     final int numOfKeysPerBlock = 10;
     final int timeoutMS = 500;
-    // the value of blockIdBase is a randomly chosen value.
-    // several integer values from zero can't be used as block id here.
-    // since they're already used for initially assigned blocks in the Memory Store initialization process.
+    // Since NUM_TOTAL_BLOCKS blocks were already assigned to MemoryStores (see setUp()),
+    // the value of blockIdBase is chosen to avoid conflict with the existing blocks.
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfListener * numOfBlockPut);
     final MoveHandler moveHandler = (MoveHandler) memoryStore;
@@ -371,11 +369,11 @@ public final class MemoryStoreTest {
       final int blockId = blockIdBase + i;
 
       // generate a hash map of key-value pairs to store in a block
-      final Map<Long, Object> data = new HashMap<>();
+      final Map<Long, Long> data = new HashMap<>();
       final long keyIdStart = (blockId * numOfKeysPerBlock);
       for (int keyOffset = 0; keyOffset < numOfKeysPerBlock; keyOffset++) {
         final long keyId = keyIdStart + keyOffset;
-        data.put(keyId, new Object());
+        data.put(keyId, keyId);
       }
 
       moveHandler.putBlock(blockId, data);
@@ -386,10 +384,9 @@ public final class MemoryStoreTest {
   }
 
   /**
-   * Test for block remove event notification feature of Memory Store.
-   * Check that all registered listeners receive block update notifications with correct parameters
-   * including id and key set of the updated block, when block remove events occur.
-   * @throws InterruptedException
+   * Test for MemoryStore's event listener for block removal.
+   * Checks that all registered listeners receive block update notifications with correct parameters
+   * including the updated block's id and key set, when {@link MoveHandler#removeBlock(int)} occurs.
    */
   @Test(timeout = 2000)
   public void testMultipleBlockRemoveNotify() throws InterruptedException {
@@ -397,9 +394,8 @@ public final class MemoryStoreTest {
     final int numOfBlockPut = 10;
     final int numOfKeysPerBlock = 10;
     final int timeoutMS = 500;
-    // the value of blockIdBase is a randomly chosen value.
-    // several integer values from zero can't be used as block id here.
-    // since they're already used for initially assigned blocks in the Memory Store initialization process.
+    // Since NUM_TOTAL_BLOCKS blocks were already assigned to MemoryStores (see setUp()),
+    // the value of blockIdBase is chosen to avoid conflict with the existing blocks.
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
     final MoveHandler moveHandler = (MoveHandler) memoryStore;
@@ -411,16 +407,16 @@ public final class MemoryStoreTest {
       memoryStore.registerBlockUpdateListener(listener);
     }
 
-    // put blocks to be deleted to the Memory Store
+    // put blocks to be deleted from the Memory Store
     for (int i = 0; i < numOfBlockPut; i++) {
       final int blockId = blockIdBase + i;
 
       // generate a hash map of key-value pairs to store in a block
-      final Map<Long, Object> data = new HashMap<>();
+      final Map<Long, Long> data = new HashMap<>();
       final long keyIdStart = (numOfKeysPerBlock * blockId);
       for (int keyOffset = 0; keyOffset < numOfKeysPerBlock; keyOffset++) {
         final long keyId = keyIdStart + keyOffset;
-        data.put(keyId, new Object());
+        data.put(keyId, keyId);
       }
 
       moveHandler.putBlock(blockId, data);

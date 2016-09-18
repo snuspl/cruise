@@ -19,22 +19,23 @@ import java.util.Set;
 
 
 /**
- * Interface for notifying block update(put/remove) events to clients from the MemoryStore.
- * The MemoryStore will call the onNext method in this class which clients have defined.
+ * Interface for notifying the result of data migration occurred in the MemoryStore
+ * according to the event type (addition / removal of blocks).
+ * In the implementation, Clients specify how they would like to react to the data migration.
  */
 public interface BlockUpdateListener<K> {
+
   /**
-   * a callback function called at each event of block addition to the Memory Store.
+   * A callback function called at each event of block addition to the {@link MemoryStore}.
    * @param blockId the id of an added block
    * @param addedKeys a set of keys added at the block addition event
    */
   void onAddedBlock(int blockId, Set<K> addedKeys);
 
   /**
-   * a callback function called at each event of block removal from Memory Store.
+   * A callback function called at each event of block removal from {@link MemoryStore}.
    * @param blockId the id of a removed block
    * @param removedKeys a set of keys removed at the block removal event
    */
   void onRemovedBlock(int blockId, Set<K> removedKeys);
-
 }

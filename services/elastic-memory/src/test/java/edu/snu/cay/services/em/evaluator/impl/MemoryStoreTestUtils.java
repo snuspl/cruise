@@ -224,11 +224,11 @@ public final class MemoryStoreTestUtils {
     private final int numOfKeysPerBlock;
 
     /**
-     * a constructor of {@link BlockUpdateListenerImpl}.
-     * @param countDownLatchForBlockAdd a count down latch which will count down by 1 at each block add event
-     * @param countDownLatchForBlockRemove a count down latch which will count down by 1 at each block remove event
-     * @param numOfKeysPerBlock the number of keys in a block
-     *                          used to check the updated block's key set is same with an expected key set.
+     * Creates a {@link BlockUpdateListener} that allows to check whether the blocks are correctly added or removed.
+     * @param countDownLatchForBlockAdd a latch that decrements its count each time a block is added
+     * @param countDownLatchForBlockRemove a latch that decrements its count each time a block is removed
+     * @param numOfKeysPerBlock the number of keys in the updated block.
+     *                          used to check whether the updated block's key set is same with the expected key set.
      */
     public BlockUpdateListenerImpl(final CountDownLatch countDownLatchForBlockAdd,
                                    final CountDownLatch countDownLatchForBlockRemove,
@@ -241,7 +241,7 @@ public final class MemoryStoreTestUtils {
     @Override
     public void onAddedBlock(final int blockId, final Set<Long> addedKeys) {
 
-      // check the update block has the same key set with an expected key set.
+      // check the update block has the same key set with the expected key set.
       assertEquals(numOfKeysPerBlock, addedKeys.size());
 
       final int keyIdBase = blockId * numOfKeysPerBlock;
@@ -257,7 +257,8 @@ public final class MemoryStoreTestUtils {
 
     @Override
     public void onRemovedBlock(final int blockId, final Set<Long> removedKeys) {
-      // check the update block has the same key set with an expected key set.
+
+      // check the update block has the same key set with the expected key set.
       assertEquals(numOfKeysPerBlock, removedKeys.size());
 
       final int keyIdBase = blockId * numOfKeysPerBlock;

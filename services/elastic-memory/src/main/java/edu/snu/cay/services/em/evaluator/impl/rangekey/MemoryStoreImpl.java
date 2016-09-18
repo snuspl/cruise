@@ -68,10 +68,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
   /**
-   * Block update notification handler set registered by clients.
+   * Block update listeners that clients have registered.
    */
-  private final Set<BlockUpdateListener> blockUpdateNotifyListenerSet
-      = Collections.newSetFromMap(new ConcurrentHashMap <>());
+  private final Set<BlockUpdateListener> blockUpdateListeners
+      = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
    * A counter for issuing ids for operations requested from local clients.
@@ -138,7 +138,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       throw new RuntimeException("Block with id " + blockId + " already exists.");
     }
 
-    notifyBlockPut(blockId, block);
+    notifyBlockAddition(blockId, block);
   }
 
   @Override
@@ -158,26 +158,26 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       throw new RuntimeException("Block with id " + blockId + "does not exist.");
     }
 
-    notifyBlockRemove(blockId, block);
+    notifyBlockRemoval(blockId, block);
   }
 
   @Override
   public boolean registerBlockUpdateListener(final BlockUpdateListener listener) {
-    return blockUpdateNotifyListenerSet.add(listener);
+    return blockUpdateListeners.add(listener);
   }
 
-  private void notifyBlockRemove(final int blockId, final Block block) {
+  private void notifyBlockRemoval(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateListener listener : blockUpdateNotifyListenerSet) {
+    for (final BlockUpdateListener listener : blockUpdateListeners) {
       listener.onRemovedBlock(blockId, keySet);
     }
   }
 
-  private void notifyBlockPut(final int blockId, final Block block) {
+  private void notifyBlockAddition(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateListener listener : blockUpdateNotifyListenerSet) {
+    for (final BlockUpdateListener listener : blockUpdateListeners) {
       listener.onAddedBlock(blockId, keySet);
     }
   }
