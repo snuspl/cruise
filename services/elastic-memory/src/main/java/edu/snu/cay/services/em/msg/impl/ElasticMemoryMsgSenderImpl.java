@@ -464,13 +464,13 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan("[5]send_block_moved_msg"
+    try (final TraceScope sendBlockMovedMsgScope = Trace.startSpan("[5]send_block_moved_msg"
         + ". blockId: " + blockId, parentTraceInfo)) {
       final BlockMovedMsg blockMovedMsg = BlockMovedMsg.newBuilder()
           .setBlockId(blockId)
           .build();
 
-      detached = sendOwnershipAckMsgScope.detach();
+      detached = sendBlockMovedMsgScope.detach();
 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
