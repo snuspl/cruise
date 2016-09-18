@@ -57,8 +57,6 @@ public final class ElasticMemoryCallbackRouterImplTest {
 
     final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
         .setType(Type.ResultMsg)
-        .setSrcId("")
-        .setDestId("")
         .setOperationId(operationId)
         .build();
 
@@ -77,8 +75,6 @@ public final class ElasticMemoryCallbackRouterImplTest {
   public void testOnCompletedMsgWithoutOperationId() {
     final AvroElasticMemoryMessage msgWithoutOperationId = AvroElasticMemoryMessage.newBuilder()
         .setType(Type.ResultMsg)
-        .setSrcId("")
-        .setDestId("")
         .build();
     callbackRouter.onCompleted(msgWithoutOperationId);
   }
@@ -90,8 +86,6 @@ public final class ElasticMemoryCallbackRouterImplTest {
   public void testOnCompletedWithoutUnregisteredMsg() {
     final AvroElasticMemoryMessage msgWithoutOperationId = AvroElasticMemoryMessage.newBuilder()
         .setType(Type.ResultMsg)
-        .setSrcId("")
-        .setDestId("")
         .setOperationId("TEST-unregistered-000")
         .build();
     callbackRouter.onCompleted(msgWithoutOperationId);
@@ -123,8 +117,6 @@ public final class ElasticMemoryCallbackRouterImplTest {
 
     final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
         .setType(Type.ResultMsg)
-        .setSrcId("")
-        .setDestId("")
         .setOperationId(operationId)
         .build();
     callbackRouter.onCompleted(msg);
@@ -143,8 +135,6 @@ public final class ElasticMemoryCallbackRouterImplTest {
 
     final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
         .setType(Type.ResultMsg)
-        .setSrcId("")
-        .setDestId("")
         .setOperationId(operationId)
         .build();
     callbackRouter.onCompleted(msg);

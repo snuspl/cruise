@@ -127,12 +127,11 @@ public class OperationRouterTest {
           Thread.sleep(1000); // delay for fetching the routing table from driver
 
           final RoutingTableInitReqMsg routingTableInitReqMsg = RoutingTableInitReqMsg.newBuilder()
+              .setEvalId(evalId)
               .build();
 
           final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
               .setType(Type.RoutingTableInitReqMsg)
-              .setSrcId(evalId)
-              .setDestId(driverId)
               .setRoutingTableInitReqMsg(routingTableInitReqMsg)
               .build();
 

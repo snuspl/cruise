@@ -110,6 +110,7 @@
   "name": "RoutingTableInitReqMsg",
   "fields":
   [
+    {"name": "evalId", "type" : "string"}
   ]
 },
 
@@ -143,15 +144,16 @@
 },
 
 /**
- * Control message that is sent from the driver to evaluators.
+ * MoveInit message that is sent from the driver to one evaluator.
  * The message contains an array of block ids to send.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "CtrlMsg",
+  "name": "MoveInitMsg",
   "fields":
   [
+    {"name": "destEvalId", "type" : "string"},
     {"name": "blockIds", "type": {"type": "array", "items": "int"}}
   ]
 },
@@ -166,6 +168,8 @@
   "name": "DataMsg",
   "fields":
   [
+    {"name": "srcEvalId", "type" : "string"},
+    {"name": "destEvalId", "type" : "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null},
     {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
   ]
@@ -191,7 +195,7 @@
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "OwnershipAckMsg",
+  "name": "BlockMovedMsg",
   "fields": [
       {"name": "blockId", "type": "int"}
   ]
@@ -212,7 +216,7 @@
 },
 
 /**
- * Message to notify the result of the migration via callback.
+ * Message to notify the result of the reconfiguration via callback.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -221,6 +225,7 @@
   "fields":
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
+    {"name": "srcId", "type" : ["null", "string"], "default": null},
     {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null},
     {"name": "msg", "type": ["null", "string"], "default": null}
   ]
@@ -228,7 +233,7 @@
 
 /**
  * The message protocol used by Network Service for Elastic Memory.
- * CtrlMsg, DataMsg, etc. are all included as nullable fields, and
+ * MoveInitMsg, DataMsg, etc. are all included as nullable fields, and
  * an enum type indicates which field is not null.
  */
 {
@@ -238,11 +243,10 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["RemoteOpReqMsg", "RemoteOpResultMsg", "RoutingTableInitReqMsg", "RoutingTableInitMsg",
-         "RoutingTableUpdateMsg", "CtrlMsg", "DataMsg",
-         "FailureMsg", "ResultMsg", "OwnershipMsg", "OwnershipAckMsg"]}},
-    {"name": "srcId", "type" : "string"},
-    {"name": "destId", "type" : "string"},
+        "symbols": ["RemoteOpReqMsg", "RemoteOpResultMsg",
+         "RoutingTableInitReqMsg", "RoutingTableInitMsg", "RoutingTableUpdateMsg",
+         "MoveInitMsg", "DataMsg","OwnershipMsg", "BlockMovedMsg",
+         "FailureMsg", "ResultMsg"]}},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
     {"name": "remoteOpReqMsg", "type": ["null", "RemoteOpReqMsg"], "default": null},
@@ -250,12 +254,12 @@
     {"name": "routingTableInitReqMsg", "type": ["null", "RoutingTableInitReqMsg"], "default": null},
     {"name": "routingTableInitMsg", "type": ["null", "RoutingTableInitMsg"], "default": null},
     {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},
-    {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
+    {"name": "moveInitMsg", "type": ["null", "MoveInitMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
-    {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
-    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
     {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null},
-    {"name": "ownershipAckMsg", "type": ["null", "OwnershipAckMsg"], "default": null}
+    {"name": "blockMovedMsg", "type": ["null", "BlockMovedMsg"], "default": null},
+    {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
+    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null}
   ]
 }
 ]

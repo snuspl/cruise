@@ -151,8 +151,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     return AvroElasticMemoryMessage.newBuilder()
         .setType(Type.RemoteOpReqMsg)
-        .setSrcId(emNetworkSetup.getMyId().toString())
-        .setDestId(destId)
         .setOperationId(operationId)
         .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
         .setRemoteOpReqMsg(remoteOpReqMsg)
@@ -225,8 +223,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     return AvroElasticMemoryMessage.newBuilder()
         .setType(Type.RemoteOpResultMsg)
-        .setSrcId(emNetworkSetup.getMyId().toString())
-        .setDestId(destId)
         .setOperationId(operationId)
         .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
         .setRemoteOpResultMsg(remoteOpResultMsg)
@@ -247,6 +243,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
 
       final RoutingTableInitReqMsg routingTableInitReqMsg = RoutingTableInitReqMsg.newBuilder()
+          .setEvalId(emNetworkSetup.getMyId().toString())
           .build();
 
       detached = sendRoutingInitReqMsgScope.detach();
@@ -254,8 +251,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.RoutingTableInitReqMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(driverId)
               .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
               .setRoutingTableInitReqMsg(routingTableInitReqMsg)
               .build());
@@ -289,8 +284,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.RoutingTableInitMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(destId)
               .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
               .setRoutingTableInitMsg(routingTableInitMsg)
               .build());
@@ -327,8 +320,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.RoutingTableUpdateMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(destId)
               .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
               .setRoutingTableUpdateMsg(routingTableUpdateMsg)
               .build());
@@ -341,32 +332,31 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendCtrlMsg(final String destId, final String targetEvalId,
-                          final List<Integer> blocks, final String operationId,
-                          @Nullable final TraceInfo parentTraceInfo) {
+  public void sendMoveInitMsg(final String destId, final String targetEvalId,
+                              final List<Integer> blocks, final String operationId,
+                              @Nullable final TraceInfo parentTraceInfo) {
 
     // We should detach the span when we transit to another thread (local or remote),
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    // sending ctrl msg is the starting point of the migration protocol
-    try (final TraceScope sendCtrlMsgScope = Trace.startSpan("[1]send_ctrl_msg", parentTraceInfo)) {
+    // sending MoveInit msg is the starting point of the migration protocol
+    try (final TraceScope sendMoveInitMsgScope = Trace.startSpan("[1]send_move_init_msg", parentTraceInfo)) {
 
-      final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
+      final MoveInitMsg moveInitMsg = MoveInitMsg.newBuilder()
+          .setDestEvalId(targetEvalId)
           .setBlockIds(blocks)
           .build();
 
-      detached = sendCtrlMsgScope.detach();
+      detached = sendMoveInitMsgScope.detach();
 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.CtrlMsg)
-              .setSrcId(destId)
-              .setDestId(targetEvalId)
+              .setType(Type.MoveInitMsg)
               .setOperationId(operationId)
               .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
-              .setCtrlMsg(ctrlMsg)
+              .setMoveInitMsg(moveInitMsg)
               .build());
     } finally {
       Trace.continueSpan(detached).close();
@@ -405,8 +395,10 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           new Object[]{destId});
 
       final DataMsg dataMsg = DataMsg.newBuilder()
-          .setKeyValuePairs(keyValuePairs)
+          .setSrcEvalId(emNetworkSetup.getMyId().toString())
+          .setDestEvalId(destId)
           .setBlockId(blockId)
+          .setKeyValuePairs(keyValuePairs)
           .build();
 
       detached = sendDataMsgScope.detach();
@@ -414,8 +406,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.DataMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(destId)
               .setOperationId(operationId)
               .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
               .setDataMsg(dataMsg)
@@ -456,8 +446,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.OwnershipMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(destId)
               .setOperationId(operationId)
               .setOwnershipMsg(ownershipMsg)
               .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
@@ -468,17 +456,17 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendOwnershipAckMsg(final String operationId, final int blockId,
-                                  @Nullable final TraceInfo parentTraceInfo) {
+  public void sendBlockMovedMsg(final String operationId, final int blockId,
+                                @Nullable final TraceInfo parentTraceInfo) {
 
     // We should detach the span when we transit to another thread (local or remote),
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan("[5]send_ownership_ack_msg"
+    try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan("[5]send_block_moved_msg"
         + ". blockId: " + blockId, parentTraceInfo)) {
-      final OwnershipAckMsg ownershipAckMsg = OwnershipAckMsg.newBuilder()
+      final BlockMovedMsg blockMovedMsg = BlockMovedMsg.newBuilder()
           .setBlockId(blockId)
           .build();
 
@@ -486,11 +474,9 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.OwnershipAckMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(driverId)
+              .setType(Type.BlockMovedMsg)
               .setOperationId(operationId)
-              .setOwnershipAckMsg(ownershipAckMsg)
+              .setBlockMovedMsg(blockMovedMsg)
               .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
               .build());
     } finally {
@@ -522,8 +508,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.FailureMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(driverId)
               .setOperationId(operationId)
               .setFailureMsg(failureMsg)
               .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))

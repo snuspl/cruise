@@ -472,9 +472,9 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendCtrlMsg(final String destId, final String targetEvalId,
-                            final List<Integer> blocks, final String operationId,
-                            @Nullable final TraceInfo parentTraceInfo) {
+    public void sendMoveInitMsg(final String destId, final String targetEvalId,
+                                final List<Integer> blocks, final String operationId,
+                                @Nullable final TraceInfo parentTraceInfo) {
       // invoke a handler logic of response for CtrlMsg
       for (final int blockId : blocks) {
         final int oldOwnerId = blockManager.getMemoryStoreId(destId);
@@ -498,8 +498,8 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendOwnershipAckMsg(final String operationId, final int blockId,
-                                    @Nullable final TraceInfo parentTraceInfo) {
+    public void sendBlockMovedMsg(final String operationId, final int blockId,
+                                  @Nullable final TraceInfo parentTraceInfo) {
 
     }
 

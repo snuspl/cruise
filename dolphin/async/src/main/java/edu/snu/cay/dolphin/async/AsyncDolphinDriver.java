@@ -1066,11 +1066,14 @@ public final class AsyncDolphinDriver {
   private void sendCallback(final String contextId,
                             final EventHandler<AvroElasticMemoryMessage> callback,
                             final boolean isSuccess) {
+    final ResultMsg resultMsg = ResultMsg.newBuilder()
+        .setResult(isSuccess ? Result.SUCCESS : Result.FAILURE)
+        .setSrcId(contextId)
+        .build();
+
     callback.onNext(AvroElasticMemoryMessage.newBuilder()
         .setType(Type.ResultMsg)
-        .setResultMsg(ResultMsg.newBuilder().setResult(isSuccess ? Result.SUCCESS : Result.FAILURE).build())
-        .setSrcId(contextId)
-        .setDestId("")
+        .setResultMsg(resultMsg)
         .build());
   }
 }
