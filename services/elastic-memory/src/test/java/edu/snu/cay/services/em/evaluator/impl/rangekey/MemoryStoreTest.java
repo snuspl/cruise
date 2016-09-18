@@ -341,7 +341,7 @@ public final class MemoryStoreTest {
   /**
    * Test for MemoryStore's event listener for block addition.
    * Checks that all registered listeners receive block update notifications with correct parameters
-   * including the updated block's id and key set, when {@link MoveHandler#putBlock(int, Map)} occurs.
+   * including the updated block's id and key set, when a new block is added.
    */
   @Test(timeout = 2000)
   public void testMultipleBlockAddNotify() throws InterruptedException  {
@@ -368,7 +368,7 @@ public final class MemoryStoreTest {
       final int blockId = blockIdBase + i;
 
       // generate a hash map of key-value pairs to store in a block
-      final Map<Long, Long> data = new HashMap<>();
+      final Map<Long, Object> data = new HashMap<>();
       final long keyIdStart = (blockId * numOfKeysPerBlock);
       for (int keyOffset = 0; keyOffset < numOfKeysPerBlock; keyOffset++) {
         final long keyId = keyIdStart + keyOffset;
@@ -385,7 +385,7 @@ public final class MemoryStoreTest {
   /**
    * Test for MemoryStore's event listener for block removal.
    * Checks that all registered listeners receive block update notifications with correct parameters
-   * including the updated block's id and key set, when {@link MoveHandler#removeBlock(int)} occurs.
+   * including the updated block's id and key set, when the existing block is removed.
    */
   @Test(timeout = 2000)
   public void testMultipleBlockRemoveNotify() throws InterruptedException {
@@ -411,7 +411,7 @@ public final class MemoryStoreTest {
       final int blockId = blockIdBase + i;
 
       // generate a hash map of key-value pairs to store in a block
-      final Map<Long, Long> data = new HashMap<>();
+      final Map<Long, Object> data = new HashMap<>();
       final long keyIdStart = (numOfKeysPerBlock * blockId);
       for (int keyOffset = 0; keyOffset < numOfKeysPerBlock; keyOffset++) {
         final long keyId = keyIdStart + keyOffset;
