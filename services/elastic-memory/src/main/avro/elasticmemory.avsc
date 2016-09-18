@@ -144,7 +144,7 @@
 },
 
 /**
- * MoveInit message that is sent from the driver to one evaluator.
+ * Request message from Driver to Evaluators, which initiates data migration.
  * The message contains an array of block ids to send.
  */
 {
@@ -190,7 +190,7 @@
 },
 
 /**
- * Response message to update ownership of the block.
+ * Message that finalizes the migration of a block.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
