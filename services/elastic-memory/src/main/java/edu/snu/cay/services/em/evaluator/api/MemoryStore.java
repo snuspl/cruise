@@ -134,7 +134,15 @@ public interface MemoryStore<K> {
   <V> Map<K, V> removeRange(K startId, K endId);
 
   /**
-   * @return number of blocks in the MemoryStore
+   * Register a listener for block update event to this store.
+   * @param listener a client-defined block update notification listener to be registered.
+   * @return {@code true} if the listener is registered successfully.
+   *         {@code false} when the object has already been registered.
+   */
+  boolean registerBlockUpdateListener(final BlockUpdateListener listener);
+
+  /**
+   * @return  number of blocks in the MemoryStore
    */
   int getNumBlocks();
 }
