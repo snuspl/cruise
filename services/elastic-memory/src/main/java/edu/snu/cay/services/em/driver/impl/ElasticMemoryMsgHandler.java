@@ -71,8 +71,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       onOwnershipMsg(innerMsg);
       break;
 
-    case OwnershipAckMsg:
-      onOwnershipAckMsg(innerMsg);
+    case BlockMovedMsg:
+      onBlockMovedMsg(innerMsg);
       break;
 
     case FailureMsg:
@@ -90,23 +90,24 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan("on_routing_table_init_req_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
+      final RoutingTableInitReqMsg routingTableInitReqMsg = msg.getRoutingTableInitReqMsg();
+      final String evalId = routingTableInitReqMsg.getEvalId().toString();
       final List<Integer> blockLocations = blockManager.getBlockLocations();
 
-      msgSender.get().sendRoutingTableInitMsg(msg.getSrcId().toString(), blockLocations,
+      msgSender.get().sendRoutingTableInitMsg(evalId, blockLocations,
           TraceInfo.fromSpan(onRoutingTableInitReqMsgScope.getSpan()));
     }
   }
 
-  private void onOwnershipAckMsg(final AvroElasticMemoryMessage msg) {
+  private void onBlockMovedMsg(final AvroElasticMemoryMessage msg) {
     final String operationId = msg.getOperationId().toString();
-    final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
-    final int blockId = ownershipAckMsg.getBlockId();
+    final BlockMovedMsg blockMovedMsg = msg.getBlockMovedMsg();
+    final int blockId = blockMovedMsg.getBlockId();
 
-    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
-        String.format("on_ownership_ack_msg. blockId: %d", blockId),
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+    try (final TraceScope onBlockMovedMsgScope = Trace.startSpan(
+        String.format("on_block_moved_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      migrationManager.markBlockAsMoved(operationId, blockId, TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
+      migrationManager.markBlockAsMoved(operationId, blockId, TraceInfo.fromSpan(onBlockMovedMsgScope.getSpan()));
     }
   }
 

@@ -92,12 +92,12 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       onRemoteOpMsg(innerMsg);
       break;
 
-    case DataMsg:
-      onDataMsg(innerMsg);
+    case MoveInitMsg:
+      onMoveInitMsg(innerMsg);
       break;
 
-    case CtrlMsg:
-      onCtrlMsg(innerMsg);
+    case DataMsg:
+      onDataMsg(innerMsg);
       break;
 
     case OwnershipMsg:
@@ -153,7 +153,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       // so it is safe to remove the local data block.
       memoryStore.removeBlock(blockId);
 
-      sender.get().sendOwnershipAckMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
+      sender.get().sendBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
     }
   }
 
@@ -187,8 +187,8 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
       // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
       // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
-      final int newOwnerId = getStoreId(msg.getDestId().toString());
-      final int oldOwnerId = getStoreId(msg.getSrcId().toString());
+      final int newOwnerId = getStoreId(dataMsg.getDestEvalId().toString());
+      final int oldOwnerId = getStoreId(dataMsg.getSrcEvalId().toString());
       memoryStore.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
       // Notify the driver that the ownership has been updated by setting empty destination id.
@@ -204,18 +204,17 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   }
 
   /**
-   * Creates a data message using the control message contents, and then
-   * sends the data message to the correct evaluator.
+   * Initiates move by sending data messages to the src evaluator.
    */
-  private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
+  private void onMoveInitMsg(final AvroElasticMemoryMessage msg) {
     Trace.setProcessId("src_eval");
-    try (final TraceScope onCtrlMsgScope = Trace.startSpan("on_ctrl_msg",
+    try (final TraceScope onCtrlMsgScope = Trace.startSpan("on_move_init_msg",
       HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final String operationId = msg.getOperationId().toString();
-      final String destId = msg.getDestId().toString();
 
-      final CtrlMsg ctrlMsg = msg.getCtrlMsg();
-      final List<Integer> blockIds = ctrlMsg.getBlockIds();
+      final MoveInitMsg moveInitMsg = msg.getMoveInitMsg();
+      final String destId = moveInitMsg.getDestEvalId().toString();
+      final List<Integer> blockIds = moveInitMsg.getBlockIds();
 
       final Codec codec = serializer.getCodec();
 

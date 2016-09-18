@@ -103,7 +103,7 @@ public interface ElasticMemoryMsgSender {
                                  @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a CtrlMsg to initiate moving data blocks to the source Evaluator.
+   * Sends a MoveInitMsg to initiate moving data blocks to the source Evaluator.
    * @param destId id of the Evaluator that receives this message
    *              (i.e., source Evaluator in terms of the data)
    * @param targetEvalId id of the Evaluator that receives the data
@@ -111,11 +111,11 @@ public interface ElasticMemoryMsgSender {
    * @param operationId id associated with this operation
    * @param parentTraceInfo Trace information for HTrace
    */
-  void sendCtrlMsg(final String destId,
-                   final String targetEvalId,
-                   final List<Integer> blocks,
-                   final String operationId,
-                   @Nullable final TraceInfo parentTraceInfo);
+  void sendMoveInitMsg(final String destId,
+                       final String targetEvalId,
+                       final List<Integer> blocks,
+                       final String operationId,
+                       @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Sends a DataMsg containing list of {@code keyValuePairs} to the Evaluator named {@code destId}.
@@ -140,11 +140,11 @@ public interface ElasticMemoryMsgSender {
                         @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends an ACK message to Driver for notifying that the ownership has been updated successful.
+   * Sends a BlockMoved message to driver for notifying that the moving a block is completed.
    */
-  void sendOwnershipAckMsg(final String operationId,
-                           final int blockId,
-                           @Nullable final TraceInfo parentTraceInfo);
+  void sendBlockMovedMsg(final String operationId,
+                         final int blockId,
+                         @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * TODO #90: handle failures during move

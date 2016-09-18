@@ -16,7 +16,7 @@
 package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.OwnershipAckMsg;
+import edu.snu.cay.services.em.avro.BlockMovedMsg;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
@@ -171,23 +171,19 @@ public final class EMRoutingTableManagerTest {
 
     // mock EM msg sender to simulate migration
     doAnswer(invocation -> {
-        final String srcId = invocation.getArgumentAt(0, String.class);
-        final String destId = invocation.getArgumentAt(1, String.class);
         final List<Integer> blocks = invocation.getArgumentAt(2, List.class);
         final String opId = invocation.getArgumentAt(3, String.class);
 
-        // ownershipAckMsg will finish the migration
+        // blockMovedMsg will finish the migration
         for (final int blockId : blocks) {
-          final OwnershipAckMsg ownershipAckMsg = OwnershipAckMsg.newBuilder()
+          final BlockMovedMsg blockMovedMsg = BlockMovedMsg.newBuilder()
               .setBlockId(blockId)
               .build();
 
           final AvroElasticMemoryMessage avroEMMsg = AvroElasticMemoryMessage.newBuilder()
-              .setType(edu.snu.cay.services.em.avro.Type.OwnershipAckMsg)
+              .setType(edu.snu.cay.services.em.avro.Type.BlockMovedMsg)
               .setOperationId(opId)
-              .setSrcId(srcId)
-              .setDestId(destId)
-              .setOwnershipAckMsg(ownershipAckMsg)
+              .setBlockMovedMsg(blockMovedMsg)
               .build();
 
           final Message<AvroElasticMemoryMessage> msg = new NSMessage<>(null, null, avroEMMsg);
@@ -195,7 +191,8 @@ public final class EMRoutingTableManagerTest {
           emMsgHandler.onNext(msg);
         }
         return null;
-      }).when(mockEMSender).sendCtrlMsg(anyString(), anyString(), anyListOf(Integer.class), anyString(), anyObject());
+      }).when(mockEMSender)
+        .sendMoveInitMsg(anyString(), anyString(), anyListOf(Integer.class), anyString(), anyObject());
 
     final int numBlocksToMove = 5;
     final int numFirstMoves = 2;
