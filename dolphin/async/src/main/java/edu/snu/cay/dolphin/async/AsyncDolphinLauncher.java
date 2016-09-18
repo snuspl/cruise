@@ -23,6 +23,8 @@ import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
+import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
+import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
@@ -33,6 +35,7 @@ import edu.snu.cay.services.ps.PSConfigurationBuilder;
 import edu.snu.cay.services.ps.common.parameters.Dynamic;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.services.ps.common.parameters.PSTraceProbability;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.driver.impl.PSDriver;
 import edu.snu.cay.services.ps.driver.api.PSManager;
@@ -95,6 +98,7 @@ public final class AsyncDolphinLauncher {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinLauncher.class.getName());
   private static final String DASHBOARD_DIR = "/dashboard";
   private static final String DASHBOARD_SCRIPT = "dashboard.py";
+  public static final String INVALID_HOST_ADDRESS = "INVALID";
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
   final class SerializedParameterConfiguration implements Name<String> {
@@ -209,7 +213,6 @@ public final class AsyncDolphinLauncher {
         if (port > 0) {
           final String hostAddress = getHostAddress(port);
           runDashboardServer(port);
-          LOG.log(Level.INFO, "Add dashboard configuration!");
           dashboardConfBuilder
               .bindNamedParameter(DashboardHostAddress.class, hostAddress);
         }
@@ -257,6 +260,7 @@ public final class AsyncDolphinLauncher {
     // add all basic parameters
     // TODO #681: Need to add configuration for numWorkerThreads after multi-thread worker is enabled
     final List<Class<? extends Name<?>>> basicParameterClassList = new LinkedList<>();
+    basicParameterClassList.add(DriverMemory.class);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -279,10 +283,12 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
     basicParameterClassList.add(PullRetryTimeoutMs.class);
+    basicParameterClassList.add(MaxPendingPullsPerThread.class);
     basicParameterClassList.add(WorkerKeyCacheSize.class);
     basicParameterClassList.add(WorkerLogPeriod.class);
     basicParameterClassList.add(Dynamic.class);
     basicParameterClassList.add(ServerMetricsWindowMs.class);
+    basicParameterClassList.add(PSTraceProbability.class);
 
     // add SSP parameters
     basicParameterClassList.add(StalenessBound.class);
@@ -290,6 +296,8 @@ public final class AsyncDolphinLauncher {
     // add em parameters
     basicParameterClassList.add(OptimizerClass.class);
     basicParameterClassList.add(PlanExecutorClass.class);
+    basicParameterClassList.add(EMTraceEnabled.class);
+    basicParameterClassList.add(NumTotalBlocks.class);
 
     // add trace parameters
     basicParameterClassList.add(ReceiverType.class);
@@ -356,6 +364,7 @@ public final class AsyncDolphinLauncher {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
+        .set(DriverConfiguration.DRIVER_MEMORY, injector.getNamedInstance(DriverMemory.class))
         .set(DriverConfiguration.ON_DRIVER_STARTED, AsyncDolphinDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AsyncDolphinDriver.AllocatedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, AsyncDolphinDriver.FailedEvaluatorHandler.class)
@@ -412,7 +421,7 @@ public final class AsyncDolphinLauncher {
    * @throws IOException when the port number is invalid or failed to find the host address.
    */
   private static String getHostAddress(final int port) throws IOException {
-    String hostAddress = "";
+    String hostAddress = INVALID_HOST_ADDRESS;
 
     // Find IP address of client PC.
     final Enumeration e = NetworkInterface.getNetworkInterfaces();

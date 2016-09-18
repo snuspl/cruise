@@ -110,6 +110,11 @@
       <groupId>org.bytedeco</groupId>
       <artifactId>javacpp</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpasyncclient</artifactId>
+      <version>4.1.2</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -187,6 +192,7 @@
               <outputDirectory>${project.basedir}/target/generated-sources/avro/</outputDirectory>
               <imports>
                 <import>${project.parent.basedir}/common/src/main/avro/metric.avsc</import>
+                <import>${project.parent.basedir}/utils/src/main/avro/traceinfo.avsc</import>
                 <import>${project.parent.basedir}/services/ps/src/main/avro/parameterserver.avsc</import>
               </imports>
             </configuration>

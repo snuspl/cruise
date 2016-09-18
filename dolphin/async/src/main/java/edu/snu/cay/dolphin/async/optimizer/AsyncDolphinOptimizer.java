@@ -106,7 +106,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTime() /
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTimeSec() /
                 (double) ((ServerMetrics) param.getMetrics()).getNumModelBlocks(),
             NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
@@ -147,6 +147,9 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         })
         .get();
 
+    final int currentNumWorkers = workerParams.size();
+    final int currentNumServers = serverParams.size();
+
     final int optimalNumWorkers = optimalNumWorkersCostPair.getFirst();
     final int optimalNumServers = availableEvaluators - optimalNumWorkers;
 
@@ -158,9 +161,11 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final double currentCommCost = workerParams.stream()
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D);
 
-    final String optimizationInfo = String.format("{\"numAvailEval\":%d, \"numOptWorker\":%d, \"numOptServer\":%d, " +
-            "\"optimalCompCost\":%f, \"currentCompCost\":%f, \"optimalCommCost\":%f, \"currentCommCost\":%f," +
-            "\"optBenefitThreshold\":%f}", availableEvaluators, optimalNumWorkers, optimalNumServers,
+    final String optimizationInfo = String.format("{\"numAvailEval\":%d, " +
+            "\"optNumWorker\":%d, \"currNumWorker\":%d, \"optNumServer\":%d, \"currNumServer\":%d, " +
+            "\"optCompCost\":%f, \"currCompCost\":%f, \"optCommCost\":%f, \"currCommCost\":%f," +
+            "\"optBenefitThreshold\":%f}", availableEvaluators,
+        optimalNumWorkers, currentNumWorkers, optimalNumServers, currentNumServers,
         optimalCompCost, currentCompCost, optimalCommCost, currentCommCost, optBenefitThreshold);
 
     LOG.log(Level.INFO, "OptimizationInfo {0} {1}", new Object[]{System.currentTimeMillis(), optimizationInfo});
@@ -298,9 +303,9 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    * @return total cost for a given number of workers using the current metrics of the system
    */
   private Pair<Double, Double> totalCost(final int numWorker, final int numDataBlocks, final int numModelBlocks,
-                           final int availableEvaluators,
-                           final List<EvaluatorSummary> workers,
-                           final List<EvaluatorSummary> servers) {
+                                         final int availableEvaluators,
+                                         final List<EvaluatorSummary> workers,
+                                         final List<EvaluatorSummary> servers) {
     // Calculating compCost based on avg: (avgNumBlockPerWorker / avgThroughput)
     final double workerThroughputSum = workers.subList(0, numWorker).stream()
         .mapToDouble(worker -> worker.throughput)
@@ -308,12 +313,16 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final double compCost = numDataBlocks / workerThroughputSum;
 
     // Calculating commCost based on avg: (avgNumBlockPerServer / avgThroughput)
-    final double serverThroughputSum = servers.subList(0, availableEvaluators - numWorker).stream()
+    final int numServer = availableEvaluators - numWorker;
+    final double serverThroughputSum = servers.subList(0, numServer).stream()
         .mapToDouble(server -> server.throughput)
         .sum();
-    final double commCost = numModelBlocks / serverThroughputSum * numWorker;
-
-    return new Pair<>(compCost, commCost * numMiniBatchPerItr);
+    final double commCost = numModelBlocks / serverThroughputSum * numWorker * numMiniBatchPerItr;
+    final double totalCost = compCost + commCost;
+    final String costInfo = String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +
+        "\"compCost\": %f, \"commCost\": %f}", numServer, numWorker, totalCost, compCost, commCost);
+    LOG.log(Level.INFO, "CostInfo {0} {1}", new Object[]{System.currentTimeMillis(), costInfo});
+    return new Pair<>(compCost, commCost);
   }
 
   /**

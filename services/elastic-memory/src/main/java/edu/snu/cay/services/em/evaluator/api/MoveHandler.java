@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.evaluator.api;
 
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.annotations.audience.Private;
 
 import java.util.Map;
 
@@ -26,7 +27,8 @@ import java.util.Map;
  *
  */
 @EvaluatorSide
-public interface MoveHandler<K> {
+@Private
+interface MoveHandler<K> {
   /**
    * Called when the ownership arrives, to apply the change of ownership.
    * @param blockId id of the block to update its owner
