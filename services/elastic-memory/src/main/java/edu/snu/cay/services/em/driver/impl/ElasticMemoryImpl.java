@@ -124,11 +124,15 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     // Deletion fails when the evaluator has remaining data
     if (blockManager.getNumBlocks(evalId) > 0) {
       if (callback != null) {
+
+        final ResultMsg resultMsg = ResultMsg.newBuilder()
+            .setResult(Result.FAILURE)
+            .setSrcId(evalId)
+            .build();
+
         final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
             .setType(Type.ResultMsg)
-            .setResultMsg(ResultMsg.newBuilder().setResult(Result.FAILURE).build())
-            .setSrcId(evalId)
-            .setDestId("")
+            .setResultMsg(resultMsg)
             .build();
         callback.onNext(msg);
       }

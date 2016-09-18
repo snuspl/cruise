@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.optimizer.ServerEM;
 import edu.snu.cay.dolphin.async.optimizer.WorkerEM;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.plan.api.*;
 import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
@@ -294,8 +295,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     @Override
     public void onNext(final AvroElasticMemoryMessage msg) {
       LOG.log(Level.FINER, "Received new Evaluators Deleted {0}", msg);
-      if (msg.getResultMsg().getResult() == Result.FAILURE) {
-        LOG.log(Level.WARNING, "Evaluator delete failed for evaluator {0}", msg.getSrcId());
+
+      final ResultMsg resultMsg = msg.getResultMsg();
+
+      if (resultMsg.getResult() == Result.FAILURE) {
+        LOG.log(Level.WARNING, "Evaluator delete failed for evaluator {0}", resultMsg.getSrcId());
       }
       if (executingPlan == null) {
         throw new RuntimeException("Evaluators deleted " + msg + " received, but no executingPlan available.");

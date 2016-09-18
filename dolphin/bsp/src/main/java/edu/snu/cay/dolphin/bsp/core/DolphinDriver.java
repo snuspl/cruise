@@ -750,11 +750,15 @@ public final class DolphinDriver {
         closingContexts.add(activeContextId);
         runningTask.close();
         // TODO #205: Reconsider using of Avro message in EM's callback
+
+        final ResultMsg resultMsg = ResultMsg.newBuilder()
+            .setResult(Result.SUCCESS)
+            .setSrcId(activeContextId)
+            .build();
+
         callback.onNext(AvroElasticMemoryMessage.newBuilder()
             .setType(Type.ResultMsg)
-            .setResultMsg(ResultMsg.newBuilder().setResult(Result.SUCCESS).build())
-            .setSrcId(activeContextId)
-            .setDestId("")
+            .setResultMsg(resultMsg)
             .build());
         return true;
       }

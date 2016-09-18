@@ -111,7 +111,7 @@ final class MigrationManager {
     }
 
     ongoingMigrations.put(operationId, new Migration(senderId, receiverId, blocks, migrationTraceScope));
-    sender.get().sendCtrlMsg(senderId, receiverId, blocks, operationId,
+    sender.get().sendMoveInitMsg(senderId, receiverId, blocks, operationId,
         TraceInfo.fromSpan(migrationTraceScope.getSpan()));
   }
 
@@ -267,8 +267,6 @@ final class MigrationManager {
         .setType(Type.ResultMsg)
         .setResultMsg(resultMsg)
         .setOperationId(operationId)
-        .setSrcId("")
-        .setDestId("")
         .build();
   }
 
