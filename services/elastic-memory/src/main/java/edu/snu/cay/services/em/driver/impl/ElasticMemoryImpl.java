@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -29,11 +30,13 @@ import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.EventHandler;
+import org.htrace.Sampler;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
-import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -48,7 +51,7 @@ import java.util.logging.Logger;
 @Private
 public final class ElasticMemoryImpl implements ElasticMemory {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryImpl.class.getName());
-  private static final String MOVE = "move";
+  private static final String OP_MOVE = "move";
 
   private final MigrationManager migrationManager;
 
@@ -63,17 +66,29 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final InjectionFuture<EMDeleteExecutor> deleteExecutor;
   private final BlockManager blockManager;
 
+  /**
+   * Used to enable/disable trace spans.
+   */
+  private final Sampler traceSampler;
+
   @Inject
   private ElasticMemoryImpl(final EvaluatorManager evaluatorManager,
                             final MigrationManager migrationManager,
                             final InjectionFuture<EMDeleteExecutor> deleteExecutor,
                             final BlockManager blockManager,
+                            @Parameter(EMTraceEnabled.class) final boolean emTraceEnabled,
                             final HTrace hTrace) {
-    hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
     this.migrationManager = migrationManager;
     this.deleteExecutor = deleteExecutor;
     this.blockManager = blockManager;
+
+    if (emTraceEnabled) {
+      hTrace.initialize();
+      traceSampler = Sampler.ALWAYS;
+    } else {
+      traceSampler = Sampler.NEVER;
+    }
   }
 
   /**
@@ -109,11 +124,15 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     // Deletion fails when the evaluator has remaining data
     if (blockManager.getNumBlocks(evalId) > 0) {
       if (callback != null) {
+
+        final ResultMsg resultMsg = ResultMsg.newBuilder()
+            .setResult(Result.FAILURE)
+            .setSrcId(evalId)
+            .build();
+
         final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
             .setType(Type.ResultMsg)
-            .setResultMsg(ResultMsg.newBuilder().setResult(Result.FAILURE).build())
-            .setSrcId(evalId)
-            .setDestId("")
+            .setResultMsg(resultMsg)
             .build();
         callback.onNext(msg);
       }
@@ -147,11 +166,11 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-    try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
-      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
-      migrationManager.startMigration(operationId, srcEvalId, destEvalId, numBlocks, traceInfo,
-          finishedCallback);
+    Trace.setProcessId("elastic_memory");
+    try (final TraceScope moveScope = Trace.startSpan(OP_MOVE, traceSampler)) {
+      final String operationId = String.format("%s-%d", OP_MOVE, operationIdCounter.getAndIncrement());
+      migrationManager.startMigration(operationId, srcEvalId, destEvalId, numBlocks,
+          TraceInfo.fromSpan(moveScope.getSpan()), finishedCallback);
     }
   }
 

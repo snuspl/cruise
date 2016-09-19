@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
+import org.htrace.TraceScope;
+
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,6 +42,11 @@ final class Migration {
   private final Set<Integer> movedBlockIds;
 
   /**
+   * Maintains this migration's scope, to stitch the trace when the migration is complete.
+   */
+  private final TraceScope traceScope;
+
+  /**
    * Creates a new Migration when move() is requested.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
@@ -47,11 +54,13 @@ final class Migration {
    */
   public Migration(final String senderId,
                    final String receiverId,
-                   final List<Integer> blockIds) {
+                   final List<Integer> blockIds,
+                   final TraceScope traceScope) {
     this.senderId = senderId;
     this.receiverId = receiverId;
     this.blockIds = blockIds;
     this.movedBlockIds = new HashSet<>(blockIds.size());
+    this.traceScope = traceScope;
   }
 
   /**
@@ -73,6 +82,13 @@ final class Migration {
    */
   List<Integer> getBlockIds() {
     return blockIds;
+  }
+
+  /**
+   * @return the scope of the migration
+   */
+  TraceScope getTraceScope() {
+    return traceScope;
   }
 
   /**

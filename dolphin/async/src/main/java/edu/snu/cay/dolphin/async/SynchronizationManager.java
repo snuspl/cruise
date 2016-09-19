@@ -69,9 +69,9 @@ final class SynchronizationManager {
   private AtomicBoolean waitingCleanup = new AtomicBoolean(false);
 
   /**
-   * A latch that releases waiting threads when workers become able to start cleanup.
+   * A boolean flag that becomes true when driver allows SyncManager to let workers enter the cleanup state.
    */
-  private CountDownLatch allowCleanupLatch = new CountDownLatch(1);
+  private boolean allowCleanup = false;
 
   private final AggregationMaster aggregationMaster;
 
@@ -124,7 +124,7 @@ final class SynchronizationManager {
    * Embraces the newly added worker to be synchronized from now.
    */
   synchronized void onWorkerAdded() {
-    // increase the number of workers to block
+    // increase the number of workers to sync
     numWorkers++;
     LOG.log(Level.INFO, "Total number of workers participating in the synchronization = {0}", numWorkers);
   }
@@ -188,8 +188,9 @@ final class SynchronizationManager {
   /**
    * Allow sending response to workers to start the cleanup stage.
    */
-  void allowWorkersCleanup() {
-    allowCleanupLatch.countDown();
+  synchronized void allowWorkersCleanup() {
+    allowCleanup = true;
+    notifyAll();
   }
 
   /**
@@ -220,32 +221,34 @@ final class SynchronizationManager {
       // Let workers enter the cleanup state after assuring that there's no ongoing optimization.
       // Note that in the STATE_CLEANUP state, orchestrator never trigger further optimization.
       } else if (currentState.equals(STATE_RUN)) {
-        try {
-          final int numWorkersBeforeSleep = numWorkers;
-          LOG.log(Level.INFO, "Wait for driver to allow workers to enter cleanup state");
-          allowCleanupLatch.await();
-
-          // numWorkers may have changed while waiting for allowCleanupLatch, by the last reconfiguration plan.
-          // We should handle the case differently if new workers have been added.
-          final int numAddedWorkers = numWorkers - numWorkersBeforeSleep;
-          if (numAddedWorkers > 0) {
-
-            LOG.log(Level.FINE, "{0} more workers were added while waiting for driver to allow cleanup",
-                numAddedWorkers);
-
-            if (blockedWorkerIds.size() < numWorkers) {
-              LOG.log(Level.INFO, "Cancel releasing workers" +
-                  " because we have {0} more workers that have not requested their cleanup barrier.",
-                  numWorkers - blockedWorkerIds.size());
-
-              // Cancel releasing workers.
-              // Added workers will invoke this method again when they are going to enter cleanup state.
-              return;
-            }
+        final int numWorkersBeforeSleep = numWorkers;
+        LOG.log(Level.INFO, "Wait for driver to allow workers to enter cleanup state");
+        while (!allowCleanup) {
+          try {
+            wait();
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while waiting for the optimization to be done", e);
           }
+        }
 
-        } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "Interrupted while waiting for the optimization to be done", e);
+        // numWorkers may have changed while waiting for allowCleanup, by the last reconfiguration plan.
+        // We should handle the case differently if new workers have been added.
+        // Here we assume that optimizers never generate a plan that includes both Add and Del of workers.
+        final int numAddedWorkers = numWorkers - numWorkersBeforeSleep;
+        if (numAddedWorkers > 0) {
+
+          LOG.log(Level.FINE, "{0} more workers were added while waiting for driver to allow cleanup",
+              numAddedWorkers);
+
+          if (blockedWorkerIds.size() < numWorkers) {
+            LOG.log(Level.INFO, "Cancel releasing workers" +
+                    " because we have {0} more workers that have not requested their cleanup barrier.",
+                numWorkers - blockedWorkerIds.size());
+
+            // Cancel releasing workers.
+            // Added workers will invoke this method again when they are going to enter cleanup state.
+            return;
+          }
         }
       }
 
@@ -271,7 +274,6 @@ final class SynchronizationManager {
   }
 
   private synchronized void blockWorker(final String workerId) {
-
     blockedWorkerIds.add(workerId);
     LOG.log(Level.INFO, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
         new Object[]{workerId, blockedWorkerIds.size(), numWorkers});
@@ -317,7 +319,7 @@ final class SynchronizationManager {
           break;
         case STATE_CLEANUP:
           // Though workers already exit their barrier before CLEANUP phase,
-          // added workers can request the barrier for cleanup. In this case, we let the workers proceed immediately.
+          // added workers can request the barriers. In this case, we let the workers proceed immediately.
           sendResponseMessage(workerId, EMPTY_DATA);
           break;
         default:

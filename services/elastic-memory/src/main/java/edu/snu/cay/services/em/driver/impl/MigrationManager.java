@@ -23,9 +23,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
-import org.htrace.Trace;
-import org.htrace.TraceInfo;
-import org.htrace.TraceScope;
+import org.htrace.*;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -79,15 +77,22 @@ final class MigrationManager {
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
    * @param numBlocks Number of blocks to move.
-   * @param traceInfo Information for Trace.
+   * @param parentTraceInfo Information for Trace from parent.
    * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
    */
   synchronized void startMigration(final String operationId,
                                    final String senderId,
                                    final String receiverId,
                                    final int numBlocks,
-                                   @Nullable final TraceInfo traceInfo,
+                                   @Nullable final TraceInfo parentTraceInfo,
                                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
+    Trace.setProcessId("migration_manager");
+
+    final TraceScope migrationTraceScope = Trace.startSpan(
+        String.format("migration. op_id: %s, sender: %s, receiver: %s, num_blocks: %d ",
+            operationId, senderId, receiverId, numBlocks),
+        parentTraceInfo);
+
     if (ongoingMigrations.containsKey(operationId)) {
       LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
       return;
@@ -105,16 +110,19 @@ final class MigrationManager {
       return;
     }
 
-    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, blocks));
-    sender.get().sendCtrlMsg(senderId, receiverId, blocks, operationId, traceInfo);
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, blocks, migrationTraceScope));
+    sender.get().sendMoveInitMsg(senderId, receiverId, blocks, operationId,
+        TraceInfo.fromSpan(migrationTraceScope.getSpan()));
   }
 
   /**
    * Mark one block as moved.
    * @param operationId Identifier of {@code move} operation.
    * @param blockId Identifier of the moved block.
+   * @param parentTraceInfo Information for Trace from parent.
    */
-  synchronized void markBlockAsMoved(final String operationId, final int blockId) {
+  synchronized void markBlockAsMoved(final String operationId, final int blockId,
+                                     @Nullable final TraceInfo parentTraceInfo) {
     final Migration migration = ongoingMigrations.get(operationId);
     if (migration == null) {
       LOG.log(Level.WARNING, "Migration with ID {0} was not registered, or it has already been finished.", operationId);
@@ -127,21 +135,23 @@ final class MigrationManager {
     final String senderId = migration.getSenderId();
     final String receiverId = migration.getReceiverId();
 
-    notifyUpdateToClients(senderId, receiverId, blockId);
+    notifyUpdateToClients(senderId, receiverId, blockId, parentTraceInfo);
 
     if (migration.isComplete()) {
-      finishMigration(operationId);
+      finishMigration(operationId, parentTraceInfo);
+      migration.getTraceScope().close();
     }
   }
 
   /**
    * Finish migration of the data.
    * @param operationId Identifier of {@code move} operation.
+   * @param parentTraceInfo Information for Trace from parent.
    */
-  private void finishMigration(final String operationId) {
+  private void finishMigration(final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     final Migration migration = ongoingMigrations.remove(operationId);
     notifySuccess(operationId, migration.getBlockIds());
-    broadcastSuccess(migration);
+    broadcastSuccess(migration, parentTraceInfo);
   }
 
   /**
@@ -150,18 +160,22 @@ final class MigrationManager {
    * It only sends messages to evaluators except the source and destination of the migration,
    * because their routing tables are already updated during the migration.
    */
-  private void broadcastSuccess(final Migration migration) {
-    final Set<String> activeEvaluatorIds = blockManager.getActiveEvaluators();
-    final String senderId = migration.getSenderId();
-    final String receiverId = migration.getReceiverId();
-    activeEvaluatorIds.remove(senderId);
-    activeEvaluatorIds.remove(receiverId);
+  private void broadcastSuccess(final Migration migration, @Nullable final TraceInfo parentTraceInfo) {
+    Trace.setProcessId(MigrationManager.class.getSimpleName());
 
-    final List<Integer> blockIds = migration.getBlockIds();
+    try (final TraceScope broadcastSuccessScope = Trace.startSpan("broadcast_table_update", parentTraceInfo)) {
+      final Set<String> activeEvaluatorIds = blockManager.getActiveEvaluators();
+      final String senderId = migration.getSenderId();
+      final String receiverId = migration.getReceiverId();
+      activeEvaluatorIds.remove(senderId);
+      activeEvaluatorIds.remove(receiverId);
 
-    LOG.log(Level.FINE, "Broadcast the result of migration to other active evaluators: {0}", activeEvaluatorIds);
-    try (final TraceScope traceScope = Trace.startSpan("ROUTING_UPDATE")) {
-      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
+      final List<Integer> blockIds = migration.getBlockIds();
+
+      LOG.log(Level.FINE, "Broadcast the result of migration to other active evaluators: {0}", activeEvaluatorIds);
+
+      final TraceInfo traceInfo = TraceInfo.fromSpan(broadcastSuccessScope.getSpan());
+
       for (final String evalId : activeEvaluatorIds) {
         sender.get().sendRoutingTableUpdateMsg(evalId, blockIds, senderId, receiverId, traceInfo);
       }
@@ -171,14 +185,21 @@ final class MigrationManager {
   /**
    * Notify the update in the routing table to listening clients in granularity of block.
    */
-  private synchronized void notifyUpdateToClients(final String senderId, final String receiverId, final int blockId) {
-    final int oldOwnerId = blockManager.getMemoryStoreId(senderId);
-    final int newOwnerId = blockManager.getMemoryStoreId(receiverId);
+  private synchronized void notifyUpdateToClients(final String senderId, final String receiverId, final int blockId,
+                                                  @Nullable final TraceInfo parentTraceInfo) {
+    Trace.setProcessId(MigrationManager.class.getSimpleName());
 
-    final EMRoutingTableUpdate update = new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, receiverId, blockId);
+    try (final TraceScope notifyUpdateToClientsScope = Trace.startSpan("notify_update_to_clients", parentTraceInfo)) {
+      final int oldOwnerId = blockManager.getMemoryStoreId(senderId);
+      final int newOwnerId = blockManager.getMemoryStoreId(receiverId);
 
-    for (final EventHandler<EMRoutingTableUpdate> callBack : updateCallbacks.values()) {
-      callBack.onNext(update);
+      final EMRoutingTableUpdate update =
+          new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, receiverId, blockId,
+              TraceInfo.fromSpan(notifyUpdateToClientsScope.getSpan()));
+
+      for (final EventHandler<EMRoutingTableUpdate> callBack : updateCallbacks.values()) {
+        callBack.onNext(update);
+      }
     }
   }
 
@@ -246,8 +267,6 @@ final class MigrationManager {
         .setType(Type.ResultMsg)
         .setResultMsg(resultMsg)
         .setOperationId(operationId)
-        .setSrcId("")
-        .setDestId("")
         .build();
   }
 

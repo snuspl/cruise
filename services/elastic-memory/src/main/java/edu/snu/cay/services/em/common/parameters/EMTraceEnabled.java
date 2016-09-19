@@ -13,7 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Tests for dolphin-async.
- */
-package edu.snu.cay.dolphin.async;
+package edu.snu.cay.services.em.common.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Option to turn on and off trace on elastic memory service",
+                short_name = "em_trace_enabled",
+                default_value = "false")
+public final class EMTraceEnabled implements Name<Boolean> {
+}

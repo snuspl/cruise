@@ -17,10 +17,7 @@ package edu.snu.cay.services.em.evaluator.impl.rangekey;
 
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
-import edu.snu.cay.services.em.evaluator.api.BlockResolver;
-import edu.snu.cay.services.em.evaluator.api.DataOperation;
-import edu.snu.cay.services.em.evaluator.api.RangeKeyOperation;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.Tuple3;
@@ -69,6 +66,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl;
 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
+
+  /**
+   * Block update listeners that clients have registered.
+   */
+  private final Set<BlockUpdateListener> blockUpdateListeners
+      = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
    * A counter for issuing ids for operations requested from local clients.
@@ -134,6 +137,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     if (blocks.putIfAbsent(blockId, block) != null) {
       throw new RuntimeException("Block with id " + blockId + " already exists.");
     }
+
+    notifyBlockAddition(blockId, block);
   }
 
   @Override
@@ -151,6 +156,29 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     final Block block = blocks.remove(blockId);
     if (null == block) {
       throw new RuntimeException("Block with id " + blockId + "does not exist.");
+    }
+
+    notifyBlockRemoval(blockId, block);
+  }
+
+  @Override
+  public boolean registerBlockUpdateListener(final BlockUpdateListener listener) {
+    return blockUpdateListeners.add(listener);
+  }
+
+  private void notifyBlockRemoval(final int blockId, final Block block) {
+    final Map<Long, Object> kvData = block.getAll();
+    final Set<Long> keySet = kvData.keySet();
+    for (final BlockUpdateListener listener : blockUpdateListeners) {
+      listener.onRemovedBlock(blockId, keySet);
+    }
+  }
+
+  private void notifyBlockAddition(final int blockId, final Block block) {
+    final Map<Long, Object> kvData = block.getAll();
+    final Set<Long> keySet = kvData.keySet();
+    for (final BlockUpdateListener listener : blockUpdateListeners) {
+      listener.onAddedBlock(blockId, keySet);
     }
   }
 

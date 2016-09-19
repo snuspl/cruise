@@ -27,9 +27,6 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
-import org.htrace.Sampler;
-import org.htrace.Trace;
-import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -172,21 +169,18 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
 
       final boolean[] moveSucceeded = {false};
 
-      // start move
-      try (final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS)) {
-        elasticMemory.move(numToMove, srcId, destId,
-            new EventHandler<AvroElasticMemoryMessage>() {
-              @Override
-              public void onNext(final AvroElasticMemoryMessage emMsg) {
-                moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS);
-                LOG.log(Level.INFO, "Was Move {0} successful? {1}. The result: {2}",
-                    new Object[]{emMsg.getOperationId(), moveSucceeded[0],
-                        emMsg.getResultMsg() == null ? "" : emMsg.getResultMsg().getResult()});
-                finishedLatch.countDown();
-              }
+      elasticMemory.move(numToMove, srcId, destId,
+          new EventHandler<AvroElasticMemoryMessage>() {
+            @Override
+            public void onNext(final AvroElasticMemoryMessage emMsg) {
+              moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS);
+              LOG.log(Level.INFO, "Was Move {0} successful? {1}. The result: {2}",
+                  new Object[]{emMsg.getOperationId(), moveSucceeded[0],
+                      emMsg.getResultMsg() == null ? "" : emMsg.getResultMsg().getResult()});
+              finishedLatch.countDown();
             }
-        );
-      }
+          }
+      );
 
       // Wait for move to succeed
       try {
