@@ -13,18 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async;
+package edu.snu.cay.dolphin.async.examples.addinteger;
 
-import org.apache.reef.annotations.audience.TaskSide;
+import edu.snu.cay.dolphin.async.TrainingDataInitializer;
 
-/**
- * Insert initial values into memory store.
- */
-@TaskSide
-public interface MemoryStoreInitializer {
+import javax.inject.Inject;
 
-  /**
-   * Initialize memory store with parsed training data.
-   */
-  void initialize();
+public final class AddIntegerTrainingDataInitializer implements TrainingDataInitializer {
+
+  @Inject
+  public AddIntegerTrainingDataInitializer() {
+
+  }
+
+  // TODO #822: AddInteger and AddVector applications need training data set.
+  // Do nothing since AddInteger application doesn't have any training data set now.
+  @Override
+  public void initialize() {
+
+  }
 }

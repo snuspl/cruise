@@ -13,21 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.examples.addvector;
+package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
+import org.apache.reef.annotations.audience.TaskSide;
 
-import javax.inject.Inject;
+/**
+ * Prepares the training data to be accessible in MemoryStore.
+ */
+@TaskSide
+public interface TrainingDataInitializer {
 
-public final class AddVectorMemoryStoreInitializer implements MemoryStoreInitializer {
-
-  @Inject
-  public AddVectorMemoryStoreInitializer() {
-
-  }
-
-  @Override
-  public void initialize() {
-
-  }
+  /**
+   * Initialize memory store with parsed training data.
+   */
+  void initialize();
 }

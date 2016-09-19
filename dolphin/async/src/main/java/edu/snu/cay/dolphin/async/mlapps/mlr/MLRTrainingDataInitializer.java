@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
+import edu.snu.cay.dolphin.async.TrainingDataInitializer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -28,8 +28,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class MLRMemoryStoreInitializer implements MemoryStoreInitializer {
-  private static final Logger LOG = Logger.getLogger(MLRMemoryStoreInitializer.class.getName());
+public final class MLRTrainingDataInitializer implements TrainingDataInitializer {
+  private static final Logger LOG = Logger.getLogger(MLRTrainingDataInitializer.class.getName());
 
   /**
    * Number of instances to compute training loss with.
@@ -45,10 +45,10 @@ public final class MLRMemoryStoreInitializer implements MemoryStoreInitializer {
   private final MemoryStore<Long> memoryStore;
 
   @Inject
-  MLRMemoryStoreInitializer(@Parameter(MLRParameters.TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
-                            final MLRParser mlrParser,
-                            final DataIdFactory<Long> idFactory,
-                            final MemoryStore<Long> memoryStore) {
+  MLRTrainingDataInitializer(@Parameter(MLRParameters.TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
+                             final MLRParser mlrParser,
+                             final DataIdFactory<Long> idFactory,
+                             final MemoryStore<Long> memoryStore) {
     this.trainErrorDatasetSize = trainErrorDatasetSize;
     this.mlrParser = mlrParser;
     this.idFactory = idFactory;

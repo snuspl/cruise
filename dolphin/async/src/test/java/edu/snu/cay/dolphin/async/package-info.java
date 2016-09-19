@@ -13,21 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.lasso;
-
-import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
-
-import javax.inject.Inject;
-
-public final class LassoMemoryStoreInitializer implements MemoryStoreInitializer {
-
-  @Inject
-  public LassoMemoryStoreInitializer() {
-
-  }
-
-  @Override
-  public void initialize() {
-
-  }
-}
+/**
+ * Tests for the basic dolphin implementation.
+ */
+package edu.snu.cay.dolphin.async;

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
-import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
+import edu.snu.cay.dolphin.async.TrainingDataInitializer;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkData;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkDataParser;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -27,8 +27,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class NeuralNetworkMemoryStoreInitializer implements MemoryStoreInitializer {
-  private static final Logger LOG = Logger.getLogger(NeuralNetworkMemoryStoreInitializer.class.getName());
+public final class NeuralNetworkTrainingDataInitializer implements TrainingDataInitializer {
+  private static final Logger LOG = Logger.getLogger(NeuralNetworkTrainingDataInitializer.class.getName());
 
   private final NeuralNetworkDataParser dataParser;
   private final DataIdFactory<Long> idFactory;
@@ -40,9 +40,9 @@ public final class NeuralNetworkMemoryStoreInitializer implements MemoryStoreIni
    * @param memoryStore the key-value store for neural network data
    */
   @Inject
-  public NeuralNetworkMemoryStoreInitializer(final NeuralNetworkDataParser dataParser,
-                                             final DataIdFactory<Long> idFactory,
-                                             final MemoryStore<Long> memoryStore) {
+  public NeuralNetworkTrainingDataInitializer(final NeuralNetworkDataParser dataParser,
+                                              final DataIdFactory<Long> idFactory,
+                                              final MemoryStore<Long> memoryStore) {
     this.dataParser = dataParser;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;

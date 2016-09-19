@@ -75,12 +75,6 @@ public final class Parameters {
   public final class MiniBatches implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Number of training data splits of a mini-batch",
-      short_name = "num_splits_per_mini_batch",
-      default_value = "1")
-  public final class SplitsPerMiniBatch implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "The minimum cost benefit (in a ratio) for which system optimization occurs. " +
       "0 = optimization occurs for any benefit greater than 0.",
       short_name = "opt_benefit_threshold",

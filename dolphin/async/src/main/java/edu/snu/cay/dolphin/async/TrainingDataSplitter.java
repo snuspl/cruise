@@ -21,6 +21,7 @@ import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,35 +32,26 @@ import java.util.Set;
 
 /**
  * Split training data in memory store and provide a chunk of data.
- * The chunk size is total data size / (numMiniBatchesPerEpoch * numDataSplitsPerMiniBatch).
+ * The chunk size is total data size / numMiniBatchesPerEpoch.
  * @param <K> type of the key (or id), it should be the same type with keys of MemoryStore.
  */
 @TaskSide
+@NotThreadSafe
 public final class TrainingDataSplitter<K> {
   private final int numMiniBatchesPerEpoch;
-
-  private final int numDataSplitsPerMiniBatch;
 
   private final MemoryStore<K> memoryStore;
 
   private final List<List<K>> trainingDataSplits;
 
-  /**
-   * The next index of training data splits to be computed.
-   */
-  private int nextSplitIndex;
-
   private int currentMiniBatch;
 
   @Inject
-  public TrainingDataSplitter(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
-                              @Parameter(Parameters.SplitsPerMiniBatch.class) final int numDataSplitsPerMiniBatch,
+  private TrainingDataSplitter(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                               final MemoryStore<K> memoryStore) {
     this.numMiniBatchesPerEpoch = numMiniBatchPerEpoch;
-    this.numDataSplitsPerMiniBatch = numDataSplitsPerMiniBatch;
     this.memoryStore = memoryStore;
     this.trainingDataSplits = new ArrayList<>();
-    this.nextSplitIndex = 0;
     this.currentMiniBatch = 0;
   }
 
@@ -67,9 +59,11 @@ public final class TrainingDataSplitter<K> {
    * Split training data and reset variables.
    */
   public void prepareSplitsForEpoch() {
+    trainingDataSplits.clear();
+
     final Set<K> keys = memoryStore.getAll().keySet();
-    final int numSplitsPerEpoch = numMiniBatchesPerEpoch * numDataSplitsPerMiniBatch;
-    final int sizeOfTrainingDataSplit = keys.size() / numSplitsPerEpoch;
+    // TODO #824: Fix the number of instances to be processed in a mini-batch.
+    final int sizeOfTrainingDataSplit = keys.size() / numMiniBatchesPerEpoch;
 
     int splitIndex = 0;
     for (final K key : keys) {
@@ -77,43 +71,36 @@ public final class TrainingDataSplitter<K> {
         trainingDataSplits.add(new ArrayList());
       }
       trainingDataSplits.get(splitIndex).add(key);
-      if (splitIndex == sizeOfTrainingDataSplit) {
+      // last split should be bigger than sizeOfTrainingDataSplit if keys.size() % numMiniBatchesPerEpoch != 0
+      if (trainingDataSplits.get(splitIndex).size() == sizeOfTrainingDataSplit
+          && (splitIndex + 1) < numMiniBatchesPerEpoch) {
         splitIndex++;
       }
     }
 
-    nextSplitIndex = 0;
     currentMiniBatch = 0;
-  }
-
-  public void onMiniBatchEnd() {
-    currentMiniBatch++;
   }
 
   /**
    * Provide next training data split to compute in the current mini-batch.
    * @param <V> the type of training data
-   * @return map of training data split if the data is bound to the current mini-batch,
+   * @return map of training data split of the current mini-batch,
    *         otherwise return empty map
    */
   public <V> Map<K, V> getNextTrainingDataSplit() {
-    // Each mini-batch contains multiple data splits, below is identify the mini-batch index of the next split.
-    int expectedMiniBatchIndex = nextSplitIndex / numDataSplitsPerMiniBatch;
-    // In case of (total data size % numMiniBatchesPerEpoch) != 0
-    if (expectedMiniBatchIndex > numMiniBatchesPerEpoch) {
-      expectedMiniBatchIndex = numMiniBatchesPerEpoch;
+    if (trainingDataSplits.size() < (currentMiniBatch + 1)) {
+      return Collections.emptyMap();
     }
-    if (expectedMiniBatchIndex == currentMiniBatch) {
-      final Map<K, V> nextTrainingDataSplit = new HashMap<>();
-      for (final K key : trainingDataSplits.get(nextSplitIndex++)) {
-        final Pair<K, V> keyValuePair = memoryStore.get(key);
-        if (keyValuePair == null) {
-          continue;
-        }
-        nextTrainingDataSplit.put(keyValuePair.getFirst(), keyValuePair.getSecond());
+
+    final List<K> keyList = trainingDataSplits.get(currentMiniBatch++);
+    final Map<K, V> nextTrainingDataSplit = new HashMap<>();
+    for (final K key : keyList) {
+      final Pair<K, V> keyValuePair = memoryStore.get(key);
+      if (keyValuePair == null) {
+        continue;
       }
-      return nextTrainingDataSplit;
+      nextTrainingDataSplit.put(keyValuePair.getFirst(), keyValuePair.getSecond());
     }
-    return Collections.emptyMap();
+    return nextTrainingDataSplit;
   }
 }

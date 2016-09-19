@@ -111,6 +111,7 @@ final class NMFTrainer implements Trainer {
 
   @Override
   public void initialize() {
+    // TODO #825: Apply the changes in MemoryStore when choosing the next training data split in Workers
     final Map<Long, NMFData> dataMap = memoryStore.getAll();
     final Collection<NMFData> dataValues = dataMap.values();
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
@@ -120,7 +121,7 @@ final class NMFTrainer implements Trainer {
   }
 
   @Override
-  public void onEpochStart(final int epoch) {
+  public void initEpochVariables(final int epoch) {
     epochBegin = System.currentTimeMillis();
     lossSum = 0.0;
     elemCount = 0;
@@ -128,7 +129,7 @@ final class NMFTrainer implements Trainer {
   }
 
   @Override
-  public void onEpochEnd(final int epoch) {
+  public void wrapUpEpochVariables(final int epoch) {
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
@@ -148,59 +149,57 @@ final class NMFTrainer implements Trainer {
   public void run() {
 
     int numInstances = 0;
-    Map<Long, NMFData> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
-    while (workloadMap.isEmpty()) {
-      final List<NMFData> workload = new ArrayList<>(workloadMap.values());
+    final Map<Long, NMFData> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
+    final List<NMFData> workload = new ArrayList<>(workloadMap.values());
 
-      computeTracer.startTimer();
-      for (final NMFData datum : workload) {
+    computeTracer.startTimer();
+    for (final NMFData datum : workload) {
 
-        final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
-        final Vector lGradSum;
-        if (lambda != 0.0D) {
-          // l2 regularization term. 2 * lambda * L_{i, *}
-          lGradSum = lVec.scale(2.0D * lambda);
-        } else {
-          lGradSum = vectorFactory.createDenseZeros(rank);
-        }
-
-        final Map<Integer, Vector> rMatrix = pullRMatrix(getKeys(workload));
-
-        for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
-          final int colIdx = column.getFirst();
-          final Vector rVec = rMatrix.get(colIdx); // R_{*, j} : j-th column of R
-          final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
-
-          // compute gradients
-          // lGrad = 2 * e * R_{*, j}'
-          // rGrad = 2 * e * L_{i, *}'
-          final Vector lGrad;
-          final Vector rGrad;
-
-          lGrad = rVec.scale(2.0D * error);
-          rGrad = lVec.scale(2.0D * error);
-
-          // aggregate L matrix gradients
-          lGradSum.addi(lGrad);
-
-          // save R matrix gradients
-          pushRMatrixGradient(colIdx, rVec, rGrad);
-
-          // aggregate loss
-          lossSum += error * error;
-          ++elemCount;
-        }
-
-        // update L matrix
-        modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
-
-        ++numInstances;
+      final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
+      final Vector lGradSum;
+      if (lambda != 0.0D) {
+        // l2 regularization term. 2 * lambda * L_{i, *}
+        lGradSum = lVec.scale(2.0D * lambda);
+      } else {
+        lGradSum = vectorFactory.createDenseZeros(rank);
       }
 
-      computeTracer.recordTime(numInstances);
+      final Map<Integer, Vector> rMatrix = pullRMatrix(getKeys(workload));
 
-      workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
+      for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
+        final int colIdx = column.getFirst();
+        final Vector rVec = rMatrix.get(colIdx); // R_{*, j} : j-th column of R
+        final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
+
+        // compute gradients
+        // lGrad = 2 * e * R_{*, j}'
+        // rGrad = 2 * e * L_{i, *}'
+        final Vector lGrad;
+        final Vector rGrad;
+
+        lGrad = rVec.scale(2.0D * error);
+        rGrad = lVec.scale(2.0D * error);
+
+        // aggregate L matrix gradients
+        lGradSum.addi(lGrad);
+
+        // save R matrix gradients
+        pushRMatrixGradient(colIdx, rVec, rGrad);
+
+        // aggregate loss
+        lossSum += error * error;
+        ++elemCount;
+      }
+
+      // update L matrix
+      modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
+
+      ++numInstances;
     }
+
+    computeTracer.recordTime(numInstances);
+
+
   }
 
   @Override

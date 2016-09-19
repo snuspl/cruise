@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,23 +32,24 @@ import java.util.Map;
  * @param <P> class type of parameter values before they are processed at the servers
  * @param <V> class type of parameter values after they are processed at the server
  */
+@NotThreadSafe
 public final class MiniBatchParameterWorker<K, P, V> {
   private final ParameterUpdater<K, P, V> parameterUpdater;
 
   private final ParameterWorker<K, P, V> parameterWorker;
 
   /**
-   * Store and update parameters locally, this is flushed when onMiniBatchEnd is called.
+   * Store and update parameters locally, this is flushed when flushLocalUpdates is called.
    */
   private final Map<K, V> localParameters;
 
   /**
-   * Store aggregate pre-values locally, this is flushed when onMiniBatchEnd is called.
+   * Store aggregate pre-values locally, this is flushed when flushLocalUpdates is called.
    */
   private final Map<K, P> aggregatedParameters;
 
   @Inject
-  public MiniBatchParameterWorker(final ParameterUpdater<K, P, V> parameterUpdater,
+  private MiniBatchParameterWorker(final ParameterUpdater<K, P, V> parameterUpdater,
                                   final ParameterWorker<K, P, V> parameterWorker) {
     this.parameterUpdater = parameterUpdater;
     this.parameterWorker = parameterWorker;
@@ -60,6 +62,7 @@ public final class MiniBatchParameterWorker<K, P, V> {
     if (value == null) {
       value = parameterWorker.pull(key);
     }
+    localParameters.put(key, value);
     return value;
   }
 
@@ -84,16 +87,21 @@ public final class MiniBatchParameterWorker<K, P, V> {
     final List<K> nonLocalKeys = new ArrayList<>();
     final List<V> valueList = new ArrayList();
     for (final K key : keys) {
-      if (localParameters.containsKey(key)) {
+      if (!localParameters.containsKey(key)) {
         nonLocalKeys.add(key);
-      } else {
-        valueList.add(localParameters.get(key));
       }
     }
 
     if (!nonLocalKeys.isEmpty()) {
       final List<V> remoteValues = parameterWorker.pull(nonLocalKeys);
-      valueList.addAll(remoteValues);
+      int i = 0;
+      for (final K key : nonLocalKeys) {
+        localParameters.put(key, remoteValues.get(i++));
+      }
+    }
+
+    for (final K key : keys) {
+      valueList.add(localParameters.get(key));
     }
 
     return valueList;
@@ -102,7 +110,7 @@ public final class MiniBatchParameterWorker<K, P, V> {
   /**
    * Clear local parameter store and send aggregated pre-values to the server.
    */
-  public void onMiniBatchEnd() {
+  public void flushLocalUpdates() {
     localParameters.clear();
     for (final K key : aggregatedParameters.keySet()) {
       parameterWorker.push(key, aggregatedParameters.get(key));

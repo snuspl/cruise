@@ -24,6 +24,7 @@ import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.util.BuilderUtils;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -39,7 +40,7 @@ import java.util.List;
 @ClientSide
 public final class AsyncDolphinConfiguration {
   private final Class<? extends Trainer> trainerClass;
-  private final Class<? extends MemoryStoreInitializer> memoryStoreInitializerClass;
+  private final Class<? extends TrainingDataInitializer> memoryStoreInitializerClass;
   private final Class<? extends ParameterUpdater> updaterClass;
   private final Class<? extends Codec> keyCodecClass;
   private final Class<? extends Codec> preValueCodecClass;
@@ -52,7 +53,7 @@ public final class AsyncDolphinConfiguration {
 
 
   private AsyncDolphinConfiguration(final Class<? extends Trainer> trainerClass,
-                                    final Class<? extends MemoryStoreInitializer> memoryStoreInitializerClass,
+                                    final Class<? extends TrainingDataInitializer> memoryStoreInitializerClass,
                                     final Class<? extends ParameterUpdater> updaterClass,
                                     final Class<? extends Codec> keyCodecClass,
                                     final Class<? extends Codec> preValueCodecClass,
@@ -79,7 +80,7 @@ public final class AsyncDolphinConfiguration {
     return trainerClass;
   }
 
-  public Class<? extends MemoryStoreInitializer> getMemoryStoreInitializerClass() {
+  public Class<? extends TrainingDataInitializer> getMemoryStoreInitializerClass() {
     return memoryStoreInitializerClass;
   }
 
@@ -125,7 +126,7 @@ public final class AsyncDolphinConfiguration {
 
   public static class Builder implements org.apache.reef.util.Builder<AsyncDolphinConfiguration> {
     private Class<? extends Trainer> trainerClass;
-    private Class<? extends MemoryStoreInitializer> memoryStoreInitializer;
+    private Class<? extends TrainingDataInitializer> memoryStoreInitializer;
     private Class<? extends ParameterUpdater> updaterClass;
     private Class<? extends Codec> keyCodecClass = SerializableCodec.class;
     private Class<? extends Codec> preValueCodecClass = SerializableCodec.class;
@@ -142,7 +143,7 @@ public final class AsyncDolphinConfiguration {
       return this;
     }
 
-    public Builder setMemoryStoreInitializer(final Class<? extends MemoryStoreInitializer> memoryStoreInitializer) {
+    public Builder setMemoryStoreInitializer(final Class<? extends TrainingDataInitializer> memoryStoreInitializer) {
       this.memoryStoreInitializer = memoryStoreInitializer;
       return this;
     }
@@ -194,13 +195,9 @@ public final class AsyncDolphinConfiguration {
 
     @Override
     public AsyncDolphinConfiguration build() {
-      if (trainerClass == null) {
-        throw new RuntimeException("Trainer class is required.");
-      }
-
-      if (updaterClass == null) {
-        throw new RuntimeException("Updater class is required.");
-      }
+      BuilderUtils.notNull(trainerClass);
+      BuilderUtils.notNull(memoryStoreInitializer);
+      BuilderUtils.notNull(updaterClass);
 
       return new AsyncDolphinConfiguration(trainerClass, memoryStoreInitializer, updaterClass,
           keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList,

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
-import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
+import edu.snu.cay.dolphin.async.TrainingDataInitializer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -23,15 +23,15 @@ import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import javax.inject.Inject;
 import java.util.List;
 
-public final class NMFMemoryStoreInitializer implements MemoryStoreInitializer {
+public final class NMFTrainingDataInitializer implements TrainingDataInitializer {
   private final NMFDataParser dataParser;
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
   @Inject
-  public NMFMemoryStoreInitializer(final NMFDataParser dataParser,
-                                   final DataIdFactory<Long> idFactory,
-                                   final MemoryStore<Long> memoryStore) {
+  public NMFTrainingDataInitializer(final NMFDataParser dataParser,
+                                    final DataIdFactory<Long> idFactory,
+                                    final MemoryStore<Long> memoryStore) {
     this.dataParser = dataParser;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;

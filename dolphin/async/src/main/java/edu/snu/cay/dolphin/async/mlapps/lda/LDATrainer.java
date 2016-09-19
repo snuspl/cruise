@@ -74,12 +74,12 @@ final class LDATrainer implements Trainer {
   }
 
   @Override
-  public void onEpochStart(final int epoch) {
+  public void initEpochVariables(final int epoch) {
     LOG.log(Level.INFO, "Epoch Started");
   }
 
   @Override
-  public void onEpochEnd(final int epoch) {
+  public void wrapUpEpochVariables(final int epoch) {
     LOG.log(Level.INFO, "Start computing log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
     // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution,
@@ -96,24 +96,20 @@ final class LDATrainer implements Trainer {
   @Override
   public void run() {
 
-    Map<Long, Document> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
-    while (!workloadMap.isEmpty()) {
-      final Collection<Document> workload = workloadMap.values();
+    final Map<Long, Document> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
+    final Collection<Document> workload = workloadMap.values();
 
-      final int numDocuments = workload.size();
-      final int countForLogging = numDocuments / 3;
-      int numSampledDocuments = 0;
+    final int numDocuments = workload.size();
+    final int countForLogging = numDocuments / 3;
+    int numSampledDocuments = 0;
 
-      for (final Document document : workload) {
-        sampler.sample(document);
-        numSampledDocuments++;
+    for (final Document document : workload) {
+      sampler.sample(document);
+      numSampledDocuments++;
 
-        if (numSampledDocuments % countForLogging == 0) {
-          LOG.log(Level.INFO, "{0}/{1} documents are sampled", new Object[]{numSampledDocuments, numDocuments});
-        }
+      if (numSampledDocuments % countForLogging == 0) {
+        LOG.log(Level.INFO, "{0}/{1} documents are sampled", new Object[]{numSampledDocuments, numDocuments});
       }
-
-      workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
     }
   }
 

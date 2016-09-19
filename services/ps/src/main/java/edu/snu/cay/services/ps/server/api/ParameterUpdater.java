@@ -49,6 +49,7 @@ public interface ParameterUpdater<K, P, V> {
 
   /**
    * Aggregate pre-values.
+   * This can be used to send values to server after multiple updates.
    * @param oldPreValue the current pre-value
    * @param newPreValue new pre-value
    * @return aggregated delta value

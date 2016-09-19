@@ -128,12 +128,12 @@ final class LassoTrainer implements Trainer {
   }
 
   @Override
-  public void onEpochStart(final int epoch) {
+  public void initEpochVariables(final int epoch) {
 
   }
 
   @Override
-  public void onEpochEnd(final int epoch) {
+  public void wrapUpEpochVariables(final int epoch) {
 
   }
 

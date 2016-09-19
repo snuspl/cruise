@@ -187,13 +187,13 @@ final class MLRTrainer implements Trainer {
   }
 
   @Override
-  public void onEpochStart(final int epoch) {
+  public void initEpochVariables(final int epoch) {
     epochBegin = System.currentTimeMillis();
     resetTracers();
   }
 
   @Override
-  public void onEpochEnd(final int epoch) {
+  public void wrapUpEpochVariables(final int epoch) {
     if (epoch % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
@@ -221,46 +221,42 @@ final class MLRTrainer implements Trainer {
   @Override
   public void run() {
 
-    Map<Long, Pair<Vector, Integer>> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
-    while (!workloadMap.isEmpty()) {
-      final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
+    final Map<Long, Pair<Vector, Integer>> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
+    final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
 
-      int numInstances = 0;
-      final Vector[] models = pullModels();
-      computeTracer.startTimer();
-      for (final Pair<Vector, Integer> entry : workload) {
+    int numInstances = 0;
+    final Vector[] models = pullModels();
+    computeTracer.startTimer();
+    for (final Pair<Vector, Integer> entry : workload) {
 
-        final Vector features = entry.getFirst();
-        final int label = entry.getSecond();
+      final Vector features = entry.getFirst();
+      final int label = entry.getSecond();
 
-        // compute h(x, w) = softmax(x dot w)
-        final Vector predictions = predict(features);
+      // compute h(x, w) = softmax(x dot w)
+      final Vector predictions = predict(features);
 
-        // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
-        // instead of allocating a new vector for the error,
-        // we use the same object for convenience
-        predictions.set(label, predictions.get(label) - 1);
+      // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
+      // instead of allocating a new vector for the error,
+      // we use the same object for convenience
+      predictions.set(label, predictions.get(label) - 1);
 
-        // gradient_j = -stepSize * error_j * x
-        for (int j = 0; j < numClasses; ++j) {
-          final Vector newModel = models[j];
-          if (lambda != 0) {
-            newModel.axpy(-predictions.get(j) * stepSize, features);
-            newModel.axpy(-stepSize * lambda, newModel);
-          } else {
-            newModel.axpy(-predictions.get(j) * stepSize, features);
-          }
-          computeTracer.recordTime(0);
-          pushModel(newModel);
-          computeTracer.startTimer();
+      // gradient_j = -stepSize * error_j * x
+      for (int j = 0; j < numClasses; ++j) {
+        final Vector newModel = models[j];
+        if (lambda != 0) {
+          newModel.axpy(-predictions.get(j) * stepSize, features);
+          newModel.axpy(-stepSize * lambda, newModel);
+        } else {
+          newModel.axpy(-predictions.get(j) * stepSize, features);
         }
-        ++numInstances;
+        computeTracer.recordTime(0);
+        pushModel(newModel);
+        computeTracer.startTimer();
       }
-
-      computeTracer.recordTime(numInstances);
-
-      workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
+      ++numInstances;
     }
+
+    computeTracer.recordTime(numInstances);
   }
 
   /**

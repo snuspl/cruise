@@ -45,16 +45,16 @@ public interface Trainer {
   void initialize();
 
   /**
-   * The method to setup context such as worker metrics on each epoch.
+   * Initializes variables that are effective within each epoch.
    * @param epoch The current epoch
    */
-  void onEpochStart(int epoch);
+  void initEpochVariables(int epoch);
 
   /**
-   * The method to windup context such as worker metrics on each epoch.
+   * The method to wrap-up variables that are effective within each epoch.
    * @param epoch The current epoch
    */
-  void onEpochEnd(int epoch);
+  void wrapUpEpochVariables(int epoch);
 
   /**
    * Main method of this trainer.

@@ -46,7 +46,7 @@ final class LassoUpdater implements ParameterUpdater<Integer, Double, Double> {
 
   @Override
   public Double aggregate(final Double oldPreValue, final Double newPreValue) {
-    // Lasso is implemented stochastic gradient descent way, so aggregation is not necessary.
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("Lasso is implemented stochastic gradient descent way, " +
+        "so aggregation is not necessary");
   }
 }

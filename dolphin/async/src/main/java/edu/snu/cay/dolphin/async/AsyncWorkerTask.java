@@ -40,7 +40,7 @@ final class AsyncWorkerTask implements Task {
   private final int maxEpochs;
   private final int numMiniBatchPerEpoch;
   private final WorkerSynchronizer synchronizer;
-  private final MemoryStoreInitializer memoryStoreInitializer;
+  private final TrainingDataInitializer trainingDataInitializer;
   private final Trainer trainer;
   private final WorkerClock workerClock;
   private final TrainingDataSplitter trainingDataSplitter;
@@ -57,7 +57,7 @@ final class AsyncWorkerTask implements Task {
                           @Parameter(Parameters.Iterations.class) final int maxEpochs,
                           @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                           final WorkerSynchronizer synchronizer,
-                          final MemoryStoreInitializer memoryStoreInitializer,
+                          final TrainingDataInitializer trainingDataInitializer,
                           final Trainer trainer,
                           final WorkerClock workerClock,
                           final TrainingDataSplitter trainingDataSplitter,
@@ -66,7 +66,7 @@ final class AsyncWorkerTask implements Task {
     this.maxEpochs = maxEpochs;
     this.numMiniBatchPerEpoch = numMiniBatchPerEpoch;
     this.synchronizer = synchronizer;
-    this.memoryStoreInitializer = memoryStoreInitializer;
+    this.trainingDataInitializer = trainingDataInitializer;
     this.trainer = trainer;
     this.workerClock = workerClock;
     this.trainingDataSplitter = trainingDataSplitter;
@@ -77,22 +77,26 @@ final class AsyncWorkerTask implements Task {
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
-    memoryStoreInitializer.initialize();
+    trainingDataInitializer.initialize();
 
     // TODO #681: Need to add numWorkerThreads concept after multi-thread trainer is enabled
     trainer.initialize();
+
+    // initialize the worker clock
+    workerClock.initialize();
 
     // synchronize all workers before starting the main iteration
     // to avoid meaningless iterations by the workers who started earlier
     synchronizer.globalBarrier();
 
-    // initialize the worker clock
-    workerClock.initialize();
+    // By starting training from the initial clock, which is dynamically fetched from driver,
+    // it prevents workers added by EM from starting from epoch 0 and deferring job completion.
+    // More specifically, added workers start from the minimum epoch of other existing workers.
+    int currentEpoch = workerClock.getWorkerClock();
+    final int maxIterationCount = maxEpochs * numMiniBatchPerEpoch;
+    final int initialIteration = currentEpoch * numMiniBatchPerEpoch;
 
-    // By starting iteration from the initial clock, which is dynamically fetched from driver,
-    // it prevents workers added by EM from starting from iteration 0 and deferring job completion.
-    // More specifically, added workers start from the minimum iteration of other existing workers.
-    for (int epoch = 0; epoch < maxEpochs; ++epoch) {
+    for (int iteration = initialIteration; iteration < maxIterationCount; ++iteration) {
       if (aborted) {
         LOG.log(Level.INFO, "Abort a thread to completely close the task");
         // record total network waiting time of worker clock when the task is aborted
@@ -100,30 +104,24 @@ final class AsyncWorkerTask implements Task {
         return null;
       }
 
-      // Dynamically added worker's clock is not started from 0, but final clock should be same with other workers.
-      if (workerClock.getWorkerClock() > maxEpochs * numMiniBatchPerEpoch) {
-        break;
+      final boolean isEpochStart = iteration % numMiniBatchPerEpoch == 0;
+      if (isEpochStart) {
+        trainingDataSplitter.prepareSplitsForEpoch();
+        trainer.initEpochVariables(currentEpoch);
       }
 
-      trainingDataSplitter.prepareSplitsForEpoch();
+      trainer.run();
 
-      trainer.onEpochStart(epoch);
-      for (int minibatch = 0; minibatch < numMiniBatchPerEpoch; minibatch++) {
+      // flush local parameter updates to the parameter server
+      miniBatchParameterWorker.flushLocalUpdates();
 
-        // Dynamically added worker's clock is not started from 0, but final clock should be same with other workers.
-        if (workerClock.getWorkerClock() > maxEpochs * numMiniBatchPerEpoch) {
-          break;
-        }
-
-        trainer.run();
-
-        // notify a mini-batch is ended
-        miniBatchParameterWorker.onMiniBatchEnd();
-        trainingDataSplitter.onMiniBatchEnd();
-
+      final boolean isEpochEnd = (iteration + 1) % numMiniBatchPerEpoch == 0;
+      if (isEpochEnd) {
+        trainer.wrapUpEpochVariables(currentEpoch);
+        // TODO #830: Clock should be a unit of iteration(mini-batch) instead of epoch.
         workerClock.clock();
+        currentEpoch++;
       }
-      trainer.onEpochEnd(epoch);
     }
 
     // Synchronize all workers before cleanup for workers

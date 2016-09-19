@@ -130,13 +130,13 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public void onEpochStart(final int epoch) {
+  public void initEpochVariables(final int epoch) {
     epochBeginTimeMS = System.currentTimeMillis();
     resetTracers();
   }
 
   @Override
-  public void onEpochEnd(final int epoch) {
+  public void wrapUpEpochVariables(final int epoch) {
     final double elapsedTime = (System.currentTimeMillis() - epochBeginTimeMS) / 1000.0D;
     // send empty metrics to trigger optimization
     final WorkerMetrics workerMetrics =

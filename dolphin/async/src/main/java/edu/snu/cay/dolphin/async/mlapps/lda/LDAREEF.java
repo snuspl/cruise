@@ -43,7 +43,7 @@ public final class LDAREEF {
         .setValueCodecClass(SerializableCodec.class)
         .setUpdaterClass(LDAUpdater.class)
         .setTrainerClass(LDATrainer.class)
-        .setMemoryStoreInitializer(LDAMemoryStoreInitializer.class)
+        .setMemoryStoreInitializer(LDATrainingDataInitializer.class)
         .build());
   }
 

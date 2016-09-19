@@ -13,19 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.examples.addinteger;
+package edu.snu.cay.dolphin.async.mlapps.lasso;
 
-import edu.snu.cay.dolphin.async.MemoryStoreInitializer;
+import edu.snu.cay.dolphin.async.TrainingDataInitializer;
 
 import javax.inject.Inject;
 
-public final class AddIntegerMemoryStoreInitializer implements MemoryStoreInitializer {
+public final class LassoTrainingDataInitializer implements TrainingDataInitializer {
 
   @Inject
-  public AddIntegerMemoryStoreInitializer() {
+  public LassoTrainingDataInitializer() {
 
   }
 
+  // LassoTrainer does not use MemoryStore and nothing is pushed.
   @Override
   public void initialize() {
 

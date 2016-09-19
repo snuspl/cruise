@@ -61,12 +61,12 @@ final class NeuralNetworkTrainer implements Trainer {
   }
 
   @Override
-  public void onEpochStart(final int epoch) {
+  public void initEpochVariables(final int epoch) {
 
   }
 
   @Override
-  public void onEpochEnd(final int epoch) {
+  public void wrapUpEpochVariables(final int epoch) {
     LOG.log(Level.INFO, generateIterationLog(
         trainingValidator.getValidationStats(), crossValidator.getValidationStats(), epoch));
 
@@ -76,39 +76,36 @@ final class NeuralNetworkTrainer implements Trainer {
 
   @Override
   public void run() {
-    Map<Long, NeuralNetworkData> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
-    while (!workloadMap.isEmpty()) {
-      final Collection<NeuralNetworkData> workload = workloadMap.values();
-      final Collection<NeuralNetworkData> validationWorkload = Collections.emptyList();
+    final Map<Long, NeuralNetworkData> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
 
-      for (final NeuralNetworkData data : workload) {
-        final Matrix input = data.getMatrix();
-        final int[] labels = data.getLabels();
+    final Collection<NeuralNetworkData> workload = workloadMap.values();
+    final Collection<NeuralNetworkData> validationWorkload = Collections.emptyList();
 
-        if (input.getColumns() != labels.length) {
-          throw new RuntimeException("Invalid data: the number of inputs is not equal to the number of labels");
-        }
+    for (final NeuralNetworkData data : workload) {
+      final Matrix input = data.getMatrix();
+      final int[] labels = data.getLabels();
 
-        if (data.isValidation()) {
-          validationWorkload.add(data);
-        } else {
-          neuralNetwork.train(input, labels);
-          trainingValidator.validate(input, labels);
-        }
+      if (input.getColumns() != labels.length) {
+        throw new RuntimeException("Invalid data: the number of inputs is not equal to the number of labels");
       }
 
-      for (final NeuralNetworkData data : validationWorkload) {
-        final Matrix input = data.getMatrix();
-        final int[] labels = data.getLabels();
+      if (data.isValidation()) {
+        validationWorkload.add(data);
+      } else {
+        neuralNetwork.train(input, labels);
+        trainingValidator.validate(input, labels);
+      }
+    }
 
-        if (input.getColumns() != labels.length) {
-          throw new RuntimeException("Invalid data: the number of inputs is not equal to the number of labels");
-        }
+    for (final NeuralNetworkData data : validationWorkload) {
+      final Matrix input = data.getMatrix();
+      final int[] labels = data.getLabels();
 
-        crossValidator.validate(input, labels);
+      if (input.getColumns() != labels.length) {
+        throw new RuntimeException("Invalid data: the number of inputs is not equal to the number of labels");
       }
 
-      workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
+      crossValidator.validate(input, labels);
     }
   }
 
