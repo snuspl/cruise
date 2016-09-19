@@ -1046,6 +1046,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         retryQueue.put(op);
       } catch (final InterruptedException e) {
         // Need to decide policy for dealing with interrupts on NCS thread and retry thread
+        Thread.currentThread().interrupt();
         LOG.log(Level.FINER, "Enqueue failed with InterruptedException. Try again", e);
       }
     }
@@ -1195,6 +1196,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private static final String STATE_CLOSING = "CLOSING";
     private static final String STATE_CLOSED = "CLOSED";
 
+    private Thread currentThread;
     private final StateMachine stateMachine;
     private final long pullRetryTimeoutMs;
 
@@ -1220,6 +1222,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       if (pullRetryTimeoutMs == TIMEOUT_NO_RETRY) {
         return;
       }
+      currentThread = Thread.currentThread();
 
       long elapsedTimeInMs = 0;
 
@@ -1230,7 +1233,12 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
             // ensure that scan & retry do not occur with period smaller than pullRetryTimeoutMs
             Thread.sleep(pullRetryTimeoutMs - elapsedTimeInMs);
           } catch (final InterruptedException e) {
-            LOG.log(Level.FINE, "Interrupt while sleeping for retry interval");
+            // interrupt on this thread is always requested by startClose()
+            if (stateMachine.getCurrentState().equals(STATE_CLOSING)) {
+              break;
+            } else {
+              throw new RuntimeException(e);
+            }
           }
         }
 
@@ -1265,6 +1273,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         return;
       }
       stateMachine.setState(STATE_CLOSING);
+      currentThread.interrupt();
     }
 
     /**
