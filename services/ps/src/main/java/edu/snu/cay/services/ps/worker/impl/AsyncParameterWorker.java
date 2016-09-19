@@ -1235,8 +1235,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           } catch (final InterruptedException e) {
             // interrupt on this thread is always requested by startClose()
             if (stateMachine.getCurrentState().equals(STATE_CLOSING)) {
-              finishClose();
-              return;
+              break;
             } else {
               throw new RuntimeException(e);
             }
