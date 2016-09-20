@@ -259,19 +259,19 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   private List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
-    final boolean traceEnabled = RAND.nextDouble() < traceProbability;
-    try (final TraceScope pullListScope = traceEnabled ?
-        Trace.startSpan(String.format("pull_list. num_keys: %d", encodedKeys.size()), pwTraceScope.getSpan()) :
-        NullScope.INSTANCE) {
+    try (final TraceScope pullListScope =
+        Trace.startSpan(String.format("pull_list. num_keys: %d", encodedKeys.size()), pwTraceScope.getSpan())) {
       final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
 
       for (final EncodedKey<K> encodedKey : encodedKeys) {
         // We should detach the span when we transit to another thread (local or remote),
         // and the detached span should call Trace.continueSpan(detached).close() explicitly
         // for stitching the spans from other threads as its children
+        final boolean traceEnabled = RAND.nextDouble() < traceProbability;
         Span detached = null;
-        try (final TraceScope pullEnqueueScope = Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()),
-            pullListScope.getSpan())) {
+        try (final TraceScope pullEnqueueScope = traceEnabled ?
+            Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()), pullListScope.getSpan()) :
+            NullScope.INSTANCE) {
           final int threadId = getThreadIndex(encodedKey.getHash());
 
           detached = pullEnqueueScope.detach();
@@ -692,8 +692,12 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           while (pendingPullRequests.size() >= maxPendingPullsPerThread) {
             workerThread.wait();
           }
+
           try (final TraceScope startPullRequestScope = Trace.startSpan(
-              String.format("start_pull_request. key: %s", encodedKey.getKey()), parentTraceInfo)) {
+              String.format("start_pull_request. key: %s, worker_pending_ops: %d",
+                  encodedKey.getKey(), workerThread.opsPending()),
+              parentTraceInfo)) {
+
             this.pullStartTime = ticker.read();
             workerThread.waitingStat.put(pullStartTime - enqueueTime);
 
@@ -706,7 +710,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           // wait with other operations that were previously requested, if the pull request has been sent already
         } else {
           try (final TraceScope ridePullRequestScope = Trace.startSpan(String.format("ride_pull_request." +
-              " key: %s, request_id: %d", encodedKey.getKey(), pullRequest.requestId), parentTraceInfo)) {
+              " key: %s, request_id: %d, pending_ops: %d",
+              encodedKey.getKey(), pullRequest.requestId, workerThread.opsPending()), parentTraceInfo)) {
             this.pullStartTime = ticker.read();
             workerThread.waitingStat.put(pullStartTime - enqueueTime);
 
