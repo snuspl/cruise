@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.msg.impl;
 
-import edu.snu.cay.services.em.avro.EMMigrationMsg;
+import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import org.apache.reef.wake.EventHandler;
 
@@ -34,15 +34,15 @@ import java.util.logging.Logger;
 public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallbackRouter {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryCallbackRouterImpl.class.getName());
 
-  private static final EventHandler<EMMigrationMsg> NOOP_CALLBACK =
-      new EventHandler<EMMigrationMsg>() {
+  private static final EventHandler<MigrationMsg> NOOP_CALLBACK =
+      new EventHandler<MigrationMsg>() {
     @Override
-    public void onNext(final EMMigrationMsg value) {
+    public void onNext(final MigrationMsg value) {
       // Do nothing
     }
   };
 
-  private final ConcurrentHashMap<String, EventHandler<EMMigrationMsg>> handlerMap =
+  private final ConcurrentHashMap<String, EventHandler<MigrationMsg>> handlerMap =
       new ConcurrentHashMap<>();
 
   @Inject
@@ -50,7 +50,7 @@ public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallb
   }
 
   @Override
-  public void register(final String operationId, @Nullable final EventHandler<EMMigrationMsg> callback) {
+  public void register(final String operationId, @Nullable final EventHandler<MigrationMsg> callback) {
     if (callback == null) {
       if (handlerMap.putIfAbsent(operationId, NOOP_CALLBACK) != null) {
         LOG.warning("Failed to register NOOP callback for " + operationId + ". Already exists.");
@@ -63,14 +63,14 @@ public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallb
   }
 
   @Override
-  public void onCompleted(final EMMigrationMsg msg) {
+  public void onCompleted(final MigrationMsg msg) {
     if (msg.getOperationId() == null) {
       LOG.warning("No operationId provided. Ignoring msg " + msg);
       return;
     }
     final String operationId = msg.getOperationId().toString();
 
-    final EventHandler<EMMigrationMsg> handler = handlerMap.remove(operationId);
+    final EventHandler<MigrationMsg> handler = handlerMap.remove(operationId);
     if (handler == null) {
       LOG.warning("Failed to find callback for " + operationId + ". Ignoring msg " + msg);
     } else {
@@ -79,14 +79,14 @@ public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallb
   }
 
   @Override
-  public void onFailed(final EMMigrationMsg msg) {
+  public void onFailed(final MigrationMsg msg) {
     if (msg.getOperationId() == null) {
       LOG.log(Level.WARNING, "No operationId provided. Ignoring msg {0}", msg);
       return;
     }
     final String operationId = msg.getOperationId().toString();
 
-    final EventHandler<EMMigrationMsg> handler = handlerMap.remove(operationId);
+    final EventHandler<MigrationMsg> handler = handlerMap.remove(operationId);
     if (handler == null) {
       LOG.log(Level.WARNING, "Failed to find callback for {0}. Ignoring msg {1}", new Object[]{operationId, msg});
     } else {

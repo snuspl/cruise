@@ -155,7 +155,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
    * Handles remote operation and its result.
    */
   @Override
-  public void onNext(final EMRemoteMsg msg) {
+  public void onNext(final RemoteOpMsg msg) {
     switch (msg.getType()) {
     case RemoteOpReqMsg:
       onRemoteOpReqMsg(msg);
@@ -171,7 +171,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   /**
    * Handles the data operation sent from the remote memory store.
    */
-  private void onRemoteOpReqMsg(final EMRemoteMsg msg) {
+  private void onRemoteOpReqMsg(final RemoteOpMsg msg) {
     final RemoteOpReqMsg remoteOpReqMsg = msg.getRemoteOpReqMsg();
     final String origEvalId = remoteOpReqMsg.getOrigEvalId().toString();
     final DataOpType operationType = remoteOpReqMsg.getOpType();
@@ -213,7 +213,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   /**
    * Handles the result of data operation sent from the remote memory store.
    */
-  private void onRemoteOpResultMsg(final EMRemoteMsg msg) {
+  private void onRemoteOpResultMsg(final RemoteOpMsg msg) {
     final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
     final String operationId = msg.getOperationId().toString();
     final List<KeyValuePair> remoteOutput = (List<KeyValuePair>) remoteOpResultMsg.getDataValues();

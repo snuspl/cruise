@@ -271,7 +271,7 @@ public class MigrationManagerTest {
   /**
    * Callback called when the migration is finished.
    */
-  private final class FinishedCallback implements EventHandler<EMMigrationMsg> {
+  private final class FinishedCallback implements EventHandler<MigrationMsg> {
 
     /**
      * A latch for counting finished moves, including both succeeded and failed ones.
@@ -307,7 +307,7 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void onNext(final EMMigrationMsg msg) {
+    public void onNext(final MigrationMsg msg) {
       final ResultMsg resultMsg = msg.getResultMsg();
       switch (resultMsg.getResult()) {
       case SUCCESS:
@@ -356,7 +356,7 @@ public class MigrationManagerTest {
    */
   private void runRandomMove(final ExecutorService executor, final AtomicInteger opIdCounter,
                              final int numMoves, final int numActiveEvals,
-                             final EventHandler<EMMigrationMsg> callback) {
+                             final EventHandler<MigrationMsg> callback) {
     final Random random = new Random();
 
     for (int i = 0; i < numMoves; i++) {
@@ -377,11 +377,11 @@ public class MigrationManagerTest {
     private final String srcId;
     private final String destId;
     private final int numBlocksToMove;
-    private final EventHandler<EMMigrationMsg> finishedCallback;
+    private final EventHandler<MigrationMsg> finishedCallback;
     private final MigrationManager migrationManager;
 
     MigrationThread(final int opId, final String srcId, final String destId, final int numBlocksToMove,
-                    final EventHandler<EMMigrationMsg> finishedCallback,
+                    final EventHandler<MigrationMsg> finishedCallback,
                     final MigrationManager migrationManager) {
       this.opId = opId;
       this.srcId = srcId;

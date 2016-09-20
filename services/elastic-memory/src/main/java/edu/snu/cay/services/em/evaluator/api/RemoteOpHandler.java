@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
-import edu.snu.cay.services.em.avro.EMRemoteMsg;
+import edu.snu.cay.services.em.avro.RemoteOpMsg;
 import org.apache.reef.wake.EventHandler;
 
 /**
@@ -23,5 +23,5 @@ import org.apache.reef.wake.EventHandler;
  * It handles 1) remote op msg that other stores requested to this store
  * and 2) the result msg of remote op that was requested by this store to other stores.
  */
-public interface RemoteOpHandler extends EventHandler<EMRemoteMsg> {
+public interface RemoteOpHandler extends EventHandler<RemoteOpMsg> {
 }

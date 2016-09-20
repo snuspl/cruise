@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
-import edu.snu.cay.services.em.avro.EMMigrationMsg;
+import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import org.apache.reef.wake.EventHandler;
 
@@ -32,7 +32,7 @@ public final class EMDeleteExecutorImpl implements EMDeleteExecutor {
   }
 
   @Override
-  public boolean execute(final String activeContextId, final EventHandler<EMMigrationMsg> callback) {
+  public boolean execute(final String activeContextId, final EventHandler<MigrationMsg> callback) {
     throw new UnsupportedOperationException();
   }
 }

@@ -239,7 +239,7 @@
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "EMRemoteMsg",
+  "name": "RemoteOpMsg",
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "RemoteMsgType",
@@ -252,14 +252,14 @@
 },
 
 /**
- * The message protocol used for ownership table management of Elastic Memory.
- * MoveInitMsg, DataMsg, etc. are all included as nullable fields, and
+ * The message protocol used for routing table management of Elastic Memory.
+ * RoutingTableInitReqMsg, RoutingTableInitMsg, and RoutingTableUpdateMsg are all included as nullable fields, and
  * an enum type indicates which field is not null.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "EMRoutingTableMsg",
+  "name": "RoutingTableMsg",
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "RoutingTableMsgType",
@@ -279,7 +279,7 @@
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "EMMigrationMsg",
+  "name": "MigrationMsg",
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "MigrationMsgType",
@@ -297,8 +297,11 @@
 
 /**
  * The message protocol used for Elastic Memory.
- * EMRemoteMsg, EMRoutingTableMsg, and EMMigrationMsg are all included as nullable fields, and
- * an enum type indicates which field is not null.
+ * Messages are categorized into 3 types:
+ * (1) RemoteOpMsg: Message regarding remote operations,
+ * (2) RoutingTableMsg: Message to manage routing table, and
+ * (3) MigrationMsg: Message used for data migration.
+ * They are all included as nullable fields, and an enum type indicates which field is not null.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -307,10 +310,10 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "EMMsgType",
-        "symbols": ["EMRemoteMsg", "EMRoutingTableMsg", "EMMigrationMsg"]}},
-    {"name": "emRemoteMsg", "type": ["null", "EMRemoteMsg"], "default": null},
-    {"name": "emRoutingTableMsg", "type": ["null", "EMRoutingTableMsg"], "default": null},
-    {"name": "emMigrationMsg", "type": ["null", "EMMigrationMsg"], "default": null}
+        "symbols": ["RemoteOpMsg", "RoutingTableMsg", "MigrationMsg"]}},
+    {"name": "remoteOpMsg", "type": ["null", "RemoteOpMsg"], "default": null},
+    {"name": "routingTableMsg", "type": ["null", "RoutingTableMsg"], "default": null},
+    {"name": "migrationMsg", "type": ["null", "MigrationMsg"], "default": null}
   ]
 }
 ]

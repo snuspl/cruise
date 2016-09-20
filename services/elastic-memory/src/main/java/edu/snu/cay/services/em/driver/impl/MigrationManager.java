@@ -85,7 +85,7 @@ final class MigrationManager {
                                    final String receiverId,
                                    final int numBlocks,
                                    @Nullable final TraceInfo parentTraceInfo,
-                                   @Nullable final EventHandler<EMMigrationMsg> finishedCallback) {
+                                   @Nullable final EventHandler<MigrationMsg> finishedCallback) {
     Trace.setProcessId("migration_manager");
 
     final TraceScope migrationTraceScope = Trace.startSpan(
@@ -246,7 +246,7 @@ final class MigrationManager {
         .setResult(Result.FAILURE)
         .setMsg(reason)
         .build();
-    final EMMigrationMsg msg = getEMMessage(moveOperationId, resultMsg);
+    final MigrationMsg msg = getEMMessage(moveOperationId, resultMsg);
     callbackRouter.onFailed(msg);
   }
 
@@ -258,13 +258,13 @@ final class MigrationManager {
         .setResult(Result.SUCCESS)
         .setBlockIds(blocks)
         .build();
-    final EMMigrationMsg msg = getEMMessage(moveOperationId, resultMsg);
+    final MigrationMsg msg = getEMMessage(moveOperationId, resultMsg);
     callbackRouter.onCompleted(msg);
   }
 
-  private static EMMigrationMsg getEMMessage(final String operationId, final ResultMsg resultMsg) {
+  private static MigrationMsg getEMMessage(final String operationId, final ResultMsg resultMsg) {
 
-    return EMMigrationMsg.newBuilder()
+    return MigrationMsg.newBuilder()
         .setType(MigrationMsgType.ResultMsg)
         .setResultMsg(resultMsg)
         .setOperationId(operationId)

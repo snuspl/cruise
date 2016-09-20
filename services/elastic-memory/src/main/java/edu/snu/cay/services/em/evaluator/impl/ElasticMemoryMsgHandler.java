@@ -79,16 +79,16 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
 
     final EMMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-    case EMRoutingTableMsg:
-      onRoutingTableMsg(innerMsg.getEmRoutingTableMsg());
+    case RoutingTableMsg:
+      onRoutingTableMsg(innerMsg.getRoutingTableMsg());
       break;
 
-    case EMRemoteMsg:
-      onRemoteOpMsg(innerMsg.getEmRemoteMsg());
+    case RemoteOpMsg:
+      onRemoteOpMsg(innerMsg.getRemoteOpMsg());
       break;
 
-    case EMMigrationMsg:
-      onMigrationMsg(innerMsg.getEmMigrationMsg());
+    case MigrationMsg:
+      onMigrationMsg(innerMsg.getMigrationMsg());
       break;
 
     default:
@@ -98,7 +98,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
-  private void onRoutingTableMsg(final EMRoutingTableMsg msg) {
+  private void onRoutingTableMsg(final RoutingTableMsg msg) {
     switch (msg.getType()) {
     case RoutingTableInitMsg:
       onRoutingTableInitMsg(msg);
@@ -113,11 +113,11 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
     }
   }
 
-  private void onRoutingTableInitMsg(final EMRoutingTableMsg msg) {
+  private void onRoutingTableInitMsg(final RoutingTableMsg msg) {
     router.initRoutingTableWithDriver(msg.getRoutingTableInitMsg().getBlockLocations());
   }
 
-  private void onRoutingTableUpdateMsg(final EMRoutingTableMsg msg) {
+  private void onRoutingTableUpdateMsg(final RoutingTableMsg msg) {
     Trace.setProcessId("eval");
     try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_table_update_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
@@ -139,11 +139,11 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
   /**
    * Passes the request and result msgs of remote op to {@link RemoteOpHandler}.
    */
-  private void onRemoteOpMsg(final EMRemoteMsg msg) {
+  private void onRemoteOpMsg(final RemoteOpMsg msg) {
     remoteOpHandler.onNext(msg);
   }
 
-  private void onMigrationMsg(final EMMigrationMsg msg) {
+  private void onMigrationMsg(final MigrationMsg msg) {
     switch (msg.getType()) {
     case MoveInitMsg:
       onMoveInitMsg(msg);
@@ -162,7 +162,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
     }
   }
 
-  private void onOwnershipMsg(final EMMigrationMsg msg) {
+  private void onOwnershipMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
     final int blockId = ownershipMsg.getBlockId();
@@ -188,7 +188,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
   /**
    * Puts the data message contents into own memory store.
    */
-  private void onDataMsg(final EMMigrationMsg msg) {
+  private void onDataMsg(final MigrationMsg msg) {
     final DataMsg dataMsg = msg.getDataMsg();
     final Codec codec = serializer.getCodec();
     final String operationId = msg.getOperationId().toString();
@@ -227,7 +227,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
   /**
    * Initiates move by sending data messages to the src evaluator.
    */
-  private void onMoveInitMsg(final EMMigrationMsg msg) {
+  private void onMoveInitMsg(final MigrationMsg msg) {
     Trace.setProcessId("src_eval");
     try (final TraceScope onCtrlMsgScope = Trace.startSpan("on_move_init_msg",
       HTraceUtils.fromAvro(msg.getTraceInfo()))) {

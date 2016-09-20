@@ -148,7 +148,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
         .setDataValues(dataValues)
         .build();
 
-    final EMRemoteMsg emRemoteMsg = EMRemoteMsg.newBuilder()
+    final RemoteOpMsg remoteMsg = RemoteOpMsg.newBuilder()
         .setType(RemoteMsgType.RemoteOpReqMsg)
         .setRemoteOpReqMsg(remoteOpReqMsg)
         .setOperationId(operationId)
@@ -156,8 +156,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
         .build();
 
     return EMMsg.newBuilder()
-        .setType(EMMsgType.EMRemoteMsg)
-        .setEmRemoteMsg(emRemoteMsg)
+        .setType(EMMsgType.RemoteOpMsg)
+        .setRemoteOpMsg(remoteMsg)
         .build();
   }
 
@@ -224,7 +224,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
         .setFailedKeyRanges(failedRanges)
         .build();
 
-    final EMRemoteMsg emRemoteMsg = EMRemoteMsg.newBuilder()
+    final RemoteOpMsg remoteOpMsg = RemoteOpMsg.newBuilder()
         .setType(RemoteMsgType.RemoteOpResultMsg)
         .setRemoteOpResultMsg(remoteOpResultMsg)
         .setOperationId(operationId)
@@ -232,8 +232,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
         .build();
 
     return EMMsg.newBuilder()
-        .setType(EMMsgType.EMRemoteMsg)
-        .setEmRemoteMsg(emRemoteMsg)
+        .setType(EMMsgType.RemoteOpMsg)
+        .setRemoteOpMsg(remoteOpMsg)
         .build();
   }
 
@@ -256,7 +256,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setEvalId(emNetworkSetup.getMyId().toString())
           .build();
 
-      final EMRoutingTableMsg emRoutingTableMsg = EMRoutingTableMsg.newBuilder()
+      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
           .setType(RoutingTableMsgType.RoutingTableInitReqMsg)
           .setRoutingTableInitReqMsg(routingTableInitReqMsg)
           .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
@@ -264,8 +264,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(driverId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.EMRoutingTableMsg)
-              .setEmRoutingTableMsg(emRoutingTableMsg)
+              .setType(EMMsgType.RoutingTableMsg)
+              .setRoutingTableMsg(routingTableMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
@@ -294,7 +294,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setBlockLocations(blockLocations)
           .build();
 
-      final EMRoutingTableMsg emRoutingTableMsg = EMRoutingTableMsg.newBuilder()
+      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
           .setType(RoutingTableMsgType.RoutingTableInitMsg)
           .setRoutingTableInitMsg(routingTableInitMsg)
           .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
@@ -302,8 +302,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(destId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.EMRoutingTableMsg)
-              .setEmRoutingTableMsg(emRoutingTableMsg)
+              .setType(EMMsgType.RoutingTableMsg)
+              .setRoutingTableMsg(routingTableMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
@@ -335,7 +335,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setBlockIds(blocks)
           .build();
 
-      final EMRoutingTableMsg emRoutingTableMsg = EMRoutingTableMsg.newBuilder()
+      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
           .setType(RoutingTableMsgType.RoutingTableUpdateMsg)
           .setRoutingTableUpdateMsg(routingTableUpdateMsg)
           .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
@@ -343,8 +343,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(destId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.EMRoutingTableMsg)
-              .setEmRoutingTableMsg(emRoutingTableMsg)
+              .setType(EMMsgType.RoutingTableMsg)
+              .setRoutingTableMsg(routingTableMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
@@ -374,7 +374,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setBlockIds(blocks)
           .build();
 
-      final EMMigrationMsg emMigrationMsg = EMMigrationMsg.newBuilder()
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
           .setType(MigrationMsgType.MoveInitMsg)
           .setMoveInitMsg(moveInitMsg)
           .setOperationId(operationId)
@@ -383,8 +383,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(destId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.EMMigrationMsg)
-              .setEmMigrationMsg(emMigrationMsg)
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
 
     } finally {
@@ -432,7 +432,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setKeyValuePairs(keyValuePairs)
           .build();
 
-      final EMMigrationMsg emMigrationMsg = EMMigrationMsg.newBuilder()
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
           .setType(MigrationMsgType.DataMsg)
           .setDataMsg(dataMsg)
           .setOperationId(operationId)
@@ -441,8 +441,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(destId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.EMMigrationMsg)
-              .setEmMigrationMsg(emMigrationMsg)
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
@@ -478,7 +478,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setNewOwnerId(newOwnerId)
               .build();
 
-      final EMMigrationMsg emMigrationMsg = EMMigrationMsg.newBuilder()
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
           .setType(MigrationMsgType.OwnershipMsg)
           .setOwnershipMsg(ownershipMsg)
           .setOperationId(operationId)
@@ -487,8 +487,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(destId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.EMMigrationMsg)
-              .setEmMigrationMsg(emMigrationMsg)
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
     } finally {
       Trace.continueSpan(detached).close();
@@ -513,7 +513,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setBlockId(blockId)
           .build();
 
-      final EMMigrationMsg emMigrationMsg = EMMigrationMsg.newBuilder()
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
           .setType(MigrationMsgType.BlockMovedMsg)
           .setBlockMovedMsg(blockMovedMsg)
           .setOperationId(operationId)
@@ -522,8 +522,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(driverId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.EMMigrationMsg)
-              .setEmMigrationMsg(emMigrationMsg)
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
     } finally {
       Trace.continueSpan(detached).close();
@@ -551,7 +551,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setReason(reason)
               .build();
 
-      final EMMigrationMsg emMigrationMsg = EMMigrationMsg.newBuilder()
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
           .setType(MigrationMsgType.FailureMsg)
           .setFailureMsg(failureMsg)
           .setOperationId(operationId)
@@ -560,8 +560,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(driverId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.EMMigrationMsg)
-              .setEmMigrationMsg(emMigrationMsg)
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",

@@ -179,15 +179,15 @@ public final class EMRoutingTableManagerTest {
               .setBlockId(blockId)
               .build();
 
-          final EMMigrationMsg emMigrationMsg = EMMigrationMsg.newBuilder()
+          final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
               .setType(MigrationMsgType.BlockMovedMsg)
               .setOperationId(opId)
               .setBlockMovedMsg(blockMovedMsg)
               .build();
 
           final EMMsg emMsg = EMMsg.newBuilder()
-              .setType(EMMsgType.EMMigrationMsg)
-              .setEmMigrationMsg(emMigrationMsg)
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build();
 
           final Message<EMMsg> msg = new NSMessage<>(null, null, emMsg);

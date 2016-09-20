@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.services.em.avro.EMMigrationMsg;
+import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
@@ -170,9 +170,9 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
       final boolean[] moveSucceeded = {false};
 
       elasticMemory.move(numToMove, srcId, destId,
-          new EventHandler<EMMigrationMsg>() {
+          new EventHandler<MigrationMsg>() {
             @Override
-            public void onNext(final EMMigrationMsg msg) {
+            public void onNext(final MigrationMsg msg) {
               moveSucceeded[0] = msg.getResultMsg().getResult().equals(Result.SUCCESS);
               LOG.log(Level.INFO, "Was Move {0} successful? {1}. The result: {2}",
                   new Object[]{msg.getOperationId(), moveSucceeded[0], msg.getResultMsg().getResult()});

@@ -989,7 +989,7 @@ public final class AsyncDolphinDriver {
    */
   final class ServerRemover implements EMDeleteExecutor {
     @Override
-    public boolean execute(final String activeContextId, final EventHandler<EMMigrationMsg> callback) {
+    public boolean execute(final String activeContextId, final EventHandler<MigrationMsg> callback) {
       final ActiveContext activeContext = contextIdToServerContexts.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
@@ -1036,7 +1036,7 @@ public final class AsyncDolphinDriver {
    */
   final class WorkerRemover implements EMDeleteExecutor {
     @Override
-    public boolean execute(final String activeContextId, final EventHandler<EMMigrationMsg> callback) {
+    public boolean execute(final String activeContextId, final EventHandler<MigrationMsg> callback) {
       final ActiveContext activeContext = contextIdToWorkerContexts.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
@@ -1061,14 +1061,14 @@ public final class AsyncDolphinDriver {
    */
   // TODO #205: Reconsider using of Avro message in EM's callback
   private void sendCallback(final String contextId,
-                            final EventHandler<EMMigrationMsg> callback,
+                            final EventHandler<MigrationMsg> callback,
                             final boolean isSuccess) {
     final ResultMsg resultMsg = ResultMsg.newBuilder()
         .setResult(isSuccess ? Result.SUCCESS : Result.FAILURE)
         .setSrcId(contextId)
         .build();
 
-    callback.onNext(EMMigrationMsg.newBuilder()
+    callback.onNext(MigrationMsg.newBuilder()
         .setType(MigrationMsgType.ResultMsg)
         .setResultMsg(resultMsg)
         .build());

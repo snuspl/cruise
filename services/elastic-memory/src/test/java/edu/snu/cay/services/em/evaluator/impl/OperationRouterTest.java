@@ -128,14 +128,14 @@ public class OperationRouterTest {
               .setEvalId(evalId)
               .build();
 
-          final EMRoutingTableMsg routingTableMsg = EMRoutingTableMsg.newBuilder()
+          final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
               .setType(RoutingTableMsgType.RoutingTableInitReqMsg)
               .setRoutingTableInitReqMsg(routingTableInitReqMsg)
               .build();
 
           final EMMsg msg = EMMsg.newBuilder()
-              .setType(EMMsgType.EMRoutingTableMsg)
-              .setEmRoutingTableMsg(routingTableMsg)
+              .setType(EMMsgType.RoutingTableMsg)
+              .setRoutingTableMsg(routingTableMsg)
               .build();
 
           driverMsgHandler.onNext(new NSMessage<>(evalIdentifier, driverIdentifier, msg));

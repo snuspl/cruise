@@ -117,7 +117,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
    * TODO #205: Reconsider using of Avro message in EM's callback
    */
   @Override
-  public void delete(final String evalId, @Nullable final EventHandler<EMMigrationMsg> callback) {
+  public void delete(final String evalId, @Nullable final EventHandler<MigrationMsg> callback) {
     // Deletion fails when the evaluator has remaining data
     if (blockManager.getNumBlocks(evalId) > 0) {
       if (callback != null) {
@@ -127,7 +127,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
             .setSrcId(evalId)
             .build();
 
-        final EMMigrationMsg emMigrationMsg = EMMigrationMsg.newBuilder()
+        final MigrationMsg emMigrationMsg = MigrationMsg.newBuilder()
             .setResultMsg(resultMsg)
             .build();
         callback.onNext(emMigrationMsg);
@@ -138,9 +138,9 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     final boolean isSuccess;
 
     if (callback == null) {
-      isSuccess = deleteExecutor.get().execute(evalId, new EventHandler<EMMigrationMsg>() {
+      isSuccess = deleteExecutor.get().execute(evalId, new EventHandler<MigrationMsg>() {
         @Override
-        public void onNext(final EMMigrationMsg msg) {
+        public void onNext(final MigrationMsg msg) {
 
         }
       });
@@ -161,7 +161,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Override
   public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
-                   @Nullable final EventHandler<EMMigrationMsg> finishedCallback) {
+                   @Nullable final EventHandler<MigrationMsg> finishedCallback) {
     Trace.setProcessId("elastic_memory");
     try (final TraceScope moveScope = Trace.startSpan(OP_MOVE, traceSampler)) {
       final String operationId = String.format("%s-%d", OP_MOVE, operationIdCounter.getAndIncrement());

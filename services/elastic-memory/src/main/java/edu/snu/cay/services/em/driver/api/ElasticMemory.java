@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.driver.api;
 
-import edu.snu.cay.services.em.avro.EMMigrationMsg;
+import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.driver.impl.ElasticMemoryImpl;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
@@ -52,7 +52,7 @@ public interface ElasticMemory {
    * @param evalId identifier of the evaluator to release
    * @param callback an application-level callback to be called, or null if no callback is needed
    */
-  void delete(String evalId, @Nullable EventHandler<EMMigrationMsg> callback);
+  void delete(String evalId, @Nullable EventHandler<MigrationMsg> callback);
 
   /**
    * Resize the evaluator specified by a given identifier.
@@ -72,7 +72,7 @@ public interface ElasticMemory {
    * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
    */
   void move(int numBlocks, String srcEvalId, String destEvalId,
-            @Nullable EventHandler<EMMigrationMsg> finishedCallback);
+            @Nullable EventHandler<MigrationMsg> finishedCallback);
 
   /**
    * Persist the state of an evaluator into stable storage.

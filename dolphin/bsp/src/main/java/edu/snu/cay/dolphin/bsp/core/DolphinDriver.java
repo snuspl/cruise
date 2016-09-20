@@ -30,7 +30,7 @@ import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.bsp.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.bsp.groupcomm.conf.GroupCommParameters;
 import edu.snu.cay.dolphin.bsp.scheduling.SchedulabilityAnalyzer;
-import edu.snu.cay.services.em.avro.EMMigrationMsg;
+import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.MigrationMsgType;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
@@ -732,7 +732,7 @@ public final class DolphinDriver {
   final class TaskRemover implements EMDeleteExecutor {
 
     @Override
-    public boolean execute(final String activeContextId, final EventHandler<EMMigrationMsg> callback) {
+    public boolean execute(final String activeContextId, final EventHandler<MigrationMsg> callback) {
       final RunningTask runningTask = taskTracker.getRunningTask(activeContextId);
       if (runningTask == null) {
         // Given active context should have a runningTask in a normal case, because our job is paused.
@@ -756,7 +756,7 @@ public final class DolphinDriver {
             .setSrcId(activeContextId)
             .build();
 
-        callback.onNext(EMMigrationMsg.newBuilder()
+        callback.onNext(MigrationMsg.newBuilder()
             .setType(MigrationMsgType.ResultMsg)
             .setResultMsg(resultMsg)
             .build());

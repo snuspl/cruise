@@ -63,12 +63,12 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     Trace.setProcessId("driver");
     final EMMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-    case EMRoutingTableMsg:
-      onRoutingTableMsg(innerMsg.getEmRoutingTableMsg());
+    case RoutingTableMsg:
+      onRoutingTableMsg(innerMsg.getRoutingTableMsg());
       break;
 
-    case EMMigrationMsg:
-      onMigrationMsg(innerMsg.getEmMigrationMsg());
+    case MigrationMsg:
+      onMigrationMsg(innerMsg.getMigrationMsg());
       break;
 
     default:
@@ -78,7 +78,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
-  private void onRoutingTableMsg(final EMRoutingTableMsg msg) {
+  private void onRoutingTableMsg(final RoutingTableMsg msg) {
     switch (msg.getType()) {
     case RoutingTableInitReqMsg:
       onRoutingTableInitReqMsg(msg);
@@ -89,7 +89,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
-  private void onRoutingTableInitReqMsg(final EMRoutingTableMsg msg) {
+  private void onRoutingTableInitReqMsg(final RoutingTableMsg msg) {
     try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan("on_routing_table_init_req_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
@@ -102,7 +102,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
-  private void onMigrationMsg(final EMMigrationMsg msg) {
+  private void onMigrationMsg(final MigrationMsg msg) {
     switch (msg.getType()) {
     case OwnershipMsg:
       onOwnershipMsg(msg);
@@ -121,7 +121,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
-  private void onBlockMovedMsg(final EMMigrationMsg msg) {
+  private void onBlockMovedMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final BlockMovedMsg blockMovedMsg = msg.getBlockMovedMsg();
     final int blockId = blockMovedMsg.getBlockId();
@@ -133,7 +133,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
-  private void onOwnershipMsg(final EMMigrationMsg msg) {
+  private void onOwnershipMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final int blockId = msg.getOwnershipMsg().getBlockId();
     final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
@@ -149,7 +149,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
-  private void onFailureMsg(final EMMigrationMsg msg) {
+  private void onFailureMsg(final MigrationMsg msg) {
     try (final TraceScope onFailureMsgScope =
              Trace.startSpan("on_failure_msg", HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final FailureMsg failureMsg = msg.getFailureMsg();
