@@ -15,10 +15,14 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
+import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Utilities for testing MemoryStore.
@@ -211,6 +215,61 @@ public final class MemoryStoreTestUtils {
       }
 
       countDownLatch.countDown();
+    }
+  }
+
+  public static final class BlockUpdateListenerImpl implements BlockUpdateListener<Long> {
+    private final CountDownLatch countDownLatchForBlockAdd;
+    private final CountDownLatch countDownLatchForBlockRemove;
+    private final int numOfKeysPerBlock;
+
+    /**
+     * Creates a {@link BlockUpdateListener} that allows to check whether the blocks are correctly added or removed.
+     * @param countDownLatchForBlockAdd a latch that decrements its count each time a block is added
+     * @param countDownLatchForBlockRemove a latch that decrements its count each time a block is removed
+     * @param numOfKeysPerBlock the number of keys in the updated block.
+     *                          used to check whether the updated block's key set is same with the expected key set.
+     */
+    public BlockUpdateListenerImpl(final CountDownLatch countDownLatchForBlockAdd,
+                                   final CountDownLatch countDownLatchForBlockRemove,
+                                   final int numOfKeysPerBlock) {
+      this.countDownLatchForBlockAdd = countDownLatchForBlockAdd;
+      this.countDownLatchForBlockRemove = countDownLatchForBlockRemove;
+      this.numOfKeysPerBlock = numOfKeysPerBlock;
+    }
+
+    @Override
+    public void onAddedBlock(final int blockId, final Set<Long> addedKeys) {
+
+      // check the update block has the same key set with the expected key set.
+      assertEquals(numOfKeysPerBlock, addedKeys.size());
+
+      final int keyIdBase = blockId * numOfKeysPerBlock;
+      for (int j = 0; j < numOfKeysPerBlock; j++) {
+        final int keyId = keyIdBase + j;
+        assertTrue(addedKeys.contains(new Long((long)keyId)));
+      }
+
+      if (countDownLatchForBlockAdd != null) {
+        countDownLatchForBlockAdd.countDown();
+      }
+    }
+
+    @Override
+    public void onRemovedBlock(final int blockId, final Set<Long> removedKeys) {
+
+      // check the update block has the same key set with the expected key set.
+      assertEquals(numOfKeysPerBlock, removedKeys.size());
+
+      final int keyIdBase = blockId * numOfKeysPerBlock;
+      for (int j = 0; j < numOfKeysPerBlock; j++) {
+        final int keyId = keyIdBase + j;
+        assertTrue(removedKeys.contains(new Long((long)keyId)));
+      }
+
+      if (countDownLatchForBlockRemove != null) {
+        countDownLatchForBlockRemove.countDown();
+      }
     }
   }
 }

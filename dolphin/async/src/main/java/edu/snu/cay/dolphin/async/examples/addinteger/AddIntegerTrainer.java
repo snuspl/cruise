@@ -147,6 +147,7 @@ final class AddIntegerTrainer implements Trainer {
     return WorkerMetrics.newBuilder()
         .setNumDataBlocks(numDataBlocks)
         .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
   }
 

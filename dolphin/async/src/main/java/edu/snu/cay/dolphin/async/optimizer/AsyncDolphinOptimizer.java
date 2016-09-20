@@ -106,7 +106,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
 
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTime() /
+            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTimeSec() /
                 (double) ((ServerMetrics) param.getMetrics()).getNumModelBlocks(),
             NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
@@ -165,7 +165,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
             "\"optNumWorker\":%d, \"currNumWorker\":%d, \"optNumServer\":%d, \"currNumServer\":%d, " +
             "\"optCompCost\":%f, \"currCompCost\":%f, \"optCommCost\":%f, \"currCommCost\":%f," +
             "\"optBenefitThreshold\":%f}", availableEvaluators,
-        currentNumWorkers, currentNumServers, optimalNumWorkers, optimalNumServers,
+        optimalNumWorkers, currentNumWorkers, optimalNumServers, currentNumServers,
         optimalCompCost, currentCompCost, optimalCommCost, currentCommCost, optBenefitThreshold);
 
     LOG.log(Level.INFO, "OptimizationInfo {0} {1}", new Object[]{System.currentTimeMillis(), optimizationInfo});

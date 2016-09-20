@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
@@ -34,6 +35,7 @@ import org.htrace.SpanReceiver;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -334,5 +336,99 @@ public final class MemoryStoreTest {
         memoryStore.removeAll().size());
     // check that removeAll works as expected
     assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll().size());
+  }
+
+  /**
+   * Test for MemoryStore's event listener for block addition.
+   * Checks that all registered listeners receive block update notifications with correct parameters
+   * including the updated block's id and key set, when a new block is added.
+   */
+  @Test(timeout = 2000)
+  public void testMultipleBlockAddNotify() throws InterruptedException  {
+    final int numOfListener = 3;
+    final int numOfBlockPut = 10;
+    final int numOfKeysPerBlock = 10;
+    final int timeoutMS = 500;
+    // Since NUM_TOTAL_BLOCKS blocks were already assigned to MemoryStores (see setUp()),
+    // the value of blockIdBase is chosen to avoid conflict with the existing blocks.
+    final int blockIdBase = 0x80;
+    final CountDownLatch countDownLatch = new CountDownLatch(numOfListener * numOfBlockPut);
+    final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
+
+    // register block update notification observers to the Memory Store
+    for (int i = 0; i < numOfListener; i++) {
+      final BlockUpdateListener listener
+          = new MemoryStoreTestUtils.BlockUpdateListenerImpl(countDownLatch, null, numOfKeysPerBlock);
+      memoryStore.registerBlockUpdateListener(listener);
+    }
+
+    // put blocks to the Memory Store
+    // and it will call onAddedBlock callback of MemoryStoreTestUtils.BlockAddListenerImpl class
+    for (int i = 0; i < numOfBlockPut; i++) {
+      final int blockId = blockIdBase + i;
+
+      // generate a hash map of key-value pairs to store in a block
+      final Map<Long, Object> data = new HashMap<>();
+      final long keyIdStart = (blockId * numOfKeysPerBlock);
+      for (int keyOffset = 0; keyOffset < numOfKeysPerBlock; keyOffset++) {
+        final long keyId = keyIdStart + keyOffset;
+        data.put(keyId, keyId);
+      }
+
+      memoryStoreImpl.putBlock(blockId, data);
+    }
+
+    // wait for count down latch with a bound of time
+    assertTrue(countDownLatch.await(timeoutMS, TimeUnit.MILLISECONDS));
+  }
+
+  /**
+   * Test for MemoryStore's event listener for block removal.
+   * Checks that all registered listeners receive block update notifications with correct parameters
+   * including the updated block's id and key set, when the existing block is removed.
+   */
+  @Test(timeout = 2000)
+  public void testMultipleBlockRemoveNotify() throws InterruptedException {
+    final int numOfObserver = 3;
+    final int numOfBlockPut = 10;
+    final int numOfKeysPerBlock = 10;
+    final int timeoutMS = 500;
+    // Since NUM_TOTAL_BLOCKS blocks were already assigned to MemoryStores (see setUp()),
+    // the value of blockIdBase is chosen to avoid conflict with the existing blocks.
+    final int blockIdBase = 0x80;
+    final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
+    final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
+
+    // register block update notification observers to the Memory Store
+    for (int i = 0; i < numOfObserver; i++) {
+      final BlockUpdateListener listener
+          = new MemoryStoreTestUtils.BlockUpdateListenerImpl(null, countDownLatch, numOfKeysPerBlock);
+      memoryStore.registerBlockUpdateListener(listener);
+    }
+
+    // put blocks to be deleted from the Memory Store
+    for (int i = 0; i < numOfBlockPut; i++) {
+      final int blockId = blockIdBase + i;
+
+      // generate a hash map of key-value pairs to store in a block
+      final Map<Long, Object> data = new HashMap<>();
+      final long keyIdStart = (numOfKeysPerBlock * blockId);
+      for (int keyOffset = 0; keyOffset < numOfKeysPerBlock; keyOffset++) {
+        final long keyId = keyIdStart + keyOffset;
+        data.put(keyId, keyId);
+      }
+
+      memoryStoreImpl.putBlock(blockId, data);
+    }
+
+    // remove all the blocks stored in the Memory Store
+    // and it will call onRemovedBlock callback of MemoryStoreTestUtils.BlockRemoveListenerImpl class
+    for (int i = 0; i < numOfBlockPut; i++) {
+      final int blockId = blockIdBase + i;
+      memoryStoreImpl.removeBlock(blockId);
+    }
+
+    // wait for count down latch with a bounded time
+    assertTrue(countDownLatch.await(timeoutMS, TimeUnit.MILLISECONDS));
   }
 }

@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -49,6 +50,7 @@ final class LDATrainer implements Trainer {
   private final MemoryStore<Long> memoryStore;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
+  private final int numMiniBatchPerIter;
 
   @Inject
   private LDATrainer(final LDADataParser dataParser,
@@ -58,7 +60,8 @@ final class LDATrainer implements Trainer {
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                     @Parameter(NumVocabs.class) final int numVocabs) {
+                     @Parameter(NumVocabs.class) final int numVocabs,
+                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter) {
     this.dataParser = dataParser;
     this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
@@ -67,6 +70,8 @@ final class LDATrainer implements Trainer {
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
+    this.numMiniBatchPerIter = numMiniBatchPerIter;
+
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
     for (int i = 0; i < numVocabs + 1; i++) {
@@ -94,8 +99,8 @@ final class LDATrainer implements Trainer {
         // numVocabs-th row represents the total word-topic assignment count vector
         batchParameterWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
       }
-      batchParameterWorker.pushAndClear();
     }
+    batchParameterWorker.pushAndClear();
 
     LOG.log(Level.INFO, "All random topic assignments are updated");
   }
@@ -105,19 +110,19 @@ final class LDATrainer implements Trainer {
     LOG.log(Level.INFO, "Iteration Started");
 
     final Map<Long, Document> workloadMap = memoryStore.getAll();
-    final Collection<Document> workload = workloadMap.values();
-
+    final List<Document> workload = new ArrayList<>(workloadMap.values());
     final int numDocuments = workload.size();
-    final int countForLogging = numDocuments / 3;
     int numSampledDocuments = 0;
 
-    for (final Document document : workload) {
-      sampler.sample(document);
-      numSampledDocuments++;
+    for (int batchIdx = 0; batchIdx < numMiniBatchPerIter; batchIdx++) {
+      final int batchSize = numDocuments / numMiniBatchPerIter
+          + ((numDocuments % numMiniBatchPerIter > batchIdx) ? 1 : 0);
 
-      if (numSampledDocuments % countForLogging == 0) {
-        LOG.log(Level.INFO, "{0}/{1} documents are sampled", new Object[]{numSampledDocuments, numDocuments});
-      }
+      sampler.sample(workload.subList(numSampledDocuments, numSampledDocuments + batchSize));
+
+      numSampledDocuments += batchSize;
+      LOG.log(Level.INFO, "{0} documents out of {1} have been sampled",
+          new Object[]{numSampledDocuments, numDocuments});
     }
 
     LOG.log(Level.INFO, "Start computing log likelihood");

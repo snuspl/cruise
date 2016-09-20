@@ -13,19 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.parameters;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Time period in ms for retrying pull operations when there's no response from server. " +
-    "A value of 0 indicates the parameter worker does not care about timeout.",
-    default_value = "5000",
-    short_name = "pull_retry_timeout_ms")
-public final class PullRetryTimeoutMs implements Name<Long> {
-  public static final int TIMEOUT_NO_RETRY = 0;
-
-  // should not be instantiated
-  private PullRetryTimeoutMs() {
-  }
-}
+/**
+ * Tests for dolphin-async.
+ */
+package edu.snu.cay.dolphin.async;

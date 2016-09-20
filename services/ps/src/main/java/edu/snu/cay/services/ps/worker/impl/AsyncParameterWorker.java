@@ -22,25 +22,33 @@ import com.google.common.cache.LoadingCache;
 import edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics;
 import edu.snu.cay.services.ps.PSParameters.KeyCodecName;
 import edu.snu.cay.services.ps.common.Statistics;
+import edu.snu.cay.services.ps.common.parameters.PSTraceProbability;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
-import edu.snu.cay.services.ps.server.api.ParameterUpdater;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.api.WorkerHandler;
+import edu.snu.cay.services.ps.worker.api.*;
 import edu.snu.cay.services.ps.worker.parameters.*;
 import edu.snu.cay.utils.StateMachine;
+import edu.snu.cay.utils.trace.HTrace;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
+import org.htrace.*;
 
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs.TIMEOUT_NO_RETRY;
 
 /**
  * A Parameter Server worker that interacts with servers.
@@ -56,6 +64,7 @@ import java.util.logging.Logger;
 @EvaluatorSide
 public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
   private static final Logger LOG = Logger.getLogger(AsyncParameterWorker.class.getName());
+  private static final Random RAND = new Random();
 
   /**
    * The maximum number to resend push/pull requests
@@ -77,9 +86,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   static final int MAX_PULL_RETRY_COUNT = 10;
 
   /**
-   * Object for processing preValues and applying updates to existing values.
+   * The maximum number of pending pulls allowed for each WorkerThread.
    */
-  private final ParameterUpdater<K, P, V> parameterUpdater;
+  private final int maxPendingPullsPerThread;
 
   /**
    * Resolve to a server's Network Connection Service identifier based on hashed key.
@@ -87,14 +96,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final ServerResolver serverResolver;
 
   /**
-   * A map of pending pulls, used to reconcile the asynchronous messaging with the synchronous CacheLoader call.
+   * Number of WorkerThreads.
    */
-  private final ConcurrentMap<K, PullFuture<V>> pendingPulls;
-
-  /**
-   * Number of threads.
-   */
-  private final int numThreads;
+  private final int numWorkerThreads;
 
   /**
    * Thread pool, where each thread is submitted.
@@ -102,9 +106,14 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final ExecutorService threadPool;
 
   /**
-   * Running threads.
+   * Worker threads that process push & pull operations by sending messages to its corresponding server.
    */
-  private final WorkerThread<K, P, V>[] threads;
+  private final WorkerThread[] workerThreads;
+
+  /**
+   * A thread that retries the pull request by enqueueing an operation for retry to its corresponding queue.
+   */
+  private final RetryThread retryThread;
 
   /**
    * A cache that stores encoded (serialized) keys and hashes.
@@ -120,34 +129,46 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   private final Statistics[] pullStats;
   private final Statistics[] pushStats;
-  private final Statistics[] encodeStats;
   private final Statistics[] networkStats;
-  private final Statistics[] pendingStats;
-  private final long[] startTimes;
+  private final Statistics[] waitingStats;
+  private final Statistics[] sentBytesStats;
+  private final Statistics[] receivedBytesStats;
   private final Ticker ticker = Ticker.systemTicker();
 
+  private final TraceScope pwTraceScope;
+  private final double traceProbability;
+
   @Inject
-  private AsyncParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
+  private AsyncParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numWorkerThreads,
                                @Parameter(WorkerQueueSize.class) final int queueSize,
-                               @Parameter(WorkerExpireTimeout.class) final long cacheExpireTimeout,
                                @Parameter(PullRetryTimeoutMs.class) final long pullRetryTimeoutMs,
+                               @Parameter(MaxPendingPullsPerThread.class) final int maxPendingPullsPerThread,
                                @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                                @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                               final ParameterUpdater<K, P, V> parameterUpdater,
                                final ServerResolver serverResolver,
-                               final InjectionFuture<WorkerMsgSender<K, P>> sender) {
-    this.numThreads = numThreads;
-    this.parameterUpdater = parameterUpdater;
+                               final InjectionFuture<WorkerMsgSender<K, P>> sender,
+                               @Parameter(PSTraceProbability.class) final double traceProbability,
+                               final HTrace hTrace) {
+    Trace.setProcessId("parameter_worker");
+    hTrace.initialize();
+    this.pwTraceScope = Trace.startSpan("parameter_worker", Sampler.ALWAYS);
+    this.traceProbability = traceProbability;
+
+    this.numWorkerThreads = numWorkerThreads;
+    this.maxPendingPullsPerThread = maxPendingPullsPerThread;
     this.serverResolver = serverResolver;
     this.sender = sender;
-    this.pendingPulls = new ConcurrentHashMap<>();
-    this.pullStats = Statistics.newInstances(numThreads);
-    this.pushStats = Statistics.newInstances(numThreads);
-    this.encodeStats = Statistics.newInstances(numThreads);
-    this.networkStats = Statistics.newInstances(numThreads);
-    this.pendingStats = Statistics.newInstances(numThreads);
-    this.threadPool = Executors.newFixedThreadPool(numThreads);
-    this.threads = initThreads(queueSize, cacheExpireTimeout, pullRetryTimeoutMs);
+    this.pullStats = Statistics.newInstances(numWorkerThreads);
+    this.pushStats = Statistics.newInstances(numWorkerThreads);
+    this.networkStats = Statistics.newInstances(numWorkerThreads);
+    this.waitingStats = Statistics.newInstances(numWorkerThreads);
+    this.sentBytesStats = Statistics.newInstances(numWorkerThreads);
+    this.receivedBytesStats = Statistics.newInstances(numWorkerThreads);
+    // numWorkerThreads + 1 for retry thread
+    this.threadPool = Executors.newFixedThreadPool(numWorkerThreads + 1);
+    this.workerThreads = initWorkerThreads(queueSize);
+    this.retryThread = new RetryThread(pullRetryTimeoutMs);
+    this.threadPool.submit(retryThread);
     this.encodedKeyCache = CacheBuilder.newBuilder()
         .maximumSize(keyCacheSize)
         .build(new CacheLoader<K, EncodedKey<K>>() {
@@ -156,26 +177,18 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
             return new EncodedKey<>(key, keyCodec);
           }
         });
-
-    this.startTimes = new long[numThreads];
-    final long currentTime = ticker.read();
-    for (int i = 0; i < numThreads; ++i) {
-      startTimes[i] = currentTime;
-    }
   }
 
   /**
    * Call after initializing threadPool.
    */
   @SuppressWarnings("unchecked")
-  private WorkerThread<K, P, V>[] initThreads(final int queueSize,
-                                              final long cacheExpireTimeout,
-                                              final long pullRetryTimeoutMs) {
-    LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
-    final WorkerThread<K, P, V>[] initialized = new WorkerThread[numThreads];
-    for (int i = 0; i < numThreads; i++) {
-      initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize,
-          cacheExpireTimeout, pullRetryTimeoutMs, pullStats[i], networkStats[i]);
+  private WorkerThread[] initWorkerThreads(final int queueSize) {
+    LOG.log(Level.INFO, "Initializing {0} PW threads", numWorkerThreads);
+    final WorkerThread[] initialized = (WorkerThread[]) Array.newInstance(WorkerThread.class, numWorkerThreads);
+    for (int i = 0; i < numWorkerThreads; i++) {
+      initialized[i] = new WorkerThread(queueSize, pullStats[i], pushStats[i], networkStats[i], waitingStats[i],
+          sentBytesStats[i], receivedBytesStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -189,14 +202,14 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     try {
       push(encodedKeyCache.get(key), preValue);
     } catch (final ExecutionException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Exception while loading encoded key from cache", e);
     }
   }
 
-  void push(final EncodedKey<K> encodedKey, final P preValue) {
-    final int partitionId = getPartitionIndex(encodedKey.getHash());
-    final int threadId = partitionId % numThreads;
-    threads[threadId].enqueue(new PushOp(encodedKey, preValue, threadId));
+  private void push(final EncodedKey<K> encodedKey, final P preValue) {
+    final int threadId = getThreadIndex(encodedKey.getHash());
+    final PushOp pushOp = new PushOp(workerThreads[threadId], encodedKey, preValue);
+    workerThreads[threadId].enqueue(pushOp);
   }
 
   @Override
@@ -204,16 +217,30 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     try {
       return pull(encodedKeyCache.get(key));
     } catch (final ExecutionException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Exception while loading encoded key from cache", e);
     }
   }
 
-  V pull(final EncodedKey<K> encodedKey) {
-    final int partitionId = getPartitionIndex(encodedKey.getHash());
-    final int threadId = partitionId % numThreads;
-    final PullOp pullOp = new PullOp(encodedKey, threadId);
-    threads[threadId].enqueue(pullOp);
-    return pullOp.get();
+  private V pull(final EncodedKey<K> encodedKey) {
+    final boolean traceEnabled = RAND.nextDouble() < traceProbability;
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+    try (final TraceScope pullScope = traceEnabled ?
+        Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()), pwTraceScope.getSpan()) :
+        NullScope.INSTANCE) {
+      final int threadId = getThreadIndex(encodedKey.getHash());
+      if (traceEnabled) {
+        detached = pullScope.detach();
+      }
+      final PullOp pullOp = new PullOp(workerThreads[threadId], encodedKey, TraceInfo.fromSpan(detached));
+      workerThreads[threadId].enqueue(pullOp);
+      return pullOp.getResult();
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
   }
 
   @Override
@@ -224,7 +251,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       try {
         encodedKeys.add(encodedKeyCache.get(key));
       } catch (final ExecutionException e) {
-        throw new RuntimeException(e);
+        throw new RuntimeException("Exception while loading encoded key from cache", e);
       }
     }
 
@@ -232,29 +259,44 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   private List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
-    final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
-    for (final EncodedKey<K> encodedKey : encodedKeys) {
-      final int partitionId = getPartitionIndex(encodedKey.getHash());
-      final int threadId = partitionId % numThreads;
-      final PullOp pullOp = new PullOp(encodedKey, threadId);
-      pullOps.add(pullOp);
-      threads[threadId].enqueue(pullOp);
+    final boolean traceEnabled = RAND.nextDouble() < traceProbability;
+    try (final TraceScope pullListScope = traceEnabled ?
+        Trace.startSpan(String.format("pull_list. num_keys: %d", encodedKeys.size()), pwTraceScope.getSpan()) :
+        NullScope.INSTANCE) {
+      final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
+
+      for (final EncodedKey<K> encodedKey : encodedKeys) {
+        // We should detach the span when we transit to another thread (local or remote),
+        // and the detached span should call Trace.continueSpan(detached).close() explicitly
+        // for stitching the spans from other threads as its children
+        Span detached = null;
+        try (final TraceScope pullEnqueueScope = Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()),
+            pullListScope.getSpan())) {
+          final int threadId = getThreadIndex(encodedKey.getHash());
+
+          detached = pullEnqueueScope.detach();
+          final PullOp pullOp = new PullOp(workerThreads[threadId], encodedKey, TraceInfo.fromSpan(detached));
+          pullOps.add(pullOp);
+          workerThreads[threadId].enqueue(pullOp);
+        } finally {
+          Trace.continueSpan(detached).close();
+        }
+      }
+      final List<V> values = new ArrayList<>(pullOps.size());
+      for (final PullOp pullOp : pullOps) {
+        values.add(pullOp.getResult());
+      }
+      return values;
     }
-    final List<V> values = new ArrayList<>(pullOps.size());
-    for (final PullOp pullOp : pullOps) {
-      values.add(pullOp.get());
-    }
-    return values;
   }
 
   public void invalidateAll() {
-    for (int i = 0; i < numThreads; i++) {
-      threads[i].invalidateAll();
-    }
+    // do nothing, since current code does not maintain model cache
+    // TODO #803: Current codebase does not maintain local cache. We should implement this later for higher performance.
   }
 
-  private int getPartitionIndex(final int keyHash) {
-    return keyHash % numThreads;
+  private int getThreadIndex(final int keyHash) {
+    return keyHash % numWorkerThreads;
   }
 
   /**
@@ -264,127 +306,234 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   @Override
   public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
 
-    final Future result = Executors.newSingleThreadExecutor().submit(new Runnable() {
-      @Override
-      public void run() {
+    final Future result = Executors.newSingleThreadExecutor().submit(() -> {
         // Close all threads
-        for (int i = 0; i < numThreads; i++) {
-          threads[i].startClose();
+        for (int i = 0; i < numWorkerThreads; i++) {
+          workerThreads[i].startClose();
         }
+        retryThread.startClose();
+
         // Wait for close to complete on all threads
-        for (int i = 0; i < numThreads; i++) {
-          threads[i].waitForClose();
+        for (int i = 0; i < numWorkerThreads; i++) {
+          workerThreads[i].waitForClose();
         }
+        retryThread.waitForClose();
       }
-    });
+    );
 
     result.get(timeoutMs, TimeUnit.MILLISECONDS);
+    pwTraceScope.close();
   }
 
   /**
-   * Handles incoming pull replies, by setting the value of the future.
-   * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
+   * Handles incoming pull replies, by setting the value of pull ops.
+   * See {@link PullRequest#completePendingOps(Object, long, int)}.
+   * WorkerThread will be notified if the thread is waiting for completion of this pull request in case
+   * 1) when push for the same key is requested or
+   * 2) when the number of pending pulls on the thread has reached the limit (maxPendingPullsPerThread).
    */
   @Override
-  public void processPullReply(final K key, final V value, final long elapsedTimeInServer) {
-    final PullFuture<V> future = pendingPulls.get(key);
-    if (future != null) {
-      future.setValue(value, elapsedTimeInServer);
-
-    } else {
-      // Because we assign each key to a dedicated thread, there can be at most one active pendingPull for a key.
-      // But occasionally, multiple responses for a single pendingPull may arrive
-      // if the worker retried due to the late response from the target server.
-      LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
-          " Response for the key may have arrived earlier from another server", key);
+  public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer,
+                               final int numReceivedBytes, @Nullable final TraceInfo traceInfo) {
+    try (final TraceScope processPullReplyScope = Trace.startSpan(
+        String.format("process_pull_reply. key: %s, request_id: %d", key, requestId), traceInfo)) {
+      final EncodedKey<K> encodedKey;
+      try {
+        encodedKey = encodedKeyCache.get(key);
+      } catch (final ExecutionException e) {
+        throw new RuntimeException("Exception while loading encoded key from cache", e);
+      }
+      final WorkerThread workerThread = workerThreads[getThreadIndex(encodedKey.getHash())];
+      synchronized (workerThread) {
+        final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
+        final PullRequest pullRequest = pendingPullRequests.get(key);
+        if (pendingPullRequestExists(pullRequest, requestId)) {
+          pendingPullRequests.remove(key).completePendingOps(value, elapsedTimeInServer, numReceivedBytes);
+          // if number of pendingPullRequests becomes maxPendingPullsPerThread - 1 by this reply,
+          // should notify waiting WorkerThread (may not exist) which wants to make another pullRequest
+          if (pendingPullRequests.size() == maxPendingPullsPerThread - 1) {
+            workerThread.notify();
+          }
+        } else {
+          LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
+              new Object[]{key, requestId});
+        }
+      }
     }
   }
+
   /**
-   * Handles incoming pull rejects, by rejecting the future.
-   * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
+   * Handles incoming pull rejects, by retrying pull request.
+   * See {@link PullRequest#reject()}.
+   * This will interrupt the WorkerThread after enqueueing {@link PullOp}, to handle the retry op first.
    */
   @Override
-  public void processPullReject(final K key) {
-    final PullFuture<V> future = pendingPulls.get(key);
-    if (future != null) {
-      LOG.log(Level.INFO, "Pull operation for key {0} is rejected." +
-          " It means that the corresponding server is closing or already closed.", key);
-      future.reject();
+  public void processPullReject(final K key, final int requestId) {
+    final EncodedKey<K> encodedKey;
+    try {
+      encodedKey = encodedKeyCache.get(key);
+    } catch (final ExecutionException e) {
+      throw new RuntimeException("Exception while loading encoded key from cache", e);
+    }
+    final WorkerThread workerThread = workerThreads[getThreadIndex(encodedKey.getHash())];
 
-    } else {
-      // Because we assign each key to a dedicated thread, there can be at most one active pendingPull for a key.
-      // But occasionally, multiple responses for a single pendingPull may arrive
+    synchronized (workerThread) {
+      final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
+      final PullRequest pullRequest = pendingPullRequests.get(key);
+      if (pendingPullRequestExists(pullRequest, requestId)) {
+        pullRequest.reject();
+      } else {
+        LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
+            new Object[]{key, requestId});
+      }
+    }
+  }
+
+  /**
+   * Check existence of the pendingPullRequest corresponding to received pullReply or pullReject.
+   * @param pullRequest a pullRequest object associated with the received key, may be null if not exists
+   * @param requestId received pull request id
+   * @return true if the corresponding pullRequest exists, otherwise false
+   */
+  private boolean pendingPullRequestExists(final PullRequest pullRequest, final int requestId) {
+    if (pullRequest == null) {
+      // Because we assign each key to a dedicated thread, there can be at most one active pullRequest for a key.
+      // But occasionally, multiple responses for a single pullRequest may arrive
       // if the worker retried due to the late response from the target server.
-      LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
-          " Response for the key may have arrived earlier from another server", key);
+      LOG.log(Level.FINE, "Pending pull was not found");
+      return false;
+    } else if (requestId != pullRequest.getRequestId()) {
+      // Although there is a pullRequest for this key, the request id may be different from each other.
+      // We can filter out pull replies from retries of previous requests.
+      LOG.log(Level.FINE, "Pull request id not matched, received: {0}, actual: {1}",
+          new Object[]{requestId, pullRequest.getRequestId()});
+      return false;
+    } else {
+      return true;
     }
   }
 
   /**
    * Handles incoming push rejects, by retrying push request.
-   * This function has been added to this class that it implements {@link WorkerHandler} interface.
+   * This will interrupt the WorkerThread after enqueueing {@link PushOp}, to handle the retry op first.
    */
   @Override
   public void processPushReject(final K key, final P preValue) {
-    this.push(key, preValue);
+    final EncodedKey<K> encodedKey;
+    try {
+      encodedKey = encodedKeyCache.get(key);
+    } catch (final ExecutionException e) {
+      throw new RuntimeException("Exception while loading encoded key from cache", e);
+    }
+    final WorkerThread workerThread = workerThreads[getThreadIndex(encodedKey.getHash())];
+    workerThread.enqueueRetryOp(new PushOp(workerThread, encodedKey, preValue));
+    workerThread.interruptToTriggerRetry();
   }
 
   /**
-   * A simple Future that will wait on a get, until a value is set.
-   * We do not implement a true Future, because this is simpler.
+   * Sends a push msg for the {@code encodedKey} to the target server.
+   * To send push message atomically, do not respond to WorkerThread interrupt.
+   * @param encodedKey encoded key
+   * @param preValue preValue
+   * @return the number of bytes sent in the push message
    */
-  private static final class PullFuture<V> {
-    private boolean rejected = false;
-    private V value = null;
-    private long serverProcessingTime;
+  private int sendPushMsg(final EncodedKey<K> encodedKey, final P preValue) {
+    int resendCount = 0;
+    int numSentBytes;
+    boolean interrupted = false;
+    while (true) {
+      if (resendCount++ > MAX_RESEND_COUNT) {
+        throw new RuntimeException("Fail to send a push message");
+      }
 
-    /**
-     * Block until a value is set or the maximum waiting time elapses.
-     * @param timeout the maximum time to wait in milliseconds
-     * @return a pair containing the value and the elapsed time for the request in server.
-     *          The value is null when it fails to get the value in given timeout.
-     */
-    synchronized Pair<V, Long> getValue(final long timeout) {
-      if (value == null && !rejected) {
+      // Re-resolve server for every retry, because msg sender throws NetworkException
+      // when routing table is obsolete and indicates non-existing server.
+      final String serverId = serverResolver.resolveServer(encodedKey.getHash());
+      LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
+          new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
+
+      try {
+        numSentBytes = sender.get().sendPushMsg(serverId, encodedKey, preValue);
+        break;
+      } catch (final NetworkException e) {
+        LOG.log(Level.WARNING, "NetworkException while sending push msg. Do retry", e);
+      }
+
+      LOG.log(Level.WARNING, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
+      try {
+        // may not sleep for RESEND_INTERVAL_MS due to interrupt
+        Thread.sleep(RESEND_INTERVAL_MS);
+      } catch (final InterruptedException e) {
+        interrupted = true;
+        LOG.log(Level.FINEST, "Interrupted while waiting for routing table to be updated", e);
+      }
+    }
+
+    // restore thread interrupt state
+    if (interrupted) {
+      Thread.currentThread().interrupt();
+    }
+
+    return numSentBytes;
+  }
+
+  /**
+   * Sends a pull msg for the {@code encodedKey} to the target server.
+   * To send push message atomically, do not respond to WorkerThread interrupt.
+   * @param encodedKey encoded key
+   * @param requestId pull request id
+   * @param traceInfo Information for Trace
+   * @return the number of bytes sent in the push message
+   */
+  private int sendPullMsg(final EncodedKey<K> encodedKey, final int requestId, @Nullable final TraceInfo traceInfo) {
+    int resendCount = 0;
+    int numSentBytes;
+    boolean interrupted = false;
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+    try (final TraceScope sendPullMsgScope = Trace.startSpan(
+        String.format("send_pull_msg. key: %s, request_id: %d", encodedKey.getKey(), requestId), traceInfo)) {
+      while (true) {
+        if (resendCount++ > MAX_RESEND_COUNT) {
+          throw new RuntimeException("Fail to send a pull msg");
+        }
+
+        // Re-resolve server for every retry, because msg sender throws NetworkException
+        // when routing table is obsolete and indicates non-existing server.
+        final String serverId = serverResolver.resolveServer(encodedKey.getHash());
+        LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
+            new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
+
+        detached = sendPullMsgScope.detach();
         try {
-          wait(timeout);
+          numSentBytes = sender.get().sendPullMsg(serverId, encodedKey, requestId, TraceInfo.fromSpan(detached));
+          break;
+        } catch (final NetworkException e) {
+          LOG.log(Level.WARNING, "NetworkException while sending pull msg. Do retry", e);
+        }
+
+        LOG.log(Level.WARNING, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
+        try {
+          // may not sleep for RESEND_INTERVAL_MS due to interrupt
+          Thread.sleep(RESEND_INTERVAL_MS);
         } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "InterruptedException on wait", e);
+          interrupted = true;
+          LOG.log(Level.FINEST, "Interrupted while waiting for routing table to be updated", e);
         }
       }
-      return new Pair<>(value, serverProcessingTime);
+    } finally {
+      Trace.continueSpan(detached).close();
     }
 
-    /**
-     * Set the value and unblock all waiting gets.
-     * @param pValue the value
-     * @param pServerProcessingTime pull processing time recorded at server-side
-     */
-    synchronized void setValue(final V pValue, final long pServerProcessingTime) {
-      this.value = pValue;
-      this.serverProcessingTime = pServerProcessingTime;
-      notify();
+    // restore thread interrupt state
+    if (interrupted) {
+      Thread.currentThread().interrupt();
     }
 
-    /**
-     * Wake up the waiting thread without setting a value, in order to retry.
-     */
-    synchronized void reject() {
-      rejected = true;
-      notify();
-    }
-
-    /**
-     * Reset pull future for the next retry.
-     * The rejected field should be reset, because it's valid only for current try.
-     * We don't need to reset the value field, because the value obtained from
-     * the previous request is also valid for the next retries.
-     * It may happen if the response from the previous request arrives
-     * after cleanup the current try and before the response from the next request.
-     */
-    synchronized void reset() {
-      rejected = false;
-    }
+    return numSentBytes;
   }
 
   /**
@@ -392,217 +541,196 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    */
   @Override
   public ParameterWorkerMetrics buildParameterWorkerMetrics() {
-    final double totalPullTime = getTotalProcTime(pullStats);
-    final double totalPushTime = getTotalProcTime(pushStats);
-    final double totalEncodeTime = getTotalProcTime(encodeStats);
-    final double totalNetworkTime = getTotalProcTime(networkStats);
-    final double totalPendingTime = getTotalProcTime(pendingStats);
-    final int totalPullCount = getTotalProcCount(pullStats);
-    final int totalPushCount = getTotalProcCount(pushStats);
-    final int totalEncodeCount = getTotalProcCount(encodeStats);
-    final int totalNetworkStatCount = getTotalProcCount(networkStats);
-    final int totalPendingStatCount = getTotalProcCount(pendingStats);
-    resetStats();
+    final Pair<Integer, Double> totalPullStat = summarizeAndResetStats(pullStats);
+    final Pair<Integer, Double> totalPushStat = summarizeAndResetStats(pushStats);
+    final Pair<Integer, Double> totalNetworkStat = summarizeAndResetStats(networkStats);
+    final Pair<Integer, Double> totalWaitingStat = summarizeAndResetStats(waitingStats);
+    final Pair<Integer, Double> totalSentBytesStat = summarizeAndResetStats(sentBytesStats);
+    final Pair<Integer, Double> totalReceivedBytesStat = summarizeAndResetStats(receivedBytesStats);
 
-    final ParameterWorkerMetrics metricMessage = ParameterWorkerMetrics.newBuilder()
-        .setNumThreads(numThreads)
-        .setTotalPullTime(totalPullTime)
-        .setTotalPushTime(totalPushTime)
-        .setTotalEncodeTime(totalEncodeTime)
-        .setTotalNetworkTime(totalNetworkTime)
-        .setTotalPendingTime(totalPendingTime)
-        .setTotalPullCount(totalPullCount)
-        .setTotalPushCount(totalPushCount)
-        .setTotalEncodeCount(totalEncodeCount)
-        .setTotalNetworkStatCount(totalNetworkStatCount)
-        .setTotalPendingStatCount(totalPendingStatCount)
+    return ParameterWorkerMetrics.newBuilder()
+        .setNumThreads(numWorkerThreads)
+        .setTotalPullCount(totalPullStat.getLeft())
+        .setTotalPullTimeSec(totalPullStat.getRight() / 1e9D)
+        .setTotalPushCount(totalPushStat.getLeft())
+        .setTotalPushTimeSec(totalPushStat.getRight() / 1e9D)
+        .setTotalNetworkStatCount(totalNetworkStat.getLeft())
+        .setTotalNetworkTimeSec(totalNetworkStat.getRight() / 1e9D)
+        .setTotalWaitingStatCount(totalWaitingStat.getLeft())
+        .setTotalWaitingTimeSec(totalWaitingStat.getRight() / 1e9D)
+        .setTotalSentBytes(totalSentBytesStat.getRight().intValue())
+        .setTotalSentBytesStatCount(totalSentBytesStat.getLeft())
+        .setTotalReceivedBytes(totalReceivedBytesStat.getRight().intValue())
+        .setTotalReceivedBytesStatCount(totalReceivedBytesStat.getLeft())
         .build();
-
-    return metricMessage;
   }
 
   /**
-   * Computes the total number of requests across all threads in this worker.
+   * Computes the total number and time spent on processing requests with the WorkerThreads in this worker.
+   * Summarizes stats across all WorkerThreads in this worker and resets them.
    */
-  private int getTotalProcCount(final Statistics[] procTimeStats) {
+  private Pair<Integer, Double> summarizeAndResetStats(final Statistics[] stats) {
     int processedCount = 0;
-
-    synchronized (procTimeStats) {
-      for (final Statistics stat : procTimeStats) {
-        processedCount += stat.count();
-      }
-    }
-
-    return processedCount;
-  }
-
-  /**
-   * Computes the time spent on processing {@link #getTotalProcCount(Statistics[])} with the threads in this worker.
-   */
-  private double getTotalProcTime(final Statistics[] procTimeStats) {
     double procTimeSum = 0D;
 
-    synchronized (procTimeStats) {
-      for (final Statistics stat : procTimeStats) {
-        procTimeSum += stat.sum();
-      }
+    for (final Statistics stat : stats) {
+      processedCount += stat.count();
+      procTimeSum += stat.sum();
+      stat.reset();
     }
 
-    return procTimeSum;
+    return Pair.of(processedCount, procTimeSum);
   }
 
   /**
-   * Resets all {@link Statistics} for the next round of metrics.
+   * A generic operation requested from parameter worker clients.
+   * Operations are queued at each WorkerThread.
    */
-  private void resetStats() {
-    for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
-      pullStats[threadIdx].reset();
-      pushStats[threadIdx].reset();
-      encodeStats[threadIdx].reset();
-      networkStats[threadIdx].reset();
-      pendingStats[threadIdx].reset();
-    }
-  }
+  private interface Op {
 
-  /**
-   * A generic operation; operations are queued at each Partition.
-   */
-  private interface Op<K, V> {
     /**
-     * Method to apply when dequeued by the Partition.
-     * @param kvCache the raw LoadingCache, provided by the Partition.
+     * Method to apply when dequeued by the WorkerThread.
+     * May wait until this operation is ready to be executed.
+     * When it is interrupted, the status of this operation should be same as before calling this method.
+     * @throws InterruptedException when the executing thread is interrupted
      */
-    void apply(LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache);
-  }
+    void apply() throws InterruptedException;
 
-  /**
-   * Wrapped values for use within each partition's cache.
-   * Wrapping allows the partition to replace the value on a local update,
-   * without updating the write time of the cache entry.
-   */
-  private static class Wrapped<V> {
-    private V value;
-
-    Wrapped(final V value) {
-      this.value = value;
-    }
-
-    V getValue() {
-      return value;
-    }
-
-    void setValue(final V value) {
-      this.value = value;
-    }
+    /**
+     * Method to retry operation when dequeued by the WorkerThread.
+     * This method can not be interrupted.
+     */
+    void retry();
   }
 
   /**
    * A push operation.
+   * Should wait if there is a pullRequest for the same key.
    */
-  private class PushOp implements Op<K, V> {
+  private final class PushOp implements Op {
+    private final WorkerThread workerThread;
     private final EncodedKey<K> encodedKey;
     private final P preValue;
-    private final int threadId;
+
     private final long enqueueTime;
 
-    PushOp(final EncodedKey<K> encodedKey, final P preValue, final int threadId) {
+    PushOp(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final P preValue) {
+      this.workerThread = workerThread;
       this.encodedKey = encodedKey;
       this.preValue = preValue;
-      this.threadId = threadId;
+
       this.enqueueTime = ticker.read();
     }
 
+    @Override
+    public void apply() throws InterruptedException {
+      synchronized (workerThread) {
+        final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
+        while (pendingPullRequests.containsKey(encodedKey.getKey())) {
+          final PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
+          LOG.log(Level.WARNING,
+              "PushOp is waiting for completion of previous pull request for the same key: {0}, pullRequestId: {1}",
+              new Object[]{encodedKey.getKey(), pullRequest.getRequestId()});
+          pullRequest.waitForComplete();
+        }
+
+        final long pushStartTime = ticker.read();
+        workerThread.waitingStat.put(pushStartTime - enqueueTime);
+
+        final int numSentBytes = sendPushMsg(encodedKey, preValue);
+        workerThread.sentBytesStat.put(numSentBytes);
+
+        final long endTime = ticker.read();
+        workerThread.pushStat.put(endTime - pushStartTime);
+      }
+    }
+
     /**
-     * First, update the local value, only if it is already cached.
-     * Second, send the update to the remote PS.
-     * @param kvCache the raw LoadingCache, provided by the Partition.
+     * Simply re-send rejected push message.
      */
     @Override
-    public void apply(final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache) {
-      final long pushStartTime = ticker.read();
-      pendingStats[threadId].put(pushStartTime - enqueueTime);
-      final Wrapped<V> wrapped = kvCache.getIfPresent(encodedKey);
-
-      // If it exists, update the local value, without updating the cache's write time
-      if (wrapped != null) {
-        final V oldValue = wrapped.getValue();
-        final V deltaValue = parameterUpdater.process(encodedKey.getKey(), preValue);
-        if (deltaValue == null) {
-          return;
-        }
-        final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
-        wrapped.setValue(updatedValue);
-      }
-
-      // Send to remote PS
-      int resendCount = 0;
-      while (true) {
-        if (resendCount++ > MAX_RESEND_COUNT) {
-          throw new RuntimeException("Fail to send a push message");
-        }
-
-        // re-resolve server for every retry
-        // since an operation may throw NetworkException when routing table is obsolete
-        final String serverId = serverResolver.resolveServer(encodedKey.getHash());
-        LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
-            new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
-
-        try {
-          final long encodeStartTime = ticker.read();
-          sender.get().sendPushMsg(serverId, encodedKey, preValue);
-
-          // Can reach here only when sendPushMsg succeeds.
-          final long endTime = ticker.read();
-          pushStats[threadId].put(endTime - pushStartTime);
-          encodeStats[threadId].put(endTime - encodeStartTime);
-          final long elapsedTime = endTime - startTimes[threadId];
-          break;
-        } catch (final NetworkException e) {
-          LOG.log(Level.WARNING, "NetworkException while sending push msg. Do retry", e);
-        }
-
-        LOG.log(Level.WARNING, "Wait {0} ms before resending a push msg", RESEND_INTERVAL_MS);
-        try {
-          Thread.sleep(RESEND_INTERVAL_MS);
-        } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "Interrupted while waiting for routing table to be updated", e);
-        }
+    public void retry() {
+      // TODO #803: Once we implement worker-side cache, we can guarantee read-my-update even with retrying push.
+      synchronized (workerThread) {
+        final int numSentBytes = sendPushMsg(encodedKey, preValue);
+        workerThread.sentBytesStat.put(numSentBytes);
       }
     }
   }
 
   /**
    * A pull operation.
-   * Also exposes a blocking {@link #get} method to retrieve the result of the pull.
+   * Should wait if the number of pendingPullRequests on this thread exceeds {@link #maxPendingPullsPerThread}.
+   * Also exposes a blocking {@link #getResult()} method to retrieve the result of the pull.
    */
-  private class PullOp implements Op<K, V> {
+  private final class PullOp implements Op {
+    private final WorkerThread workerThread;
     private final EncodedKey<K> encodedKey;
     private V value;
-    private int threadId;
-    private long enqueueTime;
+    private int requestId;
 
-    PullOp(final EncodedKey<K> encodedKey, final int threadId) {
+    private final TraceInfo parentTraceInfo;
+    private final long enqueueTime;
+    private long pullStartTime;
+
+    PullOp(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final TraceInfo parentTraceInfo) {
+      this.workerThread = workerThread;
       this.encodedKey = encodedKey;
-      this.threadId = threadId;
+
+      this.parentTraceInfo = parentTraceInfo;
       this.enqueueTime = ticker.read();
     }
 
+    @Override
+    public void apply() throws InterruptedException {
+      synchronized (workerThread) {
+        final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
+        PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
+
+        // send a new pull request if no request for the key has been made yet
+        if (pullRequest == null) {
+          while (pendingPullRequests.size() >= maxPendingPullsPerThread) {
+            workerThread.wait();
+          }
+          try (final TraceScope startPullRequestScope = Trace.startSpan(
+              String.format("start_pull_request. key: %s", encodedKey.getKey()), parentTraceInfo)) {
+            this.pullStartTime = ticker.read();
+            workerThread.waitingStat.put(pullStartTime - enqueueTime);
+
+            pullRequest = new PullRequest(workerThread, encodedKey, this,
+                TraceInfo.fromSpan(startPullRequestScope.getSpan()));
+            requestId = pullRequest.getRequestId();
+            pendingPullRequests.put(encodedKey.getKey(), pullRequest);
+            pullRequest.startRequest();
+          }
+          // wait with other operations that were previously requested, if the pull request has been sent already
+        } else {
+          try (final TraceScope ridePullRequestScope = Trace.startSpan(String.format("ride_pull_request." +
+              " key: %s, request_id: %d", encodedKey.getKey(), pullRequest.requestId), parentTraceInfo)) {
+            this.pullStartTime = ticker.read();
+            workerThread.waitingStat.put(pullStartTime - enqueueTime);
+
+            pullRequest.addPendingOp(this);
+          }
+        }
+      }
+    }
+
+
     /**
-     * Delegate loading to the cache, then update the value and notify waiting gets.
-     * @param kvCache the raw LoadingCache, provided by the Partition.
+     * Re-send message for pull request, if the corresponding request exists.
      */
     @Override
-    public void apply(final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache) {
-      final long pullStartTime = ticker.read();
-      pendingStats[threadId].put(pullStartTime - enqueueTime);
-      try {
-        final V loadedValue = kvCache.get(encodedKey).getValue();
-        synchronized (this) {
-          this.value = loadedValue;
-          notify();
+    public void retry() {
+      synchronized (workerThread) {
+        final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
+        final PullRequest pullRequest = pendingPullRequests.get(encodedKey.getKey());
+        if (pendingPullRequestExists(pullRequest, requestId)) {
+          pullRequest.processRetry();
+        } else {
+          LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
+              new Object[]{encodedKey.getKey(), requestId});
         }
-      } catch (final ExecutionException e) {
-        throw new RuntimeException(e);
       }
     }
 
@@ -610,173 +738,280 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * A blocking get.
      * @return the value
      */
-    public V get() {
-      synchronized (this) {
-        while (value == null) {
-          try {
-            wait();
-          } catch (final InterruptedException e) {
-            LOG.log(Level.WARNING, "InterruptedException on wait", e);
-          }
+    public synchronized V getResult() {
+      while (value == null) {
+        try {
+          wait();
+        } catch (final InterruptedException e) {
+          // Need to decide policy for dealing with client thread interrupt
+          LOG.log(Level.WARNING, "InterruptedException on wait", e);
         }
-        return value;
+      }
+      return value;
+    }
+
+    public synchronized void setResult(final V newValue) {
+      final long endTime = ticker.read();
+      workerThread.pullStat.put(endTime - pullStartTime);
+
+      this.value = newValue;
+      notify();
+    }
+  }
+
+  /**
+   * An object for managing pending pull request.
+   * Multiple invocations of {@link ParameterWorker#pull(Object)} for the same key should not instantiate
+   * multiple {@link PullRequest} objects, unless preceding request is resolved by receiving proper reply.
+   * Instead, {@link #addPendingOp(PullOp)} will be used to notify all clients of operations
+   * without making multiple {@link PullRequest} objects and sending more than one pull requests to server.
+   */
+  private final class PullRequest {
+
+    /*
+     * A pull request is in one of the following three states:
+     *
+     * 1) INIT: When a pull request is created initially, or message for retrying a pull request has been sent.
+     *
+     * 2) NEED_RETRY: When response for a request has not arrived until the upcoming timeout-checking,
+     * the pull request is marked as NEED_RETRY.
+     * RetryThread will later(in the next timeout-checking) enqueues pull requests
+     * in this state to the RetryQueue of the corresponding WorkerThread.
+     *
+     * 3) RETRY_REQUESTED: When a pull request is retried (enqueued in RetryQueue precisely),
+     *   (a) when RetryThread enqueues pull requests in NEED_RETRY state, or
+     *   (b) when WorkerThread enqueues the rejected pull requests.
+     */
+    private static final int INIT_STATE = 0;
+    private static final int NEED_RETRY_STATE = 1;
+    private static final int RETRY_REQUESTED_STATE = 2;
+
+    private final WorkerThread workerThread;
+    private final EncodedKey<K> encodedKey;
+    private final ArrayList<PullOp> pendingOps;
+
+    private final int requestId;
+    private int retryCount;
+
+    @GuardedBy("this")
+    private int state;
+    private boolean waiting;
+
+    private final long pullStartTime;
+    private final TraceInfo parentTraceInfo;
+    private TraceScope pullRequestScope;
+
+    PullRequest(final WorkerThread workerThread, final EncodedKey<K> encodedKey, final PullOp pullOp,
+                final TraceInfo parentTraceInfo) {
+      this.workerThread = workerThread;
+      this.encodedKey = encodedKey;
+      this.pendingOps = new ArrayList<>();
+      this.pendingOps.add(pullOp);
+
+      this.requestId = workerThread.getNewRequestId();
+      this.retryCount = 0;
+      this.state = INIT_STATE;
+      this.waiting = false;
+
+      this.pullStartTime = ticker.read();
+      this.parentTraceInfo = parentTraceInfo;
+    }
+
+    /**
+     * Retrieves pull request id.
+     * All {@link PullRequest} objects for the same key from one {@link ParameterWorker}
+     * should not have the same requestId.
+     * {@link #pendingPullRequestExists(PullRequest, int)}} uses this id to determine
+     * whether the received pull reply(or reject) is the one requested for.
+     * @return pull request id
+     */
+    int getRequestId() {
+      return requestId;
+    }
+
+    /**
+     * Start pull request by sending pull message to server.
+     */
+    void startRequest() {
+      pullRequestScope = Trace.startSpan(
+          String.format("pull_request. key: %s, request_id: %d", encodedKey.getKey(), requestId), parentTraceInfo);
+      final int numSentBytes = sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(pullRequestScope.getSpan()));
+      workerThread.sentBytesStat.put(numSentBytes);
+    }
+
+    /**
+     * Process pull retry by sending pull message once again, only if the state is {@link #RETRY_REQUESTED_STATE}.
+     * After sending the request message for retry, the state of this pull request is reset to {@link #INIT_STATE},
+     * and the retry count is incremented.
+     * @throws RuntimeException if the retrial count exceeded maximum number of retries
+     */
+    synchronized void processRetry() {
+      try (final TraceScope retryScope = Trace.startSpan(String.format("pull_retry." +
+          " key: %s, request_id: %d, retry_count: %d", encodedKey.getKey(), requestId, retryCount + 1),
+          pullRequestScope.getSpan())) {
+        if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
+          throw new RuntimeException("Fail to load a value for pull");
+        }
+
+        LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
+            new Object[]{encodedKey.getKey(), retryCount});
+        final int numSentBytes = sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(retryScope.getSpan()));
+        workerThread.sentBytesStat.put(numSentBytes);
+        state = INIT_STATE;
+      }
+    }
+
+    /**
+     * Request retry of this pull request if the timeout exceeded.
+     * We do not guarantee a strict timeout, as we check timeout and send pull retry message asynchronously.
+     * @return true if timeout exceeded
+     */
+    synchronized boolean requestRetryIfTimeout() {
+      switch (state) {
+      case INIT_STATE:
+        state = NEED_RETRY_STATE;
+        return false;
+      case NEED_RETRY_STATE:
+        LOG.log(Level.INFO, "Pull request time out for key: {0}, requestId: {1}, retryCount: {2}",
+            new Object[]{encodedKey.getKey(), requestId, retryCount});
+        state = RETRY_REQUESTED_STATE;
+        workerThread.enqueueRetryOp(pendingOps.get(0));
+        return true;
+      case RETRY_REQUESTED_STATE:
+        return false;
+      default:
+        throw new RuntimeException("Unknown state of pull request");
+      }
+    }
+
+    /**
+     * Add a pull operation to be resolved when pull reply arrives.
+     * @param pullOp a pending pull operation
+     */
+    void addPendingOp(final PullOp pullOp) {
+      synchronized (workerThread) {
+        pendingOps.add(pullOp);
+      }
+    }
+
+    /**
+     * Complete pending pull operations in {@link #pendingOps}
+     * by notifying client threads using {@link PullOp#setResult(Object)}.
+     * Also, notify WorkerThread if it is waiting for completion of this pull request
+     * to process push operation for the same key.
+     * @param value value received from server
+     * @param elapsedTimeInServer elapsed time since pull request's arrival at server
+     * @param numReceivedBytes the number of total messages in bytes.
+     */
+    void completePendingOps(final V value, final long elapsedTimeInServer, final int numReceivedBytes) {
+      synchronized (workerThread) {
+        final long pullTime = ticker.read() - pullStartTime;
+        workerThread.networkStat.put(pullTime - elapsedTimeInServer);
+        workerThread.receivedBytesStat.put(numReceivedBytes);
+
+        if (pullRequestScope != null) {
+          pullRequestScope.close();
+        }
+
+        for (final PullOp pullOp : pendingOps) {
+          pullOp.setResult(value);
+        }
+        if (waiting) {
+          workerThread.notify();
+        }
+      }
+    }
+
+    /**
+     * Reject this pull request, and request for retry.
+     */
+    synchronized void reject() {
+      // if state is RETRY_REQUESTED, retry was already requested due to timeout or previous reject, so skip this turn
+      if (state != RETRY_REQUESTED_STATE) {
+        state = RETRY_REQUESTED_STATE;
+        workerThread.enqueueRetryOp(pendingOps.get(0));
+        workerThread.interruptToTriggerRetry();
+      }
+    }
+
+    /**
+     * Wait until this pull request is completed.
+     * Should precede {@link #completePendingOps(Object, long, int)}. If not, the waiting thread will be never awoken.
+     * @throws InterruptedException when the executing thread is interrupted
+     */
+    void waitForComplete() throws InterruptedException {
+      synchronized (workerThread) {
+        waiting = true;
+        workerThread.wait();
       }
     }
   }
 
   /**
-   * A partition for the cache on the Worker.
+   * A thread abstraction for parallelizing worker's accesses to keys, by partitioning key space.
+   * See {@link #getThreadIndex(int)}.
    * The basic structure is similar to the partition for the Server at
    * {@link edu.snu.cay.services.ps.server.api.ParameterServer}.
    *
-   * The partitions at the Worker can be independent of the partitions at the Server. In other words,
-   * the number of worker-side partitions does not have to be equal to the number of server-side partitions.
-   *
-   * A remotely read pull remains in the local cache for a duration of expireTimeout.
-   * Pushes are applied locally while the parameter is cached.
-   * The single queue-and-thread, combined with the server, provides a guarantee that
-   * all previous local pushes are applied to a pull, if it is locally cached.
-   *
-   * This means pull operations are queued behind push operations.
-   * We should further explore this trade-off with real ML workloads.
+   * The threads at the Worker can be independent of the partitions at the Server. In other words,
+   * the number of worker-side threads does not have to be equal to the number of server-side partitions.
    */
-  private static class WorkerThread<K, P, V> implements Runnable {
+  // TODO #803: Current codebase does not maintain local cache. We should implement this later for higher performance.
+  private final class WorkerThread implements Runnable {
     private static final long QUEUE_TIMEOUT_MS = 3000;
     private static final String STATE_RUNNING = "RUNNING";
     private static final String STATE_CLOSING = "CLOSING";
     private static final String STATE_CLOSED = "CLOSED";
 
-    private final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache;
-    private final BlockingQueue<Op<K, V>> queue;
-    private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
-    private final int drainSize; // Max number of operations to drain per iteration.
-    private final Ticker ticker = Ticker.systemTicker();
+    private final Map<K, PullRequest> pendingPullRequests;
+    private final BlockingQueue<Op> queue;
+    private final BlockingQueue<Op> retryQueue;
+
+    // Operations drained from the queue, and processed locally.
+    private final ArrayList<Op> localOps;
+    private final ArrayList<Op> localRetryOps;
+    // Max number of operations to drain per iteration.
+    private final int drainSize;
 
     private final StateMachine stateMachine;
+    private Thread currentThread;
+    private int requestId;
 
-    WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
-                 final ServerResolver serverResolver,
-                 final InjectionFuture<WorkerMsgSender<K, P>> sender,
-                 final int queueSize,
-                 final long cacheExpireTimeout,
-                 final long pullRetryTimeoutMs,
+    private final Statistics pullStat;
+    private final Statistics pushStat;
+    private final Statistics networkStat;
+    private final Statistics waitingStat;
+    private final Statistics sentBytesStat;
+    private final Statistics receivedBytesStat;
+
+    WorkerThread(final int queueSize,
                  final Statistics pullStat,
-                 final Statistics networkStat) {
-      this.kvCache = initCache(pendingPulls, serverResolver, sender, cacheExpireTimeout, pullRetryTimeoutMs,
-          pullStat, networkStat);
-      this.queue = new ArrayBlockingQueue<>(queueSize);
+                 final Statistics pushStat,
+                 final Statistics networkStat,
+                 final Statistics waitingStat,
+                 final Statistics sentBytesStat,
+                 final Statistics receivedBytesStat) {
       this.drainSize = queueSize / 10;
+      this.pendingPullRequests = new ConcurrentHashMap<>();
+      this.queue = new ArrayBlockingQueue<>(queueSize);
+      this.retryQueue = new ArrayBlockingQueue<>(drainSize);
       this.localOps = new ArrayList<>(drainSize);
+      this.localRetryOps = new ArrayList<>(drainSize);
       this.stateMachine = initStateMachine();
-    }
-
-    private LoadingCache<EncodedKey<K>, Wrapped<V>> initCache(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
-                                                              final ServerResolver serverResolver,
-                                                              final InjectionFuture<WorkerMsgSender<K, P>> sender,
-                                                              final long cacheExpireTimeout,
-                                                              final long pullRetryTimeoutMs,
-                                                              final Statistics pullStat,
-                                                              final Statistics networkStat) {
-      return CacheBuilder.newBuilder()
-          .concurrencyLevel(1)
-          .expireAfterWrite(cacheExpireTimeout, TimeUnit.MILLISECONDS)
-          .build(new CacheLoader<EncodedKey<K>, Wrapped<V>>() {
-
-            @Override
-            public Wrapped<V> load(final EncodedKey<K> encodedKey) {
-              final PullFuture<V> future = new PullFuture<>();
-              pendingPulls.put(encodedKey.getKey(), future);
-
-              Pair<V, Long> value;
-
-              int retryCount = 0;
-              long startTime;
-              while (true) {
-                if (retryCount++ > MAX_PULL_RETRY_COUNT) {
-                  throw new RuntimeException("Fail to load a value for pull");
-                }
-
-                startTime = ticker.read();
-
-                // 1. try sending msg to server
-                sendPullMsg(encodedKey);
-
-                // 2. wait the result from the server.
-                //
-                // PullFuture returns null,
-                // 1) when the msg is rejected by server,
-                // 2) or when the server does not respond within RETRY_INTERVAL_MS
-                // The case 2) can be divided into three reasons:
-                // 2A) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
-                // 2B) the server is overloaded
-                // 2C) the msg is missing due to network or other problems
-                // we should adjust timeout to be large enough to avoid 2A and not to worsen 2B,
-                // but small enough to quickly recover from 2C.
-                value = future.getValue(pullRetryTimeoutMs);
-
-                if (value.getFirst() != null) {
-                  break;
-                } else {
-                  future.reset();
-                  LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
-                      new Object[]{encodedKey.getKey(), retryCount});
-                }
-              }
-
-              final long workerPullTime = ticker.read() - startTime;
-
-              // Actual processing time recorded in server
-              final long serverProcessingTime = value.getSecond();
-
-              pullStat.put(workerPullTime);
-              networkStat.put(workerPullTime - serverProcessingTime);
-
-              pendingPulls.remove(encodedKey.getKey());
-              return new Wrapped<>(value.getFirst());
-            }
-
-            /**
-             * Sends a pull msg for the {@code encodedKey} to the target server.
-             * @param encodedKey encoded key
-             */
-            private void sendPullMsg(final EncodedKey<K> encodedKey) {
-              int resendCount = 0;
-              while (true) {
-                if (resendCount++ > MAX_RESEND_COUNT) {
-                  throw new RuntimeException("Fail to send a pull msg");
-                }
-
-                // Re-resolve server for every retry, because msg sender throws NetworkException
-                // when routing table is obsolete and indicates non-existing server.
-                final String serverId = serverResolver.resolveServer(encodedKey.getHash());
-                LOG.log(Level.FINEST, "Resolve server for encodedKey. key: {0}, hash: {1}, serverId: {2}",
-                    new Object[]{encodedKey.getKey(), encodedKey.getHash(), serverId});
-
-                try {
-                  final long beginTick = ticker.read();
-                  sender.get().sendPullMsg(serverId, encodedKey);
-                  pullStat.put(ticker.read() - beginTick);
-                  break;
-                } catch (final NetworkException e) {
-                  LOG.log(Level.WARNING, "NetworkException while sending pull msg. Do retry", e);
-                }
-
-                LOG.log(Level.WARNING, "Wait {0} ms before resending a pull msg", RESEND_INTERVAL_MS);
-                try {
-                  Thread.sleep(RESEND_INTERVAL_MS);
-                } catch (final InterruptedException e) {
-                  LOG.log(Level.WARNING, "Interrupted while waiting for routing table to be updated", e);
-                }
-              }
-            }
-          });
+      this.requestId = 0;
+      this.pullStat = pullStat;
+      this.pushStat = pushStat;
+      this.networkStat = networkStat;
+      this.waitingStat = waitingStat;
+      this.sentBytesStat = sentBytesStat;
+      this.receivedBytesStat = receivedBytesStat;
     }
 
     private StateMachine initStateMachine() {
       return StateMachine.newBuilder()
-          .addState(STATE_RUNNING, "Server thread is running. It executes operations in the queue.")
-          .addState(STATE_CLOSING, "Server thread is closing. It will be closed after processing whole remaining ops.")
-          .addState(STATE_CLOSED, "Server thread is closed. It finished processing whole remaining operations.")
+          .addState(STATE_RUNNING, "PW thread is running. It executes operations in the queue.")
+          .addState(STATE_CLOSING, "PW thread is closing. It will be closed after processing whole remaining ops.")
+          .addState(STATE_CLOSED, "PW thread is closed. It finished processing whole remaining operations.")
           .addTransition(STATE_RUNNING, STATE_CLOSING, "Time to close the thread.")
           .addTransition(STATE_CLOSING, STATE_CLOSED, "Closing the thread is done.")
           .setInitialState(STATE_RUNNING)
@@ -790,29 +1025,61 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      *
      * @param op the operation to enqueue
      */
-    void enqueue(final Op<K, V> op) {
+    void enqueue(final Op op) {
       try {
         queue.put(op);
       } catch (final InterruptedException e) {
+        // Need to decide policy for dealing with interrupts on client thread
         LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
       }
     }
 
     /**
-     * Invalidate all cached pulls.
+     * Enqueue an retry operation onto the retry queue, blocking if the queue is full.
+     * When the queue is full, this method will block; see {@link #enqueue(Op)}.
+     * The retry queue has higher priority over the queue with normal ops.
+     *
+     * @param op the retry operation to enqueue
      */
-    void invalidateAll() {
-      kvCache.invalidateAll();
+    void enqueueRetryOp(final Op op) {
+      try {
+        retryQueue.put(op);
+      } catch (final InterruptedException e) {
+        // Need to decide policy for dealing with interrupts on NCS thread and retry thread
+        Thread.currentThread().interrupt();
+        LOG.log(Level.FINER, "Enqueue failed with InterruptedException. Try again", e);
+      }
+    }
+
+    /**
+     * Generate and return new request id for new {@link PullRequest}.
+     * Because each WorkerThread handles disjoint key space, it is guaranteed that different {@link PullRequest}s
+     * for the same key always have different request id.
+     * @return new request id
+     */
+    int getNewRequestId() {
+      return requestId++;
+    }
+
+    void interruptToTriggerRetry() {
+      currentThread.interrupt();
     }
 
     /**
      * @return number of pending operations in the queue.
      */
-    public int opsPending() {
-      int opsPending = 0;
-      opsPending += queue.size();
-      opsPending += localOps.size();
-      return opsPending;
+    int opsPending() {
+      return queue.size() + localOps.size();
+    }
+
+    private void processRetryOps() {
+      if (!retryQueue.isEmpty()) {
+        retryQueue.drainTo(localRetryOps, drainSize);
+        for (final Op retryOp : localRetryOps) {
+          retryOp.retry();
+        }
+        localRetryOps.clear();
+      }
     }
 
     /**
@@ -821,34 +1088,55 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      */
     @Override
     public void run() {
+      currentThread = Thread.currentThread();
       try {
-        while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
-          // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
+        while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty() || !retryQueue.isEmpty()) {
+          // poll, the timeout allows the run thread to close cleanly within timeout ms.
+          final Op op;
           try {
-            final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            if (op == null) {
-              continue;
-            }
-            op.apply(kvCache);
+            op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           } catch (final InterruptedException e) {
-            LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
+            processRetryOps();
             continue;
+          }
+          if (op == null) {
+            continue;
+          }
+
+          // process polled op
+          while (true) {
+            try {
+              op.apply();
+              break;
+            } catch (final InterruptedException e) {
+              processRetryOps();
+            }
           }
 
           // Then, drain up to drainSize of the remaining queue and apply.
           // Calling drainTo does not block if queue is empty, which is why we poll first.
           // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
           queue.drainTo(localOps, drainSize);
-          for (final Op<K, V> op : localOps) {
-            op.apply(kvCache);
+          int i = 0;
+          while (i < localOps.size()) {
+            // for ops which do not check thread interrupt: check here manually and clear interrupt state
+            if (Thread.interrupted()) {
+              processRetryOps();
+            }
+            try {
+              localOps.get(i).apply();
+              i++;
+            } catch (final InterruptedException e) {
+              processRetryOps();
+            }
           }
           localOps.clear();
         }
 
         finishClose();
 
-      // catch and rethrow RuntimeException after leaving a log
-      // otherwise, the thread disappears without any noticeable marks
+        // catch and rethrow RuntimeException after leaving a log
+        // otherwise, the thread disappears without any noticeable marks
       } catch (final RuntimeException e) {
         LOG.log(Level.SEVERE, "PS worker thread has been down due to RuntimeException", e);
         throw e;
@@ -876,6 +1164,137 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * Wait until thread is closed successfully.
      */
     synchronized void waitForClose() {
+      while (!stateMachine.getCurrentState().equals(STATE_CLOSED)) {
+        try {
+          wait();
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
+        }
+      }
+    }
+  }
+
+  /**
+   * A thread which checks timeout of remaining pendingPullRequests.
+   * Traverse all remaining pendingPullRequests in {@link #workerThreads}
+   * for every {@code pullRetryTimeoutMs} milliseconds and enqueue {@link PullOp} if necessary.
+   * See {@link PullRequest#requestRetryIfTimeout()}.
+   *
+   * If {@code pullRetryTimeoutMs} is equal to {@link PullRetryTimeoutMs#TIMEOUT_NO_RETRY}, this thread do nothing.
+   * In other words, there is no timeout mechanism.
+   *
+   * Timeout of pull request may happen because of the followings:
+   * 1) minimum processing time for pull is longer than timeout
+   * 2) server is overloaded
+   * 3) pull request or reply message is missing due to network or other problems
+   *
+   * We should adjust timeout to be large enough to avoid 1) and not to worsen 2),
+   * but small enough to quickly recover from 3).
+   */
+  private final class RetryThread implements Runnable {
+    private static final String STATE_RUNNING = "RUNNING";
+    private static final String STATE_CLOSING = "CLOSING";
+    private static final String STATE_CLOSED = "CLOSED";
+
+    private Thread currentThread;
+    private final StateMachine stateMachine;
+    private final long pullRetryTimeoutMs;
+
+    RetryThread(final long pullRetryTimeoutMs) {
+      this.stateMachine = initStateMachine();
+      this.pullRetryTimeoutMs = pullRetryTimeoutMs;
+    }
+
+    private StateMachine initStateMachine() {
+      return StateMachine.newBuilder()
+          .addState(STATE_RUNNING, "Retry thread is running." +
+              "It checks pendingPullRequests and enqueues to proper retry queue if necessary.")
+          .addState(STATE_CLOSING, "Retry thread is closing.")
+          .addState(STATE_CLOSED, "Retry thread is closed.")
+          .addTransition(STATE_RUNNING, STATE_CLOSING, "Time to close the thread.")
+          .addTransition(STATE_CLOSING, STATE_CLOSED, "Closing the thread is done.")
+          .setInitialState(STATE_RUNNING)
+          .build();
+    }
+
+    @Override
+    public void run() {
+      if (pullRetryTimeoutMs == TIMEOUT_NO_RETRY) {
+        return;
+      }
+      currentThread = Thread.currentThread();
+
+      long elapsedTimeInMs = 0;
+
+      while (stateMachine.getCurrentState().equals(STATE_RUNNING)) {
+        // if previous scan took more than pullRetryTimeoutMs, do not sleep
+        if (elapsedTimeInMs < pullRetryTimeoutMs) {
+          try {
+            // ensure that scan & retry do not occur with period smaller than pullRetryTimeoutMs
+            Thread.sleep(pullRetryTimeoutMs - elapsedTimeInMs);
+          } catch (final InterruptedException e) {
+            // interrupt on this thread is always requested by startClose()
+            if (stateMachine.getCurrentState().equals(STATE_CLOSING)) {
+              break;
+            } else {
+              throw new RuntimeException(e);
+            }
+          }
+        }
+
+        final long startTime = ticker.read();
+
+        // scan all pendingPullRequests in WorkerThreads, and check timeout
+        for (final WorkerThread workerThread : workerThreads) {
+          final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
+
+          // batching thread interrupt; interrupt the WorkerThread only once after scanning finishes
+          boolean needInterrupt = false;
+          for (final PullRequest pullRequest : pendingPullRequests.values()) {
+            needInterrupt |= pullRequest.requestRetryIfTimeout();
+          }
+          if (needInterrupt) {
+            workerThread.interruptToTriggerRetry();
+          }
+        }
+
+        elapsedTimeInMs = TimeUnit.MILLISECONDS.convert(ticker.read() - startTime, TimeUnit.NANOSECONDS);
+      }
+
+      finishClose();
+    }
+
+    /**
+     * Start closing the thread.
+     * The thread will be closed after processing for all pending operations.
+     */
+    void startClose() {
+      if (pullRetryTimeoutMs == TIMEOUT_NO_RETRY) {
+        return;
+      }
+      stateMachine.setState(STATE_CLOSING);
+      currentThread.interrupt();
+    }
+
+    /**
+     * Notify that the thread is closed successfully.
+     * It wakes up threads waiting in {@link #waitForClose()}.
+     */
+    private synchronized void finishClose() {
+      if (pullRetryTimeoutMs == TIMEOUT_NO_RETRY) {
+        return;
+      }
+      stateMachine.setState(STATE_CLOSED);
+      notifyAll();
+    }
+
+    /**
+     * Wait until thread is closed successfully.
+     */
+    synchronized void waitForClose() {
+      if (pullRetryTimeoutMs == TIMEOUT_NO_RETRY) {
+        return;
+      }
       while (!stateMachine.getCurrentState().equals(STATE_CLOSED)) {
         try {
           wait();

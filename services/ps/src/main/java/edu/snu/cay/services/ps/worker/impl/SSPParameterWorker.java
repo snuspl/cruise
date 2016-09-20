@@ -34,7 +34,9 @@ import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
+import org.htrace.TraceInfo;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -311,7 +313,8 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    * This will notify the WorkerThread's (synchronous) CacheLoader method to continue.
    */
   @Override
-  public void processPullReply(final K key, final V value, final long elapsedTimeInServer) {
+  public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer,
+                               final int numReceivedBytes, @Nullable final TraceInfo traceInfo) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       future.setValue(value);
@@ -330,7 +333,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
    * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
    */
   @Override
-  public void processPullReject(final K key) {
+  public void processPullReject(final K key, final int requestId) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
       LOG.log(Level.INFO, "Pull operation for key {0} is rejected." +
@@ -419,9 +422,9 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
             "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
             "PS Worker Encode Sum: {6}, PS Worker Pull Avg: {7}, PS Worker Pull Sum: {8}, PS Worker Pull Count: {9}",
         new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
-            String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
-            String.format("%g", encodeStat.sum()), String.format("%g", pullStat.avg()),
-            String.format("%g", pullStat.sum()), String.format("%g", pullStat.count())});
+            String.format("%g", pushStat.sum() / 1e9D), pushStat.count(), String.format("%g", encodeStat.avg() / 1e9D),
+            String.format("%g", encodeStat.sum() / 1e9D), String.format("%g", pullStat.avg() / 1e9D),
+            String.format("%g", pullStat.sum() / 1e9D), String.format("%g", pullStat.count())});
     startTimes[threadId] = ticker.read();
     pushStat.reset();
     encodeStat.reset();
@@ -730,7 +733,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
 
                 try {
                   final long beginTick = ticker.read();
-                  sender.get().sendPullMsg(serverId, encodedKey);
+                  sender.get().sendPullMsg(serverId, encodedKey, 0, null);
                   pullStat.put(ticker.read() - beginTick);
                   break;
                 } catch (final NetworkException e) {
