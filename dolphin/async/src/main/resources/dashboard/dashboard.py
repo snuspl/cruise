@@ -77,16 +77,23 @@ def store_metrics_in_db():
     metrics = json.loads(request.form['metrics'])
     custom_metrics = metrics.pop('metrics')
 
-    # metrics
-    if id.startswith('Worker'):
-        position = 'worker'
-    else:
-        position = 'server'
+    metric_source = re.sub(r'Context-\d*', '', id)
     id = re.sub(r'\D', '', id)
     db_lock.acquire()
+    # metrics
+    if metric_source == 'Worker':
+        position = 'worker'
+        pw_metrics = metrics.pop('parameterWorkerMetrics')
+        db.execute('insert into parameterworker (time, id, {0}) values ({1}, {2}, {3})'
+                    .format(', '.join(str(i) for i in pw_metrics.keys()),
+                            time, id, ', '.join(str(i) for i in pw_metrics.values())))
+
+    else:
+        position = 'server'
+
     db.execute('insert into {0} (time, id, {1}) values ({2}, {3}, {4})'
-               .format(position, ', '.join(str(i) for i in metrics.keys()),
-                       time, id, ', '.join(str(i) for i in metrics.values())))
+                .format(position, ', '.join(str(i) for i in metrics.keys()),
+                        time, id, ', '.join(str(i) for i in metrics.values())))
     db.commit()
 
     # app-specific metrics
