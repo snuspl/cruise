@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.EMMigrationMsg;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import org.apache.reef.wake.EventHandler;
 
@@ -32,7 +32,7 @@ public final class EMDeleteExecutorImpl implements EMDeleteExecutor {
   }
 
   @Override
-  public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
+  public boolean execute(final String activeContextId, final EventHandler<EMMigrationMsg> callback) {
     throw new UnsupportedOperationException();
   }
 }

@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.EMMigrationMsg;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
@@ -170,13 +170,12 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
       final boolean[] moveSucceeded = {false};
 
       elasticMemory.move(numToMove, srcId, destId,
-          new EventHandler<AvroElasticMemoryMessage>() {
+          new EventHandler<EMMigrationMsg>() {
             @Override
-            public void onNext(final AvroElasticMemoryMessage emMsg) {
-              moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS);
+            public void onNext(final EMMigrationMsg msg) {
+              moveSucceeded[0] = msg.getResultMsg().getResult().equals(Result.SUCCESS);
               LOG.log(Level.INFO, "Was Move {0} successful? {1}. The result: {2}",
-                  new Object[]{emMsg.getOperationId(), moveSucceeded[0],
-                      emMsg.getResultMsg() == null ? "" : emMsg.getResultMsg().getResult()});
+                  new Object[]{msg.getOperationId(), moveSucceeded[0], msg.getResultMsg().getResult()});
               finishedLatch.countDown();
             }
           }

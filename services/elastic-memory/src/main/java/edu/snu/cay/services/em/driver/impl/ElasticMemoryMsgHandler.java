@@ -39,7 +39,7 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @Private
-public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
+public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
   private final BlockManager blockManager;
@@ -57,26 +57,18 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   @Override
-  public void onNext(final Message<AvroElasticMemoryMessage> msg) {
+  public void onNext(final Message<EMMsg> msg) {
     LOG.entering(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
 
     Trace.setProcessId("driver");
-    final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
+    final EMMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-    case RoutingTableInitReqMsg:
-      onRoutingTableInitReqMsg(innerMsg);
+    case EMRoutingTableMsg:
+      onRoutingTableMsg(innerMsg.getEmRoutingTableMsg());
       break;
 
-    case OwnershipMsg:
-      onOwnershipMsg(innerMsg);
-      break;
-
-    case BlockMovedMsg:
-      onBlockMovedMsg(innerMsg);
-      break;
-
-    case FailureMsg:
-      onFailureMsg(innerMsg);
+    case EMMigrationMsg:
+      onMigrationMsg(innerMsg.getEmMigrationMsg());
       break;
 
     default:
@@ -86,7 +78,18 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
-  private void onRoutingTableInitReqMsg(final AvroElasticMemoryMessage msg) {
+  private void onRoutingTableMsg(final EMRoutingTableMsg msg) {
+    switch (msg.getType()) {
+    case RoutingTableInitReqMsg:
+      onRoutingTableInitReqMsg(msg);
+      break;
+
+    default:
+      throw new RuntimeException("Unexpected message: " + msg);
+    }
+  }
+
+  private void onRoutingTableInitReqMsg(final EMRoutingTableMsg msg) {
     try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan("on_routing_table_init_req_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
@@ -99,7 +102,26 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     }
   }
 
-  private void onBlockMovedMsg(final AvroElasticMemoryMessage msg) {
+  private void onMigrationMsg(final EMMigrationMsg msg) {
+    switch (msg.getType()) {
+    case OwnershipMsg:
+      onOwnershipMsg(msg);
+      break;
+
+    case BlockMovedMsg:
+      onBlockMovedMsg(msg);
+      break;
+
+    case FailureMsg:
+      onFailureMsg(msg);
+      break;
+
+    default:
+      throw new RuntimeException("Unexpected message: " + msg);
+    }
+  }
+
+  private void onBlockMovedMsg(final EMMigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final BlockMovedMsg blockMovedMsg = msg.getBlockMovedMsg();
     final int blockId = blockMovedMsg.getBlockId();
@@ -111,7 +133,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     }
   }
 
-  private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
+  private void onOwnershipMsg(final EMMigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final int blockId = msg.getOwnershipMsg().getBlockId();
     final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
@@ -127,7 +149,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     }
   }
 
-  private void onFailureMsg(final AvroElasticMemoryMessage msg) {
+  private void onFailureMsg(final EMMigrationMsg msg) {
     try (final TraceScope onFailureMsgScope =
              Trace.startSpan("on_failure_msg", HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final FailureMsg failureMsg = msg.getFailureMsg();

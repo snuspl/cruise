@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async.plan;
 import edu.snu.cay.dolphin.async.AsyncDolphinDriver;
 import edu.snu.cay.dolphin.async.optimizer.ServerEM;
 import edu.snu.cay.dolphin.async.optimizer.WorkerEM;
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.EMMigrationMsg;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -262,7 +262,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   /**
    * This handler is registered as the second callback to ElasticMemory.move().
    */
-  private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
+  private final class MovedHandler implements EventHandler<EMMigrationMsg> {
     private final PlanOperation completeOp;
 
     private MovedHandler(final PlanOperation completeOp) {
@@ -270,7 +270,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
 
     @Override
-    public void onNext(final AvroElasticMemoryMessage msg) {
+    public void onNext(final EMMigrationMsg msg) {
       LOG.log(Level.FINER, "Received new MoveFinished {0}.", msg);
       if (msg.getResultMsg().getResult() == Result.FAILURE) {
         LOG.log(Level.WARNING, "Move failed because {0}", msg.getResultMsg().getMsg());
@@ -285,7 +285,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   /**
    * This handler is registered as the callback to ElasticMemory.delete().
    */
-  private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
+  private final class DeletedHandler implements EventHandler<EMMigrationMsg> {
     private final PlanOperation completeOp;
 
     private DeletedHandler(final PlanOperation completeOp) {
@@ -293,7 +293,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
 
     @Override
-    public void onNext(final AvroElasticMemoryMessage msg) {
+    public void onNext(final EMMigrationMsg msg) {
       LOG.log(Level.FINER, "Received new Evaluators Deleted {0}", msg);
 
       final ResultMsg resultMsg = msg.getResultMsg();

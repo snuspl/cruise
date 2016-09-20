@@ -19,7 +19,7 @@ import edu.snu.cay.common.param.Parameters.EvaluatorSize;
 import edu.snu.cay.dolphin.bsp.core.sync.DriverSync;
 import edu.snu.cay.dolphin.bsp.core.DolphinDriver;
 import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.EMMigrationMsg;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -215,9 +215,9 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   /**
    * This handler is registered as the second callback to ElasticMemory.move().
    */
-  private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
+  private final class MovedHandler implements EventHandler<EMMigrationMsg> {
     @Override
-    public void onNext(final AvroElasticMemoryMessage msg) {
+    public void onNext(final EMMigrationMsg msg) {
       LOG.log(Level.INFO, "Received new MoveFinished {0}.", msg);
       if (msg.getResultMsg().getResult() == Result.FAILURE) {
         LOG.log(Level.WARNING, "Move failed because {0}", msg.getResultMsg().getMsg());
@@ -296,9 +296,9 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   /**
    * This handler is registered as the callback to ElasticMemory.delete().
    */
-  private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
+  private final class DeletedHandler implements EventHandler<EMMigrationMsg> {
     @Override
-    public void onNext(final AvroElasticMemoryMessage msg) {
+    public void onNext(final EMMigrationMsg msg) {
       LOG.log(Level.INFO, "Received new Evaluators Deleted {0}", msg);
 
       final ResultMsg resultMsg = msg.getResultMsg();

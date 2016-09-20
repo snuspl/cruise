@@ -15,9 +15,7 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.RoutingTableInitReqMsg;
-import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
@@ -130,9 +128,14 @@ public class OperationRouterTest {
               .setEvalId(evalId)
               .build();
 
-          final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.RoutingTableInitReqMsg)
+          final EMRoutingTableMsg routingTableMsg = EMRoutingTableMsg.newBuilder()
+              .setType(RoutingTableMsgType.RoutingTableInitReqMsg)
               .setRoutingTableInitReqMsg(routingTableInitReqMsg)
+              .build();
+
+          final EMMsg msg = EMMsg.newBuilder()
+              .setType(EMMsgType.EMRoutingTableMsg)
+              .setEmRoutingTableMsg(routingTableMsg)
               .build();
 
           driverMsgHandler.onNext(new NSMessage<>(evalIdentifier, driverIdentifier, msg));

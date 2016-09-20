@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.em.msg.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.avro.EMMigrationMsg;
+import edu.snu.cay.services.em.avro.MigrationMsgType;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
@@ -47,16 +47,16 @@ public final class ElasticMemoryCallbackRouterImplTest {
     final String operationId = "TEST-callback-000";
     final AtomicInteger numCallbackCalled = new AtomicInteger(0);
 
-    callbackRouter.register(operationId, new EventHandler<AvroElasticMemoryMessage>() {
+    callbackRouter.register(operationId, new EventHandler<EMMigrationMsg>() {
       @Override
-      public void onNext(final AvroElasticMemoryMessage value) {
+      public void onNext(final EMMigrationMsg value) {
         numCallbackCalled.incrementAndGet();
       }
     });
     assertEquals("Callback not yet called", 0, numCallbackCalled.get());
 
-    final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.ResultMsg)
+    final EMMigrationMsg msg = EMMigrationMsg.newBuilder()
+        .setType(MigrationMsgType.ResultMsg)
         .setOperationId(operationId)
         .build();
 
@@ -73,8 +73,8 @@ public final class ElasticMemoryCallbackRouterImplTest {
    */
   @Test
   public void testOnCompletedMsgWithoutOperationId() {
-    final AvroElasticMemoryMessage msgWithoutOperationId = AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.ResultMsg)
+    final EMMigrationMsg msgWithoutOperationId = EMMigrationMsg.newBuilder()
+        .setType(MigrationMsgType.ResultMsg)
         .build();
     callbackRouter.onCompleted(msgWithoutOperationId);
   }
@@ -84,8 +84,8 @@ public final class ElasticMemoryCallbackRouterImplTest {
    */
   @Test
   public void testOnCompletedWithoutUnregisteredMsg() {
-    final AvroElasticMemoryMessage msgWithoutOperationId = AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.ResultMsg)
+    final EMMigrationMsg msgWithoutOperationId = EMMigrationMsg.newBuilder()
+        .setType(MigrationMsgType.ResultMsg)
         .setOperationId("TEST-unregistered-000")
         .build();
     callbackRouter.onCompleted(msgWithoutOperationId);
@@ -101,22 +101,22 @@ public final class ElasticMemoryCallbackRouterImplTest {
     final AtomicBoolean firstCallbackCalled = new AtomicBoolean(false);
     final AtomicBoolean secondCallbackCalled = new AtomicBoolean(false);
 
-    callbackRouter.register(operationId, new EventHandler<AvroElasticMemoryMessage>() {
+    callbackRouter.register(operationId, new EventHandler<EMMigrationMsg>() {
       @Override
-      public void onNext(final AvroElasticMemoryMessage value) {
+      public void onNext(final EMMigrationMsg value) {
         firstCallbackCalled.set(true);
       }
     });
 
-    callbackRouter.register(operationId, new EventHandler<AvroElasticMemoryMessage>() {
+    callbackRouter.register(operationId, new EventHandler<EMMigrationMsg>() {
       @Override
-      public void onNext(final AvroElasticMemoryMessage value) {
+      public void onNext(final EMMigrationMsg value) {
         secondCallbackCalled.set(true);
       }
     });
 
-    final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.ResultMsg)
+    final EMMigrationMsg msg = EMMigrationMsg.newBuilder()
+        .setType(MigrationMsgType.ResultMsg)
         .setOperationId(operationId)
         .build();
     callbackRouter.onCompleted(msg);
@@ -133,8 +133,8 @@ public final class ElasticMemoryCallbackRouterImplTest {
     final String operationId = "TEST-null-callback-000";
     callbackRouter.register(operationId, null);
 
-    final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.ResultMsg)
+    final EMMigrationMsg msg = EMMigrationMsg.newBuilder()
+        .setType(MigrationMsgType.ResultMsg)
         .setOperationId(operationId)
         .build();
     callbackRouter.onCompleted(msg);

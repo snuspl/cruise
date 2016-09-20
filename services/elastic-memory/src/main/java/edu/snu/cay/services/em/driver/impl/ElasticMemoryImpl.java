@@ -15,10 +15,7 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.Result;
-import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
@@ -120,7 +117,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
    * TODO #205: Reconsider using of Avro message in EM's callback
    */
   @Override
-  public void delete(final String evalId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
+  public void delete(final String evalId, @Nullable final EventHandler<EMMigrationMsg> callback) {
     // Deletion fails when the evaluator has remaining data
     if (blockManager.getNumBlocks(evalId) > 0) {
       if (callback != null) {
@@ -130,11 +127,10 @@ public final class ElasticMemoryImpl implements ElasticMemory {
             .setSrcId(evalId)
             .build();
 
-        final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
-            .setType(Type.ResultMsg)
+        final EMMigrationMsg emMigrationMsg = EMMigrationMsg.newBuilder()
             .setResultMsg(resultMsg)
             .build();
-        callback.onNext(msg);
+        callback.onNext(emMigrationMsg);
       }
       return;
     }
@@ -142,9 +138,9 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     final boolean isSuccess;
 
     if (callback == null) {
-      isSuccess = deleteExecutor.get().execute(evalId, new EventHandler<AvroElasticMemoryMessage>() {
+      isSuccess = deleteExecutor.get().execute(evalId, new EventHandler<EMMigrationMsg>() {
         @Override
-        public void onNext(final AvroElasticMemoryMessage msg) {
+        public void onNext(final EMMigrationMsg msg) {
 
         }
       });
@@ -165,7 +161,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Override
   public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
-                   @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
+                   @Nullable final EventHandler<EMMigrationMsg> finishedCallback) {
     Trace.setProcessId("elastic_memory");
     try (final TraceScope moveScope = Trace.startSpan(OP_MOVE, traceSampler)) {
       final String operationId = String.format("%s-%d", OP_MOVE, operationIdCounter.getAndIncrement());
