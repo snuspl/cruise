@@ -121,7 +121,8 @@ final class LDATrainer implements Trainer {
       sampler.sample(workload.subList(numSampledDocuments, numSampledDocuments + batchSize));
 
       numSampledDocuments += batchSize;
-      LOG.log(Level.INFO, "{0} documents out of {1} have been sampled", new Object[]{numSampledDocuments, numDocuments});
+      LOG.log(Level.INFO, "{0} documents out of {1} have been sampled",
+          new Object[]{numSampledDocuments, numDocuments});
     }
 
     LOG.log(Level.INFO, "Start computing log likelihood");
