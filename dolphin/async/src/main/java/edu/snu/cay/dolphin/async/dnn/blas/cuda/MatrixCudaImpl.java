@@ -18,6 +18,9 @@ package edu.snu.cay.dolphin.async.dnn.blas.cuda;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import org.bytedeco.javacpp.FloatPointer;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 /**
  * CUDA backend matrix implementation.
  */
@@ -274,6 +277,28 @@ public final class MatrixCudaImpl implements Matrix {
       multiplierFree();
     }
     return this;
+  }
+
+  @Override
+  public String toString() {
+    final StringWriter s = new StringWriter();
+    final PrintWriter p = new PrintWriter(s);
+    final float[] data = toFloatArray();
+
+    for (int r = 0; r < this.rows; ++r) {
+      for (int c = 0; c < this.columns; ++c) {
+        p.printf("%f", data[c * rows + r]);
+        if (c < this.columns - 1) {
+          p.print(", ");
+        }
+      }
+
+      if (r < this.rows - 1) {
+        p.print("\n");
+      }
+    }
+
+    return s.toString();
   }
 
   @Override
