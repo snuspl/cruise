@@ -180,7 +180,7 @@ public class ConvolutionalGpuLayerTest {
       final Configuration layerConf3D = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(LayerIndex.class, String.valueOf(0))
           .bindNamedParameter(LayerInputShape.class, "2,2,3")
-          .bindNamedParameter(NeuralNetworkConfigurationParameters.BatchSize.class, "2")
+          .bindNamedParameter(NeuralNetworkConfigurationParameters.BatchSize.class, "1")
           .build();
 
       final ConvolutionalLayerConfigurationBuilder builder = ConvolutionalLayerConfigurationBuilder
@@ -306,7 +306,6 @@ public class ConvolutionalGpuLayerTest {
 
   @Test
   public void testConvolutional3DGradient() {
-    System.out.println("3D test begun");
     final LayerParameter convolutionalLayerParams
         = convolutional3DLayer.generateParameterGradient(input3D, nextError3D);
     assertTrue(compare(expectedConvolutional3DLayerParams, convolutionalLayerParams, TOLERANCE));
