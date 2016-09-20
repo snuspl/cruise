@@ -28,7 +28,7 @@ import java.util.*;
  * Efficient methods for topic model inference on streaming document collections. In Proceedings of the
  * 15th ACM SIGKDD international conference on Knowledge discovery and data mining, pages 937–946. ACM, 2009.
  */
-final class SparseLDABatchSampler {
+final class SparseLDASampler {
 
   private final double alpha;
   private final double beta;
@@ -38,12 +38,12 @@ final class SparseLDABatchSampler {
   private final LDABatchParameterWorker batchParameterWorker;
 
   @Inject
-  private SparseLDABatchSampler(@Parameter(Alpha.class) final double alpha,
-                                @Parameter(Beta.class) final double beta,
-                                @Parameter(NumTopics.class) final int numTopics,
-                                @Parameter(NumVocabs.class) final int numVocabs,
-                                final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                                final LDABatchParameterWorker batchParameterWorker) {
+  private SparseLDASampler(@Parameter(Alpha.class) final double alpha,
+                           @Parameter(Beta.class) final double beta,
+                           @Parameter(NumTopics.class) final int numTopics,
+                           @Parameter(NumVocabs.class) final int numVocabs,
+                           final ParameterWorker<Integer, int[], int[]> parameterWorker,
+                           final LDABatchParameterWorker batchParameterWorker) {
     this.alpha = alpha;
     this.beta = beta;
     this.numTopics = numTopics;

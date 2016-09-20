@@ -41,7 +41,7 @@ final class LDATrainer implements Trainer {
 
   private final LDADataParser dataParser;
   private final LDABatchParameterWorker batchParameterWorker;
-  private final SparseLDABatchSampler sampler;
+  private final SparseLDASampler sampler;
   private final LDAStatCalculator statCalculator;
   private final int numVocabs;
   private final List<Integer> vocabList;
@@ -55,7 +55,7 @@ final class LDATrainer implements Trainer {
   @Inject
   private LDATrainer(final LDADataParser dataParser,
                      final LDABatchParameterWorker batchParameterWorker,
-                     final SparseLDABatchSampler sampler,
+                     final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
@@ -121,7 +121,7 @@ final class LDATrainer implements Trainer {
       sampler.sample(workload.subList(numSampledDocuments, numSampledDocuments + batchSize));
 
       numSampledDocuments += batchSize;
-      LOG.log(Level.INFO, "{0}/{1} documents are sampled", new Object[]{numSampledDocuments, numDocuments});
+      LOG.log(Level.INFO, "{0} documents out of {1} have been sampled", new Object[]{numSampledDocuments, numDocuments});
     }
 
     LOG.log(Level.INFO, "Start computing log likelihood");
