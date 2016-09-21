@@ -224,11 +224,9 @@ final class MLRTrainer implements Trainer {
     final Map<Long, Pair<Vector, Integer>> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
     final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
 
-    int numInstances = 0;
-    final Vector[] models = pullModels();
-    computeTracer.startTimer();
     for (final Pair<Vector, Integer> entry : workload) {
-
+      final Vector[] models = pullModels();
+      computeTracer.startTimer();
       final Vector features = entry.getFirst();
       final int label = entry.getSecond();
 
@@ -253,10 +251,8 @@ final class MLRTrainer implements Trainer {
         pushModel(newModel);
         computeTracer.startTimer();
       }
-      ++numInstances;
+      computeTracer.recordTime(1);
     }
-
-    computeTracer.recordTime(numInstances);
   }
 
   /**
