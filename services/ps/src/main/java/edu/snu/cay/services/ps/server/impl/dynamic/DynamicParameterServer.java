@@ -507,7 +507,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     @Override
     public void apply() {
       try (final TraceScope pullApplyScope = Trace.startSpan(String.format("process_pull." +
-          " key: %s, request_id: %d", hashedKey.getKey(), requestId), parentTraceInfo)) {
+          " key: %s, thread_id: %d, server_pending_ops: %d, request_id: %d",
+          hashedKey.getKey(), threadId, opsPending(), requestId), parentTraceInfo)) {
         try {
           final long waitEndTime = ticker.read();
           final long waitTime = waitEndTime - timestamp;
