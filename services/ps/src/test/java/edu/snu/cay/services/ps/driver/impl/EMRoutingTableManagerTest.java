@@ -15,8 +15,7 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.BlockMovedMsg;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
@@ -180,13 +179,18 @@ public final class EMRoutingTableManagerTest {
               .setBlockId(blockId)
               .build();
 
-          final AvroElasticMemoryMessage avroEMMsg = AvroElasticMemoryMessage.newBuilder()
-              .setType(edu.snu.cay.services.em.avro.Type.BlockMovedMsg)
+          final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+              .setType(MigrationMsgType.BlockMovedMsg)
               .setOperationId(opId)
               .setBlockMovedMsg(blockMovedMsg)
               .build();
 
-          final Message<AvroElasticMemoryMessage> msg = new NSMessage<>(null, null, avroEMMsg);
+          final EMMsg emMsg = EMMsg.newBuilder()
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
+              .build();
+
+          final Message<EMMsg> msg = new NSMessage<>(null, null, emMsg);
 
           emMsgHandler.onNext(msg);
         }

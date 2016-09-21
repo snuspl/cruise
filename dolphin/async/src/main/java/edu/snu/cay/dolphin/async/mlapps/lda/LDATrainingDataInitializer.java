@@ -69,8 +69,8 @@ public final class LDATrainingDataInitializer implements TrainingDataInitializer
         // numVocabs-th row represents the total word-topic assignment count vector
         batchParameterWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
       }
-      batchParameterWorker.pushAndClear();
     }
+    batchParameterWorker.pushAndClear();
 
     LOG.log(Level.INFO, "All random topic assignments are updated");
   }

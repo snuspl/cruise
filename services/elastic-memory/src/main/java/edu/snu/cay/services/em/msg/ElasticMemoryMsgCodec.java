@@ -15,30 +15,30 @@
  */
 package edu.snu.cay.services.em.msg;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.EMMsg;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
 /**
- * Codec for AvroElasticMemoryMessages.
+ * Codec for EMMsgs.
  * Simply uses AvroUtils to encode and decode messages.
  */
 public final class ElasticMemoryMsgCodec
-    implements Codec<AvroElasticMemoryMessage> {
+    implements Codec<EMMsg> {
 
   @Inject
   private ElasticMemoryMsgCodec() {
   }
 
   @Override
-  public byte[] encode(final AvroElasticMemoryMessage msg) {
-    return AvroUtils.toBytes(msg, AvroElasticMemoryMessage.class);
+  public byte[] encode(final EMMsg msg) {
+    return AvroUtils.toBytes(msg, EMMsg.class);
   }
 
   @Override
-  public AvroElasticMemoryMessage decode(final byte[] data) {
-    return AvroUtils.fromBytes(data, AvroElasticMemoryMessage.class);
+  public EMMsg decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, EMMsg.class);
   }
 }

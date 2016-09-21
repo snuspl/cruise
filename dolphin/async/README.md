@@ -12,5 +12,3 @@
   
 ##### Requirements
   - Flask(python): `sudo pip install Flask`.
-  - The machine must be connected to the internet for downloading resources(e.g., javascript for visualization)
-    from CDN and for other machines(e.g., driver) to access.

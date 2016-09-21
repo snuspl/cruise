@@ -20,6 +20,7 @@ import edu.snu.cay.services.ps.PSParameters.PreValueCodecName;
 import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.avro.PullMsg;
 import edu.snu.cay.services.ps.avro.PushMsg;
+import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import edu.snu.cay.utils.trace.HTraceUtils;
@@ -64,11 +65,18 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
    */
   private final Codec<P> preValueCodec;
 
+  /**
+   * Used for identifying this server in Traces.
+   */
+  private final String endpointId;
+
   @Inject
   private ServerSideMsgHandler(final ParameterServer<K, P, V> parameterServer,
+                               @Parameter(EndpointId.class) final String endpointId,
                                @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                @Parameter(PreValueCodecName.class) final Codec<P> preValueCodec) {
     this.parameterServer = parameterServer;
+    this.endpointId = endpointId;
     this.keyCodec = keyCodec;
     this.preValueCodec = preValueCodec;
 
@@ -109,7 +117,8 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
   }
 
   private void onPullMsg(final String srcId, final PullMsg pullMsg, @Nullable final TraceInfo traceInfo) {
-    try (final TraceScope onPullMsgScope = Trace.startSpan("on_pull_msg", traceInfo)) {
+    try (final TraceScope onPullMsgScope = Trace.startSpan(
+        String.format("on_pull_msg. server_id: %s", endpointId), traceInfo)) {
       final K key = keyCodec.decode(pullMsg.getKey().array());
       final int keyHash = hash(pullMsg.getKey().array());
       final int requestId = pullMsg.getRequestId();

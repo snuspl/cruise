@@ -232,34 +232,88 @@
 },
 
 /**
- * The message protocol used by Network Service for Elastic Memory.
+ * The message protocol used for remote access of Elastic Memory.
+ * RemoteOpReqMsg and RemoteOpResultMsg are all included as nullable fields, and
+ * an enum type indicates which field is not null.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RemoteOpMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "RemoteMsgType",
+        "symbols": ["RemoteOpReqMsg", "RemoteOpResultMsg"]}},
+    {"name": "operationId", "type" : ["null", "string"], "default": null},
+    {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
+    {"name": "remoteOpReqMsg", "type": ["null", "RemoteOpReqMsg"], "default": null},
+    {"name": "remoteOpResultMsg", "type": ["null", "RemoteOpResultMsg"], "default": null}
+  ]
+},
+
+/**
+ * The message protocol used for routing table management of Elastic Memory.
+ * RoutingTableInitReqMsg, RoutingTableInitMsg, and RoutingTableUpdateMsg are all included as nullable fields, and
+ * an enum type indicates which field is not null.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RoutingTableMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "RoutingTableMsgType",
+        "symbols": ["RoutingTableInitReqMsg", "RoutingTableInitMsg", "RoutingTableUpdateMsg"]}},
+    {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
+    {"name": "routingTableInitReqMsg", "type": ["null", "RoutingTableInitReqMsg"], "default": null},
+    {"name": "routingTableInitMsg", "type": ["null", "RoutingTableInitMsg"], "default": null},
+    {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null}
+  ]
+},
+
+/**
+ * The message protocol used for migration of Elastic Memory.
  * MoveInitMsg, DataMsg, etc. are all included as nullable fields, and
  * an enum type indicates which field is not null.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "AvroElasticMemoryMessage",
+  "name": "MigrationMsg",
   "fields":
   [
-    {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["RemoteOpReqMsg", "RemoteOpResultMsg",
-         "RoutingTableInitReqMsg", "RoutingTableInitMsg", "RoutingTableUpdateMsg",
-         "MoveInitMsg", "DataMsg","OwnershipMsg", "BlockMovedMsg",
-         "FailureMsg", "ResultMsg"]}},
+    {"name": "type", "type": {"type": "enum", "name": "MigrationMsgType",
+        "symbols": ["MoveInitMsg", "DataMsg","OwnershipMsg", "BlockMovedMsg", "FailureMsg", "ResultMsg"]}},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
-    {"name": "remoteOpReqMsg", "type": ["null", "RemoteOpReqMsg"], "default": null},
-    {"name": "remoteOpResultMsg", "type": ["null", "RemoteOpResultMsg"], "default": null},
-    {"name": "routingTableInitReqMsg", "type": ["null", "RoutingTableInitReqMsg"], "default": null},
-    {"name": "routingTableInitMsg", "type": ["null", "RoutingTableInitMsg"], "default": null},
-    {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},
     {"name": "moveInitMsg", "type": ["null", "MoveInitMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
     {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null},
     {"name": "blockMovedMsg", "type": ["null", "BlockMovedMsg"], "default": null},
     {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
     {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null}
+  ]
+},
+
+/**
+ * The message protocol used for Elastic Memory.
+ * Messages are categorized into 3 types:
+ * (1) RemoteOpMsg: Message regarding remote operations,
+ * (2) RoutingTableMsg: Message to manage routing table, and
+ * (3) MigrationMsg: Message used for data migration.
+ * They are all included as nullable fields, and an enum type indicates which field is not null.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "EMMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "EMMsgType",
+        "symbols": ["RemoteOpMsg", "RoutingTableMsg", "MigrationMsg"]}},
+    {"name": "remoteOpMsg", "type": ["null", "RemoteOpMsg"], "default": null},
+    {"name": "routingTableMsg", "type": ["null", "RoutingTableMsg"], "default": null},
+    {"name": "migrationMsg", "type": ["null", "MigrationMsg"], "default": null}
   ]
 }
 ]

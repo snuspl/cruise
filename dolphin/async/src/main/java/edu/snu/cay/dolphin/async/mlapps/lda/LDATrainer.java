@@ -61,6 +61,7 @@ final class LDATrainer implements Trainer {
     this.trainingDataSplitter = trainingDataSplitter;
     this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
+
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
     for (int i = 0; i < numVocabs + 1; i++) {
@@ -89,7 +90,6 @@ final class LDATrainer implements Trainer {
     final Collection<Document> workload = workloadMap.values();
     LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(statCalculator.computeDocLLH(workload),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary)));
-
     LOG.log(Level.INFO, "Epoch Ended");
   }
 
@@ -98,19 +98,8 @@ final class LDATrainer implements Trainer {
 
     final Map<Long, Document> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
     final Collection<Document> workload = workloadMap.values();
+    sampler.sample(workload);
 
-    final int numDocuments = workload.size();
-    final int countForLogging = numDocuments / 3;
-    int numSampledDocuments = 0;
-
-    for (final Document document : workload) {
-      sampler.sample(document);
-      numSampledDocuments++;
-
-      if (numSampledDocuments % countForLogging == 0) {
-        LOG.log(Level.INFO, "{0}/{1} documents are sampled", new Object[]{numSampledDocuments, numDocuments});
-      }
-    }
   }
 
   @Override

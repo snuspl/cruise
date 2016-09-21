@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.ns;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.EMMsg;
 import edu.snu.cay.services.em.ns.parameters.EMCodec;
 import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
 import edu.snu.cay.services.em.ns.parameters.EMMessageHandler;
@@ -35,16 +35,16 @@ public final class EMNetworkSetup {
 
   private final NetworkConnectionService networkConnectionService;
   private final Identifier connectionFactoryIdentifier;
-  private final Codec<AvroElasticMemoryMessage> codec;
-  private final EventHandler<Message<AvroElasticMemoryMessage>> handler;
-  private ConnectionFactory<AvroElasticMemoryMessage> connectionFactory;
+  private final Codec<EMMsg> codec;
+  private final EventHandler<Message<EMMsg>> handler;
+  private ConnectionFactory<EMMsg> connectionFactory;
 
   @Inject
   private EMNetworkSetup(
       final NetworkConnectionService networkConnectionService,
       final IdentifierFactory identifierFactory,
-      @Parameter(EMCodec.class) final Codec<AvroElasticMemoryMessage> codec,
-      @Parameter(EMMessageHandler.class) final EventHandler<Message<AvroElasticMemoryMessage>> handler,
+      @Parameter(EMCodec.class) final Codec<EMMsg> codec,
+      @Parameter(EMMessageHandler.class) final EventHandler<Message<EMMsg>> handler,
       @Parameter(EMIdentifier.class) final String identifier) throws NetworkException {
     this.networkConnectionService = networkConnectionService;
     this.connectionFactoryIdentifier = identifierFactory.getNewInstance(identifier);
@@ -52,7 +52,7 @@ public final class EMNetworkSetup {
     this.handler = handler;
   }
 
-  public ConnectionFactory<AvroElasticMemoryMessage> registerConnectionFactory(final Identifier localEndPointId) {
+  public ConnectionFactory<EMMsg> registerConnectionFactory(final Identifier localEndPointId) {
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryIdentifier,
         codec, handler, null, localEndPointId);
     return connectionFactory;
@@ -62,7 +62,7 @@ public final class EMNetworkSetup {
     networkConnectionService.unregisterConnectionFactory(connectionFactoryIdentifier);
   }
 
-  public ConnectionFactory<AvroElasticMemoryMessage> getConnectionFactory() {
+  public ConnectionFactory<EMMsg> getConnectionFactory() {
     return connectionFactory;
   }
 

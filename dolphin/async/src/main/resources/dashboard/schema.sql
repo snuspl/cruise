@@ -24,6 +24,7 @@
 drop table if exists worker;
 drop table if exists server;
 drop table if exists custom;
+drop table if exists parameterWorker;
 
 create table worker (
     time double not null,
@@ -38,6 +39,22 @@ create table worker (
     totalPullTime double not null,
     avgPushTime double not null,
     avgPullTime double not null
+);
+
+create table parameterworker (
+    time double not null,
+    id int not null,
+    numThreads int not null,
+    totalPushTime double not null,
+    totalPullTime double not null,
+    totalEncodeTime double not null,
+    totalPendingTime double not null,
+    totalNetworkTime double not null,
+    totalPushCount int not null,
+    totalPullCount int not null,
+    totalEncodeCount int not null,
+    totalPendingStatCount int not null,
+    totalNetworkStatCount int not null
 );
 
 create table server (
