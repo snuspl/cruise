@@ -85,7 +85,7 @@ public final class MiniBatchParameterWorker<K, P, V> {
 
   public List<V> pull(final List<K> keys) {
     final List<K> nonLocalKeys = new ArrayList<>();
-    final List<V> valueList = new ArrayList();
+    final List<V> valueList = new ArrayList<>();
     for (final K key : keys) {
       if (!localParameters.containsKey(key)) {
         nonLocalKeys.add(key);

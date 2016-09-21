@@ -32,10 +32,7 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.anyList;
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests for {@link MiniBatchParameterWorker} stores local updates, and communicates with {@link ParameterWorker}.
@@ -45,8 +42,8 @@ public class MiniBatchParameterWorkerTest {
   private ParameterUpdater<Integer, Integer, Integer> mockParameterUpdater;
   private MiniBatchParameterWorker<Integer, Integer, Integer> miniBatchParameterWorker;
   private final Map<Integer, Integer> parameterMap = new HashMap<>();
-  private final AtomicInteger dataFromParameterWorkerCount = new AtomicInteger();
-  private final AtomicInteger dataToParameterWorkerCount = new AtomicInteger();
+  private final AtomicInteger parameterWorkerAccessCountToGetData = new AtomicInteger();
+  private final AtomicInteger parameterWorkerAccessCountToSendData = new AtomicInteger();
 
   @Before
   public void setUp() throws InjectionException {
@@ -58,6 +55,9 @@ public class MiniBatchParameterWorkerTest {
     mockParameterUpdater = mock(ParameterUpdater.class);
     injector.bindVolatileInstance(ParameterUpdater.class, mockParameterUpdater);
     miniBatchParameterWorker = injector.getInstance(MiniBatchParameterWorker.class);
+    parameterMap.clear();
+    parameterWorkerAccessCountToGetData.set(0);
+    parameterWorkerAccessCountToSendData.set(0);
 
     final Random generator = new Random();
     final int parametersCount = 10;
@@ -67,23 +67,23 @@ public class MiniBatchParameterWorkerTest {
     }
 
     doAnswer(invocation -> {
-        dataFromParameterWorkerCount.incrementAndGet();
+        parameterWorkerAccessCountToGetData.incrementAndGet();
         final Integer key  = invocation.getArgumentAt(0, Integer.class);
         return parameterMap.get(key);
-      }).when(mockParameterWorker).pull((Integer) anyObject());
+      }).when(mockParameterWorker).pull(any(Integer.class));
 
     doAnswer(invocation -> {
         final List<Integer> keys  = invocation.getArgumentAt(0, List.class);
         final List<Integer> values = new ArrayList<>();
         for (final Integer key : keys) {
-          dataFromParameterWorkerCount.incrementAndGet();
+          parameterWorkerAccessCountToGetData.incrementAndGet();
           values.add(parameterMap.get(key));
         }
         return values;
-      }).when(mockParameterWorker).pull(anyList());
+      }).when(mockParameterWorker).pull(anyListOf(Integer.class));
 
     doAnswer(invocation -> {
-        dataToParameterWorkerCount.incrementAndGet();
+        parameterWorkerAccessCountToSendData.incrementAndGet();
         final Integer key = invocation.getArgumentAt(0, Integer.class);
         final Integer value = invocation.getArgumentAt(1, Integer.class);
         parameterMap.put(key, value);
@@ -103,6 +103,9 @@ public class MiniBatchParameterWorkerTest {
       }).when(mockParameterUpdater).aggregate(anyObject(), anyObject());
   }
 
+  /**
+   * Test whether MiniBatchParameterWorker uses local cache to get the data.
+   */
   @Test
   public void testPull() {
     // Local cache doesn't contain any parameters at first.
@@ -110,35 +113,39 @@ public class MiniBatchParameterWorkerTest {
       final Integer value = miniBatchParameterWorker.pull(i);
       assertEquals(parameterMap.get(i), value);
     }
-    assertEquals(parameterMap.size() / 2, dataFromParameterWorkerCount.get());
+    assertEquals(parameterMap.size() / 2, parameterWorkerAccessCountToGetData.get());
 
     // Read parameter from local cache if there it is
-    dataFromParameterWorkerCount.set(0);
+    parameterWorkerAccessCountToGetData.set(0);
     for (int i = 0; i < parameterMap.size() / 2; i++) {
       final Integer value = miniBatchParameterWorker.pull(i);
       assertEquals(parameterMap.get(i), value);
     }
-    assertEquals(0, dataFromParameterWorkerCount.get());
+    assertEquals(0, parameterWorkerAccessCountToGetData.get());
 
     // Read subset of keys which are not in the local cache from ParameterWorker, otherwise from local cache
-    dataFromParameterWorkerCount.set(0);
+    parameterWorkerAccessCountToGetData.set(0);
     final List<Integer> keys = new ArrayList<>(parameterMap.keySet());
     final List<Integer> values = miniBatchParameterWorker.pull(keys);
     int i = 0;
     for (final Integer key : keys) {
       assertEquals(parameterMap.get(key), values.get(i++));
     }
-    assertEquals(parameterMap.size() / 2, dataFromParameterWorkerCount.get());
+    assertEquals(parameterMap.size() / 2, parameterWorkerAccessCountToGetData.get());
   }
 
+  /**
+   * Test whether MiniBatchParameterWorker stores data into local cache on pull and flush them later.
+   * Data is aggregated and sent to ParameterWorker on flushLocalUpdates.
+   */
   @Test
-  public void testPush() {
+  public void testPushAndFlushLocalUpdates() {
     int parameterValue = 1;
     int aggregatedValue = parameterValue;
     for (int i = 0; i < parameterMap.size(); i++) {
       miniBatchParameterWorker.push(i, parameterValue);
     }
-    assertEquals(0, dataToParameterWorkerCount.get());
+    assertEquals(0, parameterWorkerAccessCountToSendData.get());
 
     // local value is changed
     for (int i = 0; i < parameterMap.size(); i++) {
@@ -150,10 +157,10 @@ public class MiniBatchParameterWorkerTest {
     for (int i = 0; i < parameterMap.size(); i++) {
       miniBatchParameterWorker.push(i, parameterValue);
     }
-    assertEquals(0, dataToParameterWorkerCount.get());
+    assertEquals(0, parameterWorkerAccessCountToSendData.get());
 
     miniBatchParameterWorker.flushLocalUpdates();
-    assertEquals(parameterMap.size(), dataToParameterWorkerCount.get());
+    assertEquals(parameterMap.size(), parameterWorkerAccessCountToSendData.get());
     // aggregated values are sent to the ParameterWorker
     for (int i = 0; i < parameterMap.size(); i++) {
       assertEquals(aggregatedValue, parameterMap.get(i).intValue());

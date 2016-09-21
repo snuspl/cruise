@@ -40,7 +40,7 @@ import java.util.List;
 @ClientSide
 public final class AsyncDolphinConfiguration {
   private final Class<? extends Trainer> trainerClass;
-  private final Class<? extends TrainingDataInitializer> memoryStoreInitializerClass;
+  private final Class<? extends TrainingDataInitializer> trainingDataInitializer;
   private final Class<? extends ParameterUpdater> updaterClass;
   private final Class<? extends Codec> keyCodecClass;
   private final Class<? extends Codec> preValueCodecClass;
@@ -53,7 +53,7 @@ public final class AsyncDolphinConfiguration {
 
 
   private AsyncDolphinConfiguration(final Class<? extends Trainer> trainerClass,
-                                    final Class<? extends TrainingDataInitializer> memoryStoreInitializerClass,
+                                    final Class<? extends TrainingDataInitializer> trainingDataInitializer,
                                     final Class<? extends ParameterUpdater> updaterClass,
                                     final Class<? extends Codec> keyCodecClass,
                                     final Class<? extends Codec> preValueCodecClass,
@@ -64,7 +64,7 @@ public final class AsyncDolphinConfiguration {
                                     final Configuration workerConfiguration,
                                     final Configuration serverConfiguration) {
     this.trainerClass = trainerClass;
-    this.memoryStoreInitializerClass = memoryStoreInitializerClass;
+    this.trainingDataInitializer = trainingDataInitializer;
     this.updaterClass = updaterClass;
     this.keyCodecClass = keyCodecClass;
     this.preValueCodecClass = preValueCodecClass;
@@ -80,8 +80,8 @@ public final class AsyncDolphinConfiguration {
     return trainerClass;
   }
 
-  public Class<? extends TrainingDataInitializer> getMemoryStoreInitializerClass() {
-    return memoryStoreInitializerClass;
+  public Class<? extends TrainingDataInitializer> getTrainingDataInitializer() {
+    return trainingDataInitializer;
   }
 
   public Class<? extends ParameterUpdater> getUpdaterClass() {
@@ -143,8 +143,8 @@ public final class AsyncDolphinConfiguration {
       return this;
     }
 
-    public Builder setMemoryStoreInitializer(final Class<? extends TrainingDataInitializer> memoryStoreInitializer) {
-      this.memoryStoreInitializer = memoryStoreInitializer;
+    public Builder setMemoryStoreInitializer(final Class<? extends TrainingDataInitializer> trainingDataInitializer) {
+      this.memoryStoreInitializer = trainingDataInitializer;
       return this;
     }
 

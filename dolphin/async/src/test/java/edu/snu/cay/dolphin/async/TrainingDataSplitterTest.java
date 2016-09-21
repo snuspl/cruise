@@ -39,7 +39,7 @@ import static org.mockito.Mockito.mock;
  * Tests for {@link TrainingDataSplitter} splits data correctly.
  */
 public class TrainingDataSplitterTest {
-  private final int miniBatchesPerEpoch = 5;
+  private static final int MINI_BATCHES_PER_EPOCH = 5;
 
   private final Map<Integer, Integer> values = new HashMap<>();
 
@@ -49,14 +49,12 @@ public class TrainingDataSplitterTest {
   @Before
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(Parameters.MiniBatches.class, Integer.toString(miniBatchesPerEpoch))
+        .bindNamedParameter(Parameters.MiniBatches.class, Integer.toString(MINI_BATCHES_PER_EPOCH))
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     mockMemoryStore = mock(MemoryStore.class);
     injector.bindVolatileInstance(MemoryStore.class, mockMemoryStore);
-    doAnswer(invocation -> {
-        return values;
-      }).when(mockMemoryStore).getAll();
+    doAnswer(invocation -> values).when(mockMemoryStore).getAll();
     doAnswer(invocation -> {
         final Integer id = invocation.getArgumentAt(0, Integer.class);
         final Pair<Integer, Integer> pair = new Pair<>(id, values.get(id));
@@ -65,11 +63,14 @@ public class TrainingDataSplitterTest {
     trainingDataSplitter = injector.getInstance(TrainingDataSplitter.class);
   }
 
+  /**
+   * Test getNextTrainingDataSplit when data size can be divided by MINI_BATCHES_PER_EPOCH.
+   * It means sizes of all mini batch splits are same.
+   */
   @Test
-  public void testGetNextTrainingDataSplit() {
+  public void testGetNextTrainingDataSplit1() {
     final Random generator = new Random();
 
-    // Case 1. data size % miniBatchesPerEpoch == 0
     final int dataCount1 = 10;
     for (int i = 0; i < dataCount1; i++) {
       final int value  = generator.nextInt();
@@ -77,8 +78,8 @@ public class TrainingDataSplitterTest {
     }
     trainingDataSplitter.prepareSplitsForEpoch();
 
-    assertTrue(dataCount1 % miniBatchesPerEpoch == 0);
-    final int dataSplitSize1 = dataCount1 / miniBatchesPerEpoch;
+    assertTrue(dataCount1 % MINI_BATCHES_PER_EPOCH == 0);
+    final int dataSplitSize1 = dataCount1 / MINI_BATCHES_PER_EPOCH;
     int dataSplitCount = 0;
     Map<Integer, Integer> dataSplit = trainingDataSplitter.getNextTrainingDataSplit();
     while (!dataSplit.isEmpty()) {
@@ -89,35 +90,43 @@ public class TrainingDataSplitterTest {
       assertEquals(dataSplitSize1, dataSplit.size());
       dataSplit = trainingDataSplitter.getNextTrainingDataSplit();
     }
-    // test whether TrainingDataSplitter splits the data by miniBatchesPerEpoch
-    assertEquals(miniBatchesPerEpoch, dataSplitCount);
+    // test whether TrainingDataSplitter splits the data by MINI_BATCHES_PER_EPOCH
+    assertEquals(MINI_BATCHES_PER_EPOCH, dataSplitCount);
+  }
 
-    // Case2. data size % miniBatchesPerEpoch != 0
+  /**
+   * Test getNextTrainingDataSplit when data size cannot be divided by MINI_BATCHES_PER_EPOCH.
+   * It means sizes of mini batch splits are vary.
+   */
+  @Test
+  public void testGetNextTrainingDataSplit2() {
+    final Random generator = new Random();
+
     final int dataCount2 = 32;
-    for (int i = dataCount1; i < dataCount2; i++) {
+    for (int i = 0; i < dataCount2; i++) {
       final int value = generator.nextInt();
       values.put(i, value);
     }
     trainingDataSplitter.prepareSplitsForEpoch();
 
-    assertTrue(dataCount2 % miniBatchesPerEpoch != 0);
-    final int dataSplitSize2 = dataCount2 / miniBatchesPerEpoch;
-    dataSplitCount = 0;
-    dataSplit = trainingDataSplitter.getNextTrainingDataSplit();
+    assertTrue(dataCount2 % MINI_BATCHES_PER_EPOCH != 0);
+    final int dataSplitSize2 = dataCount2 / MINI_BATCHES_PER_EPOCH;
+    int dataSplitCount = 0;
+    Map<Integer, Integer> dataSplit = trainingDataSplitter.getNextTrainingDataSplit();
     while (!dataSplit.isEmpty()) {
       dataSplitCount++;
       for (final Integer key : dataSplit.keySet()) {
         assertEquals(values.get(key), dataSplit.get(key));
       }
-      if (dataSplitCount < miniBatchesPerEpoch) {
-        assertEquals(dataSplitSize2, dataSplit.size());
+      if (dataSplitCount <= dataCount2 % MINI_BATCHES_PER_EPOCH) {
+        assertEquals(dataSplitSize2 + 1, dataSplit.size());
       } else {
         // the last split is bigger than previous splits
-        assertEquals(dataSplitSize2 + dataCount2 % miniBatchesPerEpoch, dataSplit.size());
+        assertEquals(dataSplitSize2, dataSplit.size());
       }
       dataSplit = trainingDataSplitter.getNextTrainingDataSplit();
     }
-    // test whether TrainingDataSplitter splits the data by miniBatchesPerEpoch
-    assertEquals(miniBatchesPerEpoch, dataSplitCount);
+    // test whether TrainingDataSplitter splits the data by MINI_BATCHES_PER_EPOCH
+    assertEquals(MINI_BATCHES_PER_EPOCH, dataSplitCount);
   }
 }
