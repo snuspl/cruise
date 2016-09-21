@@ -64,7 +64,6 @@ import static edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs.TIMEO
 @EvaluatorSide
 public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P, V>, WorkerHandler<K, P, V> {
   private static final Logger LOG = Logger.getLogger(AsyncParameterWorker.class.getName());
-  private static final Random RAND = new Random();
 
   /**
    * The maximum number to resend push/pull requests
@@ -222,7 +221,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   private V pull(final EncodedKey<K> encodedKey) {
-    final boolean traceEnabled = RAND.nextDouble() < traceProbability;
+    final boolean traceEnabled = ThreadLocalRandom.current().nextDouble() < traceProbability;
 
     // We should detach the span when we transit to another thread (local or remote),
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
@@ -267,7 +266,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         // We should detach the span when we transit to another thread (local or remote),
         // and the detached span should call Trace.continueSpan(detached).close() explicitly
         // for stitching the spans from other threads as its children
-        final boolean traceEnabled = RAND.nextDouble() < traceProbability;
+        final boolean traceEnabled = ThreadLocalRandom.current().nextDouble() < traceProbability;
         Span detached = null;
         try (final TraceScope pullEnqueueScope = traceEnabled ?
             Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()), pullListScope.getSpan()) :
