@@ -246,7 +246,7 @@ final class MigrationManager {
         .setResult(Result.FAILURE)
         .setMsg(reason)
         .build();
-    final MigrationMsg msg = getEMMessage(moveOperationId, resultMsg);
+    final MigrationMsg msg = generateMigrationMsg(moveOperationId, resultMsg);
     callbackRouter.onFailed(msg);
   }
 
@@ -258,11 +258,11 @@ final class MigrationManager {
         .setResult(Result.SUCCESS)
         .setBlockIds(blocks)
         .build();
-    final MigrationMsg msg = getEMMessage(moveOperationId, resultMsg);
+    final MigrationMsg msg = generateMigrationMsg(moveOperationId, resultMsg);
     callbackRouter.onCompleted(msg);
   }
 
-  private static MigrationMsg getEMMessage(final String operationId, final ResultMsg resultMsg) {
+  private static MigrationMsg generateMigrationMsg(final String operationId, final ResultMsg resultMsg) {
 
     return MigrationMsg.newBuilder()
         .setType(MigrationMsgType.ResultMsg)

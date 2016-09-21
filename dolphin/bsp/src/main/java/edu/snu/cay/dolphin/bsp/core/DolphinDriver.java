@@ -756,10 +756,12 @@ public final class DolphinDriver {
             .setSrcId(activeContextId)
             .build();
 
-        callback.onNext(MigrationMsg.newBuilder()
+        final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
             .setType(MigrationMsgType.ResultMsg)
             .setResultMsg(resultMsg)
-            .build());
+            .build();
+
+        callback.onNext(migrationMsg);
         return true;
       }
     }

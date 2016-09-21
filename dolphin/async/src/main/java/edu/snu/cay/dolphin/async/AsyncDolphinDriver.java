@@ -1068,9 +1068,11 @@ public final class AsyncDolphinDriver {
         .setSrcId(contextId)
         .build();
 
-    callback.onNext(MigrationMsg.newBuilder()
+    final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
         .setType(MigrationMsgType.ResultMsg)
         .setResultMsg(resultMsg)
-        .build());
+        .build();
+
+    callback.onNext(migrationMsg);
   }
 }

@@ -127,10 +127,10 @@ public final class ElasticMemoryImpl implements ElasticMemory {
             .setSrcId(evalId)
             .build();
 
-        final MigrationMsg emMigrationMsg = MigrationMsg.newBuilder()
+        final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
             .setResultMsg(resultMsg)
             .build();
-        callback.onNext(emMigrationMsg);
+        callback.onNext(migrationMsg);
       }
       return;
     }

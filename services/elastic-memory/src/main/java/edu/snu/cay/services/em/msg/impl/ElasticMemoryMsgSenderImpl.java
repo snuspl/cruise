@@ -215,9 +215,9 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   private EMMsg generateRemoteOpResultMsg(final Object dataValues, final boolean isSuccess,
-                                                             final List<KeyRange> failedRanges,
-                                                             final String operationId,
-                                                             @Nullable final TraceInfo parentTraceInfo) {
+                                          final List<KeyRange> failedRanges,
+                                          final String operationId,
+                                          @Nullable final TraceInfo parentTraceInfo) {
     final RemoteOpResultMsg remoteOpResultMsg = RemoteOpResultMsg.newBuilder()
         .setIsSuccess(isSuccess)
         .setDataValues(dataValues)
