@@ -355,7 +355,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendMoveInitMsg(final String destId, final String recvEvalId,
+  public void sendMoveInitMsg(final String destId, final String receiverId,
                               final List<Integer> blocks, final String operationId,
                               @Nullable final TraceInfo parentTraceInfo) {
 
@@ -370,7 +370,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       detached = sendMoveInitMsgScope.detach();
 
       final MoveInitMsg moveInitMsg = MoveInitMsg.newBuilder()
-          .setRecvEvalId(recvEvalId)
+          .setReceiverId(receiverId)
           .setBlockIds(blocks)
           .build();
 
@@ -426,8 +426,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       detached = sendDataMsgScope.detach();
 
       final DataMsg dataMsg = DataMsg.newBuilder()
-          .setSendEvalId(emNetworkSetup.getMyId().toString())
-          .setRecvEvalId(destId)
+          .setSenderId(emNetworkSetup.getMyId().toString())
+          .setReceiverId(destId)
           .setBlockId(blockId)
           .setKeyValuePairs(keyValuePairs)
           .build();
@@ -472,8 +472,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       detached = sendDataAckMsgScope.detach();
 
       final DataAckMsg dataAckMsg = DataAckMsg.newBuilder()
-          .setSendEvalId(emNetworkSetup.getMyId().toString())
-          .setRecvEvalId(destId)
+          .setSenderId(emNetworkSetup.getMyId().toString())
+          .setReceiverId(destId)
           .setBlockId(blockId)
           .build();
 
@@ -519,7 +519,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
               .setBlockId(blockId)
-              .setSendEvalId(emNetworkSetup.getMyId().toString())
+              .setSenderId(emNetworkSetup.getMyId().toString())
               .setOldOwnerId(oldOwnerId)
               .setNewOwnerId(newOwnerId)
               .build();

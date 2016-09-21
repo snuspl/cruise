@@ -153,7 +153,7 @@
   "name": "MoveInitMsg",
   "fields":
   [
-    {"name": "recvEvalId", "type" : "string"},
+    {"name": "receiverId", "type" : "string"},
     {"name": "blockIds", "type": {"type": "array", "items": "int"}}
   ]
 },
@@ -168,8 +168,8 @@
   "name": "DataMsg",
   "fields":
   [
-    {"name": "sendEvalId", "type" : "string"},
-    {"name": "recvEvalId", "type" : "string"},
+    {"name": "senderId", "type" : "string"},
+    {"name": "receiverId", "type" : "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null},
     {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
   ]
@@ -185,8 +185,8 @@
   "name": "DataAckMsg",
   "fields":
   [
-    {"name": "sendEvalId", "type" : "string"},
-    {"name": "recvEvalId", "type" : "string"},
+    {"name": "senderId", "type" : "string"},
+    {"name": "receiverId", "type" : "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null}
   ]
 },
@@ -199,7 +199,7 @@
   "type": "record",
   "name": "OwnershipMsg",
   "fields": [
-      {"name": "sendEvalId", "type" : "string"},
+      {"name": "senderId", "type" : "string"},
       {"name": "oldOwnerId", "type": "int"},
       {"name": "newOwnerId", "type": "int"},
       {"name": "blockId", "type": "int"}

@@ -89,7 +89,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor<K>
       final String operationId = msg.getOperationId().toString();
 
       final MoveInitMsg moveInitMsg = msg.getMoveInitMsg();
-      final String recvId = moveInitMsg.getRecvEvalId().toString();
+      final String receiverId = moveInitMsg.getReceiverId().toString();
       final List<Integer> blockIds = moveInitMsg.getBlockIds();
 
       final TraceInfo traceInfo = TraceInfo.fromSpan(onMoveInitMsgScope.getSpan());
@@ -103,7 +103,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor<K>
           keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
         }
 
-        sender.get().sendDataMsg(recvId, keyValuePairs, blockId, operationId, traceInfo);
+        sender.get().sendDataMsg(receiverId, keyValuePairs, blockId, operationId, traceInfo);
       }
     }
   }
@@ -128,8 +128,8 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor<K>
 
       memoryStore.putBlock(blockId, dataMap);
 
-      final int newOwnerId = getStoreId(dataMsg.getRecvEvalId().toString());
-      final int oldOwnerId = getStoreId(dataMsg.getSendEvalId().toString());
+      final int newOwnerId = getStoreId(dataMsg.getReceiverId().toString());
+      final int oldOwnerId = getStoreId(dataMsg.getSenderId().toString());
       memoryStore.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
       // Notify the driver that the ownership has been updated by setting empty destination id.

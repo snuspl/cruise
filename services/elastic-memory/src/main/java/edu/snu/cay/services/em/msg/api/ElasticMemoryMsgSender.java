@@ -106,13 +106,13 @@ public interface ElasticMemoryMsgSender {
    * Sends a MoveInitMsg to initiate moving data blocks to the source Evaluator.
    * @param destId id of the Evaluator that receives this message
    *              (i.e., source Evaluator in terms of the data)
-   * @param recvEvalId id of the Evaluator that receives the data
+   * @param receiverId id of the Evaluator that receives the data
    * @param blocks block ids to move
    * @param operationId id associated with this operation
    * @param parentTraceInfo Trace information for HTrace
    */
   void sendMoveInitMsg(final String destId,
-                       final String recvEvalId,
+                       final String receiverId,
                        final List<Integer> blocks,
                        final String operationId,
                        @Nullable final TraceInfo parentTraceInfo);
