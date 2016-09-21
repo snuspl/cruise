@@ -15,13 +15,14 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
-import edu.snu.cay.services.em.avro.RemoteOpMsg;
+import edu.snu.cay.services.em.avro.MigrationMsg;
+import edu.snu.cay.services.em.evaluator.impl.DataFirstMigrationExecutor;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
 /**
- * An interface that handles msgs about remote access operations.
- * It handles 1) remote op msg that other stores requested to this store
- * and 2) the result msg of remote op that was requested by this store to other stores.
+ * Created by xyzi on 9/19/16.
  */
-public interface RemoteOpHandler<K> extends EventHandler<RemoteOpMsg> {
+@DefaultImplementation(DataFirstMigrationExecutor.class)
+public interface MigrationExecutor<K> extends EventHandler<MigrationMsg> {
 }

@@ -490,11 +490,24 @@ public class MigrationManagerTest {
     }
 
     @Override
+    public void sendDataAckMsg(final String destId, final int blockId, final String operationId,
+                               @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
     public void sendOwnershipMsg(final Optional<String> destId, final String operationId,
                                  final int blockId, final int oldOwnerId, final int newOwnerId,
                                  @Nullable final TraceInfo parentTraceInfo) {
       // invoke a handler logic of response for OwnershipMsg
       migrationManager.markBlockAsMoved(operationId, blockId, parentTraceInfo);
+    }
+
+    @Override
+    public void sendOwnershipAckMsg(final Optional<String> destId, final String operationId,
+                                    final int blockId, final int oldOwnerId, final int newOwnerId,
+                                    @Nullable final TraceInfo parentTraceInfo) {
+
     }
 
     @Override

@@ -45,7 +45,7 @@ import java.util.logging.Logger;
  * It 1) sends operation to remote stores and 2) sends the result of remote operation to the origin store,
  * and 3) receives and handles the received result.
  */
-public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
+public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler<K> {
   private static final Logger LOG = Logger.getLogger(RemoteOpHandlerImpl.class.getName());
   private static final long TIMEOUT_MS = 40000;
 
@@ -79,7 +79,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
    * @param <V> a type of data
    */
   <V> void sendOpToRemoteStores(final RangeKeyOperation<K, V> operation,
-                            final Map<String, List<Pair<K, K>>> evalToSubKeyRangesMap) {
+                                final Map<String, List<Pair<K, K>>> evalToSubKeyRangesMap) {
     if (evalToSubKeyRangesMap.isEmpty()) {
       return;
     }

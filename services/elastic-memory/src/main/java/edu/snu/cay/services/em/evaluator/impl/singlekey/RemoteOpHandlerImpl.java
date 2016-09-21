@@ -44,7 +44,7 @@ import java.util.logging.Logger;
  * It 1) sends operation to remote stores and 2) sends the result of remote operation to the origin store,
  * and 3) receives and handles the received result.
  */
-public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
+public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler<K> {
   private static final Logger LOG = Logger.getLogger(RemoteOpHandlerImpl.class.getName());
   private static final long TIMEOUT_MS = 40000;
 
@@ -86,12 +86,12 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
    * @return an operation holding the result
    */
   <V> SingleKeyOperation<K, V> sendOpToRemoteStore(final DataOpType opType,
-                               final K key, final Optional<V> value,
-                               final String targetEvalId) {
+                                                   final K key, final Optional<V> value,
+                                                   final String targetEvalId) {
 
     final String operationId = Long.toString(remoteOpIdCounter.getAndIncrement());
     final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
-          opType, key, value);
+        opType, key, value);
 
     LOG.log(Level.FINEST, "Send op to remote. OpId: {0}, OpType: {1}",
         new Object[]{operation.getOpId(), operation.getOpType()});
