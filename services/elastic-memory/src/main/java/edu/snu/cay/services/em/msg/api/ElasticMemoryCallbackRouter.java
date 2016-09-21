@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.msg.api;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryCallbackRouterImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
@@ -35,19 +35,19 @@ public interface ElasticMemoryCallbackRouter {
    * @param operationId A unique ID for the EM operation.
    * @param callback The handler to be called when operation is complete, or null for a no-op callback.
    */
-  void register(String operationId, @Nullable EventHandler<AvroElasticMemoryMessage> callback);
+  void register(String operationId, @Nullable EventHandler<MigrationMsg> callback);
 
   /**
    * Call the registered callback for a completed EM operation.
    * @param msg The message that indicates a completed EM operation.
    */
   // TODO #205: Reconsider using of Avro message in EM's callback
-  void onCompleted(AvroElasticMemoryMessage msg);
+  void onCompleted(MigrationMsg msg);
 
    /**
    * Call the registered callback for a failed EM operation.
    * @param msg The message that indicates a failed EM operation.
    */
   // TODO #205: Reconsider using of Avro message in EM's callback
-  void onFailed(AvroElasticMemoryMessage msg);
+  void onFailed(MigrationMsg msg);
 }

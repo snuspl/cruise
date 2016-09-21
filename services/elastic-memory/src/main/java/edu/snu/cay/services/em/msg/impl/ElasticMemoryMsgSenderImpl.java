@@ -39,7 +39,7 @@ import java.util.logging.Logger;
 
 /**
  * Sender class that uses NetworkConnectionService to
- * send AvroElasticMemoryMessages to the driver and evaluators.
+ * send EMMsgs to the driver and evaluators.
  */
 public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgSenderImpl.class.getName());
@@ -59,10 +59,10 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     this.driverId = driverId;
   }
 
-  private void send(final String destId, final AvroElasticMemoryMessage msg) {
+  private void send(final String destId, final EMMsg msg) {
     LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
 
-    final Connection<AvroElasticMemoryMessage> conn = emNetworkSetup.getConnectionFactory()
+    final Connection<EMMsg> conn = emNetworkSetup.getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();
@@ -74,7 +74,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
   }
-
 
   @Override
   public void sendRemoteOpReqMsg(final String origId, final String destId, final DataOpType operationType,
@@ -137,11 +136,11 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     }
   }
 
-  private AvroElasticMemoryMessage generateRemoteOpReqMsg(final String origId,
-                                                          final DataOpType operationType,
-                                                          final Object dataKeys, final Object dataValues,
-                                                          final String operationId,
-                                                          @Nullable final TraceInfo parentTraceInfo) {
+  private EMMsg generateRemoteOpReqMsg(final String origId,
+                                       final DataOpType operationType,
+                                       final Object dataKeys, final Object dataValues,
+                                       final String operationId,
+                                       @Nullable final TraceInfo parentTraceInfo) {
     final RemoteOpReqMsg remoteOpReqMsg = RemoteOpReqMsg.newBuilder()
         .setOrigEvalId(origId)
         .setOpType(operationType)
@@ -149,11 +148,16 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
         .setDataValues(dataValues)
         .build();
 
-    return AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.RemoteOpReqMsg)
+    final RemoteOpMsg remoteMsg = RemoteOpMsg.newBuilder()
+        .setType(RemoteMsgType.RemoteOpReqMsg)
+        .setRemoteOpReqMsg(remoteOpReqMsg)
         .setOperationId(operationId)
         .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-        .setRemoteOpReqMsg(remoteOpReqMsg)
+        .build();
+
+    return EMMsg.newBuilder()
+        .setType(EMMsgType.RemoteOpMsg)
+        .setRemoteOpMsg(remoteMsg)
         .build();
   }
 
@@ -210,21 +214,26 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     }
   }
 
-  private AvroElasticMemoryMessage generateRemoteOpResultMsg(final Object dataValues, final boolean isSuccess,
-                                                             final List<KeyRange> failedRanges,
-                                                             final String operationId,
-                                                             @Nullable final TraceInfo parentTraceInfo) {
+  private EMMsg generateRemoteOpResultMsg(final Object dataValues, final boolean isSuccess,
+                                          final List<KeyRange> failedRanges,
+                                          final String operationId,
+                                          @Nullable final TraceInfo parentTraceInfo) {
     final RemoteOpResultMsg remoteOpResultMsg = RemoteOpResultMsg.newBuilder()
         .setIsSuccess(isSuccess)
         .setDataValues(dataValues)
         .setFailedKeyRanges(failedRanges)
         .build();
 
-    return AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.RemoteOpResultMsg)
+    final RemoteOpMsg remoteOpMsg = RemoteOpMsg.newBuilder()
+        .setType(RemoteMsgType.RemoteOpResultMsg)
+        .setRemoteOpResultMsg(remoteOpResultMsg)
         .setOperationId(operationId)
         .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-        .setRemoteOpResultMsg(remoteOpResultMsg)
+        .build();
+
+    return EMMsg.newBuilder()
+        .setType(EMMsgType.RemoteOpMsg)
+        .setRemoteOpMsg(remoteOpMsg)
         .build();
   }
 
@@ -241,17 +250,22 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
 
+      detached = sendRoutingInitReqMsgScope.detach();
+
       final RoutingTableInitReqMsg routingTableInitReqMsg = RoutingTableInitReqMsg.newBuilder()
           .setEvalId(emNetworkSetup.getMyId().toString())
           .build();
 
-      detached = sendRoutingInitReqMsgScope.detach();
+      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
+          .setType(RoutingTableMsgType.RoutingTableInitReqMsg)
+          .setRoutingTableInitReqMsg(routingTableInitReqMsg)
+          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          .build();
 
       send(driverId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.RoutingTableInitReqMsg)
-              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
-              .setRoutingTableInitReqMsg(routingTableInitReqMsg)
+          EMMsg.newBuilder()
+              .setType(EMMsgType.RoutingTableMsg)
+              .setRoutingTableMsg(routingTableMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
@@ -274,17 +288,22 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
 
+      detached = sendRoutingTableInitMsgScope.detach();
+
       final RoutingTableInitMsg routingTableInitMsg = RoutingTableInitMsg.newBuilder()
           .setBlockLocations(blockLocations)
           .build();
 
-      detached = sendRoutingTableInitMsgScope.detach();
+      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
+          .setType(RoutingTableMsgType.RoutingTableInitMsg)
+          .setRoutingTableInitMsg(routingTableInitMsg)
+          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          .build();
 
       send(destId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.RoutingTableInitMsg)
-              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
-              .setRoutingTableInitMsg(routingTableInitMsg)
+          EMMsg.newBuilder()
+              .setType(EMMsgType.RoutingTableMsg)
+              .setRoutingTableMsg(routingTableMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
@@ -308,19 +327,24 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
 
+      detached = sendRoutingTableUpdateMsgScope.detach();
+
       final RoutingTableUpdateMsg routingTableUpdateMsg = RoutingTableUpdateMsg.newBuilder()
           .setOldEvalId(oldEvalId)
           .setNewEvalId(newEvalId)
           .setBlockIds(blocks)
           .build();
 
-      detached = sendRoutingTableUpdateMsgScope.detach();
+      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
+          .setType(RoutingTableMsgType.RoutingTableUpdateMsg)
+          .setRoutingTableUpdateMsg(routingTableUpdateMsg)
+          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          .build();
 
       send(destId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.RoutingTableUpdateMsg)
-              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
-              .setRoutingTableUpdateMsg(routingTableUpdateMsg)
+          EMMsg.newBuilder()
+              .setType(EMMsgType.RoutingTableMsg)
+              .setRoutingTableMsg(routingTableMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
@@ -343,20 +367,26 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // sending MoveInit msg is the starting point of the migration protocol
     try (final TraceScope sendMoveInitMsgScope = Trace.startSpan("[1]send_move_init_msg", parentTraceInfo)) {
 
+      detached = sendMoveInitMsgScope.detach();
+
       final MoveInitMsg moveInitMsg = MoveInitMsg.newBuilder()
           .setDestEvalId(targetEvalId)
           .setBlockIds(blocks)
           .build();
 
-      detached = sendMoveInitMsgScope.detach();
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+          .setType(MigrationMsgType.MoveInitMsg)
+          .setMoveInitMsg(moveInitMsg)
+          .setOperationId(operationId)
+          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          .build();
 
       send(destId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.MoveInitMsg)
-              .setOperationId(operationId)
-              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
-              .setMoveInitMsg(moveInitMsg)
+          EMMsg.newBuilder()
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
+
     } finally {
       Trace.continueSpan(detached).close();
     }
@@ -393,6 +423,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
           new Object[]{destId});
 
+      detached = sendDataMsgScope.detach();
+
       final DataMsg dataMsg = DataMsg.newBuilder()
           .setSrcEvalId(emNetworkSetup.getMyId().toString())
           .setDestEvalId(destId)
@@ -400,14 +432,17 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setKeyValuePairs(keyValuePairs)
           .build();
 
-      detached = sendDataMsgScope.detach();
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+          .setType(MigrationMsgType.DataMsg)
+          .setDataMsg(dataMsg)
+          .setOperationId(operationId)
+          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          .build();
 
       send(destId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.DataMsg)
-              .setOperationId(operationId)
-              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
-              .setDataMsg(dataMsg)
+          EMMsg.newBuilder()
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
@@ -433,6 +468,9 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     try (final TraceScope sendOwnershipMsgScope = Trace.startSpan(
         String.format("[%d]send_ownership_msg. blockId: %d", stepIndex, blockId), parentTraceInfo)) {
+
+      detached = sendOwnershipMsgScope.detach();
+
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
               .setBlockId(blockId)
@@ -440,14 +478,17 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setNewOwnerId(newOwnerId)
               .build();
 
-      detached = sendOwnershipMsgScope.detach();
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+          .setType(MigrationMsgType.OwnershipMsg)
+          .setOwnershipMsg(ownershipMsg)
+          .setOperationId(operationId)
+          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          .build();
 
       send(destId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.OwnershipMsg)
-              .setOperationId(operationId)
-              .setOwnershipMsg(ownershipMsg)
-              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          EMMsg.newBuilder()
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
     } finally {
       Trace.continueSpan(detached).close();
@@ -465,18 +506,24 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     try (final TraceScope sendBlockMovedMsgScope = Trace.startSpan(
         String.format("[5]send_block_moved_msg. blockId : %d", blockId), parentTraceInfo)) {
+
+      detached = sendBlockMovedMsgScope.detach();
+
       final BlockMovedMsg blockMovedMsg = BlockMovedMsg.newBuilder()
           .setBlockId(blockId)
           .build();
 
-      detached = sendBlockMovedMsgScope.detach();
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+          .setType(MigrationMsgType.BlockMovedMsg)
+          .setBlockMovedMsg(blockMovedMsg)
+          .setOperationId(operationId)
+          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          .build();
 
       send(driverId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.BlockMovedMsg)
-              .setOperationId(operationId)
-              .setBlockMovedMsg(blockMovedMsg)
-              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          EMMsg.newBuilder()
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
     } finally {
       Trace.continueSpan(detached).close();
@@ -496,20 +543,25 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",
           new Object[]{operationId, reason});
 
+      detached = sendFailureMsgScope.detach();
+
       final FailureMsg failureMsg =
           FailureMsg.newBuilder()
               .setOperationId(operationId)
               .setReason(reason)
               .build();
 
-      detached = sendFailureMsgScope.detach();
+      final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+          .setType(MigrationMsgType.FailureMsg)
+          .setFailureMsg(failureMsg)
+          .setOperationId(operationId)
+          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          .build();
 
       send(driverId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.FailureMsg)
-              .setOperationId(operationId)
-              .setFailureMsg(failureMsg)
-              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          EMMsg.newBuilder()
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",
