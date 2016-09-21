@@ -26,16 +26,6 @@
 #include "JavaCudnn.h"
 #include "JavaCuda.h"
 
-/*
- * Many cuDNN routines like cudnnConvolutionForward take pointers to scaling factors (in host memory),
- * that are used to blend computed values with initial values in the destination tensor as follows:
- * dstValue = alpha[0]*computedValue + beta[0]*priorDstValue.
- * For improved performance it is advised to use beta[0] = 0.0.
- * Use a non-zero value for beta[0] only when blending with prior values stored in the output tensor is needed.
- * For further description refer to cuDNN API.
- * We are following Caffe in this matter, so it may need to be changed.
- */
-
 bool cudnnCheck(const cudnnStatus_t condition) {
   return (condition == CUDNN_STATUS_SUCCESS);
 }
@@ -283,12 +273,12 @@ bool JavaCudnn::convGenWeightGradient(
     const cudnnConvolutionBwdFilterAlgo_t* algo, void* workspace, size_t workspaceSizeInBytes,
     const cudnnFilterDescriptor_t* dwDesc, void* dw) {
   return cudnnCheck(cudnnConvolutionBackwardFilter(
-      getCudnnHandle(), &CUDA_ONE, *xDesc, x, *dyDesc, dy, *convDesc, *algo, workspace, workspaceSizeInBytes, &CUDA_ONE, *dwDesc, dw));
+      getCudnnHandle(), &CUDA_ONE, *xDesc, x, *dyDesc, dy, *convDesc, *algo, workspace, workspaceSizeInBytes, &CUDA_ZERO, *dwDesc, dw));
 }
 
 bool JavaCudnn::convGenBiasGradient(
     const cudnnTensorDescriptor_t* dyDesc, const void* dy, const cudnnTensorDescriptor_t* dbDesc, void* db) {
-  return cudnnCheck(cudnnConvolutionBackwardBias(getCudnnHandle(), &CUDA_ONE, *dyDesc, dy, &CUDA_ONE, *dbDesc, db));
+  return cudnnCheck(cudnnConvolutionBackwardBias(getCudnnHandle(), &CUDA_ONE, *dyDesc, dy, &CUDA_ZERO, *dbDesc, db));
 }
 
 bool JavaCudnn::poolFeedForward(
