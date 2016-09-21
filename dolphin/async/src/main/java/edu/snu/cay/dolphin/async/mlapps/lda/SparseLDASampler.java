@@ -65,6 +65,11 @@ final class SparseLDASampler {
 
     computeTracer.startTimer();
     final int[] globalWordCountByTopics = topicVectors.remove(words.size() - 1);
+    final int[] topicSummaryVector = new int[numTopics];
+    for (int i = 0; i < globalWordCountByTopics.length; i++) {
+      topicSummaryVector[globalWordCountByTopics[i++]] = globalWordCountByTopics[i];
+    }
+
     final Map<Integer, int[]> wordTopicVectors = new HashMap<>(topicVectors.size());
     for (int i = 0; i < topicVectors.size(); ++i) {
       wordTopicVectors.put(words.get(i), topicVectors.get(i));
@@ -88,7 +93,7 @@ final class SparseLDASampler {
       // Recalculate for each document to adapt changes from other workers.
       for (int i = 0; i < numTopics; i++) {
         final int topicCount = document.getTopicCount(i);
-        final double denom = globalWordCountByTopics[i] + beta * numVocabs;
+        final double denom = topicSummaryVector[i] + beta * numVocabs;
         qCoefficients[i] = (alpha + topicCount) / denom;
         // All s terms are not zero
         sTerms[i] = alpha * beta / denom;
@@ -107,7 +112,7 @@ final class SparseLDASampler {
         final int oldTopicCount = document.getTopicCount(oldTopic);
 
         // Remove the current word from the document and update terms.
-        final double denom = (globalWordCountByTopics[oldTopic] - 1) + beta * numVocabs;
+        final double denom = (topicSummaryVector[oldTopic] - 1) + beta * numVocabs;
         sumS -= sTerms[oldTopic];
         sTerms[oldTopic] = (alpha * beta) / denom;
         sumS += sTerms[oldTopic];
@@ -132,14 +137,12 @@ final class SparseLDASampler {
         nonZeroQTermIndices.clear();
         sumQ = 0.0;
 
-        for (int i = 0; i < numTopics; i++) {
-          qTerms[i] = 0.0;
+        for (int i = 0; i < wordTopicCount.length; i++) {
+          final int topic = wordTopicCount[i++];
           final int count = wordTopicCount[i];
-          if (count != 0) {
-            qTerms[i] = qCoefficients[i] * count;
-            sumQ += qTerms[i];
-            nonZeroQTermIndices.add(i);
-          }
+          qTerms[topic] = qCoefficients[topic] * count;
+          sumQ += qTerms[topic];
+          nonZeroQTermIndices.add(topic);
         }
 
         // Sample a new topic based on the terms
@@ -160,7 +163,7 @@ final class SparseLDASampler {
         final int newTopicCount = document.getTopicCount(newTopic);
 
         // Update the terms and add the removed word with the new topic.
-        final double newDenom = (globalWordCountByTopics[newTopic] + 1) + beta * numVocabs;
+        final double newDenom = (topicSummaryVector[newTopic] + 1) + beta * numVocabs;
         sumS -= sTerms[newTopic];
         sTerms[newTopic] = (alpha * beta) / newDenom;
         sumS += sTerms[newTopic];

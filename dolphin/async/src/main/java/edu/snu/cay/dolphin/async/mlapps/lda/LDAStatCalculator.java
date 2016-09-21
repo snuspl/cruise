@@ -94,13 +94,15 @@ final class LDAStatCalculator {
   double computeWordLLH(final Collection<int[]> wordTopicCounts, final int[] wordTopicCountsSummary) {
     double result = numTopics * (Gamma.logGamma(numVocabs * beta) - numVocabs * Gamma.logGamma(beta));
     for (final int[] wordTopicCount : wordTopicCounts) {
-      for (int j = 0; j < numTopics; j++) {
-        result += wordTopicCount[j] == 0 ? logGammaBeta : Gamma.logGamma(wordTopicCount[j] + beta);
+      for (int j = 1; j < wordTopicCount.length; j += 2) {
+        result += Gamma.logGamma(wordTopicCount[j] + beta);
       }
+      result += logGammaBeta * (numTopics - wordTopicCount.length / 2);
     }
-    for (int j = 0; j < numTopics; j++) {
+    for (int j = 1; j < wordTopicCountsSummary.length; j += 2) {
       result -= Gamma.logGamma(wordTopicCountsSummary[j] + numVocabs * beta);
     }
+    result -= Gamma.logGamma(numVocabs * beta) * (numTopics - wordTopicCountsSummary.length / 2);
     return result;
   }
 }
