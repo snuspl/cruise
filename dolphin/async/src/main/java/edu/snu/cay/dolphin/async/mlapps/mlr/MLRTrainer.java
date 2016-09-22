@@ -21,6 +21,7 @@ import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -118,10 +119,11 @@ final class MLRTrainer implements Trainer {
   /**
    * Number of instances to compute training loss with.
    */
-  private final int trainErrorDatasetSize;
+  private final int trainErrorDataSetSize;
 
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
+  private final TrainingDataProvider<Long> trainingDataProvider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -139,10 +141,11 @@ final class MLRTrainer implements Trainer {
                      @Parameter(Lambda.class) final double lambda,
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
+                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDataSetSize,
                      @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
+                     final TrainingDataProvider<Long> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
@@ -161,10 +164,11 @@ final class MLRTrainer implements Trainer {
     this.newModels = new Vector[numClasses];
     this.decayRate = decayRate;
     this.decayPeriod = decayPeriod;
-    this.trainErrorDatasetSize = trainErrorDatasetSize;
+    this.trainErrorDataSetSize = trainErrorDataSetSize;
     this.metricsMsgSender = metricsMsgSender;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
+    this.trainingDataProvider = trainingDataProvider;
 
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
@@ -202,8 +206,8 @@ final class MLRTrainer implements Trainer {
     LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerIter);
     LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
     LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
-    if (dataValues.size() < trainErrorDatasetSize) {
-      LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDatasetSize);
+    if (dataValues.size() < trainErrorDataSetSize) {
+      LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDataSetSize);
     }
   }
 
@@ -212,66 +216,53 @@ final class MLRTrainer implements Trainer {
     final long iterationBegin = System.currentTimeMillis();
     resetTracers();
 
-    final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
-    final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
-
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
 
-    int numInstances = 0;
-    int batchIdx = 0;
-    int batchSize = workload.size() / numMiniBatchPerIter +
-        ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
-
-    pullModels();
-
     computeTracer.startTimer();
-    for (final Pair<Vector, Integer> entry : workload) {
-      if (numInstances >= batchSize) {
-        computeTracer.recordTime(numInstances);
+    Map<Long, Pair<Vector, Integer>> workloadMap = trainingDataProvider.getNextTrainingData();
+    computeTracer.recordTime(0);
+    while (!workloadMap.isEmpty()) {
+      // pull data when mini-batch is started
+      pullModels();
 
-        // push gradients and pull fresh models
-        pushAndResetGradients();
-        pullModels();
+      computeTracer.startTimer();
+      final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
+      for (final Pair<Vector, Integer> entry : workload) {
 
-        numInstances = 0;
-        ++batchIdx;
+        final Vector features = entry.getFirst();
+        final int label = entry.getSecond();
 
-        // Recalculate batchSize to take care of the (workload.size() % numMiniBatchPerIter) instances.
-        batchSize = workload.size() / numMiniBatchPerIter +
-            ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
-        computeTracer.startTimer();
-      }
+        // compute h(x, w) = softmax(x dot w)
+        final Vector predictions = predict(features);
 
-      final Vector features = entry.getFirst();
-      final int label = entry.getSecond();
+        // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
+        // instead of allocating a new vector for the error,
+        // we use the same object for convenience
+        predictions.set(label, predictions.get(label) - 1);
 
-      // compute h(x, w) = softmax(x dot w)
-      final Vector predictions = predict(features);
-
-      // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
-      // instead of allocating a new vector for the error,
-      // we use the same object for convenience
-      predictions.set(label, predictions.get(label) - 1);
-
-      // gradient_j = -stepSize * error_j * x
-      if (lambda != 0) {
-        for (int j = 0; j < numClasses; ++j) {
-          newModels[j].axpy(-predictions.get(j) * stepSize, features);
-          newModels[j].axpy(-stepSize * lambda, newModels[j]);
-        }
-      } else {
-        for (int j = 0; j < numClasses; ++j) {
-          newModels[j].axpy(-predictions.get(j) * stepSize, features);
+        // gradient_j = -stepSize * error_j * x
+        if (lambda != 0) {
+          for (int j = 0; j < numClasses; ++j) {
+            newModels[j].axpy(-predictions.get(j) * stepSize, features);
+            newModels[j].axpy(-stepSize * lambda, newModels[j]);
+          }
+        } else {
+          for (int j = 0; j < numClasses; ++j) {
+            newModels[j].axpy(-predictions.get(j) * stepSize, features);
+          }
         }
       }
-      ++numInstances;
+
+      workloadMap = trainingDataProvider.getNextTrainingData();
+
+      // A mini-batch is ended
+      computeTracer.recordTime(workload.size());
+
+      // push gradients
+      pushAndResetGradients();
     }
-
-    computeTracer.recordTime(numInstances);
-
-    pushAndResetGradients();
 
     if (iteration % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -280,12 +271,14 @@ final class MLRTrainer implements Trainer {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
+    final Map<Long, Pair<Vector, Integer>> totalWorkloadMap = memoryStore.getAll();
+    final List<Pair<Vector, Integer>> totalWorkLoad = new ArrayList<>(totalWorkloadMap.values());
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(trainErrorDatasetSize, workload);
+    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(trainErrorDataSetSize, totalWorkLoad);
     final Metrics appMetrics = buildAppMetrics(lossRegLossAccuracy.getFirst(),
-        lossRegLossAccuracy.getSecond(), (double) lossRegLossAccuracy.getThird(), elapsedTime, numInstances);
+        lossRegLossAccuracy.getSecond(), (double) lossRegLossAccuracy.getThird(), elapsedTime, totalWorkLoad.size());
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, numEMBlocks, workload.size(), elapsedTime);
+        buildMetricsMsg(iteration, appMetrics, numEMBlocks, totalWorkLoad.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);

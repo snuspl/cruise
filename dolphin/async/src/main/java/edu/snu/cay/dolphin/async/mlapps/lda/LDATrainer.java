@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -50,7 +50,7 @@ final class LDATrainer implements Trainer {
   private final MemoryStore<Long> memoryStore;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final int numMiniBatchPerIter;
+  private final TrainingDataProvider<Long> trainingDataProvider;
 
   @Inject
   private LDATrainer(final LDADataParser dataParser,
@@ -60,8 +60,8 @@ final class LDATrainer implements Trainer {
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                     @Parameter(NumVocabs.class) final int numVocabs,
-                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter) {
+                     final TrainingDataProvider<Long> trainingDataProvider,
+                     @Parameter(NumVocabs.class)final int numVocabs) {
     this.dataParser = dataParser;
     this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
@@ -69,8 +69,8 @@ final class LDATrainer implements Trainer {
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
+    this.trainingDataProvider = trainingDataProvider;
     this.numVocabs = numVocabs;
-    this.numMiniBatchPerIter = numMiniBatchPerIter;
 
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
@@ -109,20 +109,21 @@ final class LDATrainer implements Trainer {
   public void run(final int iteration) {
     LOG.log(Level.INFO, "Iteration Started");
 
-    final Map<Long, Document> workloadMap = memoryStore.getAll();
-    final List<Document> workload = new ArrayList<>(workloadMap.values());
-    final int numDocuments = workload.size();
     int numSampledDocuments = 0;
+    int miniBatchCount = 0;
+    Map<Long, Document> workLoadMap = trainingDataProvider.getNextTrainingData();
+    while (!workLoadMap.isEmpty()) {
+      final List<Document> workLoad = new ArrayList<>(workLoadMap.values());
+      final int batchSize = workLoad.size();
 
-    for (int batchIdx = 0; batchIdx < numMiniBatchPerIter; batchIdx++) {
-      final int batchSize = numDocuments / numMiniBatchPerIter
-          + ((numDocuments % numMiniBatchPerIter > batchIdx) ? 1 : 0);
-
-      sampler.sample(workload.subList(numSampledDocuments, numSampledDocuments + batchSize));
+      sampler.sample(workLoad);
 
       numSampledDocuments += batchSize;
-      LOG.log(Level.INFO, "{0} documents out of {1} have been sampled",
-          new Object[]{numSampledDocuments, numDocuments});
+      miniBatchCount++;
+      LOG.log(Level.INFO, "{0} documents have been sampled, mini-batch count is {1}",
+          new Object[]{numSampledDocuments, miniBatchCount});
+
+      workLoadMap = trainingDataProvider.getNextTrainingData();
     }
 
     LOG.log(Level.INFO, "Start computing log likelihood");
@@ -130,7 +131,9 @@ final class LDATrainer implements Trainer {
     // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution,
     // in a form of numTopics-dimensional vector
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
-    LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(statCalculator.computeDocLLH(workload),
+    final Map<Long, Document> totalWorkloadMap = memoryStore.getAll();
+    final List<Document> totalWorkLoad = new ArrayList<>(totalWorkloadMap.values());
+    LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(statCalculator.computeDocLLH(totalWorkLoad),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary)));
 
     LOG.log(Level.INFO, "Iteration Ended");

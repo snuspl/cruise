@@ -39,6 +39,7 @@ final class AsyncWorkerTask implements Task {
   private final String taskId;
   private final int maxIterations;
   private final WorkerSynchronizer synchronizer;
+  private final TrainingDataProvider trainingDataProvider;
   private final Trainer trainer;
   private final WorkerClock workerClock;
 
@@ -52,11 +53,13 @@ final class AsyncWorkerTask implements Task {
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
                           final WorkerSynchronizer synchronizer,
+                          final TrainingDataProvider trainingDataProvider,
                           final Trainer trainer,
                           final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
     this.synchronizer = synchronizer;
+    this.trainingDataProvider = trainingDataProvider;
     this.trainer = trainer;
     this.workerClock = workerClock;
   }
@@ -87,6 +90,7 @@ final class AsyncWorkerTask implements Task {
         workerClock.recordClockNetworkWaitingTime();
         return null;
       }
+      trainingDataProvider.prepareDataForEpoch();
       trainer.run(iteration);
       workerClock.clock();
     }
