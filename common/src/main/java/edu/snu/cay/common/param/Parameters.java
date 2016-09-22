@@ -80,6 +80,12 @@ public final class Parameters {
   public final class MiniBatches implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "Mini-batch size in number of training data instances",
+      short_name = "mini_batch_size",
+      default_value = "1000")
+  public final class MiniBatchSize implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "The minimum cost benefit (in a ratio) for which system optimization occurs. " +
       "0 = optimization occurs for any benefit greater than 0.",
       short_name = "opt_benefit_threshold",

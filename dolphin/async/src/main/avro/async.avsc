@@ -31,8 +31,8 @@
     {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics"],
      "default":null},
 
-    // iteration number
-    {"name": "itrIdx", "type": "int", "default": 0},
+    // epoch number
+    {"name": "epochIdx", "type": "int", "default": 0},
 
     // number of data blocks used for MemoryStore
     {"name": "numDataBlocks", "type": "int", "default": 0},
@@ -40,25 +40,28 @@
     // number of data items (mapped to a key in MemoryStore) processed
     {"name": "processedDataItemCount", "type": "int", "default": 0},
 
-    // number of mini-batches per iteration
-    {"name": "numMiniBatchPerItr", "type": "int", "default": 0},
+    // number of training data instances processed per mini-batch
+    {"name": "miniBatchSize", "type": "int", "default": 0},
 
-    // total elapsed time for this iteration (seconds)
+    // number of mini-batches for this epoch
+    {"name": "numMiniBatchForEpoch", "type": "int", "default": 0},
+
+    // total elapsed time for this epoch (seconds)
     {"name": "totalTime", "type": "double", "default": 0.0},
 
-    // total computation time for this iteration (seconds)
+    // total computation time for this epoch (seconds)
     {"name": "totalCompTime", "type": "double", "default": 0.0},
 
-    // total push time for this iteration (seconds)
+    // total push time for this epoch (seconds)
     {"name": "totalPushTime", "type": "double", "default": 0.0},
 
-    // total pull time for this iteration (seconds)
+    // total pull time for this epoch (seconds)
     {"name": "totalPullTime", "type": "double", "default": 0.0},
 
-    // average push time per trace/element for this iteration (seconds)
+    // average push time per trace/element for this epoch (seconds)
     {"name": "avgPushTime", "type": "double", "default": 0.0},
 
-    // average pull time per trace/element for this iteration (seconds)
+    // average pull time per trace/element for this epoch (seconds)
     {"name": "avgPullTime", "type": "double", "default": 0.0}
   ]
 }

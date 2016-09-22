@@ -56,11 +56,12 @@ final class NMFTrainer implements Trainer {
   private final int rank;
   private final double stepSize;
   private final double lambda;
+
   /**
-   * Mini-batch size used for mini-batch gradient descent.
-   * If less than {@code 1}, a standard gradient descent method is used.
+   * Number of training data instances to be processed per mini-batch.
    */
-  private final int numMiniBatchPerIter;
+  private final int miniBatchSize;
+
   private final boolean printMatrices;
   private final NMFModelGenerator modelGenerator;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
@@ -83,7 +84,7 @@ final class NMFTrainer implements Trainer {
                      @Parameter(Rank.class) final int rank,
                      @Parameter(StepSize.class) final double stepSize,
                      @Parameter(Lambda.class) final double lambda,
-                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
+                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      final NMFModelGenerator modelGenerator,
                      final DataIdFactory<Long> idFactory,
@@ -95,7 +96,7 @@ final class NMFTrainer implements Trainer {
     this.rank = rank;
     this.stepSize = stepSize;
     this.lambda = lambda;
-    this.numMiniBatchPerIter = numMiniBatchPerIter;
+    this.miniBatchSize = miniBatchSize;
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
     this.idFactory = idFactory;
@@ -124,7 +125,7 @@ final class NMFTrainer implements Trainer {
     memoryStore.putList(dataKeys, dataValues);
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerIter);
+    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues).size());
     LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
   }
@@ -143,28 +144,34 @@ final class NMFTrainer implements Trainer {
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
 
-    int numInstances = 0;
-    int batchIdx = 0;
-    int batchSize = workload.size() / numMiniBatchPerIter +
-        ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+
+    final int numTotalInstances = workload.size();
+    int numInstancesProcessed = 0;
+    int numInstancesToProcess = miniBatchSize;
+
+    final int numMiniBatches = (int) Math.ceil((double) numTotalInstances / miniBatchSize);
+    int miniBatchIdx = 0;
+    LOG.log(Level.INFO, "Number of mini-batches for epoch {0} = {1}", new Object[] {iteration, numMiniBatches});
 
     pullRMatrix(getKeys(workload));
 
     computeTracer.startTimer();
     for (final NMFData datum : workload) {
-      if (numInstances >= batchSize) {
-        computeTracer.recordTime(numInstances);
+      if (numInstancesProcessed == numInstancesToProcess) {
+        computeTracer.recordTime(numInstancesProcessed);
 
         // push gradients and pull fresh models
         pushAndResetGradients();
         pullRMatrix(getKeys(workload));
 
-        numInstances = 0;
-        ++batchIdx;
+        numInstancesProcessed = 0;
+        ++miniBatchIdx;
 
-        // Recalculate batchSize to take care of the (workload.size() % numMiniBatchPerIter) instances.
-        batchSize = workload.size() / numMiniBatchPerIter +
-            ((workload.size() % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+        // The last mini-batch may take fewer than "miniBatchSize" training data instances.
+        if (miniBatchIdx == numMiniBatches - 1) {
+          numInstancesToProcess = numTotalInstances % miniBatchSize;
+        }
+
         computeTracer.startTimer();
       }
 
@@ -205,17 +212,17 @@ final class NMFTrainer implements Trainer {
       // update L matrix
       modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
 
-      ++numInstances;
+      ++numInstancesProcessed;
     }
 
-    computeTracer.recordTime(numInstances);
+    computeTracer.recordTime(numInstancesProcessed);
 
     pushAndResetGradients();
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, workload.size());
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, numEMBlocks, workload.size(), elapsedTime);
+        buildMetricsMsg(iteration, appMetrics, numMiniBatches, numEMBlocks, workload.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
@@ -324,12 +331,14 @@ final class NMFTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numDataBlocks,
-                                        final int numProcessedDataItemCount, final double elapsedTime) {
+  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numMiniBatchForEpoch,
+                                        final int numDataBlocks, final int numProcessedDataItemCount,
+                                        final double elapsedTime) {
     return WorkerMetrics.newBuilder()
         .setMetrics(appMetrics)
-        .setItrIdx(iteration)
-        .setNumMiniBatchPerItr(numMiniBatchPerIter)
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
         .setNumDataBlocks(numDataBlocks)
         .setProcessedDataItemCount(numProcessedDataItemCount)
         .setTotalTime(elapsedTime)
