@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -52,6 +53,10 @@ final class LDATrainer implements Trainer {
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
   private final int numMiniBatchPerIter;
 
+  private final Tracer pushTracer;
+  private final Tracer pullTracer;
+  private final Tracer computeTracer;
+
   @Inject
   private LDATrainer(final LDADataParser dataParser,
                      final LDABatchParameterWorker batchParameterWorker,
@@ -77,6 +82,10 @@ final class LDATrainer implements Trainer {
     for (int i = 0; i < numVocabs + 1; i++) {
       vocabList.add(i);
     }
+
+    this.pushTracer = new Tracer();
+    this.pullTracer = new Tracer();
+    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -118,7 +127,8 @@ final class LDATrainer implements Trainer {
       final int batchSize = numDocuments / numMiniBatchPerIter
           + ((numDocuments % numMiniBatchPerIter > batchIdx) ? 1 : 0);
 
-      sampler.sample(workload.subList(numSampledDocuments, numSampledDocuments + batchSize));
+      sampler.sample(workload.subList(numSampledDocuments, numSampledDocuments + batchSize),
+          computeTracer, pushTracer, pullTracer);
 
       numSampledDocuments += batchSize;
       LOG.log(Level.INFO, "{0} documents out of {1} have been sampled",
