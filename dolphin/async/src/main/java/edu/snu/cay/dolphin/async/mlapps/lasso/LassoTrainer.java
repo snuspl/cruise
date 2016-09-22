@@ -127,6 +127,16 @@ final class LassoTrainer implements Trainer {
     }
   }
 
+  @Override
+  public void initEpochVariables(final int epoch) {
+
+  }
+
+  @Override
+  public void wrapUpEpochVariables(final int epoch) {
+
+  }
+
   /**
    * {@inheritDoc} <br>
    * 1) Pull model from server. <br>
@@ -138,7 +148,7 @@ final class LassoTrainer implements Trainer {
    * 4) Push value to server.
    */
   @Override
-  public void run(final int iteration) {
+  public void run() {
     final double[] vecModel = new double[vecXArray.length];
     for (int index = 0; index < vecModel.length; index++) {
       vecModel[index] = parameterWorker.pull(index);

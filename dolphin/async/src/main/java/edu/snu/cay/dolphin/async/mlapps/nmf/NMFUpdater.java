@@ -57,4 +57,9 @@ final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
   public Vector initValue(final Integer key) {
     return modelGenerator.createRandomVector();
   }
+
+  @Override
+  public Vector aggregate(final Vector oldPreValue, final Vector newPreValue) {
+    return oldPreValue.addi(newPreValue);
+  }
 }

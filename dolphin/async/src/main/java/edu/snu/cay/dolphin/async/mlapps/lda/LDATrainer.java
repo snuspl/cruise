@@ -16,12 +16,10 @@
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.TrainingDataSplitter;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -39,38 +37,30 @@ final class LDATrainer implements Trainer {
 
   private static final Logger LOG = Logger.getLogger(LDATrainer.class.getName());
 
-  private final LDADataParser dataParser;
-  private final LDABatchParameterWorker batchParameterWorker;
   private final SparseLDASampler sampler;
   private final LDAStatCalculator statCalculator;
   private final int numVocabs;
   private final List<Integer> vocabList;
 
-  private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
+  private final TrainingDataSplitter<Long> trainingDataSplitter;
+
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final int numMiniBatchPerIter;
 
   @Inject
-  private LDATrainer(final LDADataParser dataParser,
-                     final LDABatchParameterWorker batchParameterWorker,
-                     final SparseLDASampler sampler,
+  private LDATrainer(final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
-                     final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
+                     final TrainingDataSplitter<Long> trainingDataSplitter,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                     @Parameter(NumVocabs.class) final int numVocabs,
-                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter) {
-    this.dataParser = dataParser;
-    this.batchParameterWorker = batchParameterWorker;
+                     @Parameter(NumVocabs.class) final int numVocabs) {
     this.sampler = sampler;
     this.statCalculator = statCalculator;
-    this.idFactory = idFactory;
     this.memoryStore = memoryStore;
+    this.trainingDataSplitter = trainingDataSplitter;
     this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
-    this.numMiniBatchPerIter = numMiniBatchPerIter;
 
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
@@ -81,59 +71,35 @@ final class LDATrainer implements Trainer {
 
   @Override
   public void initialize() {
-    final List<Document> documents = dataParser.parse();
-    final List<Long> dataKeys;
 
-    try {
-      dataKeys = idFactory.getIds(documents.size());
-    } catch (final IdGenerationException e) {
-      throw new RuntimeException(e);
-    }
-
-    memoryStore.putList(dataKeys, documents);
-
-    for (final Document document : documents) {
-      for (int i = 0; i < document.size(); i++) {
-        final int word = document.getWord(i);
-        batchParameterWorker.addTopicChange(word, document.getAssignment(i), 1);
-        // numVocabs-th row represents the total word-topic assignment count vector
-        batchParameterWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
-      }
-    }
-    batchParameterWorker.pushAndClear();
-
-    LOG.log(Level.INFO, "All random topic assignments are updated");
   }
 
   @Override
-  public void run(final int iteration) {
-    LOG.log(Level.INFO, "Iteration Started");
+  public void initEpochVariables(final int epoch) {
+    LOG.log(Level.INFO, "Epoch Started");
+  }
 
-    final Map<Long, Document> workloadMap = memoryStore.getAll();
-    final List<Document> workload = new ArrayList<>(workloadMap.values());
-    final int numDocuments = workload.size();
-    int numSampledDocuments = 0;
-
-    for (int batchIdx = 0; batchIdx < numMiniBatchPerIter; batchIdx++) {
-      final int batchSize = numDocuments / numMiniBatchPerIter
-          + ((numDocuments % numMiniBatchPerIter > batchIdx) ? 1 : 0);
-
-      sampler.sample(workload.subList(numSampledDocuments, numSampledDocuments + batchSize));
-
-      numSampledDocuments += batchSize;
-      LOG.log(Level.INFO, "{0} documents out of {1} have been sampled",
-          new Object[]{numSampledDocuments, numDocuments});
-    }
-
+  @Override
+  public void wrapUpEpochVariables(final int epoch) {
     LOG.log(Level.INFO, "Start computing log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
     // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution,
     // in a form of numTopics-dimensional vector
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
+    final Map<Long, Document> workloadMap = memoryStore.getAll();
+    final Collection<Document> workload = workloadMap.values();
     LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(statCalculator.computeDocLLH(workload),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary)));
+    LOG.log(Level.INFO, "Epoch Ended");
+  }
 
-    LOG.log(Level.INFO, "Iteration Ended");
+  @Override
+  public void run() {
+
+    final Map<Long, Document> workloadMap = trainingDataSplitter.getNextTrainingDataSplit();
+    final Collection<Document> workload = workloadMap.values();
+    sampler.sample(workload);
+
   }
 
   @Override

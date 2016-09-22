@@ -86,7 +86,7 @@ final class AddIntegerTrainer implements Trainer {
                             @Parameter(AddIntegerREEF.NumUpdatesPerItr.class) final int numberOfUpdates,
                             @Parameter(AddIntegerREEF.NumWorkers.class) final int numberOfWorkers,
                             @Parameter(AddIntegerREEF.ComputeTimeMs.class) final long computeTime,
-                            @Parameter(Parameters.Iterations.class) final int numIterations,
+                            @Parameter(Parameters.Iterations.class) final int numEpochs,
                             final MemoryStore<Long> memoryStore,
                             final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
@@ -96,9 +96,9 @@ final class AddIntegerTrainer implements Trainer {
     this.computeTime = computeTime;
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
-    this.expectedResult = delta * numberOfWorkers * numIterations * numberOfUpdates;
-    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numberOfUpdates:{3}",
-        new Object[]{delta, numberOfWorkers, numIterations, numberOfUpdates});
+    this.expectedResult = delta * numberOfWorkers * numEpochs * numberOfUpdates;
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numEpochs:{2}, numberOfUpdates:{3}",
+        new Object[]{delta, numberOfWorkers, numEpochs, numberOfUpdates});
 
     this.memoryStore = memoryStore;
     this.metricsMsgSender = metricsMsgSender;
@@ -111,7 +111,21 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration) {
+  public void initEpochVariables(final int epoch) {
+
+  }
+
+  @Override
+  public void wrapUpEpochVariables(final int epoch) {
+    // send empty metrics to trigger optimization
+    final WorkerMetrics workerMetrics =
+        buildMetricsMsg(memoryStore.getNumBlocks());
+
+    sendMetrics(workerMetrics);
+  }
+
+  @Override
+  public void run() {
     // sleep to simulate computation
     computeTracer.startTimer();
     try {
@@ -129,12 +143,6 @@ final class AddIntegerTrainer implements Trainer {
         LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{key, value});
       }
     }
-
-    // send empty metrics to trigger optimization
-    final WorkerMetrics workerMetrics =
-        buildMetricsMsg(memoryStore.getNumBlocks());
-
-    sendMetrics(workerMetrics);
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {

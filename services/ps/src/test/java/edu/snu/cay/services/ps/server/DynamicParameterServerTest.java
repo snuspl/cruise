@@ -121,6 +121,11 @@ public final class DynamicParameterServerTest {
       public Integer initValue(final Integer key) {
         return 0;
       }
+
+      @Override
+      public Integer aggregate(final Integer oldPreValue, final Integer newPreValue) {
+        return oldPreValue + newPreValue;
+      }
     });
 
     // EM's router should be initialized explicitly

@@ -177,6 +177,7 @@ public final class AsyncDolphinLauncher {
       // pass the worker class implementation as well as user-defined parameters
       final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
+          .bindImplementation(TrainingDataInitializer.class, asyncDolphinConfiguration.getTrainingDataInitializer())
           .bindNamedParameter(Iterations.class,
               Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
           .bindNamedParameter(MiniBatches.class,

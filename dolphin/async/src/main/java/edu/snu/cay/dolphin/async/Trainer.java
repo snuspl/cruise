@@ -45,12 +45,23 @@ public interface Trainer {
   void initialize();
 
   /**
-   * Main method of this trainer. The number of times this method is called can be adjusted with the parameter
-   * {@link edu.snu.cay.common.param.Parameters.Iterations}.
-   *
-   * @param iteration the index of current iteration
+   * Initializes variables that are effective within each epoch.
+   * @param epoch The current epoch
    */
-  void run(int iteration);
+  void initEpochVariables(int epoch);
+
+  /**
+   * The method to wrap-up variables that are effective within each epoch.
+   * @param epoch The current epoch
+   */
+  void wrapUpEpochVariables(int epoch);
+
+  /**
+   * Main method of this trainer.
+   * The number of times this method is called can be adjusted with the parameter
+   * {@link edu.snu.cay.common.param.Parameters.Iterations} and {@link edu.snu.cay.common.param.Parameters.MiniBatches}.
+   */
+  void run();
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

@@ -35,6 +35,7 @@ public final class MLRREEF {
   public static void main(final String[] args) {
     AsyncDolphinLauncher.launch("MLRREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(MLRTrainer.class)
+        .setMemoryStoreInitializer(MLRTrainingDataInitializer.class)
         .setUpdaterClass(MLRUpdater.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)

@@ -36,6 +36,7 @@ public final class AddVectorREEF {
   public static void main(final String[] args) {
     AsyncDolphinLauncher.launch("AddVectorREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(AddVectorTrainer.class)
+        .setMemoryStoreInitializer(AddVectorTrainingDataInitializer.class)
         .setUpdaterClass(AddVectorUpdater.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)

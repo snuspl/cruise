@@ -52,7 +52,7 @@ final class SparseLDASampler {
     this.batchParameterWorker = batchParameterWorker;
   }
 
-  void sample(final List<Document> documents) {
+  void sample(final Collection<Document> documents) {
     // numVocabs-th row represents the total word-topic assignment count vector
     final int[] globalWordCountByTopics = parameterWorker.pull(numVocabs);
 

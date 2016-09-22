@@ -62,4 +62,9 @@ final class AddVectorUpdater implements ParameterUpdater<Integer, Integer, Vecto
     }
     return vectorFactory.createDense(vector);
   }
+
+  @Override
+  public Integer aggregate(final Integer oldPreValue, final Integer newPreValue) {
+    throw new UnsupportedOperationException();
+  }
 }
