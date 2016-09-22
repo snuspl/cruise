@@ -183,8 +183,10 @@ final class NMFTrainer implements Trainer {
         // aggregate L matrix gradients
         lGradSum.addi(lGrad);
 
+        computeTracer.recordTime(0);
         // save R matrix gradients
         pushRMatrixGradient(colIdx, rVec, rGrad);
+        computeTracer.startTimer();
 
         // aggregate loss
         lossSum += error * error;

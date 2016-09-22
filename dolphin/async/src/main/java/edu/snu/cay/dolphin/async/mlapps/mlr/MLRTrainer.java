@@ -231,7 +231,7 @@ final class MLRTrainer implements Trainer {
       final int label = entry.getSecond();
 
       // compute h(x, w) = softmax(x dot w)
-      final Vector predictions = predict(features);
+      final Vector predictions = predict(features, oldModels);
 
       // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
       // instead of allocating a new vector for the error,
@@ -274,7 +274,8 @@ final class MLRTrainer implements Trainer {
 
   private Vector[] pullModels() {
     pullTracer.startTimer();
-    final List<Vector> partitions = miniBatchParameterWorker.pull(classPartitionIndices);
+    List<Vector> partitions;
+    partitions = miniBatchParameterWorker.pull(classPartitionIndices);
     pullTracer.recordTime(partitions.size());
     computeTracer.startTimer();
     final Vector[] models = new Vector[numClasses];
@@ -304,7 +305,6 @@ final class MLRTrainer implements Trainer {
           gradient.slice(partitionStart, partitionEnd));
     }
     pushTracer.recordTime(numPartitionsPerClass);
-
   }
 
   /**
@@ -318,11 +318,12 @@ final class MLRTrainer implements Trainer {
     int correctPredictions = 0;
 
     final int numDataToCompute = Math.min(datasetSize, data.size());
-    LOG.log(Level.INFO, "data size : {0}", numDataToCompute);
+    LOG.log(Level.INFO, "dataSetsize : {0}, dataSize : {1}", new Object[] {datasetSize, data.size()});
+    final Vector[] models = pullModels();
     for (final Pair<Vector, Integer> entry : data.subList(0, numDataToCompute)) {
       final Vector features = entry.getFirst();
       final int label = entry.getSecond();
-      final Vector predictions = predict(features);
+      final Vector predictions = predict(features, models);
       final int prediction = max(predictions).getFirst();
 
       if (label == prediction) {
@@ -344,7 +345,6 @@ final class MLRTrainer implements Trainer {
 
     double regLoss = 0;
     if (lambda != 0) {
-      final Vector[] models = pullModels();
       // skip this part entirely if lambda is zero, to avoid regularization operation overheads
       for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
         final Vector model = models[classIndex];
@@ -362,12 +362,10 @@ final class MLRTrainer implements Trainer {
   /**
    * Compute the probability vector of the given data instance, represented by {@code features}.
    */
-  private Vector predict(final Vector features) {
+  private Vector predict(final Vector features, final Vector[] newModels) {
     final double[] predict = new double[numClasses];
-    final Vector[] models = pullModels();
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
-      final Vector model = models[classIndex];
-      predict[classIndex] = model.dot(features);
+      predict[classIndex] = newModels[classIndex].dot(features);
     }
     return softmax(vectorFactory.createDense(predict));
   }
