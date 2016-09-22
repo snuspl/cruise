@@ -65,13 +65,13 @@ public final class TrainingDataProvider<K> {
 
     final List<K> keys = new ArrayList<>(memoryStore.getAll().keySet());
     // TODO #824: Fix the number of instances to be processed in a mini-batch.
-    final int sizeOfTrainingDataSplit = keys.size() / numMiniBatchesPerEpoch;
-    // some splits have sizeOfTrainingDataSplit+1 if keys.size() % numMiniBatchesPerEpoch != 0
-    final int numberOfSplitsToTakeExtra = keys.size() % numMiniBatchesPerEpoch;
+    final int sizeOfTrainingDataKeys = keys.size() / numMiniBatchesPerEpoch;
+    // data is not evenly distributed if keys.size() % numMiniBatchesPerEpoch != 0
+    final int extraDataSize = keys.size() % numMiniBatchesPerEpoch;
 
     int consumedDataCount = 0;
     for (int i = 0; i < numMiniBatchesPerEpoch; i++) {
-      final int miniBatchSize = i < numberOfSplitsToTakeExtra ? sizeOfTrainingDataSplit + 1 : sizeOfTrainingDataSplit;
+      final int miniBatchSize = i < extraDataSize ? sizeOfTrainingDataKeys + 1 : sizeOfTrainingDataKeys;
       final List<K> trainingData = keys.subList(consumedDataCount, consumedDataCount + miniBatchSize);
       listOfTrainingDataKeys.add(trainingData);
       consumedDataCount += miniBatchSize;
