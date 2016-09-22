@@ -225,7 +225,7 @@ final class MLRTrainer implements Trainer {
     final List<Pair<Vector, Integer>> workload = new ArrayList<>(workloadMap.values());
 
     for (final Pair<Vector, Integer> entry : workload) {
-      final Vector[] models = pullModels();
+      final Vector[] oldModels = pullModels();
       computeTracer.startTimer();
       final Vector features = entry.getFirst();
       final int label = entry.getSecond();
@@ -240,7 +240,7 @@ final class MLRTrainer implements Trainer {
 
       // gradient_j = -stepSize * error_j * x
       for (int j = 0; j < numClasses; ++j) {
-        final Vector newModel = models[j];
+        final Vector newModel = oldModels[j];
         if (lambda != 0) {
           newModel.axpy(-predictions.get(j) * stepSize, features);
           newModel.axpy(-stepSize * lambda, newModel);
@@ -248,7 +248,7 @@ final class MLRTrainer implements Trainer {
           newModel.axpy(-predictions.get(j) * stepSize, features);
         }
         computeTracer.recordTime(0);
-        pushModel(newModel);
+        pushModel(j, oldModels[j], newModel);
         computeTracer.startTimer();
       }
       computeTracer.recordTime(1);
@@ -291,17 +291,20 @@ final class MLRTrainer implements Trainer {
     return models;
   }
 
-  private void pushModel(final Vector model) {
-    for (int classIndex = 0; classIndex < numClasses; classIndex++) {
-      pushTracer.startTimer();
-      for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
-        final int partitionStart = partitionIndex * numFeaturesPerPartition;
-        final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
-        miniBatchParameterWorker.push(classIndex * numPartitionsPerClass + partitionIndex,
-            model.slice(partitionStart, partitionEnd));
-      }
-      pushTracer.recordTime(numPartitionsPerClass);
+  private void pushModel(final int classIndex, final Vector oldModel, final Vector newModel) {
+    computeTracer.startTimer();
+    final Vector gradient = newModel.sub(oldModel);
+    computeTracer.recordTime(0);
+
+    pushTracer.startTimer();
+    for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
+      final int partitionStart = partitionIndex * numFeaturesPerPartition;
+      final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
+      miniBatchParameterWorker.push(classIndex * numPartitionsPerClass + partitionIndex,
+          gradient.slice(partitionStart, partitionEnd));
     }
+    pushTracer.recordTime(numPartitionsPerClass);
+
   }
 
   /**
@@ -315,6 +318,7 @@ final class MLRTrainer implements Trainer {
     int correctPredictions = 0;
 
     final int numDataToCompute = Math.min(datasetSize, data.size());
+    LOG.log(Level.INFO, "data size : {0}", numDataToCompute);
     for (final Pair<Vector, Integer> entry : data.subList(0, numDataToCompute)) {
       final Vector features = entry.getFirst();
       final int label = entry.getSecond();
@@ -332,9 +336,10 @@ final class MLRTrainer implements Trainer {
           loss += -Math.log(1 - predictions.get(classIndex));
         }
       }
-
       ++numInstances;
     }
+    LOG.log(Level.INFO, "number of instances : {0}", numInstances);
+
     loss /= numInstances;
 
     double regLoss = 0;
