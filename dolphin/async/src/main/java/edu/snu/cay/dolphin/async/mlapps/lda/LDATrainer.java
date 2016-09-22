@@ -175,7 +175,7 @@ final class LDATrainer implements Trainer {
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", new Object[]{workerMetrics});
+    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", workerMetrics);
 
     metricsMsgSender.send(workerMetrics);
   }
