@@ -43,25 +43,25 @@ public final class TrainingDataProvider<K> {
   private final MemoryStore<K> memoryStore;
 
   /**
-   * Training data list, each key is a chunk of data keys divided by numMiniBatchesPerEpoch.
+   * Training data list, each element is data keys.
    */
-  private final List<List<K>> listOfTrainingData;
+  private final List<List<K>> listOfTrainingDataKeys;
 
-  private Iterator<List<K>> trainingDataSplitsIterator;
+  private Iterator<List<K>> trainingDataKeysIterator;
 
   @Inject
   private TrainingDataProvider(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
                                final MemoryStore<K> memoryStore) {
     this.numMiniBatchesPerEpoch = numMiniBatchPerEpoch;
     this.memoryStore = memoryStore;
-    this.listOfTrainingData = new ArrayList<>();
+    this.listOfTrainingDataKeys = new ArrayList<>();
   }
 
   /**
    * Prepare divided data by number of mini-batches per epoch.
    */
   public void prepareDataForEpoch() {
-    listOfTrainingData.clear();
+    listOfTrainingDataKeys.clear();
 
     final List<K> keys = new ArrayList<>(memoryStore.getAll().keySet());
     // TODO #824: Fix the number of instances to be processed in a mini-batch.
@@ -72,12 +72,12 @@ public final class TrainingDataProvider<K> {
     int consumedDataCount = 0;
     for (int i = 0; i < numMiniBatchesPerEpoch; i++) {
       final int miniBatchSize = i < numberOfSplitsToTakeExtra ? sizeOfTrainingDataSplit + 1 : sizeOfTrainingDataSplit;
-      final List<K> trainingDataSplit = keys.subList(consumedDataCount, consumedDataCount + miniBatchSize);
-      listOfTrainingData.add(trainingDataSplit);
+      final List<K> trainingData = keys.subList(consumedDataCount, consumedDataCount + miniBatchSize);
+      listOfTrainingDataKeys.add(trainingData);
       consumedDataCount += miniBatchSize;
     }
 
-    trainingDataSplitsIterator = listOfTrainingData.iterator();
+    trainingDataKeysIterator = listOfTrainingDataKeys.iterator();
   }
 
   /**
@@ -87,20 +87,20 @@ public final class TrainingDataProvider<K> {
    *         otherwise return empty map
    */
   public <V> Map<K, V> getNextTrainingData() {
-    if (!trainingDataSplitsIterator.hasNext()) {
+    if (!trainingDataKeysIterator.hasNext()) {
       return Collections.emptyMap();
     }
 
-    final List<K> keyList = trainingDataSplitsIterator.next();
-    final Map<K, V> nextTrainingDataSplit = new HashMap<>();
+    final List<K> keyList = trainingDataKeysIterator.next();
+    final Map<K, V> nextTrainingData = new HashMap<>();
     for (final K key : keyList) {
       // TODO #464: Add getList() API to MemoryStore
       final Pair<K, V> keyValuePair = memoryStore.get(key);
       if (keyValuePair == null) {
         continue;
       }
-      nextTrainingDataSplit.put(keyValuePair.getFirst(), keyValuePair.getSecond());
+      nextTrainingData.put(keyValuePair.getFirst(), keyValuePair.getSecond());
     }
-    return nextTrainingDataSplit;
+    return nextTrainingData;
   }
 }
