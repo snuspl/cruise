@@ -29,8 +29,8 @@ import java.io.*;
  * Implements the {@code StreamingCodec} interface for efficient usages in other codec classes.
  */
 public final class MatrixCodec implements StreamingCodec<Matrix> {
-  private static final int INTEGER_SIZE = 4; // size of integer in bytes
-  private static final int FLOAT_SIZE = 4; // size of float in bytes
+  private static final int INTEGER_BYTES = 4; // size of integer in bytes
+  private static final int FLOAT_BYTES = 4; // size of float in bytes
 
   private final MatrixFactory matrixFactory;
 
@@ -45,8 +45,8 @@ public final class MatrixCodec implements StreamingCodec<Matrix> {
 
   @Override
   public byte[] encode(final Matrix matrix) {
-    try (final ByteArrayOutputStream bstream = new ByteArrayOutputStream(INTEGER_SIZE * 2 +
-                                                                         FLOAT_SIZE * matrix.getLength());
+    try (final ByteArrayOutputStream bstream = new ByteArrayOutputStream(INTEGER_BYTES * 2 +
+                                                                         FLOAT_BYTES * matrix.getLength());
          final DataOutputStream dstream = new DataOutputStream(bstream)) {
 
       encodeToStream(matrix, dstream);
