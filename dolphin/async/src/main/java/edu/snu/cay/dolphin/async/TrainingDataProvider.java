@@ -31,60 +31,63 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Split training data in memory store and provide a chunk of data.
- * The chunk size is total data size / numMiniBatchesPerEpoch.
- * @param <K> type of the key (or id), it should be the same type with keys of MemoryStore.
+ * Provides the training data to process in mini-batches, taking subset of training data no more than
+ * {@link Parameters.MiniBatchSize} instances.
+ * @param <K> type of the key, which should be the same with the one in MemoryStore.
  */
 @TaskSide
 @NotThreadSafe
 public final class TrainingDataProvider<K> {
-  private final int numMiniBatchesPerEpoch;
+  private final int miniBatchSize;
 
   private final MemoryStore<K> memoryStore;
 
   /**
    * Training data list, each element is data keys.
    */
-  private final List<List<K>> listOfTrainingDataKeys;
-
   private Iterator<List<K>> trainingDataKeysIterator;
 
   @Inject
-  private TrainingDataProvider(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerEpoch,
+  private TrainingDataProvider(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                                final MemoryStore<K> memoryStore) {
-    this.numMiniBatchesPerEpoch = numMiniBatchPerEpoch;
+    this.miniBatchSize = miniBatchSize;
     this.memoryStore = memoryStore;
-    this.listOfTrainingDataKeys = new ArrayList<>();
+    this.trainingDataKeysIterator = Collections.emptyIterator();
   }
 
   /**
-   * Prepare divided data by number of mini-batches per epoch.
+   * Prepares the data to process in the next epoch, part of which will be provided
+   * in each {@link #getNextTrainingData()}.
    */
-  public void prepareDataForEpoch() {
-    listOfTrainingDataKeys.clear();
-
+  void prepareDataForEpoch() {
     final List<K> keys = new ArrayList<>(memoryStore.getAll().keySet());
-    // TODO #824: Fix the number of instances to be processed in a mini-batch.
-    final int sizeOfTrainingDataKeys = keys.size() / numMiniBatchesPerEpoch;
-    // data is not evenly distributed if keys.size() % numMiniBatchesPerEpoch != 0
-    final int extraDataSize = keys.size() % numMiniBatchesPerEpoch;
+    final int numMiniBatches = (int) Math.ceil((double) keys.size() / miniBatchSize);
+    final List<List<K>> keysList = new ArrayList<>(numMiniBatches);
 
-    int consumedDataCount = 0;
-    for (int i = 0; i < numMiniBatchesPerEpoch; i++) {
-      final int miniBatchSize = i < extraDataSize ? sizeOfTrainingDataKeys + 1 : sizeOfTrainingDataKeys;
-      final List<K> trainingData = keys.subList(consumedDataCount, consumedDataCount + miniBatchSize);
-      listOfTrainingDataKeys.add(trainingData);
-      consumedDataCount += miniBatchSize;
+    final int remainderForLastMiniBatch = keys.size() % miniBatchSize;
+    final int numInstancesForLastMiniBatch = remainderForLastMiniBatch == 0 ? miniBatchSize : remainderForLastMiniBatch;
+
+    int numKeysCounted = 0;
+    int numKeysToCount = miniBatchSize;
+
+    for (int miniBatchIdx = 0; miniBatchIdx < miniBatchSize; miniBatchIdx++) {
+      if (miniBatchIdx == numMiniBatches - 1) {
+        numKeysToCount = numInstancesForLastMiniBatch;
+      }
+
+      final List<K> trainingData = keys.subList(numKeysCounted, numKeysCounted + numKeysToCount);
+      numKeysCounted += numKeysToCount;
+
+      keysList.add(trainingData);
     }
 
-    trainingDataKeysIterator = listOfTrainingDataKeys.iterator();
+    trainingDataKeysIterator = keysList.iterator();
   }
 
   /**
-   * Provide next training data split to compute in the current mini-batch.
+   * Provides the training data instances to compute in the next mini-batch.
    * @param <V> the type of training data
-   * @return map of training data split of the current mini-batch,
-   *         otherwise return empty map
+   * @return training data instances, which can be an empty Map if all data has been processed.
    */
   public <V> Map<K, V> getNextTrainingData() {
     if (!trainingDataKeysIterator.hasNext()) {
