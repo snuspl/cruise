@@ -122,7 +122,8 @@ final class LDATrainer implements Trainer {
 
   @Override
   public void run(final int iteration) {
-    final long iterationBegin = System.currentTimeMillis();
+    final long iterationBeginMs = System.currentTimeMillis();
+    resetTracers();
 
     final Map<Long, Document> workloadMap = memoryStore.getAll();
     final List<Document> workload = new ArrayList<>(workloadMap.values());
@@ -135,7 +136,6 @@ final class LDATrainer implements Trainer {
     int numSampledDocuments = 0;
 
     for (int batchIdx = 0; batchIdx < numMiniBatchPerIter; batchIdx++) {
-      resetTracers();
       final int batchSize = numDocuments / numMiniBatchPerIter
           + ((numDocuments % numMiniBatchPerIter > batchIdx) ? 1 : 0);
 
@@ -147,7 +147,7 @@ final class LDATrainer implements Trainer {
           new Object[]{numSampledDocuments, numDocuments});
     }
 
-    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
+    final double elapsedTimeSec = (System.currentTimeMillis() - iterationBeginMs) / 1000.0D;
 
     LOG.log(Level.INFO, "Start computing log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
@@ -158,7 +158,7 @@ final class LDATrainer implements Trainer {
     final Metrics appMetrics = buildAppMetrics(statCalculator.computeDocLLH(workload),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, numEMBlocks, workload.size(), elapsedTime);
+        buildMetricsMsg(iteration, appMetrics, numEMBlocks, workload.size(), elapsedTimeSec);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
