@@ -70,7 +70,7 @@ public final class TrainingDataProvider<K> {
     int numKeysCounted = 0;
     int numKeysToCount = miniBatchSize;
 
-    for (int miniBatchIdx = 0; miniBatchIdx < miniBatchSize; miniBatchIdx++) {
+    for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
       if (miniBatchIdx == numMiniBatches - 1) {
         numKeysToCount = numInstancesForLastMiniBatch;
       }
