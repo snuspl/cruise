@@ -73,7 +73,7 @@ final class AddVectorTrainer implements Trainer {
   private final int miniBatchSize;
 
   // TODO #822: AddVector needs an actual training data set.
-  private static final int numTotalInstances = 100;
+  private static final int NUM_TOTAL_INSTANCES = 100;
   private final int numMiniBatches;
 
   /**
@@ -114,7 +114,7 @@ final class AddVectorTrainer implements Trainer {
 
     this.computeTime = computeTime;
     this.miniBatchSize = miniBatchSize;
-    this.numMiniBatches = (int) Math.ceil((double) numTotalInstances / miniBatchSize);
+    this.numMiniBatches = (int) Math.ceil((double) NUM_TOTAL_INSTANCES / miniBatchSize);
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
     this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatches;
