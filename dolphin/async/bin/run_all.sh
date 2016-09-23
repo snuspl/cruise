@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Launch all run_foo.sh scripts with the example usage command
+# Launch all run_FOO.sh scripts with the example usage command
 for file in run*.sh;
 do
   if [ $file != $0 ]
