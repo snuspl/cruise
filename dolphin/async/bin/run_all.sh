@@ -16,7 +16,7 @@
 # Launch all run_FOO.sh scripts with the example usage command
 for file in run*.sh;
 do
-	if [[ "$0" != *"$file" ]]
+  if [[ "$0" != *"$file" ]]
   then
     echo "*** Execute $file ***"
     cmd="grep 'run_' $file | sed 's/# //g'"
