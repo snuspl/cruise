@@ -413,12 +413,12 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
-        aggregatedMetricBuilder.setItrIdx((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getItrIdx()).average().getAsDouble());
+        aggregatedMetricBuilder.setEpochIdx((int) workerMetric.stream().mapToInt(
+            param -> ((WorkerMetrics) param.getMetrics()).getEpochIdx()).average().getAsDouble());
         aggregatedMetricBuilder.setNumDataBlocks((int) workerMetric.stream().mapToInt(
             param -> ((WorkerMetrics) param.getMetrics()).getNumDataBlocks()).average().getAsDouble());
-        aggregatedMetricBuilder.setNumMiniBatchPerItr((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getNumMiniBatchPerItr()).average().getAsDouble());
+        aggregatedMetricBuilder.setNumMiniBatchForEpoch((int) workerMetric.stream().mapToInt(
+            param -> ((WorkerMetrics) param.getMetrics()).getNumMiniBatchForEpoch()).average().getAsDouble());
         aggregatedMetricBuilder.setProcessedDataItemCount((int) workerMetric.stream().mapToInt(
             param -> ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount()).average().getAsDouble());
         aggregatedMetricBuilder.setTotalTime(workerMetric.stream().mapToDouble(

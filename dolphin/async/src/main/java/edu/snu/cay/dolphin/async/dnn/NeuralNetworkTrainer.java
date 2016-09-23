@@ -25,10 +25,7 @@ import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 
 import javax.inject.Inject;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -87,7 +84,7 @@ final class NeuralNetworkTrainer implements Trainer {
   public void run(final int iteration) {
     final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
     final Collection<NeuralNetworkData> workload = workloadMap.values();
-    final Collection<NeuralNetworkData> validationWorkload = Collections.emptyList();
+    final Collection<NeuralNetworkData> validationWorkload = new ArrayList<>();
 
     for (final NeuralNetworkData data : workload) {
       final Matrix input = data.getMatrix();

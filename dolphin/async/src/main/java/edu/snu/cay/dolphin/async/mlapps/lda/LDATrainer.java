@@ -53,7 +53,11 @@ final class LDATrainer implements Trainer {
   private final MemoryStore<Long> memoryStore;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final int numMiniBatchPerIter;
+
+  /**
+   * Number of training data instances to be processed per mini-batch.
+   */
+  private final int miniBatchSize;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -71,7 +75,7 @@ final class LDATrainer implements Trainer {
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      @Parameter(NumVocabs.class) final int numVocabs,
-                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter) {
+                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize) {
     this.dataParser = dataParser;
     this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
@@ -80,7 +84,7 @@ final class LDATrainer implements Trainer {
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
-    this.numMiniBatchPerIter = numMiniBatchPerIter;
+    this.miniBatchSize = miniBatchSize;
 
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
@@ -117,6 +121,7 @@ final class LDATrainer implements Trainer {
     }
     batchParameterWorker.pushAndClear(computeTracer, pushTracer);
 
+    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "All random topic assignments are updated");
   }
 
@@ -132,19 +137,26 @@ final class LDATrainer implements Trainer {
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
 
-    final int numDocuments = workload.size();
-    int numSampledDocuments = 0;
+    final int numTotalDocuments = workload.size();
+    int numDocumentsSampled = 0;
+    int numDocumentsToSample = miniBatchSize;
 
-    for (int batchIdx = 0; batchIdx < numMiniBatchPerIter; batchIdx++) {
-      final int batchSize = numDocuments / numMiniBatchPerIter
-          + ((numDocuments % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+    final int numMiniBatches = (int) Math.ceil((double) numTotalDocuments / miniBatchSize);
+    final int remainderForLastMiniBatch = numTotalDocuments % miniBatchSize;
+    final int numInstancesForLastMiniBatch = remainderForLastMiniBatch == 0 ? miniBatchSize : remainderForLastMiniBatch;
+    LOG.log(Level.INFO, "Number of mini-batches for epoch {0} = {1}", new Object[] {iteration, numMiniBatches});
 
-      sampler.sample(workload.subList(numSampledDocuments, numSampledDocuments + batchSize),
+    for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
+      // The last mini-batch may take fewer than or equal to "miniBatchSize" training data instances.
+      if (miniBatchIdx == numMiniBatches - 1) {
+        numDocumentsToSample = numInstancesForLastMiniBatch;
+      }
+      sampler.sample(workload.subList(numDocumentsSampled, numDocumentsSampled + numDocumentsToSample),
           computeTracer, pushTracer, pullTracer);
 
-      numSampledDocuments += batchSize;
+      numDocumentsSampled += numDocumentsToSample;
       LOG.log(Level.INFO, "{0} documents out of {1} have been sampled",
-          new Object[]{numSampledDocuments, numDocuments});
+          new Object[]{numDocumentsSampled, numTotalDocuments});
     }
 
     final double elapsedTimeSec = (System.currentTimeMillis() - iterationBeginMs) / 1000.0D;
@@ -158,7 +170,7 @@ final class LDATrainer implements Trainer {
     final Metrics appMetrics = buildAppMetrics(statCalculator.computeDocLLH(workload),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, numEMBlocks, workload.size(), elapsedTimeSec);
+        buildMetricsMsg(iteration, appMetrics, numMiniBatches, numEMBlocks, workload.size(), elapsedTimeSec);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
@@ -180,12 +192,14 @@ final class LDATrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numDataBlocks,
-                                        final int numProcessedDataItemCount, final double elapsedTime) {
+  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numMiniBatchForEpoch,
+                                        final int numDataBlocks, final int numProcessedDataItemCount,
+                                        final double elapsedTime) {
     final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
         .setMetrics(appMetrics)
-        .setItrIdx(iteration)
-        .setNumMiniBatchPerItr(numMiniBatchPerIter)
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
         .setNumDataBlocks(numDataBlocks)
         .setProcessedDataItemCount(numProcessedDataItemCount)
         .setTotalTime(elapsedTime)
