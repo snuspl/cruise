@@ -30,6 +30,9 @@ import java.util.logging.Logger;
  */
 public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Vector> {
   private static final Logger LOG = Logger.getLogger(SparseVectorCodec.class.getName());
+  private static final int INTEGER_SIZE = 4; // size of integer in bytes
+  private static final int DOUBLE_SIZE = 8; // size of double in bytes
+
   private final VectorFactory vectorFactory;
 
   @Inject
@@ -96,6 +99,6 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     if (vector.isDense()) {
       LOG.warning("the given vector is not sparse.");
     }
-    return 2 * Integer.SIZE + (Integer.SIZE + Double.SIZE) * vector.activeSize();
+    return 2 * INTEGER_SIZE + (INTEGER_SIZE + DOUBLE_SIZE) * vector.activeSize();
   }
 }
