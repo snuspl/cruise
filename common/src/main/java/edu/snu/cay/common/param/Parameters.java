@@ -81,8 +81,7 @@ public final class Parameters {
   }
 
   @NamedParameter(doc = "Mini-batch size in number of training data instances",
-      short_name = "mini_batch_size",
-      default_value = "1000")
+      short_name = "mini_batch_size")
   public final class MiniBatchSize implements Name<Integer> {
   }
 

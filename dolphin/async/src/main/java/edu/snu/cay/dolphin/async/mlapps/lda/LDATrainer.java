@@ -50,7 +50,11 @@ final class LDATrainer implements Trainer {
   private final MemoryStore<Long> memoryStore;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final int numMiniBatchPerIter;
+
+  /**
+   * Number of training data instances to be processed per mini-batch.
+   */
+  private final int miniBatchSize;
 
   @Inject
   private LDATrainer(final LDADataParser dataParser,
@@ -61,7 +65,7 @@ final class LDATrainer implements Trainer {
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
                      @Parameter(NumVocabs.class) final int numVocabs,
-                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter) {
+                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize) {
     this.dataParser = dataParser;
     this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
@@ -70,7 +74,7 @@ final class LDATrainer implements Trainer {
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
-    this.numMiniBatchPerIter = numMiniBatchPerIter;
+    this.miniBatchSize = miniBatchSize;
 
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
@@ -102,6 +106,7 @@ final class LDATrainer implements Trainer {
     }
     batchParameterWorker.pushAndClear();
 
+    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "All random topic assignments are updated");
   }
 
@@ -111,18 +116,25 @@ final class LDATrainer implements Trainer {
 
     final Map<Long, Document> workloadMap = memoryStore.getAll();
     final List<Document> workload = new ArrayList<>(workloadMap.values());
-    final int numDocuments = workload.size();
-    int numSampledDocuments = 0;
 
-    for (int batchIdx = 0; batchIdx < numMiniBatchPerIter; batchIdx++) {
-      final int batchSize = numDocuments / numMiniBatchPerIter
-          + ((numDocuments % numMiniBatchPerIter > batchIdx) ? 1 : 0);
+    final int numTotalDocuments = workload.size();
+    int numDocumentsSampled = 0;
+    int numDocumentsToSample = miniBatchSize;
 
-      sampler.sample(workload.subList(numSampledDocuments, numSampledDocuments + batchSize));
+    final int numMiniBatches = (int) Math.ceil((double) numTotalDocuments / miniBatchSize);
+    final int numRemainingForLastMiniBatch = numTotalDocuments % miniBatchSize;
+    LOG.log(Level.INFO, "Number of mini-batches for epoch {0} = {1}", new Object[] {iteration, numMiniBatches});
 
-      numSampledDocuments += batchSize;
+    for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
+      // The last mini-batch may take fewer than or equal to "miniBatchSize" training data instances.
+      if (miniBatchIdx == numMiniBatches - 1) {
+        numDocumentsToSample = (numRemainingForLastMiniBatch == 0) ? miniBatchSize : numRemainingForLastMiniBatch;
+      }
+      sampler.sample(workload.subList(numDocumentsSampled, numDocumentsSampled + numDocumentsToSample));
+
+      numDocumentsSampled += numDocumentsToSample;
       LOG.log(Level.INFO, "{0} documents out of {1} have been sampled",
-          new Object[]{numSampledDocuments, numDocuments});
+          new Object[]{numDocumentsSampled, numTotalDocuments});
     }
 
     LOG.log(Level.INFO, "Start computing log likelihood");

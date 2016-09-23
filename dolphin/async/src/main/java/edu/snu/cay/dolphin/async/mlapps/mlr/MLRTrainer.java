@@ -224,6 +224,7 @@ final class MLRTrainer implements Trainer {
     int numInstancesToProcess = miniBatchSize;
 
     final int numMiniBatches = (int) Math.ceil((double) numTotalInstances / miniBatchSize);
+    final int numRemainingForLastMiniBatch = numTotalInstances % miniBatchSize;
     int miniBatchIdx = 0;
     LOG.log(Level.INFO, "Number of mini-batches for epoch {0} = {1}", new Object[] {iteration, numMiniBatches});
 
@@ -241,9 +242,9 @@ final class MLRTrainer implements Trainer {
         numInstancesProcessed = 0;
         ++miniBatchIdx;
 
-        // The last mini-batch may take fewer than "miniBatchSize" training data instances.
+        // The last mini-batch may take fewer than or equal to "miniBatchSize" training data instances.
         if (miniBatchIdx == numMiniBatches - 1) {
-          numInstancesToProcess = numTotalInstances % miniBatchSize;
+          numInstancesToProcess = (numRemainingForLastMiniBatch == 0) ? miniBatchSize : numRemainingForLastMiniBatch;
         }
 
         computeTracer.startTimer();
