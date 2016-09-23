@@ -149,7 +149,8 @@ final class NMFTrainer implements Trainer {
     int numInstancesToProcess = miniBatchSize;
 
     final int numMiniBatches = (int) Math.ceil((double) numTotalInstances / miniBatchSize);
-    final int numRemainingForLastMiniBatch = numTotalInstances % miniBatchSize;
+    final int remainderForLastMiniBatch = numTotalInstances % miniBatchSize;
+    final int numInstancesForLastMiniBatch = remainderForLastMiniBatch == 0 ? miniBatchSize : remainderForLastMiniBatch;
     int miniBatchIdx = 0;
     LOG.log(Level.INFO, "Number of mini-batches for epoch {0} = {1}", new Object[] {iteration, numMiniBatches});
 
@@ -169,7 +170,7 @@ final class NMFTrainer implements Trainer {
 
         // The last mini-batch may take fewer than or equal to "miniBatchSize" training data instances.
         if (miniBatchIdx == numMiniBatches - 1) {
-          numInstancesToProcess = (numRemainingForLastMiniBatch == 0) ? miniBatchSize : numRemainingForLastMiniBatch;
+          numInstancesToProcess = numInstancesForLastMiniBatch;
         }
 
         computeTracer.startTimer();

@@ -122,13 +122,14 @@ final class LDATrainer implements Trainer {
     int numDocumentsToSample = miniBatchSize;
 
     final int numMiniBatches = (int) Math.ceil((double) numTotalDocuments / miniBatchSize);
-    final int numRemainingForLastMiniBatch = numTotalDocuments % miniBatchSize;
+    final int remainderForLastMiniBatch = numTotalDocuments % miniBatchSize;
+    final int numInstancesForLastMiniBatch = remainderForLastMiniBatch == 0 ? miniBatchSize : remainderForLastMiniBatch;
     LOG.log(Level.INFO, "Number of mini-batches for epoch {0} = {1}", new Object[] {iteration, numMiniBatches});
 
     for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
       // The last mini-batch may take fewer than or equal to "miniBatchSize" training data instances.
       if (miniBatchIdx == numMiniBatches - 1) {
-        numDocumentsToSample = (numRemainingForLastMiniBatch == 0) ? miniBatchSize : numRemainingForLastMiniBatch;
+        numDocumentsToSample = numInstancesForLastMiniBatch;
       }
       sampler.sample(workload.subList(numDocumentsSampled, numDocumentsSampled + numDocumentsToSample));
 

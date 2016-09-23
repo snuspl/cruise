@@ -73,7 +73,7 @@ final class AddVectorTrainer implements Trainer {
   private final int miniBatchSize;
 
   // TODO #822: AddVector needs an actual training data set.
-  private final int numTotalInstances = 100;
+  private static final int numTotalInstances = 100;
   private final int numMiniBatches;
 
   /**
