@@ -57,11 +57,12 @@ final class NMFTrainer implements Trainer {
   private final int rank;
   private final double stepSize;
   private final double lambda;
+
   /**
-   * Mini-batch size used for mini-batch gradient descent.
-   * If less than {@code 1}, a standard gradient descent method is used.
+   * Number of training data instances to be processed per mini-batch.
    */
-  private final int numMiniBatchPerIter;
+  private final int miniBatchSize;
+
   private final boolean printMatrices;
   private final NMFModelGenerator modelGenerator;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
@@ -85,7 +86,7 @@ final class NMFTrainer implements Trainer {
                      @Parameter(Rank.class) final int rank,
                      @Parameter(StepSize.class) final double stepSize,
                      @Parameter(Lambda.class) final double lambda,
-                     @Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerIter,
+                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      final NMFModelGenerator modelGenerator,
                      final DataIdFactory<Long> idFactory,
@@ -98,7 +99,7 @@ final class NMFTrainer implements Trainer {
     this.rank = rank;
     this.stepSize = stepSize;
     this.lambda = lambda;
-    this.numMiniBatchPerIter = numMiniBatchPerIter;
+    this.miniBatchSize = miniBatchSize;
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
     this.idFactory = idFactory;
@@ -128,7 +129,7 @@ final class NMFTrainer implements Trainer {
     memoryStore.putList(dataKeys, dataValues);
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numMiniBatchPerIter);
+    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues).size());
     LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
   }
@@ -140,15 +141,16 @@ final class NMFTrainer implements Trainer {
     int elemCount = 0;
     resetTracers();
 
-
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
 
-    computeTracer.startTimer();
+    int miniBatchCount = 0;
+    int numTotalInstancesProcessed = 0;
+
     Map<Long, NMFData> workloadMap = trainingDataProvider.getNextTrainingData();
     Collection<NMFData> workload = workloadMap.values();
-    computeTracer.recordTime(0);
+    final int numInstancesToProcess = workload.size();
     while (!workloadMap.isEmpty()) {
       // pull data when mini-batch is started
       pullRMatrix(getKeys(workload));
@@ -194,21 +196,23 @@ final class NMFTrainer implements Trainer {
         modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
       }
 
-      // a mini-batch is ended
-      workloadMap = trainingDataProvider.getNextTrainingData();
-      workload = workloadMap.values();
-      computeTracer.recordTime(workload.size());
+      computeTracer.recordTime(numInstancesToProcess);
 
       // push gradients
       pushAndResetGradients();
+
+      // a mini-batch is ended
+      miniBatchCount++;
+      numTotalInstancesProcessed += numInstancesToProcess;
+
+      workloadMap = trainingDataProvider.getNextTrainingData();
+      workload = workloadMap.values();
     }
 
-    final Map<Long, Pair<Vector, Integer>> totalWorkloadMap = memoryStore.getAll();
-    final List<Pair<Vector, Integer>> totalWorkLoad = new ArrayList<>(totalWorkloadMap.values());
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, totalWorkLoad.size());
+    final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, numTotalInstancesProcessed);
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, numEMBlocks, totalWorkLoad.size(), elapsedTime);
+        buildMetricsMsg(iteration, appMetrics, miniBatchCount, numEMBlocks, numTotalInstancesProcessed, elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
@@ -317,12 +321,14 @@ final class NMFTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numDataBlocks,
-                                        final int numProcessedDataItemCount, final double elapsedTime) {
+  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numMiniBatchForEpoch,
+                                        final int numDataBlocks, final int numProcessedDataItemCount,
+                                        final double elapsedTime) {
     return WorkerMetrics.newBuilder()
         .setMetrics(appMetrics)
-        .setItrIdx(iteration)
-        .setNumMiniBatchPerItr(numMiniBatchPerIter)
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
         .setNumDataBlocks(numDataBlocks)
         .setProcessedDataItemCount(numProcessedDataItemCount)
         .setTotalTime(elapsedTime)

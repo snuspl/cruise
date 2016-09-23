@@ -91,6 +91,7 @@ final class AsyncWorkerTask implements Task {
         return null;
       }
       trainingDataProvider.prepareDataForEpoch();
+      LOG.log(Level.INFO, "Starting iteration {0}", iteration);
       trainer.run(iteration);
       workerClock.clock();
     }

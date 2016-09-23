@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
@@ -52,19 +53,26 @@ final class SparseLDASampler {
     this.batchParameterWorker = batchParameterWorker;
   }
 
-  void sample(final List<Document> documents) {
-    // numVocabs-th row represents the total word-topic assignment count vector
-    final int[] globalWordCountByTopics = parameterWorker.pull(numVocabs);
-
+  void sample(final List<Document> documents, final Tracer computeTracer,
+              final Tracer pushTracer, final Tracer pullTracer) {
+    computeTracer.startTimer();
     final List<Integer> words = getKeys(documents);
-    final List<int[]> topicVectors = parameterWorker.pull(words);
+    computeTracer.recordTime(0);
 
-    final Map<Integer, int[]> wordTopicVectors = new HashMap<>(words.size());
-    for (int i = 0; i < words.size(); ++i) {
+    pullTracer.startTimer();
+    final List<int[]> topicVectors = parameterWorker.pull(words);
+    pullTracer.recordTime(words.size());
+
+    computeTracer.startTimer();
+    final int[] globalWordCountByTopics = topicVectors.remove(words.size() - 1);
+    final Map<Integer, int[]> wordTopicVectors = new HashMap<>(topicVectors.size());
+    for (int i = 0; i < topicVectors.size(); ++i) {
       wordTopicVectors.put(words.get(i), topicVectors.get(i));
     }
+    computeTracer.recordTime(0);
 
     for (final Document document : documents) {
+      computeTracer.startTimer();
       double sumS = 0.0;
       double sumR = 0.0;
       double sumQ = 0.0;
@@ -179,8 +187,9 @@ final class SparseLDASampler {
           batchParameterWorker.addTopicChange(numVocabs, newTopic, 1);
         }
       }
+      computeTracer.recordTime(1);
 
-      batchParameterWorker.pushAndClear();
+      batchParameterWorker.pushAndClear(computeTracer, pushTracer);
     }
   }
 
@@ -190,7 +199,12 @@ final class SparseLDASampler {
       keys.addAll(document.getWords());
     }
 
-    return new ArrayList<>(keys);
+    final List<Integer> result = new ArrayList<>(keys.size() + 1);
+    result.addAll(keys);
+    // numVocabs-th row represents the total word-topic assignment count vector
+    result.add(numVocabs);
+
+    return result;
   }
 
   private int sampleFromTerms(final double randomVar, final double[] terms) {

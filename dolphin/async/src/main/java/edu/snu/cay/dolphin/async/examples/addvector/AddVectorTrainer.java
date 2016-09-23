@@ -68,9 +68,13 @@ final class AddVectorTrainer implements Trainer {
   private final List<Integer> keyList;
 
   /**
-   * Number of batches per iteration.
+   * Number of training data instances to be processed per mini-batch.
    */
-  private final int numMiniBatchesPerItr;
+  private final int miniBatchSize;
+
+  // TODO #822: AddVector needs an actual training data set.
+  private static final int NUM_TOTAL_INSTANCES = 100;
+  private final int numMiniBatches;
 
   /**
    * Sleep time to simulate computation.
@@ -98,7 +102,7 @@ final class AddVectorTrainer implements Trainer {
                            @Parameter(AddVectorREEF.NumWorkers.class) final int numberOfWorkers,
                            @Parameter(AddVectorREEF.ComputeTimeMs.class) final long computeTime,
                            @Parameter(Parameters.Iterations.class) final int numIterations,
-                           @Parameter(Parameters.MiniBatches.class) final int numMiniBatchesPerItr,
+                           @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                            final MemoryStore<Long> memoryStore,
                            final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
@@ -109,12 +113,13 @@ final class AddVectorTrainer implements Trainer {
     }
 
     this.computeTime = computeTime;
-    this.numMiniBatchesPerItr = numMiniBatchesPerItr;
+    this.miniBatchSize = miniBatchSize;
+    this.numMiniBatches = (int) Math.ceil((double) NUM_TOTAL_INSTANCES / miniBatchSize);
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
-    this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatchesPerItr;
+    this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatches;
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numMiniBatchesPerItr:{3}",
-        new Object[]{delta, numberOfWorkers, numIterations, numMiniBatchesPerItr});
+        new Object[]{delta, numberOfWorkers, numIterations, numMiniBatches});
 
     this.memoryStore = memoryStore;
     this.metricsMsgSender = metricsMsgSender;
@@ -134,8 +139,7 @@ final class AddVectorTrainer implements Trainer {
     resetTracers();
 
     // run mini-batches
-    for (int i = 0; i < numMiniBatchesPerItr; i++) {
-
+    for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
       // 1. pull model to compute with
       pullTracer.startTimer();
       final List<Vector> valueList = parameterWorker.pull(keyList);
@@ -176,8 +180,9 @@ final class AddVectorTrainer implements Trainer {
 
   private WorkerMetrics buildMetricsMsg(final int iteration, final int numDataBlocks, final double elapsedTime) {
     return WorkerMetrics.newBuilder()
-        .setItrIdx(iteration)
-        .setNumMiniBatchPerItr(numMiniBatchesPerItr)
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatches)
         .setProcessedDataItemCount(NUM_DATA_ITEMS_TO_PROCESS)
         .setNumDataBlocks(numDataBlocks)
         .setTotalTime(elapsedTime)

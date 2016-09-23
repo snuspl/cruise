@@ -15,8 +15,12 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
+import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.metric.Tracer;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -52,6 +56,17 @@ final class LDATrainer implements Trainer {
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
   private final TrainingDataProvider<Long> trainingDataProvider;
 
+  /**
+   * Number of training data instances to be processed per mini-batch.
+   */
+  private final int miniBatchSize;
+
+  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+  private final Tracer pushTracer;
+  private final Tracer pullTracer;
+  private final Tracer computeTracer;
+
   @Inject
   private LDATrainer(final LDADataParser dataParser,
                      final LDABatchParameterWorker batchParameterWorker,
@@ -61,7 +76,9 @@ final class LDATrainer implements Trainer {
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
                      final TrainingDataProvider<Long> trainingDataProvider,
-                     @Parameter(NumVocabs.class)final int numVocabs) {
+                     final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
+                     @Parameter(NumVocabs.class) final int numVocabs,
+                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize) {
     this.dataParser = dataParser;
     this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
@@ -71,12 +88,18 @@ final class LDATrainer implements Trainer {
     this.parameterWorker = parameterWorker;
     this.trainingDataProvider = trainingDataProvider;
     this.numVocabs = numVocabs;
+    this.miniBatchSize = miniBatchSize;
 
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
     for (int i = 0; i < numVocabs + 1; i++) {
       vocabList.add(i);
     }
+
+    this.metricsMsgSender = metricsMsgSender;
+    this.pushTracer = new Tracer();
+    this.pullTracer = new Tracer();
+    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -100,47 +123,99 @@ final class LDATrainer implements Trainer {
         batchParameterWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
       }
     }
-    batchParameterWorker.pushAndClear();
+    batchParameterWorker.pushAndClear(computeTracer, pushTracer);
 
+    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "All random topic assignments are updated");
   }
 
   @Override
   public void run(final int iteration) {
-    LOG.log(Level.INFO, "Iteration Started");
+    final long iterationBeginMs = System.currentTimeMillis();
+    resetTracers();
 
-    int numSampledDocuments = 0;
+    // Record the number of EM data blocks at the beginning of this iteration
+    // to filter out stale metrics for optimization
+    final int numEMBlocks = memoryStore.getNumBlocks();
+
     int miniBatchCount = 0;
-    Map<Long, Document> workLoadMap = trainingDataProvider.getNextTrainingData();
-    while (!workLoadMap.isEmpty()) {
-      final List<Document> workLoad = new ArrayList<>(workLoadMap.values());
-      final int batchSize = workLoad.size();
+    int numDocumentsSampled = 0;
+    final List<Document> totalDocumentsSampled = new LinkedList<>();
 
-      sampler.sample(workLoad);
+    Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
+    while (!nextTrainingData.isEmpty()) {
+      final List<Document> documents = new ArrayList<>(nextTrainingData.values());
+      final int numDocumentsToSample = documents.size();
+      sampler.sample(documents.subList(numDocumentsSampled, numDocumentsSampled + numDocumentsToSample),
+          computeTracer, pushTracer, pullTracer);
 
-      numSampledDocuments += batchSize;
+      // A mini-batch is ended
       miniBatchCount++;
-      LOG.log(Level.INFO, "{0} documents have been sampled, mini-batch count is {1}",
-          new Object[]{numSampledDocuments, miniBatchCount});
+      numDocumentsSampled += numDocumentsToSample;
+      totalDocumentsSampled.addAll(nextTrainingData.values());
+      LOG.log(Level.INFO, "{0} documents have been sampled in mini-batch {2}",
+          new Object[]{numDocumentsSampled, miniBatchCount});
 
-      workLoadMap = trainingDataProvider.getNextTrainingData();
+      nextTrainingData = trainingDataProvider.getNextTrainingData();
     }
+
+    final double elapsedTimeSec = (System.currentTimeMillis() - iterationBeginMs) / 1000.0D;
 
     LOG.log(Level.INFO, "Start computing log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
     // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution,
     // in a form of numTopics-dimensional vector
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
-    final Map<Long, Document> totalWorkloadMap = memoryStore.getAll();
-    final List<Document> totalWorkLoad = new ArrayList<>(totalWorkloadMap.values());
-    LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(statCalculator.computeDocLLH(totalWorkLoad),
+
+    LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(statCalculator.computeDocLLH(totalDocumentsSampled),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary)));
 
-    LOG.log(Level.INFO, "Iteration Ended");
+    final Metrics appMetrics = buildAppMetrics(statCalculator.computeDocLLH(totalDocumentsSampled),
+        statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
+
+    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchCount, numEMBlocks,
+            totalDocumentsSampled.size(), elapsedTimeSec);
+
+    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
+    sendMetrics(workerMetrics);
   }
 
   @Override
   public void cleanup() {
+  }
+
+  private void resetTracers() {
+    computeTracer.resetTrace();
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+  }
+
+  private void sendMetrics(final WorkerMetrics workerMetrics) {
+    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", workerMetrics);
+
+    metricsMsgSender.send(workerMetrics);
+  }
+
+  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numMiniBatchForEpoch,
+                                        final int numDataBlocks, final int numProcessedDataItemCount,
+                                        final double elapsedTime) {
+    final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+        .setMetrics(appMetrics)
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
+        .build();
+
+    return workerMetrics;
   }
 
   private Metrics buildAppMetrics(final double docLLH, final double wordLLH) {

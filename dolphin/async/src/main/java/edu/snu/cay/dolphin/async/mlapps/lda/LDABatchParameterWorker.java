@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 
 import javax.inject.Inject;
@@ -57,8 +58,9 @@ final class LDABatchParameterWorker {
    * Push all added changes and clear the changes.
    * Note that this is not thread-safe for performance reason.
    */
-  void pushAndClear() {
+  void pushAndClear(final Tracer computeTracer, final Tracer pushTracer) {
     for (final int changedWord : changedTopicCounts.rowKeySet()) {
+      computeTracer.startTimer();
       final Map<Integer, Integer> changedTopicCountsForWord = changedTopicCounts.row(changedWord);
       final int numChangedTopics = changedTopicCountsForWord.size();
 
@@ -71,8 +73,11 @@ final class LDABatchParameterWorker {
         parameters[2 * i + 1] = entry.getValue();
         i++;
       }
+      computeTracer.recordTime(0);
 
+      pushTracer.startTimer();
       parameterWorker.push(changedWord, parameters);
+      pushTracer.recordTime(1);
     }
 
     changedTopicCounts.clear();
