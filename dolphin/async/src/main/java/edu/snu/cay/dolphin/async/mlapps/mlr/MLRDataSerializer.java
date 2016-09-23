@@ -29,8 +29,6 @@ import java.io.*;
  * Serializer that provides codec for (de-)serializing data used in MLR.
  */
 final class MLRDataSerializer implements Serializer {
-  private static final int INTEGER_BYTES = 4; // size of integer in bytes
-
   private final SparseVectorCodec sparseVectorCodec;
   private final MLRDataCodec mlrDataCodec = new MLRDataCodec();
 
@@ -47,7 +45,7 @@ final class MLRDataSerializer implements Serializer {
   private final class MLRDataCodec implements Codec<Pair<Vector, Integer>>, StreamingCodec<Pair<Vector, Integer>> {
     @Override
     public byte[] encode(final Pair<Vector, Integer> mlrData) {
-      final int numBytes = sparseVectorCodec.getNumBytes(mlrData.getFirst()) + INTEGER_BYTES;
+      final int numBytes = sparseVectorCodec.getNumBytes(mlrData.getFirst()) + Integer.BYTES;
       try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
            final DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(mlrData, daos);

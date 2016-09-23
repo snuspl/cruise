@@ -29,9 +29,6 @@ import java.util.logging.Logger;
  */
 public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vector> {
   private static final Logger LOG = Logger.getLogger(DenseVectorCodec.class.getName());
-  private static final int INTEGER_BYTES = 4; // size of integer in bytes
-  private static final int DOUBLE_BYTES = 8; // size of double in bytes
-
   private final VectorFactory vectorFactory;
 
   @Inject
@@ -93,6 +90,6 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
     if (!vector.isDense()) {
       LOG.warning("the given vector is not dense.");
     }
-    return INTEGER_BYTES + DOUBLE_BYTES * vector.length();
+    return Integer.BYTES + Double.BYTES * vector.length();
   }
 }
