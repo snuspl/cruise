@@ -138,7 +138,7 @@ final class LDATrainer implements Trainer {
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
 
-    int miniBatchCount = 0;
+    int miniBatchIdx = 0;
     int numDocumentsSampled = 0;
     final List<Document> totalDocumentsSampled = new LinkedList<>();
 
@@ -150,11 +150,11 @@ final class LDATrainer implements Trainer {
           computeTracer, pushTracer, pullTracer);
 
       // A mini-batch is ended
-      miniBatchCount++;
+      miniBatchIdx++;
       numDocumentsSampled += numDocumentsToSample;
       totalDocumentsSampled.addAll(nextTrainingData.values());
-      LOG.log(Level.INFO, "{0} documents have been sampled in mini-batch {2}",
-          new Object[]{numDocumentsSampled, miniBatchCount});
+      LOG.log(Level.INFO, "{0} documents have been sampled in mini-batch {1}",
+          new Object[]{numDocumentsSampled, miniBatchIdx});
 
       nextTrainingData = trainingDataProvider.getNextTrainingData();
     }
@@ -167,13 +167,10 @@ final class LDATrainer implements Trainer {
     // in a form of numTopics-dimensional vector
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
 
-    LOG.log(Level.INFO, "App metric log: {0}", buildAppMetrics(statCalculator.computeDocLLH(totalDocumentsSampled),
-        statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary)));
-
     final Metrics appMetrics = buildAppMetrics(statCalculator.computeDocLLH(totalDocumentsSampled),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
 
-    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchCount, numEMBlocks,
+    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx, numEMBlocks,
             totalDocumentsSampled.size(), elapsedTimeSec);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);

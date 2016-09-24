@@ -43,7 +43,7 @@ public final class TrainingDataProvider<K> {
   private final MemoryStore<K> memoryStore;
 
   /**
-   * Training data list, each element is data keys.
+   * An iterator for the training data; each element is a list of data keys.
    */
   private Iterator<List<K>> trainingDataKeysIterator;
 
@@ -56,8 +56,7 @@ public final class TrainingDataProvider<K> {
   }
 
   /**
-   * Prepares the data to process in the next epoch, part of which will be provided
-   * in each {@link #getNextTrainingData()}.
+   * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}
    */
   void prepareDataForEpoch() {
     final List<K> keys = new ArrayList<>(memoryStore.getAll().keySet());
@@ -87,7 +86,7 @@ public final class TrainingDataProvider<K> {
   /**
    * Provides the training data instances to compute in the next mini-batch.
    * @param <V> the type of training data
-   * @return training data instances, which can be an empty Map if all data has been processed.
+   * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
   public <V> Map<K, V> getNextTrainingData() {
     if (!trainingDataKeysIterator.hasNext()) {

@@ -217,14 +217,13 @@ final class MLRTrainer implements Trainer {
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
 
-    int miniBatchCount = 0;
+    int miniBatchIdx = 0;
     final List<Pair<Vector, Integer>> totalInstancesProcessed = new LinkedList<>();
 
     Map<Long, Pair<Vector, Integer>> nextTrainingData = trainingDataProvider.getNextTrainingData();
     while (!nextTrainingData.isEmpty()) {
       computeTracer.startTimer();
       final List<Pair<Vector, Integer>> instances = new ArrayList<>(nextTrainingData.values());
-      final int numInstancesToProcess = instances.size();
       for (final Pair<Vector, Integer> instance : instances) {
 
         final Vector features = instance.getFirst();
@@ -250,13 +249,13 @@ final class MLRTrainer implements Trainer {
           }
         }
       }
-      computeTracer.recordTime(numInstancesToProcess);
+      computeTracer.recordTime(instances.size());
 
       // push gradients
       pushAndResetGradients();
 
       // A mini-batch is ended
-      miniBatchCount++;
+      miniBatchIdx++;
       totalInstancesProcessed.addAll(instances);
 
       nextTrainingData = trainingDataProvider.getNextTrainingData();
@@ -277,7 +276,7 @@ final class MLRTrainer implements Trainer {
     final double accuracy = (double) lossRegLossAccuracy.getThird();
     final Metrics appMetrics = buildAppMetrics(loss, regLoss, accuracy, elapsedTime,
         totalInstancesProcessed.size());
-    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchCount, numEMBlocks,
+    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx, numEMBlocks,
         totalInstancesProcessed.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);

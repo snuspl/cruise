@@ -81,10 +81,10 @@ public class TrainingDataProviderTest {
     assertTrue(numTotalInstances % MINI_BATCH_SIZE == 0);
     final int numTotalMiniBatches = (int) Math.ceil((double) numTotalInstances / MINI_BATCH_SIZE);
     final int numInstances = numTotalInstances / MINI_BATCH_SIZE;
-    int numMiniBatchCount = 0;
+    int miniBatchIdx = 0;
     Map<Integer, Integer> trainingData = trainingDataProvider.getNextTrainingData();
     while (!trainingData.isEmpty()) {
-      numMiniBatchCount++;
+      miniBatchIdx++;
       for (final Integer key : trainingData.keySet()) {
         assertEquals("The training data for a key should be same", values.get(key), trainingData.get(key));
       }
@@ -94,7 +94,7 @@ public class TrainingDataProviderTest {
     }
 
     assertEquals("The total number of mini-batch is different from expectation",
-        numTotalMiniBatches, numMiniBatchCount);
+        numTotalMiniBatches, miniBatchIdx);
   }
 
   /**
@@ -117,14 +117,14 @@ public class TrainingDataProviderTest {
     trainingDataProvider.prepareDataForEpoch();
 
     assertTrue(numTotalInstances % MINI_BATCH_SIZE != 0);
-    int miniBatchCount = 0;
+    int miniBatchIdx = 0;
     Map<Integer, Integer> trainingData = trainingDataProvider.getNextTrainingData();
     while (!trainingData.isEmpty()) {
-      miniBatchCount++;
+      miniBatchIdx++;
       for (final Integer key : trainingData.keySet()) {
         assertEquals(values.get(key), trainingData.get(key));
       }
-      if (miniBatchCount < numTotalMiniBatches) {
+      if (miniBatchIdx < numTotalMiniBatches) {
         assertEquals("Should process MINI_BATCH_SIZE instances", MINI_BATCH_SIZE, trainingData.size());
       } else {
         assertEquals("The last mini-batch should process remaining instances",
@@ -133,6 +133,6 @@ public class TrainingDataProviderTest {
       trainingData = trainingDataProvider.getNextTrainingData();
     }
     assertEquals("The total number of mini-batches is different from expectation",
-        numTotalMiniBatches, miniBatchCount);
+        numTotalMiniBatches, miniBatchIdx);
   }
 }
