@@ -145,7 +145,7 @@ final class NMFTrainer implements Trainer {
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
 
-    int miniBatchCount = 0;
+    int miniBatchIdx = 0;
     int numTotalInstancesProcessed = 0;
 
     Map<Long, NMFData> workloadMap = trainingDataProvider.getNextTrainingData();
@@ -202,7 +202,7 @@ final class NMFTrainer implements Trainer {
       pushAndResetGradients();
 
       // a mini-batch is ended
-      miniBatchCount++;
+      miniBatchIdx++;
       numTotalInstancesProcessed += numInstancesToProcess;
 
       workloadMap = trainingDataProvider.getNextTrainingData();
@@ -212,7 +212,7 @@ final class NMFTrainer implements Trainer {
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, numTotalInstancesProcessed);
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, miniBatchCount, numEMBlocks, numTotalInstancesProcessed, elapsedTime);
+        buildMetricsMsg(iteration, appMetrics, miniBatchIdx, numEMBlocks, numTotalInstancesProcessed, elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
