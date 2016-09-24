@@ -53,7 +53,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
    * It's for ownership-first migration in which the order of OwnershipAckMsg and BlockMovedMsg can be reversed.
    * A later message will wrap up the migration by calling {@link #handleBlockMovedMsg}.
    * In data-first migration, in which OwnershipMsg always precedes BlockMovedMsg, {@link #onOwnershipMsg(MigrationMsg)}
-   * simply checks that it arrives and let {@link #onBlockMovedMsg(MigrationMsg)} to wrap up the migration.
+   * simply marks its arrival and lets {@link #onBlockMovedMsg(MigrationMsg)} to wrap up the migration.
    */
   private final Set<Integer> migratingBlocks = Collections.synchronizedSet(new HashSet<>());
 
