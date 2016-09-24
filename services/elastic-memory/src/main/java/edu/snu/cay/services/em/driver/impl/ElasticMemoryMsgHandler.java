@@ -21,6 +21,7 @@ import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.util.Optional;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -30,6 +31,7 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -108,6 +110,10 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
       onOwnershipMsg(msg);
       break;
 
+    case OwnershipAckMsg:
+      onOwnershipAckMsg(msg);
+      break;
+
     case BlockMovedMsg:
       onBlockMovedMsg(msg);
       break;
@@ -121,6 +127,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
+  private final Set<Integer> migratingBlocks = Collections.synchronizedSet(new HashSet<>());
+
   private void onBlockMovedMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final BlockMovedMsg blockMovedMsg = msg.getBlockMovedMsg();
@@ -129,23 +137,79 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     try (final TraceScope onBlockMovedMsgScope = Trace.startSpan(
         String.format("on_block_moved_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      migrationManager.markBlockAsMoved(operationId, blockId, TraceInfo.fromSpan(onBlockMovedMsgScope.getSpan()));
+      final boolean ownershipMsgArrivedFirst;
+      synchronized (migratingBlocks) {
+        if (!migratingBlocks.contains(blockId)) {
+          ownershipMsgArrivedFirst = false;
+          migratingBlocks.add(blockId);
+        } else {
+          ownershipMsgArrivedFirst = true;
+          migratingBlocks.remove(blockId);
+        }
+      }
+
+      if (ownershipMsgArrivedFirst) {
+        handleBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onBlockMovedMsgScope.getSpan()));
+      }
     }
+  }
+
+  private void handleBlockMovedMsg(final String operationId, final int blockId, final TraceInfo traceInfo) {
+    LOG.log(Level.INFO, "mark block as moved. blockId: {0}", blockId);
+    migrationManager.markBlockAsMoved(operationId, blockId, traceInfo);
   }
 
   private void onOwnershipMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
-    final int blockId = msg.getOwnershipMsg().getBlockId();
-    final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
-    final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
+    final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
+    final int blockId = ownershipMsg.getBlockId();
+    final String senderId = ownershipMsg.getSenderId().toString();
+    final int oldOwnerId = ownershipMsg.getOldOwnerId();
+    final int newOwnerId = ownershipMsg.getNewOwnerId();
 
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(
         String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
+      migratingBlocks.add(blockId);
+
       // Update the owner and send ownership message to the old Owner.
-      migrationManager.updateOwner(operationId, blockId, oldOwnerId, newOwnerId,
+      migrationManager.updateOwner(blockId, oldOwnerId, newOwnerId);
+
+      // Send the OwnershipMessage to update the owner in the sender memoryStore
+      msgSender.get().sendOwnershipMsg(Optional.of(senderId), senderId, operationId, blockId, oldOwnerId, newOwnerId,
           TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
+    }
+  }
+
+  private void onOwnershipAckMsg(final MigrationMsg msg) {
+    final String operationId = msg.getOperationId().toString();
+    final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
+    final int blockId = ownershipAckMsg.getBlockId();
+    final int oldOwnerId = ownershipAckMsg.getOldOwnerId();
+    final int newOwnerId = ownershipAckMsg.getNewOwnerId();
+
+    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
+        String.format("on_ownership_ack_msg. blockId: %d", blockId),
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      final boolean ownershipAckMsgArrivedFirst;
+      synchronized (migratingBlocks) {
+        if (!migratingBlocks.contains(blockId)) {
+          ownershipAckMsgArrivedFirst = true;
+          migratingBlocks.add(blockId);
+        } else {
+          ownershipAckMsgArrivedFirst = false;
+          migratingBlocks.remove(blockId);
+        }
+
+        // Update the owner and send ownership message to the old Owner.
+        migrationManager.updateOwner(blockId, oldOwnerId, newOwnerId);
+      }
+
+      if (!ownershipAckMsgArrivedFirst) {
+        handleBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
+      }
     }
   }
 

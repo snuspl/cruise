@@ -16,13 +16,13 @@
 package edu.snu.cay.services.em.evaluator.api;
 
 import edu.snu.cay.services.em.avro.MigrationMsg;
-import edu.snu.cay.services.em.evaluator.impl.DataFirstMigrationExecutor;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipFirstMigrationExecutor;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
 /**
  * Created by xyzi on 9/19/16.
  */
-@DefaultImplementation(DataFirstMigrationExecutor.class)
-public interface MigrationExecutor<K> extends EventHandler<MigrationMsg> {
+@DefaultImplementation(OwnershipFirstMigrationExecutor.class)
+public interface MigrationExecutor extends EventHandler<MigrationMsg> {
 }

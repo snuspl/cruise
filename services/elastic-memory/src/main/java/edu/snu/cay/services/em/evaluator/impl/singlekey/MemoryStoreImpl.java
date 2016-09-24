@@ -21,17 +21,16 @@ import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
 
 import javax.annotation.Nonnull;
-import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,7 +50,6 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
    */
   private final ConcurrentMap<Integer, Block> blocks = new ConcurrentHashMap<>();
 
-  @GuardedBy("routerLock")
   private final OperationRouter<K> router;
   private final BlockResolver<K> blockResolver;
   private final RemoteOpHandlerImpl<K> remoteOpHandlerImpl;
@@ -61,8 +59,6 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
    * We assume that there's only one function for the store.
    */
   private final EMUpdateFunction<K, ?> updateFunction;
-
-  private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
   /**
    * A queue for operations requested from remote clients.
@@ -106,16 +102,6 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
-    routerLock.writeLock().lock();
-    try {
-      router.updateOwnership(blockId, oldOwnerId, newOwnerId);
-    } finally {
-      routerLock.writeLock().unlock();
-    }
-  }
-
-  @Override
   public void putBlock(final int blockId, final Map<K, Object> data) {
     final Block block = new Block();
     block.putAll(data);
@@ -123,6 +109,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     if (blocks.putIfAbsent(blockId, block) != null) {
       throw new RuntimeException("Block with id " + blockId + " already exists.");
     }
+    LOG.info("Put block " + blockId);
   }
 
   @Override
@@ -179,10 +166,10 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, block: {2}]]",
           new Object[]{operation.getOpId(), operation.getOrigEvalId().get(), blockId});
 
-      routerLock.readLock().lock();
+      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
       try {
-        final Optional<String> remoteEvalId = router.resolveEval(blockId);
-        final boolean isLocal = !remoteEvalId.isPresent();
+        final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
+        final boolean isLocal = !remoteEvalIdOptional.isPresent();
         if (isLocal) {
           final Block<V> block = blocks.get(blockId);
 
@@ -214,13 +201,14 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
           LOG.log(Level.WARNING,
               "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
                   " of block {1} by store {2}, but the local router assumes store {3} is the owner",
-              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalId.get()});
+              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalIdOptional.get()});
 
           // send the failed result
           remoteOpHandlerImpl.sendResultToOrigin(operation, Optional.<V>empty(), false);
         }
       } finally {
-        routerLock.readLock().unlock();
+        final Lock routerLock = remoteEvalIdWithLock.getValue();
+        routerLock.unlock();
       }
     }
   }
@@ -311,20 +299,28 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public <V> Pair<K, Boolean> put(final K id, @Nonnull final V value) {
 
     final int blockId = blockResolver.resolveBlock(id);
-    final Optional<String> remoteEvalId = router.resolveEval(blockId);
+    final Optional<String> remoteEvalIdOptional;
 
-    // execute operation in local or send it to remote
-    if (remoteEvalId.isPresent()) {
-      // send operation to remote and wait until operation is finished
-      final SingleKeyOperation<K, V> operation =
-          remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.PUT, id, Optional.of(value), remoteEvalId.get());
+    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+    try {
+      remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      return new Pair<>(id, operation.isSuccess());
-    } else {
-      final Block<V> block = blocks.get(blockId);
-      block.put(id, value);
-      return new Pair<>(id, true);
+      // execute operation in local, holding routerLock
+      if (!remoteEvalIdOptional.isPresent()) {
+        final Block<V> block = blocks.get(blockId);
+        block.put(id, value);
+        return new Pair<>(id, true);
+      }
+    } finally {
+      final Lock routerLock = remoteEvalIdWithLock.getValue();
+      routerLock.unlock();
     }
+
+    // send operation to remote and wait until operation is finished
+    final SingleKeyOperation<K, V> operation =
+        remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.PUT, id, Optional.of(value), remoteEvalIdOptional.get());
+
+    return new Pair<>(id, operation.isSuccess());
   }
 
   @Override
@@ -334,23 +330,30 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
   @Override
   public <V> Pair<K, V> get(final K id) {
-
     final int blockId = blockResolver.resolveBlock(id);
-    final Optional<String> remoteEvalId = router.resolveEval(blockId);
+    final Optional<String> remoteEvalIdOptional;
 
-    // execute operation in local or send it to remote
-    if (remoteEvalId.isPresent()) {
-      // send operation to remote and wait until operation is finished
-      final SingleKeyOperation<K, V> operation =
-          remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.GET, id, Optional.<V>empty(), remoteEvalId.get());
+    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+    try {
+      remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      final V outputData = operation.getOutputData().get();
-      return outputData == null ? null : new Pair<>(id, outputData);
-    } else {
-      final Block<V> block = blocks.get(blockId);
-      final V output = block.get(id);
-      return output == null ? null : new Pair<>(id, output);
+      // execute operation in local, holding routerLock
+      if (!remoteEvalIdOptional.isPresent()) {
+        final Block<V> block = blocks.get(blockId); //TODO #00: block may not be put yet...
+        final V output = block.get(id);
+        return output == null ? null : new Pair<>(id, output);
+      }
+    } finally {
+      final Lock routerLock = remoteEvalIdWithLock.getValue();
+      routerLock.unlock();
     }
+
+    // send operation to remote and wait until operation is finished
+    final SingleKeyOperation<K, V> operation =
+        remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.GET, id, Optional.<V>empty(), remoteEvalIdOptional.get());
+
+    final V outputData = operation.getOutputData().get();
+    return outputData == null ? null : new Pair<>(id, outputData);
   }
 
   @Override
@@ -385,39 +388,58 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   @Override
   public <V> Pair<K, V> update(final K id, final V deltaValue) {
     final int blockId = blockResolver.resolveBlock(id);
-    final Optional<String> remoteEvalId = router.resolveEval(blockId);
+    final Optional<String> remoteEvalIdOptional;
 
-    if (remoteEvalId.isPresent()) {
-      final SingleKeyOperation<K, V> operation =
-          remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.UPDATE, id, Optional.of(deltaValue), remoteEvalId.get());
+    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+    try {
+      remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      return new Pair<>(id, operation.getOutputData().get());
-    } else {
-      final Block<V> block = blocks.get(blockId);
-      final V output = block.update(id, deltaValue);
-      return new Pair<>(id, output);
+      // execute operation in local, holding routerLock
+      if (!remoteEvalIdOptional.isPresent()) {
+        final Block<V> block = blocks.get(blockId);
+        final V output = block.update(id, deltaValue);
+        return new Pair<>(id, output);
+      }
+    } finally {
+      final Lock routerLock = remoteEvalIdWithLock.getValue();
+      routerLock.unlock();
     }
+
+    // send operation to remote and wait until operation is finished
+    final SingleKeyOperation<K, V> operation =
+        remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.UPDATE, id, Optional.of(deltaValue),
+            remoteEvalIdOptional.get());
+
+    return new Pair<>(id, operation.getOutputData().get());
   }
 
   @Override
   public <V> Pair<K, V> remove(final K id) {
 
     final int blockId = blockResolver.resolveBlock(id);
-    final Optional<String> remoteEvalId = router.resolveEval(blockId);
+    final Optional<String> remoteEvalIdOptional;
 
-    // execute operation in local or send it to remote
-    if (remoteEvalId.isPresent()) {
-      // send operation to remote and wait until operation is finished
-      final SingleKeyOperation<K, V> operation =
-          remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.REMOVE, id, Optional.<V>empty(), remoteEvalId.get());
+    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+    try {
+      remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      final V outputData = operation.getOutputData().get();
-      return outputData == null ? null : new Pair<>(id, outputData);
-    } else {
-      final Block<V> block = blocks.get(blockId);
-      final V output = block.remove(id);
-      return output == null ? null : new Pair<>(id, output);
+      // execute operation in local, holding routerLock
+      if (!remoteEvalIdOptional.isPresent()) {
+        final Block<V> block = blocks.get(blockId);
+        final V output = block.remove(id);
+        return output == null ? null : new Pair<>(id, output);
+      }
+    } finally {
+      final Lock routerLock = remoteEvalIdWithLock.getValue();
+      routerLock.unlock();
     }
+
+    // send operation to remote and wait until operation is finished
+    final SingleKeyOperation<K, V> operation =
+        remoteOpHandlerImpl.sendOpToRemoteStore(DataOpType.REMOVE, id, Optional.<V>empty(), remoteEvalIdOptional.get());
+
+    final V outputData = operation.getOutputData().get();
+    return outputData == null ? null : new Pair<>(id, outputData);
   }
 
   @Override

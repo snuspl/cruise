@@ -36,13 +36,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
- * Created by xyzi on 9/19/16.
+ * Data-first version of {@link MigrationExecutor}.
+ * @param <K>
  */
-public final class DataFirstMigrationExecutor<K> implements MigrationExecutor<K> {
-
+public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
   private final RemoteAccessibleMemoryStore<K> memoryStore;
+  private final OperationRouter router;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
   private final Codec<K> keyCodec;
@@ -50,10 +53,12 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor<K>
 
   @Inject
   private DataFirstMigrationExecutor(final RemoteAccessibleMemoryStore<K> memoryStore,
+                                     final OperationRouter router,
                                      final InjectionFuture<ElasticMemoryMsgSender> sender,
                                      @Parameter(KeyCodecName.class)final Codec<K> keyCodec,
                                      final Serializer serializer) {
     this.memoryStore = memoryStore;
+    this.router = router;
     this.sender = sender;
     this.keyCodec = keyCodec;
     this.serializer = serializer;
@@ -126,16 +131,22 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor<K>
         dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
       }
 
-      memoryStore.putBlock(blockId, dataMap);
+      final String senderId = dataMsg.getSenderId().toString();
 
       final int newOwnerId = getStoreId(dataMsg.getReceiverId().toString());
-      final int oldOwnerId = getStoreId(dataMsg.getSenderId().toString());
-      memoryStore.updateOwnership(blockId, oldOwnerId, newOwnerId);
+      final int oldOwnerId = getStoreId(senderId);
+
+      memoryStore.putBlock(blockId, dataMap);
+
+      router.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
       // Notify the driver that the ownership has been updated by setting empty destination id.
-      sender.get().sendOwnershipMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
+      sender.get().sendOwnershipMsg(Optional.empty(), senderId, operationId,
+          blockId, oldOwnerId, newOwnerId, traceInfo);
     }
   }
+
+  private final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(2);
 
   private void onOwnershipMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
@@ -148,15 +159,20 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor<K>
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      // Update the owner of the block to the new one.
-      // Operations being executed keep a read lock on router while being executed.
-      memoryStore.updateOwnership(blockId, oldOwnerId, newOwnerId);
+      ownershipUpdateExecutor.submit(new Runnable() {
+        @Override
+        public void run() {
+          // Update the owner of the block to the new one.
+          // Operations being executed keep a read lock on router while being executed.
+          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
-      // After the ownership is updated, the data is never accessed locally,
-      // so it is safe to remove the local data block.
-      memoryStore.removeBlock(blockId);
+          // After the ownership is updated, the data is never accessed locally,
+          // so it is safe to remove the local data block.
+          memoryStore.removeBlock(blockId);
 
-      sender.get().sendBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
+          sender.get().sendBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
+        }
+      });
     }
   }
 

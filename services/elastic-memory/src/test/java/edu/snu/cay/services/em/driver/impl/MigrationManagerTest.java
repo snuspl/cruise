@@ -475,12 +475,13 @@ public class MigrationManagerTest {
     public void sendMoveInitMsg(final String destId, final String receiverId,
                                 final List<Integer> blocks, final String operationId,
                                 @Nullable final TraceInfo parentTraceInfo) {
-      // invoke a handler logic of response for CtrlMsg
+      // directly complete the migration
       for (final int blockId : blocks) {
         final String senderId = destId;
         final int oldOwnerId = blockManager.getMemoryStoreId(senderId);
         final int newOwnerId = blockManager.getMemoryStoreId(receiverId);
-        migrationManager.updateOwner(operationId, blockId, oldOwnerId, newOwnerId, parentTraceInfo);
+        migrationManager.updateOwner(blockId, oldOwnerId, newOwnerId);
+        migrationManager.markBlockAsMoved(operationId, blockId, parentTraceInfo);
       }
     }
 
@@ -497,11 +498,9 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendOwnershipMsg(final Optional<String> destId, final String operationId,
+    public void sendOwnershipMsg(final Optional<String> destId, final String senderId, final String operationId,
                                  final int blockId, final int oldOwnerId, final int newOwnerId,
                                  @Nullable final TraceInfo parentTraceInfo) {
-      // invoke a handler logic of response for OwnershipMsg
-      migrationManager.markBlockAsMoved(operationId, blockId, parentTraceInfo);
     }
 
     @Override

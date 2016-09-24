@@ -153,7 +153,8 @@
   "name": "MoveInitMsg",
   "fields":
   [
-    {"name": "receiverId", "type" : "string"},
+    {"name": "senderId", "type": "string"},
+    {"name": "receiverId", "type": "string"},
     {"name": "blockIds", "type": {"type": "array", "items": "int"}}
   ]
 },
@@ -168,8 +169,8 @@
   "name": "DataMsg",
   "fields":
   [
-    {"name": "senderId", "type" : "string"},
-    {"name": "receiverId", "type" : "string"},
+    {"name": "senderId", "type": "string"},
+    {"name": "receiverId", "type": "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null},
     {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
   ]
@@ -185,8 +186,8 @@
   "name": "DataAckMsg",
   "fields":
   [
-    {"name": "senderId", "type" : "string"},
-    {"name": "receiverId", "type" : "string"},
+    {"name": "senderId", "type": "string"},
+    {"name": "receiverId", "type": "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null}
   ]
 },
@@ -199,7 +200,7 @@
   "type": "record",
   "name": "OwnershipMsg",
   "fields": [
-      {"name": "senderId", "type" : "string"},
+      {"name": "senderId", "type": "string"},
       {"name": "oldOwnerId", "type": "int"},
       {"name": "newOwnerId", "type": "int"},
       {"name": "blockId", "type": "int"}
@@ -256,7 +257,7 @@
   "fields":
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
-    {"name": "srcId", "type" : ["null", "string"], "default": null},
+    {"name": "srcId", "type": ["null", "string"], "default": null},
     {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null},
     {"name": "msg", "type": ["null", "string"], "default": null}
   ]
@@ -316,7 +317,7 @@
     {"name": "type", "type": {"type": "enum", "name": "MigrationMsgType",
         "symbols": ["MoveInitMsg", "DataMsg", "DataAckMsg", "OwnershipMsg", "OwnershipAckMsg", "BlockMovedMsg",
           "FailureMsg", "ResultMsg"]}},
-    {"name": "operationId", "type" : ["null", "string"], "default": null},
+    {"name": "operationId", "type": ["null", "string"], "default": null},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
     {"name": "moveInitMsg", "type": ["null", "MoveInitMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},

@@ -30,14 +30,6 @@ import java.util.Map;
 @Private
 interface MoveHandler<K> {
   /**
-   * Called when the ownership arrives, to apply the change of ownership.
-   * @param blockId id of the block to update its owner
-   * @param oldOwnerId id of the MemoryStore who was the owner
-   * @param newOwnerId id of the MemoryStore who will be the owner
-   */
-  void updateOwnership(int blockId, int oldOwnerId, int newOwnerId);
-
-  /**
    * Sends the data in the blocks to another MemoryStore.
    * @param blockId the identifier of block to send
    * @param data the data to put

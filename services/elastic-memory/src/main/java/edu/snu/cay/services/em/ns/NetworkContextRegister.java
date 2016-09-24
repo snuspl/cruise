@@ -60,7 +60,7 @@ public final class NetworkContextRegister {
   public final class UnregisterContextHandler implements EventHandler<ContextStop> {
     @Override
     public void onNext(final ContextStop contextStop) {
-      emNetworkSetup.unregisterConnectionFactory();
+//      emNetworkSetup.unregisterConnectionFactory();
     }
   }
 }

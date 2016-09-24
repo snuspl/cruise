@@ -143,6 +143,7 @@ public interface ElasticMemoryMsgSender {
    * @param destId Specifies the destination. The recipient is Driver when this field is empty.
    */
   void sendOwnershipMsg(final Optional<String> destId,
+                        final String senderId,
                         final String operationId,
                         final int blockId,
                         final int oldOwnerId,

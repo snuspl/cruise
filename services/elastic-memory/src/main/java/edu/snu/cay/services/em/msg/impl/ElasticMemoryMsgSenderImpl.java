@@ -370,6 +370,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       detached = sendMoveInitMsgScope.detach();
 
       final MoveInitMsg moveInitMsg = MoveInitMsg.newBuilder()
+          .setSenderId(destId)
           .setReceiverId(receiverId)
           .setBlockIds(blocks)
           .build();
@@ -472,8 +473,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       detached = sendDataAckMsgScope.detach();
 
       final DataAckMsg dataAckMsg = DataAckMsg.newBuilder()
-          .setSenderId(emNetworkSetup.getMyId().toString())
-          .setReceiverId(destId)
+          .setSenderId(destId)
+          .setReceiverId(emNetworkSetup.getMyId().toString())
           .setBlockId(blockId)
           .build();
 
@@ -498,7 +499,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendOwnershipMsg(final Optional<String> destIdOptional, final String operationId,
+  public void sendOwnershipMsg(final Optional<String> destIdOptional, final String senderId, final String operationId,
                                final int blockId, final int oldOwnerId, final int newOwnerId,
                                @Nullable final TraceInfo parentTraceInfo) {
 
@@ -519,7 +520,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
               .setBlockId(blockId)
-              .setSenderId(emNetworkSetup.getMyId().toString())
+              .setSenderId(senderId)
               .setOldOwnerId(oldOwnerId)
               .setNewOwnerId(newOwnerId)
               .build();

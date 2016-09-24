@@ -39,17 +39,17 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 @Private
-public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EMMsg>> {
+public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
-  private final OperationRouter<K> router;
-  private final RemoteOpHandler<K> remoteOpHandler;
-  private final MigrationExecutor<K> migrationExecutor;
+  private final OperationRouter router;
+  private final RemoteOpHandler remoteOpHandler;
+  private final MigrationExecutor migrationExecutor;
 
   @Inject
-  private ElasticMemoryMsgHandler(final OperationRouter<K> router,
-                                  final RemoteOpHandler<K> remoteOpHandler,
-                                  final MigrationExecutor<K> migrationExecutor) {
+  private ElasticMemoryMsgHandler(final OperationRouter router,
+                                  final RemoteOpHandler remoteOpHandler,
+                                  final MigrationExecutor migrationExecutor) {
     this.router = router;
     this.remoteOpHandler = remoteOpHandler;
     this.migrationExecutor = migrationExecutor;

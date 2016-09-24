@@ -226,7 +226,8 @@ public final class DynamicServerResolver implements ServerResolver {
 
       // when this update is for newly added server
       if (blockIdsInNewStore == null) {
-        blockIdsInNewStore = storeIdToBlockIds.put(newOwnerId, new HashSet<>());
+        blockIdsInNewStore = new HashSet<>();
+        storeIdToBlockIds.put(newOwnerId, blockIdsInNewStore);
       }
 
       blockIdsInNewStore.add(blockId);

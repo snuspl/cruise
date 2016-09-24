@@ -44,7 +44,7 @@ import java.util.logging.Logger;
  * It 1) sends operation to remote stores and 2) sends the result of remote operation to the origin store,
  * and 3) receives and handles the received result.
  */
-public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler<K> {
+public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   private static final Logger LOG = Logger.getLogger(RemoteOpHandlerImpl.class.getName());
   private static final long TIMEOUT_MS = 40000;
 
