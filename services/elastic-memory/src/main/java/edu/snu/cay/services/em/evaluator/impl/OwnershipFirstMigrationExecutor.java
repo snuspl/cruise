@@ -48,12 +48,14 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   // limit the number of concurrent migrations to prevent too much gap between ownership transition and data transfer
   private static final int MAX_CONCURRENT_MIGRATIONS = 4;
   private static final int NUM_MIGRATION_THREADS = 2;
+  private static final int NUM_OWNERSHIP_UPDATE_THREADS = 2;
 
   private final RemoteAccessibleMemoryStore<K> memoryStore;
   private final OperationRouter router;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
   private final ExecutorService blockMigrationExecutor = Executors.newFixedThreadPool(NUM_MIGRATION_THREADS);
+  private final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(NUM_OWNERSHIP_UPDATE_THREADS);
 
   private final Map<String, Migration> ongoingMigrations = new ConcurrentHashMap<>();
 
@@ -119,7 +121,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       ongoingMigrations.put(operationId, migration);
 
       for (int i = 0; i < NUM_MIGRATION_THREADS; i++) {
-        blockMigrationExecutor.submit(new BlockMigratingThread(migration));
+        blockMigrationExecutor.submit(migration::startMigratingBlock);
       }
     }
   }
@@ -142,7 +144,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
     // threads can send data and ownership of a single block, after taking a token from the queue.
     // When migration of a single block is finished, a token will be pushed in to the queue
-    // to let one thread to start working.
+    // to let one thread to start migrating a next block.
     private final BlockingQueue<Token> tokenBlockingQueue = new ArrayBlockingQueue<>(MAX_CONCURRENT_MIGRATIONS);
 
     Migration(final String operationId, final String senderId, final String receiverId, final List<Integer> blockIds,
@@ -158,7 +160,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       }
     }
 
-    // empty class for token abstraction that gives chance of sending a block.
+    // empty class for token abstraction that gives a chance to send a block.
     private final class Token {
 
     }
@@ -199,6 +201,10 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       }
     }
 
+    /**
+     * Put a new token into queue to let one thread to start migrating a next block.
+     * @return True, if all blocks are migrated
+     */
     private boolean finishMigratingBlock() {
       tokenBlockingQueue.add(new Token());
       return migratedBlockCounter.incrementAndGet() == blockIds.size();
@@ -217,23 +223,11 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     }
   }
 
-  private final class BlockMigratingThread implements Runnable {
-    private final Migration migration;
-
-    BlockMigratingThread(final Migration migration) {
-      this.migration = migration;
-    }
-
-    @Override
-    public void run() {
-      migration.startMigratingBlock();
-    }
-  }
-
   /**
-   * A map whose key is block id and key is {@link IncomingBlock}.
-   * It's for ownership-first migration in which the order of DataMsg and OwnershipMsg is not determined.
-   * A later message will put a received block into MemoryStore by calling {@link #handleDataMsg}.
+   * A map whose key is block id and value is {@link IncomingBlock}.
+   * It's for ownership-first migration in which the order of OwnershipMsg and DataMsg is not determined.
+   * A later message will put a received block into MemoryStore and release client threads blocked during migration
+   * by calling {@link #handleDataMsg}.
    */
   private final Map<Integer, IncomingBlock> incomingBlocks = Collections.synchronizedMap(new HashMap<>());
 
@@ -282,6 +276,10 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
         }
       }
 
+      // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
+      // However, DataMsg should be handled after updating ownership by OwnershipMsg.
+      // So handle DataMsg now, if OwnershipMsg for the same block has been already arrived.
+      // Otherwise handle it in future when corresponding OwnershipMsg arrives
       if (ownershipMsgArrivedFirst) {
         handleDataMsg(operationId, senderId, blockId, dataMap, traceInfo);
       }
@@ -318,8 +316,6 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       sender.get().sendBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
     }
   }
-
-  private final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(2);
 
   private void onOwnershipMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
@@ -358,6 +354,9 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           sender.get().sendOwnershipAckMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId,
                   traceInfo);
 
+          // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
+          // However, DataMsg should be handled after updating ownership by OwnershipAckMsg.
+          // So if DataMsg for the same block has been already arrived, handle that msg now.
           if (!ownershipMsgArrivedFirst) {
             final IncomingBlock block = incomingBlocks.remove(blockId);
             handleDataMsg(operationId, senderId, blockId, block.dataMap, traceInfo);

@@ -155,7 +155,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
         }
       }
 
-      // In ownership-first migration, the order of OwnershipMsg and BlockMovedMsg is not fixed.
+      // In ownership-first migration, the order of OwnershipAckMsg and BlockMovedMsg is not fixed.
       // However, BlockMovedMsg should be handled after updating ownership by OwnershipAckMsg.
       // So handle BlockMovedMsg now, if OwnershipAckMsg for the same block has been already arrived.
       // Otherwise handle it in future when corresponding OwnershipAckMsg arrives
@@ -226,9 +226,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
         migrationManager.updateOwner(blockId, oldOwnerId, newOwnerId);
       }
 
-      // In ownership-first migration, the order of OwnershipMsg and BlockMovedMsg is not fixed.
+      // In ownership-first migration, the order of OwnershipAckMsg and BlockMovedMsg is not fixed.
       // However, BlockMovedMsg should be handled after updating ownership by OwnershipAckMsg.
-      // So if BlockMovedMsg for the same block has been already arrived, handle that msg now after updating owner.
+      // So if BlockMovedMsg for the same block has been already arrived, handle that msg now.
       if (!ownershipAckMsgArrivedFirst) {
         handleBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
       }
