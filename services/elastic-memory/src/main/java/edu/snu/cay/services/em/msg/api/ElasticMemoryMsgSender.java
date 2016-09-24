@@ -25,7 +25,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * Interface for sending AvroElasticMemoryMessages to the driver and evaluators.
+ * Interface for sending EMMsgs to the driver and evaluators.
  */
 @DefaultImplementation(ElasticMemoryMsgSenderImpl.class)
 public interface ElasticMemoryMsgSender {
@@ -129,7 +129,7 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a DataMsg containing list of {@code keyValuePairs} to the Evaluator named {@code destId}.
+   * Sends a response message for DataMsg to the Evaluator named {@code destId}.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
@@ -151,7 +151,7 @@ public interface ElasticMemoryMsgSender {
                         @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a request to update ownership for the given block.
+   * Sends a response message for OwnershipMsg.
    * @param destId Specifies the destination. The recipient is Driver when this field is empty.
    */
   void sendOwnershipAckMsg(final Optional<String> destId,

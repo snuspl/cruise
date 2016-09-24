@@ -41,7 +41,8 @@ import java.util.concurrent.Executors;
 
 /**
  * Data-first version of {@link MigrationExecutor}.
- * @param <K>
+ * It focuses on fast migration and availability of data,
+ * losing some updates on data values.
  */
 public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
   private final RemoteAccessibleMemoryStore<K> memoryStore;

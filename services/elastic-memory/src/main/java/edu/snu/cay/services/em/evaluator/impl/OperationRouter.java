@@ -298,11 +298,11 @@ public final class OperationRouter<K> {
 
   /**
    * Resolves an evaluator id for a block id.
-   * It returns empty when the block belongs to the local MemoryStore.
-   * Note that this method must be synchronized to prevent other threads
-   * from updating the routing information while reading it.
+   * Note that this method guarantees that the state of routing table does not change
+   * before an user unlocks the returned lock.
    * @param blockId an id of block
-   * @return an Optional with an evaluator id
+   * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore,
+   *        and a lock that prevents updates to routing table
    */
   public Tuple<Optional<String>, Lock> resolveEvalWithLock(final int blockId) {
     checkInitialization();
@@ -321,11 +321,10 @@ public final class OperationRouter<K> {
 
   /**
    * Resolves an evaluator id for a block id.
-   * It returns empty when the block belongs to the local MemoryStore.
    * Note that this method must be synchronized to prevent other threads
    * from updating the routing information while reading it.
    * @param blockId an id of block
-   * @return an Optional with an evaluator id
+   * @return an Optional with an evaluator id, it returns empty when the block belong to the local MemoryStore
    */
   public Optional<String> resolveEval(final int blockId) {
     checkInitialization();

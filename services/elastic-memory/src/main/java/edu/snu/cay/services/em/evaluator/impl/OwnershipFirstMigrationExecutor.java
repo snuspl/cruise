@@ -39,7 +39,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Created by xyzi on 9/19/16.
+ * Ownership-first version of {@link MigrationExecutor}.
+ * It preserves updates on data values during migration by blocking accesses on data.
  */
 public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecutor {
   private static final Logger LOG = Logger.getLogger(OwnershipFirstMigrationExecutor.class.getName());
@@ -53,6 +54,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
   private final ExecutorService blockMigrationExecutor = Executors.newFixedThreadPool(NUM_MIGRATION_THREADS);
+
+  private final Map<String, Migration> ongoingMigrations = new ConcurrentHashMap<>();
 
   private final Codec<K> keyCodec;
   private final Serializer serializer;
@@ -121,8 +124,10 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     }
   }
 
-  private final Map<String, Migration> ongoingMigrations = new ConcurrentHashMap<>();
-
+  /**
+   * Abstraction of a single migration for managing states
+   * while sending Ownership and Data msgs and receiving corresponding ack msgs.
+   */
   private final class Migration {
     // metadata of migration
     private final String operationId;
@@ -149,7 +154,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       }
     }
 
-    // empty class for token abstraction.
+    // empty class for token abstraction that gives chance of sending a block.
     private final class Token {
 
     }
