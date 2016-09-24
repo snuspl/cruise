@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 
 /**
  * Evaluator-side message handler.
- * Processes control message from the driver and data message from
+ * It handles control messages from the driver and data/ownership messages from
  * other evaluators.
  */
 @EvaluatorSide
@@ -125,6 +125,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     remoteOpHandler.onNext(msg);
   }
 
+  /**
+   * Passes the msg of migration to {@link MigrationExecutor}.
+   */
   private void onMigrationMsg(final MigrationMsg msg) {
     migrationExecutor.onNext(msg);
   }

@@ -177,8 +177,8 @@
 },
 
 /**
- * Data message that evaluators send to one another.
- * Actual data of the block is all packed in these messages during data migration, including the block's identifier.
+ * Response message for DataMsg.
+ * A data receiver sends it to the data sender.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -208,7 +208,8 @@
 },
 
 /**
- * Request message to update ownership of the block.
+ * Response message for OwnershipMsg.
+ * An ownership receiver sends it to the ownership sender.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",

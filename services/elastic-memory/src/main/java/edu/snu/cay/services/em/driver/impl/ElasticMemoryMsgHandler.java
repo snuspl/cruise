@@ -36,8 +36,7 @@ import java.util.logging.Logger;
 
 /**
  * Driver-side message handler.
- * Currently does nothing, but we need this class as a placeholder to
- * instantiate NetworkService.
+ * It handles migration related messages from evaluators.
  */
 @DriverSide
 @Private
@@ -48,6 +47,16 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
   private final MigrationManager migrationManager;
 
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
+
+  /**
+   * A set of id of migrating blocks.
+   * It's for ownership-first migration in which the order of OwnershipAckMsg and BlockMovedMsg is not determined.
+   * A later message will wrap up the migration by calling {@link #handleBlockMovedMsg}.
+   * In data-first migration, in which OwnershipMsg always precedes BlockMovedMsg, {@link #onOwnershipMsg(MigrationMsg)}
+   * simply checks that it arrives and let {@link #onBlockMovedMsg(MigrationMsg)} to wrap up the migration.
+   */
+  private final Set<Integer> migratingBlocks = Collections.synchronizedSet(new HashSet<>());
+
 
   @Inject
   private ElasticMemoryMsgHandler(final BlockManager blockManager,
@@ -127,8 +136,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
-  private final Set<Integer> migratingBlocks = Collections.synchronizedSet(new HashSet<>());
-
   private void onBlockMovedMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final BlockMovedMsg blockMovedMsg = msg.getBlockMovedMsg();
@@ -148,6 +155,10 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
         }
       }
 
+      // In ownership-first migration, the order of OwnershipMsg and BlockMovedMsg is not fixed.
+      // However, BlockMovedMsg should be handled after updating ownership by OwnershipAckMsg.
+      // So handle BlockMovedMsg now, if OwnershipAckMsg for the same block has been already arrived.
+      // Otherwise handle it in future when corresponding OwnershipAckMsg arrives
       if (ownershipMsgArrivedFirst) {
         handleBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onBlockMovedMsgScope.getSpan()));
       }
@@ -159,6 +170,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     migrationManager.markBlockAsMoved(operationId, blockId, traceInfo);
   }
 
+  /**
+   * This method is used only by data-first migration.
+   */
   private void onOwnershipMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
@@ -171,6 +185,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
         String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
+      // In data-first migration, OwnershipMsg always precedes BlockMovedMsg
+      // So simply mark that OwnershipMsg for this block arrives to let onBlockMoveMsg properly handle BlockMovedMsg
       migratingBlocks.add(blockId);
 
       // Update the owner and send ownership message to the old Owner.
@@ -182,6 +198,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
+  /**
+   * This method is used only by ownership-first migration.
+   */
   private void onOwnershipAckMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
@@ -207,6 +226,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
         migrationManager.updateOwner(blockId, oldOwnerId, newOwnerId);
       }
 
+      // In ownership-first migration, the order of OwnershipMsg and BlockMovedMsg is not fixed.
+      // However, BlockMovedMsg should be handled after updating ownership by OwnershipAckMsg.
+      // So if BlockMovedMsg for the same block has been already arrived, handle that msg now after updating owner.
       if (!ownershipAckMsgArrivedFirst) {
         handleBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
       }
