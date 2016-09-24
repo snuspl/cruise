@@ -18,9 +18,12 @@ package edu.snu.cay.services.em.driver;
 import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MigrationExecutor;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
+import edu.snu.cay.services.em.evaluator.impl.DataFirstMigrationExecutor;
 import edu.snu.cay.services.em.evaluator.impl.ElasticMemoryMsgHandler;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipFirstMigrationExecutor;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.NetworkContextRegister;
 import edu.snu.cay.services.em.ns.NetworkDriverRegister;
@@ -58,6 +61,7 @@ public final class ElasticMemoryConfiguration {
   private final int numTotalBlocks;
   private final int numStoreThreads;
   private final boolean rangeSupport;
+  private final boolean ownshipFirstMigration;
   private final BlockManager blockManager;
   private final String identifier;
 
@@ -68,6 +72,7 @@ public final class ElasticMemoryConfiguration {
                                      @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                                      @Parameter(NumStoreThreads.class) final int numStoreThreads,
                                      @Parameter(RangeSupport.class) final boolean rangeSupport,
+                                     @Parameter(OwnershipFirstMigration.class) final boolean ownershipFirstMigration,
                                      @Parameter(EMIdentifier.class) final String identifier,
                                      final BlockManager blockManager) {
     this.nameServer = nameServer;
@@ -76,6 +81,7 @@ public final class ElasticMemoryConfiguration {
     this.numTotalBlocks = numTotalBlocks;
     this.numStoreThreads = numStoreThreads;
     this.rangeSupport = rangeSupport;
+    this.ownshipFirstMigration = ownershipFirstMigration;
     this.blockManager = blockManager;
     this.identifier = identifier;
   }
@@ -157,6 +163,10 @@ public final class ElasticMemoryConfiguration {
         edu.snu.cay.services.em.evaluator.impl.rangekey.RemoteOpHandlerImpl.class :
         edu.snu.cay.services.em.evaluator.impl.singlekey.RemoteOpHandlerImpl.class;
 
+    final Class migrationExecutorClass = ownshipFirstMigration ?
+        OwnershipFirstMigrationExecutor.class :
+        DataFirstMigrationExecutor.class;
+
     final Class evalMsgHandlerClass = ElasticMemoryMsgHandler.class;
 
     final Configuration networkConf = getNetworkConfigurationBuilder()
@@ -173,6 +183,7 @@ public final class ElasticMemoryConfiguration {
         .bindImplementation(MemoryStore.class, memoryStoreClass)
         .bindImplementation(RemoteAccessibleMemoryStore.class, memoryStoreClass)
         .bindImplementation(RemoteOpHandler.class, remoteOpHandlerClass)
+        .bindImplementation(MigrationExecutor.class, migrationExecutorClass)
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(memoryStoreId))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))

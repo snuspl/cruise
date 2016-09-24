@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.api;
+package edu.snu.cay.services.em.common.parameters;
 
-import edu.snu.cay.services.em.avro.MigrationMsg;
-import org.apache.reef.wake.EventHandler;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * Created by xyzi on 9/19/16.
- */
-public interface MigrationExecutor extends EventHandler<MigrationMsg> {
+@NamedParameter(doc = "Whether or not to use ownership-first migration," +
+    " which guarantees the consistency of values during data migration with a slight overhead",
+    default_value = "false")
+public final class OwnershipFirstMigration implements Name<Boolean> {
 }

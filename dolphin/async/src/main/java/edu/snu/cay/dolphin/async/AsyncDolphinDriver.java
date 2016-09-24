@@ -25,6 +25,7 @@ import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
+import edu.snu.cay.services.em.common.parameters.OwnershipFirstMigration;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.EMWrapper;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
@@ -330,12 +331,14 @@ public final class AsyncDolphinDriver {
       workerInjector.bindVolatileInstance(EMDeleteExecutor.class, new WorkerRemover());
       workerInjector.bindVolatileParameter(EMIdentifier.class, WORKER_EM_IDENTIFIER);
       workerInjector.bindVolatileParameter(RangeSupport.class, Boolean.TRUE);
+      workerInjector.bindVolatileParameter(OwnershipFirstMigration.class, Boolean.FALSE);
       this.workerEMWrapper = workerInjector.getInstance(EMWrapper.class);
 
       final Injector serverInjector = injector.forkInjector();
       serverInjector.bindVolatileInstance(EMDeleteExecutor.class, new ServerRemover());
       serverInjector.bindVolatileParameter(EMIdentifier.class, SERVER_EM_IDENTIFIER);
       serverInjector.bindVolatileParameter(RangeSupport.class, Boolean.FALSE);
+      serverInjector.bindVolatileParameter(OwnershipFirstMigration.class, Boolean.TRUE);
       this.serverEMWrapper = serverInjector.getInstance(EMWrapper.class);
       this.emRoutingTableManager = serverInjector.getInstance(EMRoutingTableManager.class);
       this.psDriver = serverInjector.getInstance(PSDriver.class);
