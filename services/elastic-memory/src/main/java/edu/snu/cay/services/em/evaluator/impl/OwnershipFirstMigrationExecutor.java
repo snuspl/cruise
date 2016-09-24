@@ -58,6 +58,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(NUM_OWNERSHIP_UPDATE_THREADS);
 
   private final Map<String, Migration> ongoingMigrations = new ConcurrentHashMap<>();
+  private final Map<Integer, IncomingBlock> incomingBlocks = Collections.synchronizedMap(new HashMap<>());
+
 
   private final Codec<K> keyCodec;
   private final Serializer serializer;
@@ -224,13 +226,11 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   }
 
   /**
-   * A map whose key is block id and value is {@link IncomingBlock}.
-   * It's for ownership-first migration in which the order of OwnershipMsg and DataMsg is not determined.
-   * A later message will put a received block into MemoryStore and release client threads blocked during migration
-   * by calling {@link #handleDataMsg}.
+   * A class for representing arrival of messages in receiver.
+   * It's necessary because the order of OwnershipMsg and DataMsg can be reversed.
+   * A later message calls {@link #handleDataMsg} to put a received block into MemoryStore and
+   * release client threads that were blocked by {@link #onOwnershipMsg(MigrationMsg)}.
    */
-  private final Map<Integer, IncomingBlock> incomingBlocks = Collections.synchronizedMap(new HashMap<>());
-
   private final class IncomingBlock {
     private Map<K, Object> dataMap;
 
@@ -384,7 +384,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // Operations being executed keep a read lock on router while being executed.
           router.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
-          // wake up blocking client threads to access emigrated data
+          // wake up blocking client threads to access emigrated data via remote access
           router.unMarkBlockFromMigrating(blockId);
 
           sender.get().sendOwnershipAckMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId,
