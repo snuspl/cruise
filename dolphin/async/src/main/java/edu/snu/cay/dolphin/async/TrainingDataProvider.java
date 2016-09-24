@@ -56,7 +56,7 @@ public final class TrainingDataProvider<K> {
   }
 
   /**
-   * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}
+   * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
    */
   void prepareDataForEpoch() {
     final List<K> keys = new ArrayList<>(memoryStore.getAll().keySet());
