@@ -90,6 +90,6 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
     if (!vector.isDense()) {
       LOG.warning("the given vector is not dense.");
     }
-    return Integer.SIZE + Double.SIZE * vector.length();
+    return Integer.BYTES + Double.BYTES * vector.length();
   }
 }

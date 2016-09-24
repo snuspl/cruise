@@ -96,6 +96,6 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     if (vector.isDense()) {
       LOG.warning("the given vector is not sparse.");
     }
-    return 2 * Integer.SIZE + (Integer.SIZE + Double.SIZE) * vector.activeSize();
+    return 2 * Integer.BYTES + (Integer.BYTES + Double.BYTES) * vector.activeSize();
   }
 }

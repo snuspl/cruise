@@ -45,7 +45,7 @@ final class MLRDataSerializer implements Serializer {
   private final class MLRDataCodec implements Codec<Pair<Vector, Integer>>, StreamingCodec<Pair<Vector, Integer>> {
     @Override
     public byte[] encode(final Pair<Vector, Integer> mlrData) {
-      final int numBytes = sparseVectorCodec.getNumBytes(mlrData.getFirst()) + Integer.SIZE;
+      final int numBytes = sparseVectorCodec.getNumBytes(mlrData.getFirst()) + Integer.BYTES;
       try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
            final DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(mlrData, daos);
