@@ -203,17 +203,19 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
         try (final TraceScope sendingBlockScope = Trace.startSpan(
             String.format("send_block. blockId: %d", blockIdToMigrate), parentTraceInfo)) {
+          final TraceInfo traceInfo = TraceInfo.fromSpan(sendingBlockScope.getSpan());
 
           // block clients's access before starting migration
           router.markBlockAsMigrating(blockIdToMigrate);
 
           final Map<K, Object> blockData = memoryStore.getBlock(blockIdToMigrate);
-          final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
+          final List<KeyValuePair> keyValuePairs;
+          try (final TraceScope decodeDataScope = Trace.startSpan("encode_data", traceInfo)) {
+            keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
+          }
 
           final int oldOwnerId = getStoreId(senderId);
           final int newOwnerId = getStoreId(receiverId);
-
-          final TraceInfo traceInfo = TraceInfo.fromSpan(sendingBlockScope.getSpan());
 
           // send ownership msg and data msg at once
           sender.get().sendOwnershipMsg(Optional.of(receiverId), senderId, operationId,
