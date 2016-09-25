@@ -48,7 +48,7 @@ final class NMFDataSerializer implements Serializer {
     @Override
     public byte[] encode(final NMFData nmfData) {
       final int numBytes =
-          denseVectorCodec.getNumBytes(nmfData.getVector()) + getNumBytes(nmfData.getColumns()) + Integer.SIZE;
+          denseVectorCodec.getNumBytes(nmfData.getVector()) + getNumBytes(nmfData.getColumns()) + Integer.BYTES;
       try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
            final DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(nmfData, daos);
@@ -97,7 +97,7 @@ final class NMFDataSerializer implements Serializer {
    * @return the total number of bytes of the encoded columns
    */
   private int getNumBytes(final List<Pair<Integer, Double>> columns) {
-    return Integer.SIZE + columns.size() * (Integer.SIZE + Double.SIZE);
+    return Integer.BYTES + columns.size() * (Integer.BYTES + Double.BYTES);
   }
 
   private void encodeColumns(final List<Pair<Integer, Double>> columns,
