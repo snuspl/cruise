@@ -22,6 +22,7 @@ import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.util.Optional;
+import org.htrace.Span;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -49,13 +50,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   /**
-   * A set of id of migrating blocks.
+   * A map for maintaining state of migrating blocks in driver.
    * It's for ownership-first migration in which the order of OwnershipAckMsg and BlockMovedMsg can be reversed.
-   * A later message will wrap up the migration by calling {@link #handleBlockMovedMsg}.
+   * Using this map, handlers of both msgs can judge whether it arrives first or not.
    * In data-first migration, in which OwnershipMsg always precedes BlockMovedMsg, {@link #onOwnershipMsg(MigrationMsg)}
    * simply marks its arrival and lets {@link #onBlockMovedMsg(MigrationMsg)} to wrap up the migration.
    */
-  private final Set<Integer> migratingBlocks = Collections.synchronizedSet(new HashSet<>());
+  private final Map<Integer, MigratingBlock> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
 
 
   @Inject
@@ -136,19 +137,49 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
+  /**
+   * A class for representing arrival of messages in receiver.
+   * It's necessary in Ownership-first migration because the order of OwnershipMsg and DataMsg can be reversed.
+   * A later message calls {@link #handleBlockMovedMsg} to complete the migration of the block.
+   */
+  private final class MigratingBlock {
+    private final TraceInfo traceInfo;
+
+    /**
+     * A constructor for {@link #onOwnershipAckMsg(MigrationMsg)}.
+     */
+    MigratingBlock() {
+      this.traceInfo = null;
+    }
+
+    /**
+     * A constructor for {@link #onBlockMovedMsg(MigrationMsg)}.
+     * @param traceInfo a trace info of DataMsg
+     */
+    MigratingBlock(final TraceInfo traceInfo) {
+      this.traceInfo = traceInfo;
+    }
+  }
+
   private void onBlockMovedMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
     final BlockMovedMsg blockMovedMsg = msg.getBlockMovedMsg();
     final int blockId = blockMovedMsg.getBlockId();
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
 
     try (final TraceScope onBlockMovedMsgScope = Trace.startSpan(
         String.format("on_block_moved_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final boolean ownershipMsgArrivedFirst;
       synchronized (migratingBlocks) {
-        if (!migratingBlocks.contains(blockId)) {
+        if (!migratingBlocks.containsKey(blockId)) {
           ownershipMsgArrivedFirst = false;
-          migratingBlocks.add(blockId);
+          detached = onBlockMovedMsgScope.detach();
+          migratingBlocks.put(blockId, new MigratingBlock(TraceInfo.fromSpan(detached)));
         } else {
           ownershipMsgArrivedFirst = true;
           migratingBlocks.remove(blockId);
@@ -162,6 +193,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
       if (ownershipMsgArrivedFirst) {
         handleBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onBlockMovedMsgScope.getSpan()));
       }
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
@@ -187,7 +220,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
 
       // In data-first migration, OwnershipMsg always precedes BlockMovedMsg
       // So simply mark that OwnershipMsg for this block arrives to let onBlockMoveMsg properly handle BlockMovedMsg
-      migratingBlocks.add(blockId);
+      migratingBlocks.put(blockId, new MigratingBlock());
 
       // Update the owner and send ownership message to the old Owner.
       migrationManager.updateOwner(blockId, oldOwnerId, newOwnerId);
@@ -214,12 +247,11 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
 
       final boolean ownershipAckMsgArrivedFirst;
       synchronized (migratingBlocks) {
-        if (!migratingBlocks.contains(blockId)) {
+        if (!migratingBlocks.containsKey(blockId)) {
           ownershipAckMsgArrivedFirst = true;
-          migratingBlocks.add(blockId);
+          migratingBlocks.put(blockId, new MigratingBlock());
         } else {
           ownershipAckMsgArrivedFirst = false;
-          migratingBlocks.remove(blockId);
         }
 
         // Update the owner and send ownership message to the old Owner.
@@ -230,7 +262,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
       // However, BlockMovedMsg should be handled after updating ownership by OwnershipAckMsg.
       // So if BlockMovedMsg for the same block has been already arrived, handle that msg now.
       if (!ownershipAckMsgArrivedFirst) {
-        handleBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
+        final TraceInfo blockMovedMsgTraceInfo = migratingBlocks.remove(blockId).traceInfo;
+        handleBlockMovedMsg(operationId, blockId, blockMovedMsgTraceInfo);
       }
     }
   }

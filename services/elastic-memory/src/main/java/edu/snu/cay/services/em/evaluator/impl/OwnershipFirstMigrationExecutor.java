@@ -26,6 +26,7 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
+import org.htrace.Span;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -58,6 +59,12 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(NUM_OWNERSHIP_UPDATE_THREADS);
 
   private final Map<String, Migration> ongoingMigrations = new ConcurrentHashMap<>();
+
+  /**
+   * A map for maintaining state of incoming blocks in receiver.
+   * It's for ownership-first migration in which the order of OwnershipAckMsg and BlockMovedMsg can be reversed.
+   * Using this map, handlers of both msgs can judge whether it arrives first or not.
+   */
   private final Map<Integer, IncomingBlock> incomingBlocks = Collections.synchronizedMap(new HashMap<>());
 
 
@@ -107,6 +114,11 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
   private void onMoveInitMsg(final MigrationMsg msg) {
     Trace.setProcessId("src_eval");
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     try (final TraceScope onMoveInitMsgScope = Trace.startSpan("on_move_init_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
@@ -117,7 +129,9 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       final String receiverId = moveInitMsg.getReceiverId().toString();
       final List<Integer> blockIds = moveInitMsg.getBlockIds();
 
-      final TraceInfo traceInfo = TraceInfo.fromSpan(onMoveInitMsgScope.getSpan());
+      detached = onMoveInitMsgScope.detach();
+
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       final Migration migration = new Migration(operationId, senderId, receiverId, blockIds, traceInfo);
       ongoingMigrations.put(operationId, migration);
@@ -125,6 +139,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       for (int i = 0; i < NUM_MIGRATION_THREADS; i++) {
         blockMigrationExecutor.submit(migration::startMigratingBlock);
       }
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
@@ -138,7 +154,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     private final String senderId;
     private final String receiverId;
     private final List<Integer> blockIds;
-    private final TraceInfo traceInfo;
+    private final TraceInfo parentTraceInfo;
 
     // state of migration
     private final AtomicInteger blockIdxCounter = new AtomicInteger(0);
@@ -150,12 +166,12 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     private final BlockingQueue<Token> tokenBlockingQueue = new ArrayBlockingQueue<>(MAX_CONCURRENT_MIGRATIONS);
 
     Migration(final String operationId, final String senderId, final String receiverId, final List<Integer> blockIds,
-              final TraceInfo traceInfo) {
+              final TraceInfo parentTraceInfo) {
       this.operationId = operationId;
       this.senderId = senderId;
       this.receiverId = receiverId;
       this.blockIds = Collections.unmodifiableList(blockIds);
-      this.traceInfo = traceInfo;
+      this.parentTraceInfo = parentTraceInfo;
 
       for (int i = 0; i < MAX_CONCURRENT_MIGRATIONS; i++) {
         tokenBlockingQueue.add(new Token());
@@ -185,21 +201,27 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           throw new RuntimeException(e);
         }
 
-        // block clients's access before starting migration
-        router.markBlockAsMigrating(blockIdToMigrate);
+        try (final TraceScope sendingBlockScope = Trace.startSpan(
+            String.format("send_block. blockId: %d", blockIdToMigrate), parentTraceInfo)) {
 
-        final Map<K, Object> blockData = memoryStore.getBlock(blockIdToMigrate);
-        final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
+          // block clients's access before starting migration
+          router.markBlockAsMigrating(blockIdToMigrate);
 
-        final int oldOwnerId = getStoreId(senderId);
-        final int newOwnerId = getStoreId(receiverId);
+          final Map<K, Object> blockData = memoryStore.getBlock(blockIdToMigrate);
+          final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
 
-        // send ownership msg and data msg at once
-        sender.get().sendOwnershipMsg(Optional.of(receiverId), senderId, operationId,
-            blockIdToMigrate, oldOwnerId, newOwnerId, null);
-        sender.get().sendDataMsg(receiverId, keyValuePairs, blockIdToMigrate, operationId, null);
+          final int oldOwnerId = getStoreId(senderId);
+          final int newOwnerId = getStoreId(receiverId);
 
-        blockIdxToSend = blockIdxCounter.getAndIncrement();
+          final TraceInfo traceInfo = TraceInfo.fromSpan(sendingBlockScope.getSpan());
+
+          // send ownership msg and data msg at once
+          sender.get().sendOwnershipMsg(Optional.of(receiverId), senderId, operationId,
+              blockIdToMigrate, oldOwnerId, newOwnerId, traceInfo);
+          sender.get().sendDataMsg(receiverId, keyValuePairs, blockIdToMigrate, operationId, traceInfo);
+
+          blockIdxToSend = blockIdxCounter.getAndIncrement();
+        }
       }
     }
 
@@ -232,20 +254,25 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
    * release client threads that were blocked by {@link #onOwnershipMsg(MigrationMsg)}.
    */
   private final class IncomingBlock {
-    private Map<K, Object> dataMap;
+    private final Map<K, Object> dataMap;
+    private final TraceInfo traceInfo;
 
     /**
      * A constructor for {@link #onOwnershipMsg(MigrationMsg)}.
      */
     IncomingBlock() {
+      this.dataMap = null;
+      this.traceInfo = null;
     }
 
     /**
      * A constructor for {@link #onDataMsg(MigrationMsg)}.
      * @param dataMap a received data from sender evaluator
+     * @param traceInfo a trace info of DataMsg
      */
-    IncomingBlock(final Map<K, Object> dataMap) {
+    IncomingBlock(final Map<K, Object> dataMap, final TraceInfo traceInfo) {
       this.dataMap = dataMap;
+      this.traceInfo = traceInfo;
     }
   }
 
@@ -269,7 +296,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       synchronized (incomingBlocks) {
         if (!incomingBlocks.containsKey(blockId)) {
           ownershipMsgArrivedFirst = false;
-          incomingBlocks.put(blockId, new IncomingBlock(dataMap));
+          incomingBlocks.put(blockId, new IncomingBlock(dataMap, traceInfo));
         } else {
           ownershipMsgArrivedFirst = true;
           incomingBlocks.remove(blockId);
@@ -325,7 +352,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     final int oldOwnerId = ownershipMsg.getOldOwnerId();
     final int newOwnerId = ownershipMsg.getNewOwnerId();
 
-    Trace.setProcessId("dest_eval");
+    Trace.setProcessId("dst_eval");
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
@@ -358,8 +385,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // However, DataMsg should be handled after updating ownership by OwnershipAckMsg.
           // So if DataMsg for the same block has been already arrived, handle that msg now.
           if (!ownershipMsgArrivedFirst) {
-            final IncomingBlock block = incomingBlocks.remove(blockId);
-            handleDataMsg(operationId, senderId, blockId, block.dataMap, traceInfo);
+            final IncomingBlock incomingBlock = incomingBlocks.remove(blockId);
+            handleDataMsg(operationId, senderId, blockId, incomingBlock.dataMap, incomingBlock.traceInfo);
           }
         }
       });

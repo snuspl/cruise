@@ -365,7 +365,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     Span detached = null;
 
     // sending MoveInit msg is the starting point of the migration protocol
-    try (final TraceScope sendMoveInitMsgScope = Trace.startSpan("[1]send_move_init_msg", parentTraceInfo)) {
+    try (final TraceScope sendMoveInitMsgScope = Trace.startSpan("send_move_init_msg", parentTraceInfo)) {
 
       detached = sendMoveInitMsgScope.detach();
 
@@ -406,7 +406,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       totalValueBytes += valueByteLength;
     }
 
-    LOG.log(Level.INFO, "SendDataMsg: op_id: {0}, dest_id: {1}, block_id: {2}," +
+    LOG.log(Level.INFO, "Send DataMsg: op_id: {0}, dest_id: {1}, block_id: {2}," +
             " num_kv_pairs: {3}, k_bytes: {4}, v_bytes: {5}",
         new Object[]{operationId, destId, blockId, keyValuePairs.size(), totalKeyBytes, totalValueBytes});
 
@@ -417,7 +417,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     // sending data msg is the second step of the migration protocol
     try (final TraceScope sendDataMsgScope = Trace.startSpan(String.format(
-        "[2]send_data_msg. op_id: %s, dest: %s, block_id: %d, num_kv_pairs: %d, (k_bytes, v_bytes): (%d, %d)",
+        "send_data_msg. op_id: %s, dest: %s, block_id: %d, num_kv_pairs: %d, (k_bytes, v_bytes): (%d, %d)",
         operationId, destId, blockId, keyValuePairs.size(), totalKeyBytes, totalValueBytes),
         parentTraceInfo)) {
 
@@ -464,7 +464,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     // sending data msg is the second step of the migration protocol
     try (final TraceScope sendDataAckMsgScope = Trace.startSpan(String.format(
-        "[2]send_data__ack_msg. op_id: %s, dest: %s, block_id: %d", operationId, destId, blockId),
+        "send_data_ack_msg. op_id: %s, dest: %s, block_id: %d", operationId, destId, blockId),
         parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg",
@@ -510,10 +510,9 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     // sending ownership msg to driver is the third step and to src eval is the fourth step of the migration protocol
     final String destId = destIdOptional.isPresent() ? destIdOptional.get() : driverId;
-    final int stepIndex = destIdOptional.isPresent() ? 4 : 3;
 
     try (final TraceScope sendOwnershipMsgScope = Trace.startSpan(
-        String.format("[%d]send_ownership_msg. blockId: %d", stepIndex, blockId), parentTraceInfo)) {
+        String.format("send_ownership_msg. blockId: %d", blockId), parentTraceInfo)) {
 
       detached = sendOwnershipMsgScope.detach();
 
@@ -553,10 +552,9 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     // sending ownership msg to driver is the third step and to src eval is the fourth step of the migration protocol
     final String destId = destIdOptional.isPresent() ? destIdOptional.get() : driverId;
-    final int stepIndex = destIdOptional.isPresent() ? 4 : 3;
 
     try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan(
-        String.format("[%d]send_ownership_msg. blockId: %d", stepIndex, blockId), parentTraceInfo)) {
+        String.format("send_ownership_ack_msg. blockId: %d", blockId), parentTraceInfo)) {
 
       detached = sendOwnershipAckMsgScope.detach();
 
@@ -594,7 +592,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     Span detached = null;
 
     try (final TraceScope sendBlockMovedMsgScope = Trace.startSpan(
-        String.format("[5]send_block_moved_msg. blockId : %d", blockId), parentTraceInfo)) {
+        String.format("send_block_moved_msg. blockId : %d", blockId), parentTraceInfo)) {
 
       detached = sendBlockMovedMsgScope.detach();
 
