@@ -29,9 +29,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
-import static org.mockito.Matchers.anyObject;
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.fail;
+import static org.mockito.Mockito.anyObject;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
@@ -41,10 +42,10 @@ import static org.mockito.Mockito.mock;
 public class TrainingDataProviderTest {
   private static final int MINI_BATCH_SIZE = 5;
 
-  private final Map<Integer, Integer> values = new HashMap<>();
+  private final Map<Integer, Integer> kvMapBackingMemoryStore = new HashMap<>();
 
   private MemoryStore<Integer> mockMemoryStore;
-  private TrainingDataProvider trainingDataProvider;
+  private TrainingDataProvider<Integer> trainingDataProvider;
 
   @Before
   public void setup() throws InjectionException {
@@ -54,10 +55,10 @@ public class TrainingDataProviderTest {
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     mockMemoryStore = mock(MemoryStore.class);
     injector.bindVolatileInstance(MemoryStore.class, mockMemoryStore);
-    doAnswer(invocation -> values).when(mockMemoryStore).getAll();
+    doAnswer(invocation -> kvMapBackingMemoryStore).when(mockMemoryStore).getAll();
     doAnswer(invocation -> {
         final Integer id = invocation.getArgumentAt(0, Integer.class);
-        final Pair<Integer, Integer> pair = new Pair<>(id, values.get(id));
+        final Pair<Integer, Integer> pair = new Pair<>(id, kvMapBackingMemoryStore.get(id));
         return pair;
       }).when(mockMemoryStore).get(anyObject());
     trainingDataProvider = injector.getInstance(TrainingDataProvider.class);
@@ -73,24 +74,12 @@ public class TrainingDataProviderTest {
     createMockTrainingData(numTotalInstances);
 
     trainingDataProvider.prepareDataForEpoch();
+    testGetNextTrainingData(numTotalInstances);
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
 
-    assertTrue(numTotalInstances % MINI_BATCH_SIZE == 0);
-    final int numTotalMiniBatches = (int) Math.ceil((double) numTotalInstances / MINI_BATCH_SIZE);
-    final int numInstances = numTotalInstances / MINI_BATCH_SIZE;
-    int miniBatchIdx = 0;
-    Map<Integer, Integer> trainingData = trainingDataProvider.getNextTrainingData();
-    while (!trainingData.isEmpty()) {
-      miniBatchIdx++;
-      for (final Integer key : trainingData.keySet()) {
-        assertEquals("The training data for a key should be same", values.get(key), trainingData.get(key));
-      }
-      assertEquals("TrainingDataProvider did not give the expected number of instances",
-          numInstances, trainingData.size());
-      trainingData = trainingDataProvider.getNextTrainingData();
-    }
-
-    assertEquals("The total number of mini-batch is different from expectation",
-        numTotalMiniBatches, miniBatchIdx);
+    trainingDataProvider.prepareDataForEpoch();
+    testGetNextTrainingData(numTotalInstances);
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
   }
 
   /**
@@ -99,44 +88,57 @@ public class TrainingDataProviderTest {
    */
   @Test
   public void testIndivisibleMiniBatchSize() {
-
     // With 23 instances in total, the first 4 mini-batches process 5 instances (MINI_BATCH_SIZE),
     // and the last mini-batch processes remaining 3 instances.
-    final int numTotalMiniBatches = 5;
-    final int numRemainderForLastMiniBatch = (MINI_BATCH_SIZE - 2);
-    final int numTotalInstances = MINI_BATCH_SIZE * (numTotalMiniBatches - 1) + numRemainderForLastMiniBatch;
+    final int numTotalInstances = 23;
     createMockTrainingData(numTotalInstances);
 
     trainingDataProvider.prepareDataForEpoch();
+    testGetNextTrainingData(numTotalInstances);
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
 
-    assertTrue(numTotalInstances % MINI_BATCH_SIZE != 0);
-    int miniBatchIdx = 0;
-    Map<Integer, Integer> trainingData = trainingDataProvider.getNextTrainingData();
-    while (!trainingData.isEmpty()) {
-      miniBatchIdx++;
-      for (final Integer key : trainingData.keySet()) {
-        assertEquals(values.get(key), trainingData.get(key));
-      }
-      if (miniBatchIdx < numTotalMiniBatches) {
-        assertEquals("Should process MINI_BATCH_SIZE instances", MINI_BATCH_SIZE, trainingData.size());
-      } else {
-        assertEquals("The last mini-batch should process remaining instances",
-            numRemainderForLastMiniBatch, trainingData.size());
-      }
-      trainingData = trainingDataProvider.getNextTrainingData();
-    }
-    assertEquals("The total number of mini-batches is different from expectation",
-        numTotalMiniBatches, miniBatchIdx);
+    trainingDataProvider.prepareDataForEpoch();
+    testGetNextTrainingData(numTotalInstances);
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
   }
 
   /**
-   * Generate random values and put them into {@link #values} to be used as training data in {@link #mockMemoryStore}.
+   * Generate random values and put them into {@link #kvMapBackingMemoryStore}
+   * to be used as training data in {@link #mockMemoryStore}.
    */
   private void createMockTrainingData(final int numTotalInstances) {
     final Random generator = new Random();
     for (int i = 0; i < numTotalInstances; i++) {
       final int value = generator.nextInt();
-      values.put(i, value);
+      kvMapBackingMemoryStore.put(i, value);
     }
+  }
+
+  private void testGetNextTrainingData(final int numTotalInstances) {
+    final int remainderForLatchMiniBatch = numTotalInstances % MINI_BATCH_SIZE;
+    final int numMiniBatches = numTotalInstances / MINI_BATCH_SIZE + (remainderForLatchMiniBatch == 0 ? 0 : 1);
+    final int sizeOfLastMiniBatch = remainderForLatchMiniBatch == 0 ? MINI_BATCH_SIZE : remainderForLatchMiniBatch;
+
+    int miniBatchIdx = 0;
+    Map<Integer, Integer> trainingData = trainingDataProvider.getNextTrainingData();
+    while (!trainingData.isEmpty()) {
+      miniBatchIdx++;
+      for (final Integer key : trainingData.keySet()) {
+        assertEquals(kvMapBackingMemoryStore.get(key), trainingData.get(key));
+      }
+
+      if (miniBatchIdx < numMiniBatches) {
+        assertEquals("Should process MINI_BATCH_SIZE instances", MINI_BATCH_SIZE, trainingData.size());
+      } else if (miniBatchIdx == numMiniBatches) {
+        assertEquals("The last mini-batch should process remaining instances",
+            sizeOfLastMiniBatch, trainingData.size());
+      } else {
+        fail("The total number of mini-batches is larger than expectation");
+      }
+
+      trainingData = trainingDataProvider.getNextTrainingData();
+    }
+    assertEquals("The total number of mini-batches is different from expectation",
+        numMiniBatches, miniBatchIdx);
   }
 }
