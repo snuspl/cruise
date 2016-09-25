@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.io.network.util.Pair;
@@ -23,12 +24,9 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Provides the training data to process in mini-batches, taking subset of training data no more than
@@ -38,49 +36,43 @@ import java.util.Map;
 @TaskSide
 @NotThreadSafe
 public final class TrainingDataProvider<K> {
+  private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
+
   private final int miniBatchSize;
-
   private final MemoryStore<K> memoryStore;
+  //TODO need to use a lock to manage concurrent accesses to trainingDataKeySet.
+  private final Set<K> trainingDataKeySet;
+  private final BlockUpdateListener<K> blockUpdateListener;
+  
+  public final class BlockUpdateListenerImpl implements BlockUpdateListener<K> {
 
-  /**
-   * An iterator for the training data; each element is a list of data keys.
-   */
-  private Iterator<List<K>> trainingDataKeysIterator;
+    @Override
+    public void onAddedBlock(int blockId, Set<K> addedKeys) {
+      trainingDataKeySet.addAll(addedKeys);
+    }
+
+    @Override
+    public void onRemovedBlock(int blockId, Set<K> removedKeys) {
+      trainingDataKeySet.removeAll(removedKeys);
+    }
+  }
 
   @Inject
   private TrainingDataProvider(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                                final MemoryStore<K> memoryStore) {
     this.miniBatchSize = miniBatchSize;
     this.memoryStore = memoryStore;
-    this.trainingDataKeysIterator = Collections.emptyIterator();
+    this.trainingDataKeySet = new HashSet<>();
+    this.blockUpdateListener = new BlockUpdateListenerImpl();
+    memoryStore.registerBlockUpdateListener(blockUpdateListener);
   }
 
   /**
    * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
    */
   void prepareDataForEpoch() {
-    final List<K> keys = new ArrayList<>(memoryStore.getAll().keySet());
-    final int numMiniBatches = (int) Math.ceil((double) keys.size() / miniBatchSize);
-    final List<List<K>> keysList = new ArrayList<>(numMiniBatches);
-
-    final int remainderForLastMiniBatch = keys.size() % miniBatchSize;
-    final int numInstancesForLastMiniBatch = remainderForLastMiniBatch == 0 ? miniBatchSize : remainderForLastMiniBatch;
-
-    int numKeysCounted = 0;
-    int numKeysToCount = miniBatchSize;
-
-    for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
-      if (miniBatchIdx == numMiniBatches - 1) {
-        numKeysToCount = numInstancesForLastMiniBatch;
-      }
-
-      final List<K> trainingData = keys.subList(numKeysCounted, numKeysCounted + numKeysToCount);
-      numKeysCounted += numKeysToCount;
-
-      keysList.add(trainingData);
-    }
-
-    trainingDataKeysIterator = keysList.iterator();
+    trainingDataKeySet.addAll(memoryStore.getAll().keySet());
+    LOG.log(Level.SEVERE, "trainingDataKeySet size = " + trainingDataKeySet.size());
   }
 
   /**
@@ -89,20 +81,27 @@ public final class TrainingDataProvider<K> {
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
   public <V> Map<K, V> getNextTrainingData() {
-    if (!trainingDataKeysIterator.hasNext()) {
+    if (trainingDataKeySet.isEmpty()) {
       return Collections.emptyMap();
     }
 
-    final List<K> keyList = trainingDataKeysIterator.next();
+    final Iterator<K> iterator = trainingDataKeySet.iterator();
+    final List<K> nextTrainingDataKeyList = new ArrayList<>();
+
+    while (iterator.hasNext() && nextTrainingDataKeyList.size() < miniBatchSize) {
+      nextTrainingDataKeyList.add(iterator.next());
+    }
+    trainingDataKeySet.removeAll(nextTrainingDataKeyList);
+
     final Map<K, V> nextTrainingData = new HashMap<>();
-    for (final K key : keyList) {
-      // TODO #464: Add getList() API to MemoryStore
+    for (final K key : nextTrainingDataKeyList) {
       final Pair<K, V> keyValuePair = memoryStore.get(key);
       if (keyValuePair == null) {
         continue;
       }
       nextTrainingData.put(keyValuePair.getFirst(), keyValuePair.getSecond());
     }
+    LOG.log(Level.SEVERE, "nextTrainingData size = " + nextTrainingData.size());
     return nextTrainingData;
   }
 }
