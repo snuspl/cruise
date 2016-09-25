@@ -48,13 +48,12 @@ import java.util.logging.Logger;
  * Note that this class is not thread-safe, which means client of this class must synchronize explicitly.
  * @param <K> type of data key
  */
-// TODO #565: Refactor initialization methods in EM's OperationRouter
 @Private
 @NotThreadSafe
 public final class OperationRouter<K> {
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 
-  private static final long INIT_WAIT_TIMEOUT_MS = 10000;
+  private static final long INIT_WAIT_TIMEOUT_MS = 5000;
   private static final int MAX_NUM_INIT_REQUESTS = 3;
 
   /**
@@ -246,6 +245,8 @@ public final class OperationRouter<K> {
   /**
    * Routes the data key range of the operation. Note that this method must be synchronized to prevent other threads
    * from updating the routing information while reading it.
+   *
+   * This method does not work with Ownership-first migration protocol.
    * @param dataKeyRanges a range of data keys
    * @return a pair of a map between a block id and a corresponding sub key range,
    * and a map between evaluator id and corresponding sub key ranges.
@@ -269,9 +270,6 @@ public final class OperationRouter<K> {
       for (final Map.Entry<Integer, Pair<K, K>> blockToSubKeyRange : blockToSubKeyRangeMap.entrySet()) {
         final int blockId = blockToSubKeyRange.getKey();
         final Pair<K, K> minMaxKeyPair = blockToSubKeyRange.getValue();
-
-        // TODO #00: this method does not work with Ownership-first migration protocol
-        waitBlockMigrationTobeFinished(blockId);
 
         final int memoryStoreId = blockLocations.get(blockId);
 
@@ -316,26 +314,6 @@ public final class OperationRouter<K> {
       return new Tuple<>(Optional.empty(), readLock);
     } else {
       return new Tuple<>(Optional.of(getEvalId(memoryStoreId)), readLock);
-    }
-  }
-
-  /**
-   * Resolves an evaluator id for a block id.
-   * Note that this method must be synchronized to prevent other threads
-   * from updating the routing information while reading it.
-   * @param blockId an id of block
-   * @return an Optional with an evaluator id, it returns empty when the block belong to the local MemoryStore
-   */
-  public Optional<String> resolveEval(final int blockId) {
-    checkInitialization();
-
-    waitBlockMigrationTobeFinished(blockId);
-
-    final int memoryStoreId = blockLocations.get(blockId);
-    if (memoryStoreId == localStoreId) {
-      return Optional.empty();
-    } else {
-      return Optional.of(getEvalId(memoryStoreId));
     }
   }
 

@@ -180,7 +180,8 @@ public class OperationRouterTest {
 
       for (final int blockId : localBlockIds) {
         // OperationRouter.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
-        assertEquals("Router fails to classify local blocks", Optional.empty(), operationRouter.resolveEval(blockId));
+        assertFalse("Router fails to classify local blocks",
+            operationRouter.resolveEvalWithLock(blockId).getKey().isPresent());
         assertTrue("The same block is owned by multiple stores", totalBlocks.add(blockId));
       }
     }
@@ -212,7 +213,7 @@ public class OperationRouterTest {
 
       // check all routers give same answer
       for (int storeId = 0; storeId < numMemoryStores; storeId++) {
-        final Optional<String> evalId = routers[storeId].resolveEval(blockId);
+        final Optional<String> evalId = routers[storeId].resolveEvalWithLock(blockId).getKey();
 
         final int targetStoreId;
         // OperationRouter.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
@@ -336,8 +337,8 @@ public class OperationRouterTest {
         @Override
         public void run() {
           for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-            final Optional<String> evalIdFromInitRouter = routerInInitStore.resolveEval(blockId);
-            final Optional<String> evalIdFromAddedRouter = routerInAddedStore.resolveEval(blockId);
+            final Optional<String> evalIdFromInitRouter = routerInInitStore.resolveEvalWithLock(blockId).getKey();
+            final Optional<String> evalIdFromAddedRouter = routerInAddedStore.resolveEvalWithLock(blockId).getKey();
 
             if (!evalIdFromInitRouter.isPresent()) { // routerInInitStore is local
               assertEquals(endpointIdForInitEval, evalIdFromAddedRouter.get());
@@ -398,8 +399,8 @@ public class OperationRouterTest {
         @Override
         public void run() {
           for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-            final Optional<String> evalIdFromInitRouter = routerInInitStore.resolveEval(blockId);
-            final Optional<String> evalIdFromAddedRouter = routerInAddedStore.resolveEval(blockId);
+            final Optional<String> evalIdFromInitRouter = routerInInitStore.resolveEvalWithLock(blockId).getKey();
+            final Optional<String> evalIdFromAddedRouter = routerInAddedStore.resolveEvalWithLock(blockId).getKey();
 
             if (!evalIdFromInitRouter.isPresent()) { // routerInInitStore is local
               assertEquals(endpointIdForInitEval, evalIdFromAddedRouter.get());
