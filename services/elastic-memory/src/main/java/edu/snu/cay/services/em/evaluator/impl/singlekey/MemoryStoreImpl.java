@@ -360,19 +360,20 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public <V> Map<K, V> getAll() {
     final Map<K, V> result;
 
-    final Iterator<Block> blockIterator = blocks.values().iterator();
+    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
-    if (blockIterator.hasNext()) {
-      final Block<V> block = blockIterator.next();
+    if (blockIdIterator.hasNext()) {
+      final Block<V> block = blocks.get(blockIdIterator.next());
       result = block.getAll();
     } else {
       return Collections.emptyMap();
     }
 
     // execute on remaining blocks if exist
-    while (blockIterator.hasNext()) {
-      final Block<V> block = blockIterator.next();
+    while (blockIdIterator.hasNext()) {
+      final Block<V> block = blocks.get(blockIdIterator.next());
       // huge memory pressure may happen here
       result.putAll(block.getAll());
     }
@@ -446,19 +447,20 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public <V> Map<K, V> removeAll() {
     final Map<K, V> result;
 
-    final Iterator<Block> blockIterator = blocks.values().iterator();
+    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
-    if (blockIterator.hasNext()) {
-      final Block<V> block = blockIterator.next();
+    if (blockIdIterator.hasNext()) {
+      final Block<V> block = blocks.get(blockIdIterator.next());
       result = block.removeAll();
     } else {
       return Collections.emptyMap();
     }
 
     // execute on remaining blocks if exist
-    while (blockIterator.hasNext()) {
-      final Block<V> block = blockIterator.next();
+    while (blockIdIterator.hasNext()) {
+      final Block<V> block = blocks.get(blockIdIterator.next());
       // huge memory pressure may happen here
       result.putAll(block.removeAll());
     }
