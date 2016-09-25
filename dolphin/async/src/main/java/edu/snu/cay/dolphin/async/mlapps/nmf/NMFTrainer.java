@@ -150,7 +150,7 @@ final class NMFTrainer implements Trainer {
 
     Map<Long, NMFData> workloadMap = trainingDataProvider.getNextTrainingData();
     Collection<NMFData> workload = workloadMap.values();
-    final int numInstancesToProcess = workload.size();
+    int numInstancesToProcess = workload.size();
     while (!workloadMap.isEmpty()) {
       // pull data when mini-batch is started
       pullRMatrix(getKeys(workload));
@@ -207,12 +207,13 @@ final class NMFTrainer implements Trainer {
 
       workloadMap = trainingDataProvider.getNextTrainingData();
       workload = workloadMap.values();
+      numInstancesToProcess = workload.size();
     }
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, numTotalInstancesProcessed);
     final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, miniBatchIdx, numEMBlocks, numTotalInstancesProcessed, elapsedTime);
+        buildMetricsMsg(iteration, appMetrics, miniBatchIdx - 1, numEMBlocks, numTotalInstancesProcessed, elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);

@@ -279,7 +279,7 @@ final class MLRTrainer implements Trainer {
     final double accuracy = (double) lossRegLossAccuracy.getThird();
     final Metrics appMetrics = buildAppMetrics(loss, regLoss, accuracy, elapsedTime,
         totalInstancesProcessed.size());
-    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx, numEMBlocks,
+    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx - 1, numEMBlocks,
         totalInstancesProcessed.size(), elapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);

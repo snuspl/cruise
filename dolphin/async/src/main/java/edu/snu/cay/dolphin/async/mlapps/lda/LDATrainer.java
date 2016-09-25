@@ -150,11 +150,11 @@ final class LDATrainer implements Trainer {
           computeTracer, pushTracer, pullTracer);
 
       // A mini-batch is ended
-      miniBatchIdx++;
       numDocumentsSampled += numDocumentsToSample;
       totalDocumentsSampled.addAll(nextTrainingData.values());
-      LOG.log(Level.INFO, "{0} documents have been sampled in mini-batch {1}",
+      LOG.log(Level.INFO, "{0} documents have been sampled until mini-batch {1}",
           new Object[]{numDocumentsSampled, miniBatchIdx});
+      miniBatchIdx++;
 
       nextTrainingData = trainingDataProvider.getNextTrainingData();
     }
@@ -170,7 +170,7 @@ final class LDATrainer implements Trainer {
     final Metrics appMetrics = buildAppMetrics(statCalculator.computeDocLLH(totalDocumentsSampled),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
 
-    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx, numEMBlocks,
+    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx - 1, numEMBlocks,
             totalDocumentsSampled.size(), elapsedTimeSec);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
