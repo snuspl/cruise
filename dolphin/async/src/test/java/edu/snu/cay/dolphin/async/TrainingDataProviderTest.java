@@ -69,13 +69,9 @@ public class TrainingDataProviderTest {
    */
   @Test
   public void testDivisibleByMiniBatchSize() {
-    final Random generator = new Random();
-
     final int numTotalInstances = MINI_BATCH_SIZE * 5;
-    for (int i = 0; i < numTotalInstances; i++) {
-      final int value  = generator.nextInt();
-      values.put(i, value);
-    }
+    createMockTrainingData(numTotalInstances);
+
     trainingDataProvider.prepareDataForEpoch();
 
     assertTrue(numTotalInstances % MINI_BATCH_SIZE == 0);
@@ -103,17 +99,14 @@ public class TrainingDataProviderTest {
    */
   @Test
   public void testIndivisibleMiniBatchSize() {
-    final Random generator = new Random();
 
     // With 23 instances in total, the first 4 mini-batches process 5 instances (MINI_BATCH_SIZE),
     // and the last mini-batch processes remaining 3 instances.
     final int numTotalMiniBatches = 5;
     final int numRemainderForLastMiniBatch = (MINI_BATCH_SIZE - 2);
     final int numTotalInstances = MINI_BATCH_SIZE * (numTotalMiniBatches - 1) + numRemainderForLastMiniBatch;
-    for (int i = 0; i < numTotalInstances; i++) {
-      final int value = generator.nextInt();
-      values.put(i, value);
-    }
+    createMockTrainingData(numTotalInstances);
+
     trainingDataProvider.prepareDataForEpoch();
 
     assertTrue(numTotalInstances % MINI_BATCH_SIZE != 0);
@@ -134,5 +127,16 @@ public class TrainingDataProviderTest {
     }
     assertEquals("The total number of mini-batches is different from expectation",
         numTotalMiniBatches, miniBatchIdx);
+  }
+
+  /**
+   * Generate random values and put them into {@link #values} to be used as training data in {@link #mockMemoryStore}.
+   */
+  private void createMockTrainingData(final int numTotalInstances) {
+    final Random generator = new Random();
+    for (int i = 0; i < numTotalInstances; i++) {
+      final int value = generator.nextInt();
+      values.put(i, value);
+    }
   }
 }

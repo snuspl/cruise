@@ -222,6 +222,9 @@ final class MLRTrainer implements Trainer {
 
     Map<Long, Pair<Vector, Integer>> nextTrainingData = trainingDataProvider.getNextTrainingData();
     while (!nextTrainingData.isEmpty()) {
+      // pull data when mini-batch is started
+      pullModels();
+
       computeTracer.startTimer();
       final List<Pair<Vector, Integer>> instances = new ArrayList<>(nextTrainingData.values());
       for (final Pair<Vector, Integer> instance : instances) {
