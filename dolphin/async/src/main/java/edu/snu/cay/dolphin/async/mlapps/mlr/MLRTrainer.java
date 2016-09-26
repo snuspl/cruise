@@ -113,11 +113,6 @@ final class MLRTrainer implements Trainer {
    */
   private final int decayPeriod;
 
-  /**
-   * Number of instances to compute training loss with.
-   */
-  private final int trainErrorDataSetSize;
-
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
   private final TrainingDataProvider<Long> trainingDataProvider;
@@ -138,7 +133,6 @@ final class MLRTrainer implements Trainer {
                      @Parameter(Lambda.class) final double lambda,
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
@@ -160,7 +154,6 @@ final class MLRTrainer implements Trainer {
     this.oldModels = new Vector[numClasses];
     this.newModels = new Vector[numClasses];
     this.decayRate = decayRate;
-    this.trainErrorDataSetSize = trainErrorDatasetSize;
     this.decayPeriod = decayPeriod;
     this.metricsMsgSender = metricsMsgSender;
     this.idFactory = idFactory;
@@ -203,9 +196,6 @@ final class MLRTrainer implements Trainer {
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
     LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
-    if (dataValues.size() < trainErrorDataSetSize) {
-      LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDataSetSize);
-    }
   }
 
   @Override
@@ -272,8 +262,10 @@ final class MLRTrainer implements Trainer {
     }
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    final Tuple3<Double, Double, Float> lossRegLossAccuracy =
-        computeLoss(trainErrorDataSetSize, totalInstancesProcessed);
+
+    LOG.log(Level.INFO, "Start computing loss value");
+    pullModels();
+    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(totalInstancesProcessed);
     final double loss = lossRegLossAccuracy.getFirst();
     final double regLoss = lossRegLossAccuracy.getSecond();
     final double accuracy = (double) lossRegLossAccuracy.getThird();
@@ -291,18 +283,6 @@ final class MLRTrainer implements Trainer {
    */
   @Override
   public void cleanup() {
-    pullModels();
-
-    final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
-    final List<Pair<Vector, Integer>> data = new ArrayList<>(workloadMap.values());
-    final int entireDatasetSize = data.size();
-
-    // Compute loss with the entire dataset.
-    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(entireDatasetSize, data);
-    final Metrics appMetrics =
-        buildAppMetrics(lossRegLossAccuracy.getFirst(), lossRegLossAccuracy.getSecond(), lossRegLossAccuracy.getThird(),
-            0.0, entireDatasetSize);
-    LOG.log(Level.INFO, "[Cleanup] AppMetrics {0}", appMetrics);
   }
 
   private void pullModels() {
@@ -342,17 +322,15 @@ final class MLRTrainer implements Trainer {
   }
 
   /**
-   * Compute the loss value using the current models and all data instances.
+   * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Float> computeLoss(final int datasetSize,
-                                                    final List<Pair<Vector, Integer>> data) {
+  private Tuple3<Double, Double, Float> computeLoss(final List<Pair<Vector, Integer>> data) {
     double loss = 0;
     int numInstances = 0;
     int correctPredictions = 0;
 
-    final int numDataToCompute = Math.min(datasetSize, data.size());
-    for (final Pair<Vector, Integer> entry : data.subList(0, numDataToCompute)) {
+    for (final Pair<Vector, Integer> entry : data) {
       final Vector features = entry.getFirst();
       final int label = entry.getSecond();
       final Vector predictions = predict(features);
