@@ -38,7 +38,7 @@ public final class ActivationGpuLayer extends LayerBase {
 
   private Pointer inputDesc;
   private Pointer activationDesc;
-  private Pointer activDesc;
+  private Pointer activFuncDesc;
 
   private MatrixFactory matrixFactory;
 
@@ -87,7 +87,7 @@ public final class ActivationGpuLayer extends LayerBase {
     default:
       throw new IllegalArgumentException("Unsupported function: " + activationFunction);
     }
-    this.activDesc = JavaCudnn.createActivFuncDesc(func);
+    this.activFuncDesc = JavaCudnn.createActivFuncDesc(func);
   }
 
   @Override
@@ -109,7 +109,7 @@ public final class ActivationGpuLayer extends LayerBase {
   @Override
   public Matrix feedForward(final Matrix input) {
     final Matrix output = matrixFactory.create(input.getRows(), input.getColumns());
-    if (JavaCudnn.activFeedForward(activDesc, inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
+    if (JavaCudnn.activFeedForward(activFuncDesc, inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
     } else {
@@ -127,7 +127,7 @@ public final class ActivationGpuLayer extends LayerBase {
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
     final Matrix error = matrixFactory.create(nextError.getRows(), nextError.getColumns());
-    if (JavaCudnn.activBackPropagate(activDesc, activationDesc, ((MatrixCudaImpl) activation).getDevicePointer(),
+    if (JavaCudnn.activBackPropagate(activFuncDesc, activationDesc, ((MatrixCudaImpl) activation).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) nextError).getDevicePointer(),
         inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
