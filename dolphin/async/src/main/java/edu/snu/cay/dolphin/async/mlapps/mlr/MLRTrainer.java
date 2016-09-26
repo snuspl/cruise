@@ -265,9 +265,7 @@ final class MLRTrainer implements Trainer {
     pullModels();
     
     LOG.log(Level.INFO, "Start computing loss value");
-    computeTracer.startTimer();
     final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(totalInstancesProcessed);
-    computeTracer.recordTime(0);
     
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     final double loss = lossRegLossAccuracy.getFirst();
