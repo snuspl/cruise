@@ -13,36 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.dnn.layers;
+package edu.snu.cay.dolphin.async.dnn.layers.cuda;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
-import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.ActivationLayerConfigurationBuilder;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
+import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
-import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.shapeToString;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Test class for activation layer.
+ * Test class for Gpu activation layer.
  */
-public final class ActivationLayerTest {
+public final class ActivationGpuLayerTest {
 
   private static MatrixFactory matrixFactory;
   private static final float TOLERANCE = 1e-6f;
+  private static final Configuration MATRIX_CONF = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindImplementation(MatrixFactory.class, MatrixCudaFactory.class)
+      .build();
 
   static {
-    final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
-        .build();
     try {
-      matrixFactory = Tang.Factory.getTang().newInjector(configuration).getInstance(MatrixFactory.class);
+      matrixFactory = Tang.Factory.getTang().newInjector(MATRIX_CONF).getInstance(MatrixFactory.class);
     } catch (final InjectionException e) {
       throw new RuntimeException("InjectionException while injecting a matrix factory: " + e);
     }
@@ -64,20 +66,27 @@ public final class ActivationLayerTest {
   private LayerBase sigmoidActivationLayer;
 
   @Before
-  public void setup() throws InjectionException {
-    final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-        .bindNamedParameter(LayerInputShape.class, shapeToString(new int[]{input.getLength()}))
-        .build();
+  public void setup() {
+    try {
+      final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerIndex.class, String.valueOf(0))
+          .bindNamedParameter(LayerInputShape.class, "2,1,1")
+          .bindNamedParameter(NeuralNetworkConfigurationParameters.BatchSize.class, "4")
+          .build();
 
-    final Configuration sigmoidActivationLayerConf = ActivationLayerConfigurationBuilder.newConfigurationBuilder()
-        .setActivationFunction("sigmoid")
-        .setCpuOnly(true)
-        .build();
+      final Configuration sigmoidActivationLayerConf = ActivationLayerConfigurationBuilder.newConfigurationBuilder()
+          .setActivationFunction("sigmoid")
+          .build();
 
-    this.sigmoidActivationLayer =
-        Tang.Factory.getTang().newInjector(layerConf, sigmoidActivationLayerConf)
-        .getInstance(LayerBase.class);
+      final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
+
+      this.sigmoidActivationLayer =
+          injector.forkInjector(layerConf, sigmoidActivationLayerConf)
+              .getInstance(LayerBase.class);
+    } catch (final InjectionException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   @Test

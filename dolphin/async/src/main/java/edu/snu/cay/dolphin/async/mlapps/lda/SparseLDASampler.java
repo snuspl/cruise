@@ -53,7 +53,7 @@ final class SparseLDASampler {
     this.batchParameterWorker = batchParameterWorker;
   }
 
-  void sample(final List<Document> documents, final Tracer computeTracer,
+  void sample(final Collection<Document> documents, final Tracer computeTracer,
               final Tracer pushTracer, final Tracer pullTracer) {
     computeTracer.startTimer();
     final List<Integer> words = getKeys(documents);

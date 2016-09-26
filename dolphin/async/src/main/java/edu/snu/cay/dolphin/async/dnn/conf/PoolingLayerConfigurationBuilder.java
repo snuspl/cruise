@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitia
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.PoolingLayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.PoolingLayer;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.PoolingGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -43,6 +44,7 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
   private int strideWidth = 1;
   private int kernelHeight;
   private int kernelWidth;
+  private Class<? extends LayerBase> layerClass = PoolingGpuLayer.class;
 
   public synchronized PoolingLayerConfigurationBuilder setPoolingType(final String poolingType) {
     this.poolingType = poolingType;
@@ -79,6 +81,15 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
     return this;
   }
 
+  public synchronized PoolingLayerConfigurationBuilder setCpuOnly(final boolean cpuOnly) {
+    if (cpuOnly) {
+      layerClass = PoolingLayer.class;
+    } else {
+      layerClass = PoolingGpuLayer.class;
+    }
+    return this;
+  }
+
   public synchronized PoolingLayerConfigurationBuilder fromProtoConfiguration(
       final NeuralNetworkProtos.LayerConfiguration protoConf) {
     poolingType = protoConf.getPoolingParam().getPoolingType();
@@ -101,7 +112,7 @@ public final class PoolingLayerConfigurationBuilder implements Builder<Configura
         .bindNamedParameter(LayerConfigurationParameters.StrideWidth.class, String.valueOf(strideWidth))
         .bindNamedParameter(LayerConfigurationParameters.KernelHeight.class, String.valueOf(kernelHeight))
         .bindNamedParameter(LayerConfigurationParameters.KernelWidth.class, String.valueOf(kernelWidth))
-        .bindImplementation(LayerBase.class, PoolingLayer.class)
+        .bindImplementation(LayerBase.class, layerClass)
         .bindImplementation(LayerParameterInitializer.class, PoolingLayerParameterInitializer.class)
         .build();
   }

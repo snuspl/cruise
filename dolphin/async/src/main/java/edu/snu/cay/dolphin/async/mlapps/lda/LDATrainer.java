@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
@@ -53,6 +54,7 @@ final class LDATrainer implements Trainer {
   private final MemoryStore<Long> memoryStore;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
+  private final TrainingDataProvider<Long> trainingDataProvider;
 
   /**
    * Number of training data instances to be processed per mini-batch.
@@ -73,6 +75,7 @@ final class LDATrainer implements Trainer {
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
+                     final TrainingDataProvider<Long> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize) {
@@ -83,6 +86,7 @@ final class LDATrainer implements Trainer {
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
+    this.trainingDataProvider = trainingDataProvider;
     this.numVocabs = numVocabs;
     this.miniBatchSize = miniBatchSize;
 
@@ -130,47 +134,42 @@ final class LDATrainer implements Trainer {
     final long iterationBeginMs = System.currentTimeMillis();
     resetTracers();
 
-    final Map<Long, Document> workloadMap = memoryStore.getAll();
-    final List<Document> workload = new ArrayList<>(workloadMap.values());
-
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
 
-    final int numTotalDocuments = workload.size();
+    int miniBatchIdx = 0;
     int numDocumentsSampled = 0;
-    int numDocumentsToSample = miniBatchSize;
+    final List<Document> totalDocumentsSampled = new LinkedList<>();
 
-    final int numMiniBatches = (int) Math.ceil((double) numTotalDocuments / miniBatchSize);
-    final int remainderForLastMiniBatch = numTotalDocuments % miniBatchSize;
-    final int numInstancesForLastMiniBatch = remainderForLastMiniBatch == 0 ? miniBatchSize : remainderForLastMiniBatch;
-    LOG.log(Level.INFO, "Number of mini-batches for epoch {0} = {1}", new Object[] {iteration, numMiniBatches});
+    Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
+    while (!nextTrainingData.isEmpty()) {
+      final Collection<Document> documents = nextTrainingData.values();
+      sampler.sample(documents, computeTracer, pushTracer, pullTracer);
 
-    for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
-      // The last mini-batch may take fewer than or equal to "miniBatchSize" training data instances.
-      if (miniBatchIdx == numMiniBatches - 1) {
-        numDocumentsToSample = numInstancesForLastMiniBatch;
-      }
-      sampler.sample(workload.subList(numDocumentsSampled, numDocumentsSampled + numDocumentsToSample),
-          computeTracer, pushTracer, pullTracer);
+      // A mini-batch is ended
+      numDocumentsSampled += documents.size();
+      totalDocumentsSampled.addAll(documents);
+      LOG.log(Level.INFO, "{0} documents have been sampled until mini-batch {1}",
+          new Object[]{numDocumentsSampled, miniBatchIdx});
+      miniBatchIdx++;
 
-      numDocumentsSampled += numDocumentsToSample;
-      LOG.log(Level.INFO, "{0} documents out of {1} have been sampled",
-          new Object[]{numDocumentsSampled, numTotalDocuments});
+      nextTrainingData = trainingDataProvider.getNextTrainingData();
     }
 
-    final double elapsedTimeSec = (System.currentTimeMillis() - iterationBeginMs) / 1000.0D;
-
-    LOG.log(Level.INFO, "Start computing log likelihood");
+    LOG.log(Level.INFO, "Pull model to compute log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
     // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution,
     // in a form of numTopics-dimensional vector
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
 
-    final Metrics appMetrics = buildAppMetrics(statCalculator.computeDocLLH(workload),
+    LOG.log(Level.INFO, "Start computing log likelihood");
+    final Metrics appMetrics = buildAppMetrics(statCalculator.computeDocLLH(totalDocumentsSampled),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
-    final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, numMiniBatches, numEMBlocks, workload.size(), elapsedTimeSec);
+    final double elapsedTimeSec = (System.currentTimeMillis() - iterationBeginMs) / 1000.0D;
+
+    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx - 1, numEMBlocks,
+            totalDocumentsSampled.size(), elapsedTimeSec);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);

@@ -13,13 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.dnn.layers;
+package edu.snu.cay.dolphin.async.dnn.layers.cuda;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
-import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
-import edu.snu.cay.dolphin.async.dnn.conf.*;
-import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
+import edu.snu.cay.dolphin.async.dnn.conf.ConvolutionalLayerConfigurationBuilder;
+import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.LayerIndex;
+import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.LayerInputShape;
+import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -31,14 +35,14 @@ import static edu.snu.cay.dolphin.async.dnn.layers.LayerParameterUtils.compare;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Test class for convolutional layer.
+ * Test class for gpu convolutional layer.
  */
-public class ConvolutionalLayerTest {
+public class ConvolutionalGpuLayerTest {
 
   private static MatrixFactory matrixFactory;
   private static final float TOLERANCE = 1e-4f;
   private static final Configuration MATRIX_CONF = Tang.Factory.getTang().newConfigurationBuilder()
-      .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
+      .bindImplementation(MatrixFactory.class, MatrixCudaFactory.class)
       .build();
 
   static {
@@ -125,125 +129,129 @@ public class ConvolutionalLayerTest {
       {-0.153994f, -0.0412462f}});
   private final Matrix input3D = matrixFactory.create(new float[][]{
       {0, 10, 10, 2, 0, 5,
-       1, 5, 0, 1, 10, 1}}).transpose();
+          1, 5, 0, 1, 10, 1}}).transpose();
   private final Matrix expectedConvolutional3DActivation = matrixFactory.create(new float[][]{
       {0.462375f, -1.040396f, -1.410072f, -1.575518f,
-       -0.703437f, -2.622436f, -6.148920f, 1.164392f}}).transpose();
+          -0.703437f, -2.622436f, -6.148920f, 1.164392f}}).transpose();
   private final Matrix nextError3D = matrixFactory.create(new float[][]{
       {0, 0.1f, 0.2f, 0.1f,
-       0.4f, 0.1f, 0, 0.2f}}).transpose();
+          0.4f, 0.1f, 0, 0.2f}}).transpose();
   private final Matrix expectedConvolutional3DError = matrixFactory.create(new float[][]{
       {-0.000347f, -0.047422f, -0.017259f, -0.062726f, 0.017144f, 0.083920f,
-       -0.041767f, -0.036403f, -0.017025f, -0.138155f, -0.002363f, -0.116153f}}).transpose();
+          -0.041767f, -0.036403f, -0.017025f, -0.138155f, -0.002363f, -0.116153f}}).transpose();
   private final LayerParameter expectedConvolutionalLayerParams =
       LayerParameter.newBuilder()
-      .setWeightParam(matrixFactory.create(new float[]
-          {15.8f, 12.29999f, 13.9f, 9.8f}))
-      .setBiasParam(matrixFactory.create(new float[]
-          {0.1f, 0.6f, 1, 0.5f}))
-      .build();
+          .setWeightParam(matrixFactory.create(new float[]
+              {15.8f, 12.29999f, 13.9f, 9.8f}))
+          .setBiasParam(matrixFactory.create(new float[]
+              {2.2f}))
+          .build();
 
   private final LayerParameter expectedConvolutionalLayerWithPaddingParams =
       LayerParameter.newBuilder()
-      .setWeightParam(matrixFactory.create(new float[]
-          {58.7f, 41.699997f, 58.6f, 52.300003f}))
-      .setBiasParam(matrixFactory.create(new float[]
-          {0.2f, 0.5f, 1.6f, 0.9f, 0.2f, 0.3f, 1.7f, 1.5f, 1.4f, 0.6f, 0.1f, 0.4f, 0.7f, 0.1f, 0.9f, 0.8f}))
-      .build();
+          .setWeightParam(matrixFactory.create(new float[]
+              {58.7f, 41.699997f, 58.6f, 52.300003f}))
+          .setBiasParam(matrixFactory.create(new float[]
+              {11.9f}))
+          .build();
 
   private final LayerParameter expectedConvolutional3DLayerParams =
       LayerParameter.newBuilder()
-      .setWeightParam(matrixFactory.create(new float[][]{
-          {3, 3, 0.7f, 1, 1.1f, 0.5f, 2.2f, 1.2f},
-          {2, 1, 1.2f, 0.8f, 0.1f, 0.9f, 0.3f, 1.4f}}).transpose())
-      .setBiasParam(matrixFactory.create(new float[]
-          {0, 0.1f, 0.2f, 0.1f, 0.4f, 0.1f, 0, 0.2f}))
-      .build();
+          .setWeightParam(matrixFactory.create(new float[][]{
+              {3, 3, 0.7f, 1, 1.1f, 0.5f, 2.2f, 1.2f},
+              {2, 1, 1.2f, 0.8f, 0.1f, 0.9f, 0.3f, 1.4f}}).transpose())
+          .setBiasParam(matrixFactory.create(new float[]
+              {0.4f, 0.7f}))
+          .build();
 
   private LayerBase convolutionalLayer;
   private LayerBase convolutionalWithPaddingLayer;
   private LayerBase convolutional3DLayer;
 
   @Before
-  public void setup() throws InjectionException {
-    final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-        .bindNamedParameter(LayerInputShape.class, "3,3")
-        .build();
+  public void setup() {
+    try {
+      final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerIndex.class, String.valueOf(0))
+          .bindNamedParameter(LayerInputShape.class, "3,3")
+          .bindNamedParameter(NeuralNetworkConfigurationParameters.BatchSize.class, "2")
+          .build();
 
-    final Configuration layerConf3D = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-        .bindNamedParameter(LayerInputShape.class, "2,2,3")
-        .build();
+      final Configuration layerConf3D = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(LayerIndex.class, String.valueOf(0))
+          .bindNamedParameter(LayerInputShape.class, "2,2,3")
+          .bindNamedParameter(NeuralNetworkConfigurationParameters.BatchSize.class, "1")
+          .build();
 
-    final ConvolutionalLayerConfigurationBuilder builder = ConvolutionalLayerConfigurationBuilder
-        .newConfigurationBuilder()
-        .setInitWeight(0.2f)
-        .setInitBias(0)
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(1)
-        .setStrideWidth(1)
-        .setNumOutput(1)
-        .setCpuOnly(true);
+      final ConvolutionalLayerConfigurationBuilder builder = ConvolutionalLayerConfigurationBuilder
+          .newConfigurationBuilder()
+          .setInitWeight(0.2f)
+          .setInitBias(0)
+          .setKernelHeight(2)
+          .setKernelWidth(2)
+          .setStrideHeight(1)
+          .setStrideWidth(1)
+          .setNumOutput(1);
 
-    final ConvolutionalLayerConfigurationBuilder builderWithPadding = ConvolutionalLayerConfigurationBuilder
-        .newConfigurationBuilder()
-        .setInitWeight(0.2f)
-        .setInitBias(0)
-        .setPaddingHeight(1)
-        .setPaddingWidth(1)
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(1)
-        .setStrideWidth(1)
-        .setNumOutput(1)
-        .setCpuOnly(true);
+      final ConvolutionalLayerConfigurationBuilder builderWithPadding = ConvolutionalLayerConfigurationBuilder
+          .newConfigurationBuilder()
+          .setInitWeight(0.2f)
+          .setInitBias(0)
+          .setPaddingHeight(1)
+          .setPaddingWidth(1)
+          .setKernelHeight(2)
+          .setKernelWidth(2)
+          .setStrideHeight(1)
+          .setStrideWidth(1)
+          .setNumOutput(1);
 
-    final ConvolutionalLayerConfigurationBuilder builder3D = ConvolutionalLayerConfigurationBuilder
-        .newConfigurationBuilder()
-        .setInitWeight(0.2f)
-        .setInitBias(0)
-        .setKernelHeight(2)
-        .setKernelWidth(2)
-        .setStrideHeight(1)
-        .setStrideWidth(1)
-        .setPaddingWidth(1)
-        .setNumOutput(2)
-        .setCpuOnly(true);
+      final ConvolutionalLayerConfigurationBuilder builder3D = ConvolutionalLayerConfigurationBuilder
+          .newConfigurationBuilder()
+          .setInitWeight(0.2f)
+          .setInitBias(0)
+          .setKernelHeight(2)
+          .setKernelWidth(2)
+          .setStrideHeight(1)
+          .setStrideWidth(1)
+          .setPaddingWidth(1)
+          .setNumOutput(2);
 
-    final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
+      final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
 
-    this.convolutionalLayer = injector.forkInjector(layerConf, builder.build())
-        .getInstance(LayerBase.class);
+      this.convolutionalLayer = injector.forkInjector(layerConf, builder.build())
+          .getInstance(LayerBase.class);
 
-    this.convolutionalLayer.setLayerParameter(LayerParameter.newBuilder()
-        .setWeightParam(matrixFactory.create(new float[]
-            {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}))
-        .setBiasParam(matrixFactory.zeros(4)).build());
+      this.convolutionalLayer.setLayerParameter(LayerParameter.newBuilder()
+          .setWeightParam(matrixFactory.create(new float[]
+              {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}))
+          .setBiasParam(matrixFactory.zeros(4)).build());
 
-    this.convolutionalWithPaddingLayer = injector.forkInjector(layerConf, builderWithPadding.build())
-        .getInstance(LayerBase.class);
+      this.convolutionalWithPaddingLayer = injector.forkInjector(layerConf, builderWithPadding.build())
+          .getInstance(LayerBase.class);
 
-    this.convolutionalWithPaddingLayer.setLayerParameter(LayerParameter.newBuilder()
-        .setWeightParam(matrixFactory.create(new float[]
-            {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}))
-        .setBiasParam(matrixFactory.zeros(16)).build());
+      this.convolutionalWithPaddingLayer.setLayerParameter(LayerParameter.newBuilder()
+          .setWeightParam(matrixFactory.create(new float[]
+              {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}))
+          .setBiasParam(matrixFactory.zeros(16)).build());
 
-    this.convolutional3DLayer = injector.forkInjector(layerConf3D, builder3D.build())
-        .getInstance(LayerBase.class);
+      this.convolutional3DLayer = injector.forkInjector(layerConf3D, builder3D.build())
+          .getInstance(LayerBase.class);
 
-    this.convolutional3DLayer.setLayerParameter(LayerParameter.newBuilder()
-        .setWeightParam(matrixFactory.create(new float[][]{
-            {-0.200013592839f, 0.109642162919f},
-            {-0.095913007855f, 0.021724732592f},
-            {0.065758734941f, 0.138832792639f},
-            {0.247887045145f, -0.207962512969f},
-            {-0.129198953509f, 0.010389177128f},
-            {-0.030915966257f, -0.074716188013f},
-            {0.095823608338f, -0.626192688941f},
-            {-0.002482861746f, -0.212796315550f}}))
-        .setBiasParam(matrixFactory.zeros(8)).build());
+      this.convolutional3DLayer.setLayerParameter(LayerParameter.newBuilder()
+          .setWeightParam(matrixFactory.create(new float[][]{
+              {-0.200013592839f, 0.109642162919f},
+              {-0.095913007855f, 0.021724732592f},
+              {0.065758734941f, 0.138832792639f},
+              {0.247887045145f, -0.207962512969f},
+              {-0.129198953509f, 0.010389177128f},
+              {-0.030915966257f, -0.074716188013f},
+              {0.095823608338f, -0.626192688941f},
+              {-0.002482861746f, -0.212796315550f}}))
+          .setBiasParam(matrixFactory.zeros(8)).build());
+    } catch (final InjectionException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   @Test

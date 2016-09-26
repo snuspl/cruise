@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.conf;
 
 import edu.snu.cay.dolphin.async.dnn.layers.LRNLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.LRNGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -37,6 +38,7 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
   private float alpha = 1;
   private float beta = 0.75f;
   private float k = 1;
+  private Class<? extends LayerBase> layerClass = LRNGpuLayer.class;
 
   public synchronized LRNLayerConfigurationBuilder setLocalSize(final int localSize) {
     this.localSize = localSize;
@@ -55,6 +57,15 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
 
   public synchronized LRNLayerConfigurationBuilder setK(final float k) {
     this.k = k;
+    return this;
+  }
+
+  public synchronized LRNLayerConfigurationBuilder setCpuOnly(final boolean onlyCpu) {
+    if (onlyCpu) {
+      layerClass = LRNLayer.class;
+    } else {
+      layerClass = LRNGpuLayer.class;
+    }
     return this;
   }
 
@@ -77,7 +88,7 @@ public final class LRNLayerConfigurationBuilder implements Builder<Configuration
           .bindNamedParameter(LayerConfigurationParameters.Alpha.class, String.valueOf(alpha))
           .bindNamedParameter(LayerConfigurationParameters.Beta.class, String.valueOf(beta))
           .bindNamedParameter(LayerConfigurationParameters.K.class, String.valueOf(k))
-          .bindImplementation(LayerBase.class, LRNLayer.class)
+          .bindImplementation(LayerBase.class, layerClass)
           .build();
     }
   }
