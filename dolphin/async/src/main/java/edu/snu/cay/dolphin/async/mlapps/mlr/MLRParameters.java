@@ -60,11 +60,6 @@ final class MLRParameters {
   static final class DecayRate implements Name<Double> {
   }
 
-  @NamedParameter(doc = "size of the dataset used for measuring training loss",
-      short_name = "train_error_dataset_size")
-  static final class TrainErrorDatasetSize implements Name<Integer> {
-  }
-
   static final class MetricKeys {
 
     // The key denoting the average of loss computed from the sample of training data instances.
