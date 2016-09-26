@@ -261,11 +261,15 @@ final class MLRTrainer implements Trainer {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
-    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-
-    LOG.log(Level.INFO, "Start computing loss value");
+    LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
+    
+    LOG.log(Level.INFO, "Start computing loss value");
+    computeTracer.startTimer();
     final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(totalInstancesProcessed);
+    computeTracer.recordTime(0);
+    
+    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     final double loss = lossRegLossAccuracy.getFirst();
     final double regLoss = lossRegLossAccuracy.getSecond();
     final double accuracy = (double) lossRegLossAccuracy.getThird();
