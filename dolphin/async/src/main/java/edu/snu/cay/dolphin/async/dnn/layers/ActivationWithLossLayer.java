@@ -104,7 +104,6 @@ public final class ActivationWithLossLayer extends LayerBase {
     default:
       throw new IllegalArgumentException("Unsupported loss function");
     }
-
   }
 
   @Override

@@ -18,6 +18,9 @@ package edu.snu.cay.dolphin.async.dnn.blas.cuda;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import org.bytedeco.javacpp.FloatPointer;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 /**
  * CUDA backend matrix implementation.
  */
@@ -274,6 +277,28 @@ public final class MatrixCudaImpl implements Matrix {
       multiplierFree();
     }
     return this;
+  }
+
+  @Override
+  public String toString() {
+    final StringWriter s = new StringWriter();
+    final PrintWriter p = new PrintWriter(s);
+    final float[] data = toFloatArray();
+
+    for (int r = 0; r < this.rows; ++r) {
+      for (int c = 0; c < this.columns; ++c) {
+        p.printf("%f", data[c * rows + r]);
+        if (c < this.columns - 1) {
+          p.print(", ");
+        }
+      }
+
+      if (r < this.rows - 1) {
+        p.print("\n");
+      }
+    }
+
+    return s.toString();
   }
 
   @Override
@@ -885,6 +910,79 @@ public final class MatrixCudaImpl implements Matrix {
     return this;
   }
 
+  /**
+   * Compute matrix multiplication between transpose of this matrix and the operand matrix.
+   * @param matrix the operand matrix
+   * @return result matrix
+   */
+  public Matrix tmmul(final Matrix matrix) {
+    final MatrixCudaImpl other = toCudaImpl(matrix);
+    if (rows != other.getRows()) {
+      throw new IllegalArgumentException(
+          "The number of rows of left matrix should be equal to the number of rows of right matrix.");
+    }
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(columns, other.getColumns());
+    if (other.getColumns() == 1) {
+      // column vector
+      if (!JavaCuda.gemv('T',
+          rows, columns, 1.0f, devPtr, rows, other.getDevicePointer(), 1, 0.0f, newMatrix.getDevicePointer(), 1)) {
+        newMatrix.free();
+        throw new RuntimeException("Failed to perform matrix-vector multiplication");
+      }
+    } else {
+      if (!JavaCuda.gemm('T', 'N', columns, other.getColumns(), rows, 1.0f,
+          devPtr, rows, other.getDevicePointer(), other.getRows(), 0.0f, newMatrix.getDevicePointer(), columns)) {
+        newMatrix.free();
+        throw new RuntimeException("Failed to perform matrix-matrix multiplication");
+      }
+    }
+    return newMatrix;
+  }
+
+  /**
+   * Compute in-place matrix multiplication between transpose of this matrix and the operand matrix.
+   * @param matrix the operand matrix
+   * @return result matrix
+   */
+  public Matrix tmmuli(final Matrix matrix) {
+    final Matrix temp = this.tmmul(matrix);
+    this.copy(temp);
+    temp.free();
+    return this;
+  }
+
+  /**
+   * Compute matrix multiplication between this matrix and the transpose of operand matrix.
+   * @param matrix the operand matrix
+   * @return result matrix
+   */
+  public Matrix mmult(final Matrix matrix) {
+    final MatrixCudaImpl other = toCudaImpl(matrix);
+    if (columns != other.getColumns()) {
+      throw new IllegalArgumentException(
+          "The number of columns of left matrix should be equal to the number of columns of right matrix.");
+    }
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, other.getRows());
+    if (!JavaCuda.gemm('N', 'T', rows, other.getRows(), columns, 1.0f,
+        devPtr, rows, other.getDevicePointer(), other.getRows(), 0.0f, newMatrix.getDevicePointer(), rows)) {
+      newMatrix.free();
+      throw new RuntimeException("Failed to perform matrix-matrix multiplication");
+    }
+    return newMatrix;
+  }
+
+  /**
+   * Compute in-place matrix multiplication between this matrix and the transpose of operand matrix.
+   * @param matrix the operand matrix
+   * @return result matrix
+   */
+  public Matrix mmulti(final Matrix matrix) {
+    final Matrix temp = this.mmult(matrix);
+    this.copy(temp);
+    temp.free();
+    return this;
+  }
+
   @Override
   public float max() {
     return JavaCuda.max(length, devPtr);
@@ -998,7 +1096,7 @@ public final class MatrixCudaImpl implements Matrix {
     multiplierFree();
   }
 
-  FloatPointer getDevicePointer() {
+  public FloatPointer getDevicePointer() {
     return devPtr;
   }
 

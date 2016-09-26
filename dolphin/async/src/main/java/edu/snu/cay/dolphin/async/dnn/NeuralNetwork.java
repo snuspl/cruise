@@ -94,8 +94,8 @@ public final class NeuralNetwork {
     final Configuration[] layerConfs =
         deserializeLayerConfSetToArray(configurationSerializer, serializedLayerConfSets);
     this.layers = getLayerInstances(injector, layerConfs, inputShape);
-    this.emptyMatrix = matrixFactory.create(0);
-    this.emptyLayerParam = LayerParameter.newEmptyInstance(matrixFactory);
+    this.emptyMatrix = null;
+    this.emptyLayerParam = LayerParameter.newEmptyInstance();
     this.learnableLayerIndices = getLearnableLayerIndices();
   }
 

@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.FullyConnectedLayerP
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.FullyConnectedLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.FullyConnectedGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -40,6 +41,7 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
   private int numOutput;
   private float initWeight;
   private float initBias;
+  private Class<? extends LayerBase> layerClass = FullyConnectedGpuLayer.class;
 
   public synchronized FullyConnectedLayerConfigurationBuilder setNumOutput(final int numOutput) {
     this.numOutput = numOutput;
@@ -53,6 +55,15 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
 
   public synchronized FullyConnectedLayerConfigurationBuilder setInitBias(final float initBias) {
     this.initBias = initBias;
+    return this;
+  }
+
+  public synchronized FullyConnectedLayerConfigurationBuilder setCpuOnly(final boolean cpuOnly) {
+    if (cpuOnly) {
+      layerClass = FullyConnectedLayer.class;
+    } else {
+      layerClass = FullyConnectedGpuLayer.class;
+    }
     return this;
   }
 
@@ -70,7 +81,7 @@ public final class FullyConnectedLayerConfigurationBuilder implements Builder<Co
         .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
         .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
         .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
-        .bindImplementation(LayerBase.class, FullyConnectedLayer.class)
+        .bindImplementation(LayerBase.class, layerClass)
         .bindImplementation(LayerParameterInitializer.class, FullyConnectedLayerParameterInitializer.class)
         .build();
   }

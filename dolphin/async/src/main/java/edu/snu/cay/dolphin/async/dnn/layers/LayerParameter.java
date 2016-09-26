@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.dnn.layers;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
-import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 
 /**
  * The parameter of the layer.
@@ -27,11 +26,10 @@ public final class LayerParameter {
 
   /**
    * Generates a new instance of a layer parameter.
-   * @param matrixFactory a factory to create the matrices that the layer parameter contains
    * @return the generated empty layer parameter
    */
-  public static LayerParameter newEmptyInstance(final MatrixFactory matrixFactory) {
-    return new LayerParameter(matrixFactory.create(0), matrixFactory.create(0));
+  public static LayerParameter newEmptyInstance() {
+    return new LayerParameter(null, null);
   }
 
   /**
