@@ -171,8 +171,8 @@
   [
     {"name": "senderId", "type": "string"},
     {"name": "receiverId", "type": "string"},
-    {"name": "blockId", "type": ["null", "int"], "default": null},
-    {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
+    {"name": "blockId", "type": "int"},
+    {"name": "keyValuePairs", "type": {"type": "array", "items": "KeyValuePair"}}
   ]
 },
 
@@ -188,7 +188,7 @@
   [
     {"name": "senderId", "type": "string"},
     {"name": "receiverId", "type": "string"},
-    {"name": "blockId", "type": ["null", "int"], "default": null}
+    {"name": "blockId", "type": "int"}
   ]
 },
 

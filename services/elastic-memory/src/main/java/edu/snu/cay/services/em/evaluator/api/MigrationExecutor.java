@@ -16,13 +16,13 @@
 package edu.snu.cay.services.em.evaluator.api;
 
 import edu.snu.cay.services.em.avro.MigrationMsg;
-import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.wake.EventHandler;
 
 /**
  * An evaluator-side component that executes migration
  * directed by {@link edu.snu.cay.services.em.driver.impl.MigrationManager}.
  */
-@DriverSide
+@EvaluatorSide
 public interface MigrationExecutor extends EventHandler<MigrationMsg> {
 }

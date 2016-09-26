@@ -50,14 +50,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   /**
-   * A map for maintaining state of migrating blocks in driver.
-   * It's for ownership-first migration in which the order of OwnershipAckMsg and BlockMovedMsg can be reversed.
-   * Using this map, handlers of both msgs can judge whether it arrives first or not.
-   * In data-first migration, in which OwnershipMsg always precedes BlockMovedMsg, {@link #onOwnershipMsg(MigrationMsg)}
-   * simply marks its arrival and lets {@link #onBlockMovedMsg(MigrationMsg)} to wrap up the migration.
+   * In ownership-first migration, the OwnershipAckMsg and BlockMovedMsg can arrive out-of-order.
+   * Using this map, we can verify the correct order of them ({@link OwnershipAckMsg} -> {@link BlockMovedMsg})
+   * in message handlers.
+   * In data-first migration, on the other hand, {@link OwnershipMsg} always precedes {@link BlockMovedMsg}.
+   * In {@link #onOwnershipMsg(MigrationMsg)}, we can simply mark that {@link OwnershipMsg} has arrived,
+   * and let {@link #onBlockMovedMsg(MigrationMsg)} wrap up the migration without any concern.
    */
   private final Map<Integer, MigratingBlock> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
-
 
   @Inject
   private ElasticMemoryMsgHandler(final BlockManager blockManager,

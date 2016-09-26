@@ -42,6 +42,7 @@ import java.util.logging.Logger;
 /**
  * Ownership-first version of {@link MigrationExecutor}.
  * It preserves updates on data values during migration by blocking accesses on data.
+ * @param <K> Type of key in MemoryStore
  */
 public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecutor {
   private static final Logger LOG = Logger.getLogger(OwnershipFirstMigrationExecutor.class.getName());

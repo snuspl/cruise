@@ -61,7 +61,7 @@ public final class ElasticMemoryConfiguration {
   private final int numTotalBlocks;
   private final int numStoreThreads;
   private final boolean rangeSupport;
-  private final boolean ownshipFirstMigration;
+  private final boolean consistencyPreserved;
   private final BlockManager blockManager;
   private final String identifier;
 
@@ -72,7 +72,7 @@ public final class ElasticMemoryConfiguration {
                                      @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                                      @Parameter(NumStoreThreads.class) final int numStoreThreads,
                                      @Parameter(RangeSupport.class) final boolean rangeSupport,
-                                     @Parameter(OwnershipFirstMigration.class) final boolean ownershipFirstMigration,
+                                     @Parameter(ConsistencyPreserved.class) final boolean consistencyPreserved,
                                      @Parameter(EMIdentifier.class) final String identifier,
                                      final BlockManager blockManager) {
     this.nameServer = nameServer;
@@ -81,7 +81,7 @@ public final class ElasticMemoryConfiguration {
     this.numTotalBlocks = numTotalBlocks;
     this.numStoreThreads = numStoreThreads;
     this.rangeSupport = rangeSupport;
-    this.ownshipFirstMigration = ownershipFirstMigration;
+    this.consistencyPreserved = consistencyPreserved;
     this.blockManager = blockManager;
     this.identifier = identifier;
   }
@@ -163,7 +163,7 @@ public final class ElasticMemoryConfiguration {
         edu.snu.cay.services.em.evaluator.impl.rangekey.RemoteOpHandlerImpl.class :
         edu.snu.cay.services.em.evaluator.impl.singlekey.RemoteOpHandlerImpl.class;
 
-    final Class migrationExecutorClass = ownshipFirstMigration ?
+    final Class migrationExecutorClass = consistencyPreserved ?
         OwnershipFirstMigrationExecutor.class :
         DataFirstMigrationExecutor.class;
 

@@ -18,8 +18,9 @@ package edu.snu.cay.services.em.common.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Whether or not to use ownership-first migration," +
-    " which guarantees the consistency of values during data migration with a slight overhead",
-    default_value = "false")
-public final class OwnershipFirstMigration implements Name<Boolean> {
+@NamedParameter(doc = "Whether to guarantee the consistency of values during data migration with a slight overhead." +
+    "1) By default, we provide data migration that preserves consistency strictly by using OwnershipFirst protocol." +
+    "2) We sacrifice the consistency by changing ownership loosely during migration for better performance.",
+    default_value = "true")
+public final class ConsistencyPreserved implements Name<Boolean> {
 }

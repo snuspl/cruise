@@ -43,6 +43,7 @@ import java.util.concurrent.Executors;
  * Data-first version of {@link MigrationExecutor}.
  * It focuses on fast migration and availability of data,
  * losing some updates on data values.
+ * @param <K> Type of key in MemoryStore
  */
 public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
   private static final int NUM_DATA_MSG_SENDER_THREADS = 2;
