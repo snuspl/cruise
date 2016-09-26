@@ -120,7 +120,7 @@ cudnnPoolingDescriptor_t* JavaCudnn::cudnnCreatePoolDesc(
   }
 }
 
-cudnnActivationDescriptor_t* JavaCudnn::cudnnCreateActivDesc(const char func) {
+cudnnActivationDescriptor_t* JavaCudnn::cudnnCreateActivFuncDesc(const char func) {
   cudnnActivationDescriptor_t* activDesc = ((cudnnActivationDescriptor_t*) std::malloc (sizeof(cudnnActivationDescriptor_t)));
   cudnnActivationMode_t activationMode;
 

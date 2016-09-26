@@ -87,7 +87,7 @@ public final class ActivationGpuLayer extends LayerBase {
     default:
       throw new IllegalArgumentException("Unsupported function: " + activationFunction);
     }
-    this.activDesc = JavaCudnn.createActivDesc(func);
+    this.activDesc = JavaCudnn.createActivFuncDesc(func);
   }
 
   @Override

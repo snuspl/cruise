@@ -910,7 +910,11 @@ public final class MatrixCudaImpl implements Matrix {
     return this;
   }
 
-  // function for (transpose A) * B
+  /**
+   * Compute matrix multiplication between transpose of this matrix and the operand matrix.
+   * @param matrix the operand matrix
+   * @return result matrix
+   */
   public Matrix tmmul(final Matrix matrix) {
     final MatrixCudaImpl other = toCudaImpl(matrix);
     if (rows != other.getRows()) {
@@ -935,6 +939,11 @@ public final class MatrixCudaImpl implements Matrix {
     return newMatrix;
   }
 
+  /**
+   * Compute in-place matrix multiplication between transpose of this matrix and the operand matrix.
+   * @param matrix the operand matrix
+   * @return result matrix
+   */
   public Matrix tmmuli(final Matrix matrix) {
     final Matrix temp = this.tmmul(matrix);
     this.copy(temp);
@@ -942,7 +951,11 @@ public final class MatrixCudaImpl implements Matrix {
     return this;
   }
 
-  //function for A * (transpose B)
+  /**
+   * Compute matrix multiplication between this matrix and the transpose of operand matrix.
+   * @param matrix the operand matrix
+   * @return result matrix
+   */
   public Matrix mmult(final Matrix matrix) {
     final MatrixCudaImpl other = toCudaImpl(matrix);
     if (columns != other.getColumns()) {
@@ -958,6 +971,11 @@ public final class MatrixCudaImpl implements Matrix {
     return newMatrix;
   }
 
+  /**
+   * Compute in-place matrix multiplication between this matrix and the transpose of operand matrix.
+   * @param matrix the operand matrix
+   * @return result matrix
+   */
   public Matrix mmulti(final Matrix matrix) {
     final Matrix temp = this.mmult(matrix);
     this.copy(temp);

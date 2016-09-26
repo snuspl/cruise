@@ -73,9 +73,9 @@ class JavaCudnn extends Pointer {
     checkNullPointer(pointer);
     return pointer;
   }
-  @Cast(value = "cudnnActivationDescriptor_t*") static native Pointer cudnnCreateActivDesc(final char func);
-  static Pointer createActivDesc(final char func) {
-    final Pointer pointer = cudnnCreateActivDesc(func);
+  @Cast(value = "cudnnActivationDescriptor_t*") static native Pointer cudnnCreateActivFuncDesc(final char func);
+  static Pointer createActivFuncDesc(final char func) {
+    final Pointer pointer = cudnnCreateActivFuncDesc(func);
     checkNullPointer(pointer);
     return pointer;
   }
