@@ -144,14 +144,12 @@ final class LDATrainer implements Trainer {
 
     Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
     while (!nextTrainingData.isEmpty()) {
-      final List<Document> documents = new ArrayList<>(nextTrainingData.values());
-      final int numDocumentsToSample = documents.size();
-      sampler.sample(documents.subList(numDocumentsSampled, numDocumentsSampled + numDocumentsToSample),
-          computeTracer, pushTracer, pullTracer);
+      final Collection<Document> documents = nextTrainingData.values();
+      sampler.sample(documents, computeTracer, pushTracer, pullTracer);
 
       // A mini-batch is ended
-      numDocumentsSampled += numDocumentsToSample;
-      totalDocumentsSampled.addAll(nextTrainingData.values());
+      numDocumentsSampled += documents.size();
+      totalDocumentsSampled.addAll(documents);
       LOG.log(Level.INFO, "{0} documents have been sampled until mini-batch {1}",
           new Object[]{numDocumentsSampled, miniBatchIdx});
       miniBatchIdx++;
@@ -159,16 +157,16 @@ final class LDATrainer implements Trainer {
       nextTrainingData = trainingDataProvider.getNextTrainingData();
     }
 
-    final double elapsedTimeSec = (System.currentTimeMillis() - iterationBeginMs) / 1000.0D;
-
-    LOG.log(Level.INFO, "Start computing log likelihood");
+    LOG.log(Level.INFO, "Pull model to compute log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
     // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution,
     // in a form of numTopics-dimensional vector
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
 
+    LOG.log(Level.INFO, "Start computing log likelihood");
     final Metrics appMetrics = buildAppMetrics(statCalculator.computeDocLLH(totalDocumentsSampled),
         statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
+    final double elapsedTimeSec = (System.currentTimeMillis() - iterationBeginMs) / 1000.0D;
 
     final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx - 1, numEMBlocks,
             totalDocumentsSampled.size(), elapsedTimeSec);
