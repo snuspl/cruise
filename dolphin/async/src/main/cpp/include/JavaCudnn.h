@@ -39,7 +39,7 @@ public:
       const int padH, const int padW, const int strideH, const int strideW);
   static cudnnPoolingDescriptor_t* cudnnCreatePoolDesc(
       const char mode, const int h, const int w, const int padH, const int padW, const int strideH, const int strideW);
-  static cudnnActivationDescriptor_t* cudnnCreateActivDesc(const char func);
+  static cudnnActivationDescriptor_t* cudnnCreateActivFuncDesc(const char func);
   static cudnnLRNDescriptor_t* cudnnCreateLRNDesc(
       const int localSize, const float alpha, const float beta, const float k);
 
