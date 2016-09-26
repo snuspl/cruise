@@ -45,9 +45,18 @@ import java.util.concurrent.Executors;
  * losing some updates on data values.
  */
 public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
+  private static final int NUM_DATA_MSG_SENDER_THREADS = 2;
+  private static final int NUM_DATA_MSG_RECEIVER_THREADS = 2;
+  private static final int NUM_OWNERSHIP_MSG_RECEIVER_THREADS = 2;
+
   private final RemoteAccessibleMemoryStore<K> memoryStore;
   private final OperationRouter router;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
+
+  private final ExecutorService dataMsgSenderExecutor = Executors.newFixedThreadPool(NUM_DATA_MSG_SENDER_THREADS);
+  private final ExecutorService dataMsgHandlerExecutor = Executors.newFixedThreadPool(NUM_DATA_MSG_RECEIVER_THREADS);
+  private final ExecutorService ownershipMsgHandlerExecutor =
+      Executors.newFixedThreadPool(NUM_OWNERSHIP_MSG_RECEIVER_THREADS);
 
   private final Codec<K> keyCodec;
   private final Serializer serializer;
@@ -100,17 +109,22 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
 
       final TraceInfo traceInfo = TraceInfo.fromSpan(onMoveInitMsgScope.getSpan());
 
-      // Send the data as unit of block
-      for (final int blockId : blockIds) {
-        final Map<K, Object> blockData = memoryStore.getBlock(blockId);
+      dataMsgSenderExecutor.submit(new Runnable() {
+        @Override
+        public void run() {
+          // Send the data as unit of block
+          for (final int blockId : blockIds) {
+            final Map<K, Object> blockData = memoryStore.getBlock(blockId);
 
-        final List<KeyValuePair> keyValuePairs;
-        try (final TraceScope encodeDataScope = Trace.startSpan("encode_data", traceInfo)) {
-          keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
+            final List<KeyValuePair> keyValuePairs;
+            try (final TraceScope encodeDataScope = Trace.startSpan("encode_data", traceInfo)) {
+              keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
+            }
+
+            sender.get().sendDataMsg(receiverId, keyValuePairs, blockId, operationId, traceInfo);
+          }
         }
-
-        sender.get().sendDataMsg(receiverId, keyValuePairs, blockId, operationId, traceInfo);
-      }
+      });
     }
   }
 
@@ -127,27 +141,30 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(onDataMsgScope.getSpan());
 
-      final Map<K, Object> dataMap;
-      try (final TraceScope decodeDataScope = Trace.startSpan("decode_data", traceInfo)) {
-        dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
-      }
+      dataMsgHandlerExecutor.submit(new Runnable() {
+        @Override
+        public void run() {
+          final Map<K, Object> dataMap;
+          try (final TraceScope decodeDataScope = Trace.startSpan("decode_data", traceInfo)) {
+            dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
+          }
 
-      final String senderId = dataMsg.getSenderId().toString();
+          final String senderId = dataMsg.getSenderId().toString();
 
-      final int newOwnerId = getStoreId(dataMsg.getReceiverId().toString());
-      final int oldOwnerId = getStoreId(senderId);
+          final int newOwnerId = getStoreId(dataMsg.getReceiverId().toString());
+          final int oldOwnerId = getStoreId(senderId);
 
-      memoryStore.putBlock(blockId, dataMap);
+          memoryStore.putBlock(blockId, dataMap);
 
-      router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
-      // Notify the driver that the ownership has been updated by setting empty destination id.
-      sender.get().sendOwnershipMsg(Optional.empty(), senderId, operationId,
-          blockId, oldOwnerId, newOwnerId, traceInfo);
+          // Notify the driver that the ownership has been updated by setting empty destination id.
+          sender.get().sendOwnershipMsg(Optional.empty(), senderId, operationId,
+              blockId, oldOwnerId, newOwnerId, traceInfo);
+        }
+      });
     }
   }
-
-  private final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(2);
 
   private void onOwnershipMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
@@ -160,7 +177,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      ownershipUpdateExecutor.submit(new Runnable() {
+      ownershipMsgHandlerExecutor.submit(new Runnable() {
         @Override
         public void run() {
           // Update the owner of the block to the new one.
