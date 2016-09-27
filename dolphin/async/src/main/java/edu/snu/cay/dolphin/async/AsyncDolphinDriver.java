@@ -1088,7 +1088,7 @@ public final class AsyncDolphinDriver {
 
     @Override
     public float getProgress() {
-      // TODO #830 Once we change clock to tick every mini-batch instead of epoch, we should change below accordingly.
+      // TODO #830: Once we change clock to tick every mini-batch instead of epoch, we should change below accordingly.
       final int minClock = clockManager.getGlobalMinimumClock();
       return (float) minClock / iterations;
     }
