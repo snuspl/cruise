@@ -30,7 +30,7 @@ import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
-import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
 import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
 import edu.snu.cay.services.ps.server.impl.dynamic.EMUpdateFunctionForPS;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
@@ -48,9 +48,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicMarkableReference;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
@@ -79,7 +77,7 @@ public final class DynamicParameterServerTest {
   private static final TraceInfo EMPTY_TRACE = null;
 
   private DynamicParameterServer<Integer, Integer, Integer> server;
-  private ServerSideReplySender<Integer, Integer, Integer> mockSender;
+  private ServerSideMsgSender<Integer, Integer, Integer> mockSender;
 
   @Before
   public void setup() throws InjectionException {
@@ -100,7 +98,7 @@ public final class DynamicParameterServerTest {
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
-    injector.bindVolatileInstance(ServerSideReplySender.class, mock(ServerSideReplySender.class));
+    injector.bindVolatileInstance(ServerSideMsgSender.class, mock(ServerSideMsgSender.class));
     injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     injector.bindVolatileInstance(MetricsHandler.class, mock(MetricsHandler.class));
@@ -127,7 +125,7 @@ public final class DynamicParameterServerTest {
     final OperationRouter router = injector.getInstance(OperationRouter.class);
     router.triggerInitialization();
 
-    mockSender = injector.getInstance(ServerSideReplySender.class);
+    mockSender = injector.getInstance(ServerSideMsgSender.class);
     server = injector.getInstance(DynamicParameterServer.class);
   }
 
@@ -152,7 +150,7 @@ public final class DynamicParameterServerTest {
           for (int index = 0; index < numPushes; index++) {
             // each thread increments the server's value by 1 per push
             final int key = threadId;
-            server.push(key, 1, WORKER_ID, key); // Just use key as hash for this test.
+            server.push(key, 1, key); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -216,44 +214,27 @@ public final class DynamicParameterServerTest {
 
   @Test
   public void testClose() throws InterruptedException, ExecutionException, TimeoutException {
-
-    // put the enough number of operations to make queue not empty when closing server
-    final int numPulls = SERVER_QUEUE_SIZE * 2;
-
-    final AtomicInteger repliedOps = new AtomicInteger(0);
-    final AtomicInteger rejectedOps = new AtomicInteger(0);
+    final int numPulls = 5;
 
     doAnswer(invocation -> {
-        repliedOps.getAndIncrement();
-
         // sleep to guarantee the queue not empty when closing server
         Thread.sleep(1000);
         return null;
       }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
-    doAnswer(invocation -> {
-        rejectedOps.getAndIncrement();
-        return null;
-      }).when(mockSender).sendPushRejectMsg(anyString(), anyInt(), anyInt());
-    doAnswer(invocation -> {
-        rejectedOps.getAndIncrement();
-        return null;
-      }).when(mockSender).sendPullRejectMsg(anyString(), anyInt(), anyInt());
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
-      server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE);
+      server.pull(key, WORKER_ID, key, 0, EMPTY_TRACE);
     }
 
-    // closing server should reject all the remaining queued operations, if time allows
+    // closing server should guarantee all the queued operations to be processed, if time allows
     server.close(CLOSE_TIMEOUT);
-    verify(mockSender, atMost(numPulls - 1))
-        .sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
-
-    LOG.log(Level.INFO, "Handled ops: {0}, Rejected ops: {1}", new Object[]{repliedOps.get(), rejectedOps.get()});
-    assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
+    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
+        any(TraceInfo.class));
 
     // server should not process further operations after being closed
-    server.pull(0, WORKER_ID, 0, REQUEST_ID, EMPTY_TRACE);
-    assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
+    server.pull(0, WORKER_ID, 0, 0, EMPTY_TRACE);
+    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
+        any(TraceInfo.class));
   }
 }

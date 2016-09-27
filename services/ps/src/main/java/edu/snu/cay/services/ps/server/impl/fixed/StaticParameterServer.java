@@ -21,7 +21,7 @@ import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import edu.snu.cay.services.ps.metric.avro.ServerThreadMetrics;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
-import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
@@ -48,7 +48,7 @@ import java.util.logging.Logger;
  * An implementation of Parameter Server, whose partitions are fixed at their initial servers.
  * Receives push and pull operations from (e.g., from the network) and immediately queues them.
  * The processing loop in each thread applies these operations in order; for pull operations
- * this results in a send call via {@link ServerSideReplySender}.
+ * this results in a send call via {@link ServerSideMsgSender}.
  * For more information about the implementation, see {@link ServerThread}.
  *
  * Supports a static number of partitions (the number of partitions is fixed at construction time).
@@ -100,7 +100,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   /**
    * Sender that sends pull responses.
    */
-  private final ServerSideReplySender<K, P, V> sender;
+  private final ServerSideMsgSender<K, P, V> sender;
 
   /**
    * Statistics of the processing time of push operation.
@@ -159,7 +159,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
                                 @Parameter(ServerMetricsWindowMs.class) final long metricsWindowMs,
                                 final ServerResolver serverResolver,
                                 final ParameterUpdater<K, P, V> parameterUpdater,
-                                final ServerSideReplySender<K, P, V> sender) {
+                                final ServerSideMsgSender<K, P, V> sender) {
     this.numThreads = numThreads;
     this.localPartitions = serverResolver.getPartitions(endpointId);
     this.serverResolver = serverResolver;
@@ -201,7 +201,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   }
 
   @Override
-  public void push(final K key, final P preValue, final String srcId, final int keyHash) {
+  public void push(final K key, final P preValue, final int keyHash) {
     final int partitionId = serverResolver.resolvePartition(keyHash);
     final int threadId = localPartitions.indexOf(partitionId) % numThreads;
     threads.get(threadId).enqueue(new PushOp(key, preValue, threadId));

@@ -31,6 +31,7 @@
   "name": "PullMsg",
   "fields":
   [
+    {"name": "srcId", "type": "string"},
     {"name": "key", "type": "bytes"},
     {"name": "requestId", "type": "int"}
   ]
@@ -46,28 +47,6 @@
     {"name": "value", "type": "bytes"},
     {"name": "requestId", "type": "int"},
     {"name": "serverProcessingTime", "type": "long"}
-  ]
-},
-
-{
-  "namespace": "edu.snu.cay.services.ps.avro",
-  "type": "record",
-  "name": "PushRejectMsg",
-  "fields":
-  [
-    {"name": "key", "type": "bytes"},
-    {"name": "preValue", "type": "bytes"}
-  ]
-},
-
-{
-  "namespace": "edu.snu.cay.services.ps.avro",
-  "type": "record",
-  "name": "PullRejectMsg",
-  "fields":
-  [
-    {"name": "key", "type": "bytes"},
-    {"name": "requestId", "type": "int"}
   ]
 },
 
@@ -176,14 +155,12 @@
      "type":
        {"type": "enum",
         "name": "Type",
-        "symbols": ["PushMsg", "PullMsg", "PullReplyMsg", "PushRejectMsg", "PullRejectMsg",
+        "symbols": ["PushMsg", "PullMsg", "PullReplyMsg",
          "WorkerRegisterMsg", "WorkerRegisterReplyMsg", "WorkerDeregisterMsg",
           "RoutingTableUpdateMsg", "RoutingTableSyncMsg", "RoutingTableSyncReplyMsg"]}},
     {"name": "pushMsg", "type": ["null", "PushMsg"], "default": null},
     {"name": "pullMsg", "type": ["null", "PullMsg"], "default": null},
     {"name": "pullReplyMsg", "type": ["null", "PullReplyMsg"], "default": null},
-    {"name": "pushRejectMsg", "type": ["null", "PushRejectMsg"], "default": null},
-    {"name": "pullRejectMsg", "type": ["null", "PullRejectMsg"], "default": null},
     {"name": "workerRegisterMsg", "type": ["null", "WorkerRegisterMsg"], "default": null},
     {"name": "workerRegisterReplyMsg", "type": ["null", "WorkerRegisterReplyMsg"], "default": null},
     {"name": "workerDeregisterMsg", "type": ["null", "WorkerDeregisterMsg"], "default": null},

@@ -18,7 +18,7 @@ package edu.snu.cay.services.ps.server.impl;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
-import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -41,7 +41,7 @@ import java.nio.ByteBuffer;
  * Sender implementation that uses Network Connection Service.
  */
 @EvaluatorSide
-public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReplySender<K, P, V> {
+public final class ServerSideMsgSenderImpl<K, P, V> implements ServerSideMsgSender<K, P, V> {
 
   /**
    * Network Connection Service related setup required for a Parameter Server application.
@@ -69,7 +69,7 @@ public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReply
   private final Codec<V> valueCodec;
 
   @Inject
-  private ServerSideReplySenderImpl(
+  private ServerSideMsgSenderImpl(
       final InjectionFuture<PSNetworkSetup> psNetworkSetup,
       final IdentifierFactory identifierFactory,
       @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
@@ -132,30 +132,36 @@ public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReply
   }
 
   @Override
-  public void sendPushRejectMsg(final String destId, final K key, final P preValue) {
-    final PushRejectMsg pushRejectMsg = PushRejectMsg.newBuilder()
-        .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
-        .setPreValue(ByteBuffer.wrap(preValueCodec.encode(preValue)))
+  public void sendPushMsg(final String destId, final K key, final P preValue) {
+    final byte[] serializedKey = keyCodec.encode(key);
+    final byte[] serializedPreValue = preValueCodec.encode(preValue);
+    final PushMsg pushMsg = PushMsg.newBuilder()
+        .setKey(ByteBuffer.wrap(serializedKey))
+        .setPreValue(ByteBuffer.wrap(serializedPreValue))
         .build();
 
     send(destId,
         AvroPSMsg.newBuilder()
-            .setType(Type.PushRejectMsg)
-            .setPushRejectMsg(pushRejectMsg)
+            .setType(Type.PushMsg)
+            .setPushMsg(pushMsg)
             .build());
   }
 
   @Override
-  public void sendPullRejectMsg(final String destId, final K key, final int requestId) {
-    final PullRejectMsg pullRejectMsg = PullRejectMsg.newBuilder()
-        .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
+  public void sendPullMsg(final String destId, final String srcId, final K key, final int requestId,
+                          @Nullable final TraceInfo traceInfo) {
+    final byte[] serializedKey = keyCodec.encode(key);
+    final PullMsg pullMsg = PullMsg.newBuilder()
+        .setSrcId(srcId)
+        .setKey(ByteBuffer.wrap(serializedKey))
         .setRequestId(requestId)
         .build();
 
     send(destId,
         AvroPSMsg.newBuilder()
-            .setType(Type.PullRejectMsg)
-            .setPullRejectMsg(pullRejectMsg)
+            .setType(Type.PullMsg)
+            .setPullMsg(pullMsg)
+            .setTraceInfo(HTraceUtils.toAvro(traceInfo))
             .build());
   }
 }

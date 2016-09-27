@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.evaluator.api;
 
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.util.Pair;
+import org.apache.reef.util.Optional;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -145,4 +146,12 @@ public interface MemoryStore<K> {
    * @return  number of blocks in the MemoryStore
    */
   int getNumBlocks();
+
+  /**
+   * Resolves an evaluator id for a key.
+   * It returns empty when the key belongs to the local MemoryStore.
+   * @param key global unique identifier of item
+   * @return an Optional with an evaluator id
+   */
+  Optional<String> resolveEval(final K key);
 }

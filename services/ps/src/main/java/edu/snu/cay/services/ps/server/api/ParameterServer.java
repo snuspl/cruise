@@ -26,7 +26,7 @@ import java.util.concurrent.TimeoutException;
  * A Parameter Server interface that serves requests using several partitions.
  * Receives push and pull operations from (e.g., from the network) and immediately queues them.
  * The processing loop in each thread applies these operations in order; for pull operations
- * this results in a send call via {@link ServerSideReplySender}.
+ * this results in a send call via {@link ServerSideMsgSender}.
  */
 @EvaluatorSide
 public interface ParameterServer<K, P, V> {
@@ -40,13 +40,12 @@ public interface ParameterServer<K, P, V> {
    *
    * @param key key object that {@code preValue} is associated with
    * @param preValue preValue sent from the worker
-   * @param srcId network Id of the requester
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
-  void push(final K key, final P preValue, final String srcId, final int keyHash);
+  void push(final K key, final P preValue, final int keyHash);
 
   /**
-   * Reply to srcId via {@link ServerSideReplySender}
+   * Reply to srcId via {@link ServerSideMsgSender}
    * with the value corresponding to the key.
    *
    * The pull operation is enqueued to the queue that is assigned to its partition and returned immediately.

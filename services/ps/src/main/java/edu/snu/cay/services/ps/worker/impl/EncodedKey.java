@@ -18,7 +18,7 @@ package edu.snu.cay.services.ps.worker.impl;
 import org.apache.hadoop.util.hash.MurmurHash;
 import org.apache.reef.io.serialization.Codec;
 
-class EncodedKey<K> {
+final class EncodedKey<K> {
   private final K key;
   private final int hash;
   private final byte[] encoded;

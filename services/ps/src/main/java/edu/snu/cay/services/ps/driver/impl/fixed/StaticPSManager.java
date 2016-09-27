@@ -21,10 +21,10 @@ import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
-import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
 import edu.snu.cay.services.ps.server.impl.fixed.StaticParameterServer;
 import edu.snu.cay.services.ps.server.impl.ServerSideMsgHandler;
-import edu.snu.cay.services.ps.server.impl.ServerSideReplySenderImpl;
+import edu.snu.cay.services.ps.server.impl.ServerSideMsgSenderImpl;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
@@ -148,7 +148,7 @@ public final class StaticPSManager implements PSManager {
             .set(ServiceConfiguration.SERVICES, StaticParameterServer.class)
             .build())
         .bindImplementation(ParameterServer.class, StaticParameterServer.class)
-        .bindImplementation(ServerSideReplySender.class, ServerSideReplySenderImpl.class)
+        .bindImplementation(ServerSideMsgSender.class, ServerSideMsgSenderImpl.class)
         .bindNamedParameter(EndpointId.class, contextId)
         .bindNamedParameter(PSMessageHandler.class, ServerSideMsgHandler.class)
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)

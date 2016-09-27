@@ -78,8 +78,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
   /**
    * The maximum number to restart pull requests from the beginning
-   * when the pull reply do not arrive within timeout {@link PullRetryTimeoutMs},
-   * or the pull request is rejected by server.
+   * when the pull reply do not arrive within timeout {@link PullRetryTimeoutMs}.
    */
   static final int MAX_PULL_RETRY_COUNT = 10;
 
@@ -361,34 +360,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   /**
-   * Handles incoming pull rejects, by retrying pull request.
-   * See {@link PullRequest#reject()}.
-   * This will interrupt the WorkerThread after enqueueing {@link PullOp}, to handle the retry op first.
-   */
-  @Override
-  public void processPullReject(final K key, final int requestId) {
-    final EncodedKey<K> encodedKey;
-    try {
-      encodedKey = encodedKeyCache.get(key);
-    } catch (final ExecutionException e) {
-      throw new RuntimeException("Exception while loading encoded key from cache", e);
-    }
-    final WorkerThread workerThread = workerThreads[getThreadIndex(encodedKey.getHash())];
-
-    synchronized (workerThread) {
-      final Map<K, PullRequest> pendingPullRequests = workerThread.pendingPullRequests;
-      final PullRequest pullRequest = pendingPullRequests.get(key);
-      if (pendingPullRequestExists(pullRequest, requestId)) {
-        pullRequest.reject();
-      } else {
-        LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
-            new Object[]{key, requestId});
-      }
-    }
-  }
-
-  /**
-   * Check existence of the pendingPullRequest corresponding to received pullReply or pullReject.
+   * Check existence of the pendingPullRequest corresponding to received pullReply.
    * @param pullRequest a pullRequest object associated with the received key, may be null if not exists
    * @param requestId received pull request id
    * @return true if the corresponding pullRequest exists, otherwise false
@@ -409,23 +381,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     } else {
       return true;
     }
-  }
-
-  /**
-   * Handles incoming push rejects, by retrying push request.
-   * This will interrupt the WorkerThread after enqueueing {@link PushOp}, to handle the retry op first.
-   */
-  @Override
-  public void processPushReject(final K key, final P preValue) {
-    final EncodedKey<K> encodedKey;
-    try {
-      encodedKey = encodedKeyCache.get(key);
-    } catch (final ExecutionException e) {
-      throw new RuntimeException("Exception while loading encoded key from cache", e);
-    }
-    final WorkerThread workerThread = workerThreads[getThreadIndex(encodedKey.getHash())];
-    workerThread.enqueueRetryOp(new PushOp(workerThread, encodedKey, preValue));
-    workerThread.interruptToTriggerRetry();
   }
 
   /**
@@ -644,7 +599,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     }
 
     /**
-     * Simply re-send rejected push message.
+     * Simply re-send a timed out push message.
      */
     @Override
     public void retry() {
@@ -781,9 +736,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * RetryThread will later(in the next timeout-checking) enqueues pull requests
      * in this state to the RetryQueue of the corresponding WorkerThread.
      *
-     * 3) RETRY_REQUESTED: When a pull request is retried (enqueued in RetryQueue precisely),
-     *   (a) when RetryThread enqueues pull requests in NEED_RETRY state, or
-     *   (b) when WorkerThread enqueues the rejected pull requests.
+     * 3) RETRY_REQUESTED: When RetryThread enqueues pull requests that were in NEED_RETRY state
      */
     private static final int INIT_STATE = 0;
     private static final int NEED_RETRY_STATE = 1;
@@ -825,7 +778,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * All {@link PullRequest} objects for the same key from one {@link ParameterWorker}
      * should not have the same requestId.
      * {@link #pendingPullRequestExists(PullRequest, int)}} uses this id to determine
-     * whether the received pull reply(or reject) is the one requested for.
+     * whether the received pull reply is the one requested for.
      * @return pull request id
      */
     int getRequestId() {
@@ -922,18 +875,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         if (waiting) {
           workerThread.notify();
         }
-      }
-    }
-
-    /**
-     * Reject this pull request, and request for retry.
-     */
-    synchronized void reject() {
-      // if state is RETRY_REQUESTED, retry was already requested due to timeout or previous reject, so skip this turn
-      if (state != RETRY_REQUESTED_STATE) {
-        state = RETRY_REQUESTED_STATE;
-        workerThread.enqueueRetryOp(pendingOps.get(0));
-        workerThread.interruptToTriggerRetry();
       }
     }
 
