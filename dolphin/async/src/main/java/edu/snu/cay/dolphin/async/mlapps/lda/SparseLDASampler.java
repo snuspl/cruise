@@ -188,9 +188,8 @@ final class SparseLDASampler {
         }
       }
       computeTracer.recordTime(1);
-
-      batchParameterWorker.pushAndClear(computeTracer, pushTracer);
     }
+    batchParameterWorker.pushAndClear(computeTracer, pushTracer);
   }
 
   private List<Integer> getKeys(final Collection<Document> documents) {
