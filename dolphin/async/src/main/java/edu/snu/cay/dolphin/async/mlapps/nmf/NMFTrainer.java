@@ -136,14 +136,16 @@ final class NMFTrainer implements Trainer {
 
   @Override
   public void run(final int iteration) {
-    final long iterationBegin = System.currentTimeMillis();
+    final long epochStartTime = System.currentTimeMillis();
     double lossSum = 0.0;
-    int elemCount = 0;
+    int epochElemCount = 0;
     resetTracers();
 
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
+    WorkerMetrics workerMetrics;
+    Metrics appMetrics;
 
     int miniBatchIdx = 0;
     int numTotalInstancesProcessed = 0;
@@ -152,6 +154,8 @@ final class NMFTrainer implements Trainer {
     Collection<NMFData> workload = workloadMap.values();
     int numInstancesToProcess = workload.size();
     while (!workloadMap.isEmpty()) {
+      final long miniBatchStartTime = System.currentTimeMillis();
+      int miniBatchElemCount = 0;
       // pull data when mini-batch is started
       pullRMatrix(getKeys(workload));
 
@@ -189,7 +193,8 @@ final class NMFTrainer implements Trainer {
 
           // aggregate loss
           lossSum += error * error;
-          ++elemCount;
+          ++miniBatchElemCount;
+          ++epochElemCount;
         }
 
         // update L matrix
@@ -201,19 +206,28 @@ final class NMFTrainer implements Trainer {
       // push gradients
       pushAndResetGradients();
 
-      // a mini-batch is ended
-      miniBatchIdx++;
+      // update the total number of instances processed so far
       numTotalInstancesProcessed += numInstancesToProcess;
 
+      // load the set of training data instances to process in the next mini-batch
       workloadMap = trainingDataProvider.getNextTrainingData();
+
+      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+      workerMetrics =
+          buildMiniBatchMetric(iteration, miniBatchIdx,
+              numInstancesToProcess, miniBatchElemCount, miniBatchElapsedTime);
+      LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
+      sendMetrics(workerMetrics);
+
       workload = workloadMap.values();
       numInstancesToProcess = workload.size();
+      miniBatchIdx++;
     }
 
-    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    final Metrics appMetrics = buildAppMetrics(lossSum, elemCount, elapsedTime, numTotalInstancesProcessed);
-    final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, appMetrics, miniBatchIdx - 1, numEMBlocks, numTotalInstancesProcessed, elapsedTime);
+    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+    workerMetrics =
+        buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
+            numTotalInstancesProcessed, lossSum, epochElemCount, epochElapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
@@ -322,15 +336,20 @@ final class NMFTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numMiniBatchForEpoch,
-                                        final int numDataBlocks, final int numProcessedDataItemCount,
-                                        final double elapsedTime) {
+  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
+                                             final int numProcessedDataItemCount, final long elemCount,
+                                             final double elapsedTime) {
+    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+    appMetricMap.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
+    appMetricMap.put(NMFParameters.MetricKeys.RVT, numProcessedDataItemCount / elapsedTime);
+
     return WorkerMetrics.newBuilder()
-        .setMetrics(appMetrics)
+        .setMetrics(Metrics.newBuilder()
+            .setData(appMetricMap)
+            .build())
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
-        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
-        .setNumDataBlocks(numDataBlocks)
+        .setMiniBatchIdx(miniBatchIdx)
         .setProcessedDataItemCount(numProcessedDataItemCount)
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
@@ -342,16 +361,23 @@ final class NMFTrainer implements Trainer {
         .build();
   }
 
-  private Metrics buildAppMetrics(final double lossSum, final long elemCount, final double elapsedTime,
-                                  final int numInstances) {
+  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
+                                             final int numDataBlocks, final int numProcessedDataItemCount,
+                                             final double lossSum, final long elemCount, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
     appMetricMap.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
-    appMetricMap.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
-    appMetricMap.put(NMFParameters.MetricKeys.RVT, numInstances / elapsedTime);
 
-    return Metrics.newBuilder()
-        .setData(appMetricMap)
+    return WorkerMetrics.newBuilder()
+        .setMetrics(Metrics.newBuilder()
+            .setData(appMetricMap)
+            .build())
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
         .build();
   }
 }
