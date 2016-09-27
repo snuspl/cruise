@@ -255,7 +255,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
         final Pair<Integer, Double> totalPullWaitStats = summarizeAndResetStats(pullWaitStats);
         final Pair<Integer, Double> totalPushWaitStats = summarizeAndResetStats(pushWaitStats);
 
-        // Send meaningful metrics only
         final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
             .setWindowIndex(windowIndex)
             .setNumModelBlocks(0) // EM is not used here.
@@ -280,7 +279,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
 
   /**
    * Computes the total number and time spent on processing requests with the {@link ServerThread}s in this server.
-   * Summarizes stats across all {@link ServerThread}s in this worker and resets them.
+   * Summarizes the statistics (count, time) across all {@link ServerThread}s in this server,
+   * and resets the stat to collect metrics for the next window.
    */
   private Pair<Integer, Double> summarizeAndResetStats(final Statistics[] stats) {
     int processedCount = 0;
