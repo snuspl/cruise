@@ -26,6 +26,7 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
+import org.htrace.Span;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -99,16 +100,22 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
    * Initiates move by sending data messages to the destination evaluator.
    */
   private void onMoveInitMsg(final MigrationMsg msg) {
+    final String operationId = msg.getOperationId().toString();
+    final MoveInitMsg moveInitMsg = msg.getMoveInitMsg();
+    final String receiverId = moveInitMsg.getReceiverId().toString();
+    final List<Integer> blockIds = moveInitMsg.getBlockIds();
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     Trace.setProcessId("src_eval");
     try (final TraceScope onMoveInitMsgScope = Trace.startSpan("on_move_init_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final String operationId = msg.getOperationId().toString();
 
-      final MoveInitMsg moveInitMsg = msg.getMoveInitMsg();
-      final String receiverId = moveInitMsg.getReceiverId().toString();
-      final List<Integer> blockIds = moveInitMsg.getBlockIds();
-
-      final TraceInfo traceInfo = TraceInfo.fromSpan(onMoveInitMsgScope.getSpan());
+      detached = onMoveInitMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       dataMsgSenderExecutor.submit(new Runnable() {
         @Override
@@ -126,6 +133,8 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
           }
         }
       });
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
@@ -137,10 +146,17 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
     final String operationId = msg.getOperationId().toString();
     final int blockId = dataMsg.getBlockId();
 
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     Trace.setProcessId("dst_eval");
     try (final TraceScope onDataMsgScope = Trace.startSpan(String.format("on_data_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final TraceInfo traceInfo = TraceInfo.fromSpan(onDataMsgScope.getSpan());
+
+      detached = onDataMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       dataMsgHandlerExecutor.submit(new Runnable() {
         @Override
@@ -164,6 +180,8 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
               blockId, oldOwnerId, newOwnerId, traceInfo);
         }
       });
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
@@ -174,9 +192,17 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
     final int oldOwnerId = ownershipMsg.getOldOwnerId();
     final int newOwnerId = ownershipMsg.getNewOwnerId();
 
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     Trace.setProcessId("src_eval");
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      detached = onOwnershipMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       ownershipMsgHandlerExecutor.submit(new Runnable() {
         @Override
@@ -189,9 +215,11 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
           // so it is safe to remove the local data block.
           memoryStore.removeBlock(blockId);
 
-          sender.get().sendBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
+          sender.get().sendBlockMovedMsg(operationId, blockId, traceInfo);
         }
       });
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 

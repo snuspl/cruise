@@ -117,24 +117,22 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   }
 
   private void onMoveInitMsg(final MigrationMsg msg) {
-    Trace.setProcessId("src_eval");
+    final String operationId = msg.getOperationId().toString();
+    final MoveInitMsg moveInitMsg = msg.getMoveInitMsg();
+    final String senderId = moveInitMsg.getSenderId().toString();
+    final String receiverId = moveInitMsg.getReceiverId().toString();
+    final List<Integer> blockIds = moveInitMsg.getBlockIds();
+
     // We should detach the span when we transit to another thread (local or remote),
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
     // for stitching the spans from other threads as its children
     Span detached = null;
 
+    Trace.setProcessId("src_eval");
     try (final TraceScope onMoveInitMsgScope = Trace.startSpan("on_move_init_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      final String operationId = msg.getOperationId().toString();
-
-      final MoveInitMsg moveInitMsg = msg.getMoveInitMsg();
-      final String senderId = moveInitMsg.getSenderId().toString();
-      final String receiverId = moveInitMsg.getReceiverId().toString();
-      final List<Integer> blockIds = moveInitMsg.getBlockIds();
-
       detached = onMoveInitMsgScope.detach();
-
       final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       final Migration migration = new Migration(operationId, senderId, receiverId, blockIds, traceInfo);
@@ -288,10 +286,17 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     final String senderId = dataMsg.getSenderId().toString();
     final int blockId = dataMsg.getBlockId();
 
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     Trace.setProcessId("dst_eval");
     try (final TraceScope onDataMsgScope = Trace.startSpan(String.format("on_data_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final TraceInfo traceInfo = TraceInfo.fromSpan(onDataMsgScope.getSpan());
+
+      detached = onDataMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       dataMsgHandlerExecutor.submit(new Runnable() {
         @Override
@@ -321,6 +326,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           }
         }
       });
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
@@ -339,9 +346,17 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     final DataAckMsg dataAckMsg = msg.getDataAckMsg();
     final int blockId = dataAckMsg.getBlockId();
 
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     Trace.setProcessId("src_eval");
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_data_ack_msg. blockId: %d", blockId),
+    try (final TraceScope onDataAckMsgScope = Trace.startSpan(String.format("on_data_ack_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      detached = onDataAckMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       final Migration migration = ongoingMigrations.get(operationId);
       if (migration.finishMigratingBlock()) {
@@ -354,9 +369,11 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // After the data is migrated, it's safe to remove the local data block.
           memoryStore.removeBlock(blockId);
 
-          sender.get().sendBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
+          sender.get().sendBlockMovedMsg(operationId, blockId, traceInfo);
         }
       });
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
@@ -368,9 +385,17 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     final int oldOwnerId = ownershipMsg.getOldOwnerId();
     final int newOwnerId = ownershipMsg.getNewOwnerId();
 
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     Trace.setProcessId("dst_eval");
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      detached = onOwnershipMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       ownershipMsgHandlerExecutor.submit(new Runnable() {
         @Override
@@ -392,8 +417,6 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // Operations being executed keep a read lock on router while being executed.
           router.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
-          final TraceInfo traceInfo = TraceInfo.fromSpan(onOwnershipMsgScope.getSpan());
-
           sender.get().sendOwnershipAckMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId,
                   traceInfo);
 
@@ -406,6 +429,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           }
         }
       });
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
@@ -416,9 +441,17 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     final int oldOwnerId = ownershipAckMsg.getOldOwnerId();
     final int newOwnerId = ownershipAckMsg.getNewOwnerId();
 
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     Trace.setProcessId("src_eval");
     try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
         String.format("on_ownership_ack_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      detached = onOwnershipAckMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       ownershipMsgHandlerExecutor.submit(new Runnable() {
         @Override
@@ -430,10 +463,11 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // wake up blocking client threads to access emigrated data via remote access
           router.unMarkBlockFromMigrating(blockId);
 
-          sender.get().sendOwnershipAckMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId,
-              TraceInfo.fromSpan(onOwnershipAckMsgScope.getSpan()));
+          sender.get().sendOwnershipAckMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
         }
       });
+    } finally {
+      Trace.continueSpan(detached).close();
     }
   }
 
