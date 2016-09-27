@@ -24,6 +24,7 @@ import edu.snu.cay.services.ps.avro.ReplyInitClockMsg;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
@@ -45,6 +46,7 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @Unit
+@Private
 public final class ClockManager {
   public static final String AGGREGATION_CLIENT_NAME = ClockManager.class.getName();
   private static final Logger LOG = Logger.getLogger(ClockManager.class.getName());
@@ -147,7 +149,7 @@ public final class ClockManager {
   /**
    * Used for testing.
    */
-  int getGlobalMinimumClock() {
+  public int getGlobalMinimumClock() {
     return globalMinimumClock;
   }
 

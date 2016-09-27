@@ -172,31 +172,6 @@
 },
 
 /**
- * A message containing metrics and other server-specific information at thread level.
- * This message is for logging purposes of different metrics, not for the metrics aggregation at the driver.
- */
-{
-  "namespace": "edu.snu.cay.services.ps.metric.avro",
-  "type": "record",
-  "name": "ServerThreadMetrics",
-  "fields":
-  [
-    {"name": "threadId", "type": "int"},
-    {"name": "numPendingOps", "type": "int"},
-    {"name": "totalTimeSec", "type": "double", "default": 0.0},
-    {"name": "pullCount", "type": "int", "default": 0},
-    {"name": "totalPullTimeSec", "type": "double", "default": 0.0},
-    {"name": "totalPullWaitTimeSec", "type": "double", "default": 0.0},
-    {"name": "pushCount", "type": "int", "default": 0},
-    {"name": "totalPushTimeSec", "type": "double", "default": 0.0},
-    {"name": "totalPushWaitTimeSec", "type": "double", "default": 0.0},
-    {"name": "reqCount", "type": "int", "default": 0},
-    {"name": "totalReqTimeSec", "type": "double", "default": 0.0},
-    {"name": "totalReqWaitTimeSec", "type": "double", "default": 0.0}
-  ]
-},
-
-/**
  * A message containing metrics and other server-specific information.
  * Since Server does not have epoch as workers, metrics are collected and
  * sent in a fixed time unit, which is called window.
@@ -217,7 +192,10 @@
     {"name": "totalReqProcessed", "type": "int", "default":0},
     {"name": "totalPullProcessingTimeSec", "type": "double", "default":0.0},
     {"name": "totalPushProcessingTimeSec", "type": "double", "default":0.0},
-    {"name": "totalReqProcessingTimeSec", "type": "double", "default":0.0}
+    {"name": "totalReqProcessingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalPullWaitingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalPushWaitingTimeSec", "type": "double", "default":0.0},
+    {"name": "totalReqWaitingTimeSec", "type": "double", "default":0.0}
   ]
 },
 
