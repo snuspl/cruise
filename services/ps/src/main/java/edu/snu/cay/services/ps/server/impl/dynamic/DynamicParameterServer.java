@@ -21,7 +21,6 @@ import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.common.Statistics;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
-import edu.snu.cay.services.ps.metric.avro.ServerThreadMetrics;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
 import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
@@ -118,11 +117,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private final Statistics[] pullStats;
 
   /**
-   * Statistics of the processing time of both operations - push and pull.
-   */
-  private final Statistics[] requestStats;
-
-  /**
    * Statistics of the waiting time of push operation since enqueued.
    */
   private final Statistics[] pushWaitStats;
@@ -131,11 +125,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
    * Statistics of the waiting time of push operation.
    */
   private final Statistics[] pullWaitStats;
-
-  /**
-   * Statistics of the waiting time of push operation.
-   */
-  private final Statistics[] requestWaitStats;
 
   /**
    * Bookkeeping start time of the processing threads.
@@ -184,10 +173,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     this.threadResolver = new ThreadResolver(numThreads);
     this.pushStats = Statistics.newInstances(numThreads);
     this.pullStats = Statistics.newInstances(numThreads);
-    this.requestStats = Statistics.newInstances(numThreads);
     this.pushWaitStats = Statistics.newInstances(numThreads);
     this.pullWaitStats = Statistics.newInstances(numThreads);
-    this.requestWaitStats = Statistics.newInstances(numThreads);
     this.startTimes = new long[numThreads];
     final long currentTime = ticker.read();
     for (int i = 0; i < numThreads; ++i) {
@@ -258,39 +245,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   /**
-   * logs stats (pull, push, request times and wait times) of a working thread.
-   * @param threadId of the thread
-   */
-  private void logThreadStats(final int threadId) {
-    final long timeSinceLastPrintStat = ticker.read() - startTimes[threadId];
-    final Statistics pullStat = pullStats[threadId];
-    final Statistics pushStat = pushStats[threadId];
-    final Statistics requestStat = requestStats[threadId];
-    final Statistics pushWaitStat = pushWaitStats[threadId];
-    final Statistics pullWaitStat = pullWaitStats[threadId];
-    final Statistics requestWaitStat = requestWaitStats[threadId];
-
-    final ServerThreadMetrics threadMetrics = ServerThreadMetrics.newBuilder()
-        .setThreadId(threadId)
-        .setNumPendingOps(threads.get(threadId).opsPending())
-        .setTotalTimeSec(timeSinceLastPrintStat / 1e9D)
-        .setPullCount((int)pullStat.count())
-        .setTotalPullTimeSec(pullStat.sum())
-        .setTotalPullWaitTimeSec(pullWaitStat.sum())
-        .setPushCount((int)pushStat.count())
-        .setTotalPushTimeSec(pushStat.sum())
-        .setTotalPushWaitTimeSec(pushWaitStat.sum())
-        .setReqCount((int)requestStat.count())
-        .setTotalReqTimeSec(requestStat.sum())
-        .setTotalReqWaitTimeSec(requestWaitStat.sum())
-        .build();
-
-    LOG.log(Level.FINE, "ServerThreadMetrics {0}", threadMetrics);
-
-    startTimes[threadId] = ticker.read();
-  }
-
-  /**
    * Sends metrics that have been collected within the current windowIndex.
    */
   private void sendMetrics() {
@@ -306,25 +260,22 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         Thread.sleep(metricsWindowMs);
 
         // After time has elapsed as long as a windowIndex, get the collected metrics and build a MetricsMessage.
-        final double totalPullTimeSec = getTotalProcTimeSec(pullStats);
-        final double totalPushTimeSec = getTotalProcTimeSec(pushStats);
-        final double totalReqProcTimeSec = getTotalProcTimeSec(requestStats);
-        final int totalPullCount = getTotalProcCount(pullStats);
-        final int totalPushCount = getTotalProcCount(pushStats);
-        final int totalReqCount = getTotalProcCount(requestStats);
-        resetStats();
+        final Pair<Integer, Double> totalPullStat = summarizeAndResetStats(pullStats);
+        final Pair<Integer, Double> totalPushStat = summarizeAndResetStats(pushStats);
+        final Pair<Integer, Double> totalPullWaitStats = summarizeAndResetStats(pullWaitStats);
+        final Pair<Integer, Double> totalPushWaitStats = summarizeAndResetStats(pushWaitStats);
 
         // Send meaningful metrics only
         final ServerMetrics metricsMessage = ServerMetrics.newBuilder()
             .setWindowIndex(windowIndex)
             .setNumModelBlocks(numEMBlocks)
             .setMetricWindowMs(metricsWindowMs)
-            .setTotalPullProcessingTimeSec(totalPullTimeSec)
-            .setTotalPushProcessingTimeSec(totalPushTimeSec)
-            .setTotalReqProcessingTimeSec(totalReqProcTimeSec)
-            .setTotalPullProcessed(totalPullCount)
-            .setTotalPushProcessed(totalPushCount)
-            .setTotalReqProcessed(totalReqCount)
+            .setTotalPullProcessed(totalPullStat.getFirst())
+            .setTotalPushProcessed(totalPushStat.getFirst())
+            .setTotalPullProcessingTimeSec(totalPullStat.getSecond() / 1e9D)
+            .setTotalPushProcessingTimeSec(totalPushStat.getSecond() / 1e9D)
+            .setTotalPullWaitingTimeSec(totalPullWaitStats.getSecond() / 1e9D)
+            .setTotalPushWaitingTimeSec(totalPushWaitStats.getSecond() / 1e9D)
             .build();
 
         LOG.log(Level.FINE, "Sending ServerMetrics {0}", metricsMessage);
@@ -339,53 +290,20 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   /**
-   * Computes the total number of requests across all threads in this server.
-   *
-   * It is used later on used to calculate the processing unit cost for this server (C_s_proc).
+   * Computes the total number and time spent on processing requests with the {@link ServerThread}s in this server.
+   * Summarizes stats across all {@link ServerThread}s in this worker and resets them.
    */
-  private int getTotalProcCount(final Statistics[] procTimeStats) {
+  private Pair<Integer, Double> summarizeAndResetStats(final Statistics[] stats) {
     int processedCount = 0;
-
-    synchronized (procTimeStats) {
-      for (final Statistics stat : procTimeStats) {
-        processedCount += stat.count();
-      }
-    }
-
-    return processedCount;
-  }
-
-  /**
-   * Computes the time in seconds spent on processing {@link #getTotalProcCount(Statistics[])}
-   * with the threads in this server.
-   *
-   * It is used later on used to calculate the processing unit cost for this server (C_s_proc).
-   */
-  private double getTotalProcTimeSec(final Statistics[] procTimeStats) {
     double procTimeSum = 0D;
 
-    synchronized (procTimeStats) {
-      for (final Statistics stat : procTimeStats) {
-        procTimeSum += stat.sum();
-      }
+    for (final Statistics stat : stats) {
+      processedCount += stat.count();
+      procTimeSum += stat.sum();
+      stat.reset();
     }
 
-    return procTimeSum / 1e9D;
-  }
-
-  /**
-   * Resets all {@link Statistics} for the next round of metrics.
-   */
-  private void resetStats() {
-    for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
-      logThreadStats(threadIdx);
-      pullStats[threadIdx].reset();
-      pullWaitStats[threadIdx].reset();
-      pushStats[threadIdx].reset();
-      pushWaitStats[threadIdx].reset();
-      requestStats[threadIdx].reset();
-      requestWaitStats[threadIdx].reset();
-    }
+    return new Pair<>(processedCount, procTimeSum);
   }
 
   /**
@@ -455,7 +373,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         final long waitEndTime = ticker.read();
         final long waitTime = waitEndTime - timestamp;
         pushWaitStats[threadId].put(waitTime);
-        requestWaitStats[threadId].put(waitTime);
 
         final V deltaValue = parameterUpdater.process(hashedKey.getKey(), preValue);
         if (deltaValue == null) {
@@ -467,7 +384,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
         final long processEndTime = ticker.read();
         final long processingTime = processEndTime - waitEndTime;
         pushStats[threadId].put(processingTime);
-        requestStats[threadId].put(processingTime);
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
@@ -513,7 +429,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
           final long waitEndTime = ticker.read();
           final long waitTime = waitEndTime - timestamp;
           pullWaitStats[threadId].put(waitTime);
-          requestWaitStats[threadId].put(waitTime);
 
           final Pair<HashedKey<K>, V> kvPair = memoryStore.get(hashedKey);
           final V value;
@@ -539,7 +454,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
           // Elapsed time since the request has been dequeued.
           final long actualProcessingTime = processEndTime - waitEndTime;
           pullStats[threadId].put(actualProcessingTime);
-          requestStats[threadId].put(actualProcessingTime);
         } catch (final Exception e) {
           LOG.log(Level.WARNING, "Exception occurred", e);
         }
