@@ -31,8 +31,11 @@
     {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics"],
      "default":null},
 
-    // epoch number
+    // epoch index
     {"name": "epochIdx", "type": "int", "default": 0},
+
+    // mini-batch index
+    {"name": "miniBatchIdx", "type": "int", "default": 0},
 
     // number of data blocks used for MemoryStore
     {"name": "numDataBlocks", "type": "int", "default": 0},
