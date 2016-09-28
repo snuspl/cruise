@@ -700,7 +700,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     /**
      * Retrieves pull request id.
      * All {@link PullRequest} objects for the same key from one {@link ParameterWorker}
-     * should not have the same requestIdCounter.
+     * should not have the same requestId.
      * @return pull request id
      */
     int getRequestId() {
@@ -724,34 +724,19 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @throws RuntimeException if the retrial count exceeded maximum number of retries
      */
     synchronized void retry() {
-      // Re-send message for pull request, if the corresponding request exists.
-      synchronized (workerThread) {
-        if (!isRequestStillPending()) {
-          LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestIdCounter: {1}",
-              new Object[]{encodedKey.getKey(), requestId});
-          return;
+      try (final TraceScope retryScope = Trace.startSpan(String.format("pull_retry." +
+              " key: %s, request_id: %d, retry_count: %d", encodedKey.getKey(), requestId, retryCount + 1),
+          pullRequestScope.getSpan())) {
+        if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
+          throw new RuntimeException("Fail to load a value for pull");
         }
 
-        try (final TraceScope retryScope = Trace.startSpan(String.format("pull_retry." +
-                " key: %s, request_id: %d, retry_count: %d", encodedKey.getKey(), requestId, retryCount + 1),
-            pullRequestScope.getSpan())) {
-          if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
-            throw new RuntimeException("Fail to load a value for pull");
-          }
-
-          LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
-              new Object[]{encodedKey.getKey(), retryCount});
-          final int numSentBytes = sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(retryScope.getSpan()));
-          workerThread.sentBytesStat.put(numSentBytes);
-          state = INIT_STATE;
-        }
+        LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
+            new Object[]{encodedKey.getKey(), retryCount});
+        final int numSentBytes = sendPullMsg(encodedKey, requestId, TraceInfo.fromSpan(retryScope.getSpan()));
+        workerThread.sentBytesStat.put(numSentBytes);
+        state = INIT_STATE;
       }
-    }
-
-    boolean isRequestStillPending() {
-      final K key = encodedKey.getKey();
-      final PullRequest pendingPullRequest = workerThread.pendingPullRequests.get(key);
-      return (pendingPullRequest != null && pendingPullRequest.equals(this));
     }
 
     /**
@@ -765,10 +750,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         state = NEED_RETRY_STATE;
         return false;
       case NEED_RETRY_STATE:
-        LOG.log(Level.INFO, "Pull request time out for key: {0}, requestIdCounter: {1}, retryCount: {2}",
+        LOG.log(Level.INFO, "Pull request time out for key: {0}, requestId: {1}, retryCount: {2}",
             new Object[]{encodedKey.getKey(), requestId, retryCount});
         state = RETRY_REQUESTED_STATE;
-        workerThread.enqueueRetryPulls(this);
+        workerThread.enqueueRetryPull(this);
         return true;
       case RETRY_REQUESTED_STATE:
         return false;
@@ -920,7 +905,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      *
      * @param pullRequest the retry pull to enqueue
      */
-    void enqueueRetryPulls(final PullRequest pullRequest) {
+    void enqueueRetryPull(final PullRequest pullRequest) {
       try {
         retryQueue.put(pullRequest);
       } catch (final InterruptedException e) {
@@ -956,22 +941,22 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                                                          final long elapsedTimeInServer, final int numReceivedBytes) {
       if (isPullRequestStillPending(key, requestId)) {
         final PullRequest pullRequest = pendingPullRequests.remove(key);
-        final boolean wasItWaiting = pullRequest.completePendingOps(value, elapsedTimeInServer, numReceivedBytes);
+        final boolean waitingPushExists = pullRequest.completePendingOps(value, elapsedTimeInServer, numReceivedBytes);
 
         // wake up worker thread
         // 1) if push for the same key has been waiting for this pull request to be finished
         // 2) when the limit of maximum pending pull per thread has been released by the completion of this PullRequest
-        if (wasItWaiting || pendingPullRequests.size() == maxPendingPullsPerThread - 1) {
+        if (waitingPushExists || pendingPullRequests.size() == maxPendingPullsPerThread - 1) {
           this.notify();
         }
       } else {
-        LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestIdCounter: {1}",
+        LOG.log(Level.INFO, "Could not find corresponding pullRequest for key: {0}, requestId: {1}",
             new Object[]{key, requestId});
       }
     }
 
     /**
-     * Check existence of the pendingPullRequest corresponding to received PullReply.
+     * Check existence of the pendingPullRequest.
      * @param requestId received pull request id
      * @return true if the corresponding PullRequest exists, otherwise false
      */
@@ -1001,12 +986,17 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       return queue.size() + localOps.size();
     }
 
-    // NOTE: while executing this method the thread should not be interrupted
     private void processRetryPulls() {
       if (!retryQueue.isEmpty()) {
-        // execute at most 'drainSize' number of pulls to prevent the starvation of normal ops
         retryQueue.drainTo(localRetryPulls, drainSize);
-        localRetryPulls.forEach(PullRequest::retry);
+
+        for (final PullRequest pullRequest : localRetryPulls) {
+          synchronized (this) {
+            if (isPullRequestStillPending(pullRequest.encodedKey.getKey(), pullRequest.getRequestId())) {
+              pullRequest.retry();
+            }
+          }
+        }
         localRetryPulls.clear();
       }
     }
