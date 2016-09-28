@@ -42,6 +42,7 @@ import org.htrace.TraceInfo;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -76,8 +77,8 @@ public final class DynamicParameterServerTest {
   private static final int NUM_TOTAL_BLOCKS = 2;
   private static final int NUM_TOTAL_STORES = 2;
   private static final int LOCAL_STORE_ID = 0;
-  private static final int REMOTE_STORE_ID = 1;
 
+  private MemoryStore<Integer> memoryStore;
   private DynamicParameterServer<Integer, Integer, Integer> server;
   private ServerSideMsgSender<Integer, Integer, Integer> mockSender;
 
@@ -123,21 +124,38 @@ public final class DynamicParameterServerTest {
     });
 
     // EM's router should be initialized explicitly
-    final OperationRouter router = injector.getInstance(OperationRouter.class);
+    final OperationRouter<Integer> router = injector.getInstance(OperationRouter.class);
     router.triggerInitialization();
 
+    memoryStore = injector.getInstance(MemoryStore.class);
     mockSender = injector.getInstance(ServerSideMsgSender.class);
     server = injector.getInstance(DynamicParameterServer.class);
   }
 
-  private DataIdFactory getDataIdFactory(final int storeId) throws InjectionException {
-    final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(MemoryStoreId.class, Integer.toString(storeId))
-        .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_TOTAL_STORES))
-        .build();
+  /**
+   * Generate keys to use in the test. Can choose the keys that belong to local or remote store.
+   * @param numKeys the number of keys to generate
+   * @param localKey a boolean that indicates whether keys belongs to local store or not
+   * @return a list of keys
+   * @throws IdGenerationException if fails to generate keys upto the specified number
+   */
+  private List<Integer> getKeys(final int numKeys, final boolean localKey) throws IdGenerationException {
+    final List<Integer> keys = new ArrayList<>(numKeys);
 
-    final Injector injector = Tang.Factory.getTang().newInjector(conf);
-    return injector.getInstance(DataIdFactory.class);
+    for (int key = 0; key < Integer.MAX_VALUE; key++) {
+      if (memoryStore.resolveEval(key).isPresent() != localKey) {
+        keys.add(key);
+
+        if (keys.size() == numKeys) {
+          break;
+        }
+      }
+    }
+
+    if (keys.size() < numKeys) {
+      throw new IdGenerationException("Fail to generate " + numKeys + " keys");
+    }
+    return keys;
   }
 
   /**
@@ -153,16 +171,15 @@ public final class DynamicParameterServerTest {
     final int numPulls = 100000;
     final CountDownLatch countDownLatch = new CountDownLatch(numPushThreads + numPullThreads);
     final Runnable[] threads = new Runnable[numPushThreads + numPullThreads];
-    final DataIdFactory<Long> localDataIdFactory = getDataIdFactory(LOCAL_STORE_ID);
 
-    final List<Long> keys = localDataIdFactory.getIds(Math.max(numPushThreads, numPullThreads));
+    final int numKeys = Math.max(numPushThreads, numPullThreads);
+    final List<Integer> localKeys = getKeys(numKeys, true);
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
-      final int keyIdx = threadIndex;
+      final int key = localKeys.get(threadIndex);
       threads[threadIndex] = new Runnable() {
         @Override
         public void run() {
-          final int key = keys.get(keyIdx).intValue();
           for (int index = 0; index < numPushes; index++) {
             // each thread increments the server's value by 1 per push
             server.push(key, 1, key); // Just use key as hash for this test.
@@ -173,11 +190,10 @@ public final class DynamicParameterServerTest {
     }
 
     for (int threadIndex = 0; threadIndex < numPullThreads; threadIndex++) {
-      final int keyIdx = threadIndex;
+      final int key = localKeys.get(threadIndex);
       threads[threadIndex + numPushThreads] = new Runnable() {
         @Override
         public void run() {
-          final int key = keys.get(keyIdx).intValue();
           for (int index = 0; index < numPulls; index++) {
             server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test
           }
@@ -205,7 +221,7 @@ public final class DynamicParameterServerTest {
       }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
-      final int key = keys.get(threadIndex).intValue();
+      final int key = localKeys.get(threadIndex).intValue();
       server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test.
 
       waitForOps();
@@ -213,7 +229,7 @@ public final class DynamicParameterServerTest {
         Thread.sleep(5);
       }
 
-      assertEquals(MSG_RESULT_ASSERTION, numPushes, (int) replayValue.getReference());
+      assertEquals(MSG_RESULT_ASSERTION, numPushes, replayValue.getReference().intValue());
       replayValue.set(null, false); // reset
     }
     server.close(CLOSE_TIMEOUT);
@@ -232,12 +248,10 @@ public final class DynamicParameterServerTest {
   public void testRedirectPushPull() throws InjectionException, IdGenerationException,
       InterruptedException, ExecutionException, TimeoutException {
     final int numKeys = 10;
-    final DataIdFactory<Long> remoteDataIdFactory = getDataIdFactory(REMOTE_STORE_ID);
 
-    final List<Long> remoteKeys = remoteDataIdFactory.getIds(numKeys);
+    final List<Integer> remoteKeys = getKeys(numKeys, false);
 
-    for (final long longKey : remoteKeys) {
-      final int key = (int) longKey;
+    for (final int key : remoteKeys) {
       server.push(key, 0, key);
       server.pull(key, WORKER_ID, key, 0, EMPTY_TRACE);
     }
@@ -255,7 +269,7 @@ public final class DynamicParameterServerTest {
   public void testClose() throws InterruptedException, ExecutionException, TimeoutException,
       InjectionException, IdGenerationException {
     final int numPulls = 5;
-    final DataIdFactory<Long> localDataIdFactory = getDataIdFactory(LOCAL_STORE_ID);
+    final List<Integer> localKeys = getKeys(numPulls, true);
 
     doAnswer(invocation -> {
         // sleep to guarantee the queue not empty when closing server
@@ -264,7 +278,7 @@ public final class DynamicParameterServerTest {
       }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int i = 0; i < numPulls; i++) {
-      final int key = localDataIdFactory.getId().intValue();
+      final int key = localKeys.get(i);
       server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE);
     }
 
