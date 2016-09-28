@@ -79,7 +79,7 @@ bool JavaCudnn::cudnnDestroyTensorDesc(cudnnTensorDescriptor_t* tensorDesc) {
     return false;
   }
 
-  bool success = cudnnCheck(cudnnDestroyTensorDescriptor(*tensorDesc);
+  bool success = cudnnCheck(cudnnDestroyTensorDescriptor(*tensorDesc));
   delete tensorDesc;
   return success;
 }
@@ -100,7 +100,7 @@ bool JavaCudnn::cudnnDestroyFilterDesc(cudnnFilterDescriptor_t* filterDesc) {
     return false;
   }
 
-  bool success = cudnnCheck(cudnnDestroyFilterDescriptor(*filterDesc);
+  bool success = cudnnCheck(cudnnDestroyFilterDescriptor(*filterDesc));
   delete filterDesc;
   return success;
 }
@@ -155,7 +155,7 @@ bool JavaCudnn::cudnnDestroyPoolDesc(cudnnPoolingDescriptor_t* poolDesc) {
       return false;
    }
 
-  bool success = cudnnCheck(cudnnDestroyPoolingDescriptor(*poolDesc);
+  bool success = cudnnCheck(cudnnDestroyPoolingDescriptor(*poolDesc));
   delete poolDesc;
   return success;
 }
@@ -194,7 +194,7 @@ bool JavaCudnn::cudnnDestroyActivFuncDesc(cudnnActivationDescriptor_t* activDesc
     return false;
   }
 
-  bool success = cudnnCheck(cudnnDestroyFilterDescriptor(*activDesc);
+  bool success = cudnnCheck(cudnnDestroyActivationDescriptor(*activDesc));
   delete activDesc;
   return success;
 }
@@ -213,7 +213,7 @@ bool JavaCudnn::cudnnDestroyLRNDesc(cudnnLRNDescriptor_t* lrnDesc) {
     return false;
   }
 
-  bool success = cudnnCheck(cudnnDestroyLRNDescriptor(*lrnDesc);
+  bool success = cudnnCheck(cudnnDestroyLRNDescriptor(*lrnDesc));
   delete lrnDesc;
   return success;
 }

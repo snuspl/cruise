@@ -107,7 +107,7 @@ class JavaCudnn extends Pointer {
     checkNullPointer(pointer);
     return pointer;
   }
-  static native boolean cudnnDestroyActivFuncDesc(@Cast(value = "cudnnAvtivationDescriptor_t*") final Pointer pointer);
+  static native boolean cudnnDestroyActivFuncDesc(@Cast(value = "cudnnActivationDescriptor_t*") final Pointer pointer);
   static void destroyActivFuncDesc(@Cast(value = "cudnnActivationDescriptor_t*") final Pointer pointer) {
     checkNullPointer(pointer);
     if (!cudnnDestroyActivFuncDesc(pointer)) {
