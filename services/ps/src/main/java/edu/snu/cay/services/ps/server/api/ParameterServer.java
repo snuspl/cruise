@@ -45,18 +45,18 @@ public interface ParameterServer<K, P, V> {
   void push(final K key, final P preValue, final int keyHash);
 
   /**
-   * Reply to srcId via {@link ServerSideMsgSender}
+   * Reply to requesterId via {@link ServerSideMsgSender}
    * with the value corresponding to the key.
    *
    * The pull operation is enqueued to the queue that is assigned to its partition and returned immediately.
    *
    * @param key key object that the requested {@code value} is associated with
-   * @param srcId network Id of the requester
+   * @param requesterId network Id of the requester
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    * @param requestId pull request id assigned by ParameterWorker
    * @param traceInfo Information for Trace
    */
-  void pull(final K key, final String srcId, final int keyHash, final int requestId,
+  void pull(final K key, final String requesterId, final int keyHash, final int requestId,
             @Nullable final TraceInfo traceInfo);
 
   /**

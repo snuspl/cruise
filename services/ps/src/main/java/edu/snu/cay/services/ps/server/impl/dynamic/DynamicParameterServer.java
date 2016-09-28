@@ -203,7 +203,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   @Override
-  public void pull(final K key, final String srcId, final int keyHash, final int requestId,
+  public void pull(final K key, final String requesterId, final int keyHash, final int requestId,
                    @Nullable final TraceInfo traceInfo) {
     // We should detach the span when we transit to another thread (local or remote),
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
@@ -216,7 +216,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}, RequestId: {4}",
           new Object[]{key, blockId, threadId, keyHash, requestId});
       detached = pullScope.detach();
-      threads.get(threadId).enqueue(new PullOp(hashedKey, srcId, threadId, requestId, TraceInfo.fromSpan(detached)));
+      threads.get(threadId).enqueue(new PullOp(hashedKey, requesterId, threadId, requestId,
+          TraceInfo.fromSpan(detached)));
     } finally {
       Trace.continueSpan(detached).close();
     }
@@ -387,15 +388,15 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private class PullOp implements Op<K, V> {
     private final HashedKey<K> hashedKey;
     private final long timestamp;
-    private final String srcId;
+    private final String requesterId;
     private final int threadId;
     private final int requestId;
     private final TraceInfo parentTraceInfo;
 
-    PullOp(final HashedKey<K> hashedKey, final String srcId, final int threadId, final int requestId,
+    PullOp(final HashedKey<K> hashedKey, final String requesterId, final int threadId, final int requestId,
            final TraceInfo parentTraceInfo) {
       this.hashedKey = hashedKey;
-      this.srcId = srcId;
+      this.requesterId = requesterId;
       this.timestamp = ticker.read();
       this.threadId = threadId;
       this.requestId = requestId;
@@ -403,7 +404,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     }
 
     /**
-     * Read from MemoryStore and send the hashedKey-value pair to srcId.
+     * Read from MemoryStore and send the hashedKey-value pair to requesterId.
      * To ensure atomicity, the hashedKey-value pair should be serialized immediately in msgSender.
      */
     @Override
@@ -440,7 +441,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
         // The request's time spent in queue + processing time before sending a reply.
         final long elapsedTimeInServer = ticker.read() - timestamp;
-        msgSender.sendPullReplyMsg(srcId, hashedKey.getKey(), value, requestId, elapsedTimeInServer, parentTraceInfo);
+        msgSender.sendPullReplyMsg(requesterId, hashedKey.getKey(), value, requestId, elapsedTimeInServer,
+            parentTraceInfo);
 
         final long processEndTime = ticker.read();
 
@@ -452,7 +454,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     private void redirect(final String serverId) {
       LOG.log(Level.FINE, "Redirect PullOp. key: {0}, targetServerId: {1}", new Object[]{hashedKey.getKey(), serverId});
-      msgSender.sendPullMsg(serverId, srcId, hashedKey.getKey(), requestId, parentTraceInfo);
+      msgSender.sendPullMsg(serverId, requesterId, hashedKey.getKey(), requestId, parentTraceInfo);
     }
   }
 
@@ -528,8 +530,10 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     @Override
     public void run() {
+      // even though startClose() has been invoked,
+      // the thread will be closed after processing all remaining operations within timeout.
       while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
-        // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
+        // First, poll and apply.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (op == null) {

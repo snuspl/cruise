@@ -49,11 +49,11 @@ public interface ServerSideMsgSender<K, P, V> {
    * Sends a pull msg for {@code key} to a corresponding server.
    *
    * @param destId    an id of destination server
-   * @param srcId     an id of requester
+   * @param requesterId     an id of requester
    * @param key       a key to pull
    * @param requestId pull request id assigned by ParameterWorker
    * @param traceInfo Information for Trace
    */
-  void sendPullMsg(final String destId, final String srcId, final K key, final int requestId,
+  void sendPullMsg(final String destId, final String requesterId, final K key, final int requestId,
                    @Nullable final TraceInfo traceInfo);
 }

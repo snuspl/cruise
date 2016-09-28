@@ -31,7 +31,7 @@
   "name": "PullMsg",
   "fields":
   [
-    {"name": "srcId", "type": "string"},
+    {"name": "requesterId", "type": "string"},
     {"name": "key", "type": "bytes"},
     {"name": "requestId", "type": "int"}
   ]

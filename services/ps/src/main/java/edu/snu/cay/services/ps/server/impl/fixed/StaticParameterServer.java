@@ -196,11 +196,11 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   }
 
   @Override
-  public void pull(final K key, final String srcId, final int keyHash, final int requestId,
+  public void pull(final K key, final String requesterId, final int keyHash, final int requestId,
                    @Nullable final TraceInfo traceInfo) {
     final int partitionId = serverResolver.resolvePartition(keyHash);
     final int threadId = localPartitions.indexOf(partitionId) % numThreads;
-    threads.get(threadId).enqueue(new PullOp(key, srcId, threadId, requestId));
+    threads.get(threadId).enqueue(new PullOp(key, requesterId, threadId, requestId));
   }
 
   /**

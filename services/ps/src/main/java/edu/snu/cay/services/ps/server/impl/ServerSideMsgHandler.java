@@ -121,9 +121,9 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
         String.format("on_pull_msg. server_id: %s", endpointId), traceInfo)) {
       final K key = keyCodec.decode(pullMsg.getKey().array());
       final int keyHash = hash(pullMsg.getKey().array());
-      final String srcId = pullMsg.getSrcId().toString();
+      final String requesterId = pullMsg.getRequesterId().toString();
       final int requestId = pullMsg.getRequestId();
-      parameterServer.pull(key, srcId, keyHash, requestId, TraceInfo.fromSpan(onPullMsgScope.getSpan()));
+      parameterServer.pull(key, requesterId, keyHash, requestId, TraceInfo.fromSpan(onPullMsgScope.getSpan()));
     }
   }
 

@@ -148,7 +148,7 @@ public final class ServerSideMsgSenderImpl<K, P, V> implements ServerSideMsgSend
   }
 
   @Override
-  public void sendPullMsg(final String destId, final String srcId, final K key, final int requestId,
+  public void sendPullMsg(final String destId, final String requesterId, final K key, final int requestId,
                           @Nullable final TraceInfo traceInfo) {
     // We should detach the span when we transit to another thread (local or remote),
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
@@ -162,7 +162,7 @@ public final class ServerSideMsgSenderImpl<K, P, V> implements ServerSideMsgSend
 
       final byte[] serializedKey = keyCodec.encode(key);
       final PullMsg pullMsg = PullMsg.newBuilder()
-          .setSrcId(srcId)
+          .setRequesterId(requesterId)
           .setKey(ByteBuffer.wrap(serializedKey))
           .setRequestId(requestId)
           .build();
