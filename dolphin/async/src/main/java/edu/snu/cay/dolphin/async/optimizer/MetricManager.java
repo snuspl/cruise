@@ -57,9 +57,14 @@ public final class MetricManager {
   private static final int METRIC_QUEUE_SIZE = 1024;
 
   /**
-   * Worker-side metrics, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
+   * Worker-side metrics for mini-batches, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
    */
-  private final Map<String, List<EvaluatorParameters>> workerEvalParams;
+  private final Map<String, List<EvaluatorParameters>> workerEvalMiniBatchParams;
+
+  /**
+   * Worker-side metrics for epochs, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
+   */
+  private final Map<String, List<EvaluatorParameters>> workerEvalEpochParams;
 
   /**
    * Server-side metrics, each in the form of (serverId, {@link EvaluatorParameters}) mapping.
@@ -99,7 +104,8 @@ public final class MetricManager {
   @Inject
   private MetricManager(@Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
                         @Parameter(Parameters.DashboardPort.class) final int port) {
-    this.workerEvalParams = Collections.synchronizedMap(new HashMap<>());
+    this.workerEvalMiniBatchParams = Collections.synchronizedMap(new HashMap<>());
+    this.workerEvalEpochParams = Collections.synchronizedMap(new HashMap<>());
     this.serverEvalParams = Collections.synchronizedMap(new HashMap<>());
     this.metricCollectionEnabled = false;
     this.numBlockByEvalIdForWorker = null;
@@ -178,23 +184,26 @@ public final class MetricManager {
    */
   public void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
     if (metricCollectionEnabled) {
-      final int numDataBlocksOnWorker = metrics.getNumDataBlocks();
-
       if (numBlockByEvalIdForWorker != null && numBlockByEvalIdForWorker.containsKey(workerId)) {
-        final int numDataBlocksOnDriver = numBlockByEvalIdForWorker.get(workerId);
+        final int numDataBlocks = numBlockByEvalIdForWorker.get(workerId);
 
-        if (numDataBlocksOnWorker == numDataBlocksOnDriver) {
-          final DataInfo dataInfo = new DataInfoImpl(numDataBlocksOnWorker);
-          final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
-          synchronized (workerEvalParams) {
-            if (!workerEvalParams.containsKey(workerId)) {
-              workerEvalParams.put(workerId, new ArrayList<>());
+        final DataInfo dataInfo = new DataInfoImpl(numDataBlocks);
+        final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
+
+        if (metrics.getMiniBatchIdx() == null) {
+          synchronized (workerEvalEpochParams) {
+            if (!workerEvalEpochParams.containsKey(workerId)) {
+              workerEvalEpochParams.put(workerId, new ArrayList<>());
             }
-            workerEvalParams.get(workerId).add(evaluatorParameters);
+            workerEvalEpochParams.get(workerId).add(evaluatorParameters);
           }
         } else {
-          LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
-              new Object[]{workerId, numDataBlocksOnWorker, numDataBlocksOnDriver});
+          synchronized (workerEvalMiniBatchParams) {
+            if (!workerEvalMiniBatchParams.containsKey(workerId)) {
+              workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
+            }
+            workerEvalMiniBatchParams.get(workerId).add(evaluatorParameters);
+          }
         }
       } else {
         LOG.log(Level.FINE, "No information about {0}. Dropping metric.", workerId);
@@ -221,23 +230,16 @@ public final class MetricManager {
    */
   public void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
     if (metricCollectionEnabled) {
-      final int numModelBlocksOnServer = metrics.getNumModelBlocks();
-
       if (numBlockByEvalIdForServer != null && numBlockByEvalIdForServer.containsKey(serverId)) {
-        final int numModelBlocksOnDriver = numBlockByEvalIdForServer.get(serverId);
+        final int numModelBlocks = numBlockByEvalIdForServer.get(serverId);
 
-        if (numModelBlocksOnServer == numModelBlocksOnDriver) {
-          final DataInfo dataInfo = new DataInfoImpl(numModelBlocksOnServer);
-          final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
-          synchronized (serverEvalParams) {
-            if (!serverEvalParams.containsKey(serverId)) {
-              serverEvalParams.put(serverId, new ArrayList<>());
-            }
-            serverEvalParams.get(serverId).add(evaluatorParameters);
+        final DataInfo dataInfo = new DataInfoImpl(numModelBlocks);
+        final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
+        synchronized (serverEvalParams) {
+          if (!serverEvalParams.containsKey(serverId)) {
+            serverEvalParams.put(serverId, new ArrayList<>());
           }
-        } else {
-          LOG.log(Level.FINE, "{0} contains {1} blocks, driver says {2} blocks. Dropping metric.",
-              new Object[]{serverId, numModelBlocksOnServer, numModelBlocksOnDriver});
+          serverEvalParams.get(serverId).add(evaluatorParameters);
         }
       } else {
         LOG.log(Level.FINE, "No information about {0}. Dropping metric.", serverId);
@@ -257,11 +259,22 @@ public final class MetricManager {
     }
   }
 
-  public Map<String, List<EvaluatorParameters>> getWorkerMetrics() {
-    synchronized (workerEvalParams) {
+  public Map<String, List<EvaluatorParameters>> getWorkerMiniBatchMetrics() {
+    synchronized (workerEvalMiniBatchParams) {
       final Map<String, List<EvaluatorParameters>> currWorkerMetrics = new HashMap<>();
 
-      for (final Map.Entry<String, List<EvaluatorParameters>> entry : workerEvalParams.entrySet()) {
+      for (final Map.Entry<String, List<EvaluatorParameters>> entry : workerEvalMiniBatchParams.entrySet()) {
+        currWorkerMetrics.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+      }
+      return currWorkerMetrics;
+    }
+  }
+
+  public Map<String, List<EvaluatorParameters>> getWorkerEpochMetrics() {
+    synchronized (workerEvalEpochParams) {
+      final Map<String, List<EvaluatorParameters>> currWorkerMetrics = new HashMap<>();
+
+      for (final Map.Entry<String, List<EvaluatorParameters>> entry : workerEvalEpochParams.entrySet()) {
         currWorkerMetrics.put(entry.getKey(), new ArrayList<>(entry.getValue()));
       }
       return currWorkerMetrics;
@@ -313,8 +326,8 @@ public final class MetricManager {
    * Empty out the current set of worker metrics.
    */
   private void clearWorkerMetrics() {
-    synchronized (workerEvalParams) {
-      workerEvalParams.clear();
+    synchronized (workerEvalMiniBatchParams) {
+      workerEvalMiniBatchParams.clear();
     }
   }
 
