@@ -35,37 +35,37 @@
     {"name": "epochIdx", "type": "int", "default": 0},
 
     // mini-batch index
-    {"name": "miniBatchIdx", "type": "int", "default": 0},
+    {"name": "miniBatchIdx", "type": ["null", "int"], "default": null},
 
     // number of data blocks used for MemoryStore
-    {"name": "numDataBlocks", "type": "int", "default": 0},
+    {"name": "numDataBlocks", "type": ["null", "int"], "default": null},
 
     // number of data items (mapped to a key in MemoryStore) processed
     {"name": "processedDataItemCount", "type": "int", "default": 0},
 
     // number of training data instances processed per mini-batch
-    {"name": "miniBatchSize", "type": "int", "default": 0},
+    {"name": "miniBatchSize", "type": ["null", "int"], "default": null},
 
     // number of mini-batches for this epoch
-    {"name": "numMiniBatchForEpoch", "type": "int", "default": 0},
+    {"name": "numMiniBatchForEpoch", "type": ["null", "int"], "default": null},
 
     // total elapsed time for this epoch (seconds)
-    {"name": "totalTime", "type": "double", "default": 0.0},
+    {"name": "totalTime", "type": ["null", "double"], "default": null},
 
     // total computation time for this epoch (seconds)
-    {"name": "totalCompTime", "type": "double", "default": 0.0},
+    {"name": "totalCompTime", "type": ["null", "double"], "default": null},
 
     // total push time for this epoch (seconds)
-    {"name": "totalPushTime", "type": "double", "default": 0.0},
+    {"name": "totalPushTime", "type": ["null", "double"], "default": null},
 
     // total pull time for this epoch (seconds)
-    {"name": "totalPullTime", "type": "double", "default": 0.0},
+    {"name": "totalPullTime", "type": ["null", "double"], "default": null},
 
     // average push time per trace/element for this epoch (seconds)
-    {"name": "avgPushTime", "type": "double", "default": 0.0},
+    {"name": "avgPushTime", "type": ["null", "double"], "default": null},
 
     // average pull time per trace/element for this epoch (seconds)
-    {"name": "avgPullTime", "type": "double", "default": 0.0}
+    {"name": "avgPullTime", "type": ["null", "double"], "default": null}
   ]
 }
 ]
