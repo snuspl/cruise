@@ -22,9 +22,11 @@ import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
-import javax.annotation.concurrent.NotThreadSafe;
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,26 +36,44 @@ import java.util.logging.Logger;
  * @param <K> type of the key, which should be the same with the one in MemoryStore.
  */
 @TaskSide
-@NotThreadSafe
+@ThreadSafe
 public final class TrainingDataProvider<K> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
 
   private final int miniBatchSize;
   private final MemoryStore<K> memoryStore;
-  //TODO need to use a lock to manage concurrent accesses to trainingDataKeySet.
   private final Set<K> trainingDataKeySet;
   private final BlockUpdateListener<K> blockUpdateListener;
-  
+  private final ReadWriteLock trainingDataLock = new ReentrantReadWriteLock(true);
+
+  /**
+   * A listener registered to the MemoryStore to catch block addition/removal events.
+   * the block changes in the MemoryStore will be immediately applied to training data in this provider.
+   */
   public final class BlockUpdateListenerImpl implements BlockUpdateListener<K> {
 
     @Override
-    public void onAddedBlock(int blockId, Set<K> addedKeys) {
-      trainingDataKeySet.addAll(addedKeys);
+    public void onAddedBlock(final int blockId, final Set<K> addedKeys) {
+      trainingDataLock.writeLock().lock();
+      try {
+        trainingDataKeySet.addAll(addedKeys);
+      } finally {
+        trainingDataLock.writeLock().unlock();
+      }
+
+      LOG.log(Level.SEVERE, "trainingDataKeySet size = " + trainingDataKeySet.size());
     }
 
     @Override
-    public void onRemovedBlock(int blockId, Set<K> removedKeys) {
-      trainingDataKeySet.removeAll(removedKeys);
+    public void onRemovedBlock(final int blockId, final Set<K> removedKeys) {
+      trainingDataLock.writeLock().lock();
+      try {
+        trainingDataKeySet.removeAll(removedKeys);
+      } finally {
+        trainingDataLock.writeLock().unlock();
+      }
+
+      LOG.log(Level.SEVERE, "trainingDataKeySet size = " + trainingDataKeySet.size());
     }
   }
 
@@ -65,13 +85,20 @@ public final class TrainingDataProvider<K> {
     this.trainingDataKeySet = new HashSet<>();
     this.blockUpdateListener = new BlockUpdateListenerImpl();
     memoryStore.registerBlockUpdateListener(blockUpdateListener);
+
   }
 
   /**
    * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
    */
   void prepareDataForEpoch() {
-    trainingDataKeySet.addAll(memoryStore.getAll().keySet());
+    trainingDataLock.writeLock().lock();
+    try {
+      trainingDataKeySet.addAll(memoryStore.getAll().keySet());
+    } finally {
+      trainingDataLock.writeLock().unlock();
+    }
+
     LOG.log(Level.SEVERE, "trainingDataKeySet size = " + trainingDataKeySet.size());
   }
 
@@ -81,17 +108,21 @@ public final class TrainingDataProvider<K> {
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
   public <V> Map<K, V> getNextTrainingData() {
-    if (trainingDataKeySet.isEmpty()) {
-      return Collections.emptyMap();
-    }
-
-    final Iterator<K> iterator = trainingDataKeySet.iterator();
     final List<K> nextTrainingDataKeyList = new ArrayList<>();
+    trainingDataLock.writeLock().lock();
+    try {
+      if (trainingDataKeySet.isEmpty()) {
+        return Collections.emptyMap();
+      }
 
-    while (iterator.hasNext() && nextTrainingDataKeyList.size() < miniBatchSize) {
-      nextTrainingDataKeyList.add(iterator.next());
+      final Iterator<K> iterator = trainingDataKeySet.iterator();
+      while (iterator.hasNext() && nextTrainingDataKeyList.size() < miniBatchSize) {
+        nextTrainingDataKeyList.add(iterator.next());
+      }
+      trainingDataKeySet.removeAll(nextTrainingDataKeyList);
+    } finally {
+      trainingDataLock.writeLock().unlock();
     }
-    trainingDataKeySet.removeAll(nextTrainingDataKeyList);
 
     final Map<K, V> nextTrainingData = new HashMap<>();
     for (final K key : nextTrainingDataKeyList) {
