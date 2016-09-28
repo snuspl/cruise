@@ -113,7 +113,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   public synchronized void run() {
     // 1) Check that metrics have arrived from all evaluators.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
-    final Map<String, List<EvaluatorParameters>> currentWorkerMetrics = metricManager.getWorkerMetrics();
+    final Map<String, List<EvaluatorParameters>> currentWorkerMetrics = metricManager.getWorkerMiniBatchMetrics();
 
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
     final int numWorkerMetricSources = getNumMetricSources(currentWorkerMetrics);
@@ -273,8 +273,6 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> serverMetric = entry.getValue();
         final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
-        aggregatedMetricBuilder.setNumModelBlocks((int) calculateExponentialMovingAverage(serverMetric,
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getNumModelBlocks()));
         aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessed()).sum());
         aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
@@ -305,8 +303,6 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
-        aggregatedMetricBuilder.setNumDataBlocks((int) calculateExponentialMovingAverage(workerMetric,
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getNumDataBlocks()));
         aggregatedMetricBuilder.setProcessedDataItemCount((int) calculateExponentialMovingAverage(workerMetric,
             param -> ((WorkerEvaluatorParameters) param).getMetrics().getProcessedDataItemCount()));
         aggregatedMetricBuilder.setTotalTime(calculateExponentialMovingAverage(workerMetric,
