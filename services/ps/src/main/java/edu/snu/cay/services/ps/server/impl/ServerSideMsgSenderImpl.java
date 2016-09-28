@@ -150,18 +150,31 @@ public final class ServerSideMsgSenderImpl<K, P, V> implements ServerSideMsgSend
   @Override
   public void sendPullMsg(final String destId, final String srcId, final K key, final int requestId,
                           @Nullable final TraceInfo traceInfo) {
-    final byte[] serializedKey = keyCodec.encode(key);
-    final PullMsg pullMsg = PullMsg.newBuilder()
-        .setSrcId(srcId)
-        .setKey(ByteBuffer.wrap(serializedKey))
-        .setRequestId(requestId)
-        .build();
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
 
-    send(destId,
-        AvroPSMsg.newBuilder()
-            .setType(Type.PullMsg)
-            .setPullMsg(pullMsg)
-            .setTraceInfo(HTraceUtils.toAvro(traceInfo))
-            .build());
+    try (final TraceScope sendPushMsgScope = Trace.startSpan(
+        String.format("redirect_pull_msg. key: %s, req_id: %d, server_id: %s", key, requestId, destId), traceInfo)) {
+
+      detached = sendPushMsgScope.detach();
+
+      final byte[] serializedKey = keyCodec.encode(key);
+      final PullMsg pullMsg = PullMsg.newBuilder()
+          .setSrcId(srcId)
+          .setKey(ByteBuffer.wrap(serializedKey))
+          .setRequestId(requestId)
+          .build();
+
+      send(destId,
+          AvroPSMsg.newBuilder()
+              .setType(Type.PullMsg)
+              .setPullMsg(pullMsg)
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+              .build());
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
   }
 }
