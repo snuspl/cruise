@@ -18,13 +18,11 @@ package edu.snu.cay.services.ps.server;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.services.em.common.parameters.*;
-import edu.snu.cay.services.em.evaluator.api.BlockResolver;
-import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
@@ -44,6 +42,7 @@ import org.htrace.TraceInfo;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -76,6 +75,11 @@ public final class DynamicParameterServerTest {
   private static final int REQUEST_ID = 0;
   private static final TraceInfo EMPTY_TRACE = null;
 
+  private static final int NUM_TOTAL_BLOCKS = 2;
+  private static final int NUM_TOTAL_STORES = 2;
+  private static final int LOCAL_STORE_ID = 0;
+  private static final int REMOTE_STORE_ID = 1;
+
   private DynamicParameterServer<Integer, Integer, Integer> server;
   private ServerSideMsgSender<Integer, Integer, Integer> mockSender;
 
@@ -91,10 +95,9 @@ public final class DynamicParameterServerTest {
         .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionForPS.class)
         .bindImplementation(BlockResolver.class, HashBlockResolver.class)
         .bindNamedParameter(KeyCodecName.class, IntegerCodec.class)
-        .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
-        .bindNamedParameter(NumStoreThreads.class, "2")
-        .bindNamedParameter(NumTotalBlocks.class, "2")
-        .bindNamedParameter(NumInitialEvals.class, "1")
+        .bindNamedParameter(MemoryStoreId.class, Integer.toString(LOCAL_STORE_ID))
+        .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
+        .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_TOTAL_STORES))
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
@@ -129,27 +132,41 @@ public final class DynamicParameterServerTest {
     server = injector.getInstance(DynamicParameterServer.class);
   }
 
+  private DataIdFactory getDataIdFactory(final int storeId) throws InjectionException {
+    final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(MemoryStoreId.class, Integer.toString(storeId))
+        .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_TOTAL_STORES))
+        .build();
+
+    final Injector injector = Tang.Factory.getTang().newInjector(conf);
+    return injector.getInstance(DataIdFactory.class);
+  }
+
   /**
    * Test the performance of {@link DynamicParameterServer} by
    * running threads that push values to and pull values from the server, concurrently.
    */
   @Test(timeout = 100000)
-  public void testMultiThreadPushPull() throws InterruptedException {
+  public void testMultiThreadPushPull() throws InterruptedException, TimeoutException, ExecutionException,
+      InjectionException, IdGenerationException {
     final int numPushThreads = 8;
     final int numPushes = 100000;
     final int numPullThreads = 8;
     final int numPulls = 100000;
     final CountDownLatch countDownLatch = new CountDownLatch(numPushThreads + numPullThreads);
     final Runnable[] threads = new Runnable[numPushThreads + numPullThreads];
+    final DataIdFactory<Long> localDataIdFactory = getDataIdFactory(LOCAL_STORE_ID);
+
+    final List<Long> keys = localDataIdFactory.getIds(Math.max(numPushThreads, numPullThreads));
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
-      final int threadId = threadIndex;
+      final int keyIdx = threadIndex;
       threads[threadIndex] = new Runnable() {
         @Override
         public void run() {
+          final int key = keys.get(keyIdx).intValue();
           for (int index = 0; index < numPushes; index++) {
             // each thread increments the server's value by 1 per push
-            final int key = threadId;
             server.push(key, 1, key); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
@@ -158,13 +175,13 @@ public final class DynamicParameterServerTest {
     }
 
     for (int threadIndex = 0; threadIndex < numPullThreads; threadIndex++) {
-      final int threadId = threadIndex;
+      final int keyIdx = threadIndex;
       threads[threadIndex + numPushThreads] = new Runnable() {
         @Override
         public void run() {
+          final int key = keys.get(keyIdx).intValue();
           for (int index = 0; index < numPulls; index++) {
-            final int key = threadId;
-            server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test.
+            server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test
           }
           countDownLatch.countDown();
         }
@@ -190,7 +207,7 @@ public final class DynamicParameterServerTest {
       }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
-      final int key = threadIndex;
+      final int key = keys.get(threadIndex).intValue();
       server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test.
 
       waitForOps();
@@ -201,6 +218,7 @@ public final class DynamicParameterServerTest {
       assertEquals(MSG_RESULT_ASSERTION, numPushes, (int) replayValue.getReference());
       replayValue.set(null, false); // reset
     }
+    server.close(CLOSE_TIMEOUT);
   }
 
   private void waitForOps() throws InterruptedException {
@@ -212,9 +230,34 @@ public final class DynamicParameterServerTest {
     }
   }
 
+  @Test(timeout = 10000)
+  public void testRedirectPushPull() throws InjectionException, IdGenerationException,
+      InterruptedException, ExecutionException, TimeoutException {
+    final int numKeys = 10;
+    final DataIdFactory<Long> remoteDataIdFactory = getDataIdFactory(REMOTE_STORE_ID);
+
+    final List<Long> remoteKeys = remoteDataIdFactory.getIds(numKeys);
+
+    for (final long longKey : remoteKeys) {
+      final int key = (int) longKey;
+      server.push(key, 0, key);
+      server.pull(key, WORKER_ID, key, 0, EMPTY_TRACE);
+    }
+
+    // closing server should guarantee all the queued operations to be processed, if time allows
+    server.close(CLOSE_TIMEOUT);
+
+    verify(mockSender, never()).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
+        any(TraceInfo.class));
+    verify(mockSender, times(numKeys)).sendPullMsg(anyString(), anyString(), anyInt(), anyInt(), any(TraceInfo.class));
+    verify(mockSender, times(numKeys)).sendPushMsg(anyString(), anyInt(), anyInt());
+  }
+
   @Test
-  public void testClose() throws InterruptedException, ExecutionException, TimeoutException {
+  public void testClose() throws InterruptedException, ExecutionException, TimeoutException,
+      InjectionException, IdGenerationException {
     final int numPulls = 5;
+    final DataIdFactory<Long> localDataIdFactory = getDataIdFactory(LOCAL_STORE_ID);
 
     doAnswer(invocation -> {
         // sleep to guarantee the queue not empty when closing server
@@ -223,7 +266,7 @@ public final class DynamicParameterServerTest {
       }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int i = 0; i < numPulls; i++) {
-      final int key = i;
+      final int key = localDataIdFactory.getId().intValue();
       server.pull(key, WORKER_ID, key, 0, EMPTY_TRACE);
     }
 
