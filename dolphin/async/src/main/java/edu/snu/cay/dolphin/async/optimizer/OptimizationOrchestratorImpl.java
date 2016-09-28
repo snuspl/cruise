@@ -279,19 +279,15 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessed()).sum());
         aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessed()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalReqProcessed()).sum());
         aggregatedMetricBuilder.setTotalPullProcessingTimeSec(serverMetric.stream().mapToDouble(
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessingTimeSec()).sum());
         aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessingTimeSec()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessingTimeSec(serverMetric.stream().mapToDouble(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalReqProcessingTimeSec()).sum());
 
         final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
         // This server did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getTotalReqProcessed() == 0) {
+        if (aggregatedMetric.getTotalPushProcessed() == 0 && aggregatedMetric.getTotalPullProcessed() == 0) {
           break;
         } else {
           final String serverId = entry.getKey();

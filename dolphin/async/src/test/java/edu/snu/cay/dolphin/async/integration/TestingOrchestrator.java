@@ -388,19 +388,15 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
             param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessed()).sum());
         aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessed()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessed()).sum());
         aggregatedMetricBuilder.setTotalPullProcessingTimeSec(serverMetric.stream().mapToDouble(
             param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTimeSec()).sum());
         aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
             param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessingTimeSec()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessingTimeSec(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessingTimeSec()).sum());
 
         final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
         // This server did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getTotalPullProcessed() == 0) {
+        if (aggregatedMetric.getTotalPushProcessed() == 0 && aggregatedMetric.getTotalPullProcessed() == 0) {
           break;
         } else {
           processedMetrics.add(new ServerEvaluatorParameters(entry.getKey(),

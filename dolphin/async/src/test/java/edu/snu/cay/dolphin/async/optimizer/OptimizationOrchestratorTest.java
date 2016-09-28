@@ -145,7 +145,8 @@ public final class OptimizationOrchestratorTest {
       serverStoreIdMap.put(i, Collections.emptySet());
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalReqProcessed(1)
+          .setTotalPushProcessed(1)
+          .setTotalPullProcessed(1)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
@@ -183,7 +184,8 @@ public final class OptimizationOrchestratorTest {
     for (int i = 0; i < numServers; i++) {
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalReqProcessed(1)
+          .setTotalPushProcessed(1)
+          .setTotalPullProcessed(1)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
       orchestrator.run();
@@ -222,7 +224,8 @@ public final class OptimizationOrchestratorTest {
       serverStoreIdMap.put(i, Collections.emptySet());
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalReqProcessed(1)
+          .setTotalPushProcessed(1)
+          .setTotalPullProcessed(1)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
 
