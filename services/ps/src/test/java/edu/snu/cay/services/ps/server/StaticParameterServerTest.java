@@ -191,7 +191,7 @@ public final class StaticParameterServerTest {
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
-      server.pull(key, WORKER_ID, key, 0, EMPTY_TRACE);
+      server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE);
     }
 
     // closing server should guarantee all the queued operations to be processed, if time allows
@@ -200,7 +200,7 @@ public final class StaticParameterServerTest {
         any(TraceInfo.class));
 
     // server should not process further operations after being closed
-    server.pull(0, WORKER_ID, 0, 0, EMPTY_TRACE);
+    server.pull(0, WORKER_ID, 0, REQUEST_ID, EMPTY_TRACE);
     verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
         any(TraceInfo.class));
   }
