@@ -48,7 +48,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicMarkableReference;
-import java.util.logging.Logger;
 
 import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
 import static org.junit.Assert.assertEquals;
@@ -60,7 +59,6 @@ import static org.mockito.Mockito.*;
  * Tests for {@link DynamicParameterServer}.
  */
 public final class DynamicParameterServerTest {
-  private static final Logger LOG = Logger.getLogger(DynamicParameterServerTest.class.getName());
   private static final long CLOSE_TIMEOUT = 20000;
 
   /**
