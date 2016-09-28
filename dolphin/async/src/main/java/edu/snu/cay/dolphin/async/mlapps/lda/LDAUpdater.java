@@ -25,6 +25,7 @@ import javax.inject.Inject;
  * Each vector with a word index represents a count vector whose elements are the
  * number of words in the corpus that are assigned to a specific topic. We use
  * numVocabs-th row as the total count vector for all word indices.
+ * Note that the last (numTopics-th) element of the array represents number of non-zero elements in the array.
  */
 final class LDAUpdater implements ParameterUpdater<Integer, int[], int[]> {
 
@@ -43,15 +44,23 @@ final class LDAUpdater implements ParameterUpdater<Integer, int[], int[]> {
   @Override
   public int[] update(final int[] oldValue, final int[] deltaValue) {
     // deltaValue consists of pairs of a word index and a changed value.
-    final int numPairs = deltaValue.length / 2;
-    for (int i = 0; i < numPairs; i++) {
-      oldValue[deltaValue[2 * i]] += deltaValue[2 * i + 1];
+    int i = 0;
+    while (i < deltaValue.length) {
+      final int index = deltaValue[i++];
+      final int oldCount = oldValue[index];
+      oldValue[index] += deltaValue[i++];
+      // should care about the case when the value is changed from non-zero to zero, vice versa
+      if (oldCount == 0 && oldValue[index] != 0) {
+        oldValue[numTopics]++;
+      } else if (oldCount != 0 && oldValue[index] == 0) {
+        oldValue[numTopics]--;
+      }
     }
     return oldValue;
   }
 
   @Override
   public int[] initValue(final Integer key) {
-    return new int[numTopics];
+    return new int[numTopics + 1];
   }
 }

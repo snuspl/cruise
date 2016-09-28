@@ -532,25 +532,30 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     public void run() {
       // even though startClose() has been invoked,
       // the thread will be closed after processing all remaining operations within timeout.
-      while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
-        // First, poll and apply.
-        try {
-          final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-          if (op == null) {
+      try {
+        while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
+          // First, poll and apply.
+          try {
+            final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            if (op == null) {
+              continue;
+            }
+            op.apply();
+          } catch (final InterruptedException e) {
+            LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
             continue;
           }
-          op.apply();
-        } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "Poll failed with InterruptedException", e);
-          continue;
-        }
 
-        // Then, drain up to LOCAL_OPS_SIZE of the remaining queue and apply.
-        // Calling drainTo does not block if queue is empty, which is why we poll first.
-        // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
-        queue.drainTo(localOps, drainSize);
-        localOps.forEach(Op::apply);
-        localOps.clear();
+          // Then, drain up to LOCAL_OPS_SIZE of the remaining queue and apply.
+          // Calling drainTo does not block if queue is empty, which is why we poll first.
+          // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
+          queue.drainTo(localOps, drainSize);
+          localOps.forEach(Op::apply);
+          localOps.clear();
+        }
+      } catch (final RuntimeException e) {
+        LOG.log(Level.SEVERE, "PS server thread has been down due to RuntimeException", e);
+        throw e;
       }
 
       finishClose();

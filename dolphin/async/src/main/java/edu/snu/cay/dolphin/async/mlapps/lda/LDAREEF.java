@@ -34,15 +34,15 @@ public final class LDAREEF {
 
   public static void main(final String[] args) {
     AsyncDolphinLauncher.launch("LDAREEF", args, AsyncDolphinConfiguration.newBuilder()
+        .setTrainerClass(LDATrainer.class)
+        .setUpdaterClass(LDAUpdater.class)
+        .setKeyCodecClass(SerializableCodec.class)
+        .setPreValueCodecClass(SerializableCodec.class)
+        .setValueCodecClass(SparseArrayCodec.class)
         .addParameterClass(Alpha.class)
         .addParameterClass(Beta.class)
         .addParameterClass(NumTopics.class)
         .addParameterClass(NumVocabs.class)
-        .setKeyCodecClass(SerializableCodec.class)
-        .setPreValueCodecClass(SerializableCodec.class)
-        .setValueCodecClass(SerializableCodec.class)
-        .setUpdaterClass(LDAUpdater.class)
-        .setTrainerClass(LDATrainer.class)
         .build());
   }
 
