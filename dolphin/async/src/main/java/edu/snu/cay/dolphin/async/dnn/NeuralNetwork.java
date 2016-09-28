@@ -341,6 +341,16 @@ public final class NeuralNetwork {
   }
 
   /**
+   * This is called on task termination.
+   */
+  public void cleanup() {
+    // clean up layers
+    for (final LayerBase layer : layers) {
+      layer.cleanup();
+    }
+  }
+
+  /**
    * Check whether the indices for the beginning layer and the ending layer are within layer bound.
    * @param begin the index of the beginning layer, inclusive.
    * @param end the index of the ending layer, inclusive.

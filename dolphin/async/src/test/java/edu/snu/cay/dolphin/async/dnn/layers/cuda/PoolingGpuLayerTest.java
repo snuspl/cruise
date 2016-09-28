@@ -25,6 +25,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -369,6 +370,18 @@ public final class PoolingGpuLayerTest {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+  }
+
+  @After
+  public void tearDown() {
+    maxPoolingLayer.cleanup();
+    averagePoolingLayer.cleanup();
+    remainderExistingMaxPoolingLayer.cleanup();
+    remainderExistingAveragePoolingLayer.cleanup();
+    maxPoolingWithPaddingLayer.cleanup();
+    averagePoolingWithPaddingLayer.cleanup();
+    maxPooling3DLayer.cleanup();
+    averagePooling3DLayer.cleanup();
   }
 
   @Test

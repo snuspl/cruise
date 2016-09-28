@@ -30,6 +30,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -162,6 +163,11 @@ public final class NeuralNetworkTest {
       }).when(mockParameterWorker).pull(anyObject());
 
     neuralNetwork.updateParameters();
+  }
+
+  @After
+  public void tearDown() {
+    neuralNetwork.cleanup();
   }
 
   /**

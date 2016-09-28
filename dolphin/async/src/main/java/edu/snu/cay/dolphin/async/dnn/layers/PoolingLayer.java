@@ -310,4 +310,9 @@ public final class PoolingLayer extends LayerBase {
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
     throw new RuntimeException("This layer is not learnable");
   }
+
+  @Override
+  public void cleanup() {
+
+  }
 }

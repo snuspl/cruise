@@ -205,4 +205,13 @@ public final class ConvolutionalGpuLayer extends LayerBase {
       throw new RuntimeException("Failed to generateParameterGradient for bias");
     }
   }
+
+  @Override
+  public void cleanup() {
+    JavaCudnn.destroyTensorDesc(inputDesc);
+    JavaCudnn.destroyFilterDesc(filterDesc);
+    JavaCudnn.destroyConvDesc(convDesc);
+    JavaCudnn.destroyTensorDesc(activationDesc);
+    JavaCudnn.destroyTensorDesc(biasDesc);
+  }
 }

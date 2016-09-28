@@ -34,14 +34,20 @@ public:
       const int n, const int c, const int h, const int w,
       const int nStride, const int cStride, const int hStride, const int wStride);
   static cudnnTensorDescriptor_t* cudnnCreateTensorDesc(const int n, const int c, const int h, const int w);
+  static bool cudnnDestroyTensorDesc(cudnnTensorDescriptor_t* tensorDesc);
   static cudnnFilterDescriptor_t* cudnnCreateFilterDesc(const int k, const int c, const int h, const int w);
+  static bool cudnnDestroyFilterDesc(cudnnFilterDescriptor_t* filterDesc);
   static cudnnConvolutionDescriptor_t* cudnnCreateConvDesc(
       const int padH, const int padW, const int strideH, const int strideW);
+  static bool cudnnDestroyConvDesc(cudnnConvolutionDescriptor_t* convDesc);
   static cudnnPoolingDescriptor_t* cudnnCreatePoolDesc(
       const char mode, const int h, const int w, const int padH, const int padW, const int strideH, const int strideW);
+  static bool cudnnDestroyPoolDesc(cudnnPoolingDescriptor_t* poolDesc);
   static cudnnActivationDescriptor_t* cudnnCreateActivFuncDesc(const char func);
+  static bool cudnnDestroyActivFuncDesc(cudnnActivationDescriptor_t*);
   static cudnnLRNDescriptor_t* cudnnCreateLRNDesc(
       const int localSize, const float alpha, const float beta, const float k);
+  static bool cudnnDestroyLRNDesc(cudnnLRNDescriptor_t* lrnDesc);
 
   static cudnnConvolutionFwdAlgo_t* cudnnGetConvForwardAlgo(
       const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,

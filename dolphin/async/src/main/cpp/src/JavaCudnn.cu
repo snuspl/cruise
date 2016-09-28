@@ -51,7 +51,7 @@ cudnnHandle_t JavaCudnn::getCudnnHandle() {
   return *cudnnHandle.get();
 }
 
-// Functions for creating descriptors.
+// Functions for creating and destroying descriptors.
 
 cudnnTensorDescriptor_t* JavaCudnn::cudnnCreateTensorDesc(
     const int n, const int c, const int h, const int w,
@@ -74,6 +74,16 @@ cudnnTensorDescriptor_t* JavaCudnn::cudnnCreateTensorDesc(
   return cudnnCreateTensorDesc(n, c, h, w, nStride, cStride, hStride, wStride);
 }
 
+bool JavaCudnn::cudnnDestroyTensorDesc(cudnnTensorDescriptor_t* tensorDesc) {
+  if (!tensorDesc) {
+    return false;
+  }
+
+  bool success = cudnnCheck(cudnnDestroyTensorDescriptor(*tensorDesc);
+  delete tensorDesc;
+  return success;
+}
+
 cudnnFilterDescriptor_t* JavaCudnn::cudnnCreateFilterDesc(
     const int k, const int c, const int h, const int w) {
   cudnnFilterDescriptor_t* filterDesc = ((cudnnFilterDescriptor_t*) std::malloc(sizeof(cudnnFilterDescriptor_t)));
@@ -85,6 +95,16 @@ cudnnFilterDescriptor_t* JavaCudnn::cudnnCreateFilterDesc(
   }
 }
 
+bool JavaCudnn::cudnnDestroyFilterDesc(cudnnFilterDescriptor_t* filterDesc) {
+  if (!filterDesc) {
+    return false;
+  }
+
+  bool success = cudnnCheck(cudnnDestroyFilterDescriptor(*filterDesc);
+  delete filterDesc;
+  return success;
+}
+
 cudnnConvolutionDescriptor_t* JavaCudnn::cudnnCreateConvDesc(
     const int padH, const int padW, const int strideH, const int strideW) {
   cudnnConvolutionDescriptor_t* convDesc = ((cudnnConvolutionDescriptor_t*) std::malloc(sizeof(cudnnConvolutionDescriptor_t)));
@@ -94,6 +114,16 @@ cudnnConvolutionDescriptor_t* JavaCudnn::cudnnCreateConvDesc(
   } else {
     return convDesc;
   }
+}
+
+bool JavaCudnn::cudnnDestroyConvDesc(cudnnConvolutionDescriptor_t* convDesc) {
+  if (!convDesc) {
+    return false;
+  }
+
+  bool success = cudnnCheck(cudnnDestroyConvolutionDescriptor(*convDesc));
+  delete convDesc;
+  return success;
 }
 
 cudnnPoolingDescriptor_t* JavaCudnn::cudnnCreatePoolDesc(
@@ -118,6 +148,16 @@ cudnnPoolingDescriptor_t* JavaCudnn::cudnnCreatePoolDesc(
   } else {
     return poolDesc;
   }
+}
+
+bool JavaCudnn::cudnnDestroyPoolDesc(cudnnPoolingDescriptor_t* poolDesc) {
+  if (!poolDesc) {
+      return false;
+   }
+
+  bool success = cudnnCheck(cudnnDestroyPoolingDescriptor(*poolDesc);
+  delete poolDesc;
+  return success;
 }
 
 cudnnActivationDescriptor_t* JavaCudnn::cudnnCreateActivFuncDesc(const char func) {
@@ -149,6 +189,16 @@ cudnnActivationDescriptor_t* JavaCudnn::cudnnCreateActivFuncDesc(const char func
   }
 }
 
+bool JavaCudnn::cudnnDestroyActivFuncDesc(cudnnActivationDescriptor_t* activDesc) {
+  if (!activDesc) {
+    return false;
+  }
+
+  bool success = cudnnCheck(cudnnDestroyFilterDescriptor(*activDesc);
+  delete activDesc;
+  return success;
+}
+
 cudnnLRNDescriptor_t* JavaCudnn::cudnnCreateLRNDesc(const int localSize, const float alpha, const float beta, const float k) {
   cudnnLRNDescriptor_t* normDesc = ((cudnnLRNDescriptor_t*) std::malloc (sizeof(cudnnLRNDescriptor_t)));
   if(!cudnnCheck(cudnnCreateLRNDescriptor(normDesc)) || !cudnnCheck(cudnnSetLRNDescriptor(*normDesc, localSize, alpha, beta, k))) {
@@ -156,6 +206,16 @@ cudnnLRNDescriptor_t* JavaCudnn::cudnnCreateLRNDesc(const int localSize, const f
   } else {
     return normDesc;
   }
+}
+
+bool JavaCudnn::cudnnDestroyLRNDesc(cudnnLRNDescriptor_t* lrnDesc) {
+  if (!lrnDesc) {
+    return false;
+  }
+
+  bool success = cudnnCheck(cudnnDestroyLRNDescriptor(*lrnDesc);
+  delete lrnDesc;
+  return success;
 }
 
 // Functions for getting algorithm.
