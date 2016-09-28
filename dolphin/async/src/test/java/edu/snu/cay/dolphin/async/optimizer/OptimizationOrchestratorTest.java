@@ -155,6 +155,12 @@ public final class OptimizationOrchestratorTest {
           .setNumDataBlocks(NUM_BLOCKS)
           .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
+          .setMiniBatchIdx(0)
+          .setTotalTime(0.0)
+          .setTotalPullTime(0.0)
+          .setTotalPushTime(0.0)
+          .setAvgPullTime(0.0)
+          .setAvgPushTime(0.0)
           .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
     }
@@ -197,6 +203,12 @@ public final class OptimizationOrchestratorTest {
           .setNumDataBlocks(NUM_BLOCKS)
           .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
+          .setMiniBatchIdx(0)
+          .setTotalTime(0.0)
+          .setTotalPullTime(0.0)
+          .setTotalPushTime(0.0)
+          .setAvgPullTime(0.0)
+          .setAvgPushTime(0.0)
           .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
       orchestrator.run();
@@ -236,6 +248,12 @@ public final class OptimizationOrchestratorTest {
           .setNumDataBlocks(NUM_BLOCKS)
           .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
+          .setMiniBatchIdx(0)
+          .setTotalTime(0.0)
+          .setTotalPullTime(0.0)
+          .setTotalPushTime(0.0)
+          .setAvgPullTime(0.0)
+          .setAvgPushTime(0.0)
           .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
 

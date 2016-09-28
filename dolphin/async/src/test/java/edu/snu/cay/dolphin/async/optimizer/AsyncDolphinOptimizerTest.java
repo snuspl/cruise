@@ -90,7 +90,9 @@ public final class AsyncDolphinOptimizerTest {
     for (int index = 0; index < dataArray.length; ++index) {
       final DataInfo dataInfo = new DataInfoImpl(dataArray[index]);
       final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
-          .setTotalCompTime(elapsedTimeArray[index]).build();
+          .setTotalCompTime(elapsedTimeArray[index])
+          .setTotalPullTime(0.0)
+          .build();
 
       evalParamList.add(new WorkerEvaluatorParameters(WORKER_PREFIX + index, dataInfo, workerMetrics));
     }
