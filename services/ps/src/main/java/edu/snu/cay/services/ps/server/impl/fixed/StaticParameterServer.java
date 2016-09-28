@@ -495,7 +495,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
           localOps.clear();
         }
       } catch (final RuntimeException e) {
-        LOG.log(Level.SEVERE, "PS worker thread has been down due to RuntimeException", e);
+        LOG.log(Level.SEVERE, "PS server thread has been down due to RuntimeException", e);
         throw e;
       }
 
