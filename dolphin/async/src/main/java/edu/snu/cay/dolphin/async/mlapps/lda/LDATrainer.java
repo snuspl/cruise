@@ -131,30 +131,43 @@ final class LDATrainer implements Trainer {
 
   @Override
   public void run(final int iteration) {
-    final long iterationBeginMs = System.currentTimeMillis();
-    resetTracers();
+    final long epochStartTime = System.currentTimeMillis();
 
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
+    WorkerMetrics workerMetrics;
 
     int miniBatchIdx = 0;
     int numDocumentsSampled = 0;
     final List<Document> totalDocumentsSampled = new LinkedList<>();
 
     Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
+    Collection<Document> documents = nextTrainingData.values();
+    int numInstancesToProcess = documents.size();
     while (!nextTrainingData.isEmpty()) {
-      final Collection<Document> documents = nextTrainingData.values();
+      resetTracers();
+      final long miniBatchStartTime = System.currentTimeMillis();
+
       sampler.sample(documents, computeTracer, pushTracer, pullTracer);
 
-      // A mini-batch is ended
-      numDocumentsSampled += documents.size();
+      // update the documents processed so far
+      numDocumentsSampled += numDocumentsSampled;
       totalDocumentsSampled.addAll(documents);
       LOG.log(Level.INFO, "{0} documents have been sampled until mini-batch {1}",
           new Object[]{numDocumentsSampled, miniBatchIdx});
-      miniBatchIdx++;
 
       nextTrainingData = trainingDataProvider.getNextTrainingData();
+
+      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+      workerMetrics =
+          buildMiniBatchMetric(iteration, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
+      LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
+      sendMetrics(workerMetrics);
+
+      documents = nextTrainingData.values();
+      numInstancesToProcess = documents.size();
+      miniBatchIdx++;
     }
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
@@ -164,12 +177,12 @@ final class LDATrainer implements Trainer {
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
 
     LOG.log(Level.INFO, "Start computing log likelihood");
-    final Metrics appMetrics = buildAppMetrics(statCalculator.computeDocLLH(totalDocumentsSampled),
-        statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary));
-    final double elapsedTimeSec = (System.currentTimeMillis() - iterationBeginMs) / 1000.0D;
+    final double docLLH = statCalculator.computeDocLLH(totalDocumentsSampled);
+    final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
+    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
-    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx - 1, numEMBlocks,
-            totalDocumentsSampled.size(), elapsedTimeSec);
+    workerMetrics =
+        buildEpochMetric(iteration, miniBatchIdx, numEMBlocks, numDocumentsSampled, docLLH, wordLLH, epochElapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
     sendMetrics(workerMetrics);
@@ -191,15 +204,12 @@ final class LDATrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numMiniBatchForEpoch,
-                                        final int numDataBlocks, final int numProcessedDataItemCount,
-                                        final double elapsedTime) {
+  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
+                                        final int numProcessedDataItemCount, final double elapsedTime) {
     final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
-        .setMetrics(appMetrics)
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
-        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
-        .setNumDataBlocks(numDataBlocks)
+        .setMiniBatchIdx(miniBatchIdx)
         .setProcessedDataItemCount(numProcessedDataItemCount)
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
@@ -213,13 +223,24 @@ final class LDATrainer implements Trainer {
     return workerMetrics;
   }
 
-  private Metrics buildAppMetrics(final double docLLH, final double wordLLH) {
+  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
+                                         final int numDataBlocks, final int numProcessedDataItemCount,
+                                         final double docLLH, final double wordLLH,
+                                         final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(MetricKeys.DOC_LLH, docLLH);
     appMetricMap.put(MetricKeys.WORD_LLH, wordLLH);
 
-    return Metrics.newBuilder()
-        .setData(appMetricMap)
+    return WorkerMetrics.newBuilder()
+        .setMetrics(Metrics.newBuilder()
+            .setData(appMetricMap)
+            .build())
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
         .build();
   }
 }
