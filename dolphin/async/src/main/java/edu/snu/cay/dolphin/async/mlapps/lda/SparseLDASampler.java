@@ -64,10 +64,13 @@ final class SparseLDASampler {
     pullTracer.recordTime(words.size());
 
     computeTracer.startTimer();
-    final int[] globalWordCountByTopics = topicVectors.remove(words.size() - 1);
+    final int[] sparseTopicSummaryVector = topicVectors.remove(words.size() - 1);
+    // i-th element of topicSummaryVector represents total number of assignments of i-th topic
     final int[] topicSummaryVector = new int[numTopics];
-    for (int i = 0; i < globalWordCountByTopics.length; i++) {
-      topicSummaryVector[globalWordCountByTopics[i++]] = globalWordCountByTopics[i];
+    for (int i = 0; i < sparseTopicSummaryVector.length; i++) {
+      final int topic = sparseTopicSummaryVector[i++];
+      final int count = sparseTopicSummaryVector[i];
+      topicSummaryVector[topic] = count;
     }
 
     final Map<Integer, int[]> wordTopicVectors = new HashMap<>(topicVectors.size());

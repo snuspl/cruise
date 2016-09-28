@@ -94,14 +94,17 @@ final class LDAStatCalculator {
   double computeWordLLH(final Collection<int[]> wordTopicCounts, final int[] wordTopicCountsSummary) {
     double result = numTopics * (Gamma.logGamma(numVocabs * beta) - numVocabs * Gamma.logGamma(beta));
     for (final int[] wordTopicCount : wordTopicCounts) {
+      // For computing log-likelihood, we need only the values. Please refer to SparseArrayCodec.
       for (int j = 1; j < wordTopicCount.length; j += 2) {
         result += Gamma.logGamma(wordTopicCount[j] + beta);
       }
+      // handle the case of zero values separately
       result += logGammaBeta * (numTopics - wordTopicCount.length / 2);
     }
     for (int j = 1; j < wordTopicCountsSummary.length; j += 2) {
       result -= Gamma.logGamma(wordTopicCountsSummary[j] + numVocabs * beta);
     }
+    // handle the case of zero values separately
     result -= Gamma.logGamma(numVocabs * beta) * (numTopics - wordTopicCountsSummary.length / 2);
     return result;
   }

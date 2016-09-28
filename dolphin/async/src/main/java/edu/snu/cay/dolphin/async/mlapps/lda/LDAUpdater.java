@@ -49,6 +49,7 @@ final class LDAUpdater implements ParameterUpdater<Integer, int[], int[]> {
       final int index = deltaValue[i++];
       final int oldCount = oldValue[index];
       oldValue[index] += deltaValue[i++];
+      // should care about the case when the value is changed from non-zero to zero, vice versa
       if (oldCount == 0 && oldValue[index] != 0) {
         oldValue[numTopics]++;
       } else if (oldCount != 0 && oldValue[index] == 0) {
