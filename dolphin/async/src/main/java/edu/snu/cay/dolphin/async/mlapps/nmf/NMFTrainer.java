@@ -143,7 +143,6 @@ final class NMFTrainer implements Trainer {
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
-    WorkerMetrics workerMetrics;
 
     int miniBatchIdx = 0;
     int numTotalInstancesProcessed = 0;
@@ -212,11 +211,11 @@ final class NMFTrainer implements Trainer {
       nextTrainingData = trainingDataProvider.getNextTrainingData();
 
       final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-      workerMetrics =
+      final WorkerMetrics miniBatchMetric =
           buildMiniBatchMetric(iteration, miniBatchIdx,
               numInstancesToProcess, miniBatchElemCount, miniBatchElapsedTime);
-      LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-      sendMetrics(workerMetrics);
+      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+      sendMetrics(miniBatchMetric);
 
       workload = nextTrainingData.values();
       numInstancesToProcess = workload.size();
@@ -224,12 +223,12 @@ final class NMFTrainer implements Trainer {
     }
 
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-    workerMetrics =
+    final WorkerMetrics epochMetric =
         buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
             numTotalInstancesProcessed, lossSum, epochElemCount, epochElapsedTime);
 
-    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-    sendMetrics(workerMetrics);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
   }
 
   @Override

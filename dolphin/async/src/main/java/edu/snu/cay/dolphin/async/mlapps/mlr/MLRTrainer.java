@@ -205,7 +205,6 @@ final class MLRTrainer implements Trainer {
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
-    WorkerMetrics workerMetrics;
 
     int miniBatchIdx = 0;
     int numTotalInstancesProcessed = 0;
@@ -260,10 +259,10 @@ final class MLRTrainer implements Trainer {
       nextTrainingData = trainingDataProvider.getNextTrainingData();
 
       final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-      workerMetrics =
+      final WorkerMetrics miniBatchMetric =
           buildMiniBatchMetric(iteration, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
-      LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-      sendMetrics(workerMetrics);
+      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+      sendMetrics(miniBatchMetric);
 
       instances = new ArrayList<>(nextTrainingData.values());
       numInstancesToProcess = instances.size();
@@ -287,12 +286,12 @@ final class MLRTrainer implements Trainer {
     final double sampleLoss = lossRegLossAccuracy.getFirst();
     final double regLoss = lossRegLossAccuracy.getSecond();
     final double accuracy = (double) lossRegLossAccuracy.getThird();
-    workerMetrics =
+    final WorkerMetrics epochMetric =
         buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
             numTotalInstancesProcessed, sampleLoss, regLoss, accuracy, epochElapsedTime);
 
-    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-    sendMetrics(workerMetrics);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
   }
 
   /**

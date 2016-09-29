@@ -136,14 +136,13 @@ final class LDATrainer implements Trainer {
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
-    WorkerMetrics workerMetrics;
 
     int miniBatchIdx = 0;
     int numDocumentsSampled = 0;
     final List<Document> totalDocumentsSampled = new LinkedList<>();
 
     Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    Collection<Document> documents = nextTrainingData.values();
+    Collection<Document> documents = trainingDataProvider.getNextTrainingData().values();
     int numInstancesToProcess = documents.size();
     while (!nextTrainingData.isEmpty()) {
       resetTracers();
@@ -152,18 +151,18 @@ final class LDATrainer implements Trainer {
       sampler.sample(documents, computeTracer, pushTracer, pullTracer);
 
       // update the documents processed so far
-      numDocumentsSampled += numDocumentsSampled;
+      numDocumentsSampled += numInstancesToProcess;
       totalDocumentsSampled.addAll(documents);
       LOG.log(Level.INFO, "{0} documents have been sampled until mini-batch {1}",
           new Object[]{numDocumentsSampled, miniBatchIdx});
 
-      nextTrainingData = trainingDataProvider.getNextTrainingData();
+      trainingDataProvider.getNextTrainingData();
 
       final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-      workerMetrics =
+      final WorkerMetrics miniBatchMetric =
           buildMiniBatchMetric(iteration, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
-      LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-      sendMetrics(workerMetrics);
+      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+      sendMetrics(miniBatchMetric);
 
       documents = nextTrainingData.values();
       numInstancesToProcess = documents.size();
@@ -181,11 +180,10 @@ final class LDATrainer implements Trainer {
     final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
-    workerMetrics =
+    final WorkerMetrics epochMetric =
         buildEpochMetric(iteration, miniBatchIdx, numEMBlocks, numDocumentsSampled, docLLH, wordLLH, epochElapsedTime);
-
-    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-    sendMetrics(workerMetrics);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
   }
 
   @Override

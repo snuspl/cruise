@@ -136,7 +136,6 @@ final class AddVectorTrainer implements Trainer {
   @Override
   public void run(final int iteration) {
     final long epochStartTime = System.currentTimeMillis();
-    WorkerMetrics workerMetrics;
 
     // run mini-batches
     for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
@@ -167,18 +166,15 @@ final class AddVectorTrainer implements Trainer {
       pushTracer.recordTime(keyList.size());
 
       final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-      workerMetrics =
-          buildMiniBatchMetric(iteration, miniBatchIdx, miniBatchElapsedTime);
-      LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-      sendMetrics(workerMetrics);
+      final WorkerMetrics miniBatchMetric = buildMiniBatchMetric(iteration, miniBatchIdx, miniBatchElapsedTime);
+      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+      sendMetrics(miniBatchMetric);
     }
 
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-    workerMetrics =
-        buildEpochMetric(iteration, memoryStore.getNumBlocks(), epochElapsedTime);
-
-    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-    sendMetrics(workerMetrics);
+    final WorkerMetrics epochMetric = buildEpochMetric(iteration, memoryStore.getNumBlocks(), epochElapsedTime);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
