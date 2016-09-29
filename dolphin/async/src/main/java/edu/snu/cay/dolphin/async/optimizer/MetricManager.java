@@ -329,6 +329,9 @@ public final class MetricManager {
     synchronized (workerEvalMiniBatchParams) {
       workerEvalMiniBatchParams.clear();
     }
+    synchronized (workerEvalEpochParams) {
+      workerEvalEpochParams.clear();
+    }
   }
 
   /**

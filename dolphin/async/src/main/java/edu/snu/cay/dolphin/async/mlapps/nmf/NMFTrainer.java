@@ -193,7 +193,6 @@ final class NMFTrainer implements Trainer {
           // aggregate loss
           lossSum += error * error;
           ++miniBatchElemCount;
-          ++epochElemCount;
         }
 
         // update L matrix
@@ -206,6 +205,7 @@ final class NMFTrainer implements Trainer {
 
       // update the total number of instances processed so far
       numTotalInstancesProcessed += numInstancesToProcess;
+      epochElemCount += miniBatchElemCount;
 
       // load the set of training data instances to process in the next mini-batch
       nextTrainingData = trainingDataProvider.getNextTrainingData();
