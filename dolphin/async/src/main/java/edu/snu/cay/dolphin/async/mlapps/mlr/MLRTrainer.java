@@ -446,7 +446,7 @@ final class MLRTrainer implements Trainer {
   }
 
   private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
-                                        final int numProcessedDataItemCount, final double elapsedTime) {
+                                             final int numProcessedDataItemCount, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
 

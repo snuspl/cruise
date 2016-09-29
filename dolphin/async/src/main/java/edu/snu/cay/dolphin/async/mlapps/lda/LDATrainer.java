@@ -204,7 +204,7 @@ final class LDATrainer implements Trainer {
   }
 
   private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
-                                        final int numProcessedDataItemCount, final double elapsedTime) {
+                                             final int numProcessedDataItemCount, final double elapsedTime) {
     final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
