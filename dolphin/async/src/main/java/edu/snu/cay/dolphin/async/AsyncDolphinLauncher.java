@@ -377,7 +377,8 @@ public final class AsyncDolphinLauncher {
         .set(DriverConfiguration.ON_CONTEXT_CLOSED, AsyncDolphinDriver.ClosedContextHandler.class)
         .set(DriverConfiguration.ON_TASK_RUNNING, AsyncDolphinDriver.RunningTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, AsyncDolphinDriver.CompletedTaskHandler.class)
-        .set(DriverConfiguration.ON_TASK_FAILED, AsyncDolphinDriver.FailedTaskHandler.class);
+        .set(DriverConfiguration.ON_TASK_FAILED, AsyncDolphinDriver.FailedTaskHandler.class)
+        .set(DriverConfiguration.PROGRESS_PROVIDER, AsyncDolphinDriver.DolphinProgressProvider.class);
 
     final Configuration driverConfWithDataLoad = new DataLoadingRequestBuilder()
         .setInputFormatClass(TextInputFormat.class)

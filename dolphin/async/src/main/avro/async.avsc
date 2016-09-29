@@ -16,6 +16,7 @@
 [
 /**
  * A message containing worker-side metrics and other Task-specific information.
+ * Mini-batch metrics are used for optimization and all fields are required unless noted otherwise.
  */
 {
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
@@ -31,38 +32,42 @@
     {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics"],
      "default":null},
 
-    // epoch number
+    // epoch index
     {"name": "epochIdx", "type": "int", "default": 0},
 
-    // number of data blocks used for MemoryStore
-    {"name": "numDataBlocks", "type": "int", "default": 0},
+    // mini-batch index, only used for mini-batch metrics
+    {"name": "miniBatchIdx", "type": ["null", "int"], "default": null},
+
+    // number of data blocks used for MemoryStore, only used for epoch metrics
+    {"name": "numDataBlocks", "type": ["null", "int"], "default": null},
 
     // number of data items (mapped to a key in MemoryStore) processed
     {"name": "processedDataItemCount", "type": "int", "default": 0},
 
     // number of training data instances processed per mini-batch
-    {"name": "miniBatchSize", "type": "int", "default": 0},
+    {"name": "miniBatchSize", "type": ["null", "int"], "default": null},
 
-    // number of mini-batches for this epoch
-    {"name": "numMiniBatchForEpoch", "type": "int", "default": 0},
+    // number of mini-batches for this epoch, only used for epoch metrics
+    {"name": "numMiniBatchForEpoch", "type": ["null", "int"], "default": null},
 
     // total elapsed time for this epoch (seconds)
-    {"name": "totalTime", "type": "double", "default": 0.0},
+    {"name": "totalTime", "type": ["null", "double"], "default": null},
 
-    // total computation time for this epoch (seconds)
-    {"name": "totalCompTime", "type": "double", "default": 0.0},
+    // total computation time for this epoch (seconds), only used for mini-batch metrics
+    // required for optimization cost model
+    {"name": "totalCompTime", "type": ["null", "double"], "default": null},
 
-    // total push time for this epoch (seconds)
-    {"name": "totalPushTime", "type": "double", "default": 0.0},
+    // total push time for this epoch (seconds), only used for mini-batch metrics
+    {"name": "totalPushTime", "type": ["null", "double"], "default": null},
 
-    // total pull time for this epoch (seconds)
-    {"name": "totalPullTime", "type": "double", "default": 0.0},
+    // total pull time for this epoch (seconds), only used for mini-batch metrics
+    {"name": "totalPullTime", "type": ["null", "double"], "default": null},
 
-    // average push time per trace/element for this epoch (seconds)
-    {"name": "avgPushTime", "type": "double", "default": 0.0},
+    // average push time per trace/element for this epoch (seconds), only used for mini-batch metrics
+    {"name": "avgPushTime", "type": ["null", "double"], "default": null},
 
-    // average pull time per trace/element for this epoch (seconds)
-    {"name": "avgPullTime", "type": "double", "default": 0.0}
+    // average pull time per trace/element for this epoch (seconds), only used for mini-batch metrics
+    {"name": "avgPullTime", "type": ["null", "double"], "default": null}
   ]
 }
 ]

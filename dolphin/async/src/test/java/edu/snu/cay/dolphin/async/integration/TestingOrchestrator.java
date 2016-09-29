@@ -109,7 +109,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
     // 1) Check that metrics have arrived from all evaluators.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
-    final Map<String, List<EvaluatorParameters>> currentWorkerMetrics = metricManager.getWorkerMetrics();
+    final Map<String, List<EvaluatorParameters>> currentWorkerMetrics = metricManager.getWorkerMiniBatchMetrics();
 
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
     final int numWorkerMetricSources = getNumMetricSources(currentWorkerMetrics);
@@ -380,27 +380,21 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
         final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
         aggregatedMetricBuilder.setWindowIndex((int) serverMetric.stream().mapToInt(
             param -> ((ServerMetrics) param.getMetrics()).getWindowIndex()).average().getAsDouble());
-        aggregatedMetricBuilder.setNumModelBlocks((int) serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getNumModelBlocks()).average().getAsDouble());
         aggregatedMetricBuilder.setMetricWindowMs((int) serverMetric.stream().mapToLong(
             param -> ((ServerMetrics) param.getMetrics()).getMetricWindowMs()).average().getAsDouble());
         aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessed()).sum());
         aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessed()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessed()).sum());
         aggregatedMetricBuilder.setTotalPullProcessingTimeSec(serverMetric.stream().mapToDouble(
             param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTimeSec()).sum());
         aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
             param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessingTimeSec()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessingTimeSec(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalReqProcessingTimeSec()).sum());
 
         final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
         // This server did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getTotalPullProcessed() == 0) {
+        if (aggregatedMetric.getTotalPushProcessed() == 0 && aggregatedMetric.getTotalPullProcessed() == 0) {
           break;
         } else {
           processedMetrics.add(new ServerEvaluatorParameters(entry.getKey(),
@@ -413,12 +407,6 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
-        aggregatedMetricBuilder.setEpochIdx((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getEpochIdx()).average().getAsDouble());
-        aggregatedMetricBuilder.setNumDataBlocks((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getNumDataBlocks()).average().getAsDouble());
-        aggregatedMetricBuilder.setNumMiniBatchForEpoch((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getNumMiniBatchForEpoch()).average().getAsDouble());
         aggregatedMetricBuilder.setProcessedDataItemCount((int) workerMetric.stream().mapToInt(
             param -> ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount()).average().getAsDouble());
         aggregatedMetricBuilder.setTotalTime(workerMetric.stream().mapToDouble(

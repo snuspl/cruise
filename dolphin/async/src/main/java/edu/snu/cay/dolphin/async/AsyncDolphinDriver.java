@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.metric.MetricsCollectionServiceConf;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgCodec;
 import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
@@ -45,6 +46,7 @@ import edu.snu.cay.utils.StateMachine;
 import edu.snu.cay.utils.trace.HTrace;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.driver.ProgressProvider;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ClosedContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -268,6 +270,7 @@ public final class AsyncDolphinDriver {
    */
   private final long optimizationIntervalMs;
 
+  private final int iterations;
   /**
    * Triggers optimization. Optimization is performed only when workers are running their main iterations.
    * Every optimization is triggered after {@link OptimizationIntervalMs} from the previous optimization.
@@ -301,6 +304,7 @@ public final class AsyncDolphinDriver {
                                  final String serializedEMServerClientConf,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
+                             @Parameter(Parameters.Iterations.class) final int iterations,
                              @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                              final MetricManager metricManager,
                              final HTraceParameters traceParameters,
@@ -325,6 +329,7 @@ public final class AsyncDolphinDriver {
 
     this.traceParameters = traceParameters;
     this.optimizationIntervalMs = optimizationIntervalMs;
+    this.iterations = iterations;
 
     try {
       final Injector workerInjector = injector.forkInjector();
@@ -1077,5 +1082,18 @@ public final class AsyncDolphinDriver {
         .build();
 
     callback.onNext(migrationMsg);
+  }
+
+  /**
+   * Tracks the job's progress, which is reported to the REEF Driver.
+   */
+  final class DolphinProgressProvider implements ProgressProvider {
+
+    @Override
+    public float getProgress() {
+      // TODO #830: Once we change clock to tick every mini-batch instead of epoch, we should change below accordingly.
+      final int minClock = clockManager.getGlobalMinimumClock();
+      return (float) minClock / iterations;
+    }
   }
 }

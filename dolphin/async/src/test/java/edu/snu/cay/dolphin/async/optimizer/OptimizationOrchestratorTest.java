@@ -145,7 +145,8 @@ public final class OptimizationOrchestratorTest {
       serverStoreIdMap.put(i, Collections.emptySet());
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalReqProcessed(1)
+          .setTotalPushProcessed(1)
+          .setTotalPullProcessed(1)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
@@ -155,6 +156,12 @@ public final class OptimizationOrchestratorTest {
           .setNumDataBlocks(NUM_BLOCKS)
           .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
+          .setMiniBatchIdx(0)
+          .setTotalTime(0.0)
+          .setTotalPullTime(0.0)
+          .setTotalPushTime(0.0)
+          .setAvgPullTime(0.0)
+          .setAvgPushTime(0.0)
           .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
     }
@@ -183,7 +190,8 @@ public final class OptimizationOrchestratorTest {
     for (int i = 0; i < numServers; i++) {
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalReqProcessed(1)
+          .setTotalPushProcessed(1)
+          .setTotalPullProcessed(1)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
       orchestrator.run();
@@ -197,6 +205,12 @@ public final class OptimizationOrchestratorTest {
           .setNumDataBlocks(NUM_BLOCKS)
           .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
+          .setMiniBatchIdx(0)
+          .setTotalTime(0.0)
+          .setTotalPullTime(0.0)
+          .setTotalPushTime(0.0)
+          .setAvgPullTime(0.0)
+          .setAvgPushTime(0.0)
           .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
       orchestrator.run();
@@ -222,7 +236,8 @@ public final class OptimizationOrchestratorTest {
       serverStoreIdMap.put(i, Collections.emptySet());
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
           .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalReqProcessed(1)
+          .setTotalPushProcessed(1)
+          .setTotalPullProcessed(1)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
 
@@ -236,6 +251,12 @@ public final class OptimizationOrchestratorTest {
           .setNumDataBlocks(NUM_BLOCKS)
           .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
+          .setMiniBatchIdx(0)
+          .setTotalTime(0.0)
+          .setTotalPullTime(0.0)
+          .setTotalPushTime(0.0)
+          .setAvgPullTime(0.0)
+          .setAvgPushTime(0.0)
           .build();
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
 

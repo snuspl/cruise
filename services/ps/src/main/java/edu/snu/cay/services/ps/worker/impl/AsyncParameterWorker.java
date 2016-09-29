@@ -556,9 +556,9 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         .setTotalNetworkTimeSec(totalNetworkStat.getRight() / 1e9D)
         .setTotalWaitingStatCount(totalWaitingStat.getLeft())
         .setTotalWaitingTimeSec(totalWaitingStat.getRight() / 1e9D)
-        .setTotalSentBytes(totalSentBytesStat.getRight().intValue())
+        .setTotalSentBytes(totalSentBytesStat.getRight().longValue())
         .setTotalSentBytesStatCount(totalSentBytesStat.getLeft())
-        .setTotalReceivedBytes(totalReceivedBytesStat.getRight().intValue())
+        .setTotalReceivedBytes(totalReceivedBytesStat.getRight().longValue())
         .setTotalReceivedBytesStatCount(totalReceivedBytesStat.getLeft())
         .build();
   }
