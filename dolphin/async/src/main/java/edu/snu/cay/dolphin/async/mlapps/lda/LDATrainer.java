@@ -142,7 +142,7 @@ final class LDATrainer implements Trainer {
     final List<Document> totalDocumentsSampled = new LinkedList<>();
 
     Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    Collection<Document> documents = trainingDataProvider.getNextTrainingData().values();
+    Collection<Document> documents = nextTrainingData.values();
     int numInstancesToProcess = documents.size();
     while (!nextTrainingData.isEmpty()) {
       resetTracers();
@@ -156,7 +156,8 @@ final class LDATrainer implements Trainer {
       LOG.log(Level.INFO, "{0} documents have been sampled until mini-batch {1}",
           new Object[]{numDocumentsSampled, miniBatchIdx});
 
-      trainingDataProvider.getNextTrainingData();
+      // load the set of training data instances to process in the next mini-batch
+      nextTrainingData = trainingDataProvider.getNextTrainingData();
 
       final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
       final WorkerMetrics miniBatchMetric =
