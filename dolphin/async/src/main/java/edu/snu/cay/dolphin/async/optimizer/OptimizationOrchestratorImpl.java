@@ -287,7 +287,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
         // This server did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getTotalPushProcessed() == 0 && aggregatedMetric.getTotalPullProcessed() == 0) {
+        // TODO #862: the following condition may be considered sufficient as Optimization triggering policy changes
+        if (aggregatedMetric.getTotalPushProcessed() == 0 || aggregatedMetric.getTotalPullProcessed() == 0) {
           break;
         } else {
           final String serverId = entry.getKey();
