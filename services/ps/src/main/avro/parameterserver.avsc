@@ -189,10 +189,8 @@
     {"name": "metricWindowMs", "type": "long", "default":0},
     {"name": "totalPullProcessed", "type": "int", "default":0},
     {"name": "totalPushProcessed", "type": "int", "default":0},
-    {"name": "totalReqProcessed", "type": "int", "default":0},
     {"name": "totalPullProcessingTimeSec", "type": "double", "default":0.0},
     {"name": "totalPushProcessingTimeSec", "type": "double", "default":0.0},
-    {"name": "totalReqProcessingTimeSec", "type": "double", "default":0.0},
     {"name": "totalPullWaitingTimeSec", "type": "double", "default":0.0},
     {"name": "totalPushWaitingTimeSec", "type": "double", "default":0.0},
     {"name": "totalReqWaitingTimeSec", "type": "double", "default":0.0}

@@ -113,7 +113,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   public synchronized void run() {
     // 1) Check that metrics have arrived from all evaluators.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
-    final Map<String, List<EvaluatorParameters>> currentWorkerMetrics = metricManager.getWorkerMetrics();
+    final Map<String, List<EvaluatorParameters>> currentWorkerMetrics = metricManager.getWorkerMiniBatchMetrics();
 
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
     final int numWorkerMetricSources = getNumMetricSources(currentWorkerMetrics);
@@ -273,25 +273,20 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> serverMetric = entry.getValue();
         final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
-        aggregatedMetricBuilder.setNumModelBlocks((int) calculateExponentialMovingAverage(serverMetric,
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getNumModelBlocks()));
         aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessed()).sum());
         aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessed()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalReqProcessed()).sum());
         aggregatedMetricBuilder.setTotalPullProcessingTimeSec(serverMetric.stream().mapToDouble(
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessingTimeSec()).sum());
         aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
             param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessingTimeSec()).sum());
-        aggregatedMetricBuilder.setTotalReqProcessingTimeSec(serverMetric.stream().mapToDouble(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalReqProcessingTimeSec()).sum());
 
         final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
         // This server did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getTotalReqProcessed() == 0) {
+        // TODO #862: the following condition may be considered sufficient as Optimization triggering policy changes
+        if (aggregatedMetric.getTotalPushProcessed() == 0 || aggregatedMetric.getTotalPullProcessed() == 0) {
           break;
         } else {
           final String serverId = entry.getKey();
@@ -305,8 +300,6 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
-        aggregatedMetricBuilder.setNumDataBlocks((int) calculateExponentialMovingAverage(workerMetric,
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getNumDataBlocks()));
         aggregatedMetricBuilder.setProcessedDataItemCount((int) calculateExponentialMovingAverage(workerMetric,
             param -> ((WorkerEvaluatorParameters) param).getMetrics().getProcessedDataItemCount()));
         aggregatedMetricBuilder.setTotalTime(calculateExponentialMovingAverage(workerMetric,

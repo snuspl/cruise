@@ -73,7 +73,7 @@ final class AddVectorTrainer implements Trainer {
   private final int miniBatchSize;
 
   // TODO #822: AddVector needs an actual training data set.
-  private static final int NUM_TOTAL_INSTANCES = 100;
+  private static final int NUM_TOTAL_INSTANCES = 10;
   private final int numMiniBatches;
 
   /**
@@ -135,11 +135,13 @@ final class AddVectorTrainer implements Trainer {
 
   @Override
   public void run(final int iteration) {
-    final long iterationBegin = System.currentTimeMillis();
-    resetTracers();
+    final long epochStartTime = System.currentTimeMillis();
 
     // run mini-batches
     for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
+      resetTracers();
+      final long miniBatchStartTime = System.currentTimeMillis();
+
       // 1. pull model to compute with
       pullTracer.startTimer();
       final List<Vector> valueList = parameterWorker.pull(keyList);
@@ -162,14 +164,17 @@ final class AddVectorTrainer implements Trainer {
         parameterWorker.push(key, delta);
       }
       pushTracer.recordTime(keyList.size());
-    }
-    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    // send empty metrics to trigger optimization
-    final WorkerMetrics workerMetrics =
-        buildMetricsMsg(iteration, memoryStore.getNumBlocks(), elapsedTime);
 
-    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-    sendMetrics(workerMetrics);
+      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+      final WorkerMetrics miniBatchMetric = buildMiniBatchMetric(iteration, miniBatchIdx, miniBatchElapsedTime);
+      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+      sendMetrics(miniBatchMetric);
+    }
+
+    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+    final WorkerMetrics epochMetric = buildEpochMetric(iteration, memoryStore.getNumBlocks(), epochElapsedTime);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
@@ -178,13 +183,12 @@ final class AddVectorTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int iteration, final int numDataBlocks, final double elapsedTime) {
+  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx, final double elapsedTime) {
     return WorkerMetrics.newBuilder()
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
-        .setNumMiniBatchForEpoch(numMiniBatches)
+        .setMiniBatchIdx(miniBatchIdx)
         .setProcessedDataItemCount(NUM_DATA_ITEMS_TO_PROCESS)
-        .setNumDataBlocks(numDataBlocks)
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
@@ -192,6 +196,17 @@ final class AddVectorTrainer implements Trainer {
         .setTotalPushTime(pushTracer.totalElapsedTime())
         .setAvgPushTime(pushTracer.avgTimePerRecord())
         .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
+        .build();
+  }
+
+  private WorkerMetrics buildEpochMetric(final int iteration, final int numDataBlocks, final double elapsedTime) {
+    return WorkerMetrics.newBuilder()
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatches)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numMiniBatches * NUM_DATA_ITEMS_TO_PROCESS)
+        .setTotalTime(elapsedTime)
         .build();
   }
 
