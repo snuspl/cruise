@@ -52,7 +52,7 @@ class JavaCudnn extends Pointer {
     return pointer;
   }
   static native boolean cudnnDestroyTensorDesc(@Cast(value = "cudnnTensorDescriptor_t*") final Pointer pointer);
-  static void destroyTensorDesc(@Cast(value = "cudnnTensorDescriptor_t*") final Pointer pointer) {
+  static void destroyTensorDesc(final Pointer pointer) {
     checkNullPointer(pointer);
     if (!cudnnDestroyTensorDesc(pointer)) {
       throw new RuntimeException("Destroying tensor descriptor is failed");
@@ -66,7 +66,7 @@ class JavaCudnn extends Pointer {
     return pointer;
   }
   static native boolean cudnnDestroyFilterDesc(@Cast(value = "cudnnFilterDescriptor_t*") final Pointer pointer);
-  static void destroyFilterDesc(@Cast(value = "cudnnFilterDescriptor_t*") final Pointer pointer) {
+  static void destroyFilterDesc(final Pointer pointer) {
     checkNullPointer(pointer);
     if (!cudnnDestroyFilterDesc(pointer)) {
       throw new RuntimeException("Destroying filter descriptor is failed");
@@ -80,7 +80,7 @@ class JavaCudnn extends Pointer {
     return pointer;
   }
   static native boolean cudnnDestroyConvDesc(@Cast(value = "cudnnConvolutionDescriptor_t*") final Pointer pointer);
-  static void destroyConvDesc(@Cast(value = "cudnnConvolutionDescriptor_t*") final Pointer pointer) {
+  static void destroyConvDesc(final Pointer pointer) {
     checkNullPointer(pointer);
     if (!cudnnDestroyConvDesc(pointer)) {
       throw new RuntimeException("Destroying convolution descriptor is failed");
@@ -95,7 +95,7 @@ class JavaCudnn extends Pointer {
     return pointer;
   }
   static native boolean cudnnDestroyPoolDesc(@Cast(value = "cudnnPoolingDescriptor_t*") final Pointer pointer);
-  static void destroyPoolDesc(@Cast(value = "cudnnPoolingDescriptor_t*") final Pointer pointer) {
+  static void destroyPoolDesc(final Pointer pointer) {
     checkNullPointer(pointer);
     if (!cudnnDestroyPoolDesc(pointer)) {
       throw new RuntimeException("Destroying pooling descriptor is failed");
@@ -108,7 +108,7 @@ class JavaCudnn extends Pointer {
     return pointer;
   }
   static native boolean cudnnDestroyActivFuncDesc(@Cast(value = "cudnnActivationDescriptor_t*") final Pointer pointer);
-  static void destroyActivFuncDesc(@Cast(value = "cudnnActivationDescriptor_t*") final Pointer pointer) {
+  static void destroyActivFuncDesc(final Pointer pointer) {
     checkNullPointer(pointer);
     if (!cudnnDestroyActivFuncDesc(pointer)) {
       throw new RuntimeException("Destroying activation function descriptor is failed");
@@ -122,7 +122,7 @@ class JavaCudnn extends Pointer {
     return pointer;
   }
   static native boolean cudnnDestroyLRNDesc(@Cast(value = "cudnnLRNDescriptor_t*") final Pointer pointer);
-  static void destroyLRNDesc(@Cast(value = "cudnnLRNDescriptor_t*") final Pointer pointer) {
+  static void destroyLRNDesc(final Pointer pointer) {
     checkNullPointer(pointer);
     if (!cudnnDestroyLRNDesc(pointer)) {
       throw new RuntimeException("Destroying LRN descriptor is failed");
@@ -162,6 +162,13 @@ class JavaCudnn extends Pointer {
     checkNullPointer(pointer);
     return pointer;
   }
+  static native boolean cudnnDestroyAlgo(@Cast(value = "void*") final Pointer pointer);
+  static void destroyAlgo(final Pointer pointer) {
+    checkNullPointer(pointer);
+    if (!cudnnDestroyAlgo(pointer)) {
+      throw new RuntimeException("Destroying algorithm is failed");
+    }
+  }
 
   @Cast(value = "void*") static native Pointer cudnnGetWorkspace(
       @Cast(value = "size_t") final long workspaceSizeInBytes);
@@ -174,6 +181,14 @@ class JavaCudnn extends Pointer {
       return pointer;
     }
   }
+  static native boolean cudnnDestroyWorkspace(@Cast(value = "void*") final Pointer pointer);
+  static void destroyWorkspace(final Pointer pointer) {
+    checkNullPointer(pointer);
+    if (!cudnnDestroyWorkspace(pointer)) {
+      throw new RuntimeException("Destroying workspace is failed");
+    }
+  }
+
   @Cast(value = "size_t") static native long getConvForwardWorkspaceSizeInBytes(
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc,
       @Cast(value = "cudnnFilterDescriptor_t*") final Pointer wDesc,

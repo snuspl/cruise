@@ -261,10 +261,27 @@ cudnnConvolutionBwdFilterAlgo_t* JavaCudnn::cudnnGetConvBackwardFilterAlgo(
   }
 }
 
-// Functions for getting workspace.
+bool cudnnDestroyAlgo(void* algo) {
+  if (!algo) {
+    return false;
+  }
+
+  delete algo;
+  return true;
+}
+
+// Functions for getting and destroying workspace.
 
 void* JavaCudnn::cudnnGetWorkspace(size_t workspaceSizeInBytes) {
   return JavaCuda::deviceMalloc(workspaceSizeInBytes);
+}
+
+bool JavaCudnn::cudnnDestroyWorkspace(void* workspace) {
+  if (!workspace) {
+    return false;
+  }
+
+  return JavaCuda::deviceFree(workspace);
 }
 
 size_t JavaCudnn::getConvForwardWorkspaceSizeInBytes(

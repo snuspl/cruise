@@ -58,8 +58,10 @@ public:
   static cudnnConvolutionBwdFilterAlgo_t* cudnnGetConvBackwardFilterAlgo(
       const cudnnTensorDescriptor_t* xDesc, const cudnnTensorDescriptor_t* dyDesc,
       const cudnnConvolutionDescriptor_t* convDesc, const cudnnFilterDescriptor_t* dwDesc);
+  static bool cudnnDestroyAlgo(void* algo);
 
   static void* cudnnGetWorkspace(const size_t workspaceSizeInBytes);
+  static bool cudnnDestroyWorkspace(void* workspace);
   static size_t getConvForwardWorkspaceSizeInBytes(
       const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,
       const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* yDesc,
