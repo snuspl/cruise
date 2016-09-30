@@ -37,9 +37,7 @@ import org.junit.Test;
 
 import java.util.*;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertTrue;
-import static junit.framework.Assert.fail;
+import static junit.framework.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -48,7 +46,7 @@ import static org.mockito.Mockito.*;
 public class TrainingDataProviderTest {
   private static final int MINI_BATCH_SIZE = 5;
   private static final int NUM_TOTAL_BLOCKS = 0x100;
-  private static final int MAX_BLOCK_SIZE = 128;
+  private static final int MAX_BLOCK_SIZE = 129;
   private static final int NUM_MEMORY_STORES = 2;
   private static final int LOCAL_STORE_ID = 0;
   private static final int REMOTE_STORE_ID = 1;
@@ -142,6 +140,7 @@ public class TrainingDataProviderTest {
    */
   private void createTrainingData(final int numTotalInstances) {
     kvMapBackingMemoryStore.clear();
+
     final Random generator = new Random();
     for (int i = 0; i < numTotalInstances; i++) {
       final int value = generator.nextInt();
@@ -178,33 +177,170 @@ public class TrainingDataProviderTest {
     assertEquals("The total number of mini-batches is different from expectation",
         numMiniBatches, miniBatchIdx);
   }
-  
-  @Test
-  public void testApplyBlockAdditionsToTrainingData() {
-    final int numTotalInstances = MINI_BATCH_SIZE * 10;
 
-    createTrainingData(numTotalInstances);
+  /**
+   * Add and remove a block to/from the {@link MemoryStore} at the beginning of epochs.
+   * Check the block changes in the {@link MemoryStore} are immediately applied to {@link TrainingDataProvider}.
+   */
+  @Test
+  public void testApplyBlockUpdatesToTrainingDataWhenEpochBegins() {
+    final int numInitialInstances = MINI_BATCH_SIZE * 10;
+    final int blockId = generateBlockIdNotInLocalStore().get(0);
+    final Map<Long, Integer> dataSet = generateDataSetForBlock(blockId, MAX_BLOCK_SIZE);
+    final MoveHandler moveHandler = (MoveHandler) memoryStore;
+
+    createTrainingData(numInitialInstances);
+
+    // add a new block to TrainingDataProvider at the beginning of epoch
     trainingDataProvider.prepareDataForEpoch();
-    testGetNextTrainingDataWithBlockAdditions(numTotalInstances);
+    moveHandler.putBlock(blockId, (Map) dataSet);
+    operationRouter.updateOwnership(blockId, REMOTE_STORE_ID, LOCAL_STORE_ID);
+    kvMapBackingMemoryStore.putAll(dataSet);
+    testGetNextTrainingData(numInitialInstances + dataSet.size());
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+
+    // remove the added block from TrainingDataProvider at the beginning of epoch
+    trainingDataProvider.prepareDataForEpoch();
+    moveHandler.removeBlock(blockId);
+    operationRouter.updateOwnership(blockId, LOCAL_STORE_ID, REMOTE_STORE_ID);
+    for (final Long key : dataSet.keySet()) {
+      kvMapBackingMemoryStore.remove(key);
+    }
+    testGetNextTrainingData(numInitialInstances);
     assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
   }
 
+  /**
+   * Add and remove blocks to/from the {@link MemoryStore} during epochs.
+   * Check the block changes in the {@link MemoryStore} are immediately applied to {@link TrainingDataProvider}.
+   */
+  @Test
+  public void testApplyBlockUpdatesToTrainingDataDuringEpoch() {
+    final int numTotalInstances = MINI_BATCH_SIZE * 10;
+
+    createTrainingData(numTotalInstances);
+
+    // add several blocks to the MemoryStore during an epoch
+    trainingDataProvider.prepareDataForEpoch();
+    final List <Pair<Integer, Map<Long, Integer>>> addedBlockList =
+        testGetNextTrainingDataWithBlockAdditions(numTotalInstances);
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+
+    // remove the added blocks from the MemoryStore during an epoch
+    trainingDataProvider.prepareDataForEpoch();
+    testGetNextTrainingDataWithBlockRemovals(addedBlockList);
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+  }
+
+  /**
+   * test whether {@link TrainingDataProvider} provides the training data properly
+   * when block removal events occur at a fixed interval during an epoch.
+   * @param blocksToRemove a set of blocks to be removed stored in {@link MemoryStore}
+   */
+  private void testGetNextTrainingDataWithBlockRemovals(final List<Pair<Integer, Map<Long, Integer>>> blocksToRemove) {
+    final int numBlocksToRemove = blocksToRemove.size();
+    final MoveHandler moveHandler = (MoveHandler) memoryStore;
+    final Map<Long, Integer> trainingDataInStore = new HashMap<>();
+    final Map<Long, Integer> usedTrainingData = new HashMap<>();
+    final Map<Long, Integer> removedTrainingData = new HashMap<>();
+
+    // expected training data currently stored in the MemoryStore
+    trainingDataInStore.putAll(kvMapBackingMemoryStore);
+
+    final int expectedTotalInstances = trainingDataInStore.size();
+
+    int miniBatchCount = 0;
+    int removedBlockCount = 0;
+    int numRemovedInstances = 0;
+    int numUsedInstances = 0;
+
+    Map<Long, Integer> trainingData = trainingDataProvider.getNextTrainingData();
+    while (!trainingData.isEmpty()) {
+      miniBatchCount++;
+
+      // compare the given training data with the expected data set
+      final Set<Long> keySet = trainingData.keySet();
+      numUsedInstances += keySet.size();
+      for (final Long key : keySet) {
+        final Integer expectedValue = trainingDataInStore.remove(key);
+        final Integer actualValue = trainingData.get(key);
+        assertNotNull(expectedValue);
+        assertEquals(expectedValue, actualValue);
+        usedTrainingData.put(key, actualValue);
+      }
+
+      // remove a new block to the MemoryStore with probability.
+      if (((miniBatchCount % 4) == 0) && (removedBlockCount < numBlocksToRemove)) {
+        final Pair<Integer, Map<Long, Integer>> blockDataPair = blocksToRemove.get(removedBlockCount++);
+        final int blockId = blockDataPair.getFirst();
+        final Map<Long, Integer> dataSet = blockDataPair.getSecond();
+
+        // remove a block from the MemoryStore
+        moveHandler.removeBlock(blockId);
+        operationRouter.updateOwnership(blockId, LOCAL_STORE_ID, REMOTE_STORE_ID);
+
+        // remove the data set of the removed block from the training data currently stored in the MemoryStore.
+        for (final Long key : dataSet.keySet()) {
+          final Integer expectedValue = dataSet.get(key);
+          final Integer actualValue = trainingDataInStore.remove(key);
+          if (actualValue != null) {
+            assertEquals(expectedValue, actualValue);
+            removedTrainingData.put(key, actualValue);
+            numRemovedInstances++;
+          } else {
+            assertTrue(usedTrainingData.containsKey(key));
+            continue;
+          }
+        }
+      }
+
+      // load the next training data from the TrainingDataProvider
+      trainingData = trainingDataProvider.getNextTrainingData();
+    }
+
+    // all training data initially stored in the MemoryStore should be either used or removed.
+    assertEquals(expectedTotalInstances, numUsedInstances + numRemovedInstances);
+    assertTrue(trainingDataInStore.isEmpty());
+  }
+
+  /**
+   * test whether {@link TrainingDataProvider} provides the training data properly
+   * when block addition events occur at a fixed interval during an epoch.
+   */
   private List<Pair<Integer, Map<Long, Integer>>> testGetNextTrainingDataWithBlockAdditions(
       final int initialNumTotalInstances) {
+    final int numBlocksToAdd = 7;
     final List <Integer> blockIdList = generateBlockIdNotInLocalStore();
-    final Random randomNumberGenerator = new Random(System.currentTimeMillis());
     final MoveHandler moveHandler = (MoveHandler) memoryStore;
-    final List<Pair<Integer, Map<Long, Integer>>> blockDataPairList = new ArrayList<>();
+    final List<Pair<Integer, Map<Long, Integer>>> blocksToAdd = new ArrayList<>();
 
-    int numTotalInstances = initialNumTotalInstances;
+    // generate data sets for blocks to be added
+    for (int i = 0; i < numBlocksToAdd; i++) {
+      final int blockId = blockIdList.get(i);
+      final Map<Long, Integer> dataSet = generateDataSetForBlock(blockId, MAX_BLOCK_SIZE);
+      blocksToAdd.add(new Pair<>(blockId, dataSet));
+    }
+
+    final int expectedNumTotalInstances = initialNumTotalInstances + numBlocksToAdd * MAX_BLOCK_SIZE;
+    final int expectedMiniBatchCount = (expectedNumTotalInstances / MINI_BATCH_SIZE)
+        + ((expectedNumTotalInstances % MINI_BATCH_SIZE != 0) ? 1 : 0);
+    final int expectedNumInstancesForLastBatch = (expectedNumTotalInstances % MINI_BATCH_SIZE != 0) ?
+        (expectedNumTotalInstances % MINI_BATCH_SIZE) : MINI_BATCH_SIZE;
+
+    int miniBatchCount = 0;
+    int currentMiniBatchSize = 0;
     int numUsedInstances = 0;
-    Map<Long, Integer> trainingData = trainingDataProvider.getNextTrainingData();
+    int addedBlockCount = 0;
 
+    Map<Long, Integer> trainingData = trainingDataProvider.getNextTrainingData();
     while (!trainingData.isEmpty()) {
-      // add a new block to the MemoryStore in probability.
-      if ((randomNumberGenerator.nextInt() % 7 == 0) && (blockIdList.size() > 0)) {
-        final int blockId = blockIdList.remove(0).intValue();
-        final Map<Long, Integer> dataSet = generateDataSetForBlock(blockId, MAX_BLOCK_SIZE);
+      miniBatchCount++;
+
+      // add a new block to the MemoryStore with probability.
+      if ((miniBatchCount % 3 == 0) && (addedBlockCount < numBlocksToAdd)) {
+        final Pair<Integer, Map<Long, Integer>> blockDataPair = blocksToAdd.get(addedBlockCount++);
+        final int blockId = blockDataPair.getFirst();
+        final Map<Long, Integer> dataSet = blockDataPair.getSecond();
 
         // add a new block to the MemoryStore
         moveHandler.putBlock(blockId, (Map) dataSet);
@@ -212,10 +348,6 @@ public class TrainingDataProviderTest {
 
         // add the data set of the new block to the expected data set
         kvMapBackingMemoryStore.putAll(dataSet);
-        blockDataPairList.add(new Pair(blockId, dataSet));
-
-        // increase the number of total instances by the size of new data set
-        numTotalInstances += dataSet.size();
       }
 
       // compare the training data with the expected data set
@@ -225,12 +357,15 @@ public class TrainingDataProviderTest {
       }
 
       // update the number of used instances by the size of training data
-      numUsedInstances += trainingData.size();
+      currentMiniBatchSize = trainingData.size();
+      numUsedInstances += currentMiniBatchSize;
       trainingData = trainingDataProvider.getNextTrainingData();
     }
 
-    assertEquals(numTotalInstances, numUsedInstances);
-    return blockDataPairList;
+    assertEquals(expectedNumTotalInstances, numUsedInstances);
+    assertEquals(expectedMiniBatchCount, miniBatchCount);
+    assertEquals(expectedNumInstancesForLastBatch, currentMiniBatchSize);
+    return blocksToAdd;
   }
 
   private Map<Long, Integer> generateDataSetForBlock(final int blockId, final int dataSetSize) {
