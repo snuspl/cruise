@@ -62,9 +62,9 @@ final class MLRParameters {
 
   static final class MetricKeys {
 
-    // The key denoting the average of loss computed from the sample of training data instances.
-    static final String SAMPLE_LOSS_AVG =
-        "MLR_TRAINER_SAMPLE_LOSS_AVG";
+    // The key denoting the sum of loss computed from the sample of training data instances.
+    static final String SAMPLE_LOSS_SUM =
+        "MLR_TRAINER_SAMPLE_LOSS_SUM";
 
     // The key denoting the average of L2-regularized loss computed from the sample of training data instances.
     static final String REG_LOSS_AVG =

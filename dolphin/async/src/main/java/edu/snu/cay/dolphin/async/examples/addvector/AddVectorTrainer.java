@@ -192,9 +192,9 @@ final class AddVectorTrainer implements Trainer {
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerRecord())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
         .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPushTime(pushTracer.avgTimePerRecord())
+        .setAvgPushTime(pushTracer.avgTimePerElem())
         .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
   }

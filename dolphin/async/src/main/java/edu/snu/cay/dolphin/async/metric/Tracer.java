@@ -61,7 +61,7 @@ public class Tracer {
    * @return total elapsed time in seconds.
    */
   public double totalElapsedTime() {
-    return sum / 1000.0D;
+    return (double) sum / 1000D;
   }
 
   /**
@@ -73,7 +73,7 @@ public class Tracer {
       return Double.POSITIVE_INFINITY;
     }
 
-    return sum / count / 1000.0D;
+    return (double) sum / count / 1000D;
   }
 
   /**
@@ -85,6 +85,6 @@ public class Tracer {
       return Double.POSITIVE_INFINITY;
     }
 
-    return sum / elemCount / 1000.0D;
+    return (double) sum / elemCount / 1000D;
   }
 }

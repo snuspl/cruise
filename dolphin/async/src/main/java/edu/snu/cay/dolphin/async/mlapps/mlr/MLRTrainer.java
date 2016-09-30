@@ -280,12 +280,12 @@ final class MLRTrainer implements Trainer {
     pullModels();
     
     LOG.log(Level.INFO, "Start computing loss value");
-    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(totalInstancesProcessed);
+    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed);
     
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
     final double sampleLoss = lossRegLossAccuracy.getFirst();
     final double regLoss = lossRegLossAccuracy.getSecond();
-    final double accuracy = (double) lossRegLossAccuracy.getThird();
+    final double accuracy = lossRegLossAccuracy.getThird();
     final WorkerMetrics epochMetric =
         buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
             numTotalInstancesProcessed, sampleLoss, regLoss, accuracy, epochElapsedTime);
@@ -341,9 +341,8 @@ final class MLRTrainer implements Trainer {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Float> computeLoss(final List<Pair<Vector, Integer>> data) {
+  private Tuple3<Double, Double, Double> computeLoss(final List<Pair<Vector, Integer>> data) {
     double loss = 0;
-    int numInstances = 0;
     int correctPredictions = 0;
 
     for (final Pair<Vector, Integer> entry : data) {
@@ -363,10 +362,7 @@ final class MLRTrainer implements Trainer {
           loss += -Math.log(1 - predictions.get(classIndex));
         }
       }
-
-      ++numInstances;
     }
-    loss /= numInstances;
 
     double regLoss = 0;
     if (lambda != 0) {
@@ -381,7 +377,8 @@ final class MLRTrainer implements Trainer {
       }
     }
     regLoss /= numClasses;
-    return new Tuple3<>(loss, regLoss, (float) correctPredictions / numInstances);
+
+    return new Tuple3<>(loss, regLoss, (double) correctPredictions / data.size());
   }
 
   /**
@@ -450,7 +447,7 @@ final class MLRTrainer implements Trainer {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
 
-    final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+    return WorkerMetrics.newBuilder()
         .setMetrics(Metrics.newBuilder()
             .setData(appMetricMap)
             .build())
@@ -466,8 +463,6 @@ final class MLRTrainer implements Trainer {
         .setAvgPushTime(pushTracer.avgTimePerElem())
         .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
-
-    return workerMetrics;
   }
 
   private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
@@ -475,9 +470,10 @@ final class MLRTrainer implements Trainer {
                                          final double sampleLoss, final double regLoss, final double accuracy,
                                          final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(MetricKeys.SAMPLE_LOSS_AVG, sampleLoss);
+    appMetricMap.put(MetricKeys.SAMPLE_LOSS_SUM, sampleLoss);
     appMetricMap.put(MetricKeys.REG_LOSS_AVG, regLoss);
     appMetricMap.put(MetricKeys.ACCURACY, accuracy);
+    parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
 
     return WorkerMetrics.newBuilder()
         .setMetrics(Metrics.newBuilder()
