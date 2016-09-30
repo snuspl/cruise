@@ -205,7 +205,13 @@ final class LDATrainer implements Trainer {
 
   private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
                                              final int numProcessedDataItemCount, final double elapsedTime) {
-    final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+    appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
+
+    return WorkerMetrics.newBuilder()
+        .setMetrics(Metrics.newBuilder()
+            .setData(appMetricMap)
+            .build())
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
         .setMiniBatchIdx(miniBatchIdx)
@@ -218,8 +224,6 @@ final class LDATrainer implements Trainer {
         .setAvgPushTime(pushTracer.avgTimePerElem())
         .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
-
-    return workerMetrics;
   }
 
   private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
@@ -229,6 +233,7 @@ final class LDATrainer implements Trainer {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(MetricKeys.DOC_LLH, docLLH);
     appMetricMap.put(MetricKeys.WORD_LLH, wordLLH);
+    parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
 
     return WorkerMetrics.newBuilder()
         .setMetrics(Metrics.newBuilder()

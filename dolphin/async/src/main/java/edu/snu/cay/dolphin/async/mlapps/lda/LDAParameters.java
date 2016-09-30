@@ -50,5 +50,10 @@ final class LDAParameters {
     // The key denoting a portion of log likelihood (P(w|z)) computed from word-topic distribution.
     static final String WORD_LLH =
         "LDA_TRAINER_WORD_LLH";
+
+    // The key denoting the number of training data instances processed per unit time.
+    static final String DVT =
+        "LDA_TRAINER_DVT";
+
   }
 }

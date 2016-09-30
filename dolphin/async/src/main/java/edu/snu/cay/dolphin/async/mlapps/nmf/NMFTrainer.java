@@ -138,7 +138,6 @@ final class NMFTrainer implements Trainer {
   public void run(final int iteration) {
     final long epochStartTime = System.currentTimeMillis();
     double lossSum = 0.0;
-    int epochElemCount = 0;
 
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
@@ -153,7 +152,6 @@ final class NMFTrainer implements Trainer {
     while (!nextTrainingData.isEmpty()) {
       resetTracers();
       final long miniBatchStartTime = System.currentTimeMillis();
-      int miniBatchElemCount = 0;
 
       // pull data when mini-batch is started
       pullRMatrix(getKeys(workload));
@@ -192,7 +190,6 @@ final class NMFTrainer implements Trainer {
 
           // aggregate loss
           lossSum += error * error;
-          ++miniBatchElemCount;
         }
 
         // update L matrix
@@ -205,7 +202,6 @@ final class NMFTrainer implements Trainer {
 
       // update the total number of instances processed so far
       numTotalInstancesProcessed += numInstancesToProcess;
-      epochElemCount += miniBatchElemCount;
 
       // load the set of training data instances to process in the next mini-batch
       nextTrainingData = trainingDataProvider.getNextTrainingData();
@@ -213,7 +209,7 @@ final class NMFTrainer implements Trainer {
       final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
       final WorkerMetrics miniBatchMetric =
           buildMiniBatchMetric(iteration, miniBatchIdx,
-              numInstancesToProcess, miniBatchElemCount, miniBatchElapsedTime);
+              numInstancesToProcess, miniBatchElapsedTime);
       LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
       sendMetrics(miniBatchMetric);
 
@@ -225,7 +221,7 @@ final class NMFTrainer implements Trainer {
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
     final WorkerMetrics epochMetric =
         buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
-            numTotalInstancesProcessed, lossSum, epochElemCount, epochElapsedTime);
+            numTotalInstancesProcessed, lossSum, epochElapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
@@ -335,11 +331,9 @@ final class NMFTrainer implements Trainer {
   }
 
   private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
-                                             final int numProcessedDataItemCount, final long elemCount,
-                                             final double elapsedTime) {
+                                             final int numProcessedDataItemCount, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(NMFParameters.MetricKeys.DVT, elemCount / elapsedTime);
-    appMetricMap.put(NMFParameters.MetricKeys.RVT, numProcessedDataItemCount / elapsedTime);
+    appMetricMap.put(NMFParameters.MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
 
     return WorkerMetrics.newBuilder()
         .setMetrics(Metrics.newBuilder()
@@ -352,19 +346,19 @@ final class NMFTrainer implements Trainer {
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerRecord())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
         .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPushTime(pushTracer.avgTimePerRecord())
+        .setAvgPushTime(pushTracer.avgTimePerElem())
         .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
   }
 
   private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
                                          final int numDataBlocks, final int numProcessedDataItemCount,
-                                         final double lossSum, final long elemCount, final double elapsedTime) {
+                                         final double lossSum, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(NMFParameters.MetricKeys.AVG_LOSS, lossSum / elemCount);
     appMetricMap.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
+    parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
 
     return WorkerMetrics.newBuilder()
         .setMetrics(Metrics.newBuilder()
