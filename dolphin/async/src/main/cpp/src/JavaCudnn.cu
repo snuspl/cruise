@@ -51,6 +51,15 @@ cudnnHandle_t JavaCudnn::getCudnnHandle() {
   return *cudnnHandle.get();
 }
 
+bool JavaCudnn::destroyPointer(void* pointer) {
+  if (!pointer) {
+    return false;
+  }
+
+  delete pointer;
+  return true;
+}
+
 // Functions for creating and destroying descriptors.
 
 cudnnTensorDescriptor_t* JavaCudnn::cudnnCreateTensorDesc(
@@ -259,15 +268,6 @@ cudnnConvolutionBwdFilterAlgo_t* JavaCudnn::cudnnGetConvBackwardFilterAlgo(
   } else {
     return NULL;
   }
-}
-
-bool JavaCudnn::cudnnDestroyAlgo(void* algo) {
-  if (!algo) {
-    return false;
-  }
-
-  delete algo;
-  return true;
 }
 
 // Functions for getting and destroying workspace.

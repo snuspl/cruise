@@ -30,6 +30,8 @@
 
 class JavaCudnn {
 public:
+  // destroy pointer which is created to support cudnn.
+  static bool destroyPointer(void* pointer);
   static cudnnTensorDescriptor_t* cudnnCreateTensorDesc(
       const int n, const int c, const int h, const int w,
       const int nStride, const int cStride, const int hStride, const int wStride);
@@ -58,7 +60,6 @@ public:
   static cudnnConvolutionBwdFilterAlgo_t* cudnnGetConvBackwardFilterAlgo(
       const cudnnTensorDescriptor_t* xDesc, const cudnnTensorDescriptor_t* dyDesc,
       const cudnnConvolutionDescriptor_t* convDesc, const cudnnFilterDescriptor_t* dwDesc);
-  static bool cudnnDestroyAlgo(void* algo);
 
   static void* cudnnGetWorkspace(const size_t workspaceSizeInBytes);
   static bool cudnnDestroyWorkspace(void* workspace);

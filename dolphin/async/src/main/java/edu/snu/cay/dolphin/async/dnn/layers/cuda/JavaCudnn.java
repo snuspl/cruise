@@ -41,6 +41,7 @@ class JavaCudnn extends Pointer {
     }
   }
 
+  static native boolean destroyPointer(@Cast(value = "void*") final Pointer pointer);
   @Cast(value = "cudnnTensorDescriptor_t*") static native Pointer cudnnCreateTensorDesc(
       final int n, final int c, final int h, final int w,
       final int nStride, final int cStride, final int hStride, final int wStride);
@@ -162,10 +163,9 @@ class JavaCudnn extends Pointer {
     checkNullPointer(pointer);
     return pointer;
   }
-  static native boolean cudnnDestroyAlgo(@Cast(value = "void*") final Pointer pointer);
   static void destroyAlgo(final Pointer pointer) {
     checkNullPointer(pointer);
-    if (!cudnnDestroyAlgo(pointer)) {
+    if (!destroyPointer(pointer)) {
       throw new RuntimeException("Destroying algorithm is failed");
     }
   }
