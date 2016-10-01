@@ -261,7 +261,7 @@ cudnnConvolutionBwdFilterAlgo_t* JavaCudnn::cudnnGetConvBackwardFilterAlgo(
   }
 }
 
-bool cudnnDestroyAlgo(void* algo) {
+bool JavaCudnn::cudnnDestroyAlgo(void* algo) {
   if (!algo) {
     return false;
   }
