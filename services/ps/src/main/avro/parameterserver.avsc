@@ -239,10 +239,10 @@
     // total pull time for this mini-batch (seconds) : time between a pull request's dequeue and client notify
     {"name": "totalPullTimeSec", "type": "double", "default": 0.0},
 
-    // total waiting time for this mini-batch (seconds) : time spent in queue for a pull request
+    // total pull waiting time for this mini-batch (seconds) : time spent in queue for a pull request
     {"name": "totalPullWaitTimeSec", "type": "double", "default": 0.0},
 
-    // total waiting time for this mini-batch (seconds) : time spent in queue for a push request
+    // total push waiting time for this mini-batch (seconds) : time spent in queue for a push request
     {"name": "totalPushWaitTimeSec", "type": "double", "default": 0.0},
 
     // total network time for this mini-batch (seconds) : time spent in the network for a pull request/reply transmission
