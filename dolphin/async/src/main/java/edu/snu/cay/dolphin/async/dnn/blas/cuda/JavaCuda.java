@@ -39,10 +39,30 @@ public class JavaCuda extends Pointer {
   private native void allocate();
 
   @Cast(value = "void*")
-  public static native Pointer deviceMalloc(@Cast(value = "size_t") final long size);
+  public static native Pointer cudaDeviceMalloc(@Cast(value = "size_t") final long size);
+
+  public static Pointer deviceMalloc(final long size) {
+    if (size == 0) {
+      return new Pointer();
+    }
+
+    final Pointer pointer = cudaDeviceMalloc(size);
+    if (pointer == null) {
+      throw new RuntimeException("Allocation cuda device memory is failed");
+    }
+    return pointer;
+  }
 
   @Cast(value = "bool")
-  public static native boolean deviceFree(final Pointer devPtr);
+  public static native boolean cudaDeviceFree(final Pointer devPtr);
+
+  public static void deviceFree(final Pointer pointer) {
+    boolean success = cudaDeviceFree(pointer);
+
+    if (!success) {
+      throw new RuntimeException("Cuda device memory is failed to free");
+    }
+  }
 
   @Cast(value = "bool")
   public static native boolean set(final FloatPointer y, final float a, final int n);
