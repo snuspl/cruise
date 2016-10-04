@@ -178,7 +178,7 @@ public final class BlockManager {
    * @param newOwnerId id of the MemoryStore who will own the block
    */
   synchronized void updateOwner(final int blockId, final int oldOwnerId, final int newOwnerId) {
-    LOG.log(Level.INFO, "Update owner of block {0} from store {1} to store {2}",
+    LOG.log(Level.FINER, "Update owner of block {0} from store {1} to store {2}",
         new Object[]{blockId, oldOwnerId, newOwnerId});
 
     if (!movingBlocks.contains(blockId)) {

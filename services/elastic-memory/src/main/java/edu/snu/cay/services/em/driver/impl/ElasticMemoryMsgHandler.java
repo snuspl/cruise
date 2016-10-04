@@ -174,14 +174,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     try (final TraceScope onBlockMovedMsgScope = Trace.startSpan(
         String.format("on_block_moved_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      detached = onBlockMovedMsgScope.detach();
-      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
       final boolean ownershipMsgArrivedFirst;
       synchronized (waitingBlocks) {
         if (!waitingBlocks.containsKey(blockId)) {
           ownershipMsgArrivedFirst = false;
-          waitingBlocks.put(blockId, new WaitingBlock(traceInfo));
+          detached = onBlockMovedMsgScope.detach();
+          waitingBlocks.put(blockId, new WaitingBlock(TraceInfo.fromSpan(detached)));
         } else {
           ownershipMsgArrivedFirst = true;
           waitingBlocks.remove(blockId);
