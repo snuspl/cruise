@@ -1076,16 +1076,12 @@ public final class MatrixCudaImpl implements Matrix {
   }
 
   private void deviceFree() {
-    if (!JavaCuda.deviceFree(devPtr)) {
-      throw new RuntimeException("Failed to free GPU memory");
-    }
+    JavaCuda.deviceFree(devPtr);
     devPtr.setNull();
   }
 
   private void multiplierFree() {
-    if (!JavaCuda.deviceFree(multiplierPtr)) {
-      throw new RuntimeException("Failed to free GPU memory");
-    }
+    JavaCuda.deviceFree(multiplierPtr);
     multiplierPtr.setNull();
     multiplierLength = 0;
   }
