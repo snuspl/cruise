@@ -149,9 +149,9 @@ public interface MemoryStore<K> {
 
   /**
    * Resolves an evaluator id for a key.
-   * It returns {@link Optional#empty()} when the key belongs to the local MemoryStore.
    * @param key global unique identifier of item
-   * @return an Optional with an evaluator id
+   * @return an Optional with an evaluator id,
+   *         {@link Optional#empty()} means that the key belongs to the local MemoryStore.
    */
   Optional<String> resolveEval(final K key);
 }
