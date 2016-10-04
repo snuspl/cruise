@@ -270,20 +270,7 @@ cudnnConvolutionBwdFilterAlgo_t* JavaCudnn::cudnnGetConvBackwardFilterAlgo(
   }
 }
 
-// Functions for getting and destroying workspace.
-
-void* JavaCudnn::cudnnGetWorkspace(size_t workspaceSizeInBytes) {
-  return JavaCuda::deviceMalloc(workspaceSizeInBytes);
-}
-
-bool JavaCudnn::cudnnDestroyWorkspace(void* workspace) {
-  if (!workspace) {
-    return false;
-  }
-
-  return JavaCuda::deviceFree(workspace);
-}
-
+// Functions for getting size of workspace.
 size_t JavaCudnn::getConvForwardWorkspaceSizeInBytes(
     const cudnnTensorDescriptor_t* xDesc, const cudnnFilterDescriptor_t* wDesc,
     const cudnnConvolutionDescriptor_t* convDesc, const cudnnTensorDescriptor_t* yDesc,

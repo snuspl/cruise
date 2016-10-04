@@ -170,25 +170,6 @@ class JavaCudnn extends Pointer {
     }
   }
 
-  @Cast(value = "void*") static native Pointer cudnnGetWorkspace(
-      @Cast(value = "size_t") final long workspaceSizeInBytes);
-  static Pointer getWorkspace(final long workspace) {
-    if (workspace == 0) {
-      return null;
-    } else {
-      final Pointer pointer = cudnnGetWorkspace(workspace);
-      checkNullPointer(pointer);
-      return pointer;
-    }
-  }
-  static native boolean cudnnDestroyWorkspace(@Cast(value = "void*") final Pointer pointer);
-  static void destroyWorkspace(final Pointer pointer) {
-    checkNullPointer(pointer);
-    if (!cudnnDestroyWorkspace(pointer)) {
-      throw new RuntimeException("Destroying workspace is failed");
-    }
-  }
-
   @Cast(value = "size_t") static native long getConvForwardWorkspaceSizeInBytes(
       @Cast(value = "cudnnTensorDescriptor_t*") final Pointer xDesc,
       @Cast(value = "cudnnFilterDescriptor_t*") final Pointer wDesc,

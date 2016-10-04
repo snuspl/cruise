@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn.layers.cuda;
 
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.JavaCuda;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
@@ -126,7 +127,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     this.backwardFilterWorkspaceSize = JavaCudnn.getConvBackwardFilterWorkspaceSizeInBytes(
         inputDesc, activationDesc, convDesc, filterDesc, backwardFilterAlgo);
     setMaxWorkspaceSize(backwardFilterWorkspaceSize);
-    this.workspace = JavaCudnn.getWorkspace(maxWorkspaceSize);
+    this.workspace = JavaCuda.deviceMalloc(maxWorkspaceSize);
   }
 
   private void setMaxWorkspaceSize(final long workspaceSize) {
@@ -217,6 +218,6 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     JavaCudnn.destroyAlgo(forwardAlgo);
     JavaCudnn.destroyAlgo(backwardDataAlgo);
     JavaCudnn.destroyAlgo(backwardFilterAlgo);
-    JavaCudnn.destroyWorkspace(workspace);
+    JavaCuda.deviceFree(workspace);
   }
 }
