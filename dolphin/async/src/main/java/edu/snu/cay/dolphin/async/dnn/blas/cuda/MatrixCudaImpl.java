@@ -41,17 +41,11 @@ public final class MatrixCudaImpl implements Matrix {
     this.columns = newColumns;
     this.length = newRows * newColumns;
     this.devPtr = new FloatPointer(JavaCuda.deviceMalloc(FLOAT_SIZE * length));
-    if (devPtr.isNull()) {
-      throw new RuntimeException("Failed to allocate GPU memory");
-    }
   }
 
   private void initMultiplier() {
     this.multiplierLength = Math.max(rows, columns);
     this.multiplierPtr = new FloatPointer(JavaCuda.deviceMalloc(FLOAT_SIZE * multiplierLength));
-    if (multiplierPtr.isNull()) {
-      throw new RuntimeException("Failed to allocate GPU memory for a multipler");
-    }
     if (!JavaCuda.set(multiplierPtr, 1.0f, multiplierLength)) {
       throw new RuntimeException("Failed to set multiplier memory");
     }

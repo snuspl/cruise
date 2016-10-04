@@ -46,8 +46,8 @@ public class JavaCuda extends Pointer {
       return new Pointer();
     }
 
-    final Pointer pointer = cudaDeviceMalloc(size);
-    if (pointer == null) {
+    final Pointer pointer = new Pointer(cudaDeviceMalloc(size));
+    if (pointer.isNull()) {
       throw new RuntimeException("Allocation cuda device memory is failed");
     }
     return pointer;
