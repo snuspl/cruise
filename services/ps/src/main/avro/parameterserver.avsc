@@ -199,7 +199,7 @@
 
 /**
  * A message containing parameter worker metrics.
- * Parameter worker metrics are collected and sent in worker's epoch unit.
+ * Parameter worker metrics are collected and sent in worker's mini-batch unit.
  */
 {
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
@@ -210,16 +210,19 @@
     // number of threads used for push/pull requests
     {"name": "numThreads", "type": "int", "default": 0},
 
-    // total push time for this epoch (seconds) : time between a push request's dequeue and network send
+    // total push time for this mini-batch (seconds) : time between a push request's dequeue and network send
     {"name": "totalPushTimeSec", "type": "double", "default": 0.0},
 
-    // total pull time for this epoch (seconds) : time between a pull request's dequeue and client notify
+    // total pull time for this mini-batch (seconds) : time between a pull request's dequeue and client notify
     {"name": "totalPullTimeSec", "type": "double", "default": 0.0},
 
-    // total waiting time for this epoch (seconds) : time spent in queue for a request
-    {"name": "totalWaitingTimeSec", "type": "double", "default": 0.0},
+    // total pull waiting time for this mini-batch (seconds) : time spent in queue for a pull request
+    {"name": "totalPullWaitTimeSec", "type": "double", "default": 0.0},
 
-    // total network time for this epoch (seconds) : time spent in the network for a pull request/reply transmission
+    // total push waiting time for this mini-batch (seconds) : time spent in queue for a push request
+    {"name": "totalPushWaitTimeSec", "type": "double", "default": 0.0},
+
+    // total network time for this mini-batch (seconds) : time spent in the network for a pull request/reply transmission
     {"name": "totalNetworkTimeSec", "type": "double", "default": 0.0},
 
     // number of push requests processed
@@ -228,8 +231,11 @@
     // number of pull requests processed
     {"name": "totalPullCount", "type": "int", "default": 0},
 
-    // number of requests waited/put in queue
-    {"name": "totalWaitingStatCount", "type": "int", "default": 0},
+    // number of pull requests waited/put in queue
+    {"name": "totalPullWaitStatCount", "type": "int", "default": 0},
+
+    // number of push requests waited/put in queue
+    {"name": "totalPushWaitStatCount", "type": "int", "default": 0},
 
     // number of pull request/reply pairs processed
     {"name": "totalNetworkStatCount", "type": "int", "default": 0},
