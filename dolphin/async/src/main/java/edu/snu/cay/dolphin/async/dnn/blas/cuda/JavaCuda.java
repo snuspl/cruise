@@ -57,7 +57,7 @@ public class JavaCuda extends Pointer {
   public static native boolean cudaDeviceFree(final Pointer devPtr);
 
   public static void deviceFree(final Pointer pointer) {
-    boolean success = cudaDeviceFree(pointer);
+    final boolean success = cudaDeviceFree(pointer);
 
     if (!success) {
       throw new RuntimeException("Cuda device memory is failed to free");
