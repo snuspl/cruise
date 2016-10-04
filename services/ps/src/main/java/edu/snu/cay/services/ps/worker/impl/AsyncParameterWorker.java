@@ -128,7 +128,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final Statistics[] pullStats;
   private final Statistics[] pushStats;
   private final Statistics[] networkStats;
-  private final Statistics[] waitingStats;
+  private final Statistics[] pullWaitStats;
+  private final Statistics[] pushWaitStats;
   private final Statistics[] sentBytesStats;
   private final Statistics[] receivedBytesStats;
   private final Ticker ticker = Ticker.systemTicker();
@@ -159,7 +160,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     this.pullStats = Statistics.newInstances(numWorkerThreads);
     this.pushStats = Statistics.newInstances(numWorkerThreads);
     this.networkStats = Statistics.newInstances(numWorkerThreads);
-    this.waitingStats = Statistics.newInstances(numWorkerThreads);
+    this.pullWaitStats = Statistics.newInstances(numWorkerThreads);
+    this.pushWaitStats = Statistics.newInstances(numWorkerThreads);
     this.sentBytesStats = Statistics.newInstances(numWorkerThreads);
     this.receivedBytesStats = Statistics.newInstances(numWorkerThreads);
     // numWorkerThreads + 1 for retry thread
@@ -185,8 +187,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     LOG.log(Level.INFO, "Initializing {0} PW threads", numWorkerThreads);
     final WorkerThread[] initialized = (WorkerThread[]) Array.newInstance(WorkerThread.class, numWorkerThreads);
     for (int i = 0; i < numWorkerThreads; i++) {
-      initialized[i] = new WorkerThread(queueSize, pullStats[i], pushStats[i], networkStats[i], waitingStats[i],
-          sentBytesStats[i], receivedBytesStats[i]);
+      initialized[i] = new WorkerThread(queueSize, pullStats[i], pushStats[i], networkStats[i],
+          pullWaitStats[i], pushWaitStats[i], sentBytesStats[i], receivedBytesStats[i]);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -542,7 +544,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     final Pair<Integer, Double> totalPullStat = summarizeAndResetStats(pullStats);
     final Pair<Integer, Double> totalPushStat = summarizeAndResetStats(pushStats);
     final Pair<Integer, Double> totalNetworkStat = summarizeAndResetStats(networkStats);
-    final Pair<Integer, Double> totalWaitingStat = summarizeAndResetStats(waitingStats);
+    final Pair<Integer, Double> totalPullWaitStat = summarizeAndResetStats(pullWaitStats);
+    final Pair<Integer, Double> totalPushWaitStat = summarizeAndResetStats(pushWaitStats);
     final Pair<Integer, Double> totalSentBytesStat = summarizeAndResetStats(sentBytesStats);
     final Pair<Integer, Double> totalReceivedBytesStat = summarizeAndResetStats(receivedBytesStats);
 
@@ -554,8 +557,10 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         .setTotalPushTimeSec(totalPushStat.getRight() / 1e9D)
         .setTotalNetworkStatCount(totalNetworkStat.getLeft())
         .setTotalNetworkTimeSec(totalNetworkStat.getRight() / 1e9D)
-        .setTotalWaitingStatCount(totalWaitingStat.getLeft())
-        .setTotalWaitingTimeSec(totalWaitingStat.getRight() / 1e9D)
+        .setTotalPullWaitStatCount(totalPullWaitStat.getLeft())
+        .setTotalPullWaitTimeSec(totalPullWaitStat.getRight() / 1e9D)
+        .setTotalPushWaitStatCount(totalPushWaitStat.getLeft())
+        .setTotalPushWaitTimeSec(totalPushWaitStat.getRight() / 1e9D)
         .setTotalSentBytes(totalSentBytesStat.getRight().longValue())
         .setTotalSentBytesStatCount(totalSentBytesStat.getLeft())
         .setTotalReceivedBytes(totalReceivedBytesStat.getRight().longValue())
@@ -633,7 +638,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         }
 
         final long pushStartTime = ticker.read();
-        workerThread.waitingStat.put(pushStartTime - enqueueTime);
+        workerThread.pushWaitStat.put(pushStartTime - enqueueTime);
 
         final int numSentBytes = sendPushMsg(encodedKey, preValue);
         workerThread.sentBytesStat.put(numSentBytes);
@@ -697,7 +702,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
               parentTraceInfo)) {
 
             this.pullStartTime = ticker.read();
-            workerThread.waitingStat.put(pullStartTime - enqueueTime);
+            workerThread.pullWaitStat.put(pullStartTime - enqueueTime);
 
             pullRequest = new PullRequest(workerThread, encodedKey, this,
                 TraceInfo.fromSpan(startPullRequestScope.getSpan()));
@@ -711,7 +716,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
               " key: %s, request_id: %d, pending_ops: %d",
               encodedKey.getKey(), pullRequest.requestId, workerThread.opsPending()), parentTraceInfo)) {
             this.pullStartTime = ticker.read();
-            workerThread.waitingStat.put(pullStartTime - enqueueTime);
+            workerThread.pullWaitStat.put(pullStartTime - enqueueTime);
 
             pullRequest.addPendingOp(this);
           }
@@ -983,7 +988,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     private final Statistics pullStat;
     private final Statistics pushStat;
     private final Statistics networkStat;
-    private final Statistics waitingStat;
+    private final Statistics pullWaitStat;
+    private final Statistics pushWaitStat;
     private final Statistics sentBytesStat;
     private final Statistics receivedBytesStat;
 
@@ -991,7 +997,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
                  final Statistics pullStat,
                  final Statistics pushStat,
                  final Statistics networkStat,
-                 final Statistics waitingStat,
+                 final Statistics pullWaitStat,
+                 final Statistics pushWaitStat,
                  final Statistics sentBytesStat,
                  final Statistics receivedBytesStat) {
       this.drainSize = queueSize / 10;
@@ -1005,7 +1012,8 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       this.pullStat = pullStat;
       this.pushStat = pushStat;
       this.networkStat = networkStat;
-      this.waitingStat = waitingStat;
+      this.pullWaitStat = pullWaitStat;
+      this.pushWaitStat = pushWaitStat;
       this.sentBytesStat = sentBytesStat;
       this.receivedBytesStat = receivedBytesStat;
     }
