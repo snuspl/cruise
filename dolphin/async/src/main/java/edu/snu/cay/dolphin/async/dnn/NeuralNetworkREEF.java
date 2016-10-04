@@ -148,9 +148,11 @@ public final class NeuralNetworkREEF {
     final NeuralNetworkConfigurationBuilder neuralNetConfBuilder =
         NeuralNetworkConfigurationBuilder.newConfigurationBuilder();
 
+    final boolean cpuOnly = neuralNetConf.getDeviceMode() == NeuralNetworkConfiguration.DeviceMode.CPU;
     neuralNetConfBuilder.setStepSize(neuralNetConf.getStepSize())
         .setInputShape(neuralNetConf.getInputShape().getDimList())
-        .setBatchSize(neuralNetConf.getBatchSize());
+        .setBatchSize(neuralNetConf.getBatchSize())
+        .setCpuOnly(cpuOnly);
 
     if (neuralNetConf.hasRandomSeed()) {
       neuralNetConfBuilder.setRandomSeed(neuralNetConf.getRandomSeed());
@@ -158,7 +160,7 @@ public final class NeuralNetworkREEF {
 
     // Adds the configuration of each layer.
     for (final LayerConfiguration layerConf : neuralNetConf.getLayerList()) {
-      neuralNetConfBuilder.addLayerConfiguration(createLayerConfiguration(layerConf));
+      neuralNetConfBuilder.addLayerConfiguration(createLayerConfiguration(layerConf, cpuOnly));
     }
 
     return neuralNetConfBuilder.build();
@@ -190,31 +192,32 @@ public final class NeuralNetworkREEF {
   /**
    * Creates the layer configuration from the given protocol buffer layer configuration message.
    * @param layerConf the protocol buffer layer configuration message.
+   * @param cpuOnly the device option of neural network.
    * @return the layer configuration built from the protocol buffer layer configuration message.
    */
-  private static Configuration createLayerConfiguration(final LayerConfiguration layerConf) {
+  private static Configuration createLayerConfiguration(final LayerConfiguration layerConf, final boolean cpuOnly) {
     switch (layerConf.getType().toLowerCase()) {
     case "fullyconnected":
       return FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
-          .fromProtoConfiguration(layerConf).build();
+          .fromProtoConfiguration(layerConf).setCpuOnly(cpuOnly).build();
     case "activation":
       return ActivationLayerConfigurationBuilder.newConfigurationBuilder()
-          .fromProtoConfiguration(layerConf).build();
+          .fromProtoConfiguration(layerConf).setCpuOnly(cpuOnly).build();
     case "activationwithloss":
       return ActivationWithLossLayerConfigurationBuilder.newConfigurationBuilder()
-          .fromProtoConfiguration(layerConf).build();
+          .fromProtoConfiguration(layerConf).setCpuOnly(cpuOnly).build();
     case "pooling":
       return PoolingLayerConfigurationBuilder.newConfigurationBuilder()
-          .fromProtoConfiguration(layerConf).build();
+          .fromProtoConfiguration(layerConf).setCpuOnly(cpuOnly).build();
     case "convolutional":
       return ConvolutionalLayerConfigurationBuilder.newConfigurationBuilder()
-          .fromProtoConfiguration(layerConf).build();
+          .fromProtoConfiguration(layerConf).setCpuOnly(cpuOnly).build();
     case "dropout":
       return  DropoutLayerConfigurationBuilder.newConfigurationBuilder()
           .fromProtoConfiguration(layerConf).build();
     case "lrn":
       return LRNLayerConfigurationBuilder.newConfigurationBuilder()
-          .fromProtoConfiguration(layerConf).build();
+          .fromProtoConfiguration(layerConf).setCpuOnly(cpuOnly).build();
     default:
       throw new IllegalArgumentException("Illegal layer type: " + layerConf.getType());
     }
