@@ -43,7 +43,6 @@ public final class LRNLayer extends LayerBase {
   private final MatrixFactory matrixFactory;
   private Matrix scale;
   private Matrix layerError;
-  private final Matrix outputI;
 
   /**
    * @param index the index of this layer
@@ -71,6 +70,7 @@ public final class LRNLayer extends LayerBase {
     this.paddingSize = (localSize - 1) / 2;
     this.matrixFactory = matrixFactory;
     this.scale = matrixFactory.create(0, 0);
+    this.layerError = matrixFactory.create(0, 0);
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -79,7 +79,6 @@ public final class LRNLayer extends LayerBase {
       this.inputChannel = getInputShape()[0];
       this.inputSize = getInputShape()[1] * getInputShape()[2];
     }
-    this.outputI = matrixFactory.create(inputSize, inputChannel);
   }
 
   @Override
@@ -135,6 +134,7 @@ public final class LRNLayer extends LayerBase {
    * @param n the index indicating which column of output is being computed
    */
   private void computeLocalSum(final Matrix output, final Matrix padded, final int n) {
+    final Matrix outputI = matrixFactory.create(inputSize, inputChannel);
     final Matrix paddedI = padded.reshape(inputSize, inputChannel + paddingSize * 2);
     // first channel
     for (int r = 0; r < outputI.getRows(); ++r) {
