@@ -38,6 +38,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
 
   private final String lossFunction;
   private MatrixFactory matrixFactory;
+  private Matrix output;
 
   private Pointer inputDesc;
   private Pointer activationDesc;
@@ -61,6 +62,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
     super(index, inputShape);
     this.lossFunction = lossFunction;
     this.matrixFactory = matrixFactory;
+    this.output = matrixFactory.create(0, 0);
 
     final int inputChannel;
     final int inputHeight;
@@ -96,7 +98,12 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
 
   @Override
   public Matrix feedForward(final Matrix input) {
-    final Matrix output = matrixFactory.create(input.getRows(), input.getColumns());
+
+    if (!output.hasSameSize(input)) {
+      output.free();
+      output = matrixFactory.create(input.getRows(), input.getColumns());
+    }
+
     if (JavaCudnn.activWithLossFeedForward(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;

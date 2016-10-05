@@ -42,6 +42,10 @@ public final class LRNLayer extends LayerBase {
 
   private final MatrixFactory matrixFactory;
   private Matrix scale;
+  private Matrix paddedImgForForward;
+  private Matrix paddedImgForBackward;
+  private Matrix layerError;
+  private final Matrix outputI;
 
   /**
    * @param index the index of this layer
@@ -68,6 +72,9 @@ public final class LRNLayer extends LayerBase {
     this.k = k;
     this.paddingSize = (localSize - 1) / 2;
     this.matrixFactory = matrixFactory;
+    this.scale = matrixFactory.create(0, 0);
+    this.paddedImgForForward = matrixFactory.create(0, 0);
+    this.paddedImgForBackward = matrixFactory.create(0, 0);
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -76,6 +83,7 @@ public final class LRNLayer extends LayerBase {
       this.inputChannel = getInputShape()[0];
       this.inputSize = getInputShape()[1] * getInputShape()[2];
     }
+    this.outputI = matrixFactory.create(inputSize, inputChannel);
   }
 
   @Override
@@ -105,10 +113,14 @@ public final class LRNLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    this.scale = matrixFactory.create(input.getRows(), input.getColumns());
+    if (!scale.hasSameSize(input)) {
+      scale = matrixFactory.create(input.getRows(), input.getColumns());
+      paddedImgForForward = matrixFactory.create(input.getRows() + (paddingSize * 2 * inputSize), input.getColumns());
+    }
 
+    paddedImgForForward.fill(0);
     for (int n = 0; n < input.getColumns(); ++n) {
-      final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
+      final Matrix paddedImg = paddedImgForForward.getColumn(n);
       for (int i = 0; i < input.getRows(); ++i) {
         // input ^ 2
         paddedImg.put(i + paddingSize * inputSize, input.get(i, n) * input.get(i, n));
@@ -129,7 +141,6 @@ public final class LRNLayer extends LayerBase {
    * @param n the index indicating which column of output is being computed
    */
   private void computeLocalSum(final Matrix output, final Matrix padded, final int n) {
-    final Matrix outputI = matrixFactory.create(inputSize, inputChannel);
     final Matrix paddedI = padded.reshape(inputSize, inputChannel + paddingSize * 2);
     // first channel
     for (int r = 0; r < outputI.getRows(); ++r) {
@@ -155,7 +166,7 @@ public final class LRNLayer extends LayerBase {
    *
    * be_i: nextError where kernel i is applied
    * b_i: activation where kernel i is applied
-   * ae_i: error computed where kernel i is applied
+   * ae_i: layerError computed where kernel i is applied
    * a_i: input where kernel i is applied
    *
    * @param input the input values for this layer
@@ -167,21 +178,29 @@ public final class LRNLayer extends LayerBase {
   public Matrix backPropagate(final Matrix input,
                               final Matrix activation,
                               final Matrix nextError) {
-    final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
+    if (!layerError.hasSameSize(input)) {
+      layerError.free();
+      layerError = matrixFactory.create(input.getRows(), input.getColumns());
+    }
     final float scalarMultiplier = -2 * alpha * beta / localSize;
 
+    if (paddedImgForBackward.getRows() != input.getRows() + (paddingSize * 2 * inputSize) ||
+        paddedImgForBackward.getColumns() != nextError.getColumns()) {
+      paddedImgForBackward = matrixFactory.create(input.getRows() + (paddingSize * 2 * inputSize), input.getColumns());
+    }
+    paddedImgForBackward.fill(0);
     for (int n = 0; n < nextError.getColumns(); ++n) {
-      final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
+      final Matrix paddedImg = paddedImgForBackward.getColumn(n);
       for (int i = 0; i < nextError.getRows(); ++i) {
         // nextError * activation / scale
         paddedImg.put(i + paddingSize * inputSize,
             nextError.get(i, n) * activation.get(i, n) / scale.get(i, n) * scalarMultiplier);
       }
-      computeLocalSum(error, paddedImg, n);
+      computeLocalSum(layerError, paddedImg, n);
     }
 
-    error.muli(input);
-    return error.addi(MatrixFunctions.powi(scale, -beta).muli(nextError));
+    layerError.muli(input);
+    return layerError.addi(MatrixFunctions.powi(scale, -beta).muli(nextError));
   }
 
   /** {@inheritDoc} */

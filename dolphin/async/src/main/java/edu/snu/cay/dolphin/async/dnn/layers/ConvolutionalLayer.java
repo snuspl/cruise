@@ -49,6 +49,9 @@ public final class ConvolutionalLayer extends LayerBase {
   private final int inputWidth;
   private final int inputChannel;
   private final MatrixFactory matrixFactory;
+  private Matrix output;
+  private Matrix layerError;
+  private final Matrix weightGradient;
 
   /**
    * @param index the index of this layer
@@ -83,6 +86,8 @@ public final class ConvolutionalLayer extends LayerBase {
     this.kernelWidth = kernelWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
+    this.output = matrixFactory.create(0, 0);
+    this.layerError = matrixFactory.create(0, 0);
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -93,6 +98,8 @@ public final class ConvolutionalLayer extends LayerBase {
       this.inputHeight = getInputShape()[1];
       this.inputWidth = getInputShape()[2];
     }
+
+    this.weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
   }
 
   @Override
@@ -184,7 +191,11 @@ public final class ConvolutionalLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    final Matrix output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+
+    if (output.getColumns() != input.getColumns()) {
+      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+    }
+
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix newValue = im2row(n, input).mmul(getLayerParameter().getWeightParam());
       output.putColumn(n, newValue.reshape(NeuralNetworkUtils.getShapeLength(outputShape), 1));
@@ -202,20 +213,23 @@ public final class ConvolutionalLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-    final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
+
+    if (!layerError.hasSameSize(input)) {
+      layerError = matrixFactory.create(input.getRows(), input.getColumns());
+    }
+
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix singleNextError = nextError.getColumn(n).reshape(outputShape[1] * outputShape[2], outputShape[0]);
       final Matrix row = singleNextError.mmul(getLayerParameter().getWeightParam().transpose());
       final Matrix im = row2im(row);
-      error.putColumn(n, im);
+      layerError.putColumn(n, im);
     }
-    return error;
+    return layerError;
   }
 
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
-    final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix row = im2row(n, input);
       weightGradient.addi(row.transpose().mmul(error.getColumn(n)

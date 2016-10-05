@@ -449,6 +449,11 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
+  public boolean hasSameSize(final Matrix matrix) {
+    return getRows() == matrix.getRows() && getColumns() == matrix.getColumns();
+  }
+
+  @Override
   public boolean compare(final Matrix matrix, final float tolerance) {
     if (matrix instanceof MatrixJBLASImpl) {
       return jblasMatrix.compare(((MatrixJBLASImpl) matrix).jblasMatrix, tolerance);

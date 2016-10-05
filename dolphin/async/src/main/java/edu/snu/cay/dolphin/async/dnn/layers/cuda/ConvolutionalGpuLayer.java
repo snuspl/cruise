@@ -41,10 +41,13 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   private final int inputChannel;
   private final int inputHeight;
   private final int inputWidth;
-  private final int kernelHeight;
-  private final int kernelWidth;
   private final int[] outputShape;
   private MatrixFactory matrixFactory;
+  private Matrix output;
+  private Matrix layerError;
+  private final Matrix weightGradient;
+  private final Matrix biasGradient;
+
 
   private Pointer inputDesc;
   private Pointer activationDesc;
@@ -90,10 +93,10 @@ public final class ConvolutionalGpuLayer extends LayerBase {
                                 final LayerParameterInitializer layerParameterInitializer,
                                 final MatrixFactory matrixFactory) {
     super(index, inputShape);
-    this.kernelHeight = kernelHeight;
-    this.kernelWidth = kernelWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
+    this.output = matrixFactory.create(0, 0);
+    this.layerError = matrixFactory.create(0, 0);
     this.maxWorkspaceSize = 0;
 
     if (getInputShape().length == 2) {
@@ -105,6 +108,9 @@ public final class ConvolutionalGpuLayer extends LayerBase {
       this.inputHeight = getInputShape()[1];
       this.inputWidth = getInputShape()[2];
     }
+
+    this.weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
+    this.biasGradient = matrixFactory.create(outputShape[0], 1);
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
@@ -153,7 +159,12 @@ public final class ConvolutionalGpuLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    final Matrix output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+
+    if (output.getColumns() != input.getColumns()) {
+      output.free();
+      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+    }
+
     if (JavaCudnn.convFeedForward(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         filterDesc, ((MatrixCudaImpl) getLayerParameter().getWeightParam()).getDevicePointer(),
         biasDesc, ((MatrixCudaImpl) getLayerParameter().getBiasParam()).getDevicePointer(),
@@ -174,12 +185,17 @@ public final class ConvolutionalGpuLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-    final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
+
+    if (!layerError.hasSameSize(input)) {
+      layerError.free();
+      layerError = matrixFactory.create(input.getRows(), input.getColumns());
+    }
+
     if (JavaCudnn.convBackPropagate(
         filterDesc, ((MatrixCudaImpl) getLayerParameter().getWeightParam()).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) nextError).getDevicePointer(), convDesc, backwardDataAlgo, workspace,
-        backwardDataWorkspaceSize, inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
-      return error;
+        backwardDataWorkspaceSize, inputDesc, ((MatrixCudaImpl) layerError).getDevicePointer())) {
+      return layerError;
     } else {
       throw new RuntimeException("Failed to backPropagate");
     }
@@ -188,13 +204,11 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
-    final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
     if (!JavaCudnn.convGenWeightGradient(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) error).getDevicePointer(), convDesc, backwardFilterAlgo, workspace,
         backwardFilterWorkspaceSize, filterDesc, ((MatrixCudaImpl) weightGradient).getDevicePointer())) {
       throw new RuntimeException("Failed to generateParameterGradient for weight");
     }
-    final Matrix biasGradient = matrixFactory.create(outputShape[0], 1);
     if (JavaCudnn.convGenBiasGradient(activationDesc, ((MatrixCudaImpl) error).getDevicePointer(),
         biasDesc, ((MatrixCudaImpl) biasGradient).getDevicePointer())) {
       return LayerParameter.newBuilder()

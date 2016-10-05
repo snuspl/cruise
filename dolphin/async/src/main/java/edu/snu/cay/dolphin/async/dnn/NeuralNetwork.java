@@ -32,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import static edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils.createOutputMatrix;
+import static edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils.setOutputMatrix;
 import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.*;
 
 /**
@@ -73,6 +73,8 @@ public final class NeuralNetwork {
    */
   private final List<Integer> learnableLayerIndices;
 
+  private Matrix labelMatrix;
+
   /**
    * @param configurationSerializer the serializer to deserialize Tang configurations for layers
    * @param serializedLayerConfSets the set of Tang configurations used to inject layer instances
@@ -97,6 +99,7 @@ public final class NeuralNetwork {
     this.emptyMatrix = null;
     this.emptyLayerParam = LayerParameter.newEmptyInstance();
     this.learnableLayerIndices = getLearnableLayerIndices();
+    this.labelMatrix = matrixFactory.create(0, 0);
   }
 
   /**
@@ -147,8 +150,13 @@ public final class NeuralNetwork {
    * @param labels the label array.
    */
   public void train(final Matrix input, final int[] labels) {
-    final Matrix labelMatrix = createOutputMatrix(
-        matrixFactory, labels, getShapeLength(layers[layers.length - 1].getOutputShape()));
+    final int labelRows = getShapeLength(layers[layers.length - 1].getOutputShape());
+    final int labelCols = labels.length;
+    if (labelMatrix.getRows() != labelRows || labelMatrix.getColumns() != labelCols) {
+      labelMatrix.free();
+      labelMatrix = matrixFactory.create(labelRows, labelCols);
+    }
+    setOutputMatrix(labelMatrix, labels, labelRows);
     train(input, labelMatrix);
   }
 

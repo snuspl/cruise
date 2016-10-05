@@ -41,6 +41,8 @@ public final class ActivationGpuLayer extends LayerBase {
   private Pointer activFuncDesc;
 
   private MatrixFactory matrixFactory;
+  private Matrix output;
+  private Matrix layerError;
 
   /**
    * @param index the index of this layer
@@ -57,6 +59,8 @@ public final class ActivationGpuLayer extends LayerBase {
                              final MatrixFactory matrixFactory) {
     super(index, inputShape);
     this.matrixFactory = matrixFactory;
+    this.output = matrixFactory.create(0, 0);
+    this.layerError = matrixFactory.create(0, 0);
 
     final int inputChannel;
     final int inputHeight;
@@ -108,7 +112,12 @@ public final class ActivationGpuLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    final Matrix output = matrixFactory.create(input.getRows(), input.getColumns());
+
+    if (!output.hasSameSize(input)) {
+      output.free();
+      output = matrixFactory.create(input.getRows(), input.getColumns());
+    }
+
     if (JavaCudnn.activFeedForward(activFuncDesc, inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
@@ -126,12 +135,17 @@ public final class ActivationGpuLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-    final Matrix error = matrixFactory.create(nextError.getRows(), nextError.getColumns());
+
+    if (!layerError.hasSameSize(nextError)) {
+      layerError.free();
+      layerError = matrixFactory.create(nextError.getRows(), nextError.getColumns());
+    }
+
     if (JavaCudnn.activBackPropagate(activFuncDesc, activationDesc, ((MatrixCudaImpl) activation).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) nextError).getDevicePointer(),
         inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
-        inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
-      return error;
+        inputDesc, ((MatrixCudaImpl) layerError).getDevicePointer())) {
+      return layerError;
     } else {
       throw new RuntimeException("Failed to backPropagate");
     }

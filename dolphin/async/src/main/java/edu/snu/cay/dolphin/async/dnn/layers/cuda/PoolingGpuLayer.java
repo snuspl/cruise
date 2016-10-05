@@ -41,6 +41,8 @@ public final class PoolingGpuLayer extends LayerBase {
 
   private final int[] outputShape;
   private final MatrixFactory matrixFactory;
+  private Matrix output;
+  private Matrix layerError;
   private final char poolingType;
 
   private Pointer inputDesc;
@@ -99,6 +101,8 @@ public final class PoolingGpuLayer extends LayerBase {
       this.poolingType = 'A';
     }
     this.matrixFactory = matrixFactory;
+    this.output = matrixFactory.create(0, 0);
+    this.layerError = matrixFactory.create(0, 0);
 
     if (getInputShape().length == 2) {
       inputChannel = 1;
@@ -136,7 +140,12 @@ public final class PoolingGpuLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    final Matrix output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+
+    if (output.getColumns() != input.getColumns()) {
+      output.free();
+      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+    }
+
     if (JavaCudnn.poolFeedForward(poolDesc, inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
@@ -155,11 +164,17 @@ public final class PoolingGpuLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-    final Matrix error = matrixFactory.zeros(input.getRows(), input.getColumns());
+
+    if (!layerError.hasSameSize(input)) {
+      layerError.free();
+      layerError = matrixFactory.create(input.getRows(), input.getColumns());
+    }
+    layerError.fill(0);
+
     if (JavaCudnn.poolBackPropagate(poolDesc, activationDesc, ((MatrixCudaImpl) activation).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) nextError).getDevicePointer(), inputDesc,
-        ((MatrixCudaImpl) input).getDevicePointer(), inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
-      return error;
+        ((MatrixCudaImpl) input).getDevicePointer(), inputDesc, ((MatrixCudaImpl) layerError).getDevicePointer())) {
+      return layerError;
     } else {
       throw new RuntimeException("Failed to backPropagate");
     }

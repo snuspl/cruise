@@ -390,6 +390,13 @@ public interface Matrix {
   float sum();
 
   /**
+   * Compares with the size of the given matrix.
+   * @param matrix the matrix to compare.
+   * @return true if and only if the given matrix has the same size.
+   */
+  boolean hasSameSize(Matrix matrix);
+
+  /**
    * Compares with the given matrix.
    *
    * Returns true if and only if the given matrix has the same size
