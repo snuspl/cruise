@@ -22,7 +22,7 @@ import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.common.Statistics;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
-import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
@@ -30,6 +30,7 @@ import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.util.Optional;
 import org.htrace.Span;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
@@ -47,11 +48,10 @@ import java.util.logging.Logger;
  * An implementation of Parameter Server, whose partitions can dynamically move in and out.
  * The parameters are stored in MemoryStore, in most cases the local MemoryStore in the same Evaluator.
  * If {@link edu.snu.cay.services.ps.common.resolver.DynamicServerResolver} has not reflected the
- * up-to-date result of data migration, then PS will receive the requests for the block which has moved out to
- * another MemoryStore. Even in such case, the EM guarantees to redirect the request to the MemoryStore that
- * currently has the data block.
+ * up-to-date result of data migration, then PS will receive the requests for keys that have moved out to
+ * another MemoryStore. In such case, dynamic PS redirects operation to a target server that owns the key.
  *
- * Other parts in this implementation workS almost same as {@code StaticParameterServer}.
+ * Other parts in this implementation works almost same as {@code StaticParameterServer}.
  */
 public final class DynamicParameterServer<K, P, V> implements ParameterServer<K, P, V> {
   private static final Logger LOG = Logger.getLogger(DynamicParameterServer.class.getName());
@@ -84,7 +84,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   /**
    * Sender that sends pull responses.
    */
-  private final ServerSideReplySender<K, P, V> sender;
+  private final ServerSideMsgSender<K, P, V> msgSender;
 
   /**
    * MemoryStore instance to access the data.
@@ -127,11 +127,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private final Statistics[] pullWaitStats;
 
   /**
-   * Bookkeeping start time of the processing threads.
-   */
-  private long[] startTimes;
-
-  /**
    * Ticker to track the time.
    */
   private final Ticker ticker = Ticker.systemTicker();
@@ -161,7 +156,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
                                  @Parameter(ServerMetricsWindowMs.class) final long metricsWindowMs,
                                  final MetricsMsgSender<ServerMetrics> metricsMsgSender,
                                  final ParameterUpdater<K, P, V> parameterUpdater,
-                                 final ServerSideReplySender<K, P, V> sender) {
+                                 final ServerSideMsgSender<K, P, V> msgSender) {
     this.memoryStore = memoryStore;
     this.blockResolver = blockResolver;
     this.queueSize = queueSize;
@@ -169,17 +164,12 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     this.numThreads = numThreads;
     this.threads = initThreads();
     this.parameterUpdater = parameterUpdater;
-    this.sender = sender;
+    this.msgSender = msgSender;
     this.threadResolver = new ThreadResolver(numThreads);
     this.pushStats = Statistics.newInstances(numThreads);
     this.pullStats = Statistics.newInstances(numThreads);
     this.pushWaitStats = Statistics.newInstances(numThreads);
     this.pullWaitStats = Statistics.newInstances(numThreads);
-    this.startTimes = new long[numThreads];
-    final long currentTime = ticker.read();
-    for (int i = 0; i < numThreads; ++i) {
-      this.startTimes[i] = currentTime;
-    }
     this.metricsMsgSender = metricsMsgSender;
     this.metricsWindowMs = metricsWindowMs;
 
@@ -203,17 +193,17 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   }
 
   @Override
-  public void push(final K key, final P preValue, final String srcId, final int keyHash) {
+  public void push(final K key, final P preValue, final int keyHash) {
     final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
     final int blockId = blockResolver.resolveBlock(hashedKey);
     final int threadId = threadResolver.resolveThread(blockId);
     LOG.log(Level.FINEST, "Enqueue push request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
         new Object[] {key, blockId, threadId, keyHash});
-    threads.get(threadId).enqueue(new PushOp(hashedKey, preValue, srcId, threadId));
+    threads.get(threadId).enqueue(new PushOp(hashedKey, preValue, threadId));
   }
 
   @Override
-  public void pull(final K key, final String srcId, final int keyHash, final int requestId,
+  public void pull(final K key, final String requesterId, final int keyHash, final int requestId,
                    @Nullable final TraceInfo traceInfo) {
     // We should detach the span when we transit to another thread (local or remote),
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
@@ -226,7 +216,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}, RequestId: {4}",
           new Object[]{key, blockId, threadId, keyHash, requestId});
       detached = pullScope.detach();
-      threads.get(threadId).enqueue(new PullOp(hashedKey, srcId, threadId, requestId, TraceInfo.fromSpan(detached)));
+      threads.get(threadId).enqueue(new PullOp(hashedKey, requesterId, threadId, requestId,
+          TraceInfo.fromSpan(detached)));
     } finally {
       Trace.continueSpan(detached).close();
     }
@@ -339,11 +330,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
      * Method to apply when dequeued by the ServerThread.
      */
     void apply();
-
-    /**
-     * Method to reject the operation when closing the ServerThread.
-     */
-    void reject();
   }
 
   /**
@@ -352,14 +338,12 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private class PushOp implements Op<K, V> {
     private final HashedKey<K> hashedKey;
     private final P preValue;
-    private final String srcId;
     private final long timestamp;
     private final int threadId;
 
-    PushOp(final HashedKey<K> hashedKey, final P preValue, final String srcId, final int threadId) {
+    PushOp(final HashedKey<K> hashedKey, final P preValue, final int threadId) {
       this.hashedKey = hashedKey;
       this.preValue = preValue;
-      this.srcId = srcId;
       this.timestamp = ticker.read();
       this.threadId = threadId;
     }
@@ -369,29 +353,32 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
      */
     @Override
     public void apply() {
-      try {
-        final long waitEndTime = ticker.read();
-        final long waitTime = waitEndTime - timestamp;
-        pushWaitStats[threadId].put(waitTime);
-
-        final V deltaValue = parameterUpdater.process(hashedKey.getKey(), preValue);
-        if (deltaValue == null) {
-          return;
-        }
-
-        memoryStore.update(hashedKey, deltaValue);
-
-        final long processEndTime = ticker.read();
-        final long processingTime = processEndTime - waitEndTime;
-        pushStats[threadId].put(processingTime);
-      } catch (final Exception e) {
-        LOG.log(Level.WARNING, "Exception occurred", e);
+      // redirect to a remote server if the key has been moved out to the server
+      final Optional<String> remoteEvalId = memoryStore.resolveEval(hashedKey);
+      if (remoteEvalId.isPresent()) {
+        redirect(remoteEvalId.get());
+        return;
       }
+
+      final long waitEndTime = ticker.read();
+      final long waitTime = waitEndTime - timestamp;
+      pushWaitStats[threadId].put(waitTime);
+
+      final V deltaValue = parameterUpdater.process(hashedKey.getKey(), preValue);
+      if (deltaValue == null) {
+        return;
+      }
+
+      memoryStore.update(hashedKey, deltaValue);
+
+      final long processEndTime = ticker.read();
+      final long processingTime = processEndTime - waitEndTime;
+      pushStats[threadId].put(processingTime);
     }
 
-    @Override
-    public void reject() {
-      sender.sendPushRejectMsg(srcId, hashedKey.getKey(), preValue);
+    private void redirect(final String serverId) {
+      LOG.log(Level.FINE, "Redirect PushOp. key: {0}, targetServerId: {1}", new Object[]{hashedKey.getKey(), serverId});
+      msgSender.sendPushMsg(serverId, hashedKey.getKey(), preValue);
     }
   }
 
@@ -401,15 +388,15 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private class PullOp implements Op<K, V> {
     private final HashedKey<K> hashedKey;
     private final long timestamp;
-    private final String srcId;
+    private final String requesterId;
     private final int threadId;
     private final int requestId;
     private final TraceInfo parentTraceInfo;
 
-    PullOp(final HashedKey<K> hashedKey, final String srcId, final int threadId, final int requestId,
+    PullOp(final HashedKey<K> hashedKey, final String requesterId, final int threadId, final int requestId,
            final TraceInfo parentTraceInfo) {
       this.hashedKey = hashedKey;
-      this.srcId = srcId;
+      this.requesterId = requesterId;
       this.timestamp = ticker.read();
       this.threadId = threadId;
       this.requestId = requestId;
@@ -417,52 +404,57 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     }
 
     /**
-     * Read from MemoryStore and send the hashedKey-value pair to srcId.
-     * To ensure atomicity, the hashedKey-value pair should be serialized immediately in sender.
+     * Read from MemoryStore and send the hashedKey-value pair to requesterId.
+     * To ensure atomicity, the hashedKey-value pair should be serialized immediately in msgSender.
      */
     @Override
     public void apply() {
       try (final TraceScope pullApplyScope = Trace.startSpan(String.format("process_pull." +
           " key: %s, thread_id: %d, server_pending_ops: %d, request_id: %d",
           hashedKey.getKey(), threadId, opsPending(), requestId), parentTraceInfo)) {
-        try {
-          final long waitEndTime = ticker.read();
-          final long waitTime = waitEndTime - timestamp;
-          pullWaitStats[threadId].put(waitTime);
 
-          final Pair<HashedKey<K>, V> kvPair = memoryStore.get(hashedKey);
-          final V value;
-          if (kvPair == null) {
-            final V initValue = parameterUpdater.initValue(hashedKey.getKey());
-            final Pair<HashedKey<K>, Boolean> result =
-                memoryStore.put(hashedKey, initValue);
-            final boolean isSuccess = result.getSecond();
-            if (!isSuccess) {
-              throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");
-            }
-            value = initValue;
-          } else {
-            value = kvPair.getSecond();
-          }
-
-          // The request's time spent in queue + processing time before sending a reply.
-          final long elapsedTimeInServer = ticker.read() - timestamp;
-          sender.sendPullReplyMsg(srcId, hashedKey.getKey(), value, requestId, elapsedTimeInServer, parentTraceInfo);
-
-          final long processEndTime = ticker.read();
-
-          // Elapsed time since the request has been dequeued.
-          final long actualProcessingTime = processEndTime - waitEndTime;
-          pullStats[threadId].put(actualProcessingTime);
-        } catch (final Exception e) {
-          LOG.log(Level.WARNING, "Exception occurred", e);
+        // redirect to a remote server if the key has been moved out to the server
+        final Optional<String> remoteEvalId = memoryStore.resolveEval(hashedKey);
+        if (remoteEvalId.isPresent()) {
+          redirect(remoteEvalId.get());
+          return;
         }
+
+        final long waitEndTime = ticker.read();
+        final long waitTime = waitEndTime - timestamp;
+        pullWaitStats[threadId].put(waitTime);
+
+        final Pair<HashedKey<K>, V> kvPair = memoryStore.get(hashedKey);
+        final V value;
+        if (kvPair == null) {
+          final V initValue = parameterUpdater.initValue(hashedKey.getKey());
+          final Pair<HashedKey<K>, Boolean> result =
+              memoryStore.put(hashedKey, initValue);
+          final boolean isSuccess = result.getSecond();
+          if (!isSuccess) {
+            throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");
+          }
+          value = initValue;
+        } else {
+          value = kvPair.getSecond();
+        }
+
+        // The request's time spent in queue + processing time before sending a reply.
+        final long elapsedTimeInServer = ticker.read() - timestamp;
+        msgSender.sendPullReplyMsg(requesterId, hashedKey.getKey(), value, requestId, elapsedTimeInServer,
+            parentTraceInfo);
+
+        final long processEndTime = ticker.read();
+
+        // Elapsed time since the request has been dequeued.
+        final long actualProcessingTime = processEndTime - waitEndTime;
+        pullStats[threadId].put(actualProcessingTime);
       }
     }
 
-    @Override
-    public void reject() {
-      sender.sendPullRejectMsg(srcId, hashedKey.getKey(), requestId);
+    private void redirect(final String serverId) {
+      LOG.log(Level.FINE, "Redirect PullOp. key: {0}, targetServerId: {1}", new Object[]{hashedKey.getKey(), serverId});
+      msgSender.sendPullMsg(serverId, requesterId, hashedKey.getKey(), requestId, parentTraceInfo);
     }
   }
 
@@ -538,9 +530,11 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
 
     @Override
     public void run() {
+      // even though startClose() has been invoked,
+      // the thread will be closed after processing all remaining operations within timeout.
       try {
-        while (stateMachine.getCurrentState().equals(STATE_RUNNING)) {
-          // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
+        while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
+          // First, poll and apply.
           try {
             final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (op == null) {
@@ -559,13 +553,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
           localOps.forEach(Op::apply);
           localOps.clear();
         }
-
-        // reject all operations in the queue before exit
-        while (!queue.isEmpty()) {
-          queue.drainTo(localOps, drainSize);
-          localOps.forEach(Op::reject);
-          localOps.clear();
-        }
       } catch (final RuntimeException e) {
         LOG.log(Level.SEVERE, "PS server thread has been down due to RuntimeException", e);
         throw e;
@@ -579,6 +566,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
      * The thread will be closed after sending reject messages for all pending operations.
      */
     void startClose() {
+      LOG.log(Level.INFO, "The number of remaining ops to be redirected: {0}", queue.size() + localOps.size());
       stateMachine.setState(STATE_CLOSING);
     }
 

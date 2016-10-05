@@ -296,6 +296,23 @@ public final class OperationRouter<K> {
 
   /**
    * Resolves an evaluator id for a block id.
+   * Be aware that the result of this method might become wrong by {@link #updateOwnership}.
+   * @param blockId an id of block
+   * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore
+   */
+  public Optional<String> resolveEval(final int blockId) {
+    checkInitialization();
+
+    final int memoryStoreId = blockLocations.get(blockId);
+    if (memoryStoreId == localStoreId) {
+      return Optional.empty();
+    } else {
+      return Optional.of(getEvalId(memoryStoreId));
+    }
+  }
+
+  /**
+   * Resolves an evaluator id for a block id.
    * Note that this method guarantees that the state of routing table does not change
    * before an user unlocks the returned lock.
    * @param blockId an id of block

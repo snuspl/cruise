@@ -722,4 +722,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public int getNumBlocks() {
     return blocks.size();
   }
+
+  @Override
+  public Optional<String> resolveEval(final Long key) {
+    final int blockId = blockResolver.resolveBlock(key);
+    return router.resolveEval(blockId);
+  }
 }

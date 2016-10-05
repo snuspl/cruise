@@ -26,6 +26,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -87,6 +88,11 @@ public final class ActivationGpuLayerTest {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+  }
+
+  @After
+  public void tearDown() {
+    sigmoidActivationLayer.cleanup();
   }
 
   @Test

@@ -480,4 +480,10 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public int getNumBlocks() {
     return blocks.size();
   }
+
+  @Override
+  public Optional<String> resolveEval(final K key) {
+    final int blockId = blockResolver.resolveBlock(key);
+    return router.resolveEval(blockId);
+  }
 }

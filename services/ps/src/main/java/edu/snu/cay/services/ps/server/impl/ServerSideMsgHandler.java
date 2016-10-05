@@ -95,11 +95,11 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
     final TraceInfo traceInfo = HTraceUtils.fromAvro(innerMsg.getTraceInfo());
     switch (innerMsg.getType()) {
     case PushMsg:
-      onPushMsg(msg.getSrcId().toString(), innerMsg.getPushMsg());
+      onPushMsg(innerMsg.getPushMsg());
       break;
 
     case PullMsg:
-      onPullMsg(msg.getSrcId().toString(), innerMsg.getPullMsg(), traceInfo);
+      onPullMsg(innerMsg.getPullMsg(), traceInfo);
       break;
 
     default:
@@ -109,20 +109,21 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
     LOG.exiting(ServerSideMsgHandler.class.getSimpleName(), "onNext");
   }
 
-  private void onPushMsg(final String srcId, final PushMsg pushMsg) {
+  private void onPushMsg(final PushMsg pushMsg) {
     final K key = keyCodec.decode(pushMsg.getKey().array());
     final P preValue = preValueCodec.decode(pushMsg.getPreValue().array());
     final int keyHash = hash(pushMsg.getKey().array());
-    parameterServer.push(key, preValue, srcId, keyHash);
+    parameterServer.push(key, preValue, keyHash);
   }
 
-  private void onPullMsg(final String srcId, final PullMsg pullMsg, @Nullable final TraceInfo traceInfo) {
+  private void onPullMsg(final PullMsg pullMsg, @Nullable final TraceInfo traceInfo) {
     try (final TraceScope onPullMsgScope = Trace.startSpan(
         String.format("on_pull_msg. server_id: %s", endpointId), traceInfo)) {
       final K key = keyCodec.decode(pullMsg.getKey().array());
       final int keyHash = hash(pullMsg.getKey().array());
+      final String requesterId = pullMsg.getRequesterId().toString();
       final int requestId = pullMsg.getRequestId();
-      parameterServer.pull(key, srcId, keyHash, requestId, TraceInfo.fromSpan(onPullMsgScope.getSpan()));
+      parameterServer.pull(key, requesterId, keyHash, requestId, TraceInfo.fromSpan(onPullMsgScope.getSpan()));
     }
   }
 

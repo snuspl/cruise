@@ -24,6 +24,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -91,6 +92,11 @@ public final class DropoutLayerTest {
     matrixFactoryForLayer.setRandomSeed(10);
     this.dropoutLayer = injector.forkInjector(layerConf, builder.build())
         .getInstance(LayerBase.class);
+  }
+
+  @After
+  public void tearDown() {
+    dropoutLayer.cleanup();
   }
 
   @Test
