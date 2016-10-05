@@ -37,7 +37,4 @@ public final class NeuralNetworkParameters {
   public static final class ConfigurationPath implements Name<String> {
   }
 
-  @NamedParameter(doc = "backend BLAS library", short_name = "blas", default_value = "jblas")
-  public static class BlasLibrary implements Name<String> {
-  }
 }
