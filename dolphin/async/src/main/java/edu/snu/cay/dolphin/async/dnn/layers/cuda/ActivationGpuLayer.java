@@ -162,5 +162,8 @@ public final class ActivationGpuLayer extends LayerBase {
     JavaCudnn.destroyTensorDesc(inputDesc);
     JavaCudnn.destroyTensorDesc(activationDesc);
     JavaCudnn.destroyActivFuncDesc(activFuncDesc);
+
+    output.free();
+    layerError.free();
   }
 }

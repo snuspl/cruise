@@ -233,5 +233,10 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     JavaCudnn.destroyAlgo(backwardDataAlgo);
     JavaCudnn.destroyAlgo(backwardFilterAlgo);
     JavaCuda.deviceFree(workspace);
+
+    output.free();
+    layerError.free();
+    weightGradient.free();
+    biasGradient.free();
   }
 }

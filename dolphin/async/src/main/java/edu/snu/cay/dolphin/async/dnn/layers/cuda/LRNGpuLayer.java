@@ -152,5 +152,8 @@ public final class LRNGpuLayer extends LayerBase {
     JavaCudnn.cudnnDestroyTensorDesc(inputDesc);
     JavaCudnn.cudnnDestroyTensorDesc(activationDesc);
     JavaCudnn.cudnnDestroyLRNDesc(lrnDesc);
+
+    output.free();
+    layerError.free();
   }
 }

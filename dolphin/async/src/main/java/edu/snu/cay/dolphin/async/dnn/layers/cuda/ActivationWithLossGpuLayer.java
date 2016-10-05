@@ -138,5 +138,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
   public void cleanup() {
     JavaCudnn.destroyTensorDesc(inputDesc);
     JavaCudnn.destroyTensorDesc(activationDesc);
+
+    output.free();
   }
 }

@@ -352,6 +352,9 @@ public final class NeuralNetwork {
    * This is called on task termination.
    */
   public void cleanup() {
+
+    labelMatrix.free();
+
     // clean up layers
     for (final LayerBase layer : layers) {
       layer.cleanup();

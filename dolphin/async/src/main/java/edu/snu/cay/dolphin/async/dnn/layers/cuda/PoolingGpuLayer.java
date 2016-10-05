@@ -191,5 +191,8 @@ public final class PoolingGpuLayer extends LayerBase {
     JavaCudnn.destroyTensorDesc(inputDesc);
     JavaCudnn.destroyPoolDesc(poolDesc);
     JavaCudnn.destroyTensorDesc(activationDesc);
+
+    output.free();
+    layerError.free();
   }
 }
