@@ -241,4 +241,9 @@ public final class ConvolutionalLayer extends LayerBase {
         .setBiasParam(biasGradient)
         .build();
   }
+
+  @Override
+  public void cleanup() {
+
+  }
 }

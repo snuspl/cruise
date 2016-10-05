@@ -30,8 +30,8 @@
  */
 class JavaCuda {
 public:
-  static void* deviceMalloc(size_t size);
-  static bool deviceFree(void* devPtr);
+  static void* cudaDeviceMalloc(size_t size);
+  static bool cudaDeviceFree(void* devPtr);
   static bool d2hMemcpy(void* dst, const void* src, const int n);
   static bool h2dMemcpy(void* dst, const void* src, const int n);
   static bool d2dMemcpy(void* dst, const void* src, const int n);

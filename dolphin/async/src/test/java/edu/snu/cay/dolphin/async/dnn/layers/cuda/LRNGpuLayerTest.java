@@ -25,6 +25,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -123,6 +124,12 @@ public class LRNGpuLayerTest {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+  }
+
+  @After
+  public void tearDown() {
+    lrnLayerSizeOne.cleanup();
+    lrnLayerSizeTwo.cleanup();
   }
 
   @Test

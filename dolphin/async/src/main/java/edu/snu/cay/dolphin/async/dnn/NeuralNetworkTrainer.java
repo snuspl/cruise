@@ -122,5 +122,6 @@ final class NeuralNetworkTrainer implements Trainer {
 
   @Override
   public void cleanup() {
+    neuralNetwork.cleanup();
   }
 }

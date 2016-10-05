@@ -185,4 +185,11 @@ public final class PoolingGpuLayer extends LayerBase {
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
     throw new RuntimeException("This layer is not learnable");
   }
+
+  @Override
+  public void cleanup() {
+    JavaCudnn.destroyTensorDesc(inputDesc);
+    JavaCudnn.destroyPoolDesc(poolDesc);
+    JavaCudnn.destroyTensorDesc(activationDesc);
+  }
 }

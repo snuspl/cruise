@@ -106,4 +106,9 @@ public abstract class LayerBase {
    *         or {@code null} if this layer is not learnable.
    */
   public abstract LayerParameter generateParameterGradient(final Matrix input, final Matrix error);
+
+  /**
+   * Clean up variables associated with this layer, this is called when this layer is no longer used.
+   */
+  public abstract void cleanup();
 }
