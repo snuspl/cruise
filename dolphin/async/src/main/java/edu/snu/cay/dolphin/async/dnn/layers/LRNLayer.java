@@ -42,8 +42,6 @@ public final class LRNLayer extends LayerBase {
 
   private final MatrixFactory matrixFactory;
   private Matrix scale;
-  private Matrix paddedImgForForward;
-  private Matrix paddedImgForBackward;
   private Matrix layerError;
   private final Matrix outputI;
 
@@ -73,8 +71,6 @@ public final class LRNLayer extends LayerBase {
     this.paddingSize = (localSize - 1) / 2;
     this.matrixFactory = matrixFactory;
     this.scale = matrixFactory.create(0, 0);
-    this.paddedImgForForward = matrixFactory.create(0, 0);
-    this.paddedImgForBackward = matrixFactory.create(0, 0);
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -115,12 +111,10 @@ public final class LRNLayer extends LayerBase {
   public Matrix feedForward(final Matrix input) {
     if (!scale.hasSameSize(input)) {
       scale = matrixFactory.create(input.getRows(), input.getColumns());
-      paddedImgForForward = matrixFactory.create(input.getRows() + (paddingSize * 2 * inputSize), input.getColumns());
     }
 
-    paddedImgForForward.fill(0);
     for (int n = 0; n < input.getColumns(); ++n) {
-      final Matrix paddedImg = paddedImgForForward.getColumn(n);
+      final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
       for (int i = 0; i < input.getRows(); ++i) {
         // input ^ 2
         paddedImg.put(i + paddingSize * inputSize, input.get(i, n) * input.get(i, n));
@@ -184,13 +178,8 @@ public final class LRNLayer extends LayerBase {
     }
     final float scalarMultiplier = -2 * alpha * beta / localSize;
 
-    if (paddedImgForBackward.getRows() != input.getRows() + (paddingSize * 2 * inputSize) ||
-        paddedImgForBackward.getColumns() != nextError.getColumns()) {
-      paddedImgForBackward = matrixFactory.create(input.getRows() + (paddingSize * 2 * inputSize), input.getColumns());
-    }
-    paddedImgForBackward.fill(0);
     for (int n = 0; n < nextError.getColumns(); ++n) {
-      final Matrix paddedImg = paddedImgForBackward.getColumn(n);
+      final Matrix paddedImg = matrixFactory.create(input.getRows() + (paddingSize * 2 * inputSize), 1);
       for (int i = 0; i < nextError.getRows(); ++i) {
         // nextError * activation / scale
         paddedImg.put(i + paddingSize * inputSize,
