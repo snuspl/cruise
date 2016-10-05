@@ -48,8 +48,8 @@ import java.util.logging.Logger;
  * An implementation of Parameter Server, whose partitions can dynamically move in and out.
  * The parameters are stored in MemoryStore, in most cases the local MemoryStore in the same Evaluator.
  * If {@link edu.snu.cay.services.ps.common.resolver.DynamicServerResolver} has not reflected the
- * up-to-date result of data migration, then PS will receive the requests for a key which has moved out to
- * another MemoryStore. In such case, dynamic PS redirects operation to a target server that owns that key.
+ * up-to-date result of data migration, then PS will receive the requests for keys that have moved out to
+ * another MemoryStore. In such case, dynamic PS redirects operation to a target server that owns the key.
  *
  * Other parts in this implementation works almost same as {@code StaticParameterServer}.
  */
@@ -353,7 +353,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
      */
     @Override
     public void apply() {
-      // redirect to remote server if the key has been moved out
+      // redirect to a remote server if the key has been moved out to the server
       final Optional<String> remoteEvalId = memoryStore.resolveEval(hashedKey);
       if (remoteEvalId.isPresent()) {
         redirect(remoteEvalId.get());
@@ -413,7 +413,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
           " key: %s, thread_id: %d, server_pending_ops: %d, request_id: %d",
           hashedKey.getKey(), threadId, opsPending(), requestId), parentTraceInfo)) {
 
-        // redirect to remote server if the key has been moved out
+        // redirect to a remote server if the key has been moved out to the server
         final Optional<String> remoteEvalId = memoryStore.resolveEval(hashedKey);
         if (remoteEvalId.isPresent()) {
           redirect(remoteEvalId.get());

@@ -729,9 +729,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @throws RuntimeException if the retrial count exceeded maximum number of retries
      */
     synchronized void retry() {
-      try (final TraceScope retryScope = Trace.startSpan(String.format("pull_retry." +
-              " key: %s, request_id: %d, retry_count: %d", encodedKey.getKey(), requestId, retryCount + 1),
-          pullRequestScope.getSpan())) {
+      try (final TraceScope retryScope = Trace.startSpan("pull_retry.", pullRequestScope.getSpan())) {
         if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
           throw new RuntimeException("Fail to load a value for pull");
         }
