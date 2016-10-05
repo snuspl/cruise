@@ -95,4 +95,9 @@ public final class FullyConnectedGpuLayer extends LayerBase {
         .setBiasParam(error.rowSums())
         .build();
   }
+
+  @Override
+  public void cleanup() {
+
+  }
 }

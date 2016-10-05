@@ -24,6 +24,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -244,6 +245,13 @@ public class ConvolutionalLayerTest {
             {0.095823608338f, -0.626192688941f},
             {-0.002482861746f, -0.212796315550f}}))
         .setBiasParam(matrixFactory.zeros(8)).build());
+  }
+
+  @After
+  public void tearDown() {
+    convolutionalLayer.cleanup();
+    convolutionalWithPaddingLayer.cleanup();
+    convolutional3DLayer.cleanup();
   }
 
   @Test
