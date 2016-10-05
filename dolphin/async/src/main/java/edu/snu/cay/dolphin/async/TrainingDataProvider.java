@@ -22,6 +22,7 @@ import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
@@ -31,6 +32,7 @@ import java.util.logging.Logger;
 /**
  * Provides the training data to process in mini-batches, taking subset of training data no more than
  * {@link Parameters.MiniBatchSize} instances.
+ * @ThreadSafe designed to handle Trainer threads' concurrent accesses to the training data.
  * @param <K> type of the key, which should be the same with the one in MemoryStore.
  */
 @TaskSide
@@ -38,7 +40,9 @@ import java.util.logging.Logger;
 public final class TrainingDataProvider<K> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
 
+  @GuardedBy("this")
   private final Set<K> trainingDataKeySet = new HashSet<>();
+
   private final int miniBatchSize;
   private final MemoryStore<K> memoryStore;
 
@@ -78,7 +82,7 @@ public final class TrainingDataProvider<K> {
   /**
    * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
    */
-  synchronized void prepareDataForEpoch() {
+  public synchronized void prepareDataForEpoch() {
     trainingDataKeySet.addAll(memoryStore.getAll().keySet());
     LOG.log(Level.INFO, "training data key set size = " + trainingDataKeySet.size());
   }
@@ -88,27 +92,32 @@ public final class TrainingDataProvider<K> {
    * @param <V> the type of training data
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
-  public synchronized <V> Map<K, V> getNextTrainingData() {
-    if (trainingDataKeySet.isEmpty()) {
-      return Collections.emptyMap();
-    }
+  public <V> Map<K, V> getNextTrainingData() {
+    final List<K> nextTrainingDataKeyList = new ArrayList<>(miniBatchSize);
+    synchronized (TrainingDataProvider.this) {
+      if (trainingDataKeySet.isEmpty()) {
+        LOG.log(Level.INFO, "no more training data for current epoch");
+        return Collections.emptyMap();
+      }
 
-    final Iterator<K> iterator = trainingDataKeySet.iterator();
-    final List<K> nextTrainingDataKeyList = new ArrayList<>();
-    while (iterator.hasNext() && nextTrainingDataKeyList.size() < miniBatchSize) {
-      nextTrainingDataKeyList.add(iterator.next());
+      final Iterator<K> iterator = trainingDataKeySet.iterator();
+      while (iterator.hasNext() && nextTrainingDataKeyList.size() < miniBatchSize) {
+        nextTrainingDataKeyList.add(iterator.next());
+      }
+      trainingDataKeySet.removeAll(nextTrainingDataKeyList);
     }
-    trainingDataKeySet.removeAll(nextTrainingDataKeyList);
 
     final Map<K, V> nextTrainingData = new HashMap<>();
     for (final K key : nextTrainingDataKeyList) {
+      // TODO #464: Add getList() API to MemoryStore
       final Pair<K, V> keyValuePair = memoryStore.get(key);
       if (keyValuePair == null) {
         continue;
       }
       nextTrainingData.put(keyValuePair.getFirst(), keyValuePair.getSecond());
     }
-    LOG.log(Level.INFO, "next training data size = " + nextTrainingData.size());
+    LOG.log(Level.INFO, "size of key list of next training data = " + nextTrainingDataKeyList.size()
+            + ", size of next training data = " + nextTrainingData.size());
     return nextTrainingData;
   }
 }
