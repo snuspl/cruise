@@ -22,6 +22,7 @@ import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.dnn.NeuralNetworkParameters.*;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.*;
 import edu.snu.cay.dolphin.async.dnn.data.LayerParameterCodec;
@@ -55,7 +56,6 @@ public final class NeuralNetworkREEF {
   private final String[] args;
   private final String configurationPath;
   private final boolean onLocal;
-  private final String blasLibrary;
 
 
   @NamedParameter(doc = "command line arguments")
@@ -66,25 +66,23 @@ public final class NeuralNetworkREEF {
   /**
    * @param configurationPath the path for the protobuf configuration file in which a neural network model is defined
    * @param onLocal the flag indicating whether or not to run on local runtime
-   * @param blasLibrary the type of BLAS library implementation
    * @param args the command line arguments
    */
   @Inject
   private NeuralNetworkREEF(@Parameter(ConfigurationPath.class) final String configurationPath,
                             @Parameter(OnLocal.class) final boolean onLocal,
-                            @Parameter(BlasLibrary.class) final String blasLibrary,
                             @Parameter(CommandLineArguments.class) final String args) {
     this.configurationPath = configurationPath;
     this.onLocal = onLocal;
-    this.blasLibrary = blasLibrary;
     this.args = args.split(" ");
   }
 
   public void run() {
     try {
       final NeuralNetworkConfiguration neuralNetConf = loadNeuralNetworkConfiguration(configurationPath, onLocal);
+      final boolean cpuOnly = neuralNetConf.getDeviceMode() == NeuralNetworkConfiguration.DeviceMode.CPU;
       final Configuration configuration =
-          Configurations.merge(buildNeuralNetworkConfiguration(neuralNetConf), buildBlasConfiguration(blasLibrary));
+          Configurations.merge(buildNeuralNetworkConfiguration(neuralNetConf), buildBlasConfiguration(cpuOnly));
 
       AsyncDolphinLauncher.launch("NeuralNetworkREEF", args, AsyncDolphinConfiguration.newBuilder()
           .setTrainerClass(NeuralNetworkTrainer.class)
@@ -106,7 +104,6 @@ public final class NeuralNetworkREEF {
 
     clf.registerShortNameOfClass(OnLocal.class, true);
     clf.registerShortNameOfClass(ConfigurationPath.class);
-    clf.registerShortNameOfClass(BlasLibrary.class);
 
     clf.processCommandLine(args);
 
@@ -167,26 +164,24 @@ public final class NeuralNetworkREEF {
   }
 
   /**
-   * @param blasLibrary a string that indicates a BLAS library to be used
+   * @param cpuOnly true if and only if device option is cpu
    * @return the configuration for BLAS library
    */
-  private static Configuration buildBlasConfiguration(final String blasLibrary) {
+  private static Configuration buildBlasConfiguration(final boolean cpuOnly) {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MatrixFactory.class, getMatrixFactoryClass(blasLibrary))
+        .bindImplementation(MatrixFactory.class, getMatrixFactoryClass(cpuOnly))
         .build();
   }
 
   /**
-   * @param blasLibraryType a BLAS library string
+   * @param cpuOnly true if and only if device option is cpu
    * @return the matrix factory class related to the specified BLAS library string
    */
-  private static Class<? extends MatrixFactory> getMatrixFactoryClass(final String blasLibraryType) {
-    switch (blasLibraryType.toLowerCase()) {
-    case "jblas":
+  private static Class<? extends MatrixFactory> getMatrixFactoryClass(final boolean cpuOnly) {
+    if (cpuOnly) {
       return MatrixJBLASFactory.class;
-    default:
-      throw new IllegalArgumentException("Unsupported BLAS library: " + blasLibraryType);
     }
+    return MatrixCudaFactory.class;
   }
 
   /**

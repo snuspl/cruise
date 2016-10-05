@@ -53,7 +53,6 @@ public final class NeuralNetworkConfigurationParameters {
   }
 
   @NamedParameter(doc = "the device option to run under")
-  public static final class CpuMode implements Name<Boolean> {
-
+  public static final class CpuOnly implements Name<Boolean> {
   }
 }

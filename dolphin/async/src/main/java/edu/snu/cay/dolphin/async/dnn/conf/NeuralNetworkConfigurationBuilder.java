@@ -101,7 +101,7 @@ public final class NeuralNetworkConfigurationBuilder implements Builder<Configur
     jb.bindNamedParameter(InputShape.class, inputShape);
     jb.bindNamedParameter(BatchSize.class, String.valueOf(batchSize));
     jb.bindNamedParameter(RandomSeed.class, String.valueOf(randomSeed));
-    jb.bindNamedParameter(CpuMode.class, String.valueOf(cpuOnly));
+    jb.bindNamedParameter(CpuOnly.class, String.valueOf(cpuOnly));
 
     return jb.build();
   }
