@@ -24,7 +24,6 @@ import org.htrace.TraceInfo;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -256,99 +255,6 @@ final class ParameterWorkerTestUtil {
 
     assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
     assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
-
-    executorService.shutdownNow();
-  }
-
-  /**
-   * Starts threads that reject pull operations queued in {@code keyToRejectQueue}.
-   * @return an {@link ExecutorService} through which the thread is executing.
-   */
-  static ExecutorService startPullRejectingThreads(
-      final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> keyToRejectQueue,
-      final WorkerHandler<Integer, ?, Integer> handler,
-      final int numRejectPerKey) {
-    final Map<Integer, AtomicInteger> keyToNumPullCounter = new ConcurrentHashMap<>();
-
-    final Runnable pullRejectingThread = new Runnable() {
-      @Override
-      public void run() {
-        while (true) {
-          final Pair<EncodedKey<Integer>, Integer> request;
-          try {
-            request = keyToRejectQueue.take();
-          } catch (final InterruptedException e) {
-            break; // it's an intended InterruptedException to quit the thread
-          }
-
-          final EncodedKey<Integer> encodedKey = request.getLeft();
-          final int requestId = request.getRight();
-          if (!keyToNumPullCounter.containsKey(encodedKey.getKey())) {
-            keyToNumPullCounter.put(encodedKey.getKey(), new AtomicInteger(0));
-          }
-
-          final int numAnswerForTheKey = keyToNumPullCounter.get(encodedKey.getKey()).getAndIncrement();
-          if (numAnswerForTheKey < numRejectPerKey) {
-            handler.processPullReject(encodedKey.getKey(), requestId);
-          } else {
-            // pull messages should return values s.t. key == value
-            handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
-                SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES, EMPTY_TRACE);
-          }
-        }
-      }
-    };
-
-    // start threads that reject pull requests from the keyToRejectQueue
-    final ExecutorService executorService = Executors.newFixedThreadPool(NUM_PULL_HANDLING_THREADS);
-
-    for (int i = 0; i < NUM_PULL_HANDLING_THREADS; i++) {
-      executorService.execute(pullRejectingThread);
-    }
-
-    return executorService;
-  }
-
-  static void pullReject(final ParameterWorker<Integer, ?, Integer> worker,
-                         final WorkerHandler<Integer, ?, Integer> handler,
-                         final WorkerMsgSender<Integer, ?> sender)
-      throws InterruptedException, TimeoutException, ExecutionException, NetworkException {
-    final int numPullThreads = 8;
-    final int numPullPerThread = 1000;
-    final int numRejectPerKey = AsyncParameterWorker.MAX_PULL_RETRY_COUNT / 2;
-
-    final CountDownLatch countDownLatch = new CountDownLatch(numPullThreads);
-    final Runnable[] threads = new Runnable[numPullThreads];
-    final AtomicBoolean correctResultReturned = new AtomicBoolean(true);
-
-    final BlockingQueue<Pair<EncodedKey<Integer>, Integer>> pullKeyToRejectQueue = new LinkedBlockingQueue<>();
-    final ExecutorService executorService = startPullRejectingThreads(pullKeyToRejectQueue, handler, numRejectPerKey);
-    setupSenderToEnqueuePullOps(pullKeyToRejectQueue, sender);
-
-    for (int index = 0; index < numPullThreads; ++index) {
-      final int baseKey = index * numPullPerThread;
-      threads[index] = () -> {
-        for (int pull = 0; pull < numPullPerThread; pull++) {
-          final int key = baseKey + pull;
-          final Integer val = worker.pull(key);
-
-          if (val == null || !val.equals(key)) {
-            correctResultReturned.set(false);
-            break;
-          }
-        }
-        countDownLatch.countDown();
-      };
-    }
-
-    ThreadUtils.runConcurrently(threads);
-    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
-    worker.close(CLOSE_TIMEOUT);
-
-    assertTrue(MSG_THREADS_SHOULD_FINISH, allThreadsFinished);
-    assertTrue(MSG_RESULT_ASSERTION, correctResultReturned.get());
-    verify(sender, times(numPullPerThread * numPullThreads * (numRejectPerKey + 1)))
-        .sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
 
     executorService.shutdownNow();
   }

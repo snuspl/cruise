@@ -25,7 +25,7 @@ import edu.snu.cay.services.ps.examples.add.IntegerCodec;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.common.parameters.NumPartitions;
-import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
 import edu.snu.cay.services.ps.server.impl.fixed.StaticParameterServer;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.Configuration;
@@ -57,7 +57,7 @@ public final class StaticParameterServerTest {
   private static final TraceInfo EMPTY_TRACE = null;
 
   private StaticParameterServer<Integer, Integer, Integer> server;
-  private ServerSideReplySender<Integer, Integer, Integer> mockSender;
+  private ServerSideMsgSender<Integer, Integer, Integer> mockSender;
 
   @Before
   public void setup() throws InjectionException {
@@ -71,7 +71,7 @@ public final class StaticParameterServerTest {
         .bindNamedParameter(NumPartitions.class, "4")
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
-    injector.bindVolatileInstance(ServerSideReplySender.class, mock(ServerSideReplySender.class));
+    injector.bindVolatileInstance(ServerSideMsgSender.class, mock(ServerSideMsgSender.class));
     injector.bindVolatileInstance(MetricsHandler.class, Mockito.mock(MetricsHandler.class));
     injector.bindVolatileInstance(MetricsMsgSender.class, Mockito.mock(MetricsMsgSender.class));
     injector.bindVolatileInstance(ParameterUpdater.class, new ParameterUpdater<Integer, Integer, Integer>() {
@@ -92,7 +92,7 @@ public final class StaticParameterServerTest {
       }
     });
 
-    mockSender = injector.getInstance(ServerSideReplySender.class);
+    mockSender = injector.getInstance(ServerSideMsgSender.class);
     server = injector.getInstance(StaticParameterServer.class);
   }
 
@@ -117,7 +117,7 @@ public final class StaticParameterServerTest {
           for (int index = 0; index < numPushes; index++) {
             // each thread increments the server's value by 1 per push
             final int key = threadId;
-            server.push(key, 1, WORKER_ID, key); // Just use key as hash for this test.
+            server.push(key, 1, key); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -191,7 +191,7 @@ public final class StaticParameterServerTest {
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;
-      server.pull(key, WORKER_ID, key, 0, EMPTY_TRACE);
+      server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE);
     }
 
     // closing server should guarantee all the queued operations to be processed, if time allows
@@ -200,7 +200,7 @@ public final class StaticParameterServerTest {
         any(TraceInfo.class));
 
     // server should not process further operations after being closed
-    server.pull(0, WORKER_ID, 0, 0, EMPTY_TRACE);
+    server.pull(0, WORKER_ID, 0, REQUEST_ID, EMPTY_TRACE);
     verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
         any(TraceInfo.class));
   }

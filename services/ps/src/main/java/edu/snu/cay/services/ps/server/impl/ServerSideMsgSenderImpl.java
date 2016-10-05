@@ -18,7 +18,7 @@ package edu.snu.cay.services.ps.server.impl;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
-import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -41,7 +41,7 @@ import java.nio.ByteBuffer;
  * Sender implementation that uses Network Connection Service.
  */
 @EvaluatorSide
-public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReplySender<K, P, V> {
+public final class ServerSideMsgSenderImpl<K, P, V> implements ServerSideMsgSender<K, P, V> {
 
   /**
    * Network Connection Service related setup required for a Parameter Server application.
@@ -69,7 +69,7 @@ public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReply
   private final Codec<V> valueCodec;
 
   @Inject
-  private ServerSideReplySenderImpl(
+  private ServerSideMsgSenderImpl(
       final InjectionFuture<PSNetworkSetup> psNetworkSetup,
       final IdentifierFactory identifierFactory,
       @Parameter(PSParameters.KeyCodecName.class) final Codec<K> keyCodec,
@@ -132,30 +132,49 @@ public final class ServerSideReplySenderImpl<K, P, V> implements ServerSideReply
   }
 
   @Override
-  public void sendPushRejectMsg(final String destId, final K key, final P preValue) {
-    final PushRejectMsg pushRejectMsg = PushRejectMsg.newBuilder()
-        .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
-        .setPreValue(ByteBuffer.wrap(preValueCodec.encode(preValue)))
+  public void sendPushMsg(final String destId, final K key, final P preValue) {
+    final byte[] serializedKey = keyCodec.encode(key);
+    final byte[] serializedPreValue = preValueCodec.encode(preValue);
+    final PushMsg pushMsg = PushMsg.newBuilder()
+        .setKey(ByteBuffer.wrap(serializedKey))
+        .setPreValue(ByteBuffer.wrap(serializedPreValue))
         .build();
 
     send(destId,
         AvroPSMsg.newBuilder()
-            .setType(Type.PushRejectMsg)
-            .setPushRejectMsg(pushRejectMsg)
+            .setType(Type.PushMsg)
+            .setPushMsg(pushMsg)
             .build());
   }
 
   @Override
-  public void sendPullRejectMsg(final String destId, final K key, final int requestId) {
-    final PullRejectMsg pullRejectMsg = PullRejectMsg.newBuilder()
-        .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
-        .setRequestId(requestId)
-        .build();
+  public void sendPullMsg(final String destId, final String requesterId, final K key, final int requestId,
+                          @Nullable final TraceInfo traceInfo) {
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
 
-    send(destId,
-        AvroPSMsg.newBuilder()
-            .setType(Type.PullRejectMsg)
-            .setPullRejectMsg(pullRejectMsg)
-            .build());
+    try (final TraceScope sendPushMsgScope = Trace.startSpan(
+        String.format("redirect_pull_msg. key: %s, req_id: %d, server_id: %s", key, requestId, destId), traceInfo)) {
+
+      detached = sendPushMsgScope.detach();
+
+      final byte[] serializedKey = keyCodec.encode(key);
+      final PullMsg pullMsg = PullMsg.newBuilder()
+          .setRequesterId(requesterId)
+          .setKey(ByteBuffer.wrap(serializedKey))
+          .setRequestId(requestId)
+          .build();
+
+      send(destId,
+          AvroPSMsg.newBuilder()
+              .setType(Type.PullMsg)
+              .setPullMsg(pullMsg)
+              .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+              .build());
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
   }
 }

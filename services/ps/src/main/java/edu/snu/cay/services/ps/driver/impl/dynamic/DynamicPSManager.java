@@ -27,9 +27,9 @@ import edu.snu.cay.services.ps.driver.api.PSManager;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.server.api.ParameterServer;
-import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
 import edu.snu.cay.services.ps.server.impl.ServerSideMsgHandler;
-import edu.snu.cay.services.ps.server.impl.ServerSideReplySenderImpl;
+import edu.snu.cay.services.ps.server.impl.ServerSideMsgSenderImpl;
 import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
 import edu.snu.cay.services.ps.server.impl.dynamic.EMUpdateFunctionForPS;
 import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
@@ -165,7 +165,7 @@ public final class DynamicPSManager implements PSManager {
                 .set(ServiceConfiguration.SERVICES, DynamicParameterServer.class)
                 .build())
             .bindImplementation(ParameterServer.class, DynamicParameterServer.class)
-            .bindImplementation(ServerSideReplySender.class, ServerSideReplySenderImpl.class)
+            .bindImplementation(ServerSideMsgSender.class, ServerSideMsgSenderImpl.class)
             .bindNamedParameter(EndpointId.class, contextId)
             .bindNamedParameter(PSMessageHandler.class, ServerSideMsgHandler.class)
             .bindImplementation(ServerResolver.class, DynamicServerResolver.class)

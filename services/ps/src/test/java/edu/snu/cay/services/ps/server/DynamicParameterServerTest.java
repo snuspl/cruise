@@ -18,19 +18,17 @@ package edu.snu.cay.services.ps.server;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.services.em.common.parameters.*;
-import edu.snu.cay.services.em.evaluator.api.BlockResolver;
-import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
-import edu.snu.cay.services.ps.server.api.ServerSideReplySender;
+import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
 import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
 import edu.snu.cay.services.ps.server.impl.dynamic.EMUpdateFunctionForPS;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
@@ -44,14 +42,13 @@ import org.htrace.TraceInfo;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicMarkableReference;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
 import static org.junit.Assert.assertEquals;
@@ -63,7 +60,6 @@ import static org.mockito.Mockito.*;
  * Tests for {@link DynamicParameterServer}.
  */
 public final class DynamicParameterServerTest {
-  private static final Logger LOG = Logger.getLogger(DynamicParameterServerTest.class.getName());
   private static final long CLOSE_TIMEOUT = 20000;
 
   /**
@@ -78,8 +74,13 @@ public final class DynamicParameterServerTest {
   private static final int REQUEST_ID = 0;
   private static final TraceInfo EMPTY_TRACE = null;
 
+  private static final int NUM_TOTAL_BLOCKS = 2;
+  private static final int NUM_TOTAL_STORES = 2;
+  private static final int LOCAL_STORE_ID = 0;
+
+  private MemoryStore<Integer> memoryStore;
   private DynamicParameterServer<Integer, Integer, Integer> server;
-  private ServerSideReplySender<Integer, Integer, Integer> mockSender;
+  private ServerSideMsgSender<Integer, Integer, Integer> mockSender;
 
   @Before
   public void setup() throws InjectionException {
@@ -93,14 +94,13 @@ public final class DynamicParameterServerTest {
         .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionForPS.class)
         .bindImplementation(BlockResolver.class, HashBlockResolver.class)
         .bindNamedParameter(KeyCodecName.class, IntegerCodec.class)
-        .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
-        .bindNamedParameter(NumStoreThreads.class, "2")
-        .bindNamedParameter(NumTotalBlocks.class, "2")
-        .bindNamedParameter(NumInitialEvals.class, "1")
+        .bindNamedParameter(MemoryStoreId.class, Integer.toString(LOCAL_STORE_ID))
+        .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
+        .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_TOTAL_STORES))
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
-    injector.bindVolatileInstance(ServerSideReplySender.class, mock(ServerSideReplySender.class));
+    injector.bindVolatileInstance(ServerSideMsgSender.class, mock(ServerSideMsgSender.class));
     injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     injector.bindVolatileInstance(MetricsHandler.class, mock(MetricsHandler.class));
@@ -124,11 +124,38 @@ public final class DynamicParameterServerTest {
     });
 
     // EM's router should be initialized explicitly
-    final OperationRouter router = injector.getInstance(OperationRouter.class);
+    final OperationRouter<Integer> router = injector.getInstance(OperationRouter.class);
     router.triggerInitialization();
 
-    mockSender = injector.getInstance(ServerSideReplySender.class);
+    memoryStore = injector.getInstance(MemoryStore.class);
+    mockSender = injector.getInstance(ServerSideMsgSender.class);
     server = injector.getInstance(DynamicParameterServer.class);
+  }
+
+  /**
+   * Generate keys to use in the test. Can choose the keys that belong to local or remote store.
+   * @param numKeys the number of keys to generate
+   * @param localKey a boolean that indicates whether keys belongs to local store or not
+   * @return a list of keys
+   * @throws IdGenerationException if fails to generate keys upto the specified number
+   */
+  private List<Integer> getKeys(final int numKeys, final boolean localKey) throws IdGenerationException {
+    final List<Integer> keys = new ArrayList<>(numKeys);
+
+    for (int key = 0; key < Integer.MAX_VALUE; key++) {
+      if (memoryStore.resolveEval(key).isPresent() != localKey) {
+        keys.add(key);
+
+        if (keys.size() == numKeys) {
+          break;
+        }
+      }
+    }
+
+    if (keys.size() < numKeys) {
+      throw new IdGenerationException("Fail to generate " + numKeys + " keys");
+    }
+    return keys;
   }
 
   /**
@@ -136,7 +163,8 @@ public final class DynamicParameterServerTest {
    * running threads that push values to and pull values from the server, concurrently.
    */
   @Test(timeout = 100000)
-  public void testMultiThreadPushPull() throws InterruptedException {
+  public void testMultiThreadPushPull() throws InterruptedException, TimeoutException, ExecutionException,
+      InjectionException, IdGenerationException {
     final int numPushThreads = 8;
     final int numPushes = 100000;
     final int numPullThreads = 8;
@@ -144,15 +172,17 @@ public final class DynamicParameterServerTest {
     final CountDownLatch countDownLatch = new CountDownLatch(numPushThreads + numPullThreads);
     final Runnable[] threads = new Runnable[numPushThreads + numPullThreads];
 
+    final int numKeys = Math.max(numPushThreads, numPullThreads);
+    final List<Integer> localKeys = getKeys(numKeys, true);
+
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
-      final int threadId = threadIndex;
+      final int key = localKeys.get(threadIndex);
       threads[threadIndex] = new Runnable() {
         @Override
         public void run() {
           for (int index = 0; index < numPushes; index++) {
             // each thread increments the server's value by 1 per push
-            final int key = threadId;
-            server.push(key, 1, WORKER_ID, key); // Just use key as hash for this test.
+            server.push(key, 1, key); // Just use key as hash for this test.
           }
           countDownLatch.countDown();
         }
@@ -160,13 +190,12 @@ public final class DynamicParameterServerTest {
     }
 
     for (int threadIndex = 0; threadIndex < numPullThreads; threadIndex++) {
-      final int threadId = threadIndex;
+      final int key = localKeys.get(threadIndex);
       threads[threadIndex + numPushThreads] = new Runnable() {
         @Override
         public void run() {
           for (int index = 0; index < numPulls; index++) {
-            final int key = threadId;
-            server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test.
+            server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test
           }
           countDownLatch.countDown();
         }
@@ -192,7 +221,7 @@ public final class DynamicParameterServerTest {
       }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
-      final int key = threadIndex;
+      final int key = localKeys.get(threadIndex).intValue();
       server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE); // Just use key as hash for this test.
 
       waitForOps();
@@ -200,9 +229,10 @@ public final class DynamicParameterServerTest {
         Thread.sleep(5);
       }
 
-      assertEquals(MSG_RESULT_ASSERTION, numPushes, (int) replayValue.getReference());
+      assertEquals(MSG_RESULT_ASSERTION, numPushes, replayValue.getReference().intValue());
       replayValue.set(null, false); // reset
     }
+    server.close(CLOSE_TIMEOUT);
   }
 
   private void waitForOps() throws InterruptedException {
@@ -214,46 +244,52 @@ public final class DynamicParameterServerTest {
     }
   }
 
+  @Test(timeout = 10000)
+  public void testRedirectPushPull() throws InjectionException, IdGenerationException,
+      InterruptedException, ExecutionException, TimeoutException {
+    final int numKeys = 10;
+
+    final List<Integer> remoteKeys = getKeys(numKeys, false);
+
+    for (final int key : remoteKeys) {
+      server.push(key, 0, key);
+      server.pull(key, WORKER_ID, key, 0, EMPTY_TRACE);
+    }
+
+    // closing server should guarantee all the queued operations to be processed, if time allows
+    server.close(CLOSE_TIMEOUT);
+
+    verify(mockSender, never()).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
+        any(TraceInfo.class));
+    verify(mockSender, times(numKeys)).sendPullMsg(anyString(), anyString(), anyInt(), anyInt(), any(TraceInfo.class));
+    verify(mockSender, times(numKeys)).sendPushMsg(anyString(), anyInt(), anyInt());
+  }
+
   @Test
-  public void testClose() throws InterruptedException, ExecutionException, TimeoutException {
-
-    // put the enough number of operations to make queue not empty when closing server
-    final int numPulls = SERVER_QUEUE_SIZE * 2;
-
-    final AtomicInteger repliedOps = new AtomicInteger(0);
-    final AtomicInteger rejectedOps = new AtomicInteger(0);
+  public void testClose() throws InterruptedException, ExecutionException, TimeoutException,
+      InjectionException, IdGenerationException {
+    final int numPulls = 5;
+    final List<Integer> localKeys = getKeys(numPulls, true);
 
     doAnswer(invocation -> {
-        repliedOps.getAndIncrement();
-
         // sleep to guarantee the queue not empty when closing server
         Thread.sleep(1000);
         return null;
       }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
-    doAnswer(invocation -> {
-        rejectedOps.getAndIncrement();
-        return null;
-      }).when(mockSender).sendPushRejectMsg(anyString(), anyInt(), anyInt());
-    doAnswer(invocation -> {
-        rejectedOps.getAndIncrement();
-        return null;
-      }).when(mockSender).sendPullRejectMsg(anyString(), anyInt(), anyInt());
 
     for (int i = 0; i < numPulls; i++) {
-      final int key = i;
+      final int key = localKeys.get(i);
       server.pull(key, WORKER_ID, key, REQUEST_ID, EMPTY_TRACE);
     }
 
-    // closing server should reject all the remaining queued operations, if time allows
+    // closing server should guarantee all the queued operations to be processed, if time allows
     server.close(CLOSE_TIMEOUT);
-    verify(mockSender, atMost(numPulls - 1))
-        .sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
-
-    LOG.log(Level.INFO, "Handled ops: {0}, Rejected ops: {1}", new Object[]{repliedOps.get(), rejectedOps.get()});
-    assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
+    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
+        any(TraceInfo.class));
 
     // server should not process further operations after being closed
     server.pull(0, WORKER_ID, 0, REQUEST_ID, EMPTY_TRACE);
-    assertEquals(numPulls, repliedOps.get() + rejectedOps.get());
+    verify(mockSender, times(numPulls)).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(),
+        any(TraceInfo.class));
   }
 }

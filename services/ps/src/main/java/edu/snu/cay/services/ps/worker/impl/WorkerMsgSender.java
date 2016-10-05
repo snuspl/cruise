@@ -127,6 +127,7 @@ public final class WorkerMsgSender<K, P> {
     final byte[] serializedKey = key.getEncoded();
     final int numSendingBytes = serializedKey.length;
     final PullMsg pullMsg = PullMsg.newBuilder()
+        .setRequesterId(localEndPointId.toString())
         .setKey(ByteBuffer.wrap(serializedKey))
         .setRequestId(requestId)
         .build();

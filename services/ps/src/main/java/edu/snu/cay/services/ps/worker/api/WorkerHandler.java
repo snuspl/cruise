@@ -39,17 +39,4 @@ public interface WorkerHandler<K, P, V> {
    */
   void processPullReply(K key, V value, int requestId, long elapsedTimeInServer, int numReceivedBytes,
                         @Nullable final TraceInfo traceInfo);
-
-  /**
-   * Notify the reject of Pull operation to the waiting worker thread.
-   * @param key key object representing what was sent
-   */
-  void processPullReject(K key, int requestId);
-
-  /**
-   * Retry the rejected Push operation.
-   * @param key key object representing what was sent
-   * @param preValue value to push to the servers
-   */
-  void processPushReject(K key, P preValue);
 }

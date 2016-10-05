@@ -150,29 +150,6 @@ public final class AsyncParameterWorkerTest {
   }
 
   /**
-   * Rule for suppressing massive WARNING level logs in {@link AsyncParameterWorker#processPullReject},
-   * which are intentionally called many times in {@link #testPullReject}.
-   */
-  @Rule
-  private TestRule pullRejectWatcher = new EnforceLoggingLevelRule("testPullReject",
-      AsyncParameterWorker.class.getName(), Level.SEVERE);
-
-  /**
-   * Test the correct handling of pull rejects by {@link AsyncParameterWorker},
-   * creating multiple threads that try to pull values from the server using {@link AsyncParameterWorker}.
-   *
-   * {@code numPullThreads} threads are generated, each sending {@code numPullPerThread} pulls.
-   * To guarantee that {@code sender.sendPullMsg()} should be invoked as many times as {@code worker.pull()} is called,
-   * this test use different keys for each pull.
-   */
-  @Test
-  public void testPullReject()
-      throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(TIMEOUT_NO_RETRY);
-    ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
-  }
-
-  /**
    * Rule for suppressing massive WARNING level logs by {@link NetworkException}
    * while {@link AsyncParameterWorker} tries to send a pull msg,
    * which are intentionally caused many times in {@link #testPullNetworkExceptionAndResend()}.
