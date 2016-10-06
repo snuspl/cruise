@@ -191,7 +191,7 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * add a block to the MemoryStore.
+   * Add a block to the MemoryStore.
    * @param blockId the id of the block to be added
    * @param dataSet the data set which will be stored into the added block
    */
@@ -202,7 +202,7 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * remove a block from the MemoryStore.
+   * Remove a block from the MemoryStore.
    * @param blockId the id of the block to be removed
    * @param dataSet the data set stored in the removed block
    */
@@ -262,7 +262,7 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * test whether {@link TrainingDataProvider} provides the training data properly
+   * Test whether {@link TrainingDataProvider} provides the training data properly
    * when block removal events occur at a fixed interval during an epoch.
    * @param blocksToRemove a set of blocks to be removed stored in {@link MemoryStore}
    */
@@ -275,7 +275,7 @@ public class TrainingDataProviderTest {
 
     final int numTotalInstances = unusedDataInStore.size();
 
-    int miniBatchCount = 0;
+    int miniBatchIdx = 0;
     int removedBlockCount = 0;
     int numRemovedInstances = 0;
     int numUsedInstances = 0;
@@ -293,7 +293,7 @@ public class TrainingDataProviderTest {
       }
 
       // remove a new block to the MemoryStore every fourth mini-batch including 0th
-      if (((miniBatchCount % 4) == 0) && (removedBlockCount < numBlocksToRemove)) {
+      if (((miniBatchIdx % 4) == 0) && (removedBlockCount < numBlocksToRemove)) {
         final Pair<Integer, Map<Long, Integer>> blockDataPair = blocksToRemove.get(removedBlockCount);
         final int blockId = blockDataPair.getFirst();
         final Map<Long, Integer> dataSet = blockDataPair.getSecond();
@@ -317,7 +317,7 @@ public class TrainingDataProviderTest {
 
       // load the next training data from the TrainingDataProvider
       trainingData = trainingDataProvider.getNextTrainingData();
-      miniBatchCount++;
+      miniBatchIdx++;
     }
 
     // all training data initially stored in the MemoryStore should be either used or removed.
@@ -326,7 +326,7 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * test whether {@link TrainingDataProvider} provides the training data properly
+   * Test whether {@link TrainingDataProvider} provides the training data properly
    * when block addition events occur at a fixed interval during an epoch.
    */
   private List<Pair<Integer, Map<Long, Integer>>> testGetNextTrainingDataWithBlockAdditions(
@@ -343,12 +343,11 @@ public class TrainingDataProviderTest {
     }
 
     final int numTotalInstances = initialNumTotalInstances + numBlocksToAdd * BLOCK_SIZE;
-    final int numMiniBatches = (numTotalInstances / MINI_BATCH_SIZE)
-        + ((numTotalInstances % MINI_BATCH_SIZE != 0) ? 1 : 0);
-    final int sizeOfLastMiniBatch = (numTotalInstances % MINI_BATCH_SIZE != 0) ?
-        (numTotalInstances % MINI_BATCH_SIZE) : MINI_BATCH_SIZE;
+    final int remainderForLastMiniBatch = numTotalInstances % MINI_BATCH_SIZE;
+    final int numMiniBatches = numTotalInstances / MINI_BATCH_SIZE + (remainderForLastMiniBatch == 0 ? 0 : 1);
+    final int sizeOfLastMiniBatch = remainderForLastMiniBatch == 0 ? MINI_BATCH_SIZE : remainderForLastMiniBatch;
 
-    int miniBatchCount = 0;
+    int miniBatchIdx = 0;
     int sizeOfCurrentMiniBatch = 0;
     int numUsedInstances = 0;
     int addedBlockCount = 0;
@@ -356,7 +355,7 @@ public class TrainingDataProviderTest {
     Map<Long, Integer> trainingData = trainingDataProvider.getNextTrainingData();
     while (!trainingData.isEmpty()) {
       // add a new block to the MemoryStore every third mini-batch including 0th
-      if ((miniBatchCount % 3 == 0) && (addedBlockCount < numBlocksToAdd)) {
+      if ((miniBatchIdx % 3 == 0) && (addedBlockCount < numBlocksToAdd)) {
         final Pair<Integer, Map<Long, Integer>> blockDataPair = blocksToAdd.get(addedBlockCount++);
         final int blockId = blockDataPair.getFirst();
         final Map<Long, Integer> dataSet = blockDataPair.getSecond();
@@ -379,11 +378,11 @@ public class TrainingDataProviderTest {
       sizeOfCurrentMiniBatch = trainingData.size();
       numUsedInstances += sizeOfCurrentMiniBatch;
       trainingData = trainingDataProvider.getNextTrainingData();
-      miniBatchCount++;
+      miniBatchIdx++;
     }
 
     assertEquals(numTotalInstances, numUsedInstances);
-    assertEquals(numMiniBatches, miniBatchCount);
+    assertEquals(numMiniBatches, miniBatchIdx);
     assertEquals(sizeOfLastMiniBatch, sizeOfCurrentMiniBatch);
     return blocksToAdd;
   }
@@ -406,7 +405,7 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * generates a list of block ids which don't belong to the local store.
+   * Generates a list of block ids which don't belong to the local store.
    * @return a list of block ids not belonging in the local store
    */
   private List<Integer> generateBlockIdNotInLocalStore() {
