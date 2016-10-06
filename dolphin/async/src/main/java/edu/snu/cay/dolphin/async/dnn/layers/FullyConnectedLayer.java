@@ -91,4 +91,9 @@ public final class FullyConnectedLayer extends LayerBase {
         .setBiasParam(error.rowSums())
         .build();
   }
+
+  @Override
+  public void cleanup() {
+
+  }
 }

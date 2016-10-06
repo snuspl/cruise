@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.ConvolutionalLayerPa
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.ConvolutionalLayer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
+import edu.snu.cay.dolphin.async.dnn.layers.cuda.ConvolutionalGpuLayer;
 import edu.snu.cay.dolphin.async.dnn.proto.NeuralNetworkProtos;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -46,6 +47,7 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
   private float initWeight;
   private float initBias;
   private int numOutput;
+  private Class<? extends LayerBase> layerClass = ConvolutionalGpuLayer.class;
 
   public synchronized ConvolutionalLayerConfigurationBuilder setPaddingHeight(final int paddingHeight) {
     this.paddingHeight = paddingHeight;
@@ -92,6 +94,14 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
     return this;
   }
 
+  public synchronized ConvolutionalLayerConfigurationBuilder setCpuOnly(final boolean cpuOnly) {
+    if (cpuOnly) {
+      layerClass = ConvolutionalLayer.class;
+    } else {
+      layerClass = ConvolutionalGpuLayer.class;
+    }
+    return this;
+  }
 
   public synchronized ConvolutionalLayerConfigurationBuilder fromProtoConfiguration(
       final NeuralNetworkProtos.LayerConfiguration protoConf) {
@@ -119,7 +129,7 @@ public final class ConvolutionalLayerConfigurationBuilder implements Builder<Con
         .bindNamedParameter(LayerConfigurationParameters.InitialWeight.class, String.valueOf(initWeight))
         .bindNamedParameter(LayerConfigurationParameters.InitialBias.class, String.valueOf(initBias))
         .bindNamedParameter(LayerConfigurationParameters.NumberOfOutput.class, String.valueOf(numOutput))
-        .bindImplementation(LayerBase.class, ConvolutionalLayer.class)
+        .bindImplementation(LayerBase.class, layerClass)
         .bindImplementation(LayerParameterInitializer.class, ConvolutionalLayerParameterInitializer.class)
         .build();
   }

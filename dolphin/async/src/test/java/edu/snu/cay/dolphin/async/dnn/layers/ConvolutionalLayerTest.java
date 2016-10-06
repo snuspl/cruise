@@ -24,6 +24,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -184,7 +185,8 @@ public class ConvolutionalLayerTest {
         .setKernelWidth(2)
         .setStrideHeight(1)
         .setStrideWidth(1)
-        .setNumOutput(1);
+        .setNumOutput(1)
+        .setCpuOnly(true);
 
     final ConvolutionalLayerConfigurationBuilder builderWithPadding = ConvolutionalLayerConfigurationBuilder
         .newConfigurationBuilder()
@@ -196,7 +198,8 @@ public class ConvolutionalLayerTest {
         .setKernelWidth(2)
         .setStrideHeight(1)
         .setStrideWidth(1)
-        .setNumOutput(1);
+        .setNumOutput(1)
+        .setCpuOnly(true);
 
     final ConvolutionalLayerConfigurationBuilder builder3D = ConvolutionalLayerConfigurationBuilder
         .newConfigurationBuilder()
@@ -207,7 +210,8 @@ public class ConvolutionalLayerTest {
         .setStrideHeight(1)
         .setStrideWidth(1)
         .setPaddingWidth(1)
-        .setNumOutput(2);
+        .setNumOutput(2)
+        .setCpuOnly(true);
 
     final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
 
@@ -241,6 +245,13 @@ public class ConvolutionalLayerTest {
             {0.095823608338f, -0.626192688941f},
             {-0.002482861746f, -0.212796315550f}}))
         .setBiasParam(matrixFactory.zeros(8)).build());
+  }
+
+  @After
+  public void tearDown() {
+    convolutionalLayer.cleanup();
+    convolutionalWithPaddingLayer.cleanup();
+    convolutional3DLayer.cleanup();
   }
 
   @Test

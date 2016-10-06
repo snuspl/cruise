@@ -83,7 +83,7 @@ cublasHandle_t JavaCuda::getCublasHandle() {
   return *cublasHandle.get();
 }
 
-void* JavaCuda::deviceMalloc(size_t size) {
+void* JavaCuda::cudaDeviceMalloc(size_t size) {
   void* devPtr;
   if (cudaSuccess != cudaMalloc(&devPtr, size)) {
     devPtr = NULL;
@@ -91,7 +91,7 @@ void* JavaCuda::deviceMalloc(size_t size) {
   return devPtr;
 }
 
-bool JavaCuda::deviceFree(void* devPtr) {
+bool JavaCuda::cudaDeviceFree(void* devPtr) {
   return cudaSuccess == cudaFree(devPtr);
 }
 

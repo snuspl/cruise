@@ -23,6 +23,7 @@ import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
@@ -262,75 +263,85 @@ public final class PoolingLayerTest {
         .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
         .build();
 
-    final PoolingLayerConfigurationBuilder maxBuilder = PoolingLayerConfigurationBuilder.newConfigurationBuilder()
+    final PoolingLayerConfigurationBuilder maxBuilder = PoolingLayerConfigurationBuilder
+        .newConfigurationBuilder()
         .setPoolingType("MAX")
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
-        .setStrideWidth(1);
+        .setStrideWidth(1)
+        .setCpuOnly(true);
 
-    final PoolingLayerConfigurationBuilder averageBuilder = PoolingLayerConfigurationBuilder.newConfigurationBuilder()
+    final PoolingLayerConfigurationBuilder averageBuilder = PoolingLayerConfigurationBuilder
+        .newConfigurationBuilder()
         .setPoolingType("AVERAGE")
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
-        .setStrideWidth(1);
+        .setStrideWidth(1)
+        .setCpuOnly(true);
 
-    final PoolingLayerConfigurationBuilder remainderExistingMaxBuilder =
-        PoolingLayerConfigurationBuilder.newConfigurationBuilder()
+    final PoolingLayerConfigurationBuilder remainderExistingMaxBuilder = PoolingLayerConfigurationBuilder
+        .newConfigurationBuilder()
         .setPoolingType("MAX")
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(2)
-        .setStrideWidth(2);
+        .setStrideWidth(2)
+        .setCpuOnly(true);
 
-    final PoolingLayerConfigurationBuilder remainderExistingAverageBuilder =
-        PoolingLayerConfigurationBuilder.newConfigurationBuilder()
+    final PoolingLayerConfigurationBuilder remainderExistingAverageBuilder = PoolingLayerConfigurationBuilder
+        .newConfigurationBuilder()
         .setPoolingType("AVERAGE")
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(2)
-        .setStrideWidth(2);
+        .setStrideWidth(2)
+        .setCpuOnly(true);
 
-    final PoolingLayerConfigurationBuilder maxWithPaddingBuilder =
-        PoolingLayerConfigurationBuilder.newConfigurationBuilder()
+    final PoolingLayerConfigurationBuilder maxWithPaddingBuilder = PoolingLayerConfigurationBuilder
+        .newConfigurationBuilder()
         .setPoolingType("MAX")
         .setPaddingHeight(1)
         .setPaddingWidth(1)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
-        .setStrideWidth(1);
+        .setStrideWidth(1)
+        .setCpuOnly(true);
 
-    final PoolingLayerConfigurationBuilder averageWithPaddingBuilder =
-        PoolingLayerConfigurationBuilder.newConfigurationBuilder()
+    final PoolingLayerConfigurationBuilder averageWithPaddingBuilder = PoolingLayerConfigurationBuilder
+        .newConfigurationBuilder()
         .setPoolingType("AVERAGE")
         .setPaddingHeight(1)
         .setPaddingWidth(1)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
-        .setStrideWidth(1);
+        .setStrideWidth(1)
+        .setCpuOnly(true);
 
-    final PoolingLayerConfigurationBuilder max3DBuilder =
-        PoolingLayerConfigurationBuilder.newConfigurationBuilder()
+    final PoolingLayerConfigurationBuilder max3DBuilder = PoolingLayerConfigurationBuilder
+        .newConfigurationBuilder()
         .setPoolingType("MAX")
         .setPaddingHeight(1)
         .setPaddingWidth(1)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
-        .setStrideWidth(1);
+        .setStrideWidth(1)
+        .setCpuOnly(true);
 
-    final PoolingLayerConfigurationBuilder average3DBuilder =
-        PoolingLayerConfigurationBuilder.newConfigurationBuilder()
+    final PoolingLayerConfigurationBuilder average3DBuilder = PoolingLayerConfigurationBuilder
+        .newConfigurationBuilder()
         .setPoolingType("AVERAGE")
         .setPaddingHeight(1)
         .setPaddingWidth(1)
         .setKernelHeight(2)
         .setKernelWidth(2)
         .setStrideHeight(1)
-        .setStrideWidth(1);
+        .setStrideWidth(1)
+        .setCpuOnly(true);
 
     this.maxPoolingLayer =
         Tang.Factory.getTang().newInjector(layerConf, maxBuilder.build())
@@ -363,6 +374,18 @@ public final class PoolingLayerTest {
     this.averagePooling3DLayer =
         Tang.Factory.getTang().newInjector(layerConf3D, average3DBuilder.build())
             .getInstance(LayerBase.class);
+  }
+
+  @After
+  public void tearDown() {
+    maxPoolingLayer.cleanup();
+    averagePoolingLayer.cleanup();
+    remainderExistingMaxPoolingLayer.cleanup();
+    remainderExistingAveragePoolingLayer.cleanup();
+    maxPoolingWithPaddingLayer.cleanup();
+    averagePoolingWithPaddingLayer.cleanup();
+    maxPooling3DLayer.cleanup();
+    averagePooling3DLayer.cleanup();
   }
 
   @Test
@@ -456,7 +479,7 @@ public final class PoolingLayerTest {
   public void test3DBackPropagate() {
     maxPooling3DLayer.feedForward(input3D);
     final Matrix maxError = maxPooling3DLayer
-        .backPropagate(input3D, expectedAveragePooling3DActivation, nextError3D);
+        .backPropagate(input3D, expectedMaxPooling3DActivation, nextError3D);
     final Matrix averageError = averagePooling3DLayer
         .backPropagate(input3D, expectedAveragePooling3DActivation, nextError3D);
     assertTrue(expectedMaxPooling3DError.compare(maxError, TOLERANCE));

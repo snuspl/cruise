@@ -42,6 +42,7 @@ public final class NeuralNetworkConfigurationBuilder implements Builder<Configur
   private String inputShape;
   private int batchSize = 1;
   private long randomSeed = System.currentTimeMillis();
+  private boolean cpuOnly = true;
 
   public static NeuralNetworkConfigurationBuilder newConfigurationBuilder() {
     return new NeuralNetworkConfigurationBuilder();
@@ -77,6 +78,11 @@ public final class NeuralNetworkConfigurationBuilder implements Builder<Configur
     return this;
   }
 
+  public synchronized NeuralNetworkConfigurationBuilder setCpuOnly(final boolean cpuOnly) {
+    this.cpuOnly = cpuOnly;
+    return this;
+  }
+
   @Override
   public synchronized Configuration build() {
     final JavaConfigurationBuilder jb = Tang.Factory.getTang().newConfigurationBuilder();
@@ -95,6 +101,7 @@ public final class NeuralNetworkConfigurationBuilder implements Builder<Configur
     jb.bindNamedParameter(InputShape.class, inputShape);
     jb.bindNamedParameter(BatchSize.class, String.valueOf(batchSize));
     jb.bindNamedParameter(RandomSeed.class, String.valueOf(randomSeed));
+    jb.bindNamedParameter(CpuOnly.class, String.valueOf(cpuOnly));
 
     return jb.build();
   }

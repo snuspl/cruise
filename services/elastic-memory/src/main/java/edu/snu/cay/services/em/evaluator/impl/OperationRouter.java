@@ -284,8 +284,7 @@ public final class OperationRouter<K> {
   /**
    * Resolves an evaluator id for a block id.
    * It returns empty when the block belongs to the local MemoryStore.
-   * Note that this method must be synchronized to prevent other threads
-   * from updating the routing information while reading it.
+   * Be aware that the result of this method might become wrong by {@link #updateOwnership}.
    * @param blockId an id of block
    * @return an Optional with an evaluator id
    */

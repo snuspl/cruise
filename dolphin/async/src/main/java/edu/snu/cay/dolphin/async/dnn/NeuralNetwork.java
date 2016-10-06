@@ -94,8 +94,8 @@ public final class NeuralNetwork {
     final Configuration[] layerConfs =
         deserializeLayerConfSetToArray(configurationSerializer, serializedLayerConfSets);
     this.layers = getLayerInstances(injector, layerConfs, inputShape);
-    this.emptyMatrix = matrixFactory.create(0);
-    this.emptyLayerParam = LayerParameter.newEmptyInstance(matrixFactory);
+    this.emptyMatrix = null;
+    this.emptyLayerParam = LayerParameter.newEmptyInstance();
     this.learnableLayerIndices = getLearnableLayerIndices();
   }
 
@@ -338,6 +338,16 @@ public final class NeuralNetwork {
       }
     }
     return parameterGradients;
+  }
+
+  /**
+   * This is called on task termination.
+   */
+  public void cleanup() {
+    // clean up layers
+    for (final LayerBase layer : layers) {
+      layer.cleanup();
+    }
   }
 
   /**

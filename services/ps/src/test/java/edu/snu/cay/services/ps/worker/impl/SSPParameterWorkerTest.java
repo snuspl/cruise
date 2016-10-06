@@ -203,26 +203,6 @@ public final class SSPParameterWorkerTest {
   }
 
   /**
-   * Rule for suppressing massive WARNING level logs in {@link SSPParameterWorker#processPullReject},
-   * which are intentionally called many times in {@link #testPullReject}.
-   */
-  @Rule
-  private TestRule pullRejectWatcher = new EnforceLoggingLevelRule("testPullReject",
-      SSPParameterWorker.class.getName(), Level.SEVERE);
-
-  /**
-   * Test the correct handling of pull rejects by {@link SSPParameterWorker},
-   * creating multiple threads that try to pull values from the server
-   * using {@link SSPParameterWorker}.
-   */
-  @Test
-  public void testPullReject()
-      throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
-    prepare(TIMEOUT_NO_RETRY);
-    ParameterWorkerTestUtil.pullReject(parameterWorker, workerHandler, mockSender);
-  }
-
-  /**
    * Rule for suppressing massive WARNING level logs by {@link NetworkException}
    * while {@link SSPParameterWorker} tries to send a pull msg,
    * which are intentionally caused many times in {@link #testPullNetworkExceptionAndResend()}.

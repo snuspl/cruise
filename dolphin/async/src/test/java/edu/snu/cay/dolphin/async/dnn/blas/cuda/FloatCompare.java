@@ -19,7 +19,7 @@ package edu.snu.cay.dolphin.async.dnn.blas.cuda;
  * Utility class for comparing floats with tolerance.
  */
 final class FloatCompare {
-  private static final float TOLERANCE = 2.4E-07F;
+  static final float TOLERANCE = 1.0E-06F;
 
   private FloatCompare() {
   }

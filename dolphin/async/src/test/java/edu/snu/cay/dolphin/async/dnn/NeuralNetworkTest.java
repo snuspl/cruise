@@ -30,6 +30,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -102,25 +103,26 @@ public final class NeuralNetworkTest {
       .setInputShape(input.getLength())
       .setStepSize(1e-2f)
       .setRandomSeed(10)
-      .addLayerConfiguration(
-          FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
-              .setNumOutput(numHiddenUnits)
-              .setInitWeight(0.0001f)
-              .setInitBias(0.0002f)
-              .build())
-      .addLayerConfiguration(
-          ActivationLayerConfigurationBuilder.newConfigurationBuilder()
-              .setActivationFunction("sigmoid")
-              .build())
-      .addLayerConfiguration(
-          FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
-              .setNumOutput(expectedOutput.getLength())
-              .setInitWeight(0.2f)
-              .setInitBias(0.3f)
-              .build())
+      .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
+          .setNumOutput(numHiddenUnits)
+          .setInitWeight(0.0001f)
+          .setInitBias(0.0002f)
+          .setCpuOnly(true)
+          .build())
+      .addLayerConfiguration(ActivationLayerConfigurationBuilder.newConfigurationBuilder()
+          .setActivationFunction("sigmoid")
+          .setCpuOnly(true)
+          .build())
+      .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
+          .setNumOutput(expectedOutput.getLength())
+          .setInitWeight(0.2f)
+          .setInitBias(0.3f)
+          .setCpuOnly(true)
+          .build())
       .addLayerConfiguration(ActivationWithLossLayerConfigurationBuilder.newConfigurationBuilder()
           .setActivationFunction("sigmoid")
           .setLossFunction("crossentropy")
+          .setCpuOnly(true)
           .build())
       .build();
 
@@ -161,6 +163,11 @@ public final class NeuralNetworkTest {
       }).when(mockParameterWorker).pull(anyObject());
 
     neuralNetwork.updateParameters();
+  }
+
+  @After
+  public void tearDown() {
+    neuralNetwork.cleanup();
   }
 
   /**

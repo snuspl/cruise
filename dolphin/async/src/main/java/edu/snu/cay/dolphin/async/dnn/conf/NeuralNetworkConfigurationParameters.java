@@ -51,4 +51,8 @@ public final class NeuralNetworkConfigurationParameters {
   @NamedParameter(doc = "random seed that is used to generate random values")
   public static final class RandomSeed implements Name<Long> {
   }
+
+  @NamedParameter(doc = "the device option to run under")
+  public static final class CpuOnly implements Name<Boolean> {
+  }
 }

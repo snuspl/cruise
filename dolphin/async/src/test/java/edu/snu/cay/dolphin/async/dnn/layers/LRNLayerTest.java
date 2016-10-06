@@ -23,6 +23,7 @@ import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -105,7 +106,8 @@ public class LRNLayerTest {
         .setAlpha(3)
         .setBeta(2)
         .setK(1)
-        .setLocalSize(3);
+        .setLocalSize(3)
+        .setCpuOnly(true);
 
     this.lrnLayerSizeTwo =
         Tang.Factory.getTang().newInjector(layerConfSizeTwo, builder.build())
@@ -114,6 +116,12 @@ public class LRNLayerTest {
     this.lrnLayerSizeOne =
         Tang.Factory.getTang().newInjector(layerConfSizeOne, builder.build())
             .getInstance(LayerBase.class);
+  }
+
+  @After
+  public void tearDown() {
+    lrnLayerSizeTwo.cleanup();
+    lrnLayerSizeOne.cleanup();
   }
 
   @Test

@@ -48,7 +48,6 @@ public final class MLRREEF {
         .addParameterClass(ModelGaussian.class)
         .addParameterClass(DecayPeriod.class)
         .addParameterClass(DecayRate.class)
-        .addParameterClass(TrainErrorDatasetSize.class)
         .build());
   }
 }

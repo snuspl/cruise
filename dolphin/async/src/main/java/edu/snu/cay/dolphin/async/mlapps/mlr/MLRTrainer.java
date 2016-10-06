@@ -113,11 +113,6 @@ final class MLRTrainer implements Trainer {
    */
   private final int decayPeriod;
 
-  /**
-   * Number of instances to compute training loss with.
-   */
-  private final int trainErrorDataSetSize;
-
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
   private final TrainingDataProvider<Long> trainingDataProvider;
@@ -138,7 +133,6 @@ final class MLRTrainer implements Trainer {
                      @Parameter(Lambda.class) final double lambda,
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                      final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
@@ -160,7 +154,6 @@ final class MLRTrainer implements Trainer {
     this.oldModels = new Vector[numClasses];
     this.newModels = new Vector[numClasses];
     this.decayRate = decayRate;
-    this.trainErrorDataSetSize = trainErrorDatasetSize;
     this.decayPeriod = decayPeriod;
     this.metricsMsgSender = metricsMsgSender;
     this.idFactory = idFactory;
@@ -203,30 +196,31 @@ final class MLRTrainer implements Trainer {
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
     LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
-    if (dataValues.size() < trainErrorDataSetSize) {
-      LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDataSetSize);
-    }
   }
 
   @Override
   public void run(final int iteration) {
-    final long iterationBegin = System.currentTimeMillis();
-    resetTracers();
+    final long epochStartTime = System.currentTimeMillis();
 
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
     final int numEMBlocks = memoryStore.getNumBlocks();
 
     int miniBatchIdx = 0;
+    int numTotalInstancesProcessed = 0;
     final List<Pair<Vector, Integer>> totalInstancesProcessed = new LinkedList<>();
 
     Map<Long, Pair<Vector, Integer>> nextTrainingData = trainingDataProvider.getNextTrainingData();
+    List<Pair<Vector, Integer>> instances = new ArrayList<>(nextTrainingData.values());
+    int numInstancesToProcess = instances.size();
     while (!nextTrainingData.isEmpty()) {
+      resetTracers();
+      final long miniBatchStartTime = System.currentTimeMillis();
+
       // pull data when mini-batch is started
       pullModels();
 
       computeTracer.startTimer();
-      final List<Pair<Vector, Integer>> instances = new ArrayList<>(nextTrainingData.values());
       for (final Pair<Vector, Integer> instance : instances) {
 
         final Vector features = instance.getFirst();
@@ -252,16 +246,27 @@ final class MLRTrainer implements Trainer {
           }
         }
       }
-      computeTracer.recordTime(instances.size());
+      computeTracer.recordTime(numInstancesToProcess);
 
       // push gradients
       pushAndResetGradients();
 
-      // A mini-batch is ended
-      miniBatchIdx++;
+      // update the instances processed so far
+      numTotalInstancesProcessed += numInstancesToProcess;
       totalInstancesProcessed.addAll(instances);
 
+      // load the set of training data instances to process in the next mini-batch
       nextTrainingData = trainingDataProvider.getNextTrainingData();
+
+      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+      final WorkerMetrics miniBatchMetric =
+          buildMiniBatchMetric(iteration, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
+      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+      sendMetrics(miniBatchMetric);
+
+      instances = new ArrayList<>(nextTrainingData.values());
+      numInstancesToProcess = instances.size();
+      miniBatchIdx++;
     }
 
     if (iteration % decayPeriod == 0) {
@@ -271,19 +276,22 @@ final class MLRTrainer implements Trainer {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
-    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    final Tuple3<Double, Double, Float> lossRegLossAccuracy =
-        computeLoss(trainErrorDataSetSize, totalInstancesProcessed);
-    final double loss = lossRegLossAccuracy.getFirst();
+    LOG.log(Level.INFO, "Pull model to compute loss value");
+    pullModels();
+    
+    LOG.log(Level.INFO, "Start computing loss value");
+    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed);
+    
+    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+    final double sampleLoss = lossRegLossAccuracy.getFirst();
     final double regLoss = lossRegLossAccuracy.getSecond();
-    final double accuracy = (double) lossRegLossAccuracy.getThird();
-    final Metrics appMetrics = buildAppMetrics(loss, regLoss, accuracy, elapsedTime,
-        totalInstancesProcessed.size());
-    final WorkerMetrics workerMetrics = buildMetricsMsg(iteration, appMetrics, miniBatchIdx - 1, numEMBlocks,
-        totalInstancesProcessed.size(), elapsedTime);
+    final double accuracy = lossRegLossAccuracy.getThird();
+    final WorkerMetrics epochMetric =
+        buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
+            numTotalInstancesProcessed, sampleLoss, regLoss, accuracy, epochElapsedTime);
 
-    LOG.log(Level.INFO, "WorkerMetrics {0}", workerMetrics);
-    sendMetrics(workerMetrics);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
   }
 
   /**
@@ -291,18 +299,6 @@ final class MLRTrainer implements Trainer {
    */
   @Override
   public void cleanup() {
-    pullModels();
-
-    final Map<Long, Pair<Vector, Integer>> workloadMap = memoryStore.getAll();
-    final List<Pair<Vector, Integer>> data = new ArrayList<>(workloadMap.values());
-    final int entireDatasetSize = data.size();
-
-    // Compute loss with the entire dataset.
-    final Tuple3<Double, Double, Float> lossRegLossAccuracy = computeLoss(entireDatasetSize, data);
-    final Metrics appMetrics =
-        buildAppMetrics(lossRegLossAccuracy.getFirst(), lossRegLossAccuracy.getSecond(), lossRegLossAccuracy.getThird(),
-            0.0, entireDatasetSize);
-    LOG.log(Level.INFO, "[Cleanup] AppMetrics {0}", appMetrics);
   }
 
   private void pullModels() {
@@ -342,17 +338,14 @@ final class MLRTrainer implements Trainer {
   }
 
   /**
-   * Compute the loss value using the current models and all data instances.
+   * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Float> computeLoss(final int datasetSize,
-                                                    final List<Pair<Vector, Integer>> data) {
+  private Tuple3<Double, Double, Double> computeLoss(final List<Pair<Vector, Integer>> data) {
     double loss = 0;
-    int numInstances = 0;
     int correctPredictions = 0;
 
-    final int numDataToCompute = Math.min(datasetSize, data.size());
-    for (final Pair<Vector, Integer> entry : data.subList(0, numDataToCompute)) {
+    for (final Pair<Vector, Integer> entry : data) {
       final Vector features = entry.getFirst();
       final int label = entry.getSecond();
       final Vector predictions = predict(features);
@@ -369,10 +362,7 @@ final class MLRTrainer implements Trainer {
           loss += -Math.log(1 - predictions.get(classIndex));
         }
       }
-
-      ++numInstances;
     }
-    loss /= numInstances;
 
     double regLoss = 0;
     if (lambda != 0) {
@@ -387,7 +377,8 @@ final class MLRTrainer implements Trainer {
       }
     }
     regLoss /= numClasses;
-    return new Tuple3<>(loss, regLoss, (float) correctPredictions / numInstances);
+
+    return new Tuple3<>(loss, regLoss, (double) correctPredictions / data.size());
   }
 
   /**
@@ -451,15 +442,18 @@ final class MLRTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int iteration, final Metrics appMetrics, final int numMiniBatchForEpoch,
-                                        final int numDataBlocks, final int numProcessedDataItemCount,
-                                        final double elapsedTime) {
-    final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
-        .setMetrics(appMetrics)
+  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
+                                             final int numProcessedDataItemCount, final double elapsedTime) {
+    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+    appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
+
+    return WorkerMetrics.newBuilder()
+        .setMetrics(Metrics.newBuilder()
+            .setData(appMetricMap)
+            .build())
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
-        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
-        .setNumDataBlocks(numDataBlocks)
+        .setMiniBatchIdx(miniBatchIdx)
         .setProcessedDataItemCount(numProcessedDataItemCount)
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
@@ -469,20 +463,28 @@ final class MLRTrainer implements Trainer {
         .setAvgPushTime(pushTracer.avgTimePerElem())
         .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
-
-    return workerMetrics;
   }
 
-  private Metrics buildAppMetrics(final double sampleLoss, final double regLoss, final double accuracy,
-                                  final double elapsedTime, final int numInstances) {
+  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
+                                         final int numDataBlocks, final int numProcessedDataItemCount,
+                                         final double sampleLoss, final double regLoss, final double accuracy,
+                                         final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(MetricKeys.SAMPLE_LOSS_AVG, sampleLoss);
+    appMetricMap.put(MetricKeys.SAMPLE_LOSS_SUM, sampleLoss);
     appMetricMap.put(MetricKeys.REG_LOSS_AVG, regLoss);
     appMetricMap.put(MetricKeys.ACCURACY, accuracy);
-    appMetricMap.put(MetricKeys.DVT, numInstances / elapsedTime);
+    parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
 
-    return Metrics.newBuilder()
-        .setData(appMetricMap)
+    return WorkerMetrics.newBuilder()
+        .setMetrics(Metrics.newBuilder()
+            .setData(appMetricMap)
+            .build())
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
         .build();
   }
 }
