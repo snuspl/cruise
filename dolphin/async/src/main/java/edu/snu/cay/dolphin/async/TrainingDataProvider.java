@@ -84,7 +84,7 @@ public final class TrainingDataProvider<K> {
    */
   public synchronized void prepareDataForEpoch() {
     trainingDataKeySet.addAll(memoryStore.getAll().keySet());
-    LOG.log(Level.INFO, "training data key set size = " + trainingDataKeySet.size());
+    LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeySet.size());
   }
 
   /**
@@ -94,7 +94,7 @@ public final class TrainingDataProvider<K> {
    */
   public <V> Map<K, V> getNextTrainingData() {
     final List<K> nextTrainingDataKeyList = new ArrayList<>(miniBatchSize);
-    synchronized (TrainingDataProvider.this) {
+    synchronized (this) {
       if (trainingDataKeySet.isEmpty()) {
         LOG.log(Level.INFO, "no more training data for current epoch");
         return Collections.emptyMap();
@@ -116,8 +116,14 @@ public final class TrainingDataProvider<K> {
       }
       nextTrainingData.put(keyValuePair.getFirst(), keyValuePair.getSecond());
     }
-    LOG.log(Level.INFO, "size of key list of next training data = " + nextTrainingDataKeyList.size()
-            + ", size of next training data = " + nextTrainingData.size());
+
+    LOG.log(Level.INFO, "Size of training data for next mini-batch: {0}", nextTrainingData.size());
+    if (nextTrainingDataKeyList.size() != nextTrainingData.size()) {
+      LOG.log(Level.INFO, "The number of assigned data keys for next mini-batch is {0}," +
+          " but ths size of actually prepared training data is {1}",
+          new Object[]{nextTrainingDataKeyList.size(), nextTrainingData.size()});
+    }
+
     return nextTrainingData;
   }
 }

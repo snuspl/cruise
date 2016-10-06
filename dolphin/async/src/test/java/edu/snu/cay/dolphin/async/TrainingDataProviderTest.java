@@ -52,8 +52,6 @@ public class TrainingDataProviderTest {
   private static final int REMOTE_STORE_ID = 1;
   private static final int MIN_BLOCK_ID = 0;
 
-  private final Map<Long, Integer> trainingDataInMemoryStore = new HashMap<>();
-
   private MemoryStore<Long> memoryStore;
   private OperationRouter<Long> operationRouter;
   private TrainingDataProvider<Long> trainingDataProvider;
@@ -64,6 +62,7 @@ public class TrainingDataProviderTest {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindImplementation(MoveHandler.class, MemoryStoreImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(LOCAL_STORE_ID))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_MEMORY_STORES))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
@@ -97,7 +96,7 @@ public class TrainingDataProviderTest {
     memoryStore = injector.getInstance(MemoryStore.class);
     operationRouter = injector.getInstance(OperationRouter.class);
     trainingDataProvider = injector.getInstance(TrainingDataProvider.class);
-    moveHandler = (MoveHandler) memoryStore;
+    moveHandler = injector.getInstance(MoveHandler.class);
   }
 
   /**
@@ -139,23 +138,19 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * Generate random values and put them into {@link #trainingDataInMemoryStore}
-   * to be used as training data in {@link #memoryStore}.
+   * Generate random values to be used as training data in {@link #memoryStore}.
    */
   private void createTrainingData(final int numTotalInstances) {
-    trainingDataInMemoryStore.clear();
 
     final Random generator = new Random();
     for (int i = 0; i < numTotalInstances; i++) {
       final int value = generator.nextInt();
       memoryStore.put((long)i, value);
     }
-
-    trainingDataInMemoryStore.putAll(memoryStore.getAll());
   }
 
   /**
-   * Test {@link TrainingDataProvider#getNextTrainingData()} gives right size of training data for each mini-batch.
+   * Test {@link TrainingDataProvider#getNextTrainingData()} gives right size of training data for each mini-batch
    * and provides training data for the exact number of mini-batches, total number of instances / mini-batch size
    * (or +1 depending on whether total number of instances is divisible by mini-batch size or not).
    * @param numTotalInstances the number of instances {@link TrainingDataProvider} currently has.
@@ -171,7 +166,7 @@ public class TrainingDataProviderTest {
     Map<Long, Integer> trainingData = trainingDataProvider.getNextTrainingData();
     while (!trainingData.isEmpty()) {
       for (final Long key : trainingData.keySet()) {
-        assertEquals(trainingDataInMemoryStore.get(key), trainingData.get(key));
+        assertEquals(memoryStore.get(key).getSecond(), trainingData.get(key));
       }
 
       if (miniBatchIdx < lastMiniBatchIdx) {
@@ -191,25 +186,22 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * add a block to the MemoryStore.
+   * Add a block to the MemoryStore.
    * @param blockId the id of the block to be added
    * @param dataSet the data set which will be stored into the added block
    */
   private void putBlockToMemoryStore(final int blockId, final Map<Long, Integer> dataSet) {
     moveHandler.putBlock(blockId, (Map) dataSet);
     operationRouter.updateOwnership(blockId, REMOTE_STORE_ID, LOCAL_STORE_ID);
-    trainingDataInMemoryStore.putAll(dataSet);
   }
 
   /**
-   * remove a block from the MemoryStore.
+   * Remove a block from the MemoryStore.
    * @param blockId the id of the block to be removed
-   * @param dataSet the data set stored in the removed block
    */
-  private void removeBlockFromMemoryStore(final int blockId, final Map<Long, Integer> dataSet) {
+  private void removeBlockFromMemoryStore(final int blockId) {
     moveHandler.removeBlock(blockId);
     operationRouter.updateOwnership(blockId, LOCAL_STORE_ID, REMOTE_STORE_ID);
-    dataSet.keySet().forEach(trainingDataInMemoryStore::remove);
   }
 
   /**
@@ -233,7 +225,7 @@ public class TrainingDataProviderTest {
 
     // remove the added block from TrainingDataProvider at the beginning of epoch
     trainingDataProvider.prepareDataForEpoch(); // preparing training data for the epoch
-    removeBlockFromMemoryStore(blockId, dataSet); // remove a block from the MemoryStore
+    removeBlockFromMemoryStore(blockId); // remove a block from the MemoryStore
     testGetNextTrainingData(numInitialInstances); // verify the result of block removal
     assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
   }
@@ -262,7 +254,7 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * test whether {@link TrainingDataProvider} provides the training data properly
+   * Test whether {@link TrainingDataProvider} provides the training data properly
    * when block removal events occur at a fixed interval during an epoch.
    * @param blocksToRemove a set of blocks to be removed stored in {@link MemoryStore}
    */
@@ -271,7 +263,7 @@ public class TrainingDataProviderTest {
     final Map<Long, Integer> unusedDataInStore = new HashMap<>();
 
     // initialize training data currently remained in the MemoryStore
-    unusedDataInStore.putAll(trainingDataInMemoryStore);
+    unusedDataInStore.putAll(memoryStore.getAll());
 
     final int numTotalInstances = unusedDataInStore.size();
 
@@ -299,13 +291,11 @@ public class TrainingDataProviderTest {
         final Map<Long, Integer> dataSet = blockDataPair.getSecond();
 
         // remove a block from the MemoryStore
-        moveHandler.removeBlock(blockId);
-        operationRouter.updateOwnership(blockId, LOCAL_STORE_ID, REMOTE_STORE_ID);
+        removeBlockFromMemoryStore(blockId);
         removedBlockCount++;
 
         // remove the data set of the removed block from the training data currently stored in the MemoryStore.
         for (final Long key : dataSet.keySet()) {
-          trainingDataInMemoryStore.remove(key); // synchronize with current status of the MemoryStore.
           final Integer expectedValue = dataSet.get(key);
           final Integer actualValue = unusedDataInStore.remove(key);
           if (actualValue != null) {
@@ -326,7 +316,7 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * test whether {@link TrainingDataProvider} provides the training data properly
+   * Test whether {@link TrainingDataProvider} provides the training data properly
    * when block addition events occur at a fixed interval during an epoch.
    */
   private List<Pair<Integer, Map<Long, Integer>>> testGetNextTrainingDataWithBlockAdditions(
@@ -362,17 +352,13 @@ public class TrainingDataProviderTest {
         final Map<Long, Integer> dataSet = blockDataPair.getSecond();
 
         // add a new block to the MemoryStore
-        moveHandler.putBlock(blockId, (Map) dataSet);
-        operationRouter.updateOwnership(blockId, REMOTE_STORE_ID, LOCAL_STORE_ID);
-
-        // add the data set of the new block to the expected data set
-        trainingDataInMemoryStore.putAll(dataSet);
+        putBlockToMemoryStore(blockId, dataSet);
       }
 
       // compare the training data with the expected data set
       final Set<Long> keySet = trainingData.keySet();
       for (final Long key : keySet) {
-        assertEquals(trainingDataInMemoryStore.get(key), trainingData.get(key));
+        assertEquals(memoryStore.get(key).getSecond(), trainingData.get(key));
       }
 
       // update the number of used instances by the size of training data
@@ -406,7 +392,7 @@ public class TrainingDataProviderTest {
   }
 
   /**
-   * generates a list of block ids which don't belong to the local store.
+   * Generates a list of block ids which don't belong to the local store.
    * @return a list of block ids not belonging in the local store
    */
   private List<Integer> generateBlockIdNotInLocalStore() {
