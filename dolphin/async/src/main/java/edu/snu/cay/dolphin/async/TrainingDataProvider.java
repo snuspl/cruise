@@ -56,18 +56,18 @@ public final class TrainingDataProvider<K> {
     public void onAddedBlock(final int blockId, final Set<K> addedKeys) {
       synchronized (TrainingDataProvider.this) {
         trainingDataKeySet.addAll(addedKeys);
+        LOG.log(Level.INFO, "Added key set size = " + addedKeys.size()
+            + ", changed training data key set size = " + trainingDataKeySet.size());
       }
-      LOG.log(Level.INFO, "Added key set size = " + addedKeys.size()
-          + ", changed training data key set size = " + trainingDataKeySet.size());
     }
 
     @Override
     public void onRemovedBlock(final int blockId, final Set<K> removedKeys) {
       synchronized (TrainingDataProvider.this) {
         trainingDataKeySet.removeAll(removedKeys);
+        LOG.log(Level.INFO, "Removed key set size = " + removedKeys.size()
+            + ", changed training data key set size = " + trainingDataKeySet.size());
       }
-      LOG.log(Level.INFO, "Removed key set size = " + removedKeys.size()
-          + ", changed training data key set size = " + trainingDataKeySet.size());
     }
   }
 
