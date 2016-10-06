@@ -86,8 +86,8 @@ public final class ConvolutionalLayer extends LayerBase {
     this.kernelWidth = kernelWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(0, 0);
-    this.layerError = matrixFactory.create(0, 0);
+    this.output = null;
+    this.layerError = null;
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -192,7 +192,7 @@ public final class ConvolutionalLayer extends LayerBase {
   @Override
   public Matrix feedForward(final Matrix input) {
 
-    if (output.getColumns() != input.getColumns()) {
+    if (output == null || output.getColumns() != input.getColumns()) {
       output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
     }
 
@@ -214,7 +214,7 @@ public final class ConvolutionalLayer extends LayerBase {
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
 
-    if (!layerError.hasSameSize(input)) {
+    if (layerError == null || !layerError.hasSameSize(input)) {
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }
 

@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.layers.cuda;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
@@ -49,6 +50,15 @@ public final class PoolingGpuLayer extends LayerBase {
   private Pointer activationDesc;
   private Pointer poolDesc;
 
+  private final int outputChannel;
+  private final int outputHeight;
+  private final int outputWidth;
+  private final int inputChannel;
+  private final int inputHeight;
+  private final int inputWidth;
+  private final int batchSize;
+
+
   /**
    * @param index the index of this layer
    * @param inputShape the shape of input data
@@ -78,9 +88,6 @@ public final class PoolingGpuLayer extends LayerBase {
                           final MatrixFactory matrixFactory) {
     super(index, inputShape);
 
-    final int outputChannel;
-    final int outputHeight;
-    final int outputWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
     if (outputShape.length == 2) {
       outputChannel = 1;
@@ -91,18 +98,16 @@ public final class PoolingGpuLayer extends LayerBase {
       outputHeight = outputShape[1];
       outputWidth = outputShape[2];
     }
+    this.batchSize = batchSize;
 
-    final int inputHeight;
-    final int inputWidth;
-    final int inputChannel;
     if ((poolingType.toUpperCase()).equals("MAX")) {
       this.poolingType = 'M';
     } else {
       this.poolingType = 'A';
     }
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(0, 0);
-    this.layerError = matrixFactory.create(0, 0);
+    this.output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), batchSize);
+    this.layerError = null;
 
     if (getInputShape().length == 2) {
       inputChannel = 1;
@@ -141,8 +146,14 @@ public final class PoolingGpuLayer extends LayerBase {
   @Override
   public Matrix feedForward(final Matrix input) {
 
-    if (output.getColumns() != input.getColumns()) {
-      output.free();
+    final int inputSize = input.getColumns();
+    if (inputSize != batchSize) {
+      JavaCudnn.destroyTensorDesc(inputDesc);
+      JavaCudnn.destroyTensorDesc(activationDesc);
+      MatrixUtils.free(output);
+
+      inputDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
+      activationDesc = JavaCudnn.createTensorDesc(inputSize, outputChannel, outputHeight, outputWidth);
       output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
     }
 
@@ -165,8 +176,8 @@ public final class PoolingGpuLayer extends LayerBase {
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
 
-    if (!layerError.hasSameSize(input)) {
-      layerError.free();
+    if (layerError == null || !layerError.hasSameSize(input)) {
+      MatrixUtils.free(layerError);
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }
     layerError.fill(0);
@@ -192,7 +203,7 @@ public final class PoolingGpuLayer extends LayerBase {
     JavaCudnn.destroyPoolDesc(poolDesc);
     JavaCudnn.destroyTensorDesc(activationDesc);
 
-    output.free();
-    layerError.free();
+    MatrixUtils.free(output);
+    MatrixUtils.free(layerError);
   }
 }

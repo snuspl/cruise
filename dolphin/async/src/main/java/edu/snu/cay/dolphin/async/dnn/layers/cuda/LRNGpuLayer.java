@@ -17,11 +17,13 @@ package edu.snu.cay.dolphin.async.dnn.layers.cuda;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.bytedeco.javacpp.Pointer;
 
@@ -33,6 +35,7 @@ import javax.inject.Inject;
  * We use cuDNN library to implement this layer.
  */
 public final class LRNGpuLayer extends LayerBase {
+
   private MatrixFactory matrixFactory;
   private Matrix output;
   private Matrix layerError;
@@ -40,6 +43,11 @@ public final class LRNGpuLayer extends LayerBase {
   private Pointer inputDesc;
   private Pointer activationDesc;
   private Pointer lrnDesc;
+
+  private final int inputChannel;
+  private final int inputHeight;
+  private final int inputWidth;
+  private final int batchSize;
 
   /**
    * @param index the index of this layer
@@ -61,22 +69,19 @@ public final class LRNGpuLayer extends LayerBase {
                       final MatrixFactory matrixFactory) {
     super(index, inputShape);
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(0, 0);
-    this.layerError = matrixFactory.create(0, 0);
-
-    final int inputChannel;
-    final int inputHeight;
-    final int inputWidth;
+    this.output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getInputShape()), batchSize);
+    this.layerError = null;
 
     if (getInputShape().length == 2) {
-      inputChannel = 1;
-      inputHeight = getInputShape()[0];
-      inputWidth = getInputShape()[1];
+      this.inputChannel = 1;
+      this.inputHeight = getInputShape()[0];
+      this.inputWidth = getInputShape()[1];
     } else {
-      inputChannel = getInputShape()[0];
-      inputHeight = getInputShape()[1];
-      inputWidth = getInputShape()[2];
+      this.inputChannel = getInputShape()[0];
+      this.inputHeight = getInputShape()[1];
+      this.inputWidth = getInputShape()[2];
     }
+    this.batchSize = batchSize;
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
@@ -102,9 +107,15 @@ public final class LRNGpuLayer extends LayerBase {
   @Override
   public Matrix feedForward(final Matrix input) {
 
-    if (!output.hasSameSize(input)) {
-      output.free();
-      output = matrixFactory.create(input.getRows(), input.getColumns());
+    final int inputSize = input.getColumns();
+    if (inputSize != batchSize) {
+      JavaCudnn.destroyTensorDesc(inputDesc);
+      JavaCudnn.destroyTensorDesc(activationDesc);
+      MatrixUtils.free(output);
+
+      inputDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
+      activationDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
+      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getOutputShape()), input.getColumns());
     }
 
     if (JavaCudnn.lrnFeedForward(lrnDesc, inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
@@ -126,8 +137,8 @@ public final class LRNGpuLayer extends LayerBase {
                               final Matrix activation,
                               final Matrix nextError) {
 
-    if (!layerError.hasSameSize(input)) {
-      layerError.free();
+    if (layerError == null || !layerError.hasSameSize(input)) {
+      MatrixUtils.free(layerError);
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }
     layerError.fill(0);
@@ -153,7 +164,7 @@ public final class LRNGpuLayer extends LayerBase {
     JavaCudnn.cudnnDestroyTensorDesc(activationDesc);
     JavaCudnn.cudnnDestroyLRNDesc(lrnDesc);
 
-    output.free();
-    layerError.free();
+    MatrixUtils.free(output);
+    MatrixUtils.free(layerError);
   }
 }

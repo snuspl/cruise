@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn.layers.cuda;
 
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.JavaCuda;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
@@ -42,6 +43,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   private final int inputChannel;
   private final int inputHeight;
   private final int inputWidth;
+  private final int batchSize;
   private final int[] outputShape;
   private MatrixFactory matrixFactory;
   private Matrix output;
@@ -96,8 +98,8 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     super(index, inputShape);
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(0, 0);
-    this.layerError = matrixFactory.create(0, 0);
+    this.output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), batchSize);
+    this.layerError = null;
     this.maxWorkspaceSize = 0;
 
     if (getInputShape().length == 2) {
@@ -109,6 +111,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
       this.inputHeight = getInputShape()[1];
       this.inputWidth = getInputShape()[2];
     }
+    this.batchSize = batchSize;
 
     this.weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
     this.biasGradient = matrixFactory.create(outputShape[0], 1);
@@ -161,9 +164,15 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   @Override
   public Matrix feedForward(final Matrix input) {
 
-    if (output.getColumns() != input.getColumns()) {
-      output.free();
-      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+    final int inputSize = input.getColumns();
+    if (inputSize != batchSize) {
+      JavaCudnn.destroyTensorDesc(inputDesc);
+      JavaCudnn.destroyTensorDesc(activationDesc);
+      MatrixUtils.free(output);
+
+      inputDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
+      activationDesc = JavaCudnn.createTensorDesc(inputSize, outputShape[0], outputShape[1], outputShape[2]);
+      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), inputSize);
     }
 
     if (JavaCudnn.convFeedForward(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
@@ -187,8 +196,8 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
 
-    if (!layerError.hasSameSize(input)) {
-      layerError.free();
+    if (layerError == null || !layerError.hasSameSize(input)) {
+      MatrixUtils.free(layerError);
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }
 
@@ -234,9 +243,9 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     JavaCudnn.destroyAlgo(backwardFilterAlgo);
     JavaCuda.deviceFree(workspace);
 
-    output.free();
-    layerError.free();
-    weightGradient.free();
-    biasGradient.free();
+    MatrixUtils.free(output);
+    MatrixUtils.free(layerError);
+    MatrixUtils.free(weightGradient);
+    MatrixUtils.free(biasGradient);
   }
 }

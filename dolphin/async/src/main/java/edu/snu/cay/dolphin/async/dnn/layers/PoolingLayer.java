@@ -95,9 +95,9 @@ public final class PoolingLayer extends LayerBase {
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.poolingType = PoolType.valueOf(poolingType.toUpperCase());
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(0, 0);
-    this.indexMatrix = matrixFactory.create(0, 0);
-    this.layerError = matrixFactory.create(0, 0);
+    this.output = null;
+    this.indexMatrix = null;
+    this.layerError = null;
   
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -134,7 +134,7 @@ public final class PoolingLayer extends LayerBase {
     final int inputSize = inputHeight * inputWidth;
     final int outputSize = outputHeight * outputWidth;
     final int outputLength = NeuralNetworkUtils.getShapeLength(outputShape);
-    if (output.getColumns() != input.getColumns()) {
+    if (output == null || output.getColumns() != input.getColumns()) {
       output = matrixFactory.create(outputLength, input.getColumns());
       indexMatrix = matrixFactory.create(outputLength, input.getColumns());
     }
@@ -181,7 +181,7 @@ public final class PoolingLayer extends LayerBase {
   private Matrix feedForwardAveragePooling(final Matrix input) {
     final int inputSize = inputHeight * inputWidth;
     final int outputSize = outputHeight * outputWidth;
-    if (output.getColumns() != input.getColumns()) {
+    if (output == null || output.getColumns() != input.getColumns()) {
       output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
     }
 
@@ -238,7 +238,7 @@ public final class PoolingLayer extends LayerBase {
    * @return errors for this layer with the specified input value.
    */
   private Matrix backPropagateMaxPooling(final Matrix input, final Matrix nextError) {
-    if (!layerError.hasSameSize(input)) {
+    if (layerError == null || !layerError.hasSameSize(input)) {
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }
     layerError.fill(0);
@@ -267,7 +267,7 @@ public final class PoolingLayer extends LayerBase {
    * @return errors for this layer with the specified input value.
    */
   private Matrix backPropagateAveragePooling(final Matrix input, final Matrix nextError) {
-    if (!layerError.hasSameSize(input)) {
+    if (layerError == null || !layerError.hasSameSize(input)) {
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }
     layerError.fill(0);

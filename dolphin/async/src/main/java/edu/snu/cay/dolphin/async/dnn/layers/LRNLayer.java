@@ -69,8 +69,8 @@ public final class LRNLayer extends LayerBase {
     this.k = k;
     this.paddingSize = (localSize - 1) / 2;
     this.matrixFactory = matrixFactory;
-    this.scale = matrixFactory.create(0, 0);
-    this.layerError = matrixFactory.create(0, 0);
+    this.scale = null;
+    this.layerError = null;
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -108,7 +108,7 @@ public final class LRNLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    if (!scale.hasSameSize(input)) {
+    if (scale == null || !scale.hasSameSize(input)) {
       scale = matrixFactory.create(input.getRows(), input.getColumns());
     }
 
@@ -172,8 +172,7 @@ public final class LRNLayer extends LayerBase {
   public Matrix backPropagate(final Matrix input,
                               final Matrix activation,
                               final Matrix nextError) {
-    if (!layerError.hasSameSize(input)) {
-      layerError.free();
+    if (layerError == null || !layerError.hasSameSize(input)) {
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }
     final float scalarMultiplier = -2 * alpha * beta / localSize;
