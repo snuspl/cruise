@@ -117,11 +117,10 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
       detached = onMoveInitMsgScope.detach();
       final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
-      dataMsgSenderExecutor.submit(new Runnable() {
-        @Override
-        public void run() {
-          // Send the data as unit of block
-          for (final int blockId : blockIds) {
+      for (final int blockId : blockIds) {
+        dataMsgSenderExecutor.submit(new Runnable() {
+          @Override
+          public void run() {
             final Map<K, Object> blockData = memoryStore.getBlock(blockId);
 
             final List<KeyValuePair> keyValuePairs;
@@ -131,8 +130,8 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
 
             sender.get().sendDataMsg(receiverId, keyValuePairs, blockId, operationId, traceInfo);
           }
-        }
-      });
+        });
+      }
     } finally {
       Trace.continueSpan(detached).close();
     }
