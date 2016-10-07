@@ -28,7 +28,7 @@ import java.util.Map;
  */
 @EvaluatorSide
 @Private
-interface MoveHandler<K> {
+public interface MoveHandler<K> {
   /**
    * Sends the data in the blocks to another MemoryStore.
    * @param blockId the identifier of block to send
