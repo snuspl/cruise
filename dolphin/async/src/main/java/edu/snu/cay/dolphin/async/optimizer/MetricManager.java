@@ -192,17 +192,21 @@ public final class MetricManager {
 
         if (metrics.getMiniBatchIdx() == null) {
           synchronized (workerEvalEpochParams) {
+            // skip the first epoch metric for the worker after metric collection has begun
             if (!workerEvalEpochParams.containsKey(workerId)) {
               workerEvalEpochParams.put(workerId, new ArrayList<>());
+            } else {
+              workerEvalEpochParams.get(workerId).add(evaluatorParameters);
             }
-            workerEvalEpochParams.get(workerId).add(evaluatorParameters);
           }
         } else {
           synchronized (workerEvalMiniBatchParams) {
+            // skip the first mini-batch metric for the worker after metric collection has begun
             if (!workerEvalMiniBatchParams.containsKey(workerId)) {
               workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
+            } else {
+              workerEvalMiniBatchParams.get(workerId).add(evaluatorParameters);
             }
-            workerEvalMiniBatchParams.get(workerId).add(evaluatorParameters);
           }
         }
       } else {
@@ -236,10 +240,12 @@ public final class MetricManager {
         final DataInfo dataInfo = new DataInfoImpl(numModelBlocks);
         final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
         synchronized (serverEvalParams) {
+          // skip the first window metric for the server after metric collection has begun
           if (!serverEvalParams.containsKey(serverId)) {
             serverEvalParams.put(serverId, new ArrayList<>());
+          } else {
+            serverEvalParams.get(serverId).add(evaluatorParameters);
           }
-          serverEvalParams.get(serverId).add(evaluatorParameters);
         }
       } else {
         LOG.log(Level.FINE, "No information about {0}. Dropping metric.", serverId);
