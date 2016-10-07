@@ -22,6 +22,7 @@ import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.utils.trace.HTraceUtils;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -65,12 +66,14 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private final Map<String, Migration> ongoingMigrations = new ConcurrentHashMap<>();
 
   /**
-   * A map for maintaining state of incoming blocks in receiver.
+   * Maps for maintaining state of incoming blocks in receiver.
    * It's for ownership-first migration in which the order of OwnershipAckMsg and BlockMovedMsg can be reversed.
-   * Using this map, handlers of both msgs can judge whether it arrives first or not.
+   * Using these two maps, handlers of both msgs can judge whether it arrives first or not.
+   * A later message will call {@link #handleDataMsg} to put a received block into MemoryStore and
+   * release client threads that were blocked by {@link #onOwnershipMsg(MigrationMsg)}.
    */
-  private final Map<Integer, WaitingBlock> waitingBlocks = Collections.synchronizedMap(new HashMap<>());
-
+  private final Set<Integer> ownershipMsgArrivedBlockIds = new HashSet<>();
+  private final Map<Integer, Pair<Map<K, Object>, TraceInfo>> dataMsgArrivedBlockIds = new HashMap<>();
 
   private final Codec<K> keyCodec;
   private final Serializer serializer;
@@ -95,20 +98,20 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       onMoveInitMsg(msg);
       break;
 
-    case DataMsg:
-      onDataMsg(msg);
-      break;
-
-    case DataAckMsg:
-      onDataAckMsg(msg);
-      break;
-
     case OwnershipMsg:
       onOwnershipMsg(msg);
       break;
 
     case OwnershipAckMsg:
       onOwnershipAckMsg(msg);
+      break;
+
+    case DataMsg:
+      onDataMsg(msg);
+      break;
+
+    case DataAckMsg:
+      onDataAckMsg(msg);
       break;
 
     default:
@@ -141,6 +144,202 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       for (int i = 0; i < NUM_BLOCK_SENDER_THREADS; i++) {
         blockSenderExecutor.submit(migration::startMigratingBlock);
       }
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
+  }
+
+  private void onOwnershipMsg(final MigrationMsg msg) {
+    final String operationId = msg.getOperationId().toString();
+    final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
+    final int blockId = ownershipMsg.getBlockId();
+    final String senderId = ownershipMsg.getSenderId().toString();
+    final int oldOwnerId = ownershipMsg.getOldOwnerId();
+    final int newOwnerId = ownershipMsg.getNewOwnerId();
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
+    Trace.setProcessId("dst_eval");
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      detached = onOwnershipMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
+
+      // should run asynchronously to prevent deadlock in router.updateOwnership()
+      ownershipMsgHandlerExecutor.submit(new Runnable() {
+        @Override
+        public void run() {
+          // clients should wait for DataMsg
+          router.markBlockAsMigrating(blockId);
+
+          final boolean ownershipMsgArrivedFirst;
+          Pair<Map<K, Object>, TraceInfo> dataMsgInfo = null;
+          synchronized (this) {
+            if (!dataMsgArrivedBlockIds.containsKey(blockId)) {
+              ownershipMsgArrivedFirst = true;
+              ownershipMsgArrivedBlockIds.add(blockId);
+            } else {
+              ownershipMsgArrivedFirst = false;
+              dataMsgInfo = dataMsgArrivedBlockIds.remove(blockId);
+            }
+          }
+
+          // Update the owner of the block to the new one.
+          // It waits until all operations release a read-lock on router and acquires write-lock
+          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+
+          sender.get().sendOwnershipAckMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId,
+                  traceInfo);
+
+          // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
+          // However, DataMsg should be handled after updating ownership by OwnershipAckMsg.
+          // So if DataMsg for the same block has been already arrived, handle that msg now.
+          if (!ownershipMsgArrivedFirst) {
+            handleDataMsg(operationId, senderId, blockId, dataMsgInfo.getFirst(), dataMsgInfo.getSecond());
+          }
+        }
+      });
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
+  }
+
+  private void onOwnershipAckMsg(final MigrationMsg msg) {
+    final String operationId = msg.getOperationId().toString();
+    final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
+    final int blockId = ownershipAckMsg.getBlockId();
+    final int oldOwnerId = ownershipAckMsg.getOldOwnerId();
+    final int newOwnerId = ownershipAckMsg.getNewOwnerId();
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
+    Trace.setProcessId("src_eval");
+    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
+        String.format("on_ownership_ack_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      detached = onOwnershipAckMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
+
+      // should run asynchronously to prevent deadlock in router.updateOwnership()
+      ownershipMsgHandlerExecutor.submit(new Runnable() {
+        @Override
+        public void run() {
+          // Update the owner of the block to the new one.
+          // Operations being executed keep a read lock on router while being executed.
+          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+
+          // Unmark block marked in Migration.startMigratingBlock()
+          // It wakes up blocked client threads to access emigrated data via remote access
+          router.unMarkBlockFromMigrating(blockId);
+
+          sender.get().sendOwnershipAckMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
+        }
+      });
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
+  }
+
+  private void onDataMsg(final MigrationMsg msg) {
+    final String operationId = msg.getOperationId().toString();
+    final DataMsg dataMsg = msg.getDataMsg();
+    final String senderId = dataMsg.getSenderId().toString();
+    final int blockId = dataMsg.getBlockId();
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
+    Trace.setProcessId("dst_eval");
+    try (final TraceScope onDataMsgScope = Trace.startSpan(String.format("on_data_msg. blockId: %d", blockId),
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      detached = onDataMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
+
+      dataMsgHandlerExecutor.submit(new Runnable() {
+        @Override
+        public void run() {
+          final Map<K, Object> dataMap;
+          try (final TraceScope decodeDataScope = Trace.startSpan("decode_data", traceInfo)) {
+            dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
+          }
+
+          final boolean ownershipMsgArrivedFirst;
+          synchronized (this) {
+            if (!ownershipMsgArrivedBlockIds.contains(blockId)) {
+              ownershipMsgArrivedFirst = false;
+              dataMsgArrivedBlockIds.put(blockId, new Pair<>(dataMap, traceInfo));
+            } else {
+              ownershipMsgArrivedFirst = true;
+              ownershipMsgArrivedBlockIds.remove(blockId);
+            }
+          }
+
+          // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
+          // However, DataMsg should be handled after updating ownership by OwnershipMsg.
+          // So handle DataMsg now, if OwnershipMsg for the same block has been already arrived.
+          // Otherwise handle it in future when corresponding OwnershipMsg arrives
+          if (ownershipMsgArrivedFirst) {
+            handleDataMsg(operationId, senderId, blockId, dataMap, traceInfo);
+          }
+        }
+      });
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
+  }
+
+  private void handleDataMsg(final String operationId, final String senderId,
+                             final int blockId, final Map<K, Object> dataMap, final TraceInfo traceInfo) {
+    memoryStore.putBlock(blockId, dataMap);
+
+    // Unmark block marked in onOwnershipMsg.
+    // It wakes up waiting client threads to access immigrated data.
+    router.unMarkBlockFromMigrating(blockId);
+
+    sender.get().sendDataAckMsg(senderId, blockId, operationId, traceInfo);
+  }
+
+  private void onDataAckMsg(final MigrationMsg msg) {
+    final String operationId = msg.getOperationId().toString();
+    final DataAckMsg dataAckMsg = msg.getDataAckMsg();
+    final int blockId = dataAckMsg.getBlockId();
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
+    Trace.setProcessId("src_eval");
+    try (final TraceScope onDataAckMsgScope = Trace.startSpan(String.format("on_data_ack_msg. blockId: %d", blockId),
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      detached = onDataAckMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
+
+      final Migration migration = ongoingMigrations.get(operationId);
+      if (migration.finishMigratingBlock()) {
+        ongoingMigrations.remove(operationId, migration);
+      }
+
+      dataMsgHandlerExecutor.submit(new Runnable() {
+        @Override
+        public void run() {
+          // After the data is migrated, it's safe to remove the local data block.
+          memoryStore.removeBlock(blockId);
+
+          sender.get().sendBlockMovedMsg(operationId, blockId, traceInfo);
+        }
+      });
     } finally {
       Trace.continueSpan(detached).close();
     }
@@ -237,242 +436,18 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       tokenBlockingQueue.add(new Token());
       return migratedBlockCounter.incrementAndGet() == blockIds.size();
     }
-
-    private <V> List<KeyValuePair> toKeyValuePairs(final Map<K, V> blockData,
-                                                   final Codec<V> valueCodec) {
-      final List<KeyValuePair> kvPairs = new ArrayList<>(blockData.size());
-      for (final Map.Entry<K, V> entry : blockData.entrySet()) {
-        kvPairs.add(KeyValuePair.newBuilder()
-            .setKey(ByteBuffer.wrap(keyCodec.encode(entry.getKey())))
-            .setValue(ByteBuffer.wrap(valueCodec.encode(entry.getValue())))
-            .build());
-      }
-      return kvPairs;
-    }
   }
 
-  /**
-   * A class for representing arrival of messages in receiver.
-   * It's necessary because the order of OwnershipMsg and DataMsg can be reversed.
-   * A later message calls {@link #handleDataMsg} to put a received block into MemoryStore and
-   * release client threads that were blocked by {@link #onOwnershipMsg(MigrationMsg)}.
-   */
-  private final class WaitingBlock {
-    private final Map<K, Object> dataMap;
-    private final TraceInfo traceInfo;
-
-    /**
-     * A constructor for {@link #onOwnershipMsg(MigrationMsg)}.
-     */
-    WaitingBlock() {
-      this.dataMap = null;
-      this.traceInfo = null;
+  private <V> List<KeyValuePair> toKeyValuePairs(final Map<K, V> blockData,
+                                                 final Codec<V> valueCodec) {
+    final List<KeyValuePair> kvPairs = new ArrayList<>(blockData.size());
+    for (final Map.Entry<K, V> entry : blockData.entrySet()) {
+      kvPairs.add(KeyValuePair.newBuilder()
+          .setKey(ByteBuffer.wrap(keyCodec.encode(entry.getKey())))
+          .setValue(ByteBuffer.wrap(valueCodec.encode(entry.getValue())))
+          .build());
     }
-
-    /**
-     * A constructor for {@link #onDataMsg(MigrationMsg)}.
-     * @param dataMap a received data from sender evaluator
-     * @param traceInfo a trace info of DataMsg
-     */
-    WaitingBlock(final Map<K, Object> dataMap, final TraceInfo traceInfo) {
-      this.dataMap = dataMap;
-      this.traceInfo = traceInfo;
-    }
-  }
-
-  private void onDataMsg(final MigrationMsg msg) {
-    final String operationId = msg.getOperationId().toString();
-    final DataMsg dataMsg = msg.getDataMsg();
-    final String senderId = dataMsg.getSenderId().toString();
-    final int blockId = dataMsg.getBlockId();
-
-    // We should detach the span when we transit to another thread (local or remote),
-    // and the detached span should call Trace.continueSpan(detached).close() explicitly
-    // for stitching the spans from other threads as its children
-    Span detached = null;
-
-    Trace.setProcessId("dst_eval");
-    try (final TraceScope onDataMsgScope = Trace.startSpan(String.format("on_data_msg. blockId: %d", blockId),
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-
-      detached = onDataMsgScope.detach();
-      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
-
-      dataMsgHandlerExecutor.submit(new Runnable() {
-        @Override
-        public void run() {
-          final Map<K, Object> dataMap;
-          try (final TraceScope decodeDataScope = Trace.startSpan("decode_data", traceInfo)) {
-            dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
-          }
-
-          final boolean ownershipMsgArrivedFirst;
-          synchronized (waitingBlocks) {
-            if (!waitingBlocks.containsKey(blockId)) {
-              ownershipMsgArrivedFirst = false;
-              waitingBlocks.put(blockId, new WaitingBlock(dataMap, traceInfo));
-            } else {
-              ownershipMsgArrivedFirst = true;
-              waitingBlocks.remove(blockId);
-            }
-          }
-
-          // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
-          // However, DataMsg should be handled after updating ownership by OwnershipMsg.
-          // So handle DataMsg now, if OwnershipMsg for the same block has been already arrived.
-          // Otherwise handle it in future when corresponding OwnershipMsg arrives
-          if (ownershipMsgArrivedFirst) {
-            handleDataMsg(operationId, senderId, blockId, dataMap, traceInfo);
-          }
-        }
-      });
-    } finally {
-      Trace.continueSpan(detached).close();
-    }
-  }
-
-  private void handleDataMsg(final String operationId, final String senderId,
-                             final int blockId, final Map<K, Object> dataMap, final TraceInfo traceInfo) {
-    memoryStore.putBlock(blockId, dataMap);
-
-    // Unmark block marked in onOwnershipMsg.
-    // It wakes up waiting client threads to access immigrated data.
-    router.unMarkBlockFromMigrating(blockId);
-
-    sender.get().sendDataAckMsg(senderId, blockId, operationId, traceInfo);
-  }
-
-  private void onDataAckMsg(final MigrationMsg msg) {
-    final String operationId = msg.getOperationId().toString();
-    final DataAckMsg dataAckMsg = msg.getDataAckMsg();
-    final int blockId = dataAckMsg.getBlockId();
-
-    // We should detach the span when we transit to another thread (local or remote),
-    // and the detached span should call Trace.continueSpan(detached).close() explicitly
-    // for stitching the spans from other threads as its children
-    Span detached = null;
-
-    Trace.setProcessId("src_eval");
-    try (final TraceScope onDataAckMsgScope = Trace.startSpan(String.format("on_data_ack_msg. blockId: %d", blockId),
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-
-      detached = onDataAckMsgScope.detach();
-      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
-
-      final Migration migration = ongoingMigrations.get(operationId);
-      if (migration.finishMigratingBlock()) {
-        ongoingMigrations.remove(operationId, migration);
-      }
-
-      dataMsgHandlerExecutor.submit(new Runnable() {
-        @Override
-        public void run() {
-          // After the data is migrated, it's safe to remove the local data block.
-          memoryStore.removeBlock(blockId);
-
-          sender.get().sendBlockMovedMsg(operationId, blockId, traceInfo);
-        }
-      });
-    } finally {
-      Trace.continueSpan(detached).close();
-    }
-  }
-
-  private void onOwnershipMsg(final MigrationMsg msg) {
-    final String operationId = msg.getOperationId().toString();
-    final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
-    final int blockId = ownershipMsg.getBlockId();
-    final String senderId = ownershipMsg.getSenderId().toString();
-    final int oldOwnerId = ownershipMsg.getOldOwnerId();
-    final int newOwnerId = ownershipMsg.getNewOwnerId();
-
-    // We should detach the span when we transit to another thread (local or remote),
-    // and the detached span should call Trace.continueSpan(detached).close() explicitly
-    // for stitching the spans from other threads as its children
-    Span detached = null;
-
-    Trace.setProcessId("dst_eval");
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-
-      detached = onOwnershipMsgScope.detach();
-      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
-
-      // should run asynchronously to prevent deadlock in router.updateOwnership()
-      ownershipMsgHandlerExecutor.submit(new Runnable() {
-        @Override
-        public void run() {
-          // clients should wait for DataMsg
-          router.markBlockAsMigrating(blockId);
-
-          final boolean ownershipMsgArrivedFirst;
-          synchronized (waitingBlocks) {
-            if (!waitingBlocks.containsKey(blockId)) {
-              ownershipMsgArrivedFirst = true;
-              waitingBlocks.put(blockId, new WaitingBlock());
-            } else {
-              ownershipMsgArrivedFirst = false;
-            }
-          }
-
-          // Update the owner of the block to the new one.
-          // It waits until all operations release a read-lock on router and acquires write-lock
-          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
-
-          sender.get().sendOwnershipAckMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId,
-                  traceInfo);
-
-          // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
-          // However, DataMsg should be handled after updating ownership by OwnershipAckMsg.
-          // So if DataMsg for the same block has been already arrived, handle that msg now.
-          if (!ownershipMsgArrivedFirst) {
-            final WaitingBlock waitingBlock = waitingBlocks.remove(blockId);
-            handleDataMsg(operationId, senderId, blockId, waitingBlock.dataMap, waitingBlock.traceInfo);
-          }
-        }
-      });
-    } finally {
-      Trace.continueSpan(detached).close();
-    }
-  }
-
-  private void onOwnershipAckMsg(final MigrationMsg msg) {
-    final String operationId = msg.getOperationId().toString();
-    final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
-    final int blockId = ownershipAckMsg.getBlockId();
-    final int oldOwnerId = ownershipAckMsg.getOldOwnerId();
-    final int newOwnerId = ownershipAckMsg.getNewOwnerId();
-
-    // We should detach the span when we transit to another thread (local or remote),
-    // and the detached span should call Trace.continueSpan(detached).close() explicitly
-    // for stitching the spans from other threads as its children
-    Span detached = null;
-
-    Trace.setProcessId("src_eval");
-    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
-        String.format("on_ownership_ack_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-
-      detached = onOwnershipAckMsgScope.detach();
-      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
-
-      // should run asynchronously to prevent deadlock in router.updateOwnership()
-      ownershipMsgHandlerExecutor.submit(new Runnable() {
-        @Override
-        public void run() {
-          // Update the owner of the block to the new one.
-          // Operations being executed keep a read lock on router while being executed.
-          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
-
-          // Unmark block marked in Migration.startMigratingBlock()
-          // It wakes up blocked client threads to access emigrated data via remote access
-          router.unMarkBlockFromMigrating(blockId);
-
-          sender.get().sendOwnershipAckMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
-        }
-      });
-    } finally {
-      Trace.continueSpan(detached).close();
-    }
+    return kvPairs;
   }
 
   private <V> Map<K, V> toDataMap(final List<KeyValuePair> keyValuePairs,
