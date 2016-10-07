@@ -27,6 +27,7 @@ import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -52,16 +53,18 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
-  private final int numMiniBatchPerItr;
-
+  private final int miniBatchSize;
+  private final int numServerThreads;
   private final double optBenefitThreshold;
 
   @Inject
-  private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerItr,
+  private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                                @Parameter(ServerNumThreads.class) final int numServerThreads,
                                 @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                 final double optBenefitThreshold) {
-    this.numMiniBatchPerItr = numMiniBatchPerItr;
+    this.miniBatchSize = miniBatchSize;
     this.optBenefitThreshold = optBenefitThreshold;
+    this.numServerThreads = numServerThreads;
   }
 
   /**
@@ -98,7 +101,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       };
 
   @Override
-  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
+                       final Map<String, Double> modelParamsMap) {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
 
@@ -107,15 +111,15 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
             param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTimeSec() /
-                (double) ((ServerMetrics) param.getMetrics()).getNumModelBlocks(),
+                (double) ((ServerMetrics) param.getMetrics()).getTotalPullProcessed(),
             NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
 
     final Pair<List<EvaluatorSummary>, Integer> workerPair =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()
-                / param.getDataInfo().getNumBlocks(),
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime() /
+            (double) ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount(),
             NEW_WORKER_ID_PREFIX);
     final List<EvaluatorSummary> workerSummaries = workerPair.getFirst();
     final int numDataBlocks = workerPair.getSecond();
@@ -294,30 +298,36 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   /**
    * Calculates total cost (computation cost and communication cost) of the system under optimization.
    *
-   * @param numWorker current number of workers
-   * @param numDataBlocks total number of data blocks across workers
-   * @param numModelBlocks total number of model blocks across servers
+   * @param numWorker given number of workers
+   * @param numTotalDataInstances total number of data instances across workers
+   * @param numTotalModelKeys total number of model keys across servers
    * @param availableEvaluators number of evaluators available
    * @param workers list of worker {@link EvaluatorSummary}
    * @param servers list of server {@link EvaluatorSummary}
    * @return total cost for a given number of workers using the current metrics of the system
    */
-  private Pair<Double, Double> totalCost(final int numWorker, final int numDataBlocks, final int numModelBlocks,
+  private Pair<Double, Double> totalCost(final int numWorker,
+                                         final int numTotalDataInstances,
+                                         final int numTotalModelKeys,
                                          final int availableEvaluators,
                                          final List<EvaluatorSummary> workers,
                                          final List<EvaluatorSummary> servers) {
+    // Calculating an estimate of the No. of mini-batches when numWorker workers are used.
+    final int numMiniBatchesPerWorker =  numTotalDataInstances / numWorker / miniBatchSize;
+
     // Calculating compCost based on avg: (avgNumBlockPerWorker / avgThroughput)
     final double workerThroughputSum = workers.subList(0, numWorker).stream()
         .mapToDouble(worker -> worker.throughput)
         .sum();
-    final double compCost = numDataBlocks / workerThroughputSum;
+    final double compCost = numTotalDataInstances / workerThroughputSum;
 
     // Calculating commCost based on avg: (avgNumBlockPerServer / avgThroughput)
     final int numServer = availableEvaluators - numWorker;
     final double serverThroughputSum = servers.subList(0, numServer).stream()
         .mapToDouble(server -> server.throughput)
         .sum();
-    final double commCost = numModelBlocks / serverThroughputSum * numWorker * numMiniBatchPerItr;
+    final double commCost = numTotalModelKeys / serverThroughputSum / numServerThreads
+        * numWorker * numMiniBatchesPerWorker;
     final double totalCost = compCost + commCost;
     final String costInfo = String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +
         "\"compCost\": %f, \"commCost\": %f}", numServer, numWorker, totalCost, compCost, commCost);

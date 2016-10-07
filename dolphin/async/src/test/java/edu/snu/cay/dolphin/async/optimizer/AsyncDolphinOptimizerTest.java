@@ -15,22 +15,21 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Tests {@link AsyncDolphinOptimizer}'s plan generation according to the cost model described in the class's javadoc.
@@ -38,6 +37,7 @@ import java.util.Map;
  * Sample computation time and communication time with data/model block distributions can be assigned to
  * workers and servers respectively to test that the optimizer generates a plan.
  */
+
 public final class AsyncDolphinOptimizerTest {
   private static final String WORKER_PREFIX = "Worker-";
   private static final String SERVER_PREFIX = "Server-";
@@ -45,7 +45,12 @@ public final class AsyncDolphinOptimizerTest {
 
   @Before
   public void setUp() throws InjectionException {
-    final Injector injector = Tang.Factory.getTang().newInjector();
+    final Injector injector = Tang.Factory.getTang().newInjector(
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(ServerNumThreads.class, String.valueOf(2))
+            .bindNamedParameter(Parameters.MiniBatchSize.class, String.valueOf(10))
+        .build());
+
     optimizer = injector.getInstance(AsyncDolphinOptimizer.class);
   }
 
@@ -64,7 +69,7 @@ public final class AsyncDolphinOptimizerTest {
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
-    optimizer.optimize(map, 12);
+    optimizer.optimize(map, 12, Collections.emptyMap());
   }
 
   private List<EvaluatorParameters> generateServerEvaluatorParameters(final int[] numModelBlocksArray,

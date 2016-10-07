@@ -32,5 +32,6 @@ public interface Optimizer {
    *     If availableEvaluators > activeEvaluators.size(), the optimized plan may add evaluators.
    * @return the optimized plan. An empty plan is returned if there is no reconfiguration to be conducted.
    */
-  Plan optimize(Map<String, List<EvaluatorParameters>> evalParamsMap, int availableEvaluators);
+  Plan optimize(Map<String, List<EvaluatorParameters>> evalParamsMap, int availableEvaluators,
+                Map<String, Double> optimizerModelParamsMap);
 }

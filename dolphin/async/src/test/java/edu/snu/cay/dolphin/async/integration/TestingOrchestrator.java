@@ -63,6 +63,11 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
   private final ElasticMemory serverEM;
 
   /**
+   * A map containing parameters that may be required for the optimization model.
+   */
+  private final Map<String, Double> optimizerModelParams;
+
+  /**
    * Optimizers to use in test.
    */
   private final Optimizer[] optimizers;
@@ -83,6 +88,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     this.workerEM = workerEM;
     this.serverEM = serverEM;
     this.maxNumEvals = maxNumEvals;
+    this.optimizerModelParams = new HashMap<>();
 
     // simply adding a new optimizer in this array will include the optimizer into testing
     // note that job configuration (e.g., running time, timeout, available evaluators) should be adapted
@@ -107,12 +113,17 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       return;
     }
 
+    optimizerModelParams.clear();
+
     // 1) Check that metrics have arrived from all evaluators.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
-    final Map<String, List<EvaluatorParameters>> currentWorkerMetrics = metricManager.getWorkerMiniBatchMetrics();
+    final Map<String, List<EvaluatorParameters>> currentWorkerEpochMetrics =
+        metricManager.getWorkerEpochMetrics();
+    final Map<String, List<EvaluatorParameters>> currentWorkerMiniBatchMetrics =
+        metricManager.getWorkerMiniBatchMetrics();
 
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
-    final int numWorkerMetricSources = getNumMetricSources(currentWorkerMetrics);
+    final int numWorkerMetricSources = getNumMetricSources(currentWorkerEpochMetrics);
     final int numRunningServers = getNumRunningInstances(serverEM);
     final int numRunningWorkers = getNumRunningInstances(workerEM);
 
@@ -129,7 +140,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     final List<EvaluatorParameters> processedServerMetrics =
         processMetricsForOptimization(Constants.NAMESPACE_SERVER, currentServerMetrics);
     final List<EvaluatorParameters> processedWorkerMetrics =
-        processMetricsForOptimization(Constants.NAMESPACE_WORKER, currentWorkerMetrics);
+        processMetricsForOptimization(Constants.NAMESPACE_WORKER, currentWorkerMiniBatchMetrics);
 
     // 3) Check that the processed metrics suffice to undergo an optimization cycle.
     // processed(*)Metrics of size less that the number of evaluators running in each space implies that
@@ -138,6 +149,11 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       LOG.log(Level.INFO, "Skip this round, because the metrics do not suffice to undergo an optimization cycle.");
       return;
     }
+
+    // 4) Calculate the total number of data instances distributed across workers,
+    // as it can be used by the optimization model.
+    final int numTotalDataInstances = getTotalNumDataInstances(Constants.NAMESPACE_WORKER, currentWorkerEpochMetrics);
+    optimizerModelParams.put(Constants.TOTAL_DATA_INSTANCES, (double) numTotalDataInstances);
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
@@ -170,7 +186,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
   private void executePlan(final Map<String, List<EvaluatorParameters>> evalParams,
                            final Optimizer optimizer) {
     LOG.log(Level.INFO, "Calculate plan from {0}", optimizer.getClass().getName());
-    final Plan plan = optimizer.optimize(evalParams, maxNumEvals);
+    final Plan plan = optimizer.optimize(evalParams, maxNumEvals, optimizerModelParams);
 
     // obtain the state of EMs, before executing the plan
     final Map<Integer, Integer> beforeServerStoreIdToNumBlocks = new HashMap<>();
@@ -362,6 +378,30 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
   }
 
   /**
+   * Calculates the total number of data instances across workers.
+   * @param namespace just to check that worker metrics are given
+   * @param evalParams a mapping of each worker's ID to the list of {@link EvaluatorParameters}
+   *                   in which the first item contains the number of data instances contained in the worker.
+   * @return
+   */
+  private int getTotalNumDataInstances(final String namespace,
+                                       final Map<String, List<EvaluatorParameters>> evalParams) {
+    int numDataInstances = 0;
+    switch (namespace) {
+    case Constants.NAMESPACE_WORKER:
+      for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
+
+        final WorkerEvaluatorParameters firstWorkerEpochMetric = (WorkerEvaluatorParameters) entry.getValue().get(0);
+        numDataInstances += firstWorkerEpochMetric.getMetrics().getProcessedDataItemCount();
+      }
+      break;
+    default:
+      throw new RuntimeException("Unsupported namespace");
+    }
+    return numDataInstances;
+  }
+
+  /**
    * Processes raw metrics to extract a representative metric for each evaluator.
    * For servers, the total number of requests and processed times are summed up for average processing time overall.
    * For workers, the average of processing times are to be used.
@@ -404,6 +444,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       }
       break;
     case Constants.NAMESPACE_WORKER:
+      int numTotalKeys = 0;
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
@@ -432,7 +473,14 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
               new DataInfoImpl((int) workerMetric.stream().mapToInt(
                   param -> param.getDataInfo().getNumBlocks()).average().getAsDouble()), aggregatedMetric));
         }
+
+        // Estimate the number of keys distributed across servers using the number of pulls from worker-side,
+        // as this is used by the optimization model in AsyncDolphinOptimizer.
+        numTotalKeys += workerMetric.stream().mapToInt(
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getParameterWorkerMetrics()
+                .getTotalPullCount()).average().orElse(0);
       }
+      optimizerModelParams.put(Constants.TOTAL_MODEL_KEYS, (double) numTotalKeys / rawMetrics.size());
       break;
     default:
       throw new RuntimeException("Unsupported namespace");

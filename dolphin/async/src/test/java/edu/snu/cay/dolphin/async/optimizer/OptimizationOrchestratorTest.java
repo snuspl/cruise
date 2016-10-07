@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
@@ -107,7 +108,7 @@ public final class OptimizationOrchestratorTest {
     optimizer = mock(Optimizer.class);
     injector.bindVolatileInstance(Optimizer.class, optimizer);
 
-    when(optimizer.optimize(anyMap(), anyInt())).then(new Answer<Plan>() {
+    when(optimizer.optimize(anyMap(), anyInt(), anyMap())).then(new Answer<Plan>() {
       @Override
       public Plan answer(final InvocationOnMock invocation) throws Throwable {
         final Map<String, List<EvaluatorParameters>> evalParamsMap = invocation.getArgumentAt(0, Map.class);
@@ -147,12 +148,13 @@ public final class OptimizationOrchestratorTest {
           .setNumModelBlocks(NUM_BLOCKS)
           .setTotalPushProcessed(1)
           .setTotalPullProcessed(1)
+          .setTotalPullProcessingTimeSec(1.0)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
-      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+      final WorkerMetrics miniBatchMetric = WorkerMetrics.newBuilder()
           .setNumDataBlocks(NUM_BLOCKS)
           .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
@@ -162,14 +164,20 @@ public final class OptimizationOrchestratorTest {
           .setTotalPushTime(0.0)
           .setAvgPullTime(0.0)
           .setAvgPushTime(0.0)
+          .setParameterWorkerMetrics(ParameterWorkerMetrics.newBuilder().setTotalPullCount(1).build())
           .build();
-      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
+      final WorkerMetrics epochMetric = WorkerMetrics.newBuilder()
+          .setEpochIdx(0)
+          .setProcessedDataItemCount(1)
+          .build();
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
     }
 
     orchestrator.run();
 
     waitPlanExecuting();
-    verify(optimizer, times(1)).optimize(anyMap(), anyInt());
+    verify(optimizer, times(1)).optimize(anyMap(), anyInt(), anyMap());
   }
 
   /**
@@ -192,16 +200,17 @@ public final class OptimizationOrchestratorTest {
           .setNumModelBlocks(NUM_BLOCKS)
           .setTotalPushProcessed(1)
           .setTotalPullProcessed(1)
+          .setTotalPullProcessingTimeSec(1.0)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
       orchestrator.run();
 
       waitPlanExecuting();
-      verify(optimizer, never()).optimize(anyMap(), anyInt());
+      verify(optimizer, never()).optimize(anyMap(), anyInt(), anyMap());
     }
 
     for (int i = 0; i < numWorkers; i++) {
-      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+      final WorkerMetrics miniBatchMetric = WorkerMetrics.newBuilder()
           .setNumDataBlocks(NUM_BLOCKS)
           .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
@@ -211,15 +220,23 @@ public final class OptimizationOrchestratorTest {
           .setTotalPushTime(0.0)
           .setAvgPullTime(0.0)
           .setAvgPushTime(0.0)
+          .setParameterWorkerMetrics(ParameterWorkerMetrics.newBuilder().setTotalPullCount(1).build())
           .build();
-      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
+
+      final WorkerMetrics epochMetric = WorkerMetrics.newBuilder()
+          .setEpochIdx(0)
+          .setProcessedDataItemCount(1)
+          .build();
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
+
       orchestrator.run();
 
       waitPlanExecuting();
       if (i == numWorkers - 1) {
-        verify(optimizer, times(1)).optimize(anyMap(), anyInt());
+        verify(optimizer, times(1)).optimize(anyMap(), anyInt(), anyMap());
       } else {
-        verify(optimizer, never()).optimize(anyMap(), anyInt());
+        verify(optimizer, never()).optimize(anyMap(), anyInt(), anyMap());
       }
     }
   }
@@ -238,6 +255,7 @@ public final class OptimizationOrchestratorTest {
           .setNumModelBlocks(NUM_BLOCKS)
           .setTotalPushProcessed(1)
           .setTotalPullProcessed(1)
+          .setTotalPullProcessingTimeSec(1.0)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
 
@@ -247,7 +265,7 @@ public final class OptimizationOrchestratorTest {
 
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
-      final WorkerMetrics workerMetrics = WorkerMetrics.newBuilder()
+      final WorkerMetrics miniBatchMetric = WorkerMetrics.newBuilder()
           .setNumDataBlocks(NUM_BLOCKS)
           .setProcessedDataItemCount(1)
           .setTotalCompTime(1.0)
@@ -257,18 +275,25 @@ public final class OptimizationOrchestratorTest {
           .setTotalPushTime(0.0)
           .setAvgPullTime(0.0)
           .setAvgPushTime(0.0)
+          .setParameterWorkerMetrics(ParameterWorkerMetrics.newBuilder().setTotalPullCount(1).build())
           .build();
-      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
+
+      final WorkerMetrics epochMetric = WorkerMetrics.newBuilder()
+          .setEpochIdx(0)
+          .setProcessedDataItemCount(1)
+          .build();
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
 
       // put duplicate metrics
-      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, workerMetrics);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
     }
 
     // check whether it can filter the metrics and finally trigger the optimizer with refined metrics
     orchestrator.run();
 
     waitPlanExecuting();
-    verify(optimizer, times(1)).optimize(anyMap(), anyInt());
+    verify(optimizer, times(1)).optimize(anyMap(), anyInt(), anyMap());
   }
 
   /**

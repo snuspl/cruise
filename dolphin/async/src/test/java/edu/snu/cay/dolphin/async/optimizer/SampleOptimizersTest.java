@@ -71,7 +71,7 @@ public final class SampleOptimizersTest {
     final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>();
     evalParamsMap.put(namespace, evalParamsList);
 
-    final Plan plan = addOneOptimizer.optimize(evalParamsMap, evalParamsList.size() + 1);
+    final Plan plan = addOneOptimizer.optimize(evalParamsMap, evalParamsList.size() + 1, Collections.emptyMap());
 
     // only one add plan
     final Collection<String> evalsToAdd = plan.getEvaluatorsToAdd(namespace);
@@ -118,7 +118,7 @@ public final class SampleOptimizersTest {
     final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>();
     evalParamsMap.put(namespace, evalParamsList);
 
-    final Plan plan = deleteOneOptimizer.optimize(evalParamsMap, evalParamsList.size());
+    final Plan plan = deleteOneOptimizer.optimize(evalParamsMap, evalParamsList.size(), Collections.emptyMap());
 
     // no add plan
     assertTrue(plan.getEvaluatorsToAdd(namespace).isEmpty());
@@ -176,7 +176,7 @@ public final class SampleOptimizersTest {
     evalParamsMap.put(Constants.NAMESPACE_SERVER, evalParamsList);
     evalParamsMap.put(Constants.NAMESPACE_WORKER, evalParamsList);
 
-    final Plan plan = exchangeOneOptimizer.optimize(evalParamsMap, evalParamsList.size() * 2);
+    final Plan plan = exchangeOneOptimizer.optimize(evalParamsMap, evalParamsList.size() * 2, Collections.emptyMap());
 
     final Collection<String> serverEvalsToAdd = plan.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER);
     final Collection<String> serverEvalsToDel = plan.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER);

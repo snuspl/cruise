@@ -27,4 +27,7 @@ public final class Constants {
 
   public static final String NAMESPACE_SERVER = "SERVER";
   public static final String NAMESPACE_WORKER = "WORKER";
+
+  public static final String TOTAL_DATA_INSTANCES = "WORKER_TOTAL_DATA_INSTANCES";
+  public static final String TOTAL_MODEL_KEYS = "SERVER_TOTAL_MODEL_PARAM_KEYS";
 }

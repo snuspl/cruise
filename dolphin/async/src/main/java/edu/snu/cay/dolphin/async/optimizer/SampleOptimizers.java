@@ -102,7 +102,8 @@ public final class SampleOptimizers {
     }
 
     @Override
-    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
+                         final Map<String, Double> optimizerModelParamsMap) {
       if (callsMade == MAX_CALLS_TO_MAKE || evalParamsMap.isEmpty()) {
         return PlanImpl.newBuilder().build();
       }
@@ -131,7 +132,8 @@ public final class SampleOptimizers {
     }
 
     @Override
-    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
+                         final Map<String, Double> optimizerModelParamsMap) {
       if (callsMade == MAX_CALLS_TO_MAKE || evalParamsMap.isEmpty()) {
         return PlanImpl.newBuilder().build();
       }
@@ -201,7 +203,8 @@ public final class SampleOptimizers {
     }
 
     @Override
-    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
+                         final Map<String, Double> optimizerModelParamsMap) {
       if (callsMade == MAX_CALLS_TO_MAKE || evalParamsMap.isEmpty()) {
         return PlanImpl.newBuilder().build();
       }
@@ -230,7 +233,8 @@ public final class SampleOptimizers {
     }
 
     @Override
-    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
+                         final Map<String, Double> optimizerModelParamsMap) {
       if (callsMade == MAX_CALLS_TO_MAKE || evalParamsMap.isEmpty()) {
         return PlanImpl.newBuilder().build();
       }
@@ -353,7 +357,8 @@ public final class SampleOptimizers {
      * the total number of evaluators to use.
      */
     @Override
-    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+    public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
+                         final Map<String, Double> optimizerModelParamsMap) {
       if (callsMade == MAX_CALLS_TO_MAKE || evalParamsMap.isEmpty()) {
         return PlanImpl.newBuilder().build();
       }
