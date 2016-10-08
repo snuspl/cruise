@@ -154,6 +154,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     // there were only metrics not enough for this optimization cycle to be executed.
     if (processedServerMetrics.size() < numRunningServers || processedWorkerMetrics.size() < numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because the metrics do not suffice to undergo an optimization cycle.");
+      LOG.log(Level.INFO, processedServerMetrics.size() + " " + numRunningServers + " " + processedWorkerMetrics.size() +  " " + numRunningWorkers);
       return;
     }
 
@@ -361,10 +362,14 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
 
         final WorkerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
+        LOG.log(Level.INFO, "HERE!");
+
         // This worker did not send metrics meaningful enough for optimization.
         if (aggregatedMetric.getProcessedDataItemCount() == 0) {
+          LOG.log(Level.INFO, "IN!");
           break;
         } else {
+          LOG.log(Level.INFO, "OUT!");
           final String workerId = entry.getKey();
           processedMetrics.add(new WorkerEvaluatorParameters(workerId,
               new DataInfoImpl((int) calculateExponentialMovingAverage(workerMetric,
@@ -382,6 +387,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     default:
       throw new RuntimeException("Unsupported namespace");
     }
+    LOG.log(Level.INFO, "d!");
     return processedMetrics;
   }
 }

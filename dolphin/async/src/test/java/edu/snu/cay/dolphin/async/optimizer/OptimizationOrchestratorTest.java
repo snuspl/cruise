@@ -151,6 +151,9 @@ public final class OptimizationOrchestratorTest {
           .setTotalPullProcessingTimeSec(1.0)
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+
+      // MetricManager filters the very first ServerMetric after metric collection start
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
@@ -170,6 +173,10 @@ public final class OptimizationOrchestratorTest {
           .setEpochIdx(0)
           .setProcessedDataItemCount(1)
           .build();
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
+
+      // MetricManager filters the very first WorkerMetric after metric collection start
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
     }
@@ -230,10 +237,14 @@ public final class OptimizationOrchestratorTest {
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
 
+      // MetricManager filters the very first WorkerMetric after metric collection start
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
+
       orchestrator.run();
 
       waitPlanExecuting();
-      if (i == numWorkers - 1) {
+      if (i == numWorkers) {
         verify(optimizer, times(1)).optimize(anyMap(), anyInt(), anyMap());
       } else {
         verify(optimizer, never()).optimize(anyMap(), anyInt(), anyMap());
@@ -259,6 +270,9 @@ public final class OptimizationOrchestratorTest {
           .build();
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
 
+      // MetricManager filters the very first ServerMetric after metric collection start
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+
       // put duplicate metrics
       metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
@@ -282,6 +296,10 @@ public final class OptimizationOrchestratorTest {
           .setEpochIdx(0)
           .setProcessedDataItemCount(1)
           .build();
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
+      metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
+
+      // MetricManager filters the very first WorkerMetric after metric collection start
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
 
