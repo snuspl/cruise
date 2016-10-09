@@ -31,6 +31,12 @@ final class Document {
   private final int[] topicCounts;
   private final int numTopics;
 
+  /**
+   * Creates a document with given words. The initial topics for the words are assigned randomly.
+   * @param words Words that the document contains
+   * @param numTopics Number of topics determined by user parameter
+   *                  ({@link edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.NumTopics})
+   */
   Document(final int[] words, final int numTopics) {
     this.words = Ints.asList(words);
     this.assignments = new int[words.length];
@@ -40,6 +46,24 @@ final class Document {
     initialize();
   }
 
+  /**
+   * Creates a document with words and intermediate topic assignments that have been learned.
+   * @param words Words that the document contains
+   * @param assignments Topic Index that a word is assigned to
+   * @param topicCounts Number of words that are assigned to a topic
+   * @param numTopics Number of topics determined by user parameter
+   *                  ({@link edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.NumTopics})
+   */
+  Document(final int[] words, final int[] assignments, final int[] topicCounts, final int numTopics) {
+    this.words = Ints.asList(words);
+    this.assignments = assignments;
+    this.topicCounts = topicCounts;
+    this.numTopics = numTopics;
+  }
+
+  /**
+   * Assigns each word in the doc to a random topic.
+   */
   private void initialize() {
     final Random rand = new Random();
     for (int i = 0; i < assignments.length; i++) {
@@ -61,6 +85,10 @@ final class Document {
     return words;
   }
 
+  /**
+   * @param index Index of the word
+   * @return Topic Index that the word is assigned to
+   */
   int getAssignment(final int index) {
     return assignments[index];
   }
@@ -75,6 +103,10 @@ final class Document {
     topicCounts[newTopic]++;
   }
 
+  /**
+   * @param topicIndex Index of a topic
+   * @return Number of words that are assigned to the topic
+   */
   int getTopicCount(final int topicIndex) {
     return topicCounts[topicIndex];
   }
