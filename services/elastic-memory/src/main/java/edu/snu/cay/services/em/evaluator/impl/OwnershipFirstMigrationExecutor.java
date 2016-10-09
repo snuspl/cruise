@@ -185,17 +185,18 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       ownershipMsgHandlerExecutor.submit(new Runnable() {
         @Override
         public void run() {
-          // clients should wait for DataMsg
+          // clients should wait until DataMsg arrives
           router.markBlockAsMigrating(blockId);
 
-          final boolean ownershipMsgArrivedFirst;
+          // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
+          // However, DataMsg should be handled after updating ownership by OwnershipAckMsg.
+          // So if DataMsg for the same block has been already arrived, handle that msg now.
+          final boolean ownershipMsgArrivedFirst = !dataMsgArrivedBlockIds.containsKey(blockId);
           Pair<Map<K, Object>, TraceInfo> dataMsgInfo = null;
           synchronized (this) {
-            if (!dataMsgArrivedBlockIds.containsKey(blockId)) {
-              ownershipMsgArrivedFirst = true;
+            if (ownershipMsgArrivedFirst) {
               ownershipMsgArrivedBlockIds.add(blockId);
             } else {
-              ownershipMsgArrivedFirst = false;
               dataMsgInfo = dataMsgArrivedBlockIds.remove(blockId);
             }
           }
@@ -207,9 +208,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           sender.get().sendOwnershipAckMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId,
                   traceInfo);
 
-          // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
-          // However, DataMsg should be handled after updating ownership by OwnershipAckMsg.
-          // So if DataMsg for the same block has been already arrived, handle that msg now.
+          // If the messages have arrived out of order, there should be an awaiting DataMsg to be processed.
           if (!ownershipMsgArrivedFirst) {
             processDataMsg(operationId, senderId, blockId, dataMsgInfo.getFirst(), dataMsgInfo.getSecond());
           }
@@ -247,8 +246,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // Operations being executed keep a read lock on router while being executed.
           router.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
-          // Unmark block marked in Migration.startMigratingBlock()
-          // It wakes up blocked client threads to access emigrated data via remote access
+          // Release block that was marked in Migration.startMigratingBlock()
+          // It wakes up awaiting client threads to access emigrated data via remote access
           router.releaseMigratedBlock(blockId);
 
           sender.get().sendOwnershipAckMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
@@ -285,21 +284,20 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
             dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
           }
 
-          final boolean ownershipMsgArrivedFirst;
-          synchronized (this) {
-            if (!ownershipMsgArrivedBlockIds.contains(blockId)) {
-              ownershipMsgArrivedFirst = false;
-              dataMsgArrivedBlockIds.put(blockId, new Pair<>(dataMap, traceInfo));
-            } else {
-              ownershipMsgArrivedFirst = true;
-              ownershipMsgArrivedBlockIds.remove(blockId);
-            }
-          }
-
           // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
           // However, DataMsg should be handled after updating ownership by OwnershipMsg.
           // So handle DataMsg now, if OwnershipMsg for the same block has been already arrived.
           // Otherwise handle it in future when corresponding OwnershipMsg arrives
+          final boolean ownershipMsgArrivedFirst = ownershipMsgArrivedBlockIds.contains(blockId);
+          synchronized (this) {
+            if (ownershipMsgArrivedFirst) {
+              ownershipMsgArrivedBlockIds.remove(blockId);
+            } else {
+              dataMsgArrivedBlockIds.put(blockId, new Pair<>(dataMap, traceInfo));
+            }
+          }
+
+          // If the messages have arrived in order, DataMsg should be processed here.
           if (ownershipMsgArrivedFirst) {
             processDataMsg(operationId, senderId, blockId, dataMap, traceInfo);
           }

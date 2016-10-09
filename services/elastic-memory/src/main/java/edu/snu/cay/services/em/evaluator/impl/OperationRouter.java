@@ -397,7 +397,7 @@ public final class OperationRouter<K> {
    * Mark a block as migrating and stop client's access on the migrating block.
    * @param blockId id of the block
    */
-  public void markBlockAsMigrating(final int blockId) {
+  void markBlockAsMigrating(final int blockId) {
     synchronized (migratingBlocks) {
       if (migratingBlocks.containsKey(blockId)) {
         throw new RuntimeException("Block" + blockId + " is already in migrating state");
@@ -409,10 +409,10 @@ public final class OperationRouter<K> {
 
   /**
    * Release the block that was marked by {@link #markBlockAsMigrating(int)}
-   * and allow clients access the migrated block, which can be in local or remote.
+   * and allow clients access the migrated block, which can be either in local or remote MemoryStore.
    * @param blockId id of the block
    */
-  public void releaseMigratedBlock(final int blockId) {
+  void releaseMigratedBlock(final int blockId) {
     synchronized (migratingBlocks) {
       if (!migratingBlocks.containsKey(blockId)) {
         throw new RuntimeException("Block " + blockId + " is not in migrating state");

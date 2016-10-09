@@ -50,13 +50,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   /**
-   * In ownership-first migration, the OwnershipAckMsg and BlockMovedMsg can arrive out-of-order.
-   * Using these two maps, we can verify the correct order of them ({@link OwnershipAckMsg} -> {@link BlockMovedMsg})
+   * In ownership-first migration, the {@link OwnershipAckMsg} and {@link BlockMovedMsg} can arrive out-of-order.
+   * Using these two maps, we can verify the correct order of them (OwnershipAckMsg -> BlockMovedMsg)
    * in message handlers.
    * A later message will call {@link #processBlockMovedMsg} to put a received block into MemoryStore.
    *
    * In data-first migration, on the other hand, {@link OwnershipMsg} always precedes {@link BlockMovedMsg}.
-   * So {@link #onOwnershipMsg(MigrationMsg)} simply marks that {@link OwnershipMsg} has arrived,
+   * So {@link #onOwnershipMsg(MigrationMsg)} simply marks that OwnershipMsg has arrived,
    * and {@link #onBlockMovedMsg(MigrationMsg)} wraps up the migration without any concern.
    */
   private final Set<Integer> ownershipAckMsgArrivedBlockIds = new HashSet<>();
@@ -203,7 +203,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
         }
       }
 
-      // If the messages have arrived out of order, blockMovedMsg should be processed here.
+      // If the messages have arrived out of order, there should be an awaiting blockMovedMsg to be processed.
       if (!ownershipAckMsgArrivedFirst) {
         processBlockMovedMsg(operationId, blockId, blockMovedMsgTraceInfo);
       }
