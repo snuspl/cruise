@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.dnn;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
+import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
@@ -75,6 +77,8 @@ public final class NeuralNetwork {
 
   private Matrix labelMatrix;
 
+  private final int batchSize;
+
   /**
    * @param configurationSerializer the serializer to deserialize Tang configurations for layers
    * @param serializedLayerConfSets the set of Tang configurations used to inject layer instances
@@ -88,9 +92,11 @@ public final class NeuralNetwork {
       final ConfigurationSerializer configurationSerializer,
       @Parameter(SerializedLayerConfigurationSet.class) final Set<String> serializedLayerConfSets,
       @Parameter(InputShape.class) final String inputShape,
+      @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
       final ParameterWorker<Integer, LayerParameter, LayerParameter> parameterWorker,
       final MatrixFactory matrixFactory,
       final Injector injector) {
+    this.batchSize = batchSize;
     this.matrixFactory = matrixFactory;
     this.parameterWorker = parameterWorker;
     final Configuration[] layerConfs =
@@ -99,7 +105,7 @@ public final class NeuralNetwork {
     this.emptyMatrix = null;
     this.emptyLayerParam = LayerParameter.newEmptyInstance();
     this.learnableLayerIndices = getLearnableLayerIndices();
-    this.labelMatrix = matrixFactory.create(0, 0);
+    this.labelMatrix = matrixFactory.create(getShapeLength(layers[layers.length - 1].getOutputShape()), batchSize);
   }
 
   /**
@@ -152,8 +158,8 @@ public final class NeuralNetwork {
   public void train(final Matrix input, final int[] labels) {
     final int labelRows = getShapeLength(layers[layers.length - 1].getOutputShape());
     final int labelCols = labels.length;
-    if (labelMatrix.getRows() != labelRows || labelMatrix.getColumns() != labelCols) {
-      labelMatrix.free();
+    if (labelMatrix.getColumns() != labelCols) {
+      MatrixUtils.free(labelMatrix);
       labelMatrix = matrixFactory.create(labelRows, labelCols);
     }
     setOutputMatrix(labelMatrix, labels, labelRows);
@@ -353,7 +359,7 @@ public final class NeuralNetwork {
    */
   public void cleanup() {
 
-    labelMatrix.free();
+    MatrixUtils.free(labelMatrix);
 
     // clean up layers
     for (final LayerBase layer : layers) {

@@ -34,7 +34,7 @@ import javax.inject.Inject;
  * and produce activation matrix.
  * In a backward pass,
  * the error of each input pixel comes from the product
- * between weight and errors of output pixels affected by the input pixel in feedforward step.
+ * between weight and errors of activation pixels affected by the input pixel in feedforward step.
  */
 public final class ConvolutionalLayer extends LayerBase {
 
@@ -49,9 +49,9 @@ public final class ConvolutionalLayer extends LayerBase {
   private final int inputWidth;
   private final int inputChannel;
   private final MatrixFactory matrixFactory;
-  private Matrix output;
+  private Matrix activation;
   private Matrix layerError;
-  private final Matrix weightGradient;
+  private final Matrix parameterGradient;
 
   /**
    * @param index the index of this layer
@@ -86,7 +86,7 @@ public final class ConvolutionalLayer extends LayerBase {
     this.kernelWidth = kernelWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
-    this.output = null;
+    this.activation = null;
     this.layerError = null;
 
     if (getInputShape().length == 2) {
@@ -99,7 +99,7 @@ public final class ConvolutionalLayer extends LayerBase {
       this.inputWidth = getInputShape()[2];
     }
 
-    this.weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
+    this.parameterGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
   }
 
   @Override
@@ -185,36 +185,36 @@ public final class ConvolutionalLayer extends LayerBase {
   }
 
   /**
-   * Computes output values for this convolutional layer.
+   * Computes activation values for this convolutional layer.
    * @param input input values for this layer.
-   * @return output values for this layer.
+   * @return activation values for this layer.
    */
   @Override
   public Matrix feedForward(final Matrix input) {
 
-    if (output == null || output.getColumns() != input.getColumns()) {
-      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+    if (activation == null || activation.getColumns() != input.getColumns()) {
+      activation = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
     }
 
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix newValue = im2row(n, input).mmul(getLayerParameter().getWeightParam());
-      output.putColumn(n, newValue.reshape(NeuralNetworkUtils.getShapeLength(outputShape), 1));
+      activation.putColumn(n, newValue.reshape(NeuralNetworkUtils.getShapeLength(outputShape), 1));
     }
-    output.addiColumnVector(getLayerParameter().getBiasParam());
-    return output;
+    activation.addiColumnVector(getLayerParameter().getBiasParam());
+    return activation;
   }
 
   /**
    * Computes errors for this convolutional layer.
    * @param input the input values for this layer.
-   * @param activation the output values.
-   * @param nextError the errors of the next layer - the one closer to the output layer.
+   * @param activation the activation values.
+   * @param nextError the errors of the next layer - the one closer to the activation layer.
    * @return errors for this layer with the specified input value.
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
 
-    if (layerError == null || !layerError.hasSameSize(input)) {
+    if (layerError == null || layerError.getColumns() != input.getColumns()) {
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }
 
@@ -232,12 +232,12 @@ public final class ConvolutionalLayer extends LayerBase {
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix row = im2row(n, input);
-      weightGradient.addi(row.transpose().mmul(error.getColumn(n)
+      parameterGradient.addi(row.transpose().mmul(error.getColumn(n)
           .reshape(outputShape[1] * outputShape[2], outputShape[0])));
     }
     final Matrix biasGradient = error.rowSums();
     return LayerParameter.newBuilder()
-        .setWeightParam(weightGradient)
+        .setWeightParam(parameterGradient)
         .setBiasParam(biasGradient)
         .build();
   }

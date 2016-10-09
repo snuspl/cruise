@@ -108,7 +108,7 @@ public final class LRNLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    if (scale == null || !scale.hasSameSize(input)) {
+    if (scale == null || scale.getColumns() != input.getColumns()) {
       scale = matrixFactory.create(input.getRows(), input.getColumns());
     }
 
@@ -178,7 +178,7 @@ public final class LRNLayer extends LayerBase {
     final float scalarMultiplier = -2 * alpha * beta / localSize;
 
     for (int n = 0; n < nextError.getColumns(); ++n) {
-      final Matrix paddedImg = matrixFactory.create(input.getRows() + (paddingSize * 2 * inputSize), 1);
+      final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
       for (int i = 0; i < nextError.getRows(); ++i) {
         // nextError * activation / scale
         paddedImg.put(i + paddingSize * inputSize,
