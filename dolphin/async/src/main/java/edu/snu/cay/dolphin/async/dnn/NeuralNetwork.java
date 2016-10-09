@@ -171,7 +171,7 @@ public final class NeuralNetwork {
    * @param batchSize the number of instance in an input batch
    * @param parameterGradients the list of parameter gradients
    */
-  void pushGradients(final int batchSize, final LayerParameter[] parameterGradients) {
+  void pushGradients(final int inputSize, final LayerParameter[] parameterGradients) {
     // average parameter gradients
     for (int i = 0; i < parameterGradients.length; ++i) {
       if (layers[i].isLearnable()) {

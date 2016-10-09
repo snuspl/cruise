@@ -31,10 +31,10 @@ import javax.inject.Inject;
  * This layer works for 2D and 3D inputs.
  * In a forward pass,
  * feedForward function computes the product between weight and the input within kernel range
- * and produce activation matrix.
+ * and produce output matrix.
  * In a backward pass,
  * the error of each input pixel comes from the product
- * between weight and errors of activation pixels affected by the input pixel in feedforward step.
+ * between weight and errors of output pixels affected by the input pixel in feedforward step.
  */
 public final class ConvolutionalLayer extends LayerBase {
 
@@ -49,7 +49,7 @@ public final class ConvolutionalLayer extends LayerBase {
   private final int inputWidth;
   private final int inputChannel;
   private final MatrixFactory matrixFactory;
-  private Matrix activation;
+  private Matrix output;
   private Matrix layerError;
   private final Matrix parameterGradient;
 
@@ -86,7 +86,7 @@ public final class ConvolutionalLayer extends LayerBase {
     this.kernelWidth = kernelWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
-    this.activation = null;
+    this.output = null;
     this.layerError = null;
 
     if (getInputShape().length == 2) {
@@ -185,30 +185,30 @@ public final class ConvolutionalLayer extends LayerBase {
   }
 
   /**
-   * Computes activation values for this convolutional layer.
+   * Computes output values for this convolutional layer.
    * @param input input values for this layer.
-   * @return activation values for this layer.
+   * @return output values for this layer.
    */
   @Override
   public Matrix feedForward(final Matrix input) {
 
-    if (activation == null || activation.getColumns() != input.getColumns()) {
-      activation = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+    if (output == null || output.getColumns() != input.getColumns()) {
+      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
     }
 
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix newValue = im2row(n, input).mmul(getLayerParameter().getWeightParam());
-      activation.putColumn(n, newValue.reshape(NeuralNetworkUtils.getShapeLength(outputShape), 1));
+      output.putColumn(n, newValue.reshape(NeuralNetworkUtils.getShapeLength(outputShape), 1));
     }
-    activation.addiColumnVector(getLayerParameter().getBiasParam());
-    return activation;
+    output.addiColumnVector(getLayerParameter().getBiasParam());
+    return output;
   }
 
   /**
    * Computes errors for this convolutional layer.
    * @param input the input values for this layer.
-   * @param activation the activation values.
-   * @param nextError the errors of the next layer - the one closer to the activation layer.
+   * @param activation the output values.
+   * @param nextError the errors of the next layer - the one closer to the output layer.
    * @return errors for this layer with the specified input value.
    */
   @Override
