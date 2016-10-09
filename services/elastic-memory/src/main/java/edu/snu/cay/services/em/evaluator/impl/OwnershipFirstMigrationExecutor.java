@@ -373,10 +373,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     private final AtomicInteger blockIdxCounter = new AtomicInteger(0);
     private final AtomicInteger migratedBlockCounter = new AtomicInteger(0);
 
-    // threads can send data and ownership of a single block, after taking a token from the queue.
-    // When migration of a single block is finished, a token will be pushed in to the queue
-    // to let one thread to start migrating a next block.
-    private final BlockingQueue<Token> tokenBlockingQueue = new ArrayBlockingQueue<>(MAX_CONCURRENT_MIGRATIONS);
+    // semaphore to restrict the number of concurrent block migration
+    private final Semaphore semaphore = new Semaphore(MAX_CONCURRENT_MIGRATIONS);
 
     Migration(final String operationId, final String senderId, final String receiverId, final List<Integer> blockIds,
               final TraceInfo parentTraceInfo) {
@@ -385,28 +383,14 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       this.receiverId = receiverId;
       this.blockIds = Collections.unmodifiableList(blockIds);
       this.parentTraceInfo = parentTraceInfo;
-
-      for (int i = 0; i < MAX_CONCURRENT_MIGRATIONS; i++) {
-        tokenBlockingQueue.add(new Token());
-      }
-    }
-
-    // empty class for token abstraction that gives a chance to send a block.
-    private final class Token {
-
     }
 
     private void startMigratingBlock() {
       int blockIdxToSend = blockIdxCounter.getAndIncrement();
 
       while (blockIdxToSend < blockIds.size()) {
-        // can progress after obtaining a token
-        try {
-          tokenBlockingQueue.take();
-        } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Interrupted while waiting for tokens", e);
-          throw new RuntimeException(e);
-        }
+        // can progress after acquiring a permit
+        semaphore.acquireUninterruptibly();
 
         final int blockIdToMigrate = blockIds.get(blockIdxToSend);
 
@@ -441,11 +425,11 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     }
 
     /**
-     * Put a new token into queue to let one thread to start migrating a next block.
+     * Finish migration of a single block and let one thread to start migrating a next block.
      * @return True, if all blocks are migrated
      */
     private boolean finishMigratingBlock() {
-      tokenBlockingQueue.add(new Token());
+      semaphore.release();
       return migratedBlockCounter.incrementAndGet() == blockIds.size();
     }
   }
