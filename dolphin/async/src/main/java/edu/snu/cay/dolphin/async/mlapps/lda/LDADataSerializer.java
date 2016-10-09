@@ -91,14 +91,14 @@ final class LDADataSerializer implements Serializer {
         final int[] assignments = new int[numWords];
         final int[] topicCounts = new int[numTopics];
 
-        for (int i = 0; i < numWords; i++) {
-          words[i] = dais.readInt();
+        for (int wordIdx = 0; wordIdx < numWords; wordIdx++) {
+          words[wordIdx] = dais.readInt();
         }
-        for (int i = 0; i < numWords; i++) {
-          assignments[i] = dais.readInt();
+        for (int wordIdx = 0; wordIdx < numWords; wordIdx++) {
+          assignments[wordIdx] = dais.readInt();
         }
-        for (int i = 0; i < numTopics; i++) {
-          topicCounts[i] = dais.readInt();
+        for (int topicIdx = 0; topicIdx < numTopics; topicIdx++) {
+          topicCounts[topicIdx] = dais.readInt();
         }
 
         return new Document(words, assignments, topicCounts, numTopics);
