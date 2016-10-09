@@ -480,7 +480,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
             param -> ((WorkerEvaluatorParameters) param).getMetrics().getParameterWorkerMetrics()
                 .getTotalPullCount()).average().orElse(0);
       }
-      optimizerModelParams.put(Constants.TOTAL_MODEL_KEYS, (double) numTotalKeys / rawMetrics.size());
+      optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, (double) numTotalKeys / rawMetrics.size());
       break;
     default:
       throw new RuntimeException("Unsupported namespace");

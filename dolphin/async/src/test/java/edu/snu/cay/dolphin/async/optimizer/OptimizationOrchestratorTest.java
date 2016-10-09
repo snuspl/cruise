@@ -142,19 +142,6 @@ public final class OptimizationOrchestratorTest {
     final int numServers = 5;
     final int numWorkers = 5;
 
-    for (int i = 0; i < numServers; i++) {
-      serverStoreIdMap.put(i, Collections.emptySet());
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
-          .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalPushProcessed(1)
-          .setTotalPullProcessed(1)
-          .setTotalPullProcessingTimeSec(1.0)
-          .build();
-      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
-
-      // MetricManager filters the very first ServerMetric after metric collection start
-      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
-    }
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
       final WorkerMetrics miniBatchMetric = WorkerMetrics.newBuilder()
@@ -179,6 +166,20 @@ public final class OptimizationOrchestratorTest {
       // MetricManager filters the very first WorkerMetric after metric collection start
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, epochMetric);
+    }
+
+    for (int i = 0; i < numServers; i++) {
+      serverStoreIdMap.put(i, Collections.emptySet());
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
+          .setNumModelBlocks(NUM_BLOCKS)
+          .setTotalPushProcessed(1)
+          .setTotalPullProcessed(1)
+          .setTotalPullProcessingTimeSec(1.0)
+          .build();
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+
+      // MetricManager filters the very first ServerMetric after metric collection start
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
 
     orchestrator.run();
@@ -260,23 +261,6 @@ public final class OptimizationOrchestratorTest {
     final int numServers = 5;
     final int numWorkers = 5;
 
-    for (int i = 0; i < numServers; i++) {
-      serverStoreIdMap.put(i, Collections.emptySet());
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
-          .setNumModelBlocks(NUM_BLOCKS)
-          .setTotalPushProcessed(1)
-          .setTotalPullProcessed(1)
-          .setTotalPullProcessingTimeSec(1.0)
-          .build();
-      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
-
-      // MetricManager filters the very first ServerMetric after metric collection start
-      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
-
-      // put duplicate metrics
-      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
-    }
-
     for (int i = 0; i < numWorkers; i++) {
       workerStoreIdMap.put(i, Collections.emptySet());
       final WorkerMetrics miniBatchMetric = WorkerMetrics.newBuilder()
@@ -305,6 +289,23 @@ public final class OptimizationOrchestratorTest {
 
       // put duplicate metrics
       metricManager.storeWorkerMetrics(EVAL_PREFIX + i, miniBatchMetric);
+    }
+
+    for (int i = 0; i < numServers; i++) {
+      serverStoreIdMap.put(i, Collections.emptySet());
+      final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
+          .setNumModelBlocks(NUM_BLOCKS)
+          .setTotalPushProcessed(1)
+          .setTotalPullProcessed(1)
+          .setTotalPullProcessingTimeSec(1.0)
+          .build();
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+
+      // MetricManager filters the very first ServerMetric after metric collection start
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
+
+      // put duplicate metrics
+      metricManager.storeServerMetrics(EVAL_PREFIX + i, serverMetrics);
     }
 
     // check whether it can filter the metrics and finally trigger the optimizer with refined metrics

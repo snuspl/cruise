@@ -92,7 +92,7 @@ public final class AsyncDolphinOptimizerTest {
 
     optimizerModelParamsMap = new HashMap<>(2);
     optimizerModelParamsMap.put(Constants.TOTAL_DATA_INSTANCES, (double) numTotalDataInstances);
-    optimizerModelParamsMap.put(Constants.TOTAL_MODEL_KEYS, (double) numTotalModelKeys);
+    optimizerModelParamsMap.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, (double) numTotalModelKeys);
 
     optimizer = injector.getInstance(AsyncDolphinOptimizer.class);
   }

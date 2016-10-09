@@ -29,5 +29,5 @@ public final class Constants {
   public static final String NAMESPACE_WORKER = "WORKER";
 
   public static final String TOTAL_DATA_INSTANCES = "WORKER_TOTAL_DATA_INSTANCES";
-  public static final String TOTAL_MODEL_KEYS = "SERVER_TOTAL_MODEL_PARAM_KEYS";
+  public static final String TOTAL_PULLS_PER_MINI_BATCH = "PARAMETER_WORKER_TOTAL_PULLS_PER_BATCH";
 }

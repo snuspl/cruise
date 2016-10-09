@@ -96,6 +96,11 @@ public final class MetricManager {
   private final ArrayBlockingQueue<String> metricsRequestQueue = new ArrayBlockingQueue<String>(METRIC_QUEUE_SIZE);
 
   /**
+   * Keep track of when the initial epoch metric arrives after metric collection start.
+   */
+  private boolean initialEpochMetricArrived;
+
+  /**
    * Constructor of MetricManager.
    * @param hostAddress Host address of the dashboard server. The address is set lazily at the constructor
    *                    if the client has configured a feasible port number.
@@ -104,10 +109,11 @@ public final class MetricManager {
   @Inject
   private MetricManager(@Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
                         @Parameter(Parameters.DashboardPort.class) final int port) {
-    this.workerEvalMiniBatchParams = Collections.synchronizedMap(new HashMap<>());
     this.workerEvalEpochParams = Collections.synchronizedMap(new HashMap<>());
-    this.serverEvalParams = Collections.synchronizedMap(new HashMap<>());
+    this.workerEvalMiniBatchParams = new HashMap<>();
+    this.serverEvalParams = new HashMap<>();
     this.metricCollectionEnabled = false;
+    this.initialEpochMetricArrived = false;
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
 
@@ -195,16 +201,18 @@ public final class MetricManager {
             // skip the first epoch metric for the worker after metric collection has begun
             if (!workerEvalEpochParams.containsKey(workerId)) {
               workerEvalEpochParams.put(workerId, new ArrayList<>());
+              initialEpochMetricArrived = true;
             } else {
               workerEvalEpochParams.get(workerId).add(evaluatorParameters);
             }
           }
         } else {
           synchronized (workerEvalMiniBatchParams) {
-            // skip the first mini-batch metric for the worker after metric collection has begun
             if (!workerEvalMiniBatchParams.containsKey(workerId)) {
               workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
-            } else {
+            }
+            // only collect the metric if the worker has completed its first epoch after metric collection has begun
+            if (workerEvalEpochParams.containsKey(workerId)) {
               workerEvalMiniBatchParams.get(workerId).add(evaluatorParameters);
             }
           }
@@ -240,10 +248,11 @@ public final class MetricManager {
         final DataInfo dataInfo = new DataInfoImpl(numModelBlocks);
         final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
         synchronized (serverEvalParams) {
-          // skip the first window metric for the server after metric collection has begun
           if (!serverEvalParams.containsKey(serverId)) {
             serverEvalParams.put(serverId, new ArrayList<>());
-          } else {
+          }
+          // only collect the metric if the worker has completed its first epoch after metric collection has begun
+          if (initialEpochMetricArrived) {
             serverEvalParams.get(serverId).add(evaluatorParameters);
           }
         }
@@ -304,6 +313,7 @@ public final class MetricManager {
   public void stopMetricCollection() {
     LOG.log(Level.INFO, "Metric collection stopped!");
     metricCollectionEnabled = false;
+    initialEpochMetricArrived = false;
     clearServerMetrics();
     clearWorkerMetrics();
   }
