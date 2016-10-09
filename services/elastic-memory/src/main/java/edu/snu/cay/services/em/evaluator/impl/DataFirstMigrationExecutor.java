@@ -44,6 +44,14 @@ import java.util.concurrent.Executors;
  * Data-first version of {@link MigrationExecutor}.
  * It focuses on fast migration and availability of data,
  * losing some updates on data values.
+ *
+ * Protocol:
+ * 1) MoveInitMsg (Driver -> sender)
+ * 2) DataMsg (sender -> receiver)
+ * 3) OwnershipMsg (receiver -> Driver)
+ * 4) OwnershipMsg (Driver -> sender)
+ * 5) BlockMovedMsg (sender -> Driver)
+ *
  * @param <K> Type of key in MemoryStore
  */
 public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
@@ -55,6 +63,9 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
   private final OperationRouter router;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
+  /**
+   * Thread pools to handle the messages in separate threads to prevent NCS threads' overhead.
+   */
   private final ExecutorService dataMsgSenderExecutor = Executors.newFixedThreadPool(NUM_DATA_MSG_SENDER_THREADS);
   private final ExecutorService dataMsgHandlerExecutor = Executors.newFixedThreadPool(NUM_DATA_MSG_RECEIVER_THREADS);
   private final ExecutorService ownershipMsgHandlerExecutor =

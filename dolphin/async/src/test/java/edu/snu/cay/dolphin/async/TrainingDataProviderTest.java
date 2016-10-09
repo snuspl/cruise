@@ -55,14 +55,14 @@ public class TrainingDataProviderTest {
   private MemoryStore<Long> memoryStore;
   private OperationRouter<Long> operationRouter;
   private TrainingDataProvider<Long> trainingDataProvider;
-  private MoveHandler<Long> moveHandler;
+  private BlockHandler<Long> blockHandler;
 
   @Before
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
-        .bindImplementation(MoveHandler.class, MemoryStoreImpl.class)
+        .bindImplementation(BlockHandler.class, MemoryStoreImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(LOCAL_STORE_ID))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_MEMORY_STORES))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
@@ -96,7 +96,7 @@ public class TrainingDataProviderTest {
     memoryStore = injector.getInstance(MemoryStore.class);
     operationRouter = injector.getInstance(OperationRouter.class);
     trainingDataProvider = injector.getInstance(TrainingDataProvider.class);
-    moveHandler = injector.getInstance(MoveHandler.class);
+    blockHandler = injector.getInstance(BlockHandler.class);
   }
 
   /**
@@ -191,7 +191,7 @@ public class TrainingDataProviderTest {
    * @param dataSet the data set which will be stored into the added block
    */
   private void putBlockToMemoryStore(final int blockId, final Map<Long, Integer> dataSet) {
-    moveHandler.putBlock(blockId, (Map) dataSet);
+    blockHandler.putBlock(blockId, (Map) dataSet);
     operationRouter.updateOwnership(blockId, REMOTE_STORE_ID, LOCAL_STORE_ID);
   }
 
@@ -200,7 +200,7 @@ public class TrainingDataProviderTest {
    * @param blockId the id of the block to be removed
    */
   private void removeBlockFromMemoryStore(final int blockId) {
-    moveHandler.removeBlock(blockId);
+    blockHandler.removeBlock(blockId);
     operationRouter.updateOwnership(blockId, LOCAL_STORE_ID, REMOTE_STORE_ID);
   }
 

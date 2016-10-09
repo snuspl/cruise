@@ -96,6 +96,7 @@ public final class OperationRouter<K> {
   private final List<Integer> initialLocalBlocks;
 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
+  private final Map<Integer, CountDownLatch> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
 
   @Inject
   private OperationRouter(final BlockResolver<K> blockResolver,
@@ -322,7 +323,7 @@ public final class OperationRouter<K> {
   public Tuple<Optional<String>, Lock> resolveEvalWithLock(final int blockId) {
     checkInitialization();
 
-    waitBlockMigrationTobeFinished(blockId);
+    waitBlockMigrationToEnd(blockId);
 
     final Lock readLock = routerLock.readLock();
     readLock.lock();
@@ -334,7 +335,7 @@ public final class OperationRouter<K> {
     }
   }
 
-  private void waitBlockMigrationTobeFinished(final int blockId) {
+  private void waitBlockMigrationToEnd(final int blockId) {
     final CountDownLatch blockMigratingLatch = migratingBlocks.get(blockId);
     if (blockMigratingLatch != null) {
       try {
@@ -392,11 +393,9 @@ public final class OperationRouter<K> {
     }
   }
 
-  private final Map<Integer, CountDownLatch> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
-
   /**
-   * Block client's access on the migrating block.
-   * @param blockId
+   * Mark a block as migrating and stop client's access on the migrating block.
+   * @param blockId id of the block
    */
   public void markBlockAsMigrating(final int blockId) {
     synchronized (migratingBlocks) {
@@ -408,7 +407,12 @@ public final class OperationRouter<K> {
     }
   }
 
-  public void unMarkBlockFromMigrating(final int blockId) {
+  /**
+   * Release the block that was marked by {@link #markBlockAsMigrating(int)}
+   * and allow clients access the migrated block, which can be in local or remote.
+   * @param blockId id of the block
+   */
+  public void releaseMigratedBlock(final int blockId) {
     synchronized (migratingBlocks) {
       if (!migratingBlocks.containsKey(blockId)) {
         throw new RuntimeException("Block " + blockId + " is not in migrating state");
