@@ -47,7 +47,6 @@ final class Document {
     this.numTopics = numTopics;
   }
 
-
   private void initialize() {
     final Random rand = new Random();
     for (int i = 0; i < assignments.length; i++) {
