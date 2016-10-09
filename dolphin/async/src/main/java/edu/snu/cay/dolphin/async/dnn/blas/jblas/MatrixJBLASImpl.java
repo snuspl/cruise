@@ -16,6 +16,8 @@
 package edu.snu.cay.dolphin.async.dnn.blas.jblas;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
+import org.apache.commons.math3.random.MersenneTwister;
+import org.apache.commons.math3.random.SynchronizedRandomGenerator;
 import org.jblas.FloatMatrix;
 
 /**
@@ -24,9 +26,11 @@ import org.jblas.FloatMatrix;
 final class MatrixJBLASImpl implements Matrix {
 
   private final FloatMatrix jblasMatrix;
+  private final SynchronizedRandomGenerator randomGenerator;
 
   MatrixJBLASImpl(final FloatMatrix jblasMatrix) {
     this.jblasMatrix = jblasMatrix;
+    this.randomGenerator = new SynchronizedRandomGenerator(new MersenneTwister());
   }
 
   @Override
@@ -459,6 +463,20 @@ final class MatrixJBLASImpl implements Matrix {
       return jblasMatrix.compare(((MatrixJBLASImpl) matrix).jblasMatrix, tolerance);
     }
     return false;
+  }
+
+  @Override
+  public Matrix bernoulli(final float prob, final float scale) {
+    for (int i = 0; i < getRows(); ++i) {
+      for (int j = 0; j < getColumns(); ++j) {
+        if (randomGenerator.nextFloat() <= prob) {
+          put(i, j, scale);
+        } else {
+          put(i, j, 0);
+        }
+      }
+    }
+    return this;
   }
 
   @Override

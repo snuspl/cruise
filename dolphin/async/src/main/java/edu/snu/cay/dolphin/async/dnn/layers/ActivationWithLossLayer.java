@@ -43,6 +43,8 @@ public final class ActivationWithLossLayer extends LayerBase {
   private final LayerBase activationLayer;
   private final String lossFunction;
 
+  private Matrix layerError;
+
   /**
    * @param index the index of this layer
    * @param inputShape the shape of input data
@@ -58,6 +60,7 @@ public final class ActivationWithLossLayer extends LayerBase {
                                   @Parameter(LossFunction.class) final String lossFunction) {
     super(index, inputShape);
     this.lossFunction = lossFunction;
+    this.layerError = null;
 
     try {
       // bind the layer index and input shape for injecting inner layer.
@@ -100,7 +103,12 @@ public final class ActivationWithLossLayer extends LayerBase {
   public Matrix backPropagate(final Matrix label, final Matrix activation, final Matrix nextError) {
     switch (lossFunction.toLowerCase()) {
     case "crossentropy":
-      return activation.sub(label);
+      if (layerError == null) {
+        layerError = activation.dup();
+      } else {
+        layerError.copy(activation);
+      }
+      return layerError.subi(label);
     default:
       throw new IllegalArgumentException("Unsupported loss function");
     }
