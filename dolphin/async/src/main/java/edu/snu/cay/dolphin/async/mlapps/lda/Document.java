@@ -40,6 +40,14 @@ final class Document {
     initialize();
   }
 
+  Document(final int[] words, final int[] assignments, final int[] topicCounts, final int numTopics) {
+    this.words = Ints.asList(words);
+    this.assignments = assignments;
+    this.topicCounts = topicCounts;
+    this.numTopics = numTopics;
+  }
+
+
   private void initialize() {
     final Random rand = new Random();
     for (int i = 0; i < assignments.length; i++) {

@@ -44,7 +44,7 @@ final class LDADataSerializer implements Serializer {
   private final class LDADataCodec implements Codec<Document>, StreamingCodec<Document> {
     @Override
     public byte[] encode(final Document document) {
-      final int numBytes = (document.getWords().size() + 1) * Integer.BYTES;
+      final int numBytes = (document.getWords().size() * 2 + numTopics + 1) * Integer.BYTES;
 
       try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
            final DataOutputStream daos = new DataOutputStream(baos)) {
@@ -72,6 +72,12 @@ final class LDADataSerializer implements Serializer {
         for (final int word : words) {
           daos.writeInt(word);
         }
+        for (int idx = 0; idx < words.size(); idx++) {
+          daos.writeInt(document.getAssignment(idx));
+        }
+        for (int idx = 0; idx < numTopics; idx++) {
+          daos.writeInt(document.getTopicCount(idx));
+        }
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
@@ -82,11 +88,20 @@ final class LDADataSerializer implements Serializer {
       try {
         final int size = dais.readInt();
         final int[] words = new int[size];
+        final int[] assignments = new int[size];
+        final int[] topicCounts = new int[numTopics];
+
         for (int i = 0; i < size; i++) {
-          final int word = dais.readInt();
-          words[i] = word;
+          words[i] = dais.readInt();
         }
-        return new Document(words, numTopics);
+        for (int i = 0; i < size; i++) {
+          assignments[i] = dais.readInt();
+        }
+        for (int i = 0; i < numTopics; i++) {
+          topicCounts[i] = dais.readInt();
+        }
+
+        return new Document(words, assignments, topicCounts, numTopics);
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
