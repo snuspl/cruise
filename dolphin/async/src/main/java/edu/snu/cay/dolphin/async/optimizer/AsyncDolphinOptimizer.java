@@ -126,7 +126,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final int numDataBlocks = workerPair.getSecond();
 
     final int numTotalDataInstances = modelParamsMap.get(Constants.TOTAL_DATA_INSTANCES).intValue();
-    final double numTotalModelKeys = modelParamsMap.get(Constants.TOTAL_PULLS_PER_MINI_BATCH);
+    final double numPullsPerMiniBatch = modelParamsMap.get(Constants.TOTAL_PULLS_PER_MINI_BATCH);
     /*
      * 1. for each possible number of workers, check and filter:
      * a) total number of data blocks on worker side should be greater than or equal to the number of workers
@@ -140,7 +140,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
         .mapToObj(numWorkers ->
             new Pair<>(numWorkers,
-                totalCost(numWorkers, numTotalDataInstances, numTotalModelKeys,
+                totalCost(numWorkers, numTotalDataInstances, numPullsPerMiniBatch,
                     availableEvaluators, workerSummaries, serverSummaries)))
         .reduce(new BinaryOperator<Pair<Integer, Pair<Double, Double>>>() {
           @Override
@@ -303,7 +303,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    *
    * @param numWorker given number of workers
    * @param numTotalDataInstances total number of data instances across workers
-   * @param numTotalModelKeys total number of model keys across servers
+   * @param numPullsPerMiniBatch (we use this for the model keys on server-side)
    * @param availableEvaluators number of evaluators available
    * @param workers list of worker {@link EvaluatorSummary}
    * @param servers list of server {@link EvaluatorSummary}
@@ -311,7 +311,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
    */
   private Pair<Double, Double> totalCost(final int numWorker,
                                          final int numTotalDataInstances,
-                                         final double numTotalModelKeys,
+                                         final double numPullsPerMiniBatch,
                                          final int availableEvaluators,
                                          final List<EvaluatorSummary> workers,
                                          final List<EvaluatorSummary> servers) {
@@ -331,7 +331,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final double serverThroughputSum = servers.subList(0, numServer).stream()
         .mapToDouble(server -> server.throughput)
         .sum();
-    final double commCost = numTotalModelKeys / serverThroughputSum / numServerThreads
+    final double commCost = numPullsPerMiniBatch / serverThroughputSum / numServerThreads
         * numWorker * avgNumMiniBatchesPerWorker;
 
     final double totalCost = compCost + commCost;
