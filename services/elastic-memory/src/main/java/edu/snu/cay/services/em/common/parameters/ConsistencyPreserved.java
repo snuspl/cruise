@@ -13,17 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.api;
+package edu.snu.cay.services.em.common.parameters;
 
-import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.wake.EventHandler;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * Non-user side interface of memory store including APIs for handling operations from remote request.
- */
-@EvaluatorSide
-@Private
-public interface RemoteAccessibleMemoryStore<K> extends
-    MemoryStore<K>, EventHandler<DataOperation>, BlockHandler<K> {
+@NamedParameter(doc = "Whether to guarantee the consistency of values during data migration with a slight overhead." +
+    "1) By default, we provide data migration that preserves consistency strictly by using OwnershipFirst protocol." +
+    "2) We sacrifice the consistency by changing ownership loosely during migration for better performance.",
+    default_value = "true")
+public final class ConsistencyPreserved implements Name<Boolean> {
 }

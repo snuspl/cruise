@@ -128,6 +128,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
             .build();
 
         final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+            .setType(MigrationMsgType.ResultMsg)
             .setResultMsg(resultMsg)
             .build();
         callback.onNext(migrationMsg);

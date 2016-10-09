@@ -15,15 +15,14 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
+import edu.snu.cay.services.em.avro.MigrationMsg;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.wake.EventHandler;
 
 /**
- * Non-user side interface of memory store including APIs for handling operations from remote request.
+ * An evaluator-side component that executes migration
+ * directed by {@link edu.snu.cay.services.em.driver.impl.MigrationManager}.
  */
 @EvaluatorSide
-@Private
-public interface RemoteAccessibleMemoryStore<K> extends
-    MemoryStore<K>, EventHandler<DataOperation>, BlockHandler<K> {
+public interface MigrationExecutor extends EventHandler<MigrationMsg> {
 }
