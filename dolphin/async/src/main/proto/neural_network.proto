@@ -87,7 +87,7 @@ message NeuralNetworkConfiguration {
   optional uint32 random_seed = 5;
   enum DeviceMode {
     CPU = 0;
-    GPU = 0;
+    GPU = 1;
   }
   optional DeviceMode device_mode = 6 [default = CPU];
 }
