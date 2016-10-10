@@ -150,7 +150,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         processMetricsForOptimization(Constants.NAMESPACE_WORKER, currentWorkerMiniBatchMetrics);
 
     // 4) Check that the processed metrics suffice to undergo an optimization cycle.
-    // processed(*)Metrics of size less than the number of evaluators running in each space implies that
+    // processed metrics of size less than the number of evaluators running in each space implies that
     // there were only metrics not enough for this optimization cycle to be executed.
     if (processedServerMetrics.size() < numRunningServers || processedWorkerMetrics.size() < numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because the metrics do not suffice to undergo an optimization cycle.");
@@ -246,7 +246,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    * Calculates the total number of data instances across workers.
    * @param evalParams a mapping of each worker's ID to the list of {@link EvaluatorParameters}
    *                   in which the first item contains the number of data instances contained in the worker.
-   * @return
+   * @return the total number of data instances across workers.
    */
   private int getTotalNumDataInstances(final Map<String, List<EvaluatorParameters>> evalParams) {
     int numDataInstances = 0;

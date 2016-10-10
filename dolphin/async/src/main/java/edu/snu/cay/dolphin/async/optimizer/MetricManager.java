@@ -35,6 +35,7 @@ import org.apache.http.nio.reactor.IOReactorException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
@@ -57,18 +58,20 @@ public final class MetricManager {
   private static final int METRIC_QUEUE_SIZE = 1024;
 
   /**
-   * Worker-side metrics for mini-batches, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
-   */
-  private final Map<String, List<EvaluatorParameters>> workerEvalMiniBatchParams;
-
-  /**
    * Worker-side metrics for epochs, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
    */
   private final Map<String, List<EvaluatorParameters>> workerEvalEpochParams;
 
   /**
+   * Worker-side metrics for mini-batches, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
+   */
+  @GuardedBy("itself")
+  private final Map<String, List<EvaluatorParameters>> workerEvalMiniBatchParams;
+
+  /**
    * Server-side metrics, each in the form of (serverId, {@link EvaluatorParameters}) mapping.
    */
+  @GuardedBy("itself")
   private final Map<String, List<EvaluatorParameters>> serverEvalParams;
 
   /**
@@ -208,11 +211,11 @@ public final class MetricManager {
           }
         } else {
           synchronized (workerEvalMiniBatchParams) {
-            if (!workerEvalMiniBatchParams.containsKey(workerId)) {
-              workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
-            }
             // only collect the metric if the worker has completed its first epoch after metric collection has begun
             if (workerEvalEpochParams.containsKey(workerId)) {
+              if (!workerEvalMiniBatchParams.containsKey(workerId)) {
+                workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
+              }
               workerEvalMiniBatchParams.get(workerId).add(evaluatorParameters);
             }
           }
@@ -248,11 +251,11 @@ public final class MetricManager {
         final DataInfo dataInfo = new DataInfoImpl(numModelBlocks);
         final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
         synchronized (serverEvalParams) {
-          if (!serverEvalParams.containsKey(serverId)) {
-            serverEvalParams.put(serverId, new ArrayList<>());
-          }
           // only collect the metric if the worker has completed its first epoch after metric collection has begun
           if (initialEpochMetricArrived) {
+            if (!serverEvalParams.containsKey(serverId)) {
+              serverEvalParams.put(serverId, new ArrayList<>());
+            }
             serverEvalParams.get(serverId).add(evaluatorParameters);
           }
         }

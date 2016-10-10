@@ -327,7 +327,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     // Calculating commCost based on avg: (avgNumModelKeysPerServer / avgThroughput)
     final int numServer = availableEvaluators - numWorker;
 
-    // serverThroughputSum of throughput values per server thread
+    // Calculating the sum of servers' throughput per thread
     final double serverThroughputSum = servers.subList(0, numServer).stream()
         .mapToDouble(server -> server.throughput)
         .sum();
