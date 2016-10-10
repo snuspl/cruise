@@ -57,23 +57,22 @@ public final class AsyncDolphinOptimizerTest {
   private static int numRunningWorkers;
   private static int numRunningServers;
 
+  //The set of pre-calculated values this test will run with
+  private static final int NUM_TOTAL_DATA_INSTANCES = 285; // the sum of all entries in dataInstancesForWorkers
+  private static final int NUM_TOTAL_MODEL_KEYS = 50; // derived using parameter worker metrics in real situations
+  private static final int NUM_SERVER_THREADS = 2;
+  private static final int EM_BLOCK_SIZE = 10;
+  private static int miniBatchSize = 100;
+
   /**
    * Sets up metrics that works accordingly with the current cost model.
    * If the metric values are modified, the {@code assertEquals} conditions in the tests below MUST be re-checked.
    * @throws InjectionException
    */
-  @Before
   public void setUp() throws InjectionException {
-    //The set of pre-calculated values this test will run with
-    final int numTotalDataInstances = 285; // the sum of all entries in dataInstancesForWorkers
-    final int numTotalModelKeys = 50; // derived using parameter worker metrics in real situations
-    final int numServerThreads = 2;
-    final int miniBatchSize = 100;
-    final int emBlockSize = 10;
-
     final Injector injector = Tang.Factory.getTang().newInjector(
         Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(ServerNumThreads.class, String.valueOf(numServerThreads))
+            .bindNamedParameter(ServerNumThreads.class, String.valueOf(NUM_SERVER_THREADS))
             .bindNamedParameter(Parameters.MiniBatchSize.class, String.valueOf(miniBatchSize))
         .build());
 
@@ -82,17 +81,17 @@ public final class AsyncDolphinOptimizerTest {
     final double[] compTimeForWorkers = new double[] {100.0, 90.0, 95.0};
     numRunningWorkers = dataInstancesForWorkers.length;
     workerEvaluatorParameters =
-        generateWorkerEvaluatorParameters(emBlockSize, dataInstancesForWorkers, compTimeForWorkers);
+        generateWorkerEvaluatorParameters(EM_BLOCK_SIZE, dataInstancesForWorkers, compTimeForWorkers);
 
     // server metrics
     final int[] pullCountForServers = new int[] {50, 60, 50, 50};
     final double[] pullTimeForServers = new double[] {10.0, 15.0, 8.0, 15.0};
     numRunningServers = pullCountForServers.length;
-    serverEvaluatorParameters = generateServerEvaluatorParameters(emBlockSize, pullCountForServers, pullTimeForServers);
+    serverEvaluatorParameters = generateServerEvaluatorParameters(EM_BLOCK_SIZE, pullCountForServers, pullTimeForServers);
 
     optimizerModelParamsMap = new HashMap<>(2);
-    optimizerModelParamsMap.put(Constants.TOTAL_DATA_INSTANCES, (double) numTotalDataInstances);
-    optimizerModelParamsMap.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, (double) numTotalModelKeys);
+    optimizerModelParamsMap.put(Constants.TOTAL_DATA_INSTANCES, (double) NUM_TOTAL_DATA_INSTANCES);
+    optimizerModelParamsMap.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, (double) NUM_TOTAL_MODEL_KEYS);
 
     optimizer = injector.getInstance(AsyncDolphinOptimizer.class);
   }
@@ -101,7 +100,9 @@ public final class AsyncDolphinOptimizerTest {
    * Tests for a correct optimization plan on the same number of resources with the current metrics.
    */
   @Test
-  public void testIdenticalAvailableResourcesOptimization() {
+  public void testIdenticalAvailableResourcesOptimization_1MiniBatch() throws InjectionException {
+    miniBatchSize = 100;
+    setUp();
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
@@ -117,7 +118,9 @@ public final class AsyncDolphinOptimizerTest {
    * Tests for a correct optimization plan when a resource is removed with the current metrics.
    */
   @Test
-  public void testFewerAvailableResourcesOptimization() {
+  public void testFewerAvailableResourcesOptimization_1MiniBatch() throws InjectionException {
+    miniBatchSize = 100;
+    setUp();
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
@@ -133,7 +136,9 @@ public final class AsyncDolphinOptimizerTest {
    * Tests for a correct optimization plan when an extra resource is added with the current metrics.
    */
   @Test
-  public void testMoreAvailableResourcesOptimization() {
+  public void testMoreAvailableResourcesOptimization_1MiniBatch() throws InjectionException {
+    miniBatchSize = 100;
+    setUp();
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
@@ -143,6 +148,60 @@ public final class AsyncDolphinOptimizerTest {
     assertEquals(plan.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER).size(), 0);
     assertEquals(plan.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER).size(), 0);
     assertEquals(plan.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER).size(), 2);
+  }
+
+  /**
+   * Tests for a correct optimization plan on the same number of resources with the current metrics.
+   */
+  @Test
+  public void testIdenticalAvailableResourcesOptimization_nMiniBatch() throws InjectionException {
+    miniBatchSize = 45;
+    setUp();
+    final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
+    map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
+    map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
+    final Plan plan = optimizer.optimize(map, numRunningWorkers + numRunningServers, optimizerModelParamsMap);
+
+    assertEquals(plan.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER).size(), 2);
+    assertEquals(plan.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER).size(), 0);
+    assertEquals(plan.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER).size(), 0);
+    assertEquals(plan.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER).size(), 2);
+  }
+
+  /**
+   * Tests for a correct optimization plan when a resource is removed with the current metrics.
+   */
+  @Test
+  public void testFewerAvailableResourcesOptimization_nMiniBatch() throws InjectionException {
+    miniBatchSize = 45;
+    setUp();
+    final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
+    map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
+    map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
+    final Plan plan = optimizer.optimize(map, numRunningWorkers + numRunningServers - 1, optimizerModelParamsMap);
+
+    assertEquals(plan.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER).size(), 1);
+    assertEquals(plan.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER).size(), 0);
+    assertEquals(plan.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER).size(), 0);
+    assertEquals(plan.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER).size(), 2);
+  }
+
+  /**
+   * Tests for a correct optimization plan when an extra resource is added with the current metrics.
+   */
+  @Test
+  public void testMoreAvailableResourcesOptimization_nMiniBatch() throws InjectionException {
+    miniBatchSize = 45;
+    setUp();
+    final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
+    map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
+    map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
+    final Plan plan = optimizer.optimize(map, numRunningWorkers + numRunningServers + 1, optimizerModelParamsMap);
+
+    assertEquals(plan.getEvaluatorsToAdd(Constants.NAMESPACE_WORKER).size(), 4);
+    assertEquals(plan.getEvaluatorsToAdd(Constants.NAMESPACE_SERVER).size(), 0);
+    assertEquals(plan.getEvaluatorsToDelete(Constants.NAMESPACE_WORKER).size(), 0);
+    assertEquals(plan.getEvaluatorsToDelete(Constants.NAMESPACE_SERVER).size(), 3);
   }
 
   private List<EvaluatorParameters> generateWorkerEvaluatorParameters(final int blockSize,
