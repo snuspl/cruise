@@ -33,9 +33,6 @@ public final class ActivationLayer extends LayerBase {
 
   private final Function activationFunction;
 
-  private Matrix output;
-  private Matrix derivative;
-
   /**
    * @param index the index of this layer
    * @param inputShape the shape of input data
@@ -47,8 +44,6 @@ public final class ActivationLayer extends LayerBase {
                           @Parameter(ActivationFunction.class) final String activationFunction) {
     super(index, inputShape);
     this.activationFunction = FunctionFactory.getSingleInstance(activationFunction);
-    this.output = null;
-    this.derivative = null;
   }
 
   @Override
@@ -69,14 +64,8 @@ public final class ActivationLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    if (output == null) {
-      output = input.dup();
-    } else {
-      output.copy(input);
-    }
-
     // apply activation function.
-    return activationFunction.applyi(output);
+    return activationFunction.apply(input);
   }
 
   /**
@@ -88,13 +77,7 @@ public final class ActivationLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-    if (derivative == null) {
-      derivative = input.dup();
-    } else {
-      derivative.copy(input);
-    }
-
-    activationFunction.derivativei(derivative);
+    final Matrix derivative = activationFunction.derivative(input);
     return nextError.mul(derivative);
   }
 

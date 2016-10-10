@@ -33,7 +33,6 @@ public final class DropoutLayer extends LayerBase {
   private final MatrixFactory matrixFactory;
   private final float dropoutRatio;
   private Matrix bernoulliMatrix;
-  private Matrix output;
 
   /**
    * @param index the index of this layer.
@@ -49,8 +48,6 @@ public final class DropoutLayer extends LayerBase {
     super(index, inputShape);
     this.dropoutRatio = dropoutRatio;
     this.matrixFactory = matrixFactory;
-    this.bernoulliMatrix = null;
-    this.output = null;
   }
 
   @Override
@@ -71,13 +68,9 @@ public final class DropoutLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    if (bernoulliMatrix == null || bernoulliMatrix.getColumns() != input.getColumns()) {
-      bernoulliMatrix = matrixFactory.create(input.getRows(), input.getColumns());
-      output = matrixFactory.create(input.getRows(), input.getColumns());
-    }
-    bernoulliMatrix.bernoulli(1 - dropoutRatio, 1 / (1 - dropoutRatio), System.currentTimeMillis());
-    output.copy(bernoulliMatrix);
-    return output.muli(input);
+    this.bernoulliMatrix = matrixFactory
+        .bernoulli(input.getRows(), input.getColumns(), 1 - dropoutRatio, 1 / (1 - dropoutRatio));
+    return bernoulliMatrix.mul(input);
   }
 
   /**

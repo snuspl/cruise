@@ -345,6 +345,31 @@ public interface Matrix {
   Matrix mmuli(Matrix matrix);
 
   /**
+   * Returns result as a Matrix-Matrix multiplication.
+   */
+  Matrix mmul(Matrix matrix, Matrix result);
+
+  /**
+   * Multiplication between transpose of this matrix and operand matrix.
+   */
+  Matrix tmmul(Matrix matrix);
+
+  /**
+   * Returns result as a multiplication between transpose of this matrix and operand matrix.
+   */
+  Matrix tmmul(Matrix matrix, Matrix result);
+
+  /**
+   * Multiplication between this matrix and the transpose of operand matrix.
+   */
+  Matrix mmult(Matrix matrix);
+
+  /**
+   * Returns result as a multiplication between this matrix and the transpose of operand matrix.
+   */
+  Matrix mmult(Matrix matrix, Matrix result);
+
+  /**
    * Returns the maximum element of the matrix.
    */
   float max();
@@ -385,6 +410,11 @@ public interface Matrix {
   Matrix rowSums();
 
   /**
+   * Returns result as a column vector containing the sum of elements in each row.
+   */
+  Matrix rowSums(Matrix result);
+
+  /**
    * Returns the sum of all elements in the matrix.
    */
   float sum();
@@ -412,9 +442,4 @@ public interface Matrix {
    * @return this matrix
    */
   Matrix bernoulli(float prob, float scale, long seed);
-
-  /**
-   * Free the allocated memory if it exists.
-   */
-  void free();
 }

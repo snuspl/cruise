@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.dnn.blas;
 
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -170,12 +172,12 @@ public final class MatrixUtils {
   }
 
   /**
-   * Destroy memory allocation of a matrix.
+   * Destroy memory allocation of a matrix if and only if the matrix is instance of cuda.
    * @param matrix a matrix to destroy
    */
   public static void free(final Matrix matrix) {
-    if (matrix != null) {
-      matrix.free();
+    if (matrix != null && matrix instanceof MatrixCudaImpl) {
+      ((MatrixCudaImpl)matrix).free();
     }
   }
 }

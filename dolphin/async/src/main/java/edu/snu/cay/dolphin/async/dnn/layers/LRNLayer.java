@@ -42,8 +42,6 @@ public final class LRNLayer extends LayerBase {
 
   private final MatrixFactory matrixFactory;
   private Matrix scale;
-  private Matrix activation;
-  private Matrix layerError;
 
   /**
    * @param index the index of this layer
@@ -70,9 +68,6 @@ public final class LRNLayer extends LayerBase {
     this.k = k;
     this.paddingSize = (localSize - 1) / 2;
     this.matrixFactory = matrixFactory;
-    this.scale = null;
-    this.activation = null;
-    this.layerError = null;
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -110,10 +105,7 @@ public final class LRNLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    if (scale == null || scale.getColumns() != input.getColumns()) {
-      scale = matrixFactory.create(input.getRows(), input.getColumns());
-      activation = matrixFactory.create(input.getRows(), input.getColumns());
-    }
+    this.scale = matrixFactory.create(input.getRows(), input.getColumns());
 
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix paddedImg = matrixFactory.zeros(input.getRows() + (paddingSize * 2 * inputSize), 1);
@@ -125,8 +117,8 @@ public final class LRNLayer extends LayerBase {
     }
     // the following scale is used at backPropagation
     scale.muli(alpha / localSize).addi(k);
-    activation.copy(scale);
-    return MatrixFunctions.powi(activation, -beta).muli(input);
+
+    return MatrixFunctions.pow(scale, -beta).muli(input);
   }
 
   /**
@@ -163,21 +155,19 @@ public final class LRNLayer extends LayerBase {
    *
    * be_i: nextError where kernel i is applied
    * b_i: activation where kernel i is applied
-   * ae_i: layerError computed where kernel i is applied
+   * ae_i: error computed where kernel i is applied
    * a_i: input where kernel i is applied
    *
    * @param input the input values for this layer
-   * @param output the output values.
+   * @param activation the output values.
    * @param nextError the errors of the next layer - the one closer to the output layer.
    * @return errors for this layer with the specified input value.
    */
   @Override
   public Matrix backPropagate(final Matrix input,
-                              final Matrix output,
+                              final Matrix activation,
                               final Matrix nextError) {
-    if (layerError == null || !layerError.hasSameSize(input)) {
-      layerError = matrixFactory.create(input.getRows(), input.getColumns());
-    }
+    final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
     final float scalarMultiplier = -2 * alpha * beta / localSize;
 
     for (int n = 0; n < nextError.getColumns(); ++n) {
@@ -185,13 +175,13 @@ public final class LRNLayer extends LayerBase {
       for (int i = 0; i < nextError.getRows(); ++i) {
         // nextError * activation / scale
         paddedImg.put(i + paddingSize * inputSize,
-            nextError.get(i, n) * output.get(i, n) / scale.get(i, n) * scalarMultiplier);
+            nextError.get(i, n) * activation.get(i, n) / scale.get(i, n) * scalarMultiplier);
       }
-      computeLocalSum(layerError, paddedImg, n);
+      computeLocalSum(error, paddedImg, n);
     }
 
-    layerError.muli(input);
-    return layerError.addi(MatrixFunctions.powi(scale, -beta).muli(nextError));
+    error.muli(input);
+    return error.addi(MatrixFunctions.powi(scale, -beta).muli(nextError));
   }
 
   /** {@inheritDoc} */

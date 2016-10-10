@@ -57,8 +57,6 @@ public final class PoolingLayer extends LayerBase {
   private final int outputHeight;
   private final int outputWidth;
   private final MatrixFactory matrixFactory;
-  private Matrix output;
-  private Matrix layerError;
 
   /**
    * @param index the index of this layer
@@ -95,9 +93,6 @@ public final class PoolingLayer extends LayerBase {
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.poolingType = PoolType.valueOf(poolingType.toUpperCase());
     this.matrixFactory = matrixFactory;
-    this.output = null;
-    this.indexMatrix = null;
-    this.layerError = null;
   
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -134,11 +129,8 @@ public final class PoolingLayer extends LayerBase {
     final int inputSize = inputHeight * inputWidth;
     final int outputSize = outputHeight * outputWidth;
     final int outputLength = NeuralNetworkUtils.getShapeLength(outputShape);
-    if (output == null || output.getColumns() != input.getColumns()) {
-      output = matrixFactory.create(outputLength, input.getColumns());
-      indexMatrix = matrixFactory.create(outputLength, input.getColumns());
-    }
-
+    final Matrix output = matrixFactory.create(outputLength, input.getColumns());
+    indexMatrix = matrixFactory.create(outputLength, input.getColumns());
     for (int n = 0; n < input.getColumns(); ++n) {
       for (int c = 0; c < inputChannel; ++c) {
         for (int oh = 0; oh < outputHeight; ++oh) {
@@ -181,10 +173,7 @@ public final class PoolingLayer extends LayerBase {
   private Matrix feedForwardAveragePooling(final Matrix input) {
     final int inputSize = inputHeight * inputWidth;
     final int outputSize = outputHeight * outputWidth;
-    if (output == null || output.getColumns() != input.getColumns()) {
-      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
-    }
-
+    final Matrix output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
     for (int n = 0; n < input.getColumns(); ++n) {
       for (int c = 0; c < inputChannel; ++c) {
         for (int oh = 0; oh < outputHeight; ++oh) {
@@ -238,11 +227,7 @@ public final class PoolingLayer extends LayerBase {
    * @return errors for this layer with the specified input value.
    */
   private Matrix backPropagateMaxPooling(final Matrix input, final Matrix nextError) {
-    if (layerError == null || !layerError.hasSameSize(input)) {
-      layerError = matrixFactory.create(input.getRows(), input.getColumns());
-    }
-    layerError.fill(0);
-
+    final Matrix error = matrixFactory.zeros(input.getRows(), input.getColumns());
     final int outputSize = outputHeight * outputWidth;
     for (int n = 0; n < input.getColumns(); ++n) {
       for (int c = 0; c < inputChannel; ++c) {
@@ -251,13 +236,13 @@ public final class PoolingLayer extends LayerBase {
             //Add error to saved index.
             final int outputIndex = c * outputSize + oh * outputWidth + ow;
             final int maxIndex = (int) indexMatrix.get(outputIndex, n);
-            final float newError = nextError.get(outputIndex, n) + layerError.get(maxIndex, n);
-            layerError.put(maxIndex, n, newError);
+            final float newError = nextError.get(outputIndex, n) + error.get(maxIndex, n);
+            error.put(maxIndex, n, newError);
           }
         }
       }
     }
-    return layerError;
+    return error;
   }
 
   /**
@@ -267,12 +252,7 @@ public final class PoolingLayer extends LayerBase {
    * @return errors for this layer with the specified input value.
    */
   private Matrix backPropagateAveragePooling(final Matrix input, final Matrix nextError) {
-    if (layerError == null || !layerError.hasSameSize(input)) {
-      layerError = matrixFactory.create(input.getRows(), input.getColumns());
-    }
-    layerError.fill(0);
-
-
+    final Matrix error = matrixFactory.zeros(input.getRows(), input.getColumns());
     final int inputSize = inputHeight * inputWidth;
     final int outputSize = outputHeight * outputWidth;
     for (int n = 0; n < input.getColumns(); ++n) {
@@ -294,15 +274,15 @@ public final class PoolingLayer extends LayerBase {
               for (int kw = wstart; kw < wend; ++kw) {
                 //Add error divided by kernel size for all pixels within the range.
                 final int inputIndex = c * inputSize + kh * inputWidth + kw;
-                final float newError = nextError.get(outputIndex, n) / kernelSize + layerError.get(inputIndex, n);
-                layerError.put(inputIndex, n, newError);
+                final float newError = nextError.get(outputIndex, n) / kernelSize + error.get(inputIndex, n);
+                error.put(inputIndex, n, newError);
               }
             }
           }
         }
       }
     }
-    return layerError;
+    return error;
   }
 
   /**

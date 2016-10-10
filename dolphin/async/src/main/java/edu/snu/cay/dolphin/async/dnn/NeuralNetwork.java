@@ -168,7 +168,7 @@ public final class NeuralNetwork {
 
   /**
    * Pushes parameter gradients to the parameter servers.
-   * @param batchSize the number of instance in an input batch
+   * @param inputSize the number of instance in an input batch
    * @param parameterGradients the list of parameter gradients
    */
   void pushGradients(final int inputSize, final LayerParameter[] parameterGradients) {

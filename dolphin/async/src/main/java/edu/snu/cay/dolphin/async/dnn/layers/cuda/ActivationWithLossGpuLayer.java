@@ -41,6 +41,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
   private final String lossFunction;
   private MatrixFactory matrixFactory;
   private Matrix output;
+  private Matrix layerError;
 
   private Pointer inputDesc;
   private Pointer activationDesc;
@@ -70,6 +71,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
     this.lossFunction = lossFunction;
     this.matrixFactory = matrixFactory;
     this.output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getInputShape()), batchSize);
+    this.layerError = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getInputShape()), batchSize);
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -134,7 +136,10 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
   public Matrix backPropagate(final Matrix label, final Matrix activation, final Matrix nextError) {
     switch (lossFunction.toLowerCase()) {
     case "crossentropy":
-      return activation.sub(label);
+      if (layerError.getColumns() != activation.getColumns()) {
+        layerError.copy(activation);
+      }
+      return layerError.subi(label);
     default:
       throw new IllegalArgumentException("Unsupported loss function");
     }
@@ -151,5 +156,6 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
     JavaCudnn.destroyTensorDesc(activationDesc);
 
     MatrixUtils.free(output);
+    MatrixUtils.free(layerError);
   }
 }

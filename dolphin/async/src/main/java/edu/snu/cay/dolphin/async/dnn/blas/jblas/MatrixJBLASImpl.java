@@ -408,6 +408,48 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
+  public Matrix mmul(final Matrix matrix, final Matrix result) {
+    checkImpl(matrix);
+    checkImpl(result);
+    if (getRows() != result.getRows() || getColumns() != matrix.getColumns()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+    jblasMatrix.mmuli(((MatrixJBLASImpl) matrix).jblasMatrix, ((MatrixJBLASImpl) result).jblasMatrix);
+    return null;
+  }
+
+  @Override
+  public Matrix tmmul(final Matrix matrix) {
+    final Matrix transposeMatrix = transpose();
+    return transposeMatrix.mmul(matrix);
+  }
+
+  @Override
+  public Matrix tmmul(final Matrix matrix, final Matrix result) {
+    if (result.getRows() != getColumns() || result.getColumns() != matrix.getColumns()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+
+    final Matrix transposeMatrix = transpose();
+    return transposeMatrix.mmul(matrix, result);
+  }
+
+  @Override
+  public Matrix mmult(final Matrix matrix) {
+    final Matrix transposeMatrix = matrix.transpose();
+    return mmul(transposeMatrix);
+  }
+
+  @Override
+  public Matrix mmult(final Matrix matrix, final Matrix result) {
+    if (result.getRows() != getRows() || result.getColumns() != matrix.getRows()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+    final Matrix transposeMatrix = matrix.transpose();
+    return mmul(transposeMatrix, result);
+  }
+
+  @Override
   public float max() {
     return jblasMatrix.max();
   }
@@ -445,6 +487,15 @@ final class MatrixJBLASImpl implements Matrix {
   @Override
   public Matrix rowSums() {
     return new MatrixJBLASImpl(jblasMatrix.rowSums());
+  }
+
+  @Override
+  public Matrix rowSums(final Matrix result) {
+    if (result.getRows() != getRows() || result.getColumns() != 1) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+    result.copy(rowSums());
+    return result;
   }
 
   @Override
@@ -507,9 +558,5 @@ final class MatrixJBLASImpl implements Matrix {
       // TODO #147: different matrix implementations
       throw new IllegalArgumentException("The given matrix should be JBLAS based");
     }
-  }
-
-  @Override
-  public void free() {
   }
 }

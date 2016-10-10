@@ -31,7 +31,7 @@ import javax.inject.Inject;
  * This layer works for 2D and 3D inputs.
  * In a forward pass,
  * feedForward function computes the product between weight and the input within kernel range
- * and produce output matrix.
+ * and produce activation matrix.
  * In a backward pass,
  * the error of each input pixel comes from the product
  * between weight and errors of output pixels affected by the input pixel in feedforward step.
@@ -49,9 +49,6 @@ public final class ConvolutionalLayer extends LayerBase {
   private final int inputWidth;
   private final int inputChannel;
   private final MatrixFactory matrixFactory;
-  private Matrix output;
-  private Matrix layerError;
-  private final Matrix parameterGradient;
 
   /**
    * @param index the index of this layer
@@ -86,8 +83,6 @@ public final class ConvolutionalLayer extends LayerBase {
     this.kernelWidth = kernelWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
-    this.output = null;
-    this.layerError = null;
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -98,8 +93,6 @@ public final class ConvolutionalLayer extends LayerBase {
       this.inputHeight = getInputShape()[1];
       this.inputWidth = getInputShape()[2];
     }
-
-    this.parameterGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
   }
 
   @Override
@@ -191,11 +184,7 @@ public final class ConvolutionalLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-
-    if (output == null || output.getColumns() != input.getColumns()) {
-      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
-    }
-
+    final Matrix output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix newValue = im2row(n, input).mmul(getLayerParameter().getWeightParam());
       output.putColumn(n, newValue.reshape(NeuralNetworkUtils.getShapeLength(outputShape), 1));
@@ -213,31 +202,28 @@ public final class ConvolutionalLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-
-    if (layerError == null || layerError.getColumns() != input.getColumns()) {
-      layerError = matrixFactory.create(input.getRows(), input.getColumns());
-    }
-
+    final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix singleNextError = nextError.getColumn(n).reshape(outputShape[1] * outputShape[2], outputShape[0]);
       final Matrix row = singleNextError.mmul(getLayerParameter().getWeightParam().transpose());
       final Matrix im = row2im(row);
-      layerError.putColumn(n, im);
+      error.putColumn(n, im);
     }
-    return layerError;
+    return error;
   }
 
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
+    final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix row = im2row(n, input);
-      parameterGradient.addi(row.transpose().mmul(error.getColumn(n)
+      weightGradient.addi(row.transpose().mmul(error.getColumn(n)
           .reshape(outputShape[1] * outputShape[2], outputShape[0])));
     }
     final Matrix biasGradient = error.rowSums();
     return LayerParameter.newBuilder()
-        .setWeightParam(parameterGradient)
+        .setWeightParam(weightGradient)
         .setBiasParam(biasGradient)
         .build();
   }
