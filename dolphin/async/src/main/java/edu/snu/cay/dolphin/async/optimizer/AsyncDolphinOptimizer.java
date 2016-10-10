@@ -342,7 +342,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final String costInfo = String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +
         "\"compCost\": %f, \"commCost\": %f}", numServer, numWorker, totalCost, compCost, commCost);
     LOG.log(Level.INFO, "CostInfo {0} {1}", new Object[]{System.currentTimeMillis(), costInfo});
-    return new Pair<>(compCost, );
+    return new Pair<>(compCost, commCost);
   }
 
   /**
