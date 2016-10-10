@@ -153,7 +153,8 @@
   "name": "MoveInitMsg",
   "fields":
   [
-    {"name": "destEvalId", "type" : "string"},
+    {"name": "senderId", "type": "string"},
+    {"name": "receiverId", "type": "string"},
     {"name": "blockIds", "type": {"type": "array", "items": "int"}}
   ]
 },
@@ -168,10 +169,26 @@
   "name": "DataMsg",
   "fields":
   [
-    {"name": "srcEvalId", "type" : "string"},
-    {"name": "destEvalId", "type" : "string"},
-    {"name": "blockId", "type": ["null", "int"], "default": null},
-    {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
+    {"name": "senderId", "type": "string"},
+    {"name": "receiverId", "type": "string"},
+    {"name": "blockId", "type": "int"},
+    {"name": "keyValuePairs", "type": {"type": "array", "items": "KeyValuePair"}}
+  ]
+},
+
+/**
+ * Response message for DataMsg.
+ * A data receiver sends it to the data sender.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "DataAckMsg",
+  "fields":
+  [
+    {"name": "senderId", "type": "string"},
+    {"name": "receiverId", "type": "string"},
+    {"name": "blockId", "type": "int"}
   ]
 },
 
@@ -183,9 +200,25 @@
   "type": "record",
   "name": "OwnershipMsg",
   "fields": [
-      {"name": "blockId", "type": "int"},
+      {"name": "senderId", "type": "string"},
       {"name": "oldOwnerId", "type": "int"},
-      {"name": "newOwnerId", "type": "int"}
+      {"name": "newOwnerId", "type": "int"},
+      {"name": "blockId", "type": "int"}
+  ]
+},
+
+/**
+ * Response message for OwnershipMsg.
+ * An ownership receiver sends it to the ownership sender.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "OwnershipAckMsg",
+  "fields": [
+      {"name": "oldOwnerId", "type": "int"},
+      {"name": "newOwnerId", "type": "int"},
+      {"name": "blockId", "type": "int"}
   ]
 },
 
@@ -225,7 +258,7 @@
   "fields":
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
-    {"name": "srcId", "type" : ["null", "string"], "default": null},
+    {"name": "srcId", "type": ["null", "string"], "default": null},
     {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null},
     {"name": "msg", "type": ["null", "string"], "default": null}
   ]
@@ -283,12 +316,15 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "MigrationMsgType",
-        "symbols": ["MoveInitMsg", "DataMsg","OwnershipMsg", "BlockMovedMsg", "FailureMsg", "ResultMsg"]}},
-    {"name": "operationId", "type" : ["null", "string"], "default": null},
+        "symbols": ["MoveInitMsg", "DataMsg", "DataAckMsg", "OwnershipMsg", "OwnershipAckMsg", "BlockMovedMsg",
+          "FailureMsg", "ResultMsg"]}},
+    {"name": "operationId", "type": ["null", "string"], "default": null},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
     {"name": "moveInitMsg", "type": ["null", "MoveInitMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
+    {"name": "dataAckMsg", "type": ["null", "DataAckMsg"], "default": null},
     {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null},
+    {"name": "ownershipAckMsg", "type": ["null", "OwnershipAckMsg"], "default": null},
     {"name": "blockMovedMsg", "type": ["null", "BlockMovedMsg"], "default": null},
     {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
     {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null}

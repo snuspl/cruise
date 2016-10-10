@@ -39,6 +39,7 @@ public final class LDAREEF {
         .setKeyCodecClass(SerializableCodec.class)
         .setPreValueCodecClass(SerializableCodec.class)
         .setValueCodecClass(SparseArrayCodec.class)
+        .setWorkerSerializerClass(LDADataSerializer.class)
         .addParameterClass(Alpha.class)
         .addParameterClass(Beta.class)
         .addParameterClass(NumTopics.class)

@@ -79,7 +79,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
    * @param <V> a type of data
    */
   <V> void sendOpToRemoteStores(final RangeKeyOperation<K, V> operation,
-                            final Map<String, List<Pair<K, K>>> evalToSubKeyRangesMap) {
+                                final Map<String, List<Pair<K, K>>> evalToSubKeyRangesMap) {
     if (evalToSubKeyRangesMap.isEmpty()) {
       return;
     }

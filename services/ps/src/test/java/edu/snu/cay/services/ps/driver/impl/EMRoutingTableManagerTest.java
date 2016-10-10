@@ -25,7 +25,6 @@ import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.avro.Type;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
-import org.apache.reef.io.network.Message;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.network.impl.NSMessage;
 import org.apache.reef.tang.Configuration;
@@ -170,29 +169,48 @@ public final class EMRoutingTableManagerTest {
 
     // mock EM msg sender to simulate migration
     doAnswer(invocation -> {
+        final String senderId = invocation.getArgumentAt(0, String.class);
+        final String receiverId = invocation.getArgumentAt(1, String.class);
         final List<Integer> blocks = invocation.getArgumentAt(2, List.class);
         final String opId = invocation.getArgumentAt(3, String.class);
 
-        // blockMovedMsg will finish the migration
+        // OwnershipAckMsg and BlockMovedMsg will finish the migration
         for (final int blockId : blocks) {
+          final OwnershipAckMsg ownershipAckMsg = OwnershipAckMsg.newBuilder()
+              .setOldOwnerId(getStoreId(senderId))
+              .setNewOwnerId(getStoreId(receiverId))
+              .setBlockId(blockId)
+              .build();
+
+          MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+              .setType(MigrationMsgType.OwnershipAckMsg)
+              .setOperationId(opId)
+              .setOwnershipAckMsg(ownershipAckMsg)
+              .build();
+
+          EMMsg emMsg = EMMsg.newBuilder()
+              .setType(EMMsgType.MigrationMsg)
+              .setMigrationMsg(migrationMsg)
+              .build();
+
+          emMsgHandler.onNext(new NSMessage<>(null, null, emMsg));
+
           final BlockMovedMsg blockMovedMsg = BlockMovedMsg.newBuilder()
               .setBlockId(blockId)
               .build();
 
-          final MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+          migrationMsg = MigrationMsg.newBuilder()
               .setType(MigrationMsgType.BlockMovedMsg)
               .setOperationId(opId)
               .setBlockMovedMsg(blockMovedMsg)
               .build();
 
-          final EMMsg emMsg = EMMsg.newBuilder()
+          emMsg = EMMsg.newBuilder()
               .setType(EMMsgType.MigrationMsg)
               .setMigrationMsg(migrationMsg)
               .build();
 
-          final Message<EMMsg> msg = new NSMessage<>(null, null, emMsg);
-
-          emMsgHandler.onNext(msg);
+          emMsgHandler.onNext(new NSMessage<>(null, null, emMsg));
         }
         return null;
       }).when(mockEMSender)
@@ -236,5 +254,15 @@ public final class EMRoutingTableManagerTest {
 
     countDownLatch.await();
     verify(mockPSSender, times(numFirstUpdates + numSecondUpdates)).send(anyString(), anyObject());
+  }
+
+  /**
+   * Converts evaluator id to store id.
+   * TODO #509: remove assumption on the format of context Id
+   */
+  private int getStoreId(final String evalId) {
+    // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
+    // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver()).
+    return Integer.valueOf(evalId.split("-")[1]);
   }
 }

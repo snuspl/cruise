@@ -21,7 +21,9 @@ import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -35,6 +37,9 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,13 +48,12 @@ import java.util.logging.Logger;
  * Note that this class is not thread-safe, which means client of this class must synchronize explicitly.
  * @param <K> type of data key
  */
-// TODO #565: Refactor initialization methods in EM's OperationRouter
 @Private
 @NotThreadSafe
 public final class OperationRouter<K> {
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 
-  private static final long INIT_WAIT_TIMEOUT_MS = 2000;
+  private static final long INIT_WAIT_TIMEOUT_MS = 5000;
   private static final int MAX_NUM_INIT_REQUESTS = 3;
 
   /**
@@ -90,6 +94,9 @@ public final class OperationRouter<K> {
    */
   private final AtomicIntegerArray blockLocations;
   private final List<Integer> initialLocalBlocks;
+
+  private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
+  private final Map<Integer, CountDownLatch> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
 
   @Inject
   private OperationRouter(final BlockResolver<K> blockResolver,
@@ -181,8 +188,6 @@ public final class OperationRouter<K> {
     }
 
     initLatch.countDown();
-
-    LOG.log(Level.FINE, "Operation router is initialized");
   }
 
   /**
@@ -226,6 +231,7 @@ public final class OperationRouter<K> {
           LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
           try {
             if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+              LOG.log(Level.INFO, "Operation router is initialized");
               return;
             }
           } catch (final InterruptedException e) {
@@ -240,14 +246,21 @@ public final class OperationRouter<K> {
   /**
    * Routes the data key range of the operation. Note that this method must be synchronized to prevent other threads
    * from updating the routing information while reading it.
+   *
+   * This method does not work with Ownership-first migration protocol.
    * @param dataKeyRanges a range of data keys
    * @return a pair of a map between a block id and a corresponding sub key range,
    * and a map between evaluator id and corresponding sub key ranges.
    */
-  public Pair<Map<Integer, List<Pair<K, K>>>, Map<String, List<Pair<K, K>>>> route(
+  public Tuple3<Map<Integer, List<Pair<K, K>>>, Map<String, List<Pair<K, K>>>, Lock> route(
       final List<Pair<K, K>> dataKeyRanges) {
+    checkInitialization();
+
     final Map<Integer, List<Pair<K, K>>> localBlockToSubKeyRangesMap = new HashMap<>();
     final Map<String, List<Pair<K, K>>> remoteEvalToSubKeyRangesMap = new HashMap<>();
+
+    final Lock readLock = routerLock.readLock();
+    readLock.lock();
 
     // dataKeyRanges has at least one element
     // In most cases, there are only one range in dataKeyRanges
@@ -259,14 +272,15 @@ public final class OperationRouter<K> {
         final int blockId = blockToSubKeyRange.getKey();
         final Pair<K, K> minMaxKeyPair = blockToSubKeyRange.getValue();
 
-        final Optional<String> remoteEvalId = resolveEval(blockId);
+        final int memoryStoreId = blockLocations.get(blockId);
 
         // aggregate sub ranges
-        if (remoteEvalId.isPresent()) {
-          if (!remoteEvalToSubKeyRangesMap.containsKey(remoteEvalId.get())) {
-            remoteEvalToSubKeyRangesMap.put(remoteEvalId.get(), new LinkedList<Pair<K, K>>());
+        if (memoryStoreId != localStoreId) {
+          final String remoteEvalId = getEvalId(memoryStoreId);
+          if (!remoteEvalToSubKeyRangesMap.containsKey(remoteEvalId)) {
+            remoteEvalToSubKeyRangesMap.put(remoteEvalId, new LinkedList<Pair<K, K>>());
           }
-          final List<Pair<K, K>> remoteRangeList = remoteEvalToSubKeyRangesMap.get(remoteEvalId.get());
+          final List<Pair<K, K>> remoteRangeList = remoteEvalToSubKeyRangesMap.get(remoteEvalId);
           remoteRangeList.add(minMaxKeyPair);
         } else {
           if (!localBlockToSubKeyRangesMap.containsKey(blockId)) {
@@ -278,15 +292,14 @@ public final class OperationRouter<K> {
       }
     }
 
-    return new Pair<>(localBlockToSubKeyRangesMap, remoteEvalToSubKeyRangesMap);
+    return new Tuple3<>(localBlockToSubKeyRangesMap, remoteEvalToSubKeyRangesMap, readLock);
   }
 
   /**
    * Resolves an evaluator id for a block id.
-   * It returns empty when the block belongs to the local MemoryStore.
    * Be aware that the result of this method might become wrong by {@link #updateOwnership}.
    * @param blockId an id of block
-   * @return an Optional with an evaluator id
+   * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore
    */
   public Optional<String> resolveEval(final int blockId) {
     checkInitialization();
@@ -296,6 +309,40 @@ public final class OperationRouter<K> {
       return Optional.empty();
     } else {
       return Optional.of(getEvalId(memoryStoreId));
+    }
+  }
+
+  /**
+   * Resolves an evaluator id for a block id.
+   * Note that this method guarantees that the state of routing table does not change
+   * before an user unlocks the returned lock.
+   * @param blockId an id of block
+   * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore,
+   *        and a lock that prevents updates to routing table
+   */
+  public Tuple<Optional<String>, Lock> resolveEvalWithLock(final int blockId) {
+    checkInitialization();
+
+    waitBlockMigrationToEnd(blockId);
+
+    final Lock readLock = routerLock.readLock();
+    readLock.lock();
+    final int memoryStoreId = blockLocations.get(blockId);
+    if (memoryStoreId == localStoreId) {
+      return new Tuple<>(Optional.empty(), readLock);
+    } else {
+      return new Tuple<>(Optional.of(getEvalId(memoryStoreId)), readLock);
+    }
+  }
+
+  private void waitBlockMigrationToEnd(final int blockId) {
+    final CountDownLatch blockMigratingLatch = migratingBlocks.get(blockId);
+    if (blockMigratingLatch != null) {
+      try {
+        blockMigratingLatch.await();
+      } catch (final InterruptedException e) {
+        throw new RuntimeException("Interrupted while waiting for block migration to be finished", e);
+      }
     }
   }
 
@@ -332,12 +379,48 @@ public final class OperationRouter<K> {
   public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
     checkInitialization();
 
-    final int localOldOwnerId = blockLocations.getAndSet(blockId, newOwnerId);
-    if (localOldOwnerId != oldOwnerId) {
-      LOG.log(Level.WARNING, "Local routing table thought block {0} was in store {1}, but it was actually in {2}",
+    routerLock.writeLock().lock();
+    try {
+      final int localOldOwnerId = blockLocations.getAndSet(blockId, newOwnerId);
+      if (localOldOwnerId != oldOwnerId) {
+        LOG.log(Level.WARNING, "Local routing table thought block {0} was in store {1}, but it was actually in {2}",
+            new Object[]{blockId, oldOwnerId, newOwnerId});
+      }
+      LOG.log(Level.FINE, "Ownership of block {0} is updated from store {1} to store {2}",
           new Object[]{blockId, oldOwnerId, newOwnerId});
+    } finally {
+      routerLock.writeLock().unlock();
     }
-    LOG.log(Level.FINE, "Ownership of {0} is updated from {1} to {2}", new Object[]{blockId, oldOwnerId, newOwnerId});
+  }
+
+  /**
+   * Mark a block as migrating and stop client's access on the migrating block.
+   * @param blockId id of the block
+   */
+  void markBlockAsMigrating(final int blockId) {
+    synchronized (migratingBlocks) {
+      if (migratingBlocks.containsKey(blockId)) {
+        throw new RuntimeException("Block" + blockId + " is already in migrating state");
+      }
+
+      migratingBlocks.put(blockId, new CountDownLatch(1));
+    }
+  }
+
+  /**
+   * Release the block that was marked by {@link #markBlockAsMigrating(int)}
+   * and allow clients access the migrated block, which can be either in local or remote MemoryStore.
+   * @param blockId id of the block
+   */
+  void releaseMigratedBlock(final int blockId) {
+    synchronized (migratingBlocks) {
+      if (!migratingBlocks.containsKey(blockId)) {
+        throw new RuntimeException("Block " + blockId + " is not in migrating state");
+      }
+
+      final CountDownLatch blockMigratingLatch = migratingBlocks.remove(blockId);
+      blockMigratingLatch.countDown();
+    }
   }
 
   /**

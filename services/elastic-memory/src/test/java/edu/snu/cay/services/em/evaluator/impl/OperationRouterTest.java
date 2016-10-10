@@ -43,7 +43,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
@@ -180,7 +183,8 @@ public class OperationRouterTest {
 
       for (final int blockId : localBlockIds) {
         // OperationRouter.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
-        assertEquals("Router fails to classify local blocks", Optional.empty(), operationRouter.resolveEval(blockId));
+        assertFalse("Router fails to classify local blocks",
+            operationRouter.resolveEval(blockId).isPresent());
         assertTrue("The same block is owned by multiple stores", totalBlocks.add(blockId));
       }
     }
@@ -284,6 +288,53 @@ public class OperationRouterTest {
       assertFalse("This block should have been moved out from source router", srcCurrentBlocks.contains(blockId));
       assertTrue("This block should have been moved into destination router", destCurrentBlocks.contains(blockId));
     }
+  }
+
+  /**
+   * Tests whether routers are correctly locked by {@link OperationRouter#resolveEvalWithLock}
+   * to prevent themselves from being updated by {@link OperationRouter#updateOwnership}.
+   */
+  @Test
+  public void testLockingRouterFromUpdate() throws InjectionException, InterruptedException {
+    final int numTotalBlocks = 1024;
+    final int numInitialMemoryStores = 4;
+    final int numBlocksToMove = 2; // should be smaller than (numTotalBlocks/numInitialMemoryStores)
+
+    final int storeId = 0;
+    final OperationRouter<?> router = newOperationRouter(numInitialMemoryStores, numTotalBlocks, storeId, false);
+
+    final List<Integer> initialBlocks = router.getInitialLocalBlockIds();
+    final List<Integer> blocksToMove = initialBlocks.subList(0, numBlocksToMove);
+
+    // Resolving a single block locks the whole routing table
+    final Lock routerLock = router.resolveEvalWithLock(blocksToMove.get(0)).getValue();
+
+    final int destStoreId = 1;
+
+    final CountDownLatch updateLatch = new CountDownLatch(numBlocksToMove);
+    final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(numBlocksToMove);
+    for (final int blockId : blocksToMove) {
+      ownershipUpdateExecutor.submit(() -> {
+          router.updateOwnership(blockId, storeId, destStoreId);
+          updateLatch.countDown();
+        });
+    }
+
+    assertFalse("Thread should not be finished before unlock router", updateLatch.await(2000, TimeUnit.MILLISECONDS));
+
+    final List<Integer> curBlocksBeforeUnlock = router.getCurrentLocalBlockIds();
+    assertEquals("Routing table should not be updated", initialBlocks, curBlocksBeforeUnlock);
+
+    // unlock router to let threads update the router
+    routerLock.unlock();
+
+    assertTrue("Thread should be finished after unlock", updateLatch.await(2000, TimeUnit.MILLISECONDS));
+
+    blocksToMove.forEach(curBlocksBeforeUnlock::remove);
+    final List<Integer> curBlocksAfterUnlock = router.getCurrentLocalBlockIds();
+    assertEquals("Routing table should be updated", curBlocksBeforeUnlock, curBlocksAfterUnlock);
+
+    ownershipUpdateExecutor.shutdown();
   }
 
   /**
