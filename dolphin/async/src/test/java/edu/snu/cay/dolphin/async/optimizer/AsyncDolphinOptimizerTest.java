@@ -87,7 +87,8 @@ public final class AsyncDolphinOptimizerTest {
     final int[] pullCountForServers = new int[] {50, 60, 50, 50};
     final double[] pullTimeForServers = new double[] {10.0, 15.0, 8.0, 15.0};
     numRunningServers = pullCountForServers.length;
-    serverEvaluatorParameters = generateServerEvaluatorParameters(EM_BLOCK_SIZE, pullCountForServers, pullTimeForServers);
+    serverEvaluatorParameters =
+        generateServerEvaluatorParameters(EM_BLOCK_SIZE, pullCountForServers, pullTimeForServers);
 
     optimizerModelParamsMap = new HashMap<>(2);
     optimizerModelParamsMap.put(Constants.TOTAL_DATA_INSTANCES, (double) NUM_TOTAL_DATA_INSTANCES);
