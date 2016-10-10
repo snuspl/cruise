@@ -225,7 +225,6 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   }
 
   @Override
-
   /**
    * Checks whether the plan is being executed.
    * @return True if the generated plan is on execution

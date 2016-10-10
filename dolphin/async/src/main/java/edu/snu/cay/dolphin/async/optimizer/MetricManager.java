@@ -65,13 +65,13 @@ public final class MetricManager {
   /**
    * Worker-side metrics for mini-batches, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
    */
-  @GuardedBy("itself")
+  @GuardedBy("this")
   private final Map<String, List<EvaluatorParameters>> workerEvalMiniBatchParams;
 
   /**
    * Server-side metrics, each in the form of (serverId, {@link EvaluatorParameters}) mapping.
    */
-  @GuardedBy("itself")
+  @GuardedBy("this")
   private final Map<String, List<EvaluatorParameters>> serverEvalParams;
 
   /**
