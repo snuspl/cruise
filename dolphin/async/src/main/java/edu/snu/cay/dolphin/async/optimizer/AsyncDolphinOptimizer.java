@@ -316,6 +316,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
                                          final List<EvaluatorSummary> workers,
                                          final List<EvaluatorSummary> servers) {
     // Calculating an estimate of the No. of mini-batches when numWorker workers are used.
+    // TODO #878: Varying number of mini-batches across heterogeneous workers in cost model
     final double avgNumMiniBatchesPerWorker = Math.ceil((double) numTotalDataInstances / numWorker / miniBatchSize);
 
     // Calculating compCost based on avg: (avgNumDataInstancesPerWorker / avgThroughput)
