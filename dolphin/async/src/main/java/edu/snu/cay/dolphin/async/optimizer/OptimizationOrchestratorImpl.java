@@ -239,7 +239,13 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   }
 
   private int getNumMetricSources(final Map<String, List<EvaluatorParameters>> evalParams) {
-    return evalParams.keySet().size();
+    int validMetricSources = 0;
+    for (Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
+      if (!entry.getValue().isEmpty()) {
+        validMetricSources++;
+      }
+    }
+    return validMetricSources;
   }
 
   /**
