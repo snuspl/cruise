@@ -45,9 +45,10 @@ import java.util.stream.IntStream;
  * It generates an optimization plan for the system that minimizes the cost.
  *
  * The cost model is based on computation cost + communication cost where:
- * computation cost = Avg. time to process a computation * No. of total training data instances / No. of workers
- * communication cost = Avg. No. of pulls per mini-batch / (Total throughput of servers if (No. of servers) are used) /
- * No. of threads per server *  No. of workers * Estimated number of mini-batches per worker
+ * computation cost = Total throughput of workers if (No. of workers) are used * No. of total training data instances /
+ * No. of workers
+ * communication cost = Avg. No. of pulls per mini-batch / Total throughput of servers if (No. of servers) are used /
+ * No. of workers * Estimated number of mini-batches per worker
  */
 public final class AsyncDolphinOptimizer implements Optimizer {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinOptimizer.class.getName());
@@ -55,17 +56,17 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
   private final int miniBatchSize;
-  private final int numServerThreads;
+  private final int serverNumThreads;
   private final double optBenefitThreshold;
 
   @Inject
   private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
-                                @Parameter(ServerNumThreads.class) final int numServerThreads,
+                                @Parameter(ServerNumThreads.class) final int serverNumThreads,
                                 @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                 final double optBenefitThreshold) {
     this.miniBatchSize = miniBatchSize;
     this.optBenefitThreshold = optBenefitThreshold;
-    this.numServerThreads = numServerThreads;
+    this.serverNumThreads = serverNumThreads;
   }
 
   /**
@@ -281,7 +282,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .mapToDouble(unitCostFunc)
         .sum();
 
-    // throughput = server: processable pull per unit time | worker: processable data blocks per unit time
+    // throughput = server: processable pull per unit time | worker: processable data instances per unit time
     final List<EvaluatorSummary> nodes = params.stream()
         .map(param -> new EvaluatorSummary(param.getId(), param.getDataInfo(), 1 / unitCostFunc.applyAsDouble(param)))
         .collect(Collectors.toList());
@@ -334,8 +335,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     // Calculating the sum of servers' throughput per thread
     final double serverThroughputSum = servers.subList(0, numServer).stream()
         .mapToDouble(server -> server.throughput)
-        .sum();
-    final double commCost = numPullsPerMiniBatch / serverThroughputSum / numServerThreads
+        .sum() * serverNumThreads;
+    final double commCost = numPullsPerMiniBatch / serverThroughputSum
         * numWorker * avgNumMiniBatchesPerWorker;
 
     final double totalCost = compCost + commCost;

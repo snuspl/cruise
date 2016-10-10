@@ -61,14 +61,13 @@ public final class AsyncDolphinOptimizerTest {
   private static final int NUM_TOTAL_MODEL_KEYS = 50; // derived using parameter worker metrics in real situations
   private static final int NUM_SERVER_THREADS = 2;
   private static final int EM_BLOCK_SIZE = 10;
-  private static int miniBatchSize = 100;
 
   /**
    * Sets up metrics that works accordingly with the current cost model.
    * If the metric values are modified, the {@code assertEquals} conditions in the tests below MUST be re-checked.
    * @throws InjectionException
    */
-  public void setUp() throws InjectionException {
+  public void setUp(final int miniBatchSize) throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector(
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(ServerNumThreads.class, String.valueOf(NUM_SERVER_THREADS))
@@ -101,8 +100,8 @@ public final class AsyncDolphinOptimizerTest {
    */
   @Test
   public void testIdenticalAvailableResourcesOptimization1MiniBatch() throws InjectionException {
-    miniBatchSize = 100;
-    setUp();
+    final int miniBatchSize = 100;
+    setUp(miniBatchSize);
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
@@ -119,8 +118,8 @@ public final class AsyncDolphinOptimizerTest {
    */
   @Test
   public void testFewerAvailableResourcesOptimization1MiniBatch() throws InjectionException {
-    miniBatchSize = 100;
-    setUp();
+    final int miniBatchSize = 100;
+    setUp(miniBatchSize);
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
@@ -137,8 +136,8 @@ public final class AsyncDolphinOptimizerTest {
    */
   @Test
   public void testMoreAvailableResourcesOptimization1MiniBatch() throws InjectionException {
-    miniBatchSize = 100;
-    setUp();
+    final int miniBatchSize = 100;
+    setUp(miniBatchSize);
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
@@ -155,8 +154,8 @@ public final class AsyncDolphinOptimizerTest {
    */
   @Test
   public void testIdenticalAvailableResourcesOptimizationNMiniBatch() throws InjectionException {
-    miniBatchSize = 45;
-    setUp();
+    final int miniBatchSize = 45;
+    setUp(miniBatchSize);
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
@@ -173,8 +172,8 @@ public final class AsyncDolphinOptimizerTest {
    */
   @Test
   public void testFewerAvailableResourcesOptimizationNMiniBatch() throws InjectionException {
-    miniBatchSize = 45;
-    setUp();
+    final int miniBatchSize = 45;
+    setUp(miniBatchSize);
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
@@ -191,8 +190,8 @@ public final class AsyncDolphinOptimizerTest {
    */
   @Test
   public void testMoreAvailableResourcesOptimizationNMiniBatch() throws InjectionException {
-    miniBatchSize = 45;
-    setUp();
+    final int miniBatchSize = 45;
+    setUp(miniBatchSize);
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
     map.put(Constants.NAMESPACE_WORKER, workerEvaluatorParameters);
     map.put(Constants.NAMESPACE_SERVER, serverEvaluatorParameters);
