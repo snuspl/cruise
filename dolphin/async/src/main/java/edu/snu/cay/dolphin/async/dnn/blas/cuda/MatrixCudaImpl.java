@@ -124,6 +124,15 @@ public final class MatrixCudaImpl implements Matrix {
   }
 
   @Override
+  public float[] get() {
+    final FloatPointer hostPtr = new FloatPointer(getLength());
+    if (!JavaCuda.d2hMemcpy(hostPtr, devPtr, FLOAT_SIZE)) {
+      throw new RuntimeException("Failed to copy memory from GPU.");
+    }
+    return hostPtr.asBuffer().array();
+  }
+
+  @Override
   public Matrix get(final int[] indices) {
     throw new UnsupportedOperationException("Not implemented");
   }

@@ -45,6 +45,15 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
+  public float[] get() {
+    final float[] data = new float[getLength()];
+    for (int elementIndex = 0; elementIndex <  getLength(); elementIndex++) {
+      data[elementIndex] = jblasMatrix.get(elementIndex);
+    }
+    return data;
+  }
+
+  @Override
   public Matrix get(final int[] indices) {
     return new MatrixJBLASImpl(jblasMatrix.get(indices));
   }
