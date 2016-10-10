@@ -411,7 +411,7 @@ public interface Matrix {
    * @param scale value used when success
    * @return this matrix
    */
-  Matrix bernoulli(float prob, float scale);
+  Matrix bernoulli(float prob, float scale, long seed);
 
   /**
    * Free the allocated memory if it exists.

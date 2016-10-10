@@ -1075,7 +1075,7 @@ public final class MatrixCudaImpl implements Matrix {
   }
 
   @Override
-  public Matrix bernoulli(final float prob, final float scale) {
+  public Matrix bernoulli(final float prob, final float scale, final long seed) {
     throw new UnsupportedOperationException("Not implemented");
   }
 

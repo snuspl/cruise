@@ -94,7 +94,7 @@ public final class ActivationLayer extends LayerBase {
       derivative.copy(input);
     }
 
-    activationFunction.applyi(derivative);
+    activationFunction.derivativei(derivative);
     return nextError.mul(derivative);
   }
 

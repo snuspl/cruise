@@ -466,7 +466,9 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
-  public Matrix bernoulli(final float prob, final float scale) {
+  public Matrix bernoulli(final float prob, final float scale, final long seed) {
+    randomGenerator.setSeed(seed);
+
     for (int i = 0; i < getRows(); ++i) {
       for (int j = 0; j < getColumns(); ++j) {
         if (randomGenerator.nextFloat() <= prob) {
