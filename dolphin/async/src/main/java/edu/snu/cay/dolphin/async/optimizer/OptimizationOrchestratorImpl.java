@@ -239,7 +239,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
 
   private int getNumMetricSources(final Map<String, List<EvaluatorParameters>> evalParams) {
     int validMetricSources = 0;
-    for (Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
       if (!entry.getValue().isEmpty()) {
         validMetricSources++;
       }
@@ -304,6 +304,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    * @param rawMetrics
    * @return
    */
+  // TODO #883: EMA must be applied to the actual performance metric
   private List<EvaluatorParameters> processMetricsForOptimization(
       final String namespace, final Map<String, List<EvaluatorParameters>> rawMetrics) {
     final List<EvaluatorParameters> processedMetrics = new ArrayList<>();
@@ -337,7 +338,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       }
       break;
     case Constants.NAMESPACE_WORKER:
-      int numTotalKeys = 0;
+      double numTotalKeys = 0;
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
@@ -374,7 +375,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
             param -> ((WorkerEvaluatorParameters) param).getMetrics().getParameterWorkerMetrics()
                 .getTotalPullCount()).average().orElse(0);
       }
-      optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, (double) numTotalKeys / rawMetrics.size());
+      optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, numTotalKeys / rawMetrics.size());
       break;
     default:
       throw new RuntimeException("Unsupported namespace");

@@ -27,7 +27,6 @@ import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -101,7 +100,7 @@ public final class AsyncDolphinOptimizerTest {
    * Tests for a correct optimization plan on the same number of resources with the current metrics.
    */
   @Test
-  public void testIdenticalAvailableResourcesOptimization_1MiniBatch() throws InjectionException {
+  public void testIdenticalAvailableResourcesOptimization1MiniBatch() throws InjectionException {
     miniBatchSize = 100;
     setUp();
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
@@ -119,7 +118,7 @@ public final class AsyncDolphinOptimizerTest {
    * Tests for a correct optimization plan when a resource is removed with the current metrics.
    */
   @Test
-  public void testFewerAvailableResourcesOptimization_1MiniBatch() throws InjectionException {
+  public void testFewerAvailableResourcesOptimization1MiniBatch() throws InjectionException {
     miniBatchSize = 100;
     setUp();
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
@@ -137,7 +136,7 @@ public final class AsyncDolphinOptimizerTest {
    * Tests for a correct optimization plan when an extra resource is added with the current metrics.
    */
   @Test
-  public void testMoreAvailableResourcesOptimization_1MiniBatch() throws InjectionException {
+  public void testMoreAvailableResourcesOptimization1MiniBatch() throws InjectionException {
     miniBatchSize = 100;
     setUp();
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
@@ -155,7 +154,7 @@ public final class AsyncDolphinOptimizerTest {
    * Tests for a correct optimization plan on the same number of resources with the current metrics.
    */
   @Test
-  public void testIdenticalAvailableResourcesOptimization_nMiniBatch() throws InjectionException {
+  public void testIdenticalAvailableResourcesOptimizationNMiniBatch() throws InjectionException {
     miniBatchSize = 45;
     setUp();
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
@@ -173,7 +172,7 @@ public final class AsyncDolphinOptimizerTest {
    * Tests for a correct optimization plan when a resource is removed with the current metrics.
    */
   @Test
-  public void testFewerAvailableResourcesOptimization_nMiniBatch() throws InjectionException {
+  public void testFewerAvailableResourcesOptimizationNMiniBatch() throws InjectionException {
     miniBatchSize = 45;
     setUp();
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);
@@ -191,7 +190,7 @@ public final class AsyncDolphinOptimizerTest {
    * Tests for a correct optimization plan when an extra resource is added with the current metrics.
    */
   @Test
-  public void testMoreAvailableResourcesOptimization_nMiniBatch() throws InjectionException {
+  public void testMoreAvailableResourcesOptimizationNMiniBatch() throws InjectionException {
     miniBatchSize = 45;
     setUp();
     final Map<String, List<EvaluatorParameters>> map = new HashMap<>(2, 1);

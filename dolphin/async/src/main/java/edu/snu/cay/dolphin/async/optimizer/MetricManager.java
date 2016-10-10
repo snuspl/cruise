@@ -250,7 +250,7 @@ public final class MetricManager {
         final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
         synchronized (serverEvalParams) {
           // only collect the metric all workers have sent at least one metric after metric collection has begun
-          if (workerEvalEpochParams.keySet().size() == numBlockByEvalIdForWorker.keySet().size()) {
+          if (workerEvalEpochParams.size() == numBlockByEvalIdForWorker.size()) {
             if (!serverEvalParams.containsKey(serverId)) {
               serverEvalParams.put(serverId, new ArrayList<>());
             }

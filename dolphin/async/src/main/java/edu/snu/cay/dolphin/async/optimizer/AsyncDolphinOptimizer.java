@@ -46,8 +46,8 @@ import java.util.stream.IntStream;
  *
  * The cost model is based on computation cost + communication cost where:
  * computation cost = Avg. time to process a computation * No. of total training data instances / No. of workers
- * communication cost = Avg. time to process a pull request * No. of total model keys * No. of workers /
- * (No. of servers * No. of threads per server)
+ * communication cost = Avg. No. of pulls per mini-batch / (Total throughput of servers if (No. of servers) are used) /
+ * No. of threads per server *  No. of workers * Estimated number of mini-batches per worker
  */
 public final class AsyncDolphinOptimizer implements Optimizer {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinOptimizer.class.getName());
@@ -153,7 +153,6 @@ public final class AsyncDolphinOptimizer implements Optimizer {
           }
         })
         .get();
-
     final int currentNumWorkers = workerParams.size();
     final int currentNumServers = serverParams.size();
 
@@ -163,10 +162,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final double optimalCompCost = optimalNumWorkersCostPair.getSecond().getFirst();
     final double optimalCommCost = optimalNumWorkersCostPair.getSecond().getSecond();
 
-    final double currentCompCost = workerParams.stream()
-        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0D);
-    final double currentCommCost = workerParams.stream()
-        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D);
+    final double avgNumMiniBatchesPerWorker =
+        Math.ceil((double) numTotalDataInstances / currentNumWorkers / miniBatchSize);
+
+    // we must apply the costs in metrics by avgNumMiniBatchesPerWorker since these are mini-batch metrics
+    final double currentCompCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
+        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0D));
+    final double currentCommCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
+        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D));
 
     final String optimizationInfo = String.format("{\"numAvailEval\":%d, " +
             "\"optNumWorker\":%d, \"currNumWorker\":%d, \"optNumServer\":%d, \"currNumServer\":%d, " +
@@ -325,7 +328,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .sum();
     final double compCost = numTotalDataInstances / workerThroughputSum;
 
-    // Calculating commCost based on avg: (avgNumModelKeysPerServer / avgThroughput)
+    // Calculating commCost based on avg: (avgNumPullsPerMiniBatch / avgThroughput)
     final int numServer = availableEvaluators - numWorker;
 
     // Calculating the sum of servers' throughput per thread
@@ -339,7 +342,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final String costInfo = String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +
         "\"compCost\": %f, \"commCost\": %f}", numServer, numWorker, totalCost, compCost, commCost);
     LOG.log(Level.INFO, "CostInfo {0} {1}", new Object[]{System.currentTimeMillis(), costInfo});
-    return new Pair<>(compCost, commCost);
+    return new Pair<>(compCost, );
   }
 
   /**
