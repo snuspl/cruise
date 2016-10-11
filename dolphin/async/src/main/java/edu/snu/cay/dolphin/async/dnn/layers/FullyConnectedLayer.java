@@ -86,14 +86,6 @@ public final class FullyConnectedLayer extends LayerBase {
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
-    return LayerParameter.newBuilder()
-        .setWeightParam(error.mmul(input.transpose()))
-        .setBiasParam(error.rowSums())
-        .build();
-  }
-
-  @Override
-  public void cleanup() {
-
+    return new LayerParameter(error.mmul(input.transpose()), error.rowSums());
   }
 }

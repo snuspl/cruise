@@ -222,14 +222,6 @@ public final class ConvolutionalLayer extends LayerBase {
           .reshape(outputShape[1] * outputShape[2], outputShape[0])));
     }
     final Matrix biasGradient = error.rowSums();
-    return LayerParameter.newBuilder()
-        .setWeightParam(weightGradient)
-        .setBiasParam(biasGradient)
-        .build();
-  }
-
-  @Override
-  public void cleanup() {
-
+    return new LayerParameter(weightGradient, biasGradient);
   }
 }

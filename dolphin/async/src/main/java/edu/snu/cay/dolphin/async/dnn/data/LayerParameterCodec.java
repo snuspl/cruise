@@ -68,9 +68,6 @@ public final class LayerParameterCodec implements StreamingCodec<LayerParameter>
   public LayerParameter decodeFromStream(final DataInputStream dstream) {
     final Matrix weightParam = matrixCodec.decodeFromStream(dstream);
     final Matrix biasParam = matrixCodec.decodeFromStream(dstream);
-    return LayerParameter.newBuilder()
-        .setWeightParam(weightParam)
-        .setBiasParam(biasParam)
-        .build();
+    return new LayerParameter(weightParam, biasParam);
   }
 }

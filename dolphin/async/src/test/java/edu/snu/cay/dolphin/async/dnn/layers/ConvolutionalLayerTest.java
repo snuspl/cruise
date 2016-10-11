@@ -137,29 +137,22 @@ public class ConvolutionalLayerTest {
       {-0.000347f, -0.047422f, -0.017259f, -0.062726f, 0.017144f, 0.083920f,
        -0.041767f, -0.036403f, -0.017025f, -0.138155f, -0.002363f, -0.116153f}}).transpose();
   private final LayerParameter expectedConvolutionalLayerParams =
-      LayerParameter.newBuilder()
-      .setWeightParam(matrixFactory.create(new float[]
-          {15.8f, 12.29999f, 13.9f, 9.8f}))
-      .setBiasParam(matrixFactory.create(new float[]
-          {0.1f, 0.6f, 1, 0.5f}))
-      .build();
+      new LayerParameter(
+      matrixFactory.create(new float[] {15.8f, 12.29999f, 13.9f, 9.8f}),
+      matrixFactory.create(new float[] {0.1f, 0.6f, 1, 0.5f}));
 
   private final LayerParameter expectedConvolutionalLayerWithPaddingParams =
-      LayerParameter.newBuilder()
-      .setWeightParam(matrixFactory.create(new float[]
-          {58.7f, 41.699997f, 58.6f, 52.300003f}))
-      .setBiasParam(matrixFactory.create(new float[]
-          {0.2f, 0.5f, 1.6f, 0.9f, 0.2f, 0.3f, 1.7f, 1.5f, 1.4f, 0.6f, 0.1f, 0.4f, 0.7f, 0.1f, 0.9f, 0.8f}))
-      .build();
+      new LayerParameter(
+          matrixFactory.create(new float[] {58.7f, 41.699997f, 58.6f, 52.300003f}),
+          matrixFactory.create(new float[]
+          {0.2f, 0.5f, 1.6f, 0.9f, 0.2f, 0.3f, 1.7f, 1.5f, 1.4f, 0.6f, 0.1f, 0.4f, 0.7f, 0.1f, 0.9f, 0.8f}));
 
   private final LayerParameter expectedConvolutional3DLayerParams =
-      LayerParameter.newBuilder()
-      .setWeightParam(matrixFactory.create(new float[][]{
-          {3, 3, 0.7f, 1, 1.1f, 0.5f, 2.2f, 1.2f},
-          {2, 1, 1.2f, 0.8f, 0.1f, 0.9f, 0.3f, 1.4f}}).transpose())
-      .setBiasParam(matrixFactory.create(new float[]
-          {0, 0.1f, 0.2f, 0.1f, 0.4f, 0.1f, 0, 0.2f}))
-      .build();
+      new LayerParameter(
+          matrixFactory.create(new float[][]{
+              {3, 3, 0.7f, 1, 1.1f, 0.5f, 2.2f, 1.2f},
+              {2, 1, 1.2f, 0.8f, 0.1f, 0.9f, 0.3f, 1.4f}}).transpose(),
+          matrixFactory.create(new float[] {0, 0.1f, 0.2f, 0.1f, 0.4f, 0.1f, 0, 0.2f}));
 
   private LayerBase convolutionalLayer;
   private LayerBase convolutionalWithPaddingLayer;
@@ -218,24 +211,24 @@ public class ConvolutionalLayerTest {
     this.convolutionalLayer = injector.forkInjector(layerConf, builder.build())
         .getInstance(LayerBase.class);
 
-    this.convolutionalLayer.setLayerParameter(LayerParameter.newBuilder()
-        .setWeightParam(matrixFactory.create(new float[]
-            {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}))
-        .setBiasParam(matrixFactory.zeros(4)).build());
+    this.convolutionalLayer.setLayerParameter(new LayerParameter(
+        matrixFactory.create(new float[]
+            {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}),
+        matrixFactory.zeros(4)));
 
     this.convolutionalWithPaddingLayer = injector.forkInjector(layerConf, builderWithPadding.build())
         .getInstance(LayerBase.class);
 
-    this.convolutionalWithPaddingLayer.setLayerParameter(LayerParameter.newBuilder()
-        .setWeightParam(matrixFactory.create(new float[]
-            {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}))
-        .setBiasParam(matrixFactory.zeros(16)).build());
+    this.convolutionalWithPaddingLayer.setLayerParameter(new LayerParameter(
+        matrixFactory.create(new float[]
+            {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}),
+        matrixFactory.zeros(16)));
 
     this.convolutional3DLayer = injector.forkInjector(layerConf3D, builder3D.build())
         .getInstance(LayerBase.class);
 
-    this.convolutional3DLayer.setLayerParameter(LayerParameter.newBuilder()
-        .setWeightParam(matrixFactory.create(new float[][]{
+    this.convolutional3DLayer.setLayerParameter(new LayerParameter(
+        matrixFactory.create(new float[][]{
             {-0.200013592839f, 0.109642162919f},
             {-0.095913007855f, 0.021724732592f},
             {0.065758734941f, 0.138832792639f},
@@ -243,8 +236,8 @@ public class ConvolutionalLayerTest {
             {-0.129198953509f, 0.010389177128f},
             {-0.030915966257f, -0.074716188013f},
             {0.095823608338f, -0.626192688941f},
-            {-0.002482861746f, -0.212796315550f}}))
-        .setBiasParam(matrixFactory.zeros(8)).build());
+            {-0.002482861746f, -0.212796315550f}}),
+        matrixFactory.zeros(8)));
   }
 
   @After

@@ -38,8 +38,7 @@ public final class FullyConnectedGpuLayer extends LayerBase {
   private final MatrixFactory matrixFactory;
   private Matrix output;
   private Matrix layerError;
-  private Matrix weightGradient;
-  private Matrix biasGradient;
+  private LayerParameter parameterGradient;
 
   /**
    * @param index the index of this layer
@@ -57,8 +56,7 @@ public final class FullyConnectedGpuLayer extends LayerBase {
     this.matrixFactory = matrixFactory;
     this.output = null;
     this.layerError = null;
-    this.weightGradient = null;
-    this.biasGradient = null;
+    this.parameterGradient = null;
   }
 
   /** {@inheritDoc} */
@@ -110,26 +108,30 @@ public final class FullyConnectedGpuLayer extends LayerBase {
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
+    Matrix weightGradient = parameterGradient.getWeightParam();
     if (weightGradient == null || weightGradient.getRows() != error.getRows()
         || weightGradient.getColumns() != input.getRows()) {
-      weightGradient = matrixFactory.create(error.getRows(), input.getRows());
+      parameterGradient.setWeightParam(matrixFactory.create(error.getRows(), input.getRows()));
+      weightGradient = parameterGradient.getWeightParam();
     }
     error.mmult(input, weightGradient);
+
+    Matrix biasGradient = parameterGradient.getBiasParam();
     if (biasGradient == null || biasGradient.getRows() != error.getRows()) {
-      biasGradient = matrixFactory.create(error.getRows(), 1);
+      parameterGradient.setBiasParam(matrixFactory.create(error.getRows(), 1));
+      biasGradient = parameterGradient.getBiasParam();
     }
     error.rowSums(biasGradient);
-    return LayerParameter.newBuilder()
-        .setWeightParam(weightGradient)
-        .setBiasParam(biasGradient)
-        .build();
+    return parameterGradient;
   }
 
   @Override
   public void cleanup() {
+    super.cleanup();
+
     MatrixUtils.free(output);
     MatrixUtils.free(layerError);
-    MatrixUtils.free(weightGradient);
-    MatrixUtils.free(biasGradient);
+
+    parameterGradient.cleanup();
   }
 }

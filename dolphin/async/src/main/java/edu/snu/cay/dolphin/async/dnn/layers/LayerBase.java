@@ -61,6 +61,9 @@ public abstract class LayerBase {
       throw new RuntimeException(this + " is not a learnable layer. setLayerParameter() should not be called.");
     }
 
+    if (this.layerParameter != null) {
+      this.layerParameter.cleanup();
+    }
     this.layerParameter = layerParameter;
   }
 
@@ -110,5 +113,9 @@ public abstract class LayerBase {
   /**
    * Clean up variables associated with this layer, this is called when this layer is no longer used.
    */
-  public abstract void cleanup();
+  public void cleanup() {
+    if (layerParameter != null) {
+      layerParameter.cleanup();
+    }
+  }
 }

@@ -77,8 +77,6 @@ public final class NeuralNetwork {
 
   private Matrix labelMatrix;
 
-  private final int batchSize;
-
   /**
    * @param configurationSerializer the serializer to deserialize Tang configurations for layers
    * @param serializedLayerConfSets the set of Tang configurations used to inject layer instances
@@ -96,7 +94,6 @@ public final class NeuralNetwork {
       final ParameterWorker<Integer, LayerParameter, LayerParameter> parameterWorker,
       final MatrixFactory matrixFactory,
       final Injector injector) {
-    this.batchSize = batchSize;
     this.matrixFactory = matrixFactory;
     this.parameterWorker = parameterWorker;
     final Configuration[] layerConfs =
@@ -175,10 +172,9 @@ public final class NeuralNetwork {
     // average parameter gradients
     for (int i = 0; i < parameterGradients.length; ++i) {
       if (layers[i].isLearnable()) {
-        parameterWorker.push(i, LayerParameter.newBuilder()
-            .setWeightParam(parameterGradients[i].getWeightParam().divi(inputSize))
-            .setBiasParam(parameterGradients[i].getBiasParam().divi(inputSize))
-            .build());
+        parameterWorker.push(i, new LayerParameter(
+            parameterGradients[i].getWeightParam().divi(inputSize),
+            parameterGradients[i].getBiasParam().divi(inputSize)));
       }
     }
   }

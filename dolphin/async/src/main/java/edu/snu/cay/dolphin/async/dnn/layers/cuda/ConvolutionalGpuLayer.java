@@ -48,9 +48,6 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   private MatrixFactory matrixFactory;
   private Matrix output;
   private Matrix layerError;
-  private final Matrix weightGradient;
-  private final Matrix biasGradient;
-
 
   private Pointer inputDesc;
   private Pointer activationDesc;
@@ -67,6 +64,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   private final long backwardDataWorkspaceSize;
   private long maxWorkspaceSize;
   private final Pointer workspace;
+  private final LayerParameter parameterGradient;
 
   /**
    * @param index the index of this layer
@@ -113,8 +111,9 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     }
     this.batchSize = batchSize;
 
-    this.weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
-    this.biasGradient = matrixFactory.create(outputShape[0], 1);
+    final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
+    final Matrix biasGradient = matrixFactory.create(outputShape[0], 1);
+    this.parameterGradient = new LayerParameter(weightGradient, biasGradient);
 
     //setup
     this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
@@ -216,15 +215,13 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
     if (!JavaCudnn.convGenWeightGradient(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) error).getDevicePointer(), convDesc, backwardFilterAlgo, workspace,
-        backwardFilterWorkspaceSize, filterDesc, ((MatrixCudaImpl) weightGradient).getDevicePointer())) {
+        backwardFilterWorkspaceSize, filterDesc,
+        ((MatrixCudaImpl) parameterGradient.getWeightParam()).getDevicePointer())) {
       throw new RuntimeException("Failed to generateParameterGradient for weight");
     }
     if (JavaCudnn.convGenBiasGradient(activationDesc, ((MatrixCudaImpl) error).getDevicePointer(),
-        biasDesc, ((MatrixCudaImpl) biasGradient).getDevicePointer())) {
-      return LayerParameter.newBuilder()
-          .setWeightParam(weightGradient)
-          .setBiasParam(biasGradient)
-          .build();
+        biasDesc, ((MatrixCudaImpl) parameterGradient.getBiasParam()).getDevicePointer())) {
+      return parameterGradient;
     } else {
       throw new RuntimeException("Failed to generateParameterGradient for bias");
     }
@@ -232,6 +229,8 @@ public final class ConvolutionalGpuLayer extends LayerBase {
 
   @Override
   public void cleanup() {
+    super.cleanup();
+
     JavaCudnn.destroyTensorDesc(inputDesc);
     JavaCudnn.destroyFilterDesc(filterDesc);
     JavaCudnn.destroyConvDesc(convDesc);
@@ -245,7 +244,6 @@ public final class ConvolutionalGpuLayer extends LayerBase {
 
     MatrixUtils.free(output);
     MatrixUtils.free(layerError);
-    MatrixUtils.free(weightGradient);
-    MatrixUtils.free(biasGradient);
+    parameterGradient.cleanup();
   }
 }

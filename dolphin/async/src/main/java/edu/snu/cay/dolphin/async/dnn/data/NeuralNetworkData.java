@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.dnn.data;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 
 /**
  * Data object used for deep neural network jobs.
@@ -49,5 +50,9 @@ public final class NeuralNetworkData {
 
   public boolean isValidation() {
     return this.isValidation;
+  }
+
+  public void cleanup() {
+    MatrixUtils.free(matrix);
   }
 }

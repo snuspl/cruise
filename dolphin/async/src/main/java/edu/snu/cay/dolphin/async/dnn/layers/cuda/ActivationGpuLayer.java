@@ -169,6 +169,7 @@ public final class ActivationGpuLayer extends LayerBase {
 
   @Override
   public void cleanup() {
+    super.cleanup();
     JavaCudnn.destroyTensorDesc(inputDesc);
     JavaCudnn.destroyTensorDesc(activationDesc);
     JavaCudnn.destroyActivFuncDesc(activFuncDesc);

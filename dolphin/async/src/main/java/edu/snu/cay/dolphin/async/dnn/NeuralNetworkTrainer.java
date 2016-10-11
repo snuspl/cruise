@@ -100,6 +100,7 @@ final class NeuralNetworkTrainer implements Trainer {
         neuralNetwork.train(input, labels);
         trainingValidator.validate(input, labels);
       }
+      data.cleanup();
     }
 
     for (final NeuralNetworkData data : validationWorkload) {
@@ -111,6 +112,7 @@ final class NeuralNetworkTrainer implements Trainer {
       }
 
       crossValidator.validate(input, labels);
+      data.cleanup();
     }
 
     LOG.log(Level.INFO, generateIterationLog(
