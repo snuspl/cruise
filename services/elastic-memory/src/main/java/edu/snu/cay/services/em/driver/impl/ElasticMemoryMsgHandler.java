@@ -32,6 +32,7 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,16 +52,15 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
 
   /**
    * In ownership-first migration, the {@link OwnershipAckMsg} and {@link BlockMovedMsg} can arrive out-of-order.
-   * Using these two maps, we can verify the correct order of them (OwnershipAckMsg -> BlockMovedMsg)
-   * in message handlers.
+   * Using this map, we can verify the correct order of them (OwnershipAckMsg -> BlockMovedMsg) in message handlers.
    * A later message will call {@link #processBlockMovedMsg} to put a received block into MemoryStore.
+   * A value is {@link Optional#empty()} when an entry is put by OwnershipAckMsg.
    *
    * In data-first migration, on the other hand, {@link OwnershipMsg} always precedes {@link BlockMovedMsg}.
    * So {@link #onOwnershipMsg(MigrationMsg)} simply marks that OwnershipMsg has arrived,
    * and {@link #onBlockMovedMsg(MigrationMsg)} wraps up the migration without any concern.
    */
-  private final Set<Integer> ownershipAckMsgArrivedBlockIds = new HashSet<>();
-  private final Map<Integer, Optional<TraceInfo>> blockMovedMsgArrivedBlockIds = new HashMap<>();
+  private final Map<Integer, Optional<TraceInfo>> msgArrivedBlocks = new ConcurrentHashMap<>();
 
   @Inject
   private ElasticMemoryMsgHandler(final BlockManager blockManager,
@@ -158,9 +158,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
 
       // In data-first migration, OwnershipMsg always precedes BlockMovedMsg
       // So simply mark that OwnershipMsg for this block arrives to let onBlockMoveMsg properly handle BlockMovedMsg
-      synchronized (this) {
-        ownershipAckMsgArrivedBlockIds.add(blockId);
-      }
+      msgArrivedBlocks.put(blockId, Optional.empty());
 
       // Update the owner of the block to the new one.
       migrationManager.updateOwner(blockId, oldOwnerId, newOwnerId);
@@ -194,12 +192,12 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
       // So if BlockMovedMsg for the same block has been already arrived, handle that msg now.
       final boolean ownershipAckMsgArrivedFirst; // If true, the messages have arrived in order
       TraceInfo blockMovedMsgTraceInfo = null;
-      synchronized (this) {
-        ownershipAckMsgArrivedFirst = !blockMovedMsgArrivedBlockIds.containsKey(blockId);
+      synchronized (msgArrivedBlocks) {
+        ownershipAckMsgArrivedFirst = !msgArrivedBlocks.containsKey(blockId);
         if (ownershipAckMsgArrivedFirst) {
-          ownershipAckMsgArrivedBlockIds.add(blockId);
+          msgArrivedBlocks.put(blockId, Optional.empty());
         } else {
-          blockMovedMsgTraceInfo = blockMovedMsgArrivedBlockIds.remove(blockId).get();
+          blockMovedMsgTraceInfo = msgArrivedBlocks.remove(blockId).get();
         }
       }
 
@@ -231,14 +229,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
       // So handle BlockMovedMsg now, if OwnershipAckMsg for the same block has been already arrived.
       // Otherwise handle it in future when corresponding OwnershipAckMsg arrives
       final boolean ownershipMsgArrivedFirst; // If true, the messages have arrived in order
-      synchronized (this) {
-        ownershipMsgArrivedFirst = ownershipAckMsgArrivedBlockIds.contains(blockId);
+      synchronized (msgArrivedBlocks) {
+        ownershipMsgArrivedFirst = msgArrivedBlocks.containsKey(blockId);
         if (ownershipMsgArrivedFirst) {
-          ownershipAckMsgArrivedBlockIds.remove(blockId);
+          msgArrivedBlocks.remove(blockId);
         } else {
           detached = onBlockMovedMsgScope.detach();
           // traceInfo is null, if onBlockMovedMsgScope is NullScope
-          blockMovedMsgArrivedBlockIds.put(blockId, Optional.ofNullable(TraceInfo.fromSpan(detached)));
+          msgArrivedBlocks.put(blockId, Optional.ofNullable(TraceInfo.fromSpan(detached)));
         }
       }
 
