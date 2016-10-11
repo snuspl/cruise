@@ -45,10 +45,9 @@ import java.util.stream.IntStream;
  * It generates an optimization plan for the system that minimizes the cost.
  *
  * The cost model is based on computation cost + communication cost where:
- * computation cost = Total throughput of workers if (No. of workers) are used * No. of total training data instances /
- * No. of workers
- * communication cost = Avg. No. of pulls per mini-batch / Total throughput of servers if (No. of servers) are used /
- * No. of workers * Estimated number of mini-batches per worker
+ * computation cost = No. of total training data instances / Total throughput of workers if (No. of workers) are used
+ * communication cost = Avg. No. of pulls per mini-batch * No. of workers * Estimated number of mini-batches per worker
+ * / Total throughput of servers if (No. of servers) are used
  */
 public final class AsyncDolphinOptimizer implements Optimizer {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinOptimizer.class.getName());
