@@ -61,8 +61,6 @@ public final class LoggingPlanExecutor implements PlanExecutor {
           LOG.log(Level.INFO, "Delete evaluator: " + evaluatorToDelete);
         }
 
-        LOG.log(Level.INFO, "Done.");
-
         return new PlanResultImpl();
       }
     });
