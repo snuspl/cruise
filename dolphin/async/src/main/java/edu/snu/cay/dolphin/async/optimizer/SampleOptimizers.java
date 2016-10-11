@@ -40,7 +40,7 @@ public final class SampleOptimizers {
   /**
    * The maximum limit for each sample optimizer to be called.
    */
-  private static final int MAX_CALLS_TO_MAKE = 3;
+  public static final int MAX_CALLS_TO_MAKE = 3;
 
   /**
    * Prefix and index counter for evaluator id of Add operation.
@@ -49,6 +49,10 @@ public final class SampleOptimizers {
    */
   private static final String NEW_EVAL_PREFIX = "NEW";
   private static final AtomicInteger PLAN_CONTEXT_ID_COUNTER = new AtomicInteger(0);
+
+  // utility class should not be instantiated
+  private SampleOptimizers() {
+  }
 
   /**
    * Get a plan that adds one evaluator and moves half block from other evaluator.

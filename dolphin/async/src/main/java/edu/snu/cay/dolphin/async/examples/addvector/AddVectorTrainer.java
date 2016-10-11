@@ -227,7 +227,7 @@ final class AddVectorTrainer implements Trainer {
       }
     }
 
-    LOG.log(Level.WARNING, "Validation failed");
+    throw new RuntimeException("Validation failed");
   }
 
   /**

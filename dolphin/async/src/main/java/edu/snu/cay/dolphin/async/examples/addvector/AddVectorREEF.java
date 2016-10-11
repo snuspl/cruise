@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
+import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
@@ -33,8 +34,13 @@ public final class AddVectorREEF {
   private AddVectorREEF() {
   }
 
-  public static void main(final String[] args) {
-    AsyncDolphinLauncher.launch("AddVectorREEF", args, AsyncDolphinConfiguration.newBuilder()
+  /**
+   * Runs app with given arguments.
+   * @param args command line arguments for running app
+   * @return a LauncherStatus
+   */
+  public static LauncherStatus runAddVector(final String[] args) {
+    return AsyncDolphinLauncher.launch("AddVectorREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(AddVectorTrainer.class)
         .setUpdaterClass(AddVectorUpdater.class)
         .setValueCodecClass(DenseVectorCodec.class)
@@ -45,6 +51,10 @@ public final class AddVectorREEF {
         .addParameterClass(VectorSize.class)
         .addParameterClass(ComputeTimeMs.class)
         .build());
+  }
+
+  public static void main(final String[] args) {
+    runAddVector(args);
   }
 
   @NamedParameter(doc = "All workers will add this integer to each element of the vector", short_name = "delta")
