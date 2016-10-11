@@ -78,6 +78,11 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   private final ElasticMemory workerEM;
   private final ElasticMemory serverEM;
 
+  /**
+   * A map containing parameters that may be required for the optimization model.
+   */
+  private final Map<String, Double> optimizerModelParams;
+
   @Inject
   private OptimizationOrchestratorImpl(final Optimizer optimizer,
                                    final PlanExecutor planExecutor,
@@ -97,6 +102,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     this.metricWeightFactor = metricWeightFactor;
     this.movingAvgWindowSize = movingAvgWindowSize;
     this.maxNumEvals = maxNumEvals;
+    this.optimizerModelParams = new HashMap<>();
   }
 
   /**
@@ -111,12 +117,20 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    * 7) Once the execution is complete, restart metric collection.
    */
   public synchronized void run() {
-    // 1) Check that metrics have arrived from all evaluators.
-    final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
-    final Map<String, List<EvaluatorParameters>> currentWorkerMetrics = metricManager.getWorkerMiniBatchMetrics();
+    // 1) Model params may need to be updated. Simply clear the map, and put the updated values.
+    optimizerModelParams.clear();
 
+    // 2) Check that metrics have arrived from all evaluators.
+    // Servers: for each window / Workers: for each epoch, but mini-batch metrics are used for the actual optimization.
+    final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
+    final Map<String, List<EvaluatorParameters>> currentWorkerEpochMetrics =
+        metricManager.getWorkerEpochMetrics();
+    final Map<String, List<EvaluatorParameters>> currentWorkerMiniBatchMetrics =
+        metricManager.getWorkerMiniBatchMetrics();
+
+    // Optimization is skipped if there are missing epoch metrics,
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
-    final int numWorkerMetricSources = getNumMetricSources(currentWorkerMetrics);
+    final int numWorkerMetricSources = getNumMetricSources(currentWorkerEpochMetrics);
     final int numRunningServers = getNumRunningInstances(serverEM);
     final int numRunningWorkers = getNumRunningInstances(workerEM);
 
@@ -129,19 +143,24 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       return;
     }
 
-    // 2) Process the received metrics (e.g., calculate the EMA of metrics).
+    // 3) Process the received metrics (e.g., calculate the EMA of metrics).
     final List<EvaluatorParameters> processedServerMetrics =
         processMetricsForOptimization(Constants.NAMESPACE_SERVER, currentServerMetrics);
     final List<EvaluatorParameters> processedWorkerMetrics =
-        processMetricsForOptimization(Constants.NAMESPACE_WORKER, currentWorkerMetrics);
+        processMetricsForOptimization(Constants.NAMESPACE_WORKER, currentWorkerMiniBatchMetrics);
 
-    // 3) Check that the processed metrics suffice to undergo an optimization cycle.
-    // processed(*)Metrics of size less that the number of evaluators running in each space implies that
+    // 4) Check that the processed metrics suffice to undergo an optimization cycle.
+    // processed metrics of size less than the number of evaluators running in each space implies that
     // there were only metrics not enough for this optimization cycle to be executed.
     if (processedServerMetrics.size() < numRunningServers || processedWorkerMetrics.size() < numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because the metrics do not suffice to undergo an optimization cycle.");
       return;
     }
+
+    // 5) Calculate the total number of data instances distributed across workers,
+    // as this is used by the optimization model in AsyncDolphinOptimizer.
+    final int numTotalDataInstances = getTotalNumDataInstances(currentWorkerEpochMetrics);
+    optimizerModelParams.put(Constants.TOTAL_DATA_INSTANCES, (double) numTotalDataInstances);
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
@@ -156,7 +175,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         // 4) Calculate the optimal plan with the metrics
         final Plan plan;
         try {
-          plan = optimizer.optimize(evaluatorParameters, maxNumEvals);
+          plan = optimizer.optimize(evaluatorParameters, maxNumEvals, optimizerModelParams);
           LOG.log(Level.INFO, "Calculating the optimal plan is finished. Start executing plan: {0}", plan);
         } catch (final RuntimeException e) {
           LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
@@ -206,7 +225,6 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   }
 
   @Override
-
   /**
    * Checks whether the plan is being executed.
    * @return True if the generated plan is on execution
@@ -220,7 +238,29 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   }
 
   private int getNumMetricSources(final Map<String, List<EvaluatorParameters>> evalParams) {
-    return evalParams.keySet().size();
+    int validMetricSources = 0;
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
+      if (!entry.getValue().isEmpty()) {
+        validMetricSources++;
+      }
+    }
+    return validMetricSources;
+  }
+
+  /**
+   * Calculates the total number of data instances across workers.
+   * @param evalParams a mapping of each worker's ID to the list of {@link EvaluatorParameters}
+   *                   in which the first item contains the number of data instances contained in the worker.
+   * @return the total number of data instances across workers.
+   */
+  private int getTotalNumDataInstances(final Map<String, List<EvaluatorParameters>> evalParams) {
+    int numDataInstances = 0;
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
+
+      final WorkerEvaluatorParameters firstWorkerEpochMetric = (WorkerEvaluatorParameters) entry.getValue().get(0);
+      numDataInstances += firstWorkerEpochMetric.getMetrics().getProcessedDataItemCount();
+    }
+    return numDataInstances;
   }
 
   /**
@@ -264,6 +304,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    * @param rawMetrics
    * @return
    */
+  // TODO #883: EMA must be applied to the actual performance metric
   private List<EvaluatorParameters> processMetricsForOptimization(
       final String namespace, final Map<String, List<EvaluatorParameters>> rawMetrics) {
     final List<EvaluatorParameters> processedMetrics = new ArrayList<>();
@@ -297,6 +338,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       }
       break;
     case Constants.NAMESPACE_WORKER:
+      double numTotalKeys = 0;
       for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
         final List<EvaluatorParameters> workerMetric = entry.getValue();
         final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
@@ -326,7 +368,14 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
               new DataInfoImpl((int) calculateExponentialMovingAverage(workerMetric,
                   param -> param.getDataInfo().getNumBlocks())), aggregatedMetric));
         }
+
+        // Estimate the number of keys distributed across servers using the number of pulls from worker-side,
+        // as this is used by the optimization model in AsyncDolphinOptimizer.
+        numTotalKeys += workerMetric.stream().mapToInt(
+            param -> ((WorkerEvaluatorParameters) param).getMetrics().getParameterWorkerMetrics()
+                .getTotalPullCount()).average().orElse(0);
       }
+      optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, numTotalKeys / rawMetrics.size());
       break;
     default:
       throw new RuntimeException("Unsupported namespace");

@@ -46,7 +46,7 @@ public final class RandomOptimizerTest {
     final Map<String, List<EvaluatorParameters>> evaluators =
         getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
-    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators);
+    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators, Collections.emptyMap());
 
     assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
     assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
@@ -65,7 +65,7 @@ public final class RandomOptimizerTest {
     final Map<String, List<EvaluatorParameters>> evaluators =
         getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
-    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators / 2);
+    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators / 2, Collections.emptyMap());
 
     assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
     assertEquals(numEvaluators / 2, plan.getEvaluatorsToDelete(NAMESPACE).size());
@@ -84,7 +84,7 @@ public final class RandomOptimizerTest {
     final Map<String, List<EvaluatorParameters>> evaluators =
         getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
-    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 2);
+    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 2, Collections.emptyMap());
 
     assertEquals(numEvaluators, plan.getEvaluatorsToAdd(NAMESPACE).size());
     assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
@@ -103,7 +103,7 @@ public final class RandomOptimizerTest {
     final Map<String, List<EvaluatorParameters>> evaluators =
         getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
-    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 3 / 2);
+    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 3 / 2, Collections.emptyMap());
 
     assertNotNull(plan.getEvaluatorsToAdd(NAMESPACE));
     assertNotNull(plan.getEvaluatorsToDelete(NAMESPACE));

@@ -179,8 +179,6 @@ public final class AsyncDolphinLauncher {
           .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
           .bindNamedParameter(Iterations.class,
               Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
-          .bindNamedParameter(MiniBatches.class,
-              Integer.toString(basicParameterInjector.getNamedInstance(MiniBatches.class)))
           .bindNamedParameter(MiniBatchSize.class,
               Integer.toString(basicParameterInjector.getNamedInstance(MiniBatchSize.class)))
           .build();
@@ -271,7 +269,6 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);
     basicParameterClassList.add(JVMHeapSlack.class);
-    basicParameterClassList.add(MiniBatches.class);
     basicParameterClassList.add(MiniBatchSize.class);
     basicParameterClassList.add(DashboardPort.class);
     basicParameterClassList.add(OptimizationBenefitThreshold.class);

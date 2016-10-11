@@ -87,7 +87,7 @@ public final class RandomOptimizer implements Optimizer {
 
   @Override
   public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap,
-                       final int availableEvaluators) {
+                       final int availableEvaluators, final Map<String, Double> optimizerModelParamsMap) {
     LOG.log(Level.INFO, "EvaluatorParameters: {0}, Available Evaluators: {1}",
         new Object[]{evalParamsMap, availableEvaluators});
 
