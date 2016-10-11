@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.blas.cuda;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -55,7 +56,7 @@ public final class MatrixFactoryTest {
     assertEquals(6, m1.getLength());
     final float[] m1Array = m1.toFloatArray();
     assertArrayEquals(data1, m1Array);
-    m1.free();
+    MatrixUtils.free(m1);
 
     final Matrix m2 = matrixFactory.create(data1, 2, 3);
     assertEquals(2, m2.getRows());
@@ -63,7 +64,7 @@ public final class MatrixFactoryTest {
     assertEquals(6, m1.getLength());
     final float[] m2Array = m2.toFloatArray();
     assertArrayEquals(data1, m2Array);
-    m2.free();
+    MatrixUtils.free(m2);
 
     final Matrix m3 = matrixFactory.create(data2);
     assertEquals(2, m3.getRows());
@@ -71,7 +72,7 @@ public final class MatrixFactoryTest {
     assertEquals(6, m1.getLength());
     final float[] m3Array = m3.toFloatArray();
     assertArrayEquals(data1, m3Array);
-    m3.free();
+    MatrixUtils.free(m3);
   }
 
   /**
@@ -87,7 +88,7 @@ public final class MatrixFactoryTest {
     for (int i = 0; i < 4; i++) {
       assertEquals(0.0F, m1Array[i]);
     }
-    m1.free();
+    MatrixUtils.free(m1);
 
     final Matrix m2 = matrixFactory.zeros(3, 4);
     assertEquals(3, m2.getRows());
@@ -99,7 +100,7 @@ public final class MatrixFactoryTest {
         assertEquals(0.0F, m2Array[i * 3 + j]);
       }
     }
-    m2.free();
+    MatrixUtils.free(m2);
   }
 
   /**
@@ -115,7 +116,7 @@ public final class MatrixFactoryTest {
     for (int i = 0; i < 4; i++) {
       assertEquals(1.0F, m1Array[i]);
     }
-    m1.free();
+    MatrixUtils.free(m1);
 
     final Matrix m2 = matrixFactory.ones(3, 4);
     assertEquals(3, m2.getRows());
@@ -127,7 +128,7 @@ public final class MatrixFactoryTest {
         assertEquals(1.0F, m2Array[i * 3 + j]);
       }
     }
-    m2.free();
+    MatrixUtils.free(m2);
   }
 
   /**
@@ -147,16 +148,16 @@ public final class MatrixFactoryTest {
     assertEquals(4, m3.getColumns());
     final float[] m3Array = m3.toFloatArray();
     assertArrayEquals(output1, m3Array);
-    m3.free();
+    MatrixUtils.free(m3);
 
     final Matrix m4 = matrixFactory.concatVertically(m1, m2);
     assertEquals(6, m4.getRows());
     assertEquals(2, m4.getColumns());
     final float[] m4Array = m4.toFloatArray();
     assertArrayEquals(output2, m4Array);
-    m4.free();
+    MatrixUtils.free(m4);
 
-    m1.free();
-    m2.free();
+    MatrixUtils.free(m1);
+    MatrixUtils.free(m2);
   }
 }
