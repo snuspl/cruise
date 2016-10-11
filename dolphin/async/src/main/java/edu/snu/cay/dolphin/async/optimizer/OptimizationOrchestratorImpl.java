@@ -40,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.ToDoubleFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -55,6 +56,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   private final MetricManager metricManager;
 
   private final AtomicBoolean isPlanExecuting = new AtomicBoolean(false);
+  private final AtomicInteger optimizationCounter = new AtomicInteger(0);
 
   private final ExecutorService optimizationThreadPool = Executors.newSingleThreadExecutor();
 
@@ -169,14 +171,15 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     final Future future = optimizationThreadPool.submit(new Runnable() {
       @Override
       public void run() {
-        LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan with metrics: {0}",
-            evaluatorParameters);
+        final int optimizationIdx = optimizationCounter.getAndIncrement();
+        LOG.log(Level.INFO, "Start {0}-th optimization", optimizationIdx);
+        LOG.log(Level.INFO, "Calculate {0}-th optimal plan with metrics: {1}",
+            new Object[]{optimizationIdx, evaluatorParameters});
 
         // 4) Calculate the optimal plan with the metrics
         final Plan plan;
         try {
           plan = optimizer.optimize(evaluatorParameters, maxNumEvals, optimizerModelParams);
-          LOG.log(Level.INFO, "Calculating the optimal plan is finished. Start executing plan: {0}", plan);
         } catch (final RuntimeException e) {
           LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
           return;
@@ -188,10 +191,11 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
 
         // 6) Execute the obtained plan.
         try {
+          LOG.log(Level.INFO, "Start executing {0}-th plan: {1}", new Object[]{optimizationIdx, plan});
           final Future<PlanResult> planExecutionResultFuture = planExecutor.execute(plan);
           try {
             final PlanResult planResult = planExecutionResultFuture.get();
-            LOG.log(Level.INFO, "Result of plan execution: {0}", planResult);
+            LOG.log(Level.INFO, "Finish {0}-th optimization: {1}", new Object[]{optimizationIdx, planResult});
 
             Thread.sleep(delayAfterOptimizationMs); // sleep for the system to be stable
           } catch (final InterruptedException | ExecutionException e) {
