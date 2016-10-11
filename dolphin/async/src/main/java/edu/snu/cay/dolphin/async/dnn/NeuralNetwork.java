@@ -176,8 +176,8 @@ public final class NeuralNetwork {
     for (int i = 0; i < parameterGradients.length; ++i) {
       if (layers[i].isLearnable()) {
         parameterWorker.push(i, LayerParameter.newBuilder()
-            .setWeightParam(parameterGradients[i].getWeightParam().div(batchSize))
-            .setBiasParam(parameterGradients[i].getBiasParam().div(batchSize))
+            .setWeightParam(parameterGradients[i].getWeightParam().divi(inputSize))
+            .setBiasParam(parameterGradients[i].getBiasParam().divi(inputSize))
             .build());
       }
     }
@@ -358,7 +358,6 @@ public final class NeuralNetwork {
    * This is called on task termination.
    */
   public void cleanup() {
-
     MatrixUtils.free(labelMatrix);
 
     // clean up layers

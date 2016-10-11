@@ -172,7 +172,7 @@ public final class MatrixUtils {
   }
 
   /**
-   * Destroy memory allocation of a matrix if and only if the matrix is instance of cuda.
+   * Destroy memory allocation of a matrix if and only if the matrix is an instance of {@link MatrixCudaImpl}.
    * @param matrix a matrix to destroy
    */
   public static void free(final Matrix matrix) {
