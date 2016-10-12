@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import org.apache.commons.math3.random.MersenneTwister;
 import org.apache.commons.math3.random.SynchronizedRandomGenerator;
 import org.jblas.FloatMatrix;
+import org.jblas.NativeBlas;
 
 /**
  * Matrix implementation based on JBLAS.
@@ -428,8 +429,8 @@ final class MatrixJBLASImpl implements Matrix {
 
   @Override
   public Matrix tmmul(final Matrix matrix) {
-    final Matrix transposeMatrix = transpose();
-    return transposeMatrix.mmul(matrix);
+    final Matrix newMatrix = new MatrixJBLASImpl(new FloatMatrix(getColumns(), matrix.getColumns()));
+    return tmmul(matrix, newMatrix);
   }
 
   @Override
@@ -437,15 +438,16 @@ final class MatrixJBLASImpl implements Matrix {
     if (result.getRows() != getColumns() || result.getColumns() != matrix.getColumns()) {
       throw new IllegalArgumentException("The size of result matrix is wrong");
     }
-
-    final Matrix transposeMatrix = transpose();
-    return transposeMatrix.mmul(matrix, result);
+    NativeBlas.sgemm('T', 'N', result.getRows(), result.getColumns(), getRows(), 1.0f, jblasMatrix.data, 0,
+        getRows(), ((MatrixJBLASImpl) matrix).jblasMatrix.data, 0, matrix.getRows(), 0,
+        ((MatrixJBLASImpl) result).jblasMatrix.data, 0, result.getRows());
+    return result;
   }
 
   @Override
   public Matrix mmult(final Matrix matrix) {
-    final Matrix transposeMatrix = matrix.transpose();
-    return mmul(transposeMatrix);
+    final Matrix newMatrix = new MatrixJBLASImpl(new FloatMatrix(getRows(), matrix.getRows()));
+    return mmult(matrix, newMatrix);
   }
 
   @Override
@@ -453,8 +455,10 @@ final class MatrixJBLASImpl implements Matrix {
     if (result.getRows() != getRows() || result.getColumns() != matrix.getRows()) {
       throw new IllegalArgumentException("The size of result matrix is wrong");
     }
-    final Matrix transposeMatrix = matrix.transpose();
-    return mmul(transposeMatrix, result);
+    NativeBlas.sgemm('N', 'T', result.getRows(), result.getColumns(), getColumns(), 1.0f, jblasMatrix.data, 0,
+        getRows(), ((MatrixJBLASImpl) matrix).jblasMatrix.data, 0, matrix.getRows(), 0,
+        ((MatrixJBLASImpl) result).jblasMatrix.data, 0, result.getRows());
+    return result;
   }
 
   @Override

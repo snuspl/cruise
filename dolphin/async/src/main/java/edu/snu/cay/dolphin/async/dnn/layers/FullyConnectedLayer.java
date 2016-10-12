@@ -80,12 +80,12 @@ public final class FullyConnectedLayer extends LayerBase {
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
     // (error matrix) = (transposed weight matrix) x (next error matrix)
-    return getLayerParameter().getWeightParam().transpose().mmul(nextError);
+    return getLayerParameter().getWeightParam().tmmul(nextError);
   }
 
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
-    return new LayerParameter(error.mmul(input.transpose()), error.rowSums());
+    return new LayerParameter(error.mmult(input), error.rowSums());
   }
 }

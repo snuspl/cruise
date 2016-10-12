@@ -205,7 +205,7 @@ public final class ConvolutionalLayer extends LayerBase {
     final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix singleNextError = nextError.getColumn(n).reshape(outputShape[1] * outputShape[2], outputShape[0]);
-      final Matrix row = singleNextError.mmul(getLayerParameter().getWeightParam().transpose());
+      final Matrix row = singleNextError.mmult(getLayerParameter().getWeightParam());
       final Matrix im = row2im(row);
       error.putColumn(n, im);
     }
@@ -218,7 +218,7 @@ public final class ConvolutionalLayer extends LayerBase {
     final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix row = im2row(n, input);
-      weightGradient.addi(row.transpose().mmul(error.getColumn(n)
+      weightGradient.addi(row.tmmul(error.getColumn(n)
           .reshape(outputShape[1] * outputShape[2], outputShape[0])));
     }
     final Matrix biasGradient = error.rowSums();
