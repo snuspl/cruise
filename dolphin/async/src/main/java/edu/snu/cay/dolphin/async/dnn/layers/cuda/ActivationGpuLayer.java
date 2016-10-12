@@ -41,11 +41,10 @@ public final class ActivationGpuLayer extends LayerBase {
   private final int inputChannel;
   private final int inputHeight;
   private final int inputWidth;
-  private final int batchSize;
 
   private Pointer inputDesc;
   private Pointer activationDesc;
-  private Pointer activFuncDesc;
+  private final Pointer activFuncDesc;
 
   private MatrixFactory matrixFactory;
   private Matrix output;
@@ -66,7 +65,7 @@ public final class ActivationGpuLayer extends LayerBase {
                              final MatrixFactory matrixFactory) {
     super(index, inputShape);
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getInputShape()), batchSize);
+    this.output = null;
     this.layerError = null;
 
     if (getInputShape().length == 2) {
@@ -78,11 +77,10 @@ public final class ActivationGpuLayer extends LayerBase {
       this.inputHeight = getInputShape()[1];
       this.inputWidth = getInputShape()[2];
     }
-    this.batchSize = batchSize;
 
     //setup
-    this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
+    this.inputDesc = new Pointer();
+    this.activationDesc = new Pointer();
     final char func;
     switch (activationFunction.toLowerCase()) {
     case "sigmoid": func = 'S';
@@ -118,7 +116,7 @@ public final class ActivationGpuLayer extends LayerBase {
   @Override
   public Matrix feedForward(final Matrix input) {
     final int inputSize = input.getColumns();
-    if (batchSize != inputSize) {
+    if (output == null || output.getColumns() != inputSize) {
       JavaCudnn.destroyTensorDesc(inputDesc);
       JavaCudnn.destroyTensorDesc(activationDesc);
       MatrixUtils.free(output);

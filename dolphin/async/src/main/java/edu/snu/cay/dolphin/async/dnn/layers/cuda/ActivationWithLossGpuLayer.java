@@ -49,7 +49,6 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
   private final int inputChannel;
   private final int inputHeight;
   private final int inputWidth;
-  private final int batchSize;
 
   /**
    * @param index the index of this layer
@@ -70,8 +69,8 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
     super(index, inputShape);
     this.lossFunction = lossFunction;
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getInputShape()), batchSize);
-    this.layerError = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getInputShape()), batchSize);
+    this.output = null;
+    this.layerError = null;
 
     if (getInputShape().length == 2) {
       this.inputChannel = 1;
@@ -82,15 +81,13 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
       this.inputHeight = getInputShape()[1];
       this.inputWidth = getInputShape()[2];
     }
-    this.batchSize = batchSize;
 
     //setup
-    if (activationFunction.toLowerCase().equals("softmax")) {
-      this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-      this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    } else {
+    if (!activationFunction.toLowerCase().equals("softmax")) {
       throw new IllegalArgumentException("Unsupported activation function");
     }
+    this.inputDesc = new Pointer();
+    this.activationDesc = new Pointer();
   }
 
   @Override
@@ -107,7 +104,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
   public Matrix feedForward(final Matrix input) {
 
     final int inputSize = input.getColumns();
-    if (inputSize != batchSize) {
+    if (output == null || output.getColumns() != inputSize) {
       JavaCudnn.destroyTensorDesc(inputDesc);
       JavaCudnn.destroyTensorDesc(activationDesc);
       MatrixUtils.free(output);
@@ -136,10 +133,10 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
   public Matrix backPropagate(final Matrix label, final Matrix activation, final Matrix nextError) {
     switch (lossFunction.toLowerCase()) {
     case "crossentropy":
-      if (layerError.getColumns() != activation.getColumns()) {
-        layerError.copy(activation);
+      if (layerError == null || layerError.getColumns() != activation.getColumns()) {
+        layerError = matrixFactory.create(activation.getRows(), activation.getColumns());
       }
-      return layerError.subi(label);
+      return activation.sub(label, layerError);
     default:
       throw new IllegalArgumentException("Unsupported loss function");
     }

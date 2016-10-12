@@ -48,7 +48,7 @@ public final class PoolingGpuLayer extends LayerBase {
 
   private Pointer inputDesc;
   private Pointer activationDesc;
-  private Pointer poolDesc;
+  private final Pointer poolDesc;
 
   private final int outputChannel;
   private final int outputHeight;
@@ -56,8 +56,6 @@ public final class PoolingGpuLayer extends LayerBase {
   private final int inputChannel;
   private final int inputHeight;
   private final int inputWidth;
-  private final int batchSize;
-
 
   /**
    * @param index the index of this layer
@@ -98,7 +96,6 @@ public final class PoolingGpuLayer extends LayerBase {
       outputHeight = outputShape[1];
       outputWidth = outputShape[2];
     }
-    this.batchSize = batchSize;
 
     if ((poolingType.toUpperCase()).equals("MAX")) {
       this.poolingType = 'M';
@@ -106,7 +103,7 @@ public final class PoolingGpuLayer extends LayerBase {
       this.poolingType = 'A';
     }
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), batchSize);
+    this.output = null;
     this.layerError = null;
 
     if (getInputShape().length == 2) {
@@ -120,10 +117,10 @@ public final class PoolingGpuLayer extends LayerBase {
     }
 
     //setup
-    this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
+    this.inputDesc = new Pointer();
+    this.activationDesc = new Pointer();
     this.poolDesc = JavaCudnn.createPoolDesc(
         this.poolingType, kernelHeight, kernelWidth, paddingHeight, paddingWidth, strideHeight, strideWidth);
-    this.activationDesc = JavaCudnn.createTensorDesc(batchSize, outputChannel, outputHeight, outputWidth);
   }
 
   @Override
@@ -147,7 +144,7 @@ public final class PoolingGpuLayer extends LayerBase {
   public Matrix feedForward(final Matrix input) {
 
     final int inputSize = input.getColumns();
-    if (inputSize != batchSize) {
+    if (output == null || output.getColumns() != inputSize) {
       JavaCudnn.destroyTensorDesc(inputDesc);
       JavaCudnn.destroyTensorDesc(activationDesc);
       MatrixUtils.free(output);

@@ -195,6 +195,11 @@ public interface Matrix {
   Matrix subi(Matrix matrix);
 
   /**
+   * Returns the result matrix as a substraction of a matrix, element-wise.
+   */
+  Matrix sub(Matrix matrix, Matrix result);
+
+  /**
    * Subtracts a vector from all columns of the matrix, element-wise.
    */
   Matrix subColumnVector(Matrix vector);

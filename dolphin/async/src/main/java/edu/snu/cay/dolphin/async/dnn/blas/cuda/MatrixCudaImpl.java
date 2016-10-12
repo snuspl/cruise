@@ -487,24 +487,30 @@ public final class MatrixCudaImpl implements Matrix {
 
   @Override
   public Matrix sub(final Matrix matrix) {
-    checkElementWiseOpValidity(matrix);
-    final MatrixCudaImpl other = toCudaImpl(matrix);
     final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, columns);
-    if (!JavaCuda.sub(length, devPtr, other.getDevicePointer(), newMatrix.getDevicePointer())) {
+    try {
+      return sub(matrix, newMatrix);
+    } catch (Exception e) {
       newMatrix.free();
-      throw new RuntimeException("Failed to perform element-wise subtraction");
+      throw e;
     }
-    return newMatrix;
   }
 
   @Override
   public Matrix subi(final Matrix matrix) {
+    return sub(matrix, this);
+  }
+
+  @Override
+  public Matrix sub(final Matrix matrix, final Matrix result) {
     checkElementWiseOpValidity(matrix);
+    checkElementWiseOpValidity(result);
     final MatrixCudaImpl other = toCudaImpl(matrix);
-    if (!JavaCuda.sub(length, devPtr, other.getDevicePointer(), devPtr)) {
+    final MatrixCudaImpl resultMatrix = toCudaImpl(result);
+    if (!JavaCuda.sub(length, devPtr, other.getDevicePointer(), resultMatrix.getDevicePointer())) {
       throw new RuntimeException("Failed to perform element-wise subtraction");
     }
-    return this;
+    return result;
   }
 
   @Override

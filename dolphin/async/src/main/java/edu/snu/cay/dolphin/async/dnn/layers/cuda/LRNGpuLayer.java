@@ -42,12 +42,11 @@ public final class LRNGpuLayer extends LayerBase {
 
   private Pointer inputDesc;
   private Pointer activationDesc;
-  private Pointer lrnDesc;
+  private final Pointer lrnDesc;
 
   private final int inputChannel;
   private final int inputHeight;
   private final int inputWidth;
-  private final int batchSize;
 
   /**
    * @param index the index of this layer
@@ -69,7 +68,7 @@ public final class LRNGpuLayer extends LayerBase {
                       final MatrixFactory matrixFactory) {
     super(index, inputShape);
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getInputShape()), batchSize);
+    this.output = null;
     this.layerError = null;
 
     if (getInputShape().length == 2) {
@@ -81,11 +80,10 @@ public final class LRNGpuLayer extends LayerBase {
       this.inputHeight = getInputShape()[1];
       this.inputWidth = getInputShape()[2];
     }
-    this.batchSize = batchSize;
 
     //setup
-    this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
+    this.inputDesc = new Pointer();
+    this.activationDesc = new Pointer();
     this.lrnDesc = JavaCudnn.createLRNDesc(localSize, alpha, beta, k);
   }
 
@@ -108,7 +106,7 @@ public final class LRNGpuLayer extends LayerBase {
   public Matrix feedForward(final Matrix input) {
 
     final int inputSize = input.getColumns();
-    if (inputSize != batchSize) {
+    if (output == null || output.getColumns() != inputSize) {
       JavaCudnn.destroyTensorDesc(inputDesc);
       JavaCudnn.destroyTensorDesc(activationDesc);
       MatrixUtils.free(output);

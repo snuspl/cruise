@@ -218,6 +218,14 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
+  public Matrix sub(final Matrix matrix, final Matrix result) {
+    checkImpl(matrix);
+    checkImpl(result);
+    jblasMatrix.subi(((MatrixJBLASImpl) matrix).jblasMatrix, ((MatrixJBLASImpl) result).jblasMatrix);
+    return result;
+  }
+
+  @Override
   public Matrix subColumnVector(final Matrix vector) {
     checkImpl(vector);
     return new MatrixJBLASImpl(jblasMatrix.subColumnVector(((MatrixJBLASImpl) vector).jblasMatrix));
