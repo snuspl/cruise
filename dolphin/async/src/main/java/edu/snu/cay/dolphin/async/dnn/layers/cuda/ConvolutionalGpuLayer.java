@@ -95,7 +95,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     super(index, inputShape);
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
-    this.output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), batchSize);
+    this.output = null;
     this.layerError = null;
     this.maxWorkspaceSize = 0;
 
