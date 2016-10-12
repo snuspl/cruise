@@ -654,7 +654,7 @@ public final class MatrixCudaImpl implements Matrix {
   }
 
   @Override
-  public Matrix mul(Matrix matrix, Matrix result) {
+  public Matrix mul(final Matrix matrix, final Matrix result) {
     checkElementWiseOpValidity(matrix);
     checkElementWiseOpValidity(result);
 

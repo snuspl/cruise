@@ -288,7 +288,7 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
-  public Matrix mul(Matrix matrix, Matrix result) {
+  public Matrix mul(final Matrix matrix, final Matrix result) {
     checkImpl(matrix);
     checkImpl(result);
     jblasMatrix.muli(((MatrixJBLASImpl) matrix).jblasMatrix, ((MatrixJBLASImpl) result).jblasMatrix);
