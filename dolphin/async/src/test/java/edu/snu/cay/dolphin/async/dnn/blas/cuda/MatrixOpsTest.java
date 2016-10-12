@@ -326,15 +326,15 @@ public final class MatrixOpsTest {
     final Matrix m3 = matrixFactory.create(input3, 2, 3);
     final Matrix m4 = matrixFactory.create(input4, 2, 1);
 
-    final Matrix m8 = ((MatrixCudaImpl) m1).mmult(m2);
+    final Matrix m8 = m1.mmult(m2);
     assertArrayEquals(outputt, m8.toFloatArray());
     MatrixUtils.free(m8);
 
-    final Matrix m9 = ((MatrixCudaImpl) m1).tmmul(m3);
+    final Matrix m9 = m1.tmmul(m3);
     assertArrayEquals(toutput, m9.toFloatArray());
     MatrixUtils.free(m9);
 
-    final Matrix m10 = ((MatrixCudaImpl) m1).tmmul(m4);
+    final Matrix m10 = m1.tmmul(m4);
     assertArrayEquals(voutput, m10.toFloatArray());
     MatrixUtils.free(m10);
 

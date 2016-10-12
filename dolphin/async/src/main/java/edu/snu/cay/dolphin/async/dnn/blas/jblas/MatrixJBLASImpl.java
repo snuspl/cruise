@@ -293,18 +293,18 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
+  public Matrix muli(final Matrix matrix) {
+    checkImpl(matrix);
+    jblasMatrix.muli(((MatrixJBLASImpl) matrix).jblasMatrix);
+    return this;
+  }
+
+  @Override
   public Matrix mul(final Matrix matrix, final Matrix result) {
     checkImpl(matrix);
     checkImpl(result);
     jblasMatrix.muli(((MatrixJBLASImpl) matrix).jblasMatrix, ((MatrixJBLASImpl) result).jblasMatrix);
     return result;
-  }
-
-  @Override
-  public Matrix muli(final Matrix matrix) {
-    checkImpl(matrix);
-    jblasMatrix.muli(((MatrixJBLASImpl) matrix).jblasMatrix);
-    return this;
   }
 
   @Override
@@ -416,6 +416,9 @@ final class MatrixJBLASImpl implements Matrix {
   @Override
   public Matrix mmuli(final Matrix matrix) {
     checkImpl(matrix);
+    if (getColumns() != matrix.getRows() || matrix.getRows() != matrix.getColumns()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
     jblasMatrix.mmuli(((MatrixJBLASImpl) matrix).jblasMatrix);
     return this;
   }
@@ -424,7 +427,7 @@ final class MatrixJBLASImpl implements Matrix {
   public Matrix mmul(final Matrix matrix, final Matrix result) {
     checkImpl(matrix);
     checkImpl(result);
-    if (getRows() != result.getRows() || getColumns() != matrix.getColumns()) {
+    if (getRows() != result.getRows() || matrix.getColumns() != result.getColumns()) {
       throw new IllegalArgumentException("The size of result matrix is wrong");
     }
     jblasMatrix.mmuli(((MatrixJBLASImpl) matrix).jblasMatrix, ((MatrixJBLASImpl) result).jblasMatrix);
@@ -439,12 +442,17 @@ final class MatrixJBLASImpl implements Matrix {
 
   @Override
   public Matrix tmmul(final Matrix matrix, final Matrix result) {
+    if (getRows() != matrix.getRows()) {
+      throw new IllegalArgumentException(
+          "The number of rows of left matrix should be equal to the number of rows of right matrix.");
+    }
     if (result.getRows() != getColumns() || result.getColumns() != matrix.getColumns()) {
       throw new IllegalArgumentException("The size of result matrix is wrong");
     }
-    NativeBlas.sgemm('T', 'N', result.getRows(), result.getColumns(), getRows(), 1.0f, jblasMatrix.data, 0,
-        getRows(), ((MatrixJBLASImpl) matrix).jblasMatrix.data, 0, matrix.getRows(), 0,
-        ((MatrixJBLASImpl) result).jblasMatrix.data, 0, result.getRows());
+
+    NativeBlas.sgemm('T', 'N', getColumns(), result.getColumns(), getRows(), 1.0f,
+        jblasMatrix.data, 0, getRows(), ((MatrixJBLASImpl) matrix).jblasMatrix.data, 0, matrix.getRows(),
+        0.0f, ((MatrixJBLASImpl) result).jblasMatrix.data, 0, getColumns());
     return result;
   }
 
@@ -456,12 +464,17 @@ final class MatrixJBLASImpl implements Matrix {
 
   @Override
   public Matrix mmult(final Matrix matrix, final Matrix result) {
+    if (getColumns() != matrix.getColumns()) {
+      throw new IllegalArgumentException(
+          "The number of columns of left matrix should be equal to the number of columns of right matrix.");
+    }
     if (result.getRows() != getRows() || result.getColumns() != matrix.getRows()) {
       throw new IllegalArgumentException("The size of result matrix is wrong");
     }
-    NativeBlas.sgemm('N', 'T', result.getRows(), result.getColumns(), getColumns(), 1.0f, jblasMatrix.data, 0,
-        getRows(), ((MatrixJBLASImpl) matrix).jblasMatrix.data, 0, matrix.getRows(), 0,
-        ((MatrixJBLASImpl) result).jblasMatrix.data, 0, result.getRows());
+
+    NativeBlas.sgemm('N', 'T', getRows(), matrix.getRows(), getColumns(), 1.0f,
+        jblasMatrix.data, 0, getRows(), ((MatrixJBLASImpl) matrix).jblasMatrix.data, 0, matrix.getRows(),
+        0.0f, ((MatrixJBLASImpl) result).jblasMatrix.data, 0, getRows());
     return result;
   }
 

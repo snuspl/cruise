@@ -20,14 +20,14 @@ import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
-import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
-import edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.bytedeco.javacpp.Pointer;
 
 import javax.inject.Inject;
+
+import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.getShapeLength;
 
 /**
  * Gpu activation layer.
@@ -54,14 +54,12 @@ public final class ActivationGpuLayer extends LayerBase {
    * @param index the index of this layer
    * @param inputShape the shape of input data
    * @param activationFunction the type of the activation function
-   * @param batchSize the batch Size (number of images) of this layer
    * @param matrixFactory the factory to create new matrices
    */
   @Inject
   private ActivationGpuLayer(@Parameter(LayerIndex.class) final int index,
                              @Parameter(LayerInputShape.class) final String inputShape,
                              @Parameter(ActivationFunction.class) final String activationFunction,
-                             @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
                              final MatrixFactory matrixFactory) {
     super(index, inputShape);
     this.matrixFactory = matrixFactory;
@@ -123,7 +121,7 @@ public final class ActivationGpuLayer extends LayerBase {
 
       inputDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
       activationDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
-      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getOutputShape()), inputSize);
+      output = matrixFactory.create(getShapeLength(getOutputShape()), inputSize);
     }
 
     if (JavaCudnn.activFeedForward(activFuncDesc, inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
@@ -143,7 +141,6 @@ public final class ActivationGpuLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-
     if (layerError == null || layerError.getColumns() != nextError.getColumns()) {
       MatrixUtils.free(layerError);
       layerError = matrixFactory.create(nextError.getRows(), nextError.getColumns());

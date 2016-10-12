@@ -255,14 +255,14 @@ public interface Matrix {
   Matrix mul(Matrix matrix);
 
   /**
-   * Returns the result matrix as a mulitiplies by a matrix, element-wise.
-   */
-  Matrix mul(Matrix matrix, Matrix result);
-
-  /**
    * Multiplies by a matrix, element-wise (in place).
    */
   Matrix muli(Matrix matrix);
+
+  /**
+   * Returns the result matrix as a mulitiplies by a matrix, element-wise.
+   */
+  Matrix mul(Matrix matrix, Matrix result);
 
   /**
    * Multiplies all columns of the matrix by a vector, element-wise.
