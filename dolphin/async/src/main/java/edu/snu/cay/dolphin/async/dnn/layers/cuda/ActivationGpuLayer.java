@@ -146,7 +146,7 @@ public final class ActivationGpuLayer extends LayerBase {
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
 
-    if (layerError == null || !layerError.hasSameSize(nextError)) {
+    if (layerError == null || layerError.getColumns() != nextError.getColumns()) {
       MatrixUtils.free(layerError);
       layerError = matrixFactory.create(nextError.getRows(), nextError.getColumns());
     }

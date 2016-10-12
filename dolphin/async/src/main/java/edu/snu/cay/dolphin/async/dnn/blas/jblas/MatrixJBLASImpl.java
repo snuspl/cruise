@@ -16,8 +16,6 @@
 package edu.snu.cay.dolphin.async.dnn.blas.jblas;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
-import org.apache.commons.math3.random.MersenneTwister;
-import org.apache.commons.math3.random.SynchronizedRandomGenerator;
 import org.jblas.FloatMatrix;
 import org.jblas.NativeBlas;
 
@@ -511,11 +509,6 @@ final class MatrixJBLASImpl implements Matrix {
   @Override
   public float sum() {
     return jblasMatrix.sum();
-  }
-
-  @Override
-  public boolean hasSameSize(final Matrix matrix) {
-    return getRows() == matrix.getRows() && getColumns() == matrix.getColumns();
   }
 
   @Override

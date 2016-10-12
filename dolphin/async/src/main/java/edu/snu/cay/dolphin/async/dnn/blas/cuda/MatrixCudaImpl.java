@@ -1098,11 +1098,6 @@ public final class MatrixCudaImpl implements Matrix {
   }
 
   @Override
-  public boolean hasSameSize(final Matrix matrix) {
-    return matrix.getRows() == getRows() && matrix.getColumns() == getColumns();
-  }
-
-  @Override
   public boolean compare(final Matrix matrix, final float tolerance) {
     if (rows != matrix.getRows() || columns != matrix.getColumns()) {
       return false;

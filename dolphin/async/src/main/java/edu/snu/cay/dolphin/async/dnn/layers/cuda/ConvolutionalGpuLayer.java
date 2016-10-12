@@ -195,7 +195,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
 
-    if (layerError == null || !layerError.hasSameSize(input)) {
+    if (layerError == null || layerError.getColumns() != input.getColumns()) {
       MatrixUtils.free(layerError);
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }

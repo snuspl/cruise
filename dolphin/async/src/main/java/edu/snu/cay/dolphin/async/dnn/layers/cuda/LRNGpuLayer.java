@@ -137,7 +137,7 @@ public final class LRNGpuLayer extends LayerBase {
                               final Matrix activation,
                               final Matrix nextError) {
 
-    if (layerError == null || !layerError.hasSameSize(input)) {
+    if (layerError == null || layerError.getColumns() != input.getColumns()) {
       MatrixUtils.free(layerError);
       layerError = matrixFactory.create(input.getRows(), input.getColumns());
     }
