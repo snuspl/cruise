@@ -1111,11 +1111,6 @@ public final class MatrixCudaImpl implements Matrix {
     return JavaCuda.compare(length, devPtr, other.devPtr, tolerance);
   }
 
-  @Override
-  public Matrix bernoulli(final float prob, final float scale, final long seed) {
-    throw new UnsupportedOperationException("Not implemented");
-  }
-
   private void deviceFree() {
     JavaCuda.deviceFree(devPtr);
     devPtr.setNull();

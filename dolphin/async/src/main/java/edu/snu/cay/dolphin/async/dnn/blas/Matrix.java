@@ -438,13 +438,4 @@ public interface Matrix {
    * and the maximal absolute difference in all elements is smaller than the specified tolerance.
    */
   boolean compare(Matrix matrix, float tolerance);
-
-  /**
-   * Sets values as a bernoulli matrix(in-place).
-   * Takes the scale value with success probability of p, value 0 with failure probability of q = 1 − p.
-   * @param prob success probability
-   * @param scale value used when success
-   * @return this matrix
-   */
-  Matrix bernoulli(float prob, float scale, long seed);
 }

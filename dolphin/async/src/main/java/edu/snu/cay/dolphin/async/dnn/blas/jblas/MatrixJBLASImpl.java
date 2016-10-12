@@ -27,11 +27,9 @@ import org.jblas.NativeBlas;
 final class MatrixJBLASImpl implements Matrix {
 
   private final FloatMatrix jblasMatrix;
-  private final SynchronizedRandomGenerator randomGenerator;
 
   MatrixJBLASImpl(final FloatMatrix jblasMatrix) {
     this.jblasMatrix = jblasMatrix;
-    this.randomGenerator = new SynchronizedRandomGenerator(new MersenneTwister());
   }
 
   @Override
@@ -526,22 +524,6 @@ final class MatrixJBLASImpl implements Matrix {
       return jblasMatrix.compare(((MatrixJBLASImpl) matrix).jblasMatrix, tolerance);
     }
     return false;
-  }
-
-  @Override
-  public Matrix bernoulli(final float prob, final float scale, final long seed) {
-    randomGenerator.setSeed(seed);
-
-    for (int i = 0; i < getRows(); ++i) {
-      for (int j = 0; j < getColumns(); ++j) {
-        if (randomGenerator.nextFloat() <= prob) {
-          put(i, j, scale);
-        } else {
-          put(i, j, 0);
-        }
-      }
-    }
-    return this;
   }
 
   @Override
