@@ -654,6 +654,19 @@ public final class MatrixCudaImpl implements Matrix {
   }
 
   @Override
+  public Matrix mul(Matrix matrix, Matrix result) {
+    checkElementWiseOpValidity(matrix);
+    checkElementWiseOpValidity(result);
+
+    final MatrixCudaImpl other = toCudaImpl(matrix);
+    final MatrixCudaImpl resultMatrix = toCudaImpl(result);
+    if (!JavaCuda.mul(length, devPtr, other.getDevicePointer(), resultMatrix.getDevicePointer())) {
+      throw new RuntimeException("Failed to perform element-wise multiplication");
+    }
+    return resultMatrix;
+  }
+
+  @Override
   public Matrix muli(final Matrix matrix) {
     checkElementWiseOpValidity(matrix);
     final MatrixCudaImpl other = toCudaImpl(matrix);

@@ -288,6 +288,14 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
+  public Matrix mul(Matrix matrix, Matrix result) {
+    checkImpl(matrix);
+    checkImpl(result);
+    jblasMatrix.muli(((MatrixJBLASImpl) matrix).jblasMatrix, ((MatrixJBLASImpl) result).jblasMatrix);
+    return result;
+  }
+
+  @Override
   public Matrix muli(final Matrix matrix) {
     checkImpl(matrix);
     jblasMatrix.muli(((MatrixJBLASImpl) matrix).jblasMatrix);

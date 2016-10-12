@@ -82,9 +82,8 @@ public final class DropoutLayer extends LayerBase {
     bernoulliMatrix = matrixFactory
         .bernoulli(input.getRows(), input.getColumns(), 1 - dropoutRatio, 1 / (1 - dropoutRatio));
 
-    // bernoulliMatrix should be kept for backPropagate().
-    output.copy(bernoulliMatrix);
-    return output.muli(input);
+    // save the result to the output since bernoulliMatrix should be kept for backPropagate().
+    return bernoulliMatrix.mul(input, output);
   }
 
   /**
