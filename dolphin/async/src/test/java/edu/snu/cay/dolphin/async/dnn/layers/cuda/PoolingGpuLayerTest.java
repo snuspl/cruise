@@ -476,7 +476,7 @@ public final class PoolingGpuLayerTest {
 
   @Test
   public void test3DBackPropagateMax() {
-    maxPooling3DLayer.feedForward(input);
+    maxPooling3DLayer.feedForward(input3D);
     final Matrix maxError = maxPooling3DLayer
         .backPropagate(input3D, expectedMaxPooling3DActivation, nextError3D);
     assertTrue(expectedMaxPooling3DError.compare(maxError, TOLERANCE));
@@ -484,7 +484,7 @@ public final class PoolingGpuLayerTest {
 
   @Test
   public void test3DBackPropagateAvg() {
-    averagePooling3DLayer.feedForward(input);
+    averagePooling3DLayer.feedForward(input3D);
     final Matrix averageError = averagePooling3DLayer
         .backPropagate(input3D, expectedAveragePooling3DActivation, nextError3D);
     assertTrue(expectedAveragePooling3DError.compare(averageError, TOLERANCE));

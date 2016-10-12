@@ -262,6 +262,7 @@ public class ConvolutionalGpuLayerTest {
 
   @Test
   public void testConvolutionalBackPropagate() {
+    convolutionalLayer.feedForward(input);
     final Matrix error = convolutionalLayer.backPropagate(input, expectedConvolutionalActivation, nextError);
     assertTrue(expectedConvolutionalError.compare(error, TOLERANCE));
   }
@@ -274,6 +275,7 @@ public class ConvolutionalGpuLayerTest {
 
   @Test
   public void testConvolutionalWithPaddingBackPropagate() {
+    convolutionalWithPaddingLayer.feedForward(input);
     final Matrix error = convolutionalWithPaddingLayer.backPropagate(
         input, expectedConvolutionalWithPaddingActivation, nextErrorWithPadding);
     assertTrue(expectedConvolutionalWithPaddingError.compare(error, TOLERANCE));
@@ -281,12 +283,17 @@ public class ConvolutionalGpuLayerTest {
 
   @Test
   public void testConvolutionalGradient() {
+    convolutionalLayer.feedForward(input);
+    convolutionalLayer.backPropagate(input, expectedConvolutionalActivation, nextError);
     final LayerParameter convolutionalLayerParams = convolutionalLayer.generateParameterGradient(input, nextError);
     assertTrue(compare(expectedConvolutionalLayerParams, convolutionalLayerParams, TOLERANCE));
   }
 
   @Test
   public void testConvolutionalWithPaddingGradient() {
+    convolutionalWithPaddingLayer.feedForward(input);
+    convolutionalWithPaddingLayer.backPropagate(
+        input, expectedConvolutionalWithPaddingActivation, nextErrorWithPadding);
     final LayerParameter convolutionalLayerParams =
         convolutionalWithPaddingLayer.generateParameterGradient(input, nextErrorWithPadding);
     assertTrue(compare(expectedConvolutionalLayerWithPaddingParams, convolutionalLayerParams, TOLERANCE));
@@ -300,12 +307,15 @@ public class ConvolutionalGpuLayerTest {
 
   @Test
   public void testConvolutional3DBackPropagate() {
+    convolutional3DLayer.feedForward(input3D);
     final Matrix error = convolutional3DLayer.backPropagate(input3D, expectedConvolutional3DActivation, nextError3D);
     assertTrue(expectedConvolutional3DError.compare(error, TOLERANCE));
   }
 
   @Test
   public void testConvolutional3DGradient() {
+    convolutional3DLayer.feedForward(input3D);
+    convolutional3DLayer.backPropagate(input3D, expectedConvolutional3DActivation, nextError3D);
     final LayerParameter convolutionalLayerParams
         = convolutional3DLayer.generateParameterGradient(input3D, nextError3D);
     assertTrue(compare(expectedConvolutional3DLayerParams, convolutionalLayerParams, TOLERANCE));

@@ -103,6 +103,7 @@ public final class ActivationGpuLayerTest {
 
   @Test
   public void testSigmoidBackPropagate() {
+    sigmoidActivationLayer.feedForward(input);
     final Matrix error = sigmoidActivationLayer.backPropagate(input, expectedSigmoidActivation, nextError);
     assertTrue(expectedSigmoidError.compare(error, TOLERANCE));
   }

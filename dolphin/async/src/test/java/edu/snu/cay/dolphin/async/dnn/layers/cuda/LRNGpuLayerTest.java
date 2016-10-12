@@ -140,6 +140,7 @@ public class LRNGpuLayerTest {
 
   @Test
   public void testLRNSizeTwoBackPropagate() {
+    lrnLayerSizeTwo.feedForward(input);
     final Matrix error = lrnLayerSizeTwo.backPropagate(input, expectedLRNActivationSizeTwo, nextError);
     assertTrue(expectedLRNErrorSizeTwo.compare(error, TOLERANCE));
   }
@@ -152,6 +153,7 @@ public class LRNGpuLayerTest {
 
   @Test
   public void testLRNSizeOneBackPropagate() {
+    lrnLayerSizeOne.feedForward(input);
     final Matrix error = lrnLayerSizeOne.backPropagate(input, expectedLRNActivationSizeOne, nextError);
     assertTrue(expectedLRNErrorSizeOne.compare(error, TOLERANCE));
   }
