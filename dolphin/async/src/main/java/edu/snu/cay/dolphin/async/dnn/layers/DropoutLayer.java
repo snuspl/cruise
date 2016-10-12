@@ -17,7 +17,9 @@ package edu.snu.cay.dolphin.async.dnn.layers;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
+import edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -33,6 +35,7 @@ public final class DropoutLayer extends LayerBase {
   private final MatrixFactory matrixFactory;
   private final float dropoutRatio;
   private Matrix bernoulliMatrix;
+  private Matrix output;
 
   /**
    * @param index the index of this layer.
@@ -48,6 +51,8 @@ public final class DropoutLayer extends LayerBase {
     super(index, inputShape);
     this.dropoutRatio = dropoutRatio;
     this.matrixFactory = matrixFactory;
+    this.bernoulliMatrix = null;
+    this.output = null;
   }
 
   @Override
@@ -68,9 +73,18 @@ public final class DropoutLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    this.bernoulliMatrix = matrixFactory
+    if (output == null || output.getColumns() != input.getColumns()) {
+      MatrixUtils.free(output);
+      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getOutputShape()), input.getColumns());
+    }
+
+    MatrixUtils.free(bernoulliMatrix);
+    bernoulliMatrix = matrixFactory
         .bernoulli(input.getRows(), input.getColumns(), 1 - dropoutRatio, 1 / (1 - dropoutRatio));
-    return bernoulliMatrix.mul(input);
+
+    // bernoulliMatrix should be kept for backPropagate().
+    output.copy(bernoulliMatrix);
+    return output.muli(input);
   }
 
   /**
@@ -84,12 +98,20 @@ public final class DropoutLayer extends LayerBase {
   public Matrix backPropagate(final Matrix input,
                               final Matrix activation,
                               final Matrix nextError) {
-    return bernoulliMatrix.mul(nextError);
+    return bernoulliMatrix.muli(nextError);
   }
 
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
     throw new RuntimeException("This layer is not learnable");
+  }
+
+  @Override
+  public void cleanup() {
+    super.cleanup();
+
+    MatrixUtils.free(output);
+    MatrixUtils.free(bernoulliMatrix);
   }
 }
