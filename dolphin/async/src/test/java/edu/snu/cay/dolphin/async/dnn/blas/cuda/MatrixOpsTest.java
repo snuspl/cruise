@@ -300,8 +300,8 @@ public final class MatrixOpsTest {
     final Matrix m3 = m1.mmul(m2);
     final Matrix m4 = matrixFactory.create(2, 4);
     m1.mmul(m2, m4);
-    assertTrue(m1.compare(m3, 2.0E-7F));
-    assertArrayEquals(output, m1.toFloatArray());
+    assertTrue(m4.compare(m3, 2.0E-7F));
+    assertArrayEquals(output, m4.toFloatArray());
     MatrixUtils.free(m1);
     MatrixUtils.free(m2);
     MatrixUtils.free(m3);
