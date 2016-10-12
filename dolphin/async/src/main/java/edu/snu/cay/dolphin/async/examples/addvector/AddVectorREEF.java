@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.examples.addvector;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
+import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
 import org.apache.reef.client.LauncherStatus;
@@ -45,33 +46,16 @@ public final class AddVectorREEF {
         .setUpdaterClass(AddVectorUpdater.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)
-        .addParameterClass(DeltaValue.class)
-        .addParameterClass(NumKeys.class)
-        .addParameterClass(NumWorkers.class)
+        .addParameterClass(ExampleParameters.DeltaValue.class)
+        .addParameterClass(ExampleParameters.NumKeys.class)
+        .addParameterClass(ExampleParameters.NumWorkers.class)
         .addParameterClass(VectorSize.class)
-        .addParameterClass(ComputeTimeMs.class)
+        .addParameterClass(ExampleParameters.ComputeTimeMs.class)
         .build());
   }
 
   public static void main(final String[] args) {
     runAddVector(args);
-  }
-
-  @NamedParameter(doc = "All workers will add this integer to each element of the vector", short_name = "delta")
-  final class DeltaValue implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "The number of keys", short_name = "num_keys")
-  final class NumKeys implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "The number of workers", short_name = "num_workers")
-  final class NumWorkers implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "The time to sleep to simulate the computation in each mini-batch",
-      short_name = "compute_time_ms", default_value = "300")
-  final class ComputeTimeMs implements Name<Long> {
   }
 
   @NamedParameter(doc = "The size of vector", short_name = "vector_size")
