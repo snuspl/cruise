@@ -54,7 +54,7 @@ class JavaCudnn extends Pointer {
   }
   static native boolean cudnnDestroyTensorDesc(@Cast(value = "cudnnTensorDescriptor_t*") final Pointer pointer);
   static void destroyTensorDesc(final Pointer pointer) {
-    if (!cudnnDestroyTensorDesc(pointer)) {
+    if (!pointer.isNull() && !cudnnDestroyTensorDesc(pointer)) {
       throw new RuntimeException("Destroying tensor descriptor is failed");
     }
   }
