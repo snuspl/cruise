@@ -295,13 +295,10 @@ public final class MatrixOpsTest {
     MatrixUtils.free(m9);
     MatrixUtils.free(m10);
 
-    final Matrix m11 = m1.mul(m2);
+    final Matrix m11 = matrixFactory.create(m1.getRows(), m2.getColumns());
+    m1.mul(m2, m11);
     assertArrayEquals(output3, m11.toFloatArray());
-    final Matrix m12 = matrixFactory.create(m11.getRows(), m11.getColumns());
-    m11.mul(m2, m12);
-    assertArrayEquals(input1, m12.toFloatArray());
     MatrixUtils.free(m11);
-    MatrixUtils.free(m12);
 
     MatrixUtils.free(m1);
     MatrixUtils.free(m2);
