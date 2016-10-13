@@ -78,14 +78,14 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private final Map<String, Migration> ongoingMigrations = new ConcurrentHashMap<>();
 
   /**
-   * Maps for maintaining state of incoming blocks in receiver.
-   * It's for ownership-first migration in which the order of OwnershipAckMsg and BlockMovedMsg can be reversed.
-   * Using these two maps, handlers of both msgs can judge whether it arrives first or not.
+   * A map for maintaining state of incoming blocks in receiver.
+   * It's for ownership-first migration in which the order of {@link OwnershipMsg} and {@link DataMsg} can be reversed.
+   * Using this map, handlers of both msgs can judge whether it arrives first or not.
    * A later message will call {@link #processDataMsg} to put a received block into MemoryStore and
    * release client threads that were blocked by {@link #onOwnershipMsg(MigrationMsg)}.
+   * A value is {@link Optional#empty()} when an entry is put by OwnershipMsg.
    */
-  private final Set<Integer> ownershipMsgArrivedBlockIds = new HashSet<>();
-  private final Map<Integer, Pair<Map<K, Object>, TraceInfo>> dataMsgArrivedBlockIds = new HashMap<>();
+  private final Map<Integer, Optional<Pair<Map<K, Object>, TraceInfo>>> msgArrivedBlocks = new ConcurrentHashMap<>();
 
   private final Codec<K> keyCodec;
   private final Serializer serializer;
@@ -191,13 +191,14 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
           // However, DataMsg should be handled after updating ownership by OwnershipAckMsg.
           // So if DataMsg for the same block has been already arrived, handle that msg now.
-          final boolean ownershipMsgArrivedFirst = !dataMsgArrivedBlockIds.containsKey(blockId);
+          final boolean ownershipMsgArrivedFirst;
           Pair<Map<K, Object>, TraceInfo> dataMsgInfo = null;
-          synchronized (this) {
+          synchronized (msgArrivedBlocks) {
+            ownershipMsgArrivedFirst = !msgArrivedBlocks.containsKey(blockId);
             if (ownershipMsgArrivedFirst) {
-              ownershipMsgArrivedBlockIds.add(blockId);
+              msgArrivedBlocks.put(blockId, Optional.empty());
             } else {
-              dataMsgInfo = dataMsgArrivedBlockIds.remove(blockId);
+              dataMsgInfo = msgArrivedBlocks.remove(blockId).get();
             }
           }
 
@@ -288,12 +289,13 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // However, DataMsg should be handled after updating ownership by OwnershipMsg.
           // So handle DataMsg now, if OwnershipMsg for the same block has been already arrived.
           // Otherwise handle it in future when corresponding OwnershipMsg arrives
-          final boolean ownershipMsgArrivedFirst = ownershipMsgArrivedBlockIds.contains(blockId);
-          synchronized (this) {
+          final boolean ownershipMsgArrivedFirst;
+          synchronized (msgArrivedBlocks) {
+            ownershipMsgArrivedFirst = msgArrivedBlocks.containsKey(blockId);
             if (ownershipMsgArrivedFirst) {
-              ownershipMsgArrivedBlockIds.remove(blockId);
+              msgArrivedBlocks.remove(blockId);
             } else {
-              dataMsgArrivedBlockIds.put(blockId, new Pair<>(dataMap, traceInfo));
+              msgArrivedBlocks.put(blockId, Optional.of(new Pair<>(dataMap, traceInfo)));
             }
           }
 

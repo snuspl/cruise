@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
+import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -44,11 +45,11 @@ public final class AddIntegerREEF {
     return AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(AddIntegerTrainer.class)
         .setUpdaterClass(AddIntegerUpdater.class)
-        .addParameterClass(DeltaValue.class)
-        .addParameterClass(NumKeys.class)
+        .addParameterClass(ExampleParameters.DeltaValue.class)
+        .addParameterClass(ExampleParameters.NumKeys.class)
         .addParameterClass(NumUpdatesPerItr.class)
-        .addParameterClass(NumWorkers.class)
-        .addParameterClass(ComputeTimeMs.class)
+        .addParameterClass(ExampleParameters.NumWorkers.class)
+        .addParameterClass(ExampleParameters.ComputeTimeMs.class)
         .build(), conf);
   }
 
@@ -56,24 +57,7 @@ public final class AddIntegerREEF {
     runAddInteger(args, Tang.Factory.getTang().newConfigurationBuilder().build());
   }
 
-  @NamedParameter(doc = "All workers will add this integer to the sum", short_name = "delta")
-  final class DeltaValue implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "The number of keys", short_name = "num_keys")
-  final class NumKeys implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "num_updates")
   final class NumUpdatesPerItr implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "The number of workers", short_name = "num_workers")
-  final class NumWorkers implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "The time to sleep to simulate the computation in workers",
-      short_name = "compute_time_ms", default_value = "300")
-  final class ComputeTimeMs implements Name<Long> {
   }
 }

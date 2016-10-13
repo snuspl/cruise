@@ -19,6 +19,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -97,12 +98,12 @@ final class AddVectorTrainer implements Trainer {
 
   @Inject
   private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
-                           @Parameter(AddVectorREEF.DeltaValue.class) final int delta,
-                           @Parameter(AddVectorREEF.NumKeys.class) final int numberOfKeys,
-                           @Parameter(AddVectorREEF.NumWorkers.class) final int numberOfWorkers,
-                           @Parameter(AddVectorREEF.ComputeTimeMs.class) final long computeTime,
                            @Parameter(Parameters.Iterations.class) final int numIterations,
                            @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                           @Parameter(ExampleParameters.DeltaValue.class) final int delta,
+                           @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
+                           @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
+                           @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
                            final MemoryStore<Long> memoryStore,
                            final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
@@ -227,7 +228,7 @@ final class AddVectorTrainer implements Trainer {
       }
     }
 
-    LOG.log(Level.WARNING, "Validation failed");
+    throw new RuntimeException("Validation failed");
   }
 
   /**

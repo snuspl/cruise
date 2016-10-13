@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -81,12 +82,12 @@ final class AddIntegerTrainer implements Trainer {
 
   @Inject
   private AddIntegerTrainer(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
-                            @Parameter(AddIntegerREEF.DeltaValue.class) final int delta,
-                            @Parameter(AddIntegerREEF.NumKeys.class) final int numberOfKeys,
-                            @Parameter(AddIntegerREEF.NumUpdatesPerItr.class) final int numberOfUpdates,
-                            @Parameter(AddIntegerREEF.NumWorkers.class) final int numberOfWorkers,
-                            @Parameter(AddIntegerREEF.ComputeTimeMs.class) final long computeTime,
                             @Parameter(Parameters.Iterations.class) final int numIterations,
+                            @Parameter(ExampleParameters.DeltaValue.class) final int delta,
+                            @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
+                            @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
+                            @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
+                            @Parameter(AddIntegerREEF.NumUpdatesPerItr.class) final int numberOfUpdates,
                             final MemoryStore<Long> memoryStore,
                             final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
