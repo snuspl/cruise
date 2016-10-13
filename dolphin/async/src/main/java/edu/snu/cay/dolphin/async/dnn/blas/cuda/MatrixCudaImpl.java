@@ -1093,7 +1093,11 @@ public final class MatrixCudaImpl implements Matrix {
   @Override
   public boolean equals(final Object o) {
     if (o instanceof MatrixCudaImpl) {
-      return compare((MatrixCudaImpl)o, 0);
+      final MatrixCudaImpl other = (MatrixCudaImpl)o;
+      if (rows != other.getRows() || columns != other.getColumns()) {
+        return false;
+      }
+      return JavaCuda.equal(length, devPtr, other.devPtr);
     }
     return false;
   }
