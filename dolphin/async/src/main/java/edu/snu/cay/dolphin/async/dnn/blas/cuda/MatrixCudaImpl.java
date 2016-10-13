@@ -1097,6 +1097,10 @@ public final class MatrixCudaImpl implements Matrix {
     }
     return false;
   }
+  @Override
+  public int hashCode() {
+    return devPtr.hashCode();
+  }
 
   static MatrixCudaImpl toCudaImpl(final Matrix matrix) {
     if (!(matrix instanceof MatrixCudaImpl)) {
