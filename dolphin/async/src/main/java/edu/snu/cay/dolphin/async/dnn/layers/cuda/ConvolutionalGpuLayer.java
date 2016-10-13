@@ -21,7 +21,6 @@ import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
-import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
@@ -74,11 +73,9 @@ public final class ConvolutionalGpuLayer extends LayerBase {
    * @param strideWidth the horizontal intervals at which to apply the filters to the input images
    * @param kernelHeight the height of the filters
    * @param kernelWidth the width of the filters
-   * @param batchSize the batch size (number of images) this layer is receiving
    * @param layerParameterInitializer the layer parameter initializer that generates the new layer parameter following
    *                                  the configuration defined by users
    * @param matrixFactory the factory to create new matrices
-   * @param batchSize the batch Size (number of images) of this layer
    */
   @Inject
   private ConvolutionalGpuLayer(@Parameter(LayerIndex.class) final int index,
@@ -89,7 +86,6 @@ public final class ConvolutionalGpuLayer extends LayerBase {
                                 @Parameter(StrideWidth.class) final int strideWidth,
                                 @Parameter(KernelHeight.class) final int kernelHeight,
                                 @Parameter(KernelWidth.class) final int kernelWidth,
-                                @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
                                 final LayerParameterInitializer layerParameterInitializer,
                                 final MatrixFactory matrixFactory) {
     super(index, inputShape);
@@ -127,6 +123,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     this.forwardWorkspaceSize = 0;
     this.backwardDataWorkspaceSize = 0;
     this.backwardFilterWorkspaceSize = 0;
+    this.maxWorkspaceSize = 0;
     this.workspace = null;
   }
 
@@ -154,7 +151,6 @@ public final class ConvolutionalGpuLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-
     final int inputSize = input.getColumns();
     if (output == null || output.getColumns() != inputSize) {
       JavaCudnn.destroyTensorDesc(inputDesc);
@@ -205,7 +201,6 @@ public final class ConvolutionalGpuLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-
     if (layerError == null || layerError.getColumns() != input.getColumns()) {
       MatrixUtils.free(layerError);
       layerError = matrixFactory.create(input.getRows(), input.getColumns());

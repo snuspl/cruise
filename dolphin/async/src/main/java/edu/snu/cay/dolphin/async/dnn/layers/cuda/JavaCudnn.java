@@ -158,7 +158,7 @@ class JavaCudnn extends Pointer {
     return pointer;
   }
   static void destroyAlgo(final Pointer pointer) {
-    if (!destroyPointer(pointer)) {
+    if (!pointer.isNull() && !destroyPointer(pointer)) {
       throw new RuntimeException("Destroying algorithm is failed");
     }
   }

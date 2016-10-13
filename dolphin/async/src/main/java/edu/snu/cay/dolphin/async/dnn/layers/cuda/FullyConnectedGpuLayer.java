@@ -26,6 +26,8 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
+import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.getShapeLength;
+
 /**
  * Fully connected Gpu layer.
  *
@@ -56,7 +58,10 @@ public final class FullyConnectedGpuLayer extends LayerBase {
     this.matrixFactory = matrixFactory;
     this.output = null;
     this.layerError = null;
-    this.parameterGradient = null;
+
+    final Matrix weightGradient = matrixFactory.create(getShapeLength(outputShape), getShapeLength(getInputShape()));
+    final Matrix biasGradient = matrixFactory.create(getShapeLength(outputShape), 1);
+    this.parameterGradient = new LayerParameter(weightGradient, biasGradient);
   }
 
   /** {@inheritDoc} */
@@ -78,12 +83,12 @@ public final class FullyConnectedGpuLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    final Matrix paramMatrix = getLayerParameter().getWeightParam();
+    final Matrix weight = getLayerParameter().getWeightParam();
     if (output == null || output.getColumns() != input.getColumns()) {
-      output = matrixFactory.create(paramMatrix.getRows(), input.getColumns());
+      output = matrixFactory.create(weight.getRows(), input.getColumns());
     }
     // (output matrix) = (weight matrix) x (input matrix) + (bias column vector)
-    return paramMatrix.mmul(input, output).addiColumnVector(getLayerParameter().getBiasParam());
+    return weight.mmul(input, output).addiColumnVector(getLayerParameter().getBiasParam());
   }
 
   /**
@@ -95,33 +100,19 @@ public final class FullyConnectedGpuLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-    final Matrix paramMatrix = getLayerParameter().getWeightParam();
+    final Matrix weight = getLayerParameter().getWeightParam();
     if (layerError == null || layerError.getColumns() != nextError.getColumns()) {
-      layerError = matrixFactory.create(paramMatrix.getColumns(), nextError.getColumns());
+      layerError = matrixFactory.create(weight.getColumns(), nextError.getColumns());
     }
     // (error matrix) = (transposed weight matrix) x (next error matrix)
-    return paramMatrix.tmmul(nextError, layerError);
+    return weight.tmmul(nextError, layerError);
   }
-
-
 
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
-    Matrix weightGradient = parameterGradient.getWeightParam();
-    if (weightGradient == null || weightGradient.getRows() != error.getRows()
-        || weightGradient.getColumns() != input.getRows()) {
-      parameterGradient.setWeightParam(matrixFactory.create(error.getRows(), input.getRows()));
-      weightGradient = parameterGradient.getWeightParam();
-    }
-    error.mmult(input, weightGradient);
-
-    Matrix biasGradient = parameterGradient.getBiasParam();
-    if (biasGradient == null || biasGradient.getRows() != error.getRows()) {
-      parameterGradient.setBiasParam(matrixFactory.create(error.getRows(), 1));
-      biasGradient = parameterGradient.getBiasParam();
-    }
-    error.rowSums(biasGradient);
+    error.mmult(input, parameterGradient.getWeightParam());
+    error.rowSums(parameterGradient.getBiasParam());
     return parameterGradient;
   }
 
@@ -131,7 +122,6 @@ public final class FullyConnectedGpuLayer extends LayerBase {
 
     MatrixUtils.free(output);
     MatrixUtils.free(layerError);
-
     parameterGradient.cleanup();
   }
 }

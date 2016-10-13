@@ -20,14 +20,14 @@ import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
-import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
-import edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.bytedeco.javacpp.Pointer;
 
 import javax.inject.Inject;
+
+import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.getShapeLength;
 
 /**
  * Loss layer with activation function.
@@ -55,7 +55,6 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
    * @param inputShape the shape of input data
    * @param lossFunction the type of the loss function
    * @param activationFunction the type of the activation function
-   * @param batchSize the batch Size (number of images) of this layer
    * @param matrixFactory the factory to create new matrices
    */
   @Inject
@@ -63,8 +62,6 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
                                      @Parameter(LayerInputShape.class) final String inputShape,
                                      @Parameter(LossFunction.class) final String lossFunction,
                                      @Parameter(ActivationFunction.class) final String activationFunction,
-                                     @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class)
-                                       final int batchSize,
                                      final MatrixFactory matrixFactory) {
     super(index, inputShape);
     this.lossFunction = lossFunction;
@@ -102,7 +99,6 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
 
   @Override
   public Matrix feedForward(final Matrix input) {
-
     final int inputSize = input.getColumns();
     if (output == null || output.getColumns() != inputSize) {
       JavaCudnn.destroyTensorDesc(inputDesc);
@@ -111,7 +107,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
 
       inputDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
       activationDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
-      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(getOutputShape()), inputSize);
+      output = matrixFactory.create(getShapeLength(getOutputShape()), inputSize);
     }
 
     if (JavaCudnn.activWithLossFeedForward(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
@@ -134,6 +130,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
     switch (lossFunction.toLowerCase()) {
     case "crossentropy":
       if (layerError == null || layerError.getColumns() != activation.getColumns()) {
+        MatrixUtils.free(layerError);
         layerError = matrixFactory.create(activation.getRows(), activation.getColumns());
       }
       return activation.sub(label, layerError);
