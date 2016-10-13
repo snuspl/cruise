@@ -53,11 +53,19 @@ public final class LayerParameter {
     return biasParam;
   }
 
+  /**
+   * Sets new weightParam, the old weightParam is destroyed.
+   * @param weightParam new WeightParam to set
+   */
   public void setWeightParam(final Matrix weightParam) {
     MatrixUtils.free(this.weightParam);
     this.weightParam = weightParam;
   }
 
+  /**
+   * Sets new biasParam, the old biasParam is destroyed.
+   * @param biasParam new biasParam to set
+   */
   public void setBiasParam(final Matrix biasParam) {
     MatrixUtils.free(this.biasParam);
     this.biasParam = biasParam;

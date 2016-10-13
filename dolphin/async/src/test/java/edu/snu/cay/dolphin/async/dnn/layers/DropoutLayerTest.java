@@ -61,6 +61,18 @@ public final class DropoutLayerTest {
       {0.6f, 0.4f},
       {0.4f, 0.1f}});
 
+  private final Matrix expectedDropoutActivation = matrixFactory.create(new float[][] {
+      {0, -4.0f},
+      {-1.0f, 0},
+      {0, 3.2f},
+      {-1.4f, 2.8f}});
+
+  private final Matrix expectedDropoutError = matrixFactory.create(new float[][] {
+      {0, 0},
+      {0.6f, 0},
+      {0, 0.8f},
+      {0.8f, 0.2f}});
+
   private LayerBase dropoutLayer;
 
   @Before
@@ -75,7 +87,9 @@ public final class DropoutLayerTest {
         .setDropoutRatio(0.5f);
 
     final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
+    final MatrixFactory matrixFactoryForLayer = injector.getInstance(MatrixFactory.class);
 
+    matrixFactoryForLayer.setRandomSeed(10);
     this.dropoutLayer = injector.forkInjector(layerConf, builder.build())
         .getInstance(LayerBase.class);
   }
@@ -87,21 +101,9 @@ public final class DropoutLayerTest {
 
   @Test
   public void testDropout() {
-    final float scale = 2.0f;
     final Matrix output = dropoutLayer.feedForward(input);
-    final Matrix expectedDropoutError = matrixFactory.zeros(input.getRows(), input.getColumns());
-    for (int r = 0; r < output.getRows(); r++) {
-      for (int c = 0; c < output.getColumns(); c++) {
-        final float expectedDropoutActivation = input.get(r, c) * scale;
-        final float dropoutActivation = output.get(r, c);
-        assertTrue(dropoutActivation == 0 || dropoutActivation == expectedDropoutActivation);
-        if (dropoutActivation != 0) {
-          expectedDropoutError.put(r, c, scale);
-        }
-      }
-    }
-    expectedDropoutError.muli(nextError);
-    final Matrix error = dropoutLayer.backPropagate(input, output, nextError);
+    assertTrue(expectedDropoutActivation.compare(output, TOLERANCE));
+    final Matrix error = dropoutLayer.backPropagate(input, expectedDropoutActivation, nextError);
     assertTrue(expectedDropoutError.compare(error, TOLERANCE));
   }
 }
