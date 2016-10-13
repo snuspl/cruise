@@ -1097,6 +1097,7 @@ public final class MatrixCudaImpl implements Matrix {
     }
     return false;
   }
+
   @Override
   public int hashCode() {
     return devPtr.hashCode();

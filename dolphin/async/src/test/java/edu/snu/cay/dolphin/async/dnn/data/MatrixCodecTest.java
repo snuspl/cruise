@@ -52,9 +52,9 @@ public final class MatrixCodecTest {
     }
     final java.util.Properties p = new Properties();
     p.load(is);
-    final String canRunGPU = p.getProperty("name");
+    final String canRunGPU = p.getProperty("gpu");
 
-    if ("true".equals(canRunGPU)) {
+    if (canRunGPU.equals("true")) {
       return new Object[]{"CPU", "GPU"};
     } else {
       return new Object[]{"CPU"};
