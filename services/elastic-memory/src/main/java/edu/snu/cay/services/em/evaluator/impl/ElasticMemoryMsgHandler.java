@@ -21,7 +21,9 @@ import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.Private;
+import org.htrace.Span;
 import org.htrace.Trace;
+import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
@@ -29,6 +31,8 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,10 +45,14 @@ import java.util.logging.Logger;
 @Private
 public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
+  private static final int NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS = 2;
 
   private final OperationRouter router;
   private final RemoteOpHandler remoteOpHandler;
   private final MigrationExecutor migrationExecutor;
+
+  private final ExecutorService routingTableUpdateMsgHandlerExecutor
+      = Executors.newFixedThreadPool(NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS);
 
   @Inject
   private ElasticMemoryMsgHandler(final OperationRouter router,
@@ -100,21 +108,35 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
   }
 
   private void onRoutingTableUpdateMsg(final RoutingTableMsg msg) {
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     Trace.setProcessId("eval");
     try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_table_update_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
 
-      final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
-      final int newOwnerId = getStoreId(routingTableUpdateMsg.getNewEvalId().toString());
-      final int oldOwnerId = getStoreId(routingTableUpdateMsg.getOldEvalId().toString());
+      detached = onRoutingTableUpdateMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
-      LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
-          new Object[]{newOwnerId, oldOwnerId, blockIds});
+      routingTableUpdateMsgHandlerExecutor.submit(new Runnable() {
+        @Override
+        public void run() {
+          final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
 
-      for (final int blockId : blockIds) {
-        router.updateOwnership(blockId, oldOwnerId, newOwnerId);
-      }
+          final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
+          final int newOwnerId = getStoreId(routingTableUpdateMsg.getNewEvalId().toString());
+          final int oldOwnerId = getStoreId(routingTableUpdateMsg.getOldEvalId().toString());
+
+          LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
+              new Object[]{newOwnerId, oldOwnerId, blockIds});
+
+          for (final int blockId : blockIds) {
+            router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+          }
+        }
+      });
     }
   }
 
