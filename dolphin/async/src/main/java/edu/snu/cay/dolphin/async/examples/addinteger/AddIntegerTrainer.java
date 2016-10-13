@@ -82,12 +82,12 @@ final class AddIntegerTrainer implements Trainer {
 
   @Inject
   private AddIntegerTrainer(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
+                            @Parameter(Parameters.Iterations.class) final int numIterations,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
-                            @Parameter(AddIntegerREEF.NumUpdatesPerItr.class) final int numberOfUpdates,
                             @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                             @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
-                            @Parameter(Parameters.Iterations.class) final int numIterations,
+                            @Parameter(AddIntegerREEF.NumUpdatesPerItr.class) final int numberOfUpdates,
                             final MemoryStore<Long> memoryStore,
                             final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;

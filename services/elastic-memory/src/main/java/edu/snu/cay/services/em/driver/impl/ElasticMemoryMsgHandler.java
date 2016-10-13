@@ -156,8 +156,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
         String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      // In data-first migration, OwnershipMsg always precedes BlockMovedMsg
-      // So simply mark that OwnershipMsg for this block arrives to let onBlockMoveMsg properly handle BlockMovedMsg
+      // In data-first migration, OwnershipMsg always precedes BlockMovedMsg.
+      // So we don't need synchronization here, and we can simply mark that OwnershipMsg has arrived allowing
+      // onBlockMoveMsg to process BlockMovedMsg later.
       msgArrivedBlocks.put(blockId, Optional.empty());
 
       // Update the owner of the block to the new one.

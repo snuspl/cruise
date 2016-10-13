@@ -85,7 +85,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
    * release client threads that were blocked by {@link #onOwnershipMsg(MigrationMsg)}.
    * A value is {@link Optional#empty()} when an entry is put by OwnershipMsg.
    */
-  private final Map<Integer, Optional<Pair<Map<K, Object>, TraceInfo>>> msgArrivedBlocks = new ConcurrentHashMap<>();
+  private final Map<Integer, Optional<Pair<Map<K, Object>, TraceInfo>>> msgArrivedBlocks = new HashMap<>();
 
   private final Codec<K> keyCodec;
   private final Serializer serializer;

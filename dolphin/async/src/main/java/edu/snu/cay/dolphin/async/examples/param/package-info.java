@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Common example parameter classes.
+ * Parameters commonly used in Async Dolphin examples.
  */
 package edu.snu.cay.dolphin.async.examples.param;

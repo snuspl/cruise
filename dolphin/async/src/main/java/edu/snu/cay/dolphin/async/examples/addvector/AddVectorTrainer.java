@@ -98,12 +98,12 @@ final class AddVectorTrainer implements Trainer {
 
   @Inject
   private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
+                           @Parameter(Parameters.Iterations.class) final int numIterations,
+                           @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                            @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                            @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
                            @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                            @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
-                           @Parameter(Parameters.Iterations.class) final int numIterations,
-                           @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                            final MemoryStore<Long> memoryStore,
                            final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
