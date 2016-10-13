@@ -32,7 +32,7 @@ import java.util.logging.Logger;
 /**
  * Provides the training data to process in mini-batches, taking subset of training data no more than
  * {@link Parameters.MiniBatchSize} instances.
- * @ThreadSafe designed to handle Trainer threads' concurrent accesses to the training data.
+ * This class is designed to handle Trainer threads' concurrent accesses to the training data.
  * @param <K> type of the key, which should be the same with the one in MemoryStore.
  */
 @TaskSide
@@ -41,7 +41,7 @@ public final class TrainingDataProvider<K> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
 
   @GuardedBy("this")
-  private final Set<K> trainingDataKeySet = new HashSet<>();
+  private final List<K> trainingDataKeys = new LinkedList<>();
 
   private final int miniBatchSize;
   private final MemoryStore<K> memoryStore;
@@ -55,18 +55,18 @@ public final class TrainingDataProvider<K> {
     @Override
     public void onAddedBlock(final int blockId, final Set<K> addedKeys) {
       synchronized (TrainingDataProvider.this) {
-        trainingDataKeySet.addAll(addedKeys);
+        trainingDataKeys.addAll(addedKeys);
         LOG.log(Level.INFO, "Added key set size = " + addedKeys.size()
-            + ", changed training data key set size = " + trainingDataKeySet.size());
+            + ", changed training data key set size = " + trainingDataKeys.size());
       }
     }
 
     @Override
     public void onRemovedBlock(final int blockId, final Set<K> removedKeys) {
       synchronized (TrainingDataProvider.this) {
-        trainingDataKeySet.removeAll(removedKeys);
+        trainingDataKeys.removeAll(removedKeys);
         LOG.log(Level.INFO, "Removed key set size = " + removedKeys.size()
-            + ", changed training data key set size = " + trainingDataKeySet.size());
+            + ", changed training data key set size = " + trainingDataKeys.size());
       }
     }
   }
@@ -83,8 +83,9 @@ public final class TrainingDataProvider<K> {
    * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
    */
   public synchronized void prepareDataForEpoch() {
-    trainingDataKeySet.addAll(memoryStore.getAll().keySet());
-    LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeySet.size());
+    trainingDataKeys.addAll(memoryStore.getAll().keySet());
+    Collections.shuffle(trainingDataKeys);
+    LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
   }
 
   /**
@@ -95,16 +96,13 @@ public final class TrainingDataProvider<K> {
   public <V> Map<K, V> getNextTrainingData() {
     final List<K> nextTrainingDataKeyList = new ArrayList<>(miniBatchSize);
     synchronized (this) {
-      if (trainingDataKeySet.isEmpty()) {
+      if (trainingDataKeys.isEmpty()) {
         LOG.log(Level.INFO, "no more training data for current epoch");
         return Collections.emptyMap();
       }
 
-      final Iterator<K> iterator = trainingDataKeySet.iterator();
-      while (iterator.hasNext() && nextTrainingDataKeyList.size() < miniBatchSize) {
-        nextTrainingDataKeyList.add(iterator.next());
-      }
-      trainingDataKeySet.removeAll(nextTrainingDataKeyList);
+      nextTrainingDataKeyList.addAll(trainingDataKeys.subList(0, Math.min(miniBatchSize, trainingDataKeys.size())));
+      trainingDataKeys.removeAll(nextTrainingDataKeyList);
     }
 
     final Map<K, V> nextTrainingData = new HashMap<>();
