@@ -1090,6 +1090,14 @@ public final class MatrixCudaImpl implements Matrix {
     return devPtr;
   }
 
+  @Override
+  public boolean equals(final Object o) {
+    if (o instanceof MatrixCudaImpl) {
+      return compare((MatrixCudaImpl)o, 0);
+    }
+    return false;
+  }
+
   static MatrixCudaImpl toCudaImpl(final Matrix matrix) {
     if (!(matrix instanceof MatrixCudaImpl)) {
       // TODO #147: different matrix implementations
