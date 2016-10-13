@@ -94,14 +94,15 @@ public final class TrainingDataProvider<K> {
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
   public <V> Map<K, V> getNextTrainingData() {
-    final List<K> nextTrainingDataKeyList = new ArrayList<>(miniBatchSize);
+    final List<K> nextTrainingDataKeyList;
     synchronized (this) {
       if (trainingDataKeys.isEmpty()) {
         LOG.log(Level.INFO, "no more training data for current epoch");
         return Collections.emptyMap();
       }
 
-      nextTrainingDataKeyList.addAll(trainingDataKeys.subList(0, Math.min(miniBatchSize, trainingDataKeys.size())));
+      nextTrainingDataKeyList = new ArrayList<>(
+          trainingDataKeys.subList(0, Math.min(miniBatchSize, trainingDataKeys.size())));
       trainingDataKeys.removeAll(nextTrainingDataKeyList);
     }
 
