@@ -29,6 +29,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.IOException;
+import java.util.Properties;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -40,60 +41,67 @@ import static org.junit.Assert.assertEquals;
 public final class MatrixCodecTest {
 
   @Parameterized.Parameters
-  public static Object[] data() {
-    return new Object[] {"CPU", "GPU"};
+  public static Object[] data() throws IOException {
+    // read device option to run the test
+    java.io.InputStream is =
+        MatrixCodecTest.class.getClassLoader().getResourceAsStream("dolphin-async.properties");
+    if (is == null) {
+      // dolphin-async.properties is created by maven.
+      // To use different test runner dolphin-async-local.properties can be used instead
+      is = MatrixCodecTest.class.getClassLoader().getResourceAsStream("dolphin-async-local.properties");
+    }
+    final java.util.Properties p = new Properties();
+    p.load(is);
+    final String canRunGPU = p.getProperty("name");
+
+    if ("true".equals(canRunGPU)) {
+      return new Object[]{"CPU", "GPU"};
+    } else {
+      return new Object[]{"CPU"};
+    }
   }
 
-  private final String testDevice;
-  private final boolean canRunTest;
+  private String testDevice;
   private MatrixCodec matrixCodec;
   private Random random;
   private MatrixFactory matrixFactory;
 
-  public MatrixCodecTest(final String testDevice) throws IOException {
+  public MatrixCodecTest(final String testDevice) {
     this.testDevice = testDevice;
-    this.canRunTest = testDevice.equals("CPU") || System.getProperty("gpu").contentEquals("true");
   }
 
   @Before
   public void setUp() throws InjectionException {
-    if (canRunTest) {
-      final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(MatrixFactory.class,
-              testDevice.equals("CPU") ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
-          .build();
-      final Injector injector = Tang.Factory.getTang().newInjector(conf);
+    final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(MatrixFactory.class,
+            testDevice.equals("CPU") ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
+        .build();
+    final Injector injector = Tang.Factory.getTang().newInjector(conf);
 
-      this.matrixCodec = injector.getInstance(MatrixCodec.class);
-      this.random = new Random();
-      this.matrixFactory = injector.getInstance(MatrixFactory.class);
-    }
+    this.matrixCodec = injector.getInstance(MatrixCodec.class);
+    this.random = new Random();
+    this.matrixFactory = injector.getInstance(MatrixFactory.class);
   }
 
   /**
    * Checks that a random row vector does not change after encoding and decoding it, sequentially.
    */
   @Test
-   public void testEncodeDecodeVector() {
-    if (canRunTest) {
-      final Matrix inputVector = MatrixGenerator.generateRandomVector(matrixFactory, random);
-      final Matrix retVector = matrixCodec.decode(matrixCodec.encode(inputVector));
+  public void testEncodeDecodeVector() {
+    final Matrix inputVector = MatrixGenerator.generateRandomVector(matrixFactory, random);
+    final Matrix retVector = matrixCodec.decode(matrixCodec.encode(inputVector));
 
-      assertEquals(inputVector, retVector);
-    }
+    assertEquals(inputVector, retVector);
   }
 
   /**
-   *
    * Checks that a random matrix does not change after encoding and decoding it, sequentially.
    */
   @Test
   public void testEncodeDecodeMatrix() {
-    if (canRunTest) {
-      final Matrix inputMatrix = MatrixGenerator.generateRandomMatrix(matrixFactory, random);
-      final Matrix retMatrix = matrixCodec.decode(matrixCodec.encode(inputMatrix));
+    final Matrix inputMatrix = MatrixGenerator.generateRandomMatrix(matrixFactory, random);
+    final Matrix retMatrix = matrixCodec.decode(matrixCodec.encode(inputMatrix));
 
-      assertEquals("Encode-decode result is different from expected array", inputMatrix, retMatrix);
-    }
+    assertEquals("Encode-decode result is different from expected array", inputMatrix, retMatrix);
   }
 }
