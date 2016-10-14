@@ -410,6 +410,7 @@ public final class AsyncDolphinLauncher {
         optimizerConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
+        AvailableResourceTrackerImpl.getHttpConf(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
             .build());
