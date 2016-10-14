@@ -43,13 +43,8 @@ public final class MatrixCodecTest {
   @Parameterized.Parameters
   public static Object[] data() throws IOException {
     // read device option to run the test
-    java.io.InputStream is =
+    final java.io.InputStream is =
         MatrixCodecTest.class.getClassLoader().getResourceAsStream("dolphin-async.properties");
-    if (is == null) {
-      // dolphin-async.properties is created by maven.
-      // To use different test runner dolphin-async-local.properties can be used instead
-      is = MatrixCodecTest.class.getClassLoader().getResourceAsStream("dolphin-async-local.properties");
-    }
     final java.util.Properties p = new Properties();
     p.load(is);
     final String canRunGPU = p.getProperty("gpu");
