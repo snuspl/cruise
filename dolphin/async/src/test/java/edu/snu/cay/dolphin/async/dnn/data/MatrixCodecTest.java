@@ -29,6 +29,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 import java.util.Random;
 
@@ -43,9 +44,9 @@ public final class MatrixCodecTest {
   @Parameterized.Parameters
   public static Object[] data() throws IOException {
     // read device option to run the test
-    final java.io.InputStream is =
+    final InputStream is =
         MatrixCodecTest.class.getClassLoader().getResourceAsStream("dolphin-async.properties");
-    final java.util.Properties p = new Properties();
+    final Properties p = new Properties();
     p.load(is);
     final String canRunGPU = p.getProperty("gpu");
 
