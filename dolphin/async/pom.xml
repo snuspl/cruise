@@ -287,7 +287,6 @@
                 <phase>test-compile</phase>
                 <configuration>
                   <testExcludes>
-                    <exclude>edu/snu/cay/dolphin/async/dnn/blas/cuda/*.java</exclude>
                     <exclude>edu/snu/cay/dolphin/async/dnn/layers/cuda/*.java</exclude>
                   </testExcludes>
                 </configuration>

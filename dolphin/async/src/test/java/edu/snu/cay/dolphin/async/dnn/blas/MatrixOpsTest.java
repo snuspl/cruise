@@ -13,30 +13,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.dnn.blas.cuda;
+package edu.snu.cay.dolphin.async.dnn.blas;
 
-import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
-import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
-import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
+import edu.snu.cay.dolphin.async.dnn.TestDevice;
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-import static edu.snu.cay.dolphin.async.dnn.blas.cuda.FloatCompare.assertArrayEquals;
-import static edu.snu.cay.dolphin.async.dnn.blas.cuda.FloatCompare.assertEquals;
+import java.io.IOException;
+
+import static edu.snu.cay.dolphin.async.dnn.blas.FloatCompare.assertArrayEquals;
+import static edu.snu.cay.dolphin.async.dnn.blas.FloatCompare.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for {@link MatrixCudaImpl} operations.
+ * Tests for {@link Matrix} operations.
  */
+@RunWith(Parameterized.class)
 public final class MatrixOpsTest {
+  @Parameterized.Parameters
+  public static Object[] data() throws IOException {
+    return TestDevice.getTestDevices();
+  }
+
+  private String testDevice;
   private MatrixFactory matrixFactory;
+
+  public MatrixOpsTest(final String testDevice) {
+    this.testDevice = testDevice;
+  }
 
   @Before
   public void setUp() {
     try {
-      matrixFactory = Tang.Factory.getTang().newInjector().getInstance(MatrixCudaFactory.class);
+      if (testDevice.equals(TestDevice.CPU)) {
+        matrixFactory = Tang.Factory.getTang().newInjector().getInstance(MatrixJBLASFactory.class);
+      } else {
+        matrixFactory = Tang.Factory.getTang().newInjector().getInstance(MatrixCudaFactory.class);
+      }
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
