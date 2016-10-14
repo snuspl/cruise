@@ -488,24 +488,30 @@ public final class MatrixCudaImpl implements Matrix {
 
   @Override
   public Matrix sub(final Matrix matrix) {
-    checkElementWiseOpValidity(matrix);
-    final MatrixCudaImpl other = toCudaImpl(matrix);
     final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, columns);
-    if (!JavaCuda.sub(length, devPtr, other.getDevicePointer(), newMatrix.getDevicePointer())) {
+    try {
+      return sub(matrix, newMatrix);
+    } catch (final RuntimeException e) {
       newMatrix.free();
-      throw new RuntimeException("Failed to perform element-wise subtraction");
+      throw e;
     }
-    return newMatrix;
   }
 
   @Override
   public Matrix subi(final Matrix matrix) {
+    return sub(matrix, this);
+  }
+
+  @Override
+  public Matrix sub(final Matrix matrix, final Matrix result) {
     checkElementWiseOpValidity(matrix);
+    checkElementWiseOpValidity(result);
     final MatrixCudaImpl other = toCudaImpl(matrix);
-    if (!JavaCuda.sub(length, devPtr, other.getDevicePointer(), devPtr)) {
+    final MatrixCudaImpl resultMatrix = toCudaImpl(result);
+    if (!JavaCuda.sub(length, devPtr, other.getDevicePointer(), resultMatrix.getDevicePointer())) {
       throw new RuntimeException("Failed to perform element-wise subtraction");
     }
-    return this;
+    return result;
   }
 
   @Override
@@ -644,24 +650,30 @@ public final class MatrixCudaImpl implements Matrix {
 
   @Override
   public Matrix mul(final Matrix matrix) {
-    checkElementWiseOpValidity(matrix);
-    final MatrixCudaImpl other = toCudaImpl(matrix);
     final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, columns);
-    if (!JavaCuda.mul(length, devPtr, other.getDevicePointer(), newMatrix.getDevicePointer())) {
+    try {
+      return mul(matrix, newMatrix);
+    } catch (final RuntimeException e) {
       newMatrix.free();
-      throw new RuntimeException("Failed to perform element-wise multiplication");
+      throw e;
     }
-    return newMatrix;
   }
 
   @Override
   public Matrix muli(final Matrix matrix) {
+    return mul(matrix, this);
+  }
+
+  @Override
+  public Matrix mul(final Matrix matrix, final Matrix result) {
     checkElementWiseOpValidity(matrix);
+    checkElementWiseOpValidity(result);
     final MatrixCudaImpl other = toCudaImpl(matrix);
-    if (!JavaCuda.mul(length, devPtr, other.getDevicePointer(), devPtr)) {
+    final MatrixCudaImpl resultMatrix = toCudaImpl(result);
+    if (!JavaCuda.mul(length, devPtr, other.getDevicePointer(), resultMatrix.getDevicePointer())) {
       throw new RuntimeException("Failed to perform element-wise multiplication");
     }
-    return this;
+    return result;
   }
 
   @Override
@@ -874,108 +886,113 @@ public final class MatrixCudaImpl implements Matrix {
 
   @Override
   public Matrix mmul(final Matrix matrix) {
-    final MatrixCudaImpl other = toCudaImpl(matrix);
-    if (columns != other.getRows()) {
-      throw new IllegalArgumentException(
-          "The number of columns of left matrix should be equal to the number of rows of right matrix.");
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, matrix.getColumns());
+    try {
+      return mmul(matrix, newMatrix);
+    } catch (final RuntimeException e) {
+      newMatrix.free();
+      throw e;
     }
-    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, other.getColumns());
-    if (other.getColumns() == 1) {
-      // column vector
-      if (!JavaCuda.gemv('N',
-          rows, columns, 1.0f, devPtr, rows, other.getDevicePointer(), 1, 0.0f, newMatrix.getDevicePointer(), 1)) {
-        newMatrix.free();
-        throw new RuntimeException("Failed to perform matrix-vector multiplication");
-      }
-    } else {
-      if (!JavaCuda.gemm('N', 'N', rows, other.getColumns(), columns, 1.0f,
-          devPtr, rows, other.getDevicePointer(), columns, 0.0f, newMatrix.getDevicePointer(), rows)) {
-        newMatrix.free();
-        throw new RuntimeException("Failed to perform matrix-matrix multiplication");
-      }
-    }
-    return newMatrix;
   }
 
   @Override
   public Matrix mmuli(final Matrix matrix) {
-    final Matrix temp = this.mmul(matrix);
-    this.copy(temp);
-    temp.free();
-    return this;
+    return mmul(matrix, this);
   }
 
-  /**
-   * Compute matrix multiplication between transpose of this matrix and the operand matrix.
-   * @param matrix the operand matrix
-   * @return result matrix
-   */
-  public Matrix tmmul(final Matrix matrix) {
+  @Override
+  public Matrix mmul(final Matrix matrix, final Matrix result) {
+    if (columns != matrix.getRows()) {
+      throw new IllegalArgumentException(
+          "The number of columns of left matrix should be equal to the number of rows of right matrix.");
+    }
+    if (result.getRows() != rows || result.getColumns() != matrix.getColumns()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+
     final MatrixCudaImpl other = toCudaImpl(matrix);
-    if (rows != other.getRows()) {
+    final MatrixCudaImpl resultMatrix = toCudaImpl(result);
+    if (other.getColumns() == 1) {
+      // column vector
+      if (!JavaCuda.gemv('N',
+          rows, columns, 1.0f, devPtr, rows, other.getDevicePointer(), 1, 0.0f, resultMatrix.getDevicePointer(), 1)) {
+        throw new RuntimeException("Failed to perform matrix-vector multiplication");
+      }
+    } else {
+      if (!JavaCuda.gemm('N', 'N', rows, other.getColumns(), columns, 1.0f,
+          devPtr, rows, other.getDevicePointer(), columns, 0.0f, resultMatrix.getDevicePointer(), rows)) {
+        throw new RuntimeException("Failed to perform matrix-matrix multiplication");
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public Matrix tmmul(final Matrix matrix) {
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(columns, matrix.getColumns());
+    try {
+      return tmmul(matrix, newMatrix);
+    } catch (final RuntimeException e) {
+      newMatrix.free();
+      throw e;
+    }
+  }
+
+  @Override
+  public Matrix tmmul(final Matrix matrix, final Matrix result) {
+    if (rows != matrix.getRows()) {
       throw new IllegalArgumentException(
           "The number of rows of left matrix should be equal to the number of rows of right matrix.");
     }
-    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(columns, other.getColumns());
+    if (result.getRows() != columns || result.getColumns() != matrix.getColumns()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+
+    final MatrixCudaImpl other = toCudaImpl(matrix);
+    final MatrixCudaImpl resultMatrix = toCudaImpl(result);
     if (other.getColumns() == 1) {
       // column vector
       if (!JavaCuda.gemv('T',
-          rows, columns, 1.0f, devPtr, rows, other.getDevicePointer(), 1, 0.0f, newMatrix.getDevicePointer(), 1)) {
-        newMatrix.free();
+          rows, columns, 1.0f, devPtr, rows, other.getDevicePointer(), 1, 0.0f, resultMatrix.getDevicePointer(), 1)) {
         throw new RuntimeException("Failed to perform matrix-vector multiplication");
       }
     } else {
       if (!JavaCuda.gemm('T', 'N', columns, other.getColumns(), rows, 1.0f,
-          devPtr, rows, other.getDevicePointer(), other.getRows(), 0.0f, newMatrix.getDevicePointer(), columns)) {
-        newMatrix.free();
+          devPtr, rows, other.getDevicePointer(), other.getRows(), 0.0f, resultMatrix.getDevicePointer(), columns)) {
         throw new RuntimeException("Failed to perform matrix-matrix multiplication");
       }
     }
-    return newMatrix;
+    return result;
   }
 
-  /**
-   * Compute in-place matrix multiplication between transpose of this matrix and the operand matrix.
-   * @param matrix the operand matrix
-   * @return result matrix
-   */
-  public Matrix tmmuli(final Matrix matrix) {
-    final Matrix temp = this.tmmul(matrix);
-    this.copy(temp);
-    temp.free();
-    return this;
-  }
-
-  /**
-   * Compute matrix multiplication between this matrix and the transpose of operand matrix.
-   * @param matrix the operand matrix
-   * @return result matrix
-   */
+  @Override
   public Matrix mmult(final Matrix matrix) {
-    final MatrixCudaImpl other = toCudaImpl(matrix);
-    if (columns != other.getColumns()) {
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, matrix.getRows());
+    try {
+      return mmult(matrix, newMatrix);
+    } catch (final RuntimeException e) {
+      newMatrix.free();
+      throw e;
+    }
+  }
+
+  @Override
+  public Matrix mmult(final Matrix matrix, final Matrix result) {
+    if (columns != matrix.getColumns()) {
       throw new IllegalArgumentException(
           "The number of columns of left matrix should be equal to the number of columns of right matrix.");
     }
-    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, other.getRows());
+    if (result.getRows() != rows || result.getColumns() != matrix.getRows()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+
+    final MatrixCudaImpl other = toCudaImpl(matrix);
+    final MatrixCudaImpl resultMatrix = toCudaImpl(result);
     if (!JavaCuda.gemm('N', 'T', rows, other.getRows(), columns, 1.0f,
-        devPtr, rows, other.getDevicePointer(), other.getRows(), 0.0f, newMatrix.getDevicePointer(), rows)) {
-      newMatrix.free();
+        devPtr, rows, other.getDevicePointer(), other.getRows(), 0.0f, resultMatrix.getDevicePointer(), rows)) {
       throw new RuntimeException("Failed to perform matrix-matrix multiplication");
     }
-    return newMatrix;
-  }
-
-  /**
-   * Compute in-place matrix multiplication between this matrix and the transpose of operand matrix.
-   * @param matrix the operand matrix
-   * @return result matrix
-   */
-  public Matrix mmulti(final Matrix matrix) {
-    final Matrix temp = this.mmult(matrix);
-    this.copy(temp);
-    temp.free();
-    return this;
+    return result;
   }
 
   @Override
@@ -1044,16 +1061,30 @@ public final class MatrixCudaImpl implements Matrix {
 
   @Override
   public Matrix rowSums() {
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, 1);
+    try {
+      return rowSums(newMatrix);
+    } catch (final RuntimeException e) {
+      newMatrix.free();
+      throw e;
+    }
+  }
+
+  @Override
+  public Matrix rowSums(final Matrix result) {
     if (multiplierPtr.isNull()) {
       initMultiplier();
     }
-    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(rows, 1);
+    if (rows != result.getRows() || result.getColumns() != 1) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+
+    final MatrixCudaImpl resultMatrix = toCudaImpl(result);
     if (!JavaCuda.gemv('N', rows, columns, 1.0f,
-        devPtr, rows, multiplierPtr, 1, 0.0f, newMatrix.getDevicePointer(), 1)) {
-      newMatrix.free();
+        devPtr, rows, multiplierPtr, 1, 0.0f, resultMatrix.getDevicePointer(), 1)) {
       throw new RuntimeException("Failed to perform matrix-vector multiplication");
     }
-    return newMatrix;
+    return resultMatrix;
   }
 
   @Override
@@ -1081,7 +1112,6 @@ public final class MatrixCudaImpl implements Matrix {
     multiplierLength = 0;
   }
 
-  @Override
   public void free() {
     deviceFree();
     multiplierFree();

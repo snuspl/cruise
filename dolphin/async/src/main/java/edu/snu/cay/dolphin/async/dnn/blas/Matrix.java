@@ -195,6 +195,11 @@ public interface Matrix {
   Matrix subi(Matrix matrix);
 
   /**
+   * Returns the result matrix as a substraction of a matrix, element-wise.
+   */
+  Matrix sub(Matrix matrix, Matrix result);
+
+  /**
    * Subtracts a vector from all columns of the matrix, element-wise.
    */
   Matrix subColumnVector(Matrix vector);
@@ -253,6 +258,11 @@ public interface Matrix {
    * Multiplies by a matrix, element-wise (in place).
    */
   Matrix muli(Matrix matrix);
+
+  /**
+   * Returns the result matrix as a mulitiplies by a matrix, element-wise.
+   */
+  Matrix mul(Matrix matrix, Matrix result);
 
   /**
    * Multiplies all columns of the matrix by a vector, element-wise.
@@ -345,6 +355,31 @@ public interface Matrix {
   Matrix mmuli(Matrix matrix);
 
   /**
+   * Returns result as a Matrix-Matrix multiplication.
+   */
+  Matrix mmul(Matrix matrix, Matrix result);
+
+  /**
+   * Multiplication between transpose of this matrix and operand matrix.
+   */
+  Matrix tmmul(Matrix matrix);
+
+  /**
+   * Returns result as a multiplication between transpose of this matrix and operand matrix.
+   */
+  Matrix tmmul(Matrix matrix, Matrix result);
+
+  /**
+   * Multiplication between this matrix and the transpose of operand matrix.
+   */
+  Matrix mmult(Matrix matrix);
+
+  /**
+   * Returns result as a multiplication between this matrix and the transpose of operand matrix.
+   */
+  Matrix mmult(Matrix matrix, Matrix result);
+
+  /**
    * Returns the maximum element of the matrix.
    */
   float max();
@@ -385,6 +420,11 @@ public interface Matrix {
   Matrix rowSums();
 
   /**
+   * Returns result as a column vector containing the sum of elements in each row.
+   */
+  Matrix rowSums(Matrix result);
+
+  /**
    * Returns the sum of all elements in the matrix.
    */
   float sum();
@@ -396,9 +436,4 @@ public interface Matrix {
    * and the maximal absolute difference in all elements is smaller than the specified tolerance.
    */
   boolean compare(Matrix matrix, float tolerance);
-
-  /**
-   * Free the allocated memory if it exists.
-   */
-  void free();
 }

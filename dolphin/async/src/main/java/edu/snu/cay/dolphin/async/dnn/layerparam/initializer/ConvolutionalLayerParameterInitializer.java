@@ -114,10 +114,7 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
 
     weight.muli(initWeight); // multiply by standard deviation.
 
-    return LayerParameter.newBuilder()
-        .setWeightParam(weight)
-        .setBiasParam(bias)
-        .build();
+    return new LayerParameter(weight, bias);
   }
 
   /**

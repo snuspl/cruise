@@ -15,12 +15,12 @@
  */
 package edu.snu.cay.dolphin.async.dnn.layers.cuda;
 
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.JavaCuda;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
-import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
@@ -42,26 +42,27 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   private final int inputChannel;
   private final int inputHeight;
   private final int inputWidth;
-  private final int kernelHeight;
-  private final int kernelWidth;
   private final int[] outputShape;
   private MatrixFactory matrixFactory;
+  private Matrix output;
+  private Matrix layerError;
+
+  private final Pointer filterDesc;
+  private final Pointer convDesc;
+  private final Pointer biasDesc;
 
   private Pointer inputDesc;
   private Pointer activationDesc;
-  private Pointer filterDesc;
-  private Pointer convDesc;
-  private Pointer biasDesc;
+  private Pointer forwardAlgo;
+  private Pointer backwardFilterAlgo;
+  private Pointer backwardDataAlgo;
 
-  private final Pointer forwardAlgo;
-  private final Pointer backwardFilterAlgo;
-  private final Pointer backwardDataAlgo;
-
-  private final long forwardWorkspaceSize;
-  private final long backwardFilterWorkspaceSize;
-  private final long backwardDataWorkspaceSize;
+  private long forwardWorkspaceSize;
+  private long backwardFilterWorkspaceSize;
+  private long backwardDataWorkspaceSize;
   private long maxWorkspaceSize;
-  private final Pointer workspace;
+  private Pointer workspace;
+  private final LayerParameter parameterGradient;
 
   /**
    * @param index the index of this layer
@@ -72,11 +73,9 @@ public final class ConvolutionalGpuLayer extends LayerBase {
    * @param strideWidth the horizontal intervals at which to apply the filters to the input images
    * @param kernelHeight the height of the filters
    * @param kernelWidth the width of the filters
-   * @param batchSize the batch size (number of images) this layer is receiving
    * @param layerParameterInitializer the layer parameter initializer that generates the new layer parameter following
    *                                  the configuration defined by users
    * @param matrixFactory the factory to create new matrices
-   * @param batchSize the batch Size (number of images) of this layer
    */
   @Inject
   private ConvolutionalGpuLayer(@Parameter(LayerIndex.class) final int index,
@@ -87,14 +86,13 @@ public final class ConvolutionalGpuLayer extends LayerBase {
                                 @Parameter(StrideWidth.class) final int strideWidth,
                                 @Parameter(KernelHeight.class) final int kernelHeight,
                                 @Parameter(KernelWidth.class) final int kernelWidth,
-                                @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
                                 final LayerParameterInitializer layerParameterInitializer,
                                 final MatrixFactory matrixFactory) {
     super(index, inputShape);
-    this.kernelHeight = kernelHeight;
-    this.kernelWidth = kernelWidth;
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
+    this.output = null;
+    this.layerError = null;
     this.maxWorkspaceSize = 0;
 
     if (getInputShape().length == 2) {
@@ -107,27 +105,26 @@ public final class ConvolutionalGpuLayer extends LayerBase {
       this.inputWidth = getInputShape()[2];
     }
 
+    final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
+    final Matrix biasGradient = matrixFactory.create(outputShape[0], 1);
+    this.parameterGradient = new LayerParameter(weightGradient, biasGradient);
+
     //setup
-    this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
     this.filterDesc = JavaCudnn.createFilterDesc(outputShape[0], inputChannel, kernelHeight, kernelWidth);
     this.convDesc = JavaCudnn.createConvDesc(paddingHeight, paddingWidth, strideHeight, strideWidth);
-    this.activationDesc = JavaCudnn.createTensorDesc(batchSize, outputShape[0], outputShape[1], outputShape[2]);
     this.biasDesc = JavaCudnn.createTensorDesc(1, outputShape[0], 1, 1);
 
-    this.forwardAlgo = JavaCudnn.getConvForwardAlgo(inputDesc, filterDesc, convDesc, activationDesc);
-    this.backwardDataAlgo = JavaCudnn.getConvBackwardDataAlgo(filterDesc, activationDesc, convDesc, inputDesc);
-    this.backwardFilterAlgo = JavaCudnn.getConvBackwardFilterAlgo(inputDesc, activationDesc, convDesc, filterDesc);
+    this.inputDesc = new Pointer();
+    this.activationDesc = new Pointer();
+    this.forwardAlgo = new Pointer();
+    this.backwardDataAlgo = new Pointer();
+    this.backwardFilterAlgo = new Pointer();
 
-    this.forwardWorkspaceSize = JavaCudnn.getConvForwardWorkspaceSizeInBytes(
-        inputDesc, filterDesc, convDesc, activationDesc, forwardAlgo);
-    setMaxWorkspaceSize(forwardWorkspaceSize);
-    this.backwardDataWorkspaceSize = JavaCudnn.getConvBackwardDataWorkspaceSizeInBytes(
-        filterDesc, activationDesc, convDesc, inputDesc, backwardDataAlgo);
-    setMaxWorkspaceSize(backwardDataWorkspaceSize);
-    this.backwardFilterWorkspaceSize = JavaCudnn.getConvBackwardFilterWorkspaceSizeInBytes(
-        inputDesc, activationDesc, convDesc, filterDesc, backwardFilterAlgo);
-    setMaxWorkspaceSize(backwardFilterWorkspaceSize);
-    this.workspace = JavaCuda.deviceMalloc(maxWorkspaceSize);
+    this.forwardWorkspaceSize = 0;
+    this.backwardDataWorkspaceSize = 0;
+    this.backwardFilterWorkspaceSize = 0;
+    this.maxWorkspaceSize = 0;
+    this.workspace = null;
   }
 
   private void setMaxWorkspaceSize(final long workspaceSize) {
@@ -154,7 +151,36 @@ public final class ConvolutionalGpuLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    final Matrix output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
+    final int inputSize = input.getColumns();
+    if (output == null || output.getColumns() != inputSize) {
+      JavaCudnn.destroyTensorDesc(inputDesc);
+      JavaCudnn.destroyTensorDesc(activationDesc);
+      JavaCudnn.destroyAlgo(forwardAlgo);
+      JavaCudnn.destroyAlgo(backwardDataAlgo);
+      JavaCudnn.destroyAlgo(backwardFilterAlgo);
+      JavaCuda.deviceFree(workspace);
+      MatrixUtils.free(output);
+
+      inputDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
+      activationDesc = JavaCudnn.createTensorDesc(inputSize, outputShape[0], outputShape[1], outputShape[2]);
+      forwardAlgo = JavaCudnn.getConvForwardAlgo(inputDesc, filterDesc, convDesc, activationDesc);
+      backwardDataAlgo = JavaCudnn.getConvBackwardDataAlgo(filterDesc, activationDesc, convDesc, inputDesc);
+      backwardFilterAlgo = JavaCudnn.getConvBackwardFilterAlgo(inputDesc, activationDesc, convDesc, filterDesc);
+
+      forwardWorkspaceSize = JavaCudnn.getConvForwardWorkspaceSizeInBytes(
+          inputDesc, filterDesc, convDesc, activationDesc, forwardAlgo);
+      setMaxWorkspaceSize(forwardWorkspaceSize);
+      backwardDataWorkspaceSize = JavaCudnn.getConvBackwardDataWorkspaceSizeInBytes(
+          filterDesc, activationDesc, convDesc, inputDesc, backwardDataAlgo);
+      setMaxWorkspaceSize(backwardDataWorkspaceSize);
+      backwardFilterWorkspaceSize = JavaCudnn.getConvBackwardFilterWorkspaceSizeInBytes(
+          inputDesc, activationDesc, convDesc, filterDesc, backwardFilterAlgo);
+      setMaxWorkspaceSize(backwardFilterWorkspaceSize);
+      workspace = JavaCuda.deviceMalloc(maxWorkspaceSize);
+
+      output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), inputSize);
+    }
+
     if (JavaCudnn.convFeedForward(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         filterDesc, ((MatrixCudaImpl) getLayerParameter().getWeightParam()).getDevicePointer(),
         biasDesc, ((MatrixCudaImpl) getLayerParameter().getBiasParam()).getDevicePointer(),
@@ -175,12 +201,16 @@ public final class ConvolutionalGpuLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
-    final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
+    if (layerError == null || layerError.getColumns() != input.getColumns()) {
+      MatrixUtils.free(layerError);
+      layerError = matrixFactory.create(input.getRows(), input.getColumns());
+    }
+
     if (JavaCudnn.convBackPropagate(
         filterDesc, ((MatrixCudaImpl) getLayerParameter().getWeightParam()).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) nextError).getDevicePointer(), convDesc, backwardDataAlgo, workspace,
-        backwardDataWorkspaceSize, inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
-      return error;
+        backwardDataWorkspaceSize, inputDesc, ((MatrixCudaImpl) layerError).getDevicePointer())) {
+      return layerError;
     } else {
       throw new RuntimeException("Failed to backPropagate");
     }
@@ -189,19 +219,15 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
-    final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
     if (!JavaCudnn.convGenWeightGradient(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) error).getDevicePointer(), convDesc, backwardFilterAlgo, workspace,
-        backwardFilterWorkspaceSize, filterDesc, ((MatrixCudaImpl) weightGradient).getDevicePointer())) {
+        backwardFilterWorkspaceSize, filterDesc,
+        ((MatrixCudaImpl) parameterGradient.getWeightParam()).getDevicePointer())) {
       throw new RuntimeException("Failed to generateParameterGradient for weight");
     }
-    final Matrix biasGradient = matrixFactory.create(outputShape[0], 1);
     if (JavaCudnn.convGenBiasGradient(activationDesc, ((MatrixCudaImpl) error).getDevicePointer(),
-        biasDesc, ((MatrixCudaImpl) biasGradient).getDevicePointer())) {
-      return LayerParameter.newBuilder()
-          .setWeightParam(weightGradient)
-          .setBiasParam(biasGradient)
-          .build();
+        biasDesc, ((MatrixCudaImpl) parameterGradient.getBiasParam()).getDevicePointer())) {
+      return parameterGradient;
     } else {
       throw new RuntimeException("Failed to generateParameterGradient for bias");
     }
@@ -209,6 +235,8 @@ public final class ConvolutionalGpuLayer extends LayerBase {
 
   @Override
   public void cleanup() {
+    super.cleanup();
+
     JavaCudnn.destroyTensorDesc(inputDesc);
     JavaCudnn.destroyFilterDesc(filterDesc);
     JavaCudnn.destroyConvDesc(convDesc);
@@ -219,5 +247,9 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     JavaCudnn.destroyAlgo(backwardDataAlgo);
     JavaCudnn.destroyAlgo(backwardFilterAlgo);
     JavaCuda.deviceFree(workspace);
+
+    MatrixUtils.free(output);
+    MatrixUtils.free(layerError);
+    parameterGradient.cleanup();
   }
 }

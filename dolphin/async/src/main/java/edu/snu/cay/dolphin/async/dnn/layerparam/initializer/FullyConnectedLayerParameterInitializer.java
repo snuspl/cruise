@@ -74,10 +74,7 @@ public final class FullyConnectedLayerParameterInitializer implements LayerParam
 
     weight.muli(initWeight); // multiply by standard deviation.
 
-    return LayerParameter.newBuilder()
-        .setWeightParam(weight)
-        .setBiasParam(bias)
-        .build();
+    return new LayerParameter(weight, bias);
   }
 
   /** {@inheritDoc} */

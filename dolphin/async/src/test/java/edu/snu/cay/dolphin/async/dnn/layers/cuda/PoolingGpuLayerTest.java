@@ -374,6 +374,7 @@ public final class PoolingGpuLayerTest {
 
   @After
   public void tearDown() {
+    // TODO #891: Free allocated memory of GPU layer tests such as input or expectedError.
     maxPoolingLayer.cleanup();
     averagePoolingLayer.cleanup();
     remainderExistingMaxPoolingLayer.cleanup();
@@ -405,6 +406,7 @@ public final class PoolingGpuLayerTest {
 
   @Test
   public void testAveragePoolingBackPropagate() {
+    averagePoolingLayer.feedForward(input);
     final Matrix error = averagePoolingLayer.backPropagate(input, expectedAveragePoolingActivation, nextError);
     assertTrue(expectedAveragePoolingError.compare(error, TOLERANCE));
   }
@@ -431,6 +433,7 @@ public final class PoolingGpuLayerTest {
 
   @Test
   public void testRemainderExistingAveragePoolingBackPropagate() {
+    remainderExistingAveragePoolingLayer.feedForward(input);
     final Matrix error = remainderExistingAveragePoolingLayer
         .backPropagate(input, expectedRemainderExistingAveragePoolingActivation, nextError);
     assertTrue(expectedRemainderExistingAveragePoolingError.compare(error, TOLERANCE));
@@ -458,6 +461,7 @@ public final class PoolingGpuLayerTest {
 
   @Test
   public void testAveragePoolingWithPaddingBackPropagate() {
+    averagePoolingWithPaddingLayer.feedForward(input);
     final Matrix error = averagePoolingWithPaddingLayer
         .backPropagate(input, expectedAveragePoolingWithPaddingActivation, nextErrorWithPadding);
     assertTrue(expectedAveragePoolingWithPaddingError.compare(error, TOLERANCE));
@@ -473,6 +477,7 @@ public final class PoolingGpuLayerTest {
 
   @Test
   public void test3DBackPropagateMax() {
+    maxPooling3DLayer.feedForward(input3D);
     final Matrix maxError = maxPooling3DLayer
         .backPropagate(input3D, expectedMaxPooling3DActivation, nextError3D);
     assertTrue(expectedMaxPooling3DError.compare(maxError, TOLERANCE));
@@ -480,6 +485,7 @@ public final class PoolingGpuLayerTest {
 
   @Test
   public void test3DBackPropagateAvg() {
+    averagePooling3DLayer.feedForward(input3D);
     final Matrix averageError = averagePooling3DLayer
         .backPropagate(input3D, expectedAveragePooling3DActivation, nextError3D);
     assertTrue(expectedAveragePooling3DError.compare(averageError, TOLERANCE));

@@ -13,22 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.dnn.blas.cuda;
-
 /**
- * Utility class for comparing floats with tolerance.
+ * Classes for tests related to BLAS implementation.
  */
-final class FloatCompare {
-  static final float TOLERANCE = 1.0E-06F;
-
-  private FloatCompare() {
-  }
-
-  static void assertEquals(final float expected, final float actual) {
-    org.junit.Assert.assertEquals(expected, actual, TOLERANCE);
-  }
-
-  static void assertArrayEquals(final float[] expecteds, final float[] actuals) {
-    org.junit.Assert.assertArrayEquals(expecteds, actuals, TOLERANCE);
-  }
-}
+package edu.snu.cay.dolphin.async.dnn.blas;

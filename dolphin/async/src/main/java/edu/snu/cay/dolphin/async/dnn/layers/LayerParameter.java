@@ -16,13 +16,20 @@
 package edu.snu.cay.dolphin.async.dnn.layers;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 
 /**
  * The parameter of the layer.
  */
 public final class LayerParameter {
-  private final Matrix weightParam;
-  private final Matrix biasParam;
+  private Matrix weightParam;
+  private Matrix biasParam;
+
+  public LayerParameter(final Matrix weightParam,
+                        final Matrix biasParam) {
+    this.weightParam = weightParam;
+    this.biasParam = biasParam;
+  }
 
   /**
    * Generates a new instance of a layer parameter.
@@ -30,13 +37,6 @@ public final class LayerParameter {
    */
   public static LayerParameter newEmptyInstance() {
     return new LayerParameter(null, null);
-  }
-
-  /**
-   * @return a new LayerParameter builder.
-   */
-  public static Builder newBuilder() {
-    return new Builder();
   }
 
   /**
@@ -53,30 +53,27 @@ public final class LayerParameter {
     return biasParam;
   }
 
-  public static final class Builder implements org.apache.reef.util.Builder<LayerParameter> {
-    private Matrix weightParam;
-    private Matrix biasParam;
-
-    public Builder setWeightParam(final Matrix weightParam) {
-      this.weightParam = weightParam;
-      return this;
-    }
-
-    public Builder setBiasParam(final Matrix biasParam) {
-      this.biasParam = biasParam;
-      return this;
-    }
-
-    @Override
-    public LayerParameter build() {
-      return new LayerParameter(this.weightParam, this.biasParam);
-    }
+  /**
+   * Sets new weightParam, the old weightParam is destroyed.
+   * @param weightParam new WeightParam to set
+   */
+  public void setWeightParam(final Matrix weightParam) {
+    MatrixUtils.free(this.weightParam);
+    this.weightParam = weightParam;
   }
 
-  private LayerParameter(final Matrix weightParam,
-                         final Matrix biasParam) {
-    this.weightParam = weightParam;
+  /**
+   * Sets new biasParam, the old biasParam is destroyed.
+   * @param biasParam new biasParam to set
+   */
+  public void setBiasParam(final Matrix biasParam) {
+    MatrixUtils.free(this.biasParam);
     this.biasParam = biasParam;
+  }
+
+  public void cleanup() {
+    MatrixUtils.free(weightParam);
+    MatrixUtils.free(biasParam);
   }
 
   @Override

@@ -13,29 +13,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.dnn.blas.cuda;
+package edu.snu.cay.dolphin.async.dnn.blas;
 
-import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
-import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.TestDevice;
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-import static edu.snu.cay.dolphin.async.dnn.blas.cuda.FloatCompare.assertArrayEquals;
-import static edu.snu.cay.dolphin.async.dnn.blas.cuda.FloatCompare.assertEquals;
+import java.io.IOException;
+
+import static edu.snu.cay.dolphin.async.dnn.blas.FloatCompare.assertArrayEquals;
+import static edu.snu.cay.dolphin.async.dnn.blas.FloatCompare.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for {@link MatrixCudaImpl} operations.
+ * Tests for {@link Matrix} operations.
  */
+@RunWith(Parameterized.class)
 public final class MatrixOpsTest {
+
+  @Parameterized.Parameters
+  public static Object[] data() throws IOException {
+    return TestDevice.getTestDevices();
+  }
+
+  private String testDevice;
   private MatrixFactory matrixFactory;
+
+  public MatrixOpsTest(final String testDevice) {
+    this.testDevice = testDevice;
+  }
 
   @Before
   public void setUp() {
     try {
-      matrixFactory = Tang.Factory.getTang().newInjector().getInstance(MatrixCudaFactory.class);
+      if (testDevice.equals(TestDevice.CPU)) {
+        matrixFactory = Tang.Factory.getTang().newInjector().getInstance(MatrixJBLASFactory.class);
+      } else {
+        matrixFactory = Tang.Factory.getTang().newInjector().getInstance(MatrixCudaFactory.class);
+      }
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -65,25 +86,30 @@ public final class MatrixOpsTest {
 
     final Matrix m1 = m.columnSums();
     assertArrayEquals(new float[]{0.6F, 1.6F}, m1.toFloatArray());
-    m1.free();
+    MatrixUtils.free(m1);
     final Matrix columnMaxs = m.columnMaxs();
     assertArrayEquals(new float[]{0.3F, 5.0F}, columnMaxs.toFloatArray());
-    columnMaxs.free();
+    MatrixUtils.free(columnMaxs);
     final Matrix columnMins = m.columnMins();
     assertArrayEquals(new float[]{0.1F, -4.0F}, columnMins.toFloatArray());
-    columnMins.free();
+    MatrixUtils.free(columnMins);
 
     final Matrix m2 = m.rowSums();
     assertArrayEquals(new float[]{-3.9F, 5.2F, 0.9F}, m2.toFloatArray());
-    m2.free();
+    MatrixUtils.free(m2);
+
+    final Matrix m3 = matrixFactory.create(m.getRows(), 1);
+    m.rowSums(m3);
+    MatrixUtils.free(m3);
+
     final Matrix rowMaxs = m.rowMaxs();
     assertArrayEquals(new float[]{0.1F, 5.0F, 0.6F}, rowMaxs.toFloatArray());
-    rowMaxs.free();
+    MatrixUtils.free(rowMaxs);
     final Matrix rowMins = m.rowMins();
     assertArrayEquals(new float[]{-4.0F, 0.2F, 0.3F}, rowMins.toFloatArray());
-    rowMins.free();
+    MatrixUtils.free(rowMins);
 
-    m.free();
+    MatrixUtils.free(m);
   }
 
   /**
@@ -102,39 +128,39 @@ public final class MatrixOpsTest {
     assertArrayEquals(output1, m1.toFloatArray());
     m1.addi(-1.0F);
     assertArrayEquals(input, m1.toFloatArray());
-    m1.free();
+    MatrixUtils.free(m1);
 
     final Matrix m2 = m.sub(-1.0F);
     assertArrayEquals(output1, m2.toFloatArray());
     m2.subi(1.0F);
     assertArrayEquals(input, m2.toFloatArray());
-    m2.free();
+    MatrixUtils.free(m2);
 
     final Matrix m3 = m.mul(2.0F);
     assertArrayEquals(output2, m3.toFloatArray());
     m3.muli(0.5F);
     assertArrayEquals(input, m3.toFloatArray());
-    m3.free();
+    MatrixUtils.free(m3);
 
     final Matrix m4 = m.div(0.5F);
     assertArrayEquals(output2, m4.toFloatArray());
     m4.divi(2.0F);
     assertArrayEquals(input, m4.toFloatArray());
-    m4.free();
+    MatrixUtils.free(m4);
 
     final Matrix m5 = m.rsub(1.0F);
     assertArrayEquals(output3, m5.toFloatArray());
     m5.rsubi(1.0F);
     assertArrayEquals(input, m5.toFloatArray());
-    m5.free();
+    MatrixUtils.free(m5);
 
     final Matrix m6 = m.rdiv(0.6F);
     assertArrayEquals(output4, m6.toFloatArray());
     m6.rdivi(0.6F);
     assertArrayEquals(input, m6.toFloatArray());
-    m6.free();
+    MatrixUtils.free(m6);
 
-    m.free();
+    MatrixUtils.free(m);
   }
 
   /**
@@ -155,33 +181,33 @@ public final class MatrixOpsTest {
 
     final Matrix v1 = m.getColumn(1);
     assertArrayEquals(input1, v1.toFloatArray());
-    v1.free();
+    MatrixUtils.free(v1);
 
     final Matrix m1 = m.addColumnVector(v);
     assertArrayEquals(output2, m1.toFloatArray());
     m1.subiColumnVector(v);
     assertArrayEquals(output1, m1.toFloatArray());
-    m1.free();
+    MatrixUtils.free(m1);
 
     final Matrix m2 = m.subColumnVector(v);
     assertArrayEquals(output3, m2.toFloatArray());
     m2.addiColumnVector(v);
     assertArrayEquals(output1, m2.toFloatArray());
-    m2.free();
+    MatrixUtils.free(m2);
 
     final Matrix m3 = m.mulColumnVector(v);
     assertArrayEquals(output4, m3.toFloatArray());
     m3.diviColumnVector(v);
     assertArrayEquals(output1, m3.toFloatArray());
-    m3.free();
+    MatrixUtils.free(m3);
 
     final Matrix m4 = m.divColumnVector(v);
     assertArrayEquals(output5, m4.toFloatArray());
     m4.muliColumnVector(v);
     assertArrayEquals(output1, m4.toFloatArray());
-    m4.free();
+    MatrixUtils.free(m4);
 
-    m.free();
+    MatrixUtils.free(m);
   }
 
   /**
@@ -202,33 +228,33 @@ public final class MatrixOpsTest {
 
     final Matrix v1 = m.getRow(1);
     assertArrayEquals(input1, v1.toFloatArray());
-    v1.free();
+    MatrixUtils.free(v1);
 
     final Matrix m1 = m.addRowVector(v);
     assertArrayEquals(output2, m1.toFloatArray());
     m1.subiRowVector(v);
     assertArrayEquals(output1, m1.toFloatArray());
-    m1.free();
+    MatrixUtils.free(m1);
 
     final Matrix m2 = m.subRowVector(v);
     assertArrayEquals(output3, m2.toFloatArray());
     m2.addiRowVector(v);
     assertArrayEquals(output1, m2.toFloatArray());
-    m2.free();
+    MatrixUtils.free(m2);
 
     final Matrix m3 = m.mulRowVector(v);
     assertArrayEquals(output4, m3.toFloatArray());
     m3.diviRowVector(v);
     assertArrayEquals(output1, m3.toFloatArray());
-    m3.free();
+    MatrixUtils.free(m3);
 
     final Matrix m4 = m.divRowVector(v);
     assertArrayEquals(output5, m4.toFloatArray());
     m4.muliRowVector(v);
     assertArrayEquals(output1, m4.toFloatArray());
-    m4.free();
+    MatrixUtils.free(m4);
 
-    m.free();
+    MatrixUtils.free(m);
   }
 
   /**
@@ -249,40 +275,53 @@ public final class MatrixOpsTest {
     assertArrayEquals(output1, m3.toFloatArray());
     m3.subi(m2);
     assertArrayEquals(input1, m3.toFloatArray());
-    m3.free();
+    MatrixUtils.free(m3);
 
     final Matrix m4 = m1.sub(m2);
     assertArrayEquals(output2, m4.toFloatArray());
     m4.addi(m2);
     assertArrayEquals(input1, m4.toFloatArray());
-    m4.free();
+    MatrixUtils.free(m4);
 
     final Matrix m5 = m1.mul(m2);
     assertArrayEquals(output3, m5.toFloatArray());
     m5.divi(m2);
     assertArrayEquals(input1, m5.toFloatArray());
-    m5.free();
+    MatrixUtils.free(m5);
 
     final Matrix m6 = m1.div(m2);
     assertArrayEquals(output4, m6.toFloatArray());
     m6.muli(m2);
     assertArrayEquals(input1, m6.toFloatArray());
-    m6.free();
+    MatrixUtils.free(m6);
 
     final Matrix m7 = m2.rsub(m1);
     assertArrayEquals(output2, m7.toFloatArray());
     m7.rsubi(m1);
     assertArrayEquals(input2, m7.toFloatArray());
-    m7.free();
+    MatrixUtils.free(m7);
 
     final Matrix m8 = m2.rdiv(m1);
     assertArrayEquals(output4, m8.toFloatArray());
     m8.rdivi(m1);
     assertArrayEquals(input2, m8.toFloatArray());
-    m8.free();
+    MatrixUtils.free(m8);
 
-    m1.free();
-    m2.free();
+    final Matrix m9 = m1.add(m2);
+    assertArrayEquals(output1, m9.toFloatArray());
+    final Matrix m10 = matrixFactory.create(m9.getRows(), m9.getColumns());
+    m9.sub(m2, m10);
+    assertArrayEquals(input1, m10.toFloatArray());
+    MatrixUtils.free(m9);
+    MatrixUtils.free(m10);
+
+    final Matrix m11 = matrixFactory.create(m1.getRows(), m2.getColumns());
+    m1.mul(m2, m11);
+    assertArrayEquals(output3, m11.toFloatArray());
+    MatrixUtils.free(m11);
+
+    MatrixUtils.free(m1);
+    MatrixUtils.free(m2);
   }
 
   /**
@@ -297,12 +336,14 @@ public final class MatrixOpsTest {
     final Matrix m1 = matrixFactory.create(input1, 2, 3);
     final Matrix m2 = matrixFactory.create(input2, 3, 4);
     final Matrix m3 = m1.mmul(m2);
-    m1.mmuli(m2);
-    assertTrue(m1.compare(m3, 2.0E-7F));
-    assertArrayEquals(output, m1.toFloatArray());
-    m1.free();
-    m2.free();
-    m3.free();
+    final Matrix m4 = matrixFactory.create(2, 4);
+    m1.mmul(m2, m4);
+    assertTrue(m4.compare(m3, 2.0E-7F));
+    assertArrayEquals(output, m4.toFloatArray());
+    MatrixUtils.free(m1);
+    MatrixUtils.free(m2);
+    MatrixUtils.free(m3);
+    MatrixUtils.free(m4);
   }
 
   @Test
@@ -323,21 +364,36 @@ public final class MatrixOpsTest {
     final Matrix m3 = matrixFactory.create(input3, 2, 3);
     final Matrix m4 = matrixFactory.create(input4, 2, 1);
 
-    final Matrix m8 = ((MatrixCudaImpl) m1).mmult(m2);
+    final Matrix m5 = m1.mmult(m2);
+    assertArrayEquals(outputt, m5.toFloatArray());
+    MatrixUtils.free(m5);
+
+    final Matrix m6 = m1.tmmul(m3);
+    assertArrayEquals(toutput, m6.toFloatArray());
+    MatrixUtils.free(m6);
+
+    final Matrix m7 = m1.tmmul(m4);
+    assertArrayEquals(voutput, m7.toFloatArray());
+    MatrixUtils.free(m7);
+
+    final Matrix m8 = matrixFactory.create(m1.getRows(), m2.getRows());
+    m1.mmult(m2, m8);
     assertArrayEquals(outputt, m8.toFloatArray());
-    m8.free();
+    MatrixUtils.free(m8);
 
-    final Matrix m9 = ((MatrixCudaImpl) m1).tmmul(m3);
+    final Matrix m9 = matrixFactory.create(m1.getColumns(), m3.getColumns());
+    m1.tmmul(m3, m9);
     assertArrayEquals(toutput, m9.toFloatArray());
-    m9.free();
+    MatrixUtils.free(m9);
 
-    final Matrix m10 = ((MatrixCudaImpl) m1).tmmul(m4);
+    final Matrix m10 = matrixFactory.create(m1.getColumns(), m4.getColumns());
+    m1.tmmul(m4, m10);
     assertArrayEquals(voutput, m10.toFloatArray());
-    m10.free();
+    MatrixUtils.free(m10);
 
-    m1.free();
-    m2.free();
-    m3.free();
-    m4.free();
+    MatrixUtils.free(m1);
+    MatrixUtils.free(m2);
+    MatrixUtils.free(m3);
+    MatrixUtils.free(m4);
   }
 }

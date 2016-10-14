@@ -17,9 +17,9 @@ package edu.snu.cay.dolphin.async.dnn.layers.cuda;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
-import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
 import org.apache.reef.tang.annotations.Parameter;
@@ -27,17 +27,26 @@ import org.bytedeco.javacpp.Pointer;
 
 import javax.inject.Inject;
 
+import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.getShapeLength;
+
 /**
  * Local Response Normalization (LRN) layer.
  * This layer aids generalization done by activation layer.
  * We use cuDNN library to implement this layer.
  */
 public final class LRNGpuLayer extends LayerBase {
+
   private MatrixFactory matrixFactory;
+  private Matrix output;
+  private Matrix layerError;
 
   private Pointer inputDesc;
   private Pointer activationDesc;
-  private Pointer lrnDesc;
+  private final Pointer lrnDesc;
+
+  private final int inputChannel;
+  private final int inputHeight;
+  private final int inputWidth;
 
   /**
    * @param index the index of this layer
@@ -46,7 +55,6 @@ public final class LRNGpuLayer extends LayerBase {
    * @param alpha the scaling parameter
    * @param beta the exponent to raise the power of
    * @param k the constant to add
-   * @param batchSize the batch Size (number of images) of this layer
    */
   @Inject
   private LRNGpuLayer(@Parameter(LayerIndex.class) final int index,
@@ -55,28 +63,25 @@ public final class LRNGpuLayer extends LayerBase {
                       @Parameter(Alpha.class) final float alpha,
                       @Parameter(Beta.class) final float beta,
                       @Parameter(K.class) final float k,
-                      @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
                       final MatrixFactory matrixFactory) {
     super(index, inputShape);
     this.matrixFactory = matrixFactory;
-
-    final int inputChannel;
-    final int inputHeight;
-    final int inputWidth;
+    this.output = null;
+    this.layerError = null;
 
     if (getInputShape().length == 2) {
-      inputChannel = 1;
-      inputHeight = getInputShape()[0];
-      inputWidth = getInputShape()[1];
+      this.inputChannel = 1;
+      this.inputHeight = getInputShape()[0];
+      this.inputWidth = getInputShape()[1];
     } else {
-      inputChannel = getInputShape()[0];
-      inputHeight = getInputShape()[1];
-      inputWidth = getInputShape()[2];
+      this.inputChannel = getInputShape()[0];
+      this.inputHeight = getInputShape()[1];
+      this.inputWidth = getInputShape()[2];
     }
 
     //setup
-    this.inputDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
-    this.activationDesc = JavaCudnn.createTensorDesc(batchSize, inputChannel, inputHeight, inputWidth);
+    this.inputDesc = new Pointer();
+    this.activationDesc = new Pointer();
     this.lrnDesc = JavaCudnn.createLRNDesc(localSize, alpha, beta, k);
   }
 
@@ -97,7 +102,17 @@ public final class LRNGpuLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
-    final Matrix output = matrixFactory.create(input.getRows(), input.getColumns());
+    final int inputSize = input.getColumns();
+    if (output == null || output.getColumns() != inputSize) {
+      JavaCudnn.destroyTensorDesc(inputDesc);
+      JavaCudnn.destroyTensorDesc(activationDesc);
+      MatrixUtils.free(output);
+
+      inputDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
+      activationDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
+      output = matrixFactory.create(getShapeLength(getOutputShape()), input.getColumns());
+    }
+
     if (JavaCudnn.lrnFeedForward(lrnDesc, inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) output).getDevicePointer())) {
       return output;
@@ -116,11 +131,16 @@ public final class LRNGpuLayer extends LayerBase {
   public Matrix backPropagate(final Matrix input,
                               final Matrix activation,
                               final Matrix nextError) {
-    final Matrix error = matrixFactory.zeros(input.getRows(), input.getColumns());
+    if (layerError == null || layerError.getColumns() != input.getColumns()) {
+      MatrixUtils.free(layerError);
+      layerError = matrixFactory.create(input.getRows(), input.getColumns());
+    }
+    layerError.fill(0);
+
     if (JavaCudnn.lrnBackPropagate(lrnDesc, activationDesc, ((MatrixCudaImpl) activation).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) nextError).getDevicePointer(), inputDesc,
-        ((MatrixCudaImpl) input).getDevicePointer(), inputDesc, ((MatrixCudaImpl) error).getDevicePointer())) {
-      return error;
+        ((MatrixCudaImpl) input).getDevicePointer(), inputDesc, ((MatrixCudaImpl) layerError).getDevicePointer())) {
+      return layerError;
     } else {
       throw new RuntimeException("Failed to backPropagate");
     }
@@ -137,5 +157,8 @@ public final class LRNGpuLayer extends LayerBase {
     JavaCudnn.cudnnDestroyTensorDesc(inputDesc);
     JavaCudnn.cudnnDestroyTensorDesc(activationDesc);
     JavaCudnn.cudnnDestroyLRNDesc(lrnDesc);
+
+    MatrixUtils.free(output);
+    MatrixUtils.free(layerError);
   }
 }

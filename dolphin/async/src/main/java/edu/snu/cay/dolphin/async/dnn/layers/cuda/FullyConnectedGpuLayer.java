@@ -16,7 +16,8 @@
 package edu.snu.cay.dolphin.async.dnn.layers.cuda;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
-import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
@@ -24,6 +25,8 @@ import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+
+import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.getShapeLength;
 
 /**
  * Fully connected Gpu layer.
@@ -34,6 +37,10 @@ import javax.inject.Inject;
 public final class FullyConnectedGpuLayer extends LayerBase {
 
   private final int[] outputShape;
+  private final MatrixFactory matrixFactory;
+  private Matrix output;
+  private Matrix layerError;
+  private LayerParameter parameterGradient;
 
   /**
    * @param index the index of this layer
@@ -44,9 +51,17 @@ public final class FullyConnectedGpuLayer extends LayerBase {
   @Inject
   private FullyConnectedGpuLayer(@Parameter(LayerConfigurationParameters.LayerIndex.class) final int index,
                                  @Parameter(LayerConfigurationParameters.LayerInputShape.class) final String inputShape,
-                                 final LayerParameterInitializer layerParameterInitializer) {
+                                 final LayerParameterInitializer layerParameterInitializer,
+                                 final MatrixFactory matrixFactory) {
     super(index, inputShape);
     this.outputShape = layerParameterInitializer.getOutputShape();
+    this.matrixFactory = matrixFactory;
+    this.output = null;
+    this.layerError = null;
+
+    final Matrix weightGradient = matrixFactory.create(getShapeLength(outputShape), getShapeLength(getInputShape()));
+    final Matrix biasGradient = matrixFactory.create(getShapeLength(outputShape), 1);
+    this.parameterGradient = new LayerParameter(weightGradient, biasGradient);
   }
 
   /** {@inheritDoc} */
@@ -68,8 +83,12 @@ public final class FullyConnectedGpuLayer extends LayerBase {
    */
   @Override
   public Matrix feedForward(final Matrix input) {
+    final Matrix weight = getLayerParameter().getWeightParam();
+    if (output == null || output.getColumns() != input.getColumns()) {
+      output = matrixFactory.create(weight.getRows(), input.getColumns());
+    }
     // (output matrix) = (weight matrix) x (input matrix) + (bias column vector)
-    return getLayerParameter().getWeightParam().mmul(input).addiColumnVector(getLayerParameter().getBiasParam());
+    return weight.mmul(input, output).addiColumnVector(getLayerParameter().getBiasParam());
   }
 
   /**
@@ -81,23 +100,28 @@ public final class FullyConnectedGpuLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
+    final Matrix weight = getLayerParameter().getWeightParam();
+    if (layerError == null || layerError.getColumns() != nextError.getColumns()) {
+      layerError = matrixFactory.create(weight.getColumns(), nextError.getColumns());
+    }
     // (error matrix) = (transposed weight matrix) x (next error matrix)
-    return ((MatrixCudaImpl) getLayerParameter().getWeightParam()).tmmul(nextError);
+    return weight.tmmul(nextError, layerError);
   }
-
-
 
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
-    return LayerParameter.newBuilder()
-        .setWeightParam(((MatrixCudaImpl) error).mmult(input))
-        .setBiasParam(error.rowSums())
-        .build();
+    error.mmult(input, parameterGradient.getWeightParam());
+    error.rowSums(parameterGradient.getBiasParam());
+    return parameterGradient;
   }
 
   @Override
   public void cleanup() {
+    super.cleanup();
 
+    MatrixUtils.free(output);
+    MatrixUtils.free(layerError);
+    parameterGradient.cleanup();
   }
 }

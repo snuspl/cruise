@@ -92,6 +92,7 @@ public final class ActivationGpuLayerTest {
 
   @After
   public void tearDown() {
+    // TODO #891: Free allocated memory of GPU layer tests such as input or expectedError.
     sigmoidActivationLayer.cleanup();
   }
 
@@ -103,6 +104,7 @@ public final class ActivationGpuLayerTest {
 
   @Test
   public void testSigmoidBackPropagate() {
+    sigmoidActivationLayer.feedForward(input);
     final Matrix error = sigmoidActivationLayer.backPropagate(input, expectedSigmoidActivation, nextError);
     assertTrue(expectedSigmoidError.compare(error, TOLERANCE));
   }

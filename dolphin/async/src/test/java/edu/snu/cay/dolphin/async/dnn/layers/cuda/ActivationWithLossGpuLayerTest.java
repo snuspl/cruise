@@ -92,6 +92,7 @@ public final class ActivationWithLossGpuLayerTest {
 
   @After
   public void tearDown() {
+    // TODO #891: Free allocated memory of GPU layer tests such as input or expectedError.
     activationWithLossLayer.cleanup();
   }
 

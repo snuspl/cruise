@@ -141,29 +141,21 @@ public class ConvolutionalGpuLayerTest {
       {-0.000347f, -0.047422f, -0.017259f, -0.062726f, 0.017144f, 0.083920f,
           -0.041767f, -0.036403f, -0.017025f, -0.138155f, -0.002363f, -0.116153f}}).transpose();
   private final LayerParameter expectedConvolutionalLayerParams =
-      LayerParameter.newBuilder()
-          .setWeightParam(matrixFactory.create(new float[]
-              {15.8f, 12.29999f, 13.9f, 9.8f}))
-          .setBiasParam(matrixFactory.create(new float[]
-              {2.2f}))
-          .build();
+      new LayerParameter(
+          matrixFactory.create(new float[] {15.8f, 12.29999f, 13.9f, 9.8f}), 
+          matrixFactory.create(new float[] {2.2f}));
 
   private final LayerParameter expectedConvolutionalLayerWithPaddingParams =
-      LayerParameter.newBuilder()
-          .setWeightParam(matrixFactory.create(new float[]
-              {58.7f, 41.699997f, 58.6f, 52.300003f}))
-          .setBiasParam(matrixFactory.create(new float[]
-              {11.9f}))
-          .build();
+      new LayerParameter(
+          matrixFactory.create(new float[] {58.7f, 41.699997f, 58.6f, 52.300003f}),
+          matrixFactory.create(new float[] {11.9f}));
 
   private final LayerParameter expectedConvolutional3DLayerParams =
-      LayerParameter.newBuilder()
-          .setWeightParam(matrixFactory.create(new float[][]{
+      new LayerParameter(
+          matrixFactory.create(new float[][]{
               {3, 3, 0.7f, 1, 1.1f, 0.5f, 2.2f, 1.2f},
-              {2, 1, 1.2f, 0.8f, 0.1f, 0.9f, 0.3f, 1.4f}}).transpose())
-          .setBiasParam(matrixFactory.create(new float[]
-              {0.4f, 0.7f}))
-          .build();
+              {2, 1, 1.2f, 0.8f, 0.1f, 0.9f, 0.3f, 1.4f}}).transpose(),
+          matrixFactory.create(new float[] {0.4f, 0.7f}));
 
   private LayerBase convolutionalLayer;
   private LayerBase convolutionalWithPaddingLayer;
@@ -222,24 +214,24 @@ public class ConvolutionalGpuLayerTest {
       this.convolutionalLayer = injector.forkInjector(layerConf, builder.build())
           .getInstance(LayerBase.class);
 
-      this.convolutionalLayer.setLayerParameter(LayerParameter.newBuilder()
-          .setWeightParam(matrixFactory.create(new float[]
-              {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}))
-          .setBiasParam(matrixFactory.zeros(4)).build());
+      this.convolutionalLayer.setLayerParameter(new LayerParameter(
+          matrixFactory.create(new float[]
+              {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}),
+          matrixFactory.zeros(4)));
 
       this.convolutionalWithPaddingLayer = injector.forkInjector(layerConf, builderWithPadding.build())
           .getInstance(LayerBase.class);
 
-      this.convolutionalWithPaddingLayer.setLayerParameter(LayerParameter.newBuilder()
-          .setWeightParam(matrixFactory.create(new float[]
-              {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}))
-          .setBiasParam(matrixFactory.zeros(16)).build());
+      this.convolutionalWithPaddingLayer.setLayerParameter(new LayerParameter(
+          matrixFactory.create(new float[]
+              {-0.200013592839f, -0.095913007855f, 0.065758734941f, 0.247887045145f}),
+          matrixFactory.zeros(16)));
 
       this.convolutional3DLayer = injector.forkInjector(layerConf3D, builder3D.build())
           .getInstance(LayerBase.class);
 
-      this.convolutional3DLayer.setLayerParameter(LayerParameter.newBuilder()
-          .setWeightParam(matrixFactory.create(new float[][]{
+      this.convolutional3DLayer.setLayerParameter(new LayerParameter(
+          matrixFactory.create(new float[][]{
               {-0.200013592839f, 0.109642162919f},
               {-0.095913007855f, 0.021724732592f},
               {0.065758734941f, 0.138832792639f},
@@ -247,8 +239,8 @@ public class ConvolutionalGpuLayerTest {
               {-0.129198953509f, 0.010389177128f},
               {-0.030915966257f, -0.074716188013f},
               {0.095823608338f, -0.626192688941f},
-              {-0.002482861746f, -0.212796315550f}}))
-          .setBiasParam(matrixFactory.zeros(8)).build());
+              {-0.002482861746f, -0.212796315550f}}),
+          matrixFactory.zeros(8)));
     } catch (final InjectionException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -257,6 +249,7 @@ public class ConvolutionalGpuLayerTest {
 
   @After
   public void tearDown() {
+    // TODO #891: Free allocated memory of GPU layer tests such as input or expectedError.
     convolutionalLayer.cleanup();
     convolutionalWithPaddingLayer.cleanup();
     convolutional3DLayer.cleanup();
@@ -270,6 +263,7 @@ public class ConvolutionalGpuLayerTest {
 
   @Test
   public void testConvolutionalBackPropagate() {
+    convolutionalLayer.feedForward(input);
     final Matrix error = convolutionalLayer.backPropagate(input, expectedConvolutionalActivation, nextError);
     assertTrue(expectedConvolutionalError.compare(error, TOLERANCE));
   }
@@ -282,6 +276,7 @@ public class ConvolutionalGpuLayerTest {
 
   @Test
   public void testConvolutionalWithPaddingBackPropagate() {
+    convolutionalWithPaddingLayer.feedForward(input);
     final Matrix error = convolutionalWithPaddingLayer.backPropagate(
         input, expectedConvolutionalWithPaddingActivation, nextErrorWithPadding);
     assertTrue(expectedConvolutionalWithPaddingError.compare(error, TOLERANCE));
@@ -289,12 +284,17 @@ public class ConvolutionalGpuLayerTest {
 
   @Test
   public void testConvolutionalGradient() {
+    convolutionalLayer.feedForward(input);
+    convolutionalLayer.backPropagate(input, expectedConvolutionalActivation, nextError);
     final LayerParameter convolutionalLayerParams = convolutionalLayer.generateParameterGradient(input, nextError);
     assertTrue(compare(expectedConvolutionalLayerParams, convolutionalLayerParams, TOLERANCE));
   }
 
   @Test
   public void testConvolutionalWithPaddingGradient() {
+    convolutionalWithPaddingLayer.feedForward(input);
+    convolutionalWithPaddingLayer.backPropagate(
+        input, expectedConvolutionalWithPaddingActivation, nextErrorWithPadding);
     final LayerParameter convolutionalLayerParams =
         convolutionalWithPaddingLayer.generateParameterGradient(input, nextErrorWithPadding);
     assertTrue(compare(expectedConvolutionalLayerWithPaddingParams, convolutionalLayerParams, TOLERANCE));
@@ -308,12 +308,15 @@ public class ConvolutionalGpuLayerTest {
 
   @Test
   public void testConvolutional3DBackPropagate() {
+    convolutional3DLayer.feedForward(input3D);
     final Matrix error = convolutional3DLayer.backPropagate(input3D, expectedConvolutional3DActivation, nextError3D);
     assertTrue(expectedConvolutional3DError.compare(error, TOLERANCE));
   }
 
   @Test
   public void testConvolutional3DGradient() {
+    convolutional3DLayer.feedForward(input3D);
+    convolutional3DLayer.backPropagate(input3D, expectedConvolutional3DActivation, nextError3D);
     final LayerParameter convolutionalLayerParams
         = convolutional3DLayer.generateParameterGradient(input3D, nextError3D);
     assertTrue(compare(expectedConvolutional3DLayerParams, convolutionalLayerParams, TOLERANCE));

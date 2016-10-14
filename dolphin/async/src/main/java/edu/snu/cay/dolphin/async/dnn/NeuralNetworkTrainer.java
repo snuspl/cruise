@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn;
 
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkData;
 import edu.snu.cay.dolphin.async.dnn.data.NeuralNetworkDataParser;
 import edu.snu.cay.dolphin.async.dnn.util.Validator;
@@ -123,5 +124,12 @@ final class NeuralNetworkTrainer implements Trainer {
   @Override
   public void cleanup() {
     neuralNetwork.cleanup();
+
+    final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
+    final Collection<NeuralNetworkData> workload = workloadMap.values();
+    for (final NeuralNetworkData data : workload) {
+      final Matrix input = data.getMatrix();
+      MatrixUtils.free(input);
+    }
   }
 }

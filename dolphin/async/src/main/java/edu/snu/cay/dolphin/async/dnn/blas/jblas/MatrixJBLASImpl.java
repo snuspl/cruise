@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.blas.jblas;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import org.jblas.FloatMatrix;
+import org.jblas.NativeBlas;
 
 /**
  * Matrix implementation based on JBLAS.
@@ -217,6 +218,14 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
+  public Matrix sub(final Matrix matrix, final Matrix result) {
+    checkImpl(matrix);
+    checkImpl(result);
+    jblasMatrix.subi(((MatrixJBLASImpl) matrix).jblasMatrix, ((MatrixJBLASImpl) result).jblasMatrix);
+    return result;
+  }
+
+  @Override
   public Matrix subColumnVector(final Matrix vector) {
     checkImpl(vector);
     return new MatrixJBLASImpl(jblasMatrix.subColumnVector(((MatrixJBLASImpl) vector).jblasMatrix));
@@ -288,6 +297,14 @@ final class MatrixJBLASImpl implements Matrix {
     checkImpl(matrix);
     jblasMatrix.muli(((MatrixJBLASImpl) matrix).jblasMatrix);
     return this;
+  }
+
+  @Override
+  public Matrix mul(final Matrix matrix, final Matrix result) {
+    checkImpl(matrix);
+    checkImpl(result);
+    jblasMatrix.muli(((MatrixJBLASImpl) matrix).jblasMatrix, ((MatrixJBLASImpl) result).jblasMatrix);
+    return result;
   }
 
   @Override
@@ -399,8 +416,66 @@ final class MatrixJBLASImpl implements Matrix {
   @Override
   public Matrix mmuli(final Matrix matrix) {
     checkImpl(matrix);
+    if (getColumns() != matrix.getRows() || matrix.getRows() != matrix.getColumns()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
     jblasMatrix.mmuli(((MatrixJBLASImpl) matrix).jblasMatrix);
     return this;
+  }
+
+  @Override
+  public Matrix mmul(final Matrix matrix, final Matrix result) {
+    checkImpl(matrix);
+    checkImpl(result);
+    if (getRows() != result.getRows() || matrix.getColumns() != result.getColumns()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+    jblasMatrix.mmuli(((MatrixJBLASImpl) matrix).jblasMatrix, ((MatrixJBLASImpl) result).jblasMatrix);
+    return null;
+  }
+
+  @Override
+  public Matrix tmmul(final Matrix matrix) {
+    final Matrix newMatrix = new MatrixJBLASImpl(new FloatMatrix(getColumns(), matrix.getColumns()));
+    return tmmul(matrix, newMatrix);
+  }
+
+  @Override
+  public Matrix tmmul(final Matrix matrix, final Matrix result) {
+    if (getRows() != matrix.getRows()) {
+      throw new IllegalArgumentException(
+          "The number of rows of left matrix should be equal to the number of rows of right matrix.");
+    }
+    if (result.getRows() != getColumns() || result.getColumns() != matrix.getColumns()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+
+    NativeBlas.sgemm('T', 'N', getColumns(), result.getColumns(), getRows(), 1.0f,
+        jblasMatrix.data, 0, getRows(), ((MatrixJBLASImpl) matrix).jblasMatrix.data, 0, matrix.getRows(),
+        0.0f, ((MatrixJBLASImpl) result).jblasMatrix.data, 0, getColumns());
+    return result;
+  }
+
+  @Override
+  public Matrix mmult(final Matrix matrix) {
+    final Matrix newMatrix = new MatrixJBLASImpl(new FloatMatrix(getRows(), matrix.getRows()));
+    return mmult(matrix, newMatrix);
+  }
+
+  @Override
+  public Matrix mmult(final Matrix matrix, final Matrix result) {
+    if (getColumns() != matrix.getColumns()) {
+      throw new IllegalArgumentException(
+          "The number of columns of left matrix should be equal to the number of columns of right matrix.");
+    }
+    if (result.getRows() != getRows() || result.getColumns() != matrix.getRows()) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+
+    NativeBlas.sgemm('N', 'T', getRows(), matrix.getRows(), getColumns(), 1.0f,
+        jblasMatrix.data, 0, getRows(), ((MatrixJBLASImpl) matrix).jblasMatrix.data, 0, matrix.getRows(),
+        0.0f, ((MatrixJBLASImpl) result).jblasMatrix.data, 0, getRows());
+    return result;
   }
 
   @Override
@@ -444,6 +519,15 @@ final class MatrixJBLASImpl implements Matrix {
   }
 
   @Override
+  public Matrix rowSums(final Matrix result) {
+    if (result.getRows() != getRows() || result.getColumns() != 1) {
+      throw new IllegalArgumentException("The size of result matrix is wrong");
+    }
+    result.copy(rowSums());
+    return result;
+  }
+
+  @Override
   public float sum() {
     return jblasMatrix.sum();
   }
@@ -482,9 +566,5 @@ final class MatrixJBLASImpl implements Matrix {
       // TODO #147: different matrix implementations
       throw new IllegalArgumentException("The given matrix should be JBLAS based");
     }
-  }
-
-  @Override
-  public void free() {
   }
 }

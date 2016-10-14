@@ -60,6 +60,8 @@ public final class LayerParameterCodecTest {
 
     assertEquals("Encode-decode result is different from the expected LayerParameter",
         inputLayerParameter, outputLayerParameter);
+    inputLayerParameter.cleanup();
+    outputLayerParameter.cleanup();
   }
 
   public static LayerParameter generateRandomLayerParameter(final MatrixFactory matrixFactory) {
@@ -73,8 +75,6 @@ public final class LayerParameterCodecTest {
   public static LayerParameter generateRandomLayerParameter(final MatrixFactory matrixFactory, final Random random) {
     final Matrix weightParam = MatrixGenerator.generateRandomMatrix(matrixFactory, random);
     final Matrix biasParam = MatrixGenerator.generateRandomMatrix(matrixFactory, random);
-    return LayerParameter.newBuilder()
-        .setWeightParam(weightParam)
-        .setBiasParam(biasParam).build();
+    return new LayerParameter(weightParam, biasParam);
   }
 }

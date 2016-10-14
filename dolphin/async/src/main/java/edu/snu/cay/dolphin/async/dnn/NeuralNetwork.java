@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.dnn;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
+import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
@@ -32,7 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import static edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils.createOutputMatrix;
+import static edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils.setOutputMatrix;
 import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.*;
 
 /**
@@ -73,6 +75,8 @@ public final class NeuralNetwork {
    */
   private final List<Integer> learnableLayerIndices;
 
+  private Matrix labelMatrix;
+
   /**
    * @param configurationSerializer the serializer to deserialize Tang configurations for layers
    * @param serializedLayerConfSets the set of Tang configurations used to inject layer instances
@@ -86,6 +90,7 @@ public final class NeuralNetwork {
       final ConfigurationSerializer configurationSerializer,
       @Parameter(SerializedLayerConfigurationSet.class) final Set<String> serializedLayerConfSets,
       @Parameter(InputShape.class) final String inputShape,
+      @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
       final ParameterWorker<Integer, LayerParameter, LayerParameter> parameterWorker,
       final MatrixFactory matrixFactory,
       final Injector injector) {
@@ -97,6 +102,7 @@ public final class NeuralNetwork {
     this.emptyMatrix = null;
     this.emptyLayerParam = LayerParameter.newEmptyInstance();
     this.learnableLayerIndices = getLearnableLayerIndices();
+    this.labelMatrix = matrixFactory.create(getShapeLength(layers[layers.length - 1].getOutputShape()), batchSize);
   }
 
   /**
@@ -147,24 +153,29 @@ public final class NeuralNetwork {
    * @param labels the label array.
    */
   public void train(final Matrix input, final int[] labels) {
-    final Matrix labelMatrix = createOutputMatrix(
-        matrixFactory, labels, getShapeLength(layers[layers.length - 1].getOutputShape()));
+    final int labelRows = getShapeLength(layers[layers.length - 1].getOutputShape());
+    final int labelCols = labels.length;
+    if (labelMatrix.getColumns() != labelCols) {
+      MatrixUtils.free(labelMatrix);
+      labelMatrix = matrixFactory.create(labelRows, labelCols);
+    }
+    setOutputMatrix(labelMatrix, labels, labelRows);
     train(input, labelMatrix);
   }
 
   /**
    * Pushes parameter gradients to the parameter servers.
-   * @param batchSize the number of instance in an input batch
+   * @param inputSize the number of instance in an input batch
    * @param parameterGradients the list of parameter gradients
    */
-  void pushGradients(final int batchSize, final LayerParameter[] parameterGradients) {
+  void pushGradients(final int inputSize, final LayerParameter[] parameterGradients) {
     // average parameter gradients
     for (int i = 0; i < parameterGradients.length; ++i) {
       if (layers[i].isLearnable()) {
-        parameterWorker.push(i, LayerParameter.newBuilder()
-            .setWeightParam(parameterGradients[i].getWeightParam().div(batchSize))
-            .setBiasParam(parameterGradients[i].getBiasParam().div(batchSize))
-            .build());
+        parameterGradients[i].getWeightParam().divi(inputSize);
+        parameterGradients[i].getBiasParam().divi(inputSize);
+
+        parameterWorker.push(i, parameterGradients[i]);
       }
     }
   }
@@ -344,6 +355,8 @@ public final class NeuralNetwork {
    * This is called on task termination.
    */
   public void cleanup() {
+    MatrixUtils.free(labelMatrix);
+
     // clean up layers
     for (final LayerBase layer : layers) {
       layer.cleanup();

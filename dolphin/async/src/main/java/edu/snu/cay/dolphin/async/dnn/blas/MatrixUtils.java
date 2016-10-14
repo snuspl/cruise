@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.dnn.blas;
 
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -151,12 +153,31 @@ public final class MatrixUtils {
   }
 
   /**
-   * Destroy memory allocation of a matrix if necessary.
+   * Sets a matrix with each column is a one-hot vector specified by each element of the give indices array.
+   * @param matrix a matrix to put data
+   * @param indices the array of indices that indicate the one-hot positions
+   * @param length the length of each column vector, in other words, the number of rows of the return matrix
+   * @return the updated matrix
+   */
+  public static Matrix setOutputMatrix(final Matrix matrix, final int[] indices, final int length) {
+    if (matrix.getRows() != length || matrix.getColumns() != indices.length) {
+      throw new RuntimeException("matrix size is incorrect");
+    }
+
+    matrix.fill(0);
+    for (int i = 0; i < indices.length; ++i) {
+      matrix.put(indices[i], i, 1.0f);
+    }
+    return matrix;
+  }
+
+  /**
+   * Destroy memory allocation of a matrix if and only if the matrix is an instance of {@link MatrixCudaImpl}.
    * @param matrix a matrix to destroy
    */
   public static void free(final Matrix matrix) {
-    if (matrix != null) {
-      matrix.free();
+    if (matrix != null && matrix instanceof MatrixCudaImpl) {
+      ((MatrixCudaImpl)matrix).free();
     }
   }
 }

@@ -148,14 +148,8 @@ public final class NeuralNetworkTest {
     neuralNetwork = injector.getInstance(NeuralNetwork.class);
 
     doAnswer(invocation -> {
-        final LayerParameter layerParameterOne = LayerParameter.newBuilder()
-            .setWeightParam(weightOne)
-            .setBiasParam(biasOne)
-            .build();
-        final LayerParameter layerParameterTwo = LayerParameter.newBuilder()
-            .setWeightParam(weightTwo)
-            .setBiasParam(biasTwo)
-            .build();
+        final LayerParameter layerParameterOne = new LayerParameter(weightOne, biasOne);
+        final LayerParameter layerParameterTwo = new LayerParameter(weightTwo, biasTwo);
         final List<LayerParameter> result = new ArrayList<>();
         result.add(layerParameterOne);
         result.add(layerParameterTwo);

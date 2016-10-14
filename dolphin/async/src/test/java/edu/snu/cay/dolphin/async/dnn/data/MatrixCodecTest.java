@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn.data;
 
+import edu.snu.cay.dolphin.async.dnn.TestDevice;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
@@ -30,8 +31,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -44,18 +43,7 @@ public final class MatrixCodecTest {
 
   @Parameterized.Parameters
   public static Object[] data() throws IOException {
-    // read device option to run the test
-    final InputStream is =
-        MatrixCodecTest.class.getClassLoader().getResourceAsStream("dolphin-async.properties");
-    final Properties p = new Properties();
-    p.load(is);
-    final String canRunGPU = p.getProperty("gpu");
-
-    if (canRunGPU.equals("true")) {
-      return new Object[]{"CPU", "GPU"};
-    } else {
-      return new Object[]{"CPU"};
-    }
+    return TestDevice.getTestDevices();
   }
 
   private String testDevice;
@@ -71,7 +59,7 @@ public final class MatrixCodecTest {
   public void setUp() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MatrixFactory.class,
-            testDevice.equals("CPU") ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
+            testDevice.equals(TestDevice.CPU) ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
 
