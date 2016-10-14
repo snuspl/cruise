@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.dnn.data;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -24,7 +26,12 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -32,16 +39,39 @@ import static org.junit.Assert.assertEquals;
 /**
  * Test class for testing {@link MatrixCodec}'s encoding and decoding functions.
  */
+@RunWith(Parameterized.class)
 public final class MatrixCodecTest {
 
+  @Parameterized.Parameters
+  public static Object[] data() throws IOException {
+    // read device option to run the test
+    final InputStream is =
+        MatrixCodecTest.class.getClassLoader().getResourceAsStream("dolphin-async.properties");
+    final Properties p = new Properties();
+    p.load(is);
+    final String canRunGPU = p.getProperty("gpu");
+
+    if (canRunGPU.equals("true")) {
+      return new Object[]{"CPU", "GPU"};
+    } else {
+      return new Object[]{"CPU"};
+    }
+  }
+
+  private String testDevice;
   private MatrixCodec matrixCodec;
   private Random random;
   private MatrixFactory matrixFactory;
 
+  public MatrixCodecTest(final String testDevice) {
+    this.testDevice = testDevice;
+  }
+
   @Before
   public void setUp() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
+        .bindImplementation(MatrixFactory.class,
+            testDevice.equals("CPU") ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
 
@@ -54,14 +84,19 @@ public final class MatrixCodecTest {
    * Checks that a random row vector does not change after encoding and decoding it, sequentially.
    */
   @Test
-   public void testEncodeDecodeVector() {
+  public void testEncodeDecodeVector() {
     final Matrix inputVector = MatrixGenerator.generateRandomVector(matrixFactory, random);
     final Matrix retVector = matrixCodec.decode(matrixCodec.encode(inputVector));
 
-    assertEquals(inputVector, retVector);
+    try {
+      assertEquals(inputVector, retVector);
+    } finally {
+      MatrixUtils.free(inputVector);
+      MatrixUtils.free(retVector);
+    }
   }
+
   /**
-   *
    * Checks that a random matrix does not change after encoding and decoding it, sequentially.
    */
   @Test
@@ -69,6 +104,11 @@ public final class MatrixCodecTest {
     final Matrix inputMatrix = MatrixGenerator.generateRandomMatrix(matrixFactory, random);
     final Matrix retMatrix = matrixCodec.decode(matrixCodec.encode(inputMatrix));
 
-    assertEquals("Encode-decode result is different from expected array", inputMatrix, retMatrix);
+    try {
+      assertEquals("Encode-decode result is different from expected array", inputMatrix, retMatrix);
+    } finally {
+      MatrixUtils.free(inputMatrix);
+      MatrixUtils.free(retMatrix);
+    }
   }
 }

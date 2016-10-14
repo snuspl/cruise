@@ -88,6 +88,10 @@ public class JavaCuda extends Pointer {
   public static native boolean compare(final int n, final FloatPointer x,
                                        final FloatPointer y, final float tolerance);
 
+  @Cast(value = "bool")
+  public static native boolean equal(final int n, final FloatPointer x,
+                                       final FloatPointer y);
+
   public static native float sum(final int n, final FloatPointer x);
 
   public static native float max(final int n, final FloatPointer x);

@@ -149,4 +149,14 @@ public final class MatrixUtils {
     }
     return ret;
   }
+
+  /**
+   * Destroy memory allocation of a matrix if necessary.
+   * @param matrix a matrix to destroy
+   */
+  public static void free(final Matrix matrix) {
+    if (matrix != null) {
+      matrix.free();
+    }
+  }
 }

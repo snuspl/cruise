@@ -61,8 +61,9 @@ public final class MatrixCodec implements StreamingCodec<Matrix> {
       dstream.writeInt(matrix.getRows());
       dstream.writeInt(matrix.getColumns());
 
+      final float[] data = matrix.toFloatArray();
       for (int elementIndex = 0; elementIndex < matrix.getLength(); elementIndex++) {
-        dstream.writeFloat(matrix.get(elementIndex));
+        dstream.writeFloat(data[elementIndex]);
       }
 
     } catch (final IOException e) {
