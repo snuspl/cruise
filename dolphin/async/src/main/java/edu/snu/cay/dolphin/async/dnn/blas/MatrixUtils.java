@@ -153,7 +153,6 @@ public final class MatrixUtils {
   }
 
   /**
-<<<<<<< HEAD
    * Sets a matrix with each column is a one-hot vector specified by each element of the give indices array.
    * @param matrix a matrix to put data
    * @param indices the array of indices that indicate the one-hot positions

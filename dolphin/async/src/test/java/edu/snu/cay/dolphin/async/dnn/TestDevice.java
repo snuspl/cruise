@@ -15,8 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
-import edu.snu.cay.dolphin.async.dnn.data.MatrixCodecTest;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
@@ -28,14 +26,15 @@ public final class TestDevice {
   public static final String CPU = "CPU";
   public static final String GPU = "GPU";
 
+  /**
+   * Should not be instantiated.
+   */
   private TestDevice() {
-
   }
 
   public static String[] getTestDevices() throws IOException {
     // read device option to run the test
-    final InputStream is =
-        MatrixCodecTest.class.getClassLoader().getResourceAsStream("dolphin-async.properties");
+    final InputStream is = TestDevice.class.getClassLoader().getResourceAsStream("dolphin-async.properties");
     final Properties p = new Properties();
     p.load(is);
     final String canRunGPU = p.getProperty("gpu");
