@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.data;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import org.apache.reef.tang.Configuration;
@@ -87,7 +88,12 @@ public final class MatrixCodecTest {
     final Matrix inputVector = MatrixGenerator.generateRandomVector(matrixFactory, random);
     final Matrix retVector = matrixCodec.decode(matrixCodec.encode(inputVector));
 
-    assertEquals(inputVector, retVector);
+    try {
+      assertEquals(inputVector, retVector);
+    } finally {
+      MatrixUtils.free(inputVector);
+      MatrixUtils.free(retVector);
+    }
   }
 
   /**
@@ -98,6 +104,11 @@ public final class MatrixCodecTest {
     final Matrix inputMatrix = MatrixGenerator.generateRandomMatrix(matrixFactory, random);
     final Matrix retMatrix = matrixCodec.decode(matrixCodec.encode(inputMatrix));
 
-    assertEquals("Encode-decode result is different from expected array", inputMatrix, retMatrix);
+    try {
+      assertEquals("Encode-decode result is different from expected array", inputMatrix, retMatrix);
+    } finally {
+      MatrixUtils.free(inputMatrix);
+      MatrixUtils.free(retMatrix);
+    }
   }
 }
