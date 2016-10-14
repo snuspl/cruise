@@ -13,17 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.api;
-
-import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.wake.EventHandler;
-
 /**
- * Non-user side interface of memory store including APIs for handling operations from remote request.
+ * Parameters commonly used in Async Dolphin examples.
  */
-@EvaluatorSide
-@Private
-public interface RemoteAccessibleMemoryStore<K> extends
-    MemoryStore<K>, EventHandler<DataOperation>, BlockHandler<K> {
-}
+package edu.snu.cay.dolphin.async.examples.param;

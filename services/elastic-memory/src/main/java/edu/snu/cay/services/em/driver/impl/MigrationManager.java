@@ -21,7 +21,6 @@ import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
-import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.htrace.*;
 
@@ -273,19 +272,11 @@ final class MigrationManager {
 
   /**
    * Updates the owner of the block.
-   * @param operationId id of the operation
    * @param blockId id of the block
    * @param oldOwnerId MemoryStore id which was the owner of the block
    * @param newOwnerId MemoryStore id which will be the owner of the block
-   * @param traceInfo Trace information used in HTrace
    */
-  void updateOwner(final String operationId, final int blockId, final int oldOwnerId, final int newOwnerId,
-                   @Nullable final TraceInfo traceInfo) {
-    final Migration migrationInfo = ongoingMigrations.get(operationId);
-    final String senderId = migrationInfo.getSenderId();
+  void updateOwner(final int blockId, final int oldOwnerId, final int newOwnerId) {
     blockManager.updateOwner(blockId, oldOwnerId, newOwnerId);
-
-    // Send the OwnershipMessage to update the owner in the sender memoryStore
-    sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
   }
 }

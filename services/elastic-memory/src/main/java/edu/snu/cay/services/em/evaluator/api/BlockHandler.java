@@ -21,22 +21,13 @@ import org.apache.reef.annotations.audience.Private;
 import java.util.Map;
 
 /**
- * Interface for updating the ownership and getting/putting data from/to the MemoryStore.
- * Methods in this class manage the ownership and data in the MemoryStore in block-level,
+ * Interface for getting/putting data from/to the MemoryStore.
+ * Methods in this class manage the data in the MemoryStore in block-level,
  * contrary to public APIs where the data is accessed in key-level.
- *
  */
 @EvaluatorSide
 @Private
-interface MoveHandler<K> {
-  /**
-   * Called when the ownership arrives, to apply the change of ownership.
-   * @param blockId id of the block to update its owner
-   * @param oldOwnerId id of the MemoryStore who was the owner
-   * @param newOwnerId id of the MemoryStore who will be the owner
-   */
-  void updateOwnership(int blockId, int oldOwnerId, int newOwnerId);
-
+public interface BlockHandler<K> {
   /**
    * Sends the data in the blocks to another MemoryStore.
    * @param blockId the identifier of block to send

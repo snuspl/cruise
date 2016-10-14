@@ -27,6 +27,7 @@ import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -40,28 +41,31 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Uses metrics collected from workers and servers to estimate the cost associated with iteration time.
+ * Uses metrics collected from workers and servers to estimate the cost associated with epoch time.
  * It generates an optimization plan for the system that minimizes the cost.
  *
  * The cost model is based on computation cost + communication cost where:
- * computation cost = workers' computation time averaged
- * communication cost = servers' pull processing time averaged
+ * computation cost = No. of total training data instances / Total throughput of workers if (No. of workers) are used
+ * communication cost = Avg. No. of pulls per mini-batch * No. of workers * Estimated number of mini-batches per worker
+ * / Total throughput of servers if (No. of servers) are used
  */
 public final class AsyncDolphinOptimizer implements Optimizer {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinOptimizer.class.getName());
   private static final String NEW_WORKER_ID_PREFIX = "NewWorker-";
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
-  private final int numMiniBatchPerItr;
-
+  private final int miniBatchSize;
+  private final int serverNumThreads;
   private final double optBenefitThreshold;
 
   @Inject
-  private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatches.class) final int numMiniBatchPerItr,
+  private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                                @Parameter(ServerNumThreads.class) final int serverNumThreads,
                                 @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                 final double optBenefitThreshold) {
-    this.numMiniBatchPerItr = numMiniBatchPerItr;
+    this.miniBatchSize = miniBatchSize;
     this.optBenefitThreshold = optBenefitThreshold;
+    this.serverNumThreads = serverNumThreads;
   }
 
   /**
@@ -98,7 +102,8 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       };
 
   @Override
-  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
+                       final Map<String, Double> modelParamsMap) {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
 
@@ -107,19 +112,21 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final Pair<List<EvaluatorSummary>, Integer> serverPair =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
             param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTimeSec() /
-                (double) ((ServerMetrics) param.getMetrics()).getNumModelBlocks(),
+                (double) ((ServerMetrics) param.getMetrics()).getTotalPullProcessed(),
             NEW_SERVER_ID_PREFIX);
     final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
     final int numModelBlocks = serverPair.getSecond();
 
     final Pair<List<EvaluatorSummary>, Integer> workerPair =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()
-                / param.getDataInfo().getNumBlocks(),
+            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime() /
+            (double) ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount(),
             NEW_WORKER_ID_PREFIX);
     final List<EvaluatorSummary> workerSummaries = workerPair.getFirst();
     final int numDataBlocks = workerPair.getSecond();
 
+    final int numTotalDataInstances = modelParamsMap.get(Constants.TOTAL_DATA_INSTANCES).intValue();
+    final double numPullsPerMiniBatch = modelParamsMap.get(Constants.TOTAL_PULLS_PER_MINI_BATCH);
     /*
      * 1. for each possible number of workers, check and filter:
      * a) total number of data blocks on worker side should be greater than or equal to the number of workers
@@ -133,7 +140,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
         .mapToObj(numWorkers ->
             new Pair<>(numWorkers,
-                totalCost(numWorkers, numDataBlocks, numModelBlocks,
+                totalCost(numWorkers, numTotalDataInstances, numPullsPerMiniBatch,
                     availableEvaluators, workerSummaries, serverSummaries)))
         .reduce(new BinaryOperator<Pair<Integer, Pair<Double, Double>>>() {
           @Override
@@ -146,7 +153,6 @@ public final class AsyncDolphinOptimizer implements Optimizer {
           }
         })
         .get();
-
     final int currentNumWorkers = workerParams.size();
     final int currentNumServers = serverParams.size();
 
@@ -156,10 +162,14 @@ public final class AsyncDolphinOptimizer implements Optimizer {
     final double optimalCompCost = optimalNumWorkersCostPair.getSecond().getFirst();
     final double optimalCommCost = optimalNumWorkersCostPair.getSecond().getSecond();
 
-    final double currentCompCost = workerParams.stream()
-        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0D);
-    final double currentCommCost = workerParams.stream()
-        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D);
+    final double avgNumMiniBatchesPerWorker =
+        Math.ceil((double) numTotalDataInstances / currentNumWorkers / miniBatchSize);
+
+    // we must apply the costs in metrics by avgNumMiniBatchesPerWorker since these are mini-batch metrics
+    final double currentCompCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
+        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0D));
+    final double currentCommCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
+        .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D));
 
     final String optimizationInfo = String.format("{\"numAvailEval\":%d, " +
             "\"optNumWorker\":%d, \"currNumWorker\":%d, \"optNumServer\":%d, \"currNumServer\":%d, " +
@@ -182,7 +192,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
       generatePlanForOptimalConfig(Constants.NAMESPACE_WORKER, workerSummaries, optimalNumWorkers,
           workerParams.size(), numDataBlocks, planBuilder);
 
-      planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals);
+      planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals > 0 ? numAvailableExtraEvals : 0);
 
       return planBuilder.build();
     }
@@ -271,7 +281,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
         .mapToDouble(unitCostFunc)
         .sum();
 
-    // throughput = server: processable pull per unit time | worker: processable data blocks per unit time
+    // throughput = server: processable pull per unit time | worker: processable data instances per unit time
     final List<EvaluatorSummary> nodes = params.stream()
         .map(param -> new EvaluatorSummary(param.getId(), param.getDataInfo(), 1 / unitCostFunc.applyAsDouble(param)))
         .collect(Collectors.toList());
@@ -294,30 +304,40 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   /**
    * Calculates total cost (computation cost and communication cost) of the system under optimization.
    *
-   * @param numWorker current number of workers
-   * @param numDataBlocks total number of data blocks across workers
-   * @param numModelBlocks total number of model blocks across servers
+   * @param numWorker given number of workers
+   * @param numTotalDataInstances total number of data instances across workers
+   * @param numPullsPerMiniBatch (we use this for the model keys on server-side)
    * @param availableEvaluators number of evaluators available
    * @param workers list of worker {@link EvaluatorSummary}
    * @param servers list of server {@link EvaluatorSummary}
    * @return total cost for a given number of workers using the current metrics of the system
    */
-  private Pair<Double, Double> totalCost(final int numWorker, final int numDataBlocks, final int numModelBlocks,
+  private Pair<Double, Double> totalCost(final int numWorker,
+                                         final int numTotalDataInstances,
+                                         final double numPullsPerMiniBatch,
                                          final int availableEvaluators,
                                          final List<EvaluatorSummary> workers,
                                          final List<EvaluatorSummary> servers) {
-    // Calculating compCost based on avg: (avgNumBlockPerWorker / avgThroughput)
+    // Calculating an estimate of the No. of mini-batches when numWorker workers are used.
+    // TODO #878: Varying number of mini-batches across heterogeneous workers in cost model
+    final double avgNumMiniBatchesPerWorker = Math.ceil((double) numTotalDataInstances / numWorker / miniBatchSize);
+
+    // Calculating compCost based on avg: (avgNumDataInstancesPerWorker / avgThroughput)
     final double workerThroughputSum = workers.subList(0, numWorker).stream()
         .mapToDouble(worker -> worker.throughput)
         .sum();
-    final double compCost = numDataBlocks / workerThroughputSum;
+    final double compCost = numTotalDataInstances / workerThroughputSum;
 
-    // Calculating commCost based on avg: (avgNumBlockPerServer / avgThroughput)
+    // Calculating commCost based on avg: (avgNumPullsPerMiniBatch / avgThroughput)
     final int numServer = availableEvaluators - numWorker;
+
+    // Calculating the sum of servers' throughput per thread
     final double serverThroughputSum = servers.subList(0, numServer).stream()
         .mapToDouble(server -> server.throughput)
-        .sum();
-    final double commCost = numModelBlocks / serverThroughputSum * numWorker * numMiniBatchPerItr;
+        .sum() * serverNumThreads;
+    final double commCost = numPullsPerMiniBatch / serverThroughputSum
+        * numWorker * avgNumMiniBatchesPerWorker;
+
     final double totalCost = compCost + commCost;
     final String costInfo = String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +
         "\"compCost\": %f, \"commCost\": %f}", numServer, numWorker, totalCost, compCost, commCost);

@@ -20,6 +20,7 @@ import org.bytedeco.javacpp.FloatPointer;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
 
 /**
  * CUDA backend matrix implementation.
@@ -1118,6 +1119,27 @@ public final class MatrixCudaImpl implements Matrix {
 
   public FloatPointer getDevicePointer() {
     return devPtr;
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (o instanceof MatrixCudaImpl) {
+      final MatrixCudaImpl other = (MatrixCudaImpl)o;
+      if (rows != other.getRows() || columns != other.getColumns()) {
+        return false;
+      }
+      return JavaCuda.equal(length, devPtr, other.devPtr);
+    }
+    return false;
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 7;
+    hash = 83 * hash + this.getRows();
+    hash = 83 * hash + this.getColumns();
+    hash = 83 * hash + Arrays.hashCode(toFloatArray());
+    return hash;
   }
 
   static MatrixCudaImpl toCudaImpl(final Matrix matrix) {

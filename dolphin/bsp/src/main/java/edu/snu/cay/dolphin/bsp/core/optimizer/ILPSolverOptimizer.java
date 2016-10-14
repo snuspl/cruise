@@ -74,7 +74,8 @@ public final class ILPSolverOptimizer implements Optimizer {
 
 
   @Override
-  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int numAvailableEvals) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int numAvailableEvals,
+                       final Map<String, Double> modelParamsMap) {
     final Optional<String> ctrlTaskContextId = ctrlTaskContextIdFetcher.getCtrlTaskContextId();
     if (!ctrlTaskContextId.isPresent()) {
       LOG.log(Level.WARNING, "Controller task is unidentifiable at the moment. Returning empty plan.");

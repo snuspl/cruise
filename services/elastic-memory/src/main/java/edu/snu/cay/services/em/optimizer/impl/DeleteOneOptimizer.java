@@ -50,7 +50,8 @@ public final class DeleteOneOptimizer implements Optimizer {
   }
 
   @Override
-  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
+                       final Map<String, Double> optimizerModelParamsMap) {
     if (callsSkipped < callsToSkip) {
       callsSkipped++;
       return PlanImpl.newBuilder().build();

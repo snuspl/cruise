@@ -86,12 +86,12 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
    * @return an operation holding the result
    */
   <V> SingleKeyOperation<K, V> sendOpToRemoteStore(final DataOpType opType,
-                               final K key, final Optional<V> value,
-                               final String targetEvalId) {
+                                                   final K key, final Optional<V> value,
+                                                   final String targetEvalId) {
 
     final String operationId = Long.toString(remoteOpIdCounter.getAndIncrement());
     final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
-          opType, key, value);
+        opType, key, value);
 
     LOG.log(Level.FINEST, "Send op to remote. OpId: {0}, OpType: {1}",
         new Object[]{operation.getOpId(), operation.getOpType()});

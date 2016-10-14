@@ -38,6 +38,12 @@ struct float_compare {
   }
 };
 
+struct float_equal {
+  __device__ bool operator()(const float x, const float y) const {
+    return x == y;
+  }
+};
+
 std::pair<cublasOperation_t, bool> getCublasOperation(const char c) {
   switch (c) {
   case 'N':
@@ -134,6 +140,12 @@ bool JavaCuda::compare(const int n, const float* x, const float* y, const float 
   thrust::device_ptr<float> device_ptr_x(const_cast<float*>(x));
   thrust::device_ptr<float> device_ptr_y(const_cast<float*>(y));
   return thrust::equal(device_ptr_x, device_ptr_x + n, device_ptr_y, float_compare(tolerance));
+}
+
+bool JavaCuda::equal(const int n, const float* x, const float* y) {
+  thrust::device_ptr<float> device_ptr_x(const_cast<float*>(x));
+  thrust::device_ptr<float> device_ptr_y(const_cast<float*>(y));
+  return thrust::equal(device_ptr_x, device_ptr_x + n, device_ptr_y, float_equal());
 }
 
 float JavaCuda::sum(const int n, const float* x) {

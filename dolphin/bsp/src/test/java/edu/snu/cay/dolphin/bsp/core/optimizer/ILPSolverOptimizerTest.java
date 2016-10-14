@@ -69,7 +69,7 @@ public final class ILPSolverOptimizerTest {
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
         NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{10000});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals, Collections.emptyMap());
 
     checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size() > 0);
@@ -88,7 +88,7 @@ public final class ILPSolverOptimizerTest {
     final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan =
-        ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
+        ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals, Collections.emptyMap());
 
     checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
@@ -106,7 +106,7 @@ public final class ILPSolverOptimizerTest {
     final Map<String, List<EvaluatorParameters>> activeEvaluators =
         generateEvaluatorParameters(NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{1300, 900});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals, Collections.emptyMap());
 
     checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertEquals(1, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
@@ -130,7 +130,7 @@ public final class ILPSolverOptimizerTest {
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
         NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[]{10000});
 
-    final Plan plan = wrongCtrlIlpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals);
+    final Plan plan = wrongCtrlIlpSolverOptimizer.optimize(activeEvaluators, numAvailableEvals, Collections.emptyMap());
 
     checkPlan(activeEvaluators, plan, numAvailableEvals);
     assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());

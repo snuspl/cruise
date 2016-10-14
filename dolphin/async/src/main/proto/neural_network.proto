@@ -85,4 +85,9 @@ message NeuralNetworkConfiguration {
   optional float step_size = 3;
   required Shape input_shape = 4;
   optional uint32 random_seed = 5;
+  enum DeviceMode {
+    CPU = 0;
+    GPU = 1;
+  }
+  optional DeviceMode device_mode = 6 [default = CPU];
 }

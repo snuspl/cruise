@@ -25,14 +25,14 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * Interface for sending AvroElasticMemoryMessages to the driver and evaluators.
+ * Interface for sending EMMsgs to the driver and evaluators.
  */
 @DefaultImplementation(ElasticMemoryMsgSenderImpl.class)
 public interface ElasticMemoryMsgSender {
 
   /**
    * Sends a RemoteOpReqMsg that requests the Evaluator specified with {@code destId} to
-   * process a data operation, parceling operation metadata into the message.
+   * process a remote operation, parceling operation metadata into the message.
    * Since the operation can be transmitted multiple times across the multiple evaluators,
    * the message retains {@code origId}, an id of the Evaluator where the operation is generated at the beginning.
    * The operation should be given a unique {@code operationId}.
@@ -106,13 +106,13 @@ public interface ElasticMemoryMsgSender {
    * Sends a MoveInitMsg to initiate moving data blocks to the source Evaluator.
    * @param destId id of the Evaluator that receives this message
    *              (i.e., source Evaluator in terms of the data)
-   * @param targetEvalId id of the Evaluator that receives the data
+   * @param receiverId id of the Evaluator that receives the data
    * @param blocks block ids to move
    * @param operationId id associated with this operation
    * @param parentTraceInfo Trace information for HTrace
    */
   void sendMoveInitMsg(final String destId,
-                       final String targetEvalId,
+                       final String receiverId,
                        final List<Integer> blocks,
                        final String operationId,
                        @Nullable final TraceInfo parentTraceInfo);
@@ -129,15 +129,37 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
+   * Sends a response message for DataMsg to the Evaluator named {@code destId}.
+   * The operation should be given a unique {@code operationId}.
+   * Include {@code parentTraceInfo} to continue tracing this message.
+   */
+  void sendDataAckMsg(final String destId,
+                      final int blockId,
+                      final String operationId,
+                      @Nullable final TraceInfo parentTraceInfo);
+
+  /**
    * Sends a request to update ownership for the given block.
    * @param destId Specifies the destination. The recipient is Driver when this field is empty.
    */
   void sendOwnershipMsg(final Optional<String> destId,
+                        final String senderId,
                         final String operationId,
                         final int blockId,
                         final int oldOwnerId,
                         final int newOwnerId,
                         @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Sends a response message for OwnershipMsg.
+   * @param destId Specifies the destination. The recipient is Driver when this field is empty.
+   */
+  void sendOwnershipAckMsg(final Optional<String> destId,
+                           final String operationId,
+                           final int blockId,
+                           final int oldOwnerId,
+                           final int newOwnerId,
+                           @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Sends a BlockMoved message to driver for notifying that the moving a block is completed.

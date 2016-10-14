@@ -114,8 +114,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    */
   @Override
   public synchronized Future<PlanResult> execute(final Plan plan) {
-    LOG.log(Level.INFO, "Start executing the plan: {0}", plan);
-
     executingPlan = new ExecutingPlan(plan);
 
     final Set<PlanOperation> initialPlanOperations = executingPlan.getInitialOpsToExecute();
@@ -155,8 +153,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
         executingPlan = null;
 
-        return new PlanResultImpl("Plan Execution Complete!\n[SUMMARY]\n" +
-                planExecutionResult, planExecutionResult.size());
+        return new PlanResultImpl(planExecutionResult.toString(), planExecutionResult.size());
       }
     });
   }

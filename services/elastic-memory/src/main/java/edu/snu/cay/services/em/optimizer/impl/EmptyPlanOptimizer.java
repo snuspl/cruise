@@ -35,7 +35,8 @@ public final class EmptyPlanOptimizer implements Optimizer {
   }
 
   @Override
-  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
+                       final Map<String, Double> optimizerModelParamsMap) {
     return PlanImpl.newBuilder().build();
   }
 }

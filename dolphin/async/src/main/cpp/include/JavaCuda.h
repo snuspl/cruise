@@ -39,6 +39,7 @@ public:
   static bool set(float* y, const float a, const int n);
   static bool copy(const int n, const float* x, int incx, float* y, int incy);
   static bool compare(const int n, const float* x, const float* y, const float tolerance);
+  static bool equal(const int n, const float* x, const float* y);
 
   static float sum(const int n, const float* x);
   static float max(const int n, const float* x);

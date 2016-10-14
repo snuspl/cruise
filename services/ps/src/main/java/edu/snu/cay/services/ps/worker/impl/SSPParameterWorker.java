@@ -69,8 +69,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
 
   /**
    * The maximum number to restart pull requests from the beginning
-   * when the pull reply do not arrive within timeout {@link PullRetryTimeoutMs},
-   * or the pull request is rejected by server.
+   * when the pull reply do not arrive within timeout {@link PullRetryTimeoutMs}.
    */
   static final int MAX_PULL_RETRY_COUNT = 10;
 
@@ -329,41 +328,10 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   }
 
   /**
-   * Handles incoming pull rejects, by rejecting the future.
-   * This will notify the WorkerThread's (synchronous) CacheLoader method to retry.
-   */
-  @Override
-  public void processPullReject(final K key, final int requestId) {
-    final PullFuture<V> future = pendingPulls.get(key);
-    if (future != null) {
-      LOG.log(Level.INFO, "Pull operation for key {0} is rejected." +
-          " It means that the corresponding server is closing or already closed.", key);
-      future.reject();
-
-    } else {
-      // Because we assign each key to a dedicated thread, there can be at most one active pendingPull for a key.
-      // But occasionally, multiple responses for a single pendingPull may arrive
-      // if the worker retried due to the late response from the target server.
-      LOG.log(Level.WARNING, "Pending pull was not found for key {0}." +
-          " Response for the key may have arrived earlier from another server", key);
-    }
-  }
-
-  /**
-   * Handles incoming push rejects, but internally it calls {@link SSPParameterWorker#push}.
-   * This function has been added to this class, that it implements {@link WorkerHandler} interface.
-   */
-  @Override
-  public void processPushReject(final K key, final P preValue) {
-    this.push(key, preValue);
-  }
-
-  /**
    * A simple Future that will wait on a get, until a value is set.
    * We do not implement a true Future, because this is simpler.
    */
   private static final class PullFuture<V> {
-    private boolean rejected = false;
     private V value = null;
 
     /**
@@ -373,7 +341,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
      * @return the value, or null when it fails to get the value in given timeout
      */
     synchronized V getValue(final long timeout) {
-      if (value == null && !rejected) {
+      if (value == null) {
         try {
           wait(timeout);
         } catch (final InterruptedException e) {
@@ -391,26 +359,6 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
     synchronized void setValue(final V value) {
       this.value = value;
       notify();
-    }
-
-    /**
-     * Wake up the waiting thread without setting a value, in order to retry.
-     */
-    synchronized void reject() {
-      rejected = true;
-      notify();
-    }
-
-    /**
-     * Reset pull future for the next retry.
-     * The rejected field should be reset, because it's valid only for current try.
-     * We don't need to reset the value field, because the value obtained from
-     * the previous request is also valid for the next retries.
-     * It may happen if the response from the previous request arrives
-     * after cleanup the current try and before the response from the next request.
-     */
-    synchronized void reset() {
-      rejected = false;
     }
   }
 
@@ -691,23 +639,21 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
                 // 2. wait the result from the server.
                 //
                 // PullFuture returns null,
-                // 1) when the msg is rejected by server,
-                // 2) or when the server does not respond within RETRY_INTERVAL_MS
-                // The case 2) can be divided into three reasons:
-                // 2A) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
-                // 2B) the server is overloaded
-                // 2C) the msg is missing due to network or other problems
-                // we should adjust timeout to be large enough to avoid 2A and not to worsen 2B,
-                // but small enough to quickly recover from 2C.
+                // when the server does not respond within RETRY_INTERVAL_MS
+                // The case can be divided into three reasons:
+                // A) the minimum processing time for pull is longer than RETRY_INTERVAL_MS
+                // B) the server is overloaded
+                // C) the msg is missing due to network or other problems
+                // we should adjust timeout to be large enough to avoid A and not to worsen B,
+                // but small enough to quickly recover from C.
                 value = future.getValue(pullRetryTimeoutMs);
 
                 if (value != null) {
                   break;
-                } else {
-                  future.reset();
-                  LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
-                      new Object[]{encodedKey.getKey(), retryCount});
                 }
+
+                LOG.log(Level.WARNING, "Retry pull request for key {0}. This is {1}-th retry",
+                    new Object[]{encodedKey.getKey(), retryCount});
               }
 
               pendingPulls.remove(encodedKey.getKey());

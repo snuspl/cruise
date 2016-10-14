@@ -41,7 +41,10 @@ public final class PlanResultImpl implements PlanResult {
 
   @Override
   public String toString() {
-    return summary;
+    return "PlanResultImpl{" +
+        "summary='" + summary + '\'' +
+        ", numExecutedOps=" + numExecutedOps +
+        '}';
   }
 
   @Override

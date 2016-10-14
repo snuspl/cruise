@@ -13,28 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.dnn;
+package edu.snu.cay.services.em.common.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * Parameters used for deep neural network jobs.
- */
-public final class NeuralNetworkParameters {
-
-  /**
-   * Should not be instantiated.
-   */
-  private NeuralNetworkParameters() {
-  }
-
-  @NamedParameter(doc = "delimiter that is used in input file", short_name = "delim", default_value = ",")
-  public static class Delimiter implements Name<String> {
-  }
-
-  @NamedParameter(doc = "neural network configuration file path", short_name = "conf")
-  public static final class ConfigurationPath implements Name<String> {
-  }
-
+@NamedParameter(doc = "Whether to guarantee the consistency of values during data migration with a slight overhead." +
+    "1) By default, we provide data migration that preserves consistency strictly by using OwnershipFirst protocol." +
+    "2) We sacrifice the consistency by changing ownership loosely during migration for better performance.",
+    default_value = "true")
+public final class ConsistencyPreserved implements Name<Boolean> {
 }

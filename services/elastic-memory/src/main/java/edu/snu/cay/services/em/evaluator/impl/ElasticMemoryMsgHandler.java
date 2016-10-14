@@ -16,61 +16,51 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.*;
-import edu.snu.cay.services.em.common.parameters.KeyCodecName;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MigrationExecutor;
 import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.util.Optional;
+import org.htrace.Span;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Evaluator-side message handler.
- * Processes control message from the driver and data message from
+ * It handles control messages from the driver and data/ownership messages from
  * other evaluators.
  */
 @EvaluatorSide
 @Private
-public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EMMsg>> {
+public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
+  private static final int NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS = 2;
 
-  private final RemoteAccessibleMemoryStore<K> memoryStore;
-  private final OperationRouter<K> router;
+  private final OperationRouter router;
   private final RemoteOpHandler remoteOpHandler;
-  private final Codec<K> keyCodec;
-  private final Serializer serializer;
-  private final InjectionFuture<ElasticMemoryMsgSender> sender;
+  private final MigrationExecutor migrationExecutor;
+
+  private final ExecutorService routingTableUpdateMsgHandlerExecutor
+      = Executors.newFixedThreadPool(NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS);
 
   @Inject
-  private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore<K> memoryStore,
-                                  final OperationRouter<K> router,
+  private ElasticMemoryMsgHandler(final OperationRouter router,
                                   final RemoteOpHandler remoteOpHandler,
-                                  final InjectionFuture<ElasticMemoryMsgSender> sender,
-                                  @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                                  final Serializer serializer) {
-    this.memoryStore = memoryStore;
+                                  final MigrationExecutor migrationExecutor) {
     this.router = router;
     this.remoteOpHandler = remoteOpHandler;
-    this.keyCodec = keyCodec;
-    this.serializer = serializer;
-    this.sender = sender;
+    this.migrationExecutor = migrationExecutor;
   }
 
   @Override
@@ -118,21 +108,35 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
   }
 
   private void onRoutingTableUpdateMsg(final RoutingTableMsg msg) {
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
     Trace.setProcessId("eval");
     try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_table_update_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
 
-      final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
-      final int newOwnerId = getStoreId(routingTableUpdateMsg.getNewEvalId().toString());
-      final int oldOwnerId = getStoreId(routingTableUpdateMsg.getOldEvalId().toString());
+      detached = onRoutingTableUpdateMsgScope.detach();
+      final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
-      LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
-          new Object[]{newOwnerId, oldOwnerId, blockIds});
+      routingTableUpdateMsgHandlerExecutor.submit(new Runnable() {
+        @Override
+        public void run() {
+          final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
 
-      for (final int blockId : blockIds) {
-        router.updateOwnership(blockId, oldOwnerId, newOwnerId);
-      }
+          final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
+          final int newOwnerId = getStoreId(routingTableUpdateMsg.getNewEvalId().toString());
+          final int oldOwnerId = getStoreId(routingTableUpdateMsg.getOldEvalId().toString());
+
+          LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
+              new Object[]{newOwnerId, oldOwnerId, blockIds});
+
+          for (final int blockId : blockIds) {
+            router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+          }
+        }
+      });
     }
   }
 
@@ -143,78 +147,11 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
     remoteOpHandler.onNext(msg);
   }
 
-  private void onMigrationMsg(final MigrationMsg msg) {
-    switch (msg.getType()) {
-    case MoveInitMsg:
-      onMoveInitMsg(msg);
-      break;
-
-    case DataMsg:
-      onDataMsg(msg);
-      break;
-
-    case OwnershipMsg:
-      onOwnershipMsg(msg);
-      break;
-
-    default:
-      throw new RuntimeException("Unexpected message: " + msg);
-    }
-  }
-
-  private void onOwnershipMsg(final MigrationMsg msg) {
-    final String operationId = msg.getOperationId().toString();
-    final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
-    final int blockId = ownershipMsg.getBlockId();
-    final int oldOwnerId = ownershipMsg.getOldOwnerId();
-    final int newOwnerId = ownershipMsg.getNewOwnerId();
-
-    Trace.setProcessId("src_eval");
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-
-      // Update the owner of the block to the new one.
-      // Operations being executed keep a read lock on router while being executed.
-      memoryStore.updateOwnership(blockId, oldOwnerId, newOwnerId);
-
-      // After the ownership is updated, the data is never accessed locally,
-      // so it is safe to remove the local data block.
-      memoryStore.removeBlock(blockId);
-
-      sender.get().sendBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
-    }
-  }
-
   /**
-   * Puts the data message contents into own memory store.
+   * Passes the msg of migration to {@link MigrationExecutor}.
    */
-  private void onDataMsg(final MigrationMsg msg) {
-    final DataMsg dataMsg = msg.getDataMsg();
-    final Codec codec = serializer.getCodec();
-    final String operationId = msg.getOperationId().toString();
-    final int blockId = dataMsg.getBlockId();
-
-    Trace.setProcessId("dst_eval");
-    try (final TraceScope onDataMsgScope = Trace.startSpan(String.format("on_data_msg. blockId: %d", blockId),
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final TraceInfo traceInfo = TraceInfo.fromSpan(onDataMsgScope.getSpan());
-
-      final Map<K, Object> dataMap;
-      try (final TraceScope decodeDataScope = Trace.startSpan("decode_data", traceInfo)) {
-        dataMap = toDataMap(dataMsg.getKeyValuePairs(), codec);
-      }
-
-      memoryStore.putBlock(blockId, dataMap);
-
-      // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
-      // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
-      final int newOwnerId = getStoreId(dataMsg.getDestEvalId().toString());
-      final int oldOwnerId = getStoreId(dataMsg.getSrcEvalId().toString());
-      memoryStore.updateOwnership(blockId, oldOwnerId, newOwnerId);
-
-      // Notify the driver that the ownership has been updated by setting empty destination id.
-      sender.get().sendOwnershipMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
-    }
+  private void onMigrationMsg(final MigrationMsg msg) {
+    migrationExecutor.onNext(msg);
   }
 
   /**
@@ -222,59 +159,5 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<EM
    */
   private int getStoreId(final String evalId) {
     return Integer.valueOf(evalId.split("-")[1]);
-  }
-
-  /**
-   * Initiates move by sending data messages to the src evaluator.
-   */
-  private void onMoveInitMsg(final MigrationMsg msg) {
-    Trace.setProcessId("src_eval");
-    try (final TraceScope onCtrlMsgScope = Trace.startSpan("on_move_init_msg",
-      HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final String operationId = msg.getOperationId().toString();
-
-      final MoveInitMsg moveInitMsg = msg.getMoveInitMsg();
-      final String destId = moveInitMsg.getDestEvalId().toString();
-      final List<Integer> blockIds = moveInitMsg.getBlockIds();
-
-      final Codec codec = serializer.getCodec();
-
-      final TraceInfo traceInfo = TraceInfo.fromSpan(onCtrlMsgScope.getSpan());
-
-      // Send the data as unit of block
-      for (final int blockId : blockIds) {
-        final Map<K, Object> blockData = memoryStore.getBlock(blockId);
-
-        final List<KeyValuePair> keyValuePairs;
-        try (final TraceScope encodeDataScope = Trace.startSpan("encode_data", traceInfo)) {
-          keyValuePairs = toKeyValuePairs(blockData, codec);
-        }
-
-        sender.get().sendDataMsg(destId, keyValuePairs, blockId, operationId, traceInfo);
-      }
-    }
-  }
-
-  private <V> List<KeyValuePair> toKeyValuePairs(final Map<K, V> blockData,
-                                                 final Codec<V> valueCodec) {
-    final List<KeyValuePair> kvPairs = new ArrayList<>(blockData.size());
-    for (final Map.Entry<K, V> entry : blockData.entrySet()) {
-      kvPairs.add(KeyValuePair.newBuilder()
-          .setKey(ByteBuffer.wrap(keyCodec.encode(entry.getKey())))
-          .setValue(ByteBuffer.wrap(valueCodec.encode(entry.getValue())))
-          .build());
-    }
-    return kvPairs;
-  }
-
-  private <V> Map<K, V> toDataMap(final List<KeyValuePair> keyValuePairs,
-                                  final Codec<V> valueCodec) {
-    final Map<K, V> dataMap = new HashMap<>(keyValuePairs.size());
-    for (final KeyValuePair kvPair : keyValuePairs) {
-      dataMap.put(
-          keyCodec.decode(kvPair.getKey().array()),
-          valueCodec.decode(kvPair.getValue().array()));
-    }
-    return dataMap;
   }
 }

@@ -21,6 +21,8 @@ import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.util.Optional;
+import org.htrace.Span;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -30,12 +32,13 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Driver-side message handler.
- * Currently does nothing, but we need this class as a placeholder to
- * instantiate NetworkService.
+ * It handles migration related messages from evaluators.
  */
 @DriverSide
 @Private
@@ -46,6 +49,18 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
   private final MigrationManager migrationManager;
 
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
+
+  /**
+   * In ownership-first migration, the {@link OwnershipAckMsg} and {@link BlockMovedMsg} can arrive out-of-order.
+   * Using this map, we can verify the correct order of them (OwnershipAckMsg -> BlockMovedMsg) in message handlers.
+   * A later message will call {@link #processBlockMovedMsg} to put a received block into MemoryStore.
+   * A value is {@link Optional#empty()} when an entry is put by OwnershipAckMsg.
+   *
+   * In data-first migration, on the other hand, {@link OwnershipMsg} always precedes {@link BlockMovedMsg}.
+   * So {@link #onOwnershipMsg(MigrationMsg)} simply marks that OwnershipMsg has arrived,
+   * and {@link #onBlockMovedMsg(MigrationMsg)} wraps up the migration without any concern.
+   */
+  private final Map<Integer, Optional<TraceInfo>> msgArrivedBlocks = new ConcurrentHashMap<>();
 
   @Inject
   private ElasticMemoryMsgHandler(final BlockManager blockManager,
@@ -108,6 +123,10 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
       onOwnershipMsg(msg);
       break;
 
+    case OwnershipAckMsg:
+      onOwnershipAckMsg(msg);
+      break;
+
     case BlockMovedMsg:
       onBlockMovedMsg(msg);
       break;
@@ -121,32 +140,119 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     }
   }
 
-  private void onBlockMovedMsg(final MigrationMsg msg) {
-    final String operationId = msg.getOperationId().toString();
-    final BlockMovedMsg blockMovedMsg = msg.getBlockMovedMsg();
-    final int blockId = blockMovedMsg.getBlockId();
-
-    try (final TraceScope onBlockMovedMsgScope = Trace.startSpan(
-        String.format("on_block_moved_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-
-      migrationManager.markBlockAsMoved(operationId, blockId, TraceInfo.fromSpan(onBlockMovedMsgScope.getSpan()));
-    }
-  }
-
+  /**
+   * (Data-first migration only) Handles the OwnershipMsg from the receiver
+   * that reports an update of a block's ownership.
+   */
   private void onOwnershipMsg(final MigrationMsg msg) {
     final String operationId = msg.getOperationId().toString();
-    final int blockId = msg.getOwnershipMsg().getBlockId();
-    final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
-    final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
+    final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
+    final int blockId = ownershipMsg.getBlockId();
+    final String senderId = ownershipMsg.getSenderId().toString();
+    final int oldOwnerId = ownershipMsg.getOldOwnerId();
+    final int newOwnerId = ownershipMsg.getNewOwnerId();
 
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(
         String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      // Update the owner and send ownership message to the old Owner.
-      migrationManager.updateOwner(operationId, blockId, oldOwnerId, newOwnerId,
+      // In data-first migration, OwnershipMsg always precedes BlockMovedMsg.
+      // So we don't need synchronization here, and we can simply mark that OwnershipMsg has arrived allowing
+      // onBlockMoveMsg to process BlockMovedMsg later.
+      msgArrivedBlocks.put(blockId, Optional.empty());
+
+      // Update the owner of the block to the new one.
+      migrationManager.updateOwner(blockId, oldOwnerId, newOwnerId);
+
+      // Send the OwnershipMessage to update the owner in the sender memoryStore
+      msgSender.get().sendOwnershipMsg(Optional.of(senderId), senderId, operationId, blockId, oldOwnerId, newOwnerId,
           TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
     }
+  }
+
+  /**
+   * (Ownership-first migration only) Handles the OwnershipAckMsg from the sender
+   * that reports an update of a block's ownership.
+   */
+  private void onOwnershipAckMsg(final MigrationMsg msg) {
+    final String operationId = msg.getOperationId().toString();
+    final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
+    final int blockId = ownershipAckMsg.getBlockId();
+    final int oldOwnerId = ownershipAckMsg.getOldOwnerId();
+    final int newOwnerId = ownershipAckMsg.getNewOwnerId();
+
+    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
+        String.format("on_ownership_ack_msg. blockId: %d", blockId),
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      // Update the owner of the block to the new one.
+      migrationManager.updateOwner(blockId, oldOwnerId, newOwnerId);
+
+      // In ownership-first migration, the order of OwnershipAckMsg and BlockMovedMsg is not fixed.
+      // However, BlockMovedMsg should be handled after updating ownership by OwnershipAckMsg.
+      // So if BlockMovedMsg for the same block has been already arrived, handle that msg now.
+      final boolean ownershipAckMsgArrivedFirst; // If true, the messages have arrived in order
+      TraceInfo blockMovedMsgTraceInfo = null;
+      synchronized (msgArrivedBlocks) {
+        ownershipAckMsgArrivedFirst = !msgArrivedBlocks.containsKey(blockId);
+        if (ownershipAckMsgArrivedFirst) {
+          msgArrivedBlocks.put(blockId, Optional.empty());
+        } else {
+          blockMovedMsgTraceInfo = msgArrivedBlocks.remove(blockId).get();
+        }
+      }
+
+      // If the messages have arrived out of order, there should be an awaiting blockMovedMsg to be processed.
+      if (!ownershipAckMsgArrivedFirst) {
+        processBlockMovedMsg(operationId, blockId, blockMovedMsgTraceInfo);
+      }
+    }
+  }
+
+  /**
+   * Handles BlockMovedMsg from the sender that reports data migration for a block has been finished successfully.
+   */
+  private void onBlockMovedMsg(final MigrationMsg msg) {
+    final String operationId = msg.getOperationId().toString();
+    final BlockMovedMsg blockMovedMsg = msg.getBlockMovedMsg();
+    final int blockId = blockMovedMsg.getBlockId();
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
+    try (final TraceScope onBlockMovedMsgScope = Trace.startSpan(
+        String.format("on_block_moved_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      // In ownership-first migration, the order of OwnershipAckMsg and BlockMovedMsg is not fixed.
+      // However, BlockMovedMsg should be handled after updating ownership by OwnershipAckMsg.
+      // So handle BlockMovedMsg now, if OwnershipAckMsg for the same block has been already arrived.
+      // Otherwise handle it in future when corresponding OwnershipAckMsg arrives
+      final boolean ownershipMsgArrivedFirst; // If true, the messages have arrived in order
+      synchronized (msgArrivedBlocks) {
+        ownershipMsgArrivedFirst = msgArrivedBlocks.containsKey(blockId);
+        if (ownershipMsgArrivedFirst) {
+          msgArrivedBlocks.remove(blockId);
+        } else {
+          detached = onBlockMovedMsgScope.detach();
+          // traceInfo is null, if onBlockMovedMsgScope is NullScope
+          msgArrivedBlocks.put(blockId, Optional.ofNullable(TraceInfo.fromSpan(detached)));
+        }
+      }
+
+      // If the messages have arrived in order, blockMovedMsg should be processed here.
+      if (ownershipMsgArrivedFirst) {
+        processBlockMovedMsg(operationId, blockId, TraceInfo.fromSpan(onBlockMovedMsgScope.getSpan()));
+      }
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
+  }
+
+  private void processBlockMovedMsg(final String operationId, final int blockId, final TraceInfo traceInfo) {
+    LOG.log(Level.INFO, "mark block as moved. blockId: {0}", blockId);
+    migrationManager.markBlockAsMoved(operationId, blockId, traceInfo);
   }
 
   private void onFailureMsg(final MigrationMsg msg) {

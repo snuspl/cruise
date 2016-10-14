@@ -22,7 +22,7 @@ import javax.annotation.Nullable;
 /**
  * Sender for ParameterServer.
  */
-public interface ServerSideReplySender<K, P, V> {
+public interface ServerSideMsgSender<K, P, V> {
   /**
    * Implementing classes must serialize K, V immediately within the calling thread,
    * to ensure atomicity of updates.
@@ -37,18 +37,23 @@ public interface ServerSideReplySender<K, P, V> {
                         @Nullable final TraceInfo traceInfo);
 
   /**
-   * Send a reject msg for push operation to the worker who requested.
-   * @param destId the destination's network address
-   * @param key key object that {@code preValue} is associated with
-   * @param preValue preValue sent from the worker
+   * Sends a push msg for {@code key} to a corresponding server.
+   *
+   * @param destId   an id of destination server
+   * @param key      a key to push
+   * @param preValue a previous value to push
    */
-  void sendPushRejectMsg(String destId, K key, P preValue);
+  void sendPushMsg(final String destId, final K key, final P preValue);
 
   /**
-   * Send a reject msg for pull operation to the worker who requested.
-   * @param destId the destination's network address
-   * @param key key object that the requested {@code value} is associated with
+   * Sends a pull msg for {@code key} to a corresponding server.
+   *
+   * @param destId    an id of destination server
+   * @param requesterId     an id of requester
+   * @param key       a key to pull
    * @param requestId pull request id assigned by ParameterWorker
+   * @param traceInfo Information for Trace
    */
-  void sendPullRejectMsg(String destId, K key, int requestId);
+  void sendPullMsg(final String destId, final String requesterId, final K key, final int requestId,
+                   @Nullable final TraceInfo traceInfo);
 }

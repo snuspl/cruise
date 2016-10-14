@@ -25,16 +25,17 @@ import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
 
 import javax.annotation.Nonnull;
-import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
@@ -60,17 +61,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    */
   private final ConcurrentMap<Integer, Block> blocks = new ConcurrentHashMap<>();
 
-  @GuardedBy("routerLock")
   private final OperationRouter<Long> router;
   private final BlockResolver<Long> blockResolver;
   private final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl;
 
-  private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
-
   /**
    * Block update listeners that clients have registered.
    */
-  private final Set<BlockUpdateListener> blockUpdateListeners
+  private final Set<BlockUpdateListener<Long>> blockUpdateListeners
       = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
@@ -120,16 +118,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
-    routerLock.writeLock().lock();
-    try {
-      router.updateOwnership(blockId, oldOwnerId, newOwnerId);
-    } finally {
-      routerLock.writeLock().unlock();
-    }
-  }
-
-  @Override
   public void putBlock(final int blockId, final Map<Long, Object> data) {
     final Block block = new Block();
     block.putAll(data);
@@ -169,7 +157,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private void notifyBlockRemoval(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateListener listener : blockUpdateListeners) {
+    for (final BlockUpdateListener<Long> listener : blockUpdateListeners) {
       listener.onRemovedBlock(blockId, keySet);
     }
   }
@@ -177,7 +165,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private void notifyBlockAddition(final int blockId, final Block block) {
     final Map<Long, Object> kvData = block.getAll();
     final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateListener listener : blockUpdateListeners) {
+    for (final BlockUpdateListener<Long> listener : blockUpdateListeners) {
       listener.onAddedBlock(blockId, keySet);
     }
   }
@@ -214,10 +202,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, block: {2}]]",
           new Object[]{operation.getOpId(), operation.getOrigEvalId().get(), blockId});
 
-      routerLock.readLock().lock();
+      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
       try {
-        final Optional<String> remoteEvalId = router.resolveEval(blockId);
-        final boolean isLocal = !remoteEvalId.isPresent();
+        final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
+        final boolean isLocal = !remoteEvalIdOptional.isPresent();
         if (isLocal) {
           final Block block = blocks.get(blockId);
           final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRanges);
@@ -226,7 +214,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
           LOG.log(Level.WARNING,
               "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
                   " of block {1} by store {2}, but the local router assumes store {3} is the owner",
-              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalId.get()});
+              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalIdOptional.get()});
 
           // treat remote ranges as failed ranges, because we do not allow more than one hop in remote access
           final List<Pair<Long, Long>> failedRanges = new ArrayList<>(1);
@@ -236,7 +224,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
           submitLocalResult(operation, Collections.emptyMap(), failedRanges);
         }
       } finally {
-        routerLock.readLock().unlock();
+        final Lock routerLock = remoteEvalIdWithLock.getValue();
+        routerLock.unlock();
       }
     }
   }
@@ -440,10 +429,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final Map<String, List<Pair<Long, Long>>> remoteEvalToSubKeyRangesMap;
 
-    routerLock.readLock().lock();
+    final Tuple3<Map<Integer, List<Pair<Long, Long>>>, Map<String, List<Pair<Long, Long>>>, Lock> routingResult =
+        router.route(dataKeyRanges);
     try {
-      final Pair<Map<Integer, List<Pair<Long, Long>>>, Map<String, List<Pair<Long, Long>>>> routingResult =
-          router.route(dataKeyRanges);
       final Map<Integer, List<Pair<Long, Long>>> localBlockToSubKeyRangesMap = routingResult.getFirst();
       remoteEvalToSubKeyRangesMap = routingResult.getSecond();
 
@@ -457,7 +445,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       final Map<Long, V> localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangesMap);
       submitLocalResult(operation, localOutputData, Collections.emptyList());
     } finally {
-      routerLock.readLock().unlock();
+      final Lock routerLock = routingResult.getThird();
+      routerLock.unlock();
     }
 
     // send remote operations and wait until all remote operations complete
@@ -633,33 +622,27 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   @Override
   public <V> Map<Long, V> getAll() {
-    routerLock.readLock().lock();
-    try {
-      final Map<Long, V> result;
+    final Map<Long, V> result;
 
-      final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
-      final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
-
-      // first execute on a head block to reuse the returned map object for a return map
-      if (blockIdIterator.hasNext()) {
-        final Block<V> block = blocks.get(blockIdIterator.next());
-        result = block.getAll();
-      } else {
-        return Collections.emptyMap();
-      }
-
-      // execute on remaining blocks if exist
-      while (blockIdIterator.hasNext()) {
-        final Block<V> block = blocks.get(blockIdIterator.next());
-        // huge memory pressure may happen here
-        result.putAll(block.getAll());
-      }
-
-      return result;
-    } finally {
-      routerLock.readLock().unlock();
+    // first execute on a head block to reuse the returned map object for a return map
+    if (blockIdIterator.hasNext()) {
+      final Block<V> block = blocks.get(blockIdIterator.next());
+      result = block.getAll();
+    } else {
+      return Collections.emptyMap();
     }
+
+    // execute on remaining blocks if exist
+    while (blockIdIterator.hasNext()) {
+      final Block<V> block = blocks.get(blockIdIterator.next());
+      // huge memory pressure may happen here
+      result.putAll(block.getAll());
+    }
+
+    return result;
   }
 
   @Override
@@ -698,19 +681,20 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public <V> Map<Long, V> removeAll() {
     final Map<Long, V> result;
 
-    final Iterator<Block> blockIterator = blocks.values().iterator();
+    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
-    if (blockIterator.hasNext()) {
-      final Block<V> block = blockIterator.next();
+    if (blockIdIterator.hasNext()) {
+      final Block<V> block = blocks.get(blockIdIterator.next());
       result = block.removeAll();
     } else {
       return Collections.emptyMap();
     }
 
     // execute on remaining blocks if exist
-    while (blockIterator.hasNext()) {
-      final Block<V> block = blockIterator.next();
+    while (blockIdIterator.hasNext()) {
+      final Block<V> block = blocks.get(blockIdIterator.next());
       // huge memory pressure may happen here
       result.putAll(block.removeAll());
     }
@@ -737,5 +721,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   @Override
   public int getNumBlocks() {
     return blocks.size();
+  }
+
+  @Override
+  public Optional<String> resolveEval(final Long key) {
+    final int blockId = blockResolver.resolveBlock(key);
+    return router.resolveEval(blockId);
   }
 }
