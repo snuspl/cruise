@@ -32,10 +32,11 @@ import static edu.snu.cay.dolphin.async.dnn.blas.FloatCompare.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for {@link MatrixCudaFactory}.
+ * Tests for {@link MatrixFactory}.
  */
 @RunWith(Parameterized.class)
 public final class MatrixFactoryTest {
+
   @Parameterized.Parameters
   public static Object[] data() throws IOException {
     return TestDevice.getTestDevices();

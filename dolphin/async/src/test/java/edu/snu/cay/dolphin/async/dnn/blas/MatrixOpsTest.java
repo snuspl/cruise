@@ -36,6 +36,7 @@ import static org.junit.Assert.assertTrue;
  */
 @RunWith(Parameterized.class)
 public final class MatrixOpsTest {
+
   @Parameterized.Parameters
   public static Object[] data() throws IOException {
     return TestDevice.getTestDevices();

@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes for dolphin-async-dnn-blas tests.
+ * Classes for tests related to BLAS implementation.
  */
 package edu.snu.cay.dolphin.async.dnn.blas;
