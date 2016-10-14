@@ -249,6 +249,7 @@ public class ConvolutionalGpuLayerTest {
 
   @After
   public void tearDown() {
+    // TODO #891: Free allocated memory of GPU layer tests such as input or expectedError.
     convolutionalLayer.cleanup();
     convolutionalWithPaddingLayer.cleanup();
     convolutional3DLayer.cleanup();

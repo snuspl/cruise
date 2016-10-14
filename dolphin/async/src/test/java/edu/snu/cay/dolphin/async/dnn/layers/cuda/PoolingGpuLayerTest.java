@@ -374,6 +374,7 @@ public final class PoolingGpuLayerTest {
 
   @After
   public void tearDown() {
+    // TODO #891: Free allocated memory of GPU layer tests such as input or expectedError.
     maxPoolingLayer.cleanup();
     averagePoolingLayer.cleanup();
     remainderExistingMaxPoolingLayer.cleanup();

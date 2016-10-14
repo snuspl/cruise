@@ -128,6 +128,7 @@ public class LRNGpuLayerTest {
 
   @After
   public void tearDown() {
+    // TODO #891: Free allocated memory of GPU layer tests such as input or expectedError.
     lrnLayerSizeOne.cleanup();
     lrnLayerSizeTwo.cleanup();
   }
