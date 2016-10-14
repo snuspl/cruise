@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.dnn.blas.cuda;
 
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import org.apache.commons.math3.random.MersenneTwister;
+import org.apache.commons.math3.random.SynchronizedRandomGenerator;
 
 import javax.inject.Inject;
 
@@ -26,9 +28,11 @@ import static edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl.FLOAT_SIZE;
  * Factory for CUDA backend Matrix implementation.
  */
 public final class MatrixCudaFactory implements MatrixFactory {
+  private final SynchronizedRandomGenerator randomGenerator;
 
   @Inject
   private MatrixCudaFactory() {
+    this.randomGenerator = new SynchronizedRandomGenerator(new MersenneTwister());
   }
 
   @Override
@@ -86,7 +90,7 @@ public final class MatrixCudaFactory implements MatrixFactory {
 
   @Override
   public void setRandomSeed(final long seed) {
-    throw new UnsupportedOperationException("Not implemented");
+    randomGenerator.setSeed(seed);
   }
 
   @Override
@@ -121,12 +125,22 @@ public final class MatrixCudaFactory implements MatrixFactory {
 
   @Override
   public Matrix bernoulli(final int rows, final int columns, final float prob) {
-    throw new UnsupportedOperationException("Not implemented");
+    return bernoulli(rows, columns, prob, 1.0f);
   }
 
   @Override
   public Matrix bernoulli(final int rows, final int columns, final float prob, final float scale) {
-    throw new UnsupportedOperationException("Not implemented");
+    final int length = rows * columns;
+    final float[] data = new float[length];
+
+    for (int i = 0; i < length; ++i) {
+      if (randomGenerator.nextFloat() <= prob) {
+        data[i] = scale;
+      } else {
+        data[i] = 0;
+      }
+    }
+    return create(data, rows, columns);
   }
 
   @Override
