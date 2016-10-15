@@ -20,7 +20,6 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 @DefaultImplementation(AvailableResourceTrackerImpl.class)
 public interface AvailableResourceTracker {
   /**
-   * Return the number of resources currently available.
    * @return the number of available resources.
    */
   int getNumAvailableResources();

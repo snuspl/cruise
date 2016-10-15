@@ -66,6 +66,9 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    */
   private final long delayAfterOptimizationMs;
 
+  /**
+   * the maximum number of available evaluators, initially set as {@link Parameters.LocalRuntimeMaxNumEvaluators}.
+   */
   private int maxNumEvals;
 
   /**

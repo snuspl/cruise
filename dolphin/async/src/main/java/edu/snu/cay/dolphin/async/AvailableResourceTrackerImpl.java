@@ -34,16 +34,15 @@ import java.util.List;
  * and provides it via {@link AvailableResourceTracker#getNumAvailableResources()}.
  */
 public final class AvailableResourceTrackerImpl implements AvailableResourceTracker {
-  private AvailableResourceListener listener;
+  private HttpHandlerImpl listener;
 
   @Inject
   private AvailableResourceTrackerImpl(
-      final AvailableResourceListener listener) {
+      final HttpHandlerImpl listener) {
     this.listener = listener;
   }
 
   /**
-   * Returns the total number of resources currently available.
    * @return the total number of available resources.
    */
   @Override
@@ -51,9 +50,12 @@ public final class AvailableResourceTrackerImpl implements AvailableResourceTrac
     return listener.getNumAvailableResources();
   }
 
+  /**
+   * @return a configuration where {@link HttpHandlerImpl} is added to {@link HttpHandlerConfiguration#HTTP_HANDLERS}.
+   */
   public static Configuration getHttpConf() {
     final Configuration httpHandlerConf = HttpHandlerConfiguration.CONF
-        .set(HttpHandlerConfiguration.HTTP_HANDLERS, AvailableResourceListener.class)
+        .set(HttpHandlerConfiguration.HTTP_HANDLERS, HttpHandlerImpl.class)
         .build();
     return httpHandlerConf;
   }
@@ -61,12 +63,12 @@ public final class AvailableResourceTrackerImpl implements AvailableResourceTrac
   /**
    * A listener who receives http requests for updating the number of resources currently available.
    */
-  public static class AvailableResourceListener implements HttpHandler {
-    private String uriSpecification = "dolphin-available-resource-tracker";
+  private static class HttpHandlerImpl implements HttpHandler {
+    private String uriSpecification = "available-resource-tracker";
     private int numAvailableResources;
 
     @Inject
-    AvailableResourceListener(@Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class)
+    HttpHandlerImpl(@Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class)
                               final int numAvailableResources) {
       this.numAvailableResources = numAvailableResources;
     }
@@ -83,7 +85,7 @@ public final class AvailableResourceTrackerImpl implements AvailableResourceTrac
 
     /**
      * HttpRequest handler. You must specify UriSpecification and API version.
-     * The request url is http://{address}:{port}/scheduler/v1
+     * The request url is http://{address}:{port}/available-resource-tracker/v1
      * <p>
      * APIs
      * /update                to update the number of available resources
@@ -91,6 +93,7 @@ public final class AvailableResourceTrackerImpl implements AvailableResourceTrac
     @Override
     public void onHttpRequest(final ParsedHttpRequest request, final HttpServletResponse response)
         throws IOException, ServletException {
+      AvailableResourceTrackerResponse result;
       final String target = request.getTargetEntity().toLowerCase();
 
       switch (target) {
@@ -98,20 +101,23 @@ public final class AvailableResourceTrackerImpl implements AvailableResourceTrac
         final List<String> args = request.getQueryMap().get("numAvailableResources");
         final int updatedNumAvailableResources = Integer.parseInt(args.get(0));
         if (updatedNumAvailableResources < 0) {
-          response.getWriter().println(String.format("Invalid value of numAvailableResources: [%s]",
-              updatedNumAvailableResources));
+          result = AvailableResourceTrackerResponse.badRequest("Invalid value of numAvailableResources");
           break;
         }
+
         numAvailableResources = updatedNumAvailableResources;
+        result = AvailableResourceTrackerResponse.ok("numAvailableResources updated to" + numAvailableResources);
         break;
       default:
-        response.getWriter().println(String.format("Unsupported operation: [%s].", target));
+        result = AvailableResourceTrackerResponse.notFound("Unsupported operation");
       }
+
+      response.sendError(result.getStatus(), result.getMessage());
+
     }
 
-    int getNumAvailableResources() {
+    public int getNumAvailableResources() {
       return numAvailableResources;
     }
-
   }
 }
