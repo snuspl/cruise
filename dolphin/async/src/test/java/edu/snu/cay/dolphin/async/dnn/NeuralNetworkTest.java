@@ -100,13 +100,13 @@ public final class NeuralNetworkTest {
 
   public NeuralNetworkTest(final String testDevice) throws InjectionException {
 
-    blasConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+    this.blasConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MatrixFactory.class,
             testDevice.equals(TestDevice.CPU) ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
         .build();
     this.matrixFactory = Tang.Factory.getTang().newInjector(blasConfiguration).getInstance(MatrixFactory.class);
 
-    weightOne = matrixFactory.create(new float[][]{
+    this.weightOne = matrixFactory.create(new float[][]{
         {-1.00006793218e-04f, -1.54579829541e-05f, 6.94163973093e-05f, -1.06398147181e-04f,
             2.24940842599e-04f, 2.46723706368e-04f, -1.06568011688e-04f, -4.03687081416e-05f},
         {-4.79565023852e-05f, 4.79118025396e-05f, -1.03981255961e-04f, -5.14816019858e-05f,
@@ -118,23 +118,23 @@ public final class NeuralNetworkTest {
         {-6.45994732622e-05f, 1.08623662526e-05f, -3.13096330501e-04f, -4.43520293629e-05f,
             4.67877107439e-05f, -1.47852388181e-05f, 2.29103789024e-05f, 4.29372485086e-05f}});
 
-    biasOne = matrixFactory.create(new float[]
+    this.biasOne = matrixFactory.create(new float[]
         {1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f});
 
-    weightTwo = matrixFactory.create(new float[][]{
+    this.weightTwo = matrixFactory.create(new float[][]{
         {0.20476184785f, 0.12248460203f, 0.22612512111f, 0.35694047808f, 0.17052401602f},
         {0.07434597611f, -0.15545003116f, 0.10352678596f, 0.09480648487f, -0.14262562990f},
         {0.05223761871f, 0.00742011470f, -0.28489932417f, 0.00368047505f, 0.26537343859f}});
 
-    biasTwo = matrixFactory.create(new float[]
+    this.biasTwo = matrixFactory.create(new float[]
         {0.30000001192f, 0.30000001192f, 0.30000001192f});
 
-    input = matrixFactory.create(new float[]{77, 57, 30, 26, 75, 74, 87, 75});
-    expectedOutput =
+    this.input = matrixFactory.create(new float[]{77, 57, 30, 26, 75, 74, 87, 75});
+    this.expectedOutput =
         matrixFactory.create(new float[]{6.99425825888e-01f, 5.71492261161e-01f, 5.79580557810e-01f});
-    label = matrixFactory.create(new float[]{0, 1, 0});
+    this.label = matrixFactory.create(new float[]{0, 1, 0});
 
-    expectedActivations = new Matrix[]{
+    this.expectedActivations = new Matrix[]{
         matrixFactory.create(new float[]{
             1.37635586396e-02f, 2.03896453321e-02f, 8.84165966865e-03f, 2.93623840734e-02f, -7.07257980630e-03f}),
         matrixFactory.create(new float[]{
@@ -143,14 +143,14 @@ public final class NeuralNetworkTest {
             8.44565190562e-01f, 2.87942143690e-01f, 3.21051780914e-01f}),
         expectedOutput};
 
-    expectedErrors = new Matrix[]{
+    this.expectedErrors = new Matrix[]{
         matrixFactory.create(new float[]{
             3.54067743975e-02f, 3.91411779548e-02f, -1.28313456911e-02f, 5.27789222833e-02f, 8.35465482582e-02f}),
         matrixFactory.create(new float[]{
             1.41633804997e-01f, 1.56580984844e-01f, -5.13263858606e-02f, 2.11161195729e-01f, 3.34190372164e-01f}),
         matrixFactory.create(new float[]{6.99425825888e-01f, -4.28507738839e-01f, 5.79580557810e-01f})};
 
-    neuralNetworkConfiguration = NeuralNetworkConfigurationBuilder.newConfigurationBuilder()
+    this.neuralNetworkConfiguration = NeuralNetworkConfigurationBuilder.newConfigurationBuilder()
         .setInputShape(input.getLength())
         .setStepSize(1e-2f)
         .setRandomSeed(10)
@@ -177,22 +177,22 @@ public final class NeuralNetworkTest {
             .build())
         .build();
 
-    batchInput = matrixFactory.create(new float[]{
+    this.batchInput = matrixFactory.create(new float[]{
         77, 57, 30, 26, 75, 74, 87, 75,
         61, 5, 18, 18, 16, 4, 67, 29,
         68, 85, 4, 50, 19, 3, 5, 18}, input.getLength(), numBatch);
 
-    expectedBatchOutput = matrixFactory.create(new float[]{
+    this.expectedBatchOutput = matrixFactory.create(new float[]{
         6.99425825888e-01f, 5.71492261161e-01f, 5.79580557810e-01f,
         6.98681281603e-01f, 5.71393771362e-01f, 5.79682345726e-01f,
         6.98732123516e-01f, 5.71416319005e-01f, 5.79628523069e-01f}, expectedOutput.getLength(), numBatch);
 
-    labels = matrixFactory.create(new float[]{
+    this.labels = matrixFactory.create(new float[]{
         0, 1, 0,
         0, 0, 1,
         1, 0, 0}, expectedOutput.getLength(), numBatch);
 
-    expectedBatchActivations = new Matrix[]{
+    this.expectedBatchActivations = new Matrix[]{
         matrixFactory.create(new float[]{
             1.37635586396e-02f, 2.03896453321e-02f, 8.84165966865e-03f, 2.93623840734e-02f, -7.07257980630e-03f,
             -1.03681771740e-02f, 3.53007655740e-03f, -1.66967848856e-03f, 1.57861485705e-02f, -6.65068837926e-03f,
@@ -210,7 +210,7 @@ public final class NeuralNetworkTest {
             expectedOutput.getLength(), numBatch),
         expectedBatchOutput};
 
-    expectedBatchErrors = new Matrix[]{
+    this.expectedBatchErrors = new Matrix[]{
         matrixFactory.create(new float[]{
             3.54067743975e-02f, 3.91411779548e-02f, -1.28313456911e-02f, 5.27789222833e-02f, 8.35465482582e-02f,
             4.08958273398e-02f, -1.59106512616e-03f, 8.42229824251e-02f, 7.54984157076e-02f, -1.84734459806e-02f,
@@ -232,9 +232,9 @@ public final class NeuralNetworkTest {
   @Before
   public void buildNeuralNetwork() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector(blasConfiguration, neuralNetworkConfiguration);
-    mockParameterWorker = mock(ParameterWorker.class);
+    this.mockParameterWorker = mock(ParameterWorker.class);
     injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
-    neuralNetwork = injector.getInstance(NeuralNetwork.class);
+    this.neuralNetwork = injector.getInstance(NeuralNetwork.class);
 
     doAnswer(invocation -> {
         final LayerParameter layerParameterOne = new LayerParameter(weightOne, biasOne);
