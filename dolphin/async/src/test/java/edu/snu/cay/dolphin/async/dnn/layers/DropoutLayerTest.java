@@ -99,7 +99,7 @@ public final class DropoutLayerTest {
   public void setup() throws InjectionException {
     final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-        .bindNamedParameter(LayerInputShape.class, "4,2")
+        .bindNamedParameter(LayerInputShape.class, "4")
         .build();
 
     final DropoutLayerConfigurationBuilder builder = DropoutLayerConfigurationBuilder
