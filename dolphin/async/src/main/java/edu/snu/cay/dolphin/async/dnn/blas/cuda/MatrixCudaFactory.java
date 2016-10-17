@@ -110,7 +110,7 @@ public final class MatrixCudaFactory implements MatrixFactory {
 
   @Override
   public Matrix randn(final int length) {
-    return randn(length);
+    return randn(length, 1);
   }
 
   @Override
