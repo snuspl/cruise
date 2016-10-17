@@ -15,8 +15,10 @@
  */
 package edu.snu.cay.dolphin.async.dnn.layers;
 
+import edu.snu.cay.dolphin.async.dnn.TestDevice;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.DropoutLayerConfigurationBuilder;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
@@ -27,53 +29,71 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import java.io.IOException;
 
 import static org.junit.Assert.assertTrue;
 
 /**
  * Test class for dropout layer.
  */
+@RunWith(Parameterized.class)
 public final class DropoutLayerTest {
 
-  private static MatrixFactory matrixFactory;
   private static final float TOLERANCE = 1e-6f;
-  private static final Configuration MATRIX_CONF = Tang.Factory.getTang().newConfigurationBuilder()
-      .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
-      .build();
 
-  static {
-    try {
-      matrixFactory = Tang.Factory.getTang().newInjector(MATRIX_CONF).getInstance(MatrixFactory.class);
-    } catch (final InjectionException e) {
-      throw new RuntimeException("InjectionException while injecting a matrix factory: " + e);
-    }
+  @Parameterized.Parameters
+  public static Object[] data() throws IOException {
+    return TestDevice.getTestDevices();
   }
 
-  private final Matrix input = matrixFactory.create(new float[][]{
-      {0.4f, -2.0f},
-      {-0.5f, -4.5f},
-      {-0.2f, 1.6f},
-      {-0.7f, 1.4f}});
+  private final Configuration matrixConf;
 
-  private final Matrix nextError = matrixFactory.create(new float[][]{
-      {0.1f, 0},
-      {0.3f, 0.3f},
-      {0.6f, 0.4f},
-      {0.4f, 0.1f}});
+  private final MatrixFactory matrixFactory;
 
-  private final Matrix expectedDropoutActivation = matrixFactory.create(new float[][] {
-      {0, -4.0f},
-      {-1.0f, 0},
-      {0, 3.2f},
-      {-1.4f, 2.8f}});
+  private final Matrix input;
 
-  private final Matrix expectedDropoutError = matrixFactory.create(new float[][] {
-      {0, 0},
-      {0.6f, 0},
-      {0, 0.8f},
-      {0.8f, 0.2f}});
+  private final Matrix nextError;
+
+  private final Matrix expectedDropoutActivation;
+
+  private final Matrix expectedDropoutError;
 
   private LayerBase dropoutLayer;
+
+  public DropoutLayerTest(final String testDevice) throws InjectionException {
+    this.matrixConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(MatrixFactory.class,
+            testDevice.equals(TestDevice.CPU) ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
+        .build();
+    this.matrixFactory = Tang.Factory.getTang().newInjector(matrixConf).getInstance(MatrixFactory.class);
+
+    this.input = matrixFactory.create(new float[][]{
+        {0.4f, -2.0f},
+        {-0.5f, -4.5f},
+        {-0.2f, 1.6f},
+        {-0.7f, 1.4f}});
+
+    this.nextError = matrixFactory.create(new float[][]{
+        {0.1f, 0},
+        {0.3f, 0.3f},
+        {0.6f, 0.4f},
+        {0.4f, 0.1f}});
+
+    this.expectedDropoutActivation = matrixFactory.create(new float[][] {
+        {0, -4.0f},
+        {-1.0f, 0},
+        {0, 3.2f},
+        {-1.4f, 2.8f}});
+
+    this.expectedDropoutError = matrixFactory.create(new float[][] {
+        {0, 0},
+        {0.6f, 0},
+        {0, 0.8f},
+        {0.8f, 0.2f}});
+  }
 
   @Before
   public void setup() throws InjectionException {
@@ -86,7 +106,7 @@ public final class DropoutLayerTest {
         .newConfigurationBuilder()
         .setDropoutRatio(0.5f);
 
-    final Injector injector = Tang.Factory.getTang().newInjector(MATRIX_CONF);
+    final Injector injector = Tang.Factory.getTang().newInjector(matrixConf);
     final MatrixFactory matrixFactoryForLayer = injector.getInstance(MatrixFactory.class);
 
     matrixFactoryForLayer.setRandomSeed(10);
@@ -102,6 +122,7 @@ public final class DropoutLayerTest {
   @Test
   public void testDropout() {
     final Matrix output = dropoutLayer.feedForward(input);
+    assertTrue(output != null);
     assertTrue(expectedDropoutActivation.compare(output, TOLERANCE));
     final Matrix error = dropoutLayer.backPropagate(input, expectedDropoutActivation, nextError);
     assertTrue(expectedDropoutError.compare(error, TOLERANCE));
