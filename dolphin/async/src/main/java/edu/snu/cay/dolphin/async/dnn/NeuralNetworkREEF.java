@@ -81,8 +81,11 @@ public final class NeuralNetworkREEF {
     try {
       final NeuralNetworkConfiguration neuralNetConf = loadNeuralNetworkConfiguration(configurationPath, onLocal);
       final boolean cpuOnly = neuralNetConf.getDeviceMode() == NeuralNetworkConfiguration.DeviceMode.CPU;
-      final Configuration configuration =
-          Configurations.merge(buildNeuralNetworkConfiguration(neuralNetConf), buildBlasConfiguration(cpuOnly));
+      final Configuration neuralNetworkConfiguration = buildNeuralNetworkConfiguration(neuralNetConf);
+      final Configuration workerConfiguration =
+          Configurations.merge(neuralNetworkConfiguration, buildBlasConfiguration(cpuOnly));
+      final Configuration serverConfiguration =
+          Configurations.merge(neuralNetworkConfiguration, buildBlasConfiguration(true));
 
       AsyncDolphinLauncher.launch("NeuralNetworkREEF", args, AsyncDolphinConfiguration.newBuilder()
           .setTrainerClass(NeuralNetworkTrainer.class)
@@ -90,8 +93,8 @@ public final class NeuralNetworkREEF {
           .setPreValueCodecClass(LayerParameterCodec.class)
           .setValueCodecClass(LayerParameterCodec.class)
           .addParameterClass(Delimiter.class)
-          .setWorkerConfiguration(configuration)
-          .setServerConfiguration(configuration)
+          .setWorkerConfiguration(workerConfiguration)
+          .setServerConfiguration(serverConfiguration)
           .build());
     } catch (final IOException e) {
       throw new RuntimeException("Failed to load the protocol buffer definition file for neural network.", e);
