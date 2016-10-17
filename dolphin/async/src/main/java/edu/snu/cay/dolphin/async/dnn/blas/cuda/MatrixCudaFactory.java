@@ -100,7 +100,6 @@ public final class MatrixCudaFactory implements MatrixFactory {
 
   @Override
   public Matrix rand(final int rows, final int columns) {
-
     final int length = rows * columns;
     final float[] data = new float[length];
 
