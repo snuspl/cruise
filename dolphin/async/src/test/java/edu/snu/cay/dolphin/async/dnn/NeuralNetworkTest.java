@@ -100,7 +100,7 @@ public final class NeuralNetworkTest {
       expectedOutput};
 
   private final Configuration neuralNetworkConfiguration = NeuralNetworkConfigurationBuilder.newConfigurationBuilder()
-      .setInputShape(input.getLength())
+      .setInputShape(input.getLength(), 1, 1)
       .setStepSize(1e-2f)
       .setRandomSeed(10)
       .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()

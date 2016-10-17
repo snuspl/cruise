@@ -31,7 +31,7 @@ import javax.inject.Inject;
  */
 public final class FullyConnectedLayer extends LayerBase {
 
-  private final int[] outputShape;
+  private final LayerShape outputShape;
 
   /**
    * @param index the index of this layer
@@ -49,7 +49,7 @@ public final class FullyConnectedLayer extends LayerBase {
 
   /** {@inheritDoc} */
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return outputShape;
   }
 

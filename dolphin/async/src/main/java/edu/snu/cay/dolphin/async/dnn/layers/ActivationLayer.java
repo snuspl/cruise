@@ -47,7 +47,7 @@ public final class ActivationLayer extends LayerBase {
   }
 
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return getInputShape();
   }
 

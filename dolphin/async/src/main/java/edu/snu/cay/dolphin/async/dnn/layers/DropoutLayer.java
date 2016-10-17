@@ -56,7 +56,7 @@ public final class DropoutLayer extends LayerBase {
   }
 
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return getInputShape();
   }
 

@@ -23,6 +23,7 @@ import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.reef.tang.annotations.Parameter;
 import org.bytedeco.javacpp.Pointer;
 
@@ -40,7 +41,7 @@ import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.getShapeLeng
  */
 public final class PoolingGpuLayer extends LayerBase {
 
-  private final int[] outputShape;
+  private final LayerShape outputShape;
   private final MatrixFactory matrixFactory;
   private Matrix output;
   private Matrix layerError;
@@ -84,29 +85,18 @@ public final class PoolingGpuLayer extends LayerBase {
     super(index, inputShape);
 
     this.outputShape = layerParameterInitializer.getOutputShape();
-    if (outputShape.length == 2) {
-      outputChannel = 1;
-      outputHeight = outputShape[0];
-      outputWidth = outputShape[1];
-    } else {
-      outputChannel = outputShape[0];
-      outputHeight = outputShape[1];
-      outputWidth = outputShape[2];
-    }
+    this.outputChannel = outputShape.getChannel();
+    this.outputHeight = outputShape.getHeight();
+    this.outputWidth = outputShape.getWidth();
 
     this.matrixFactory = matrixFactory;
     this.output = null;
     this.layerError = null;
 
-    if (getInputShape().length == 2) {
-      inputChannel = 1;
-      inputHeight = getInputShape()[0];
-      inputWidth = getInputShape()[1];
-    } else {
-      inputChannel = getInputShape()[0];
-      inputHeight = getInputShape()[1];
-      inputWidth = getInputShape()[2];
-    }
+
+    this.inputChannel = getInputShape().getChannel();
+    this.inputHeight = getInputShape().getHeight();
+    this.inputWidth = getInputShape().getWidth();
 
     //setup
     this.inputDesc = new Pointer();
@@ -121,7 +111,7 @@ public final class PoolingGpuLayer extends LayerBase {
   }
 
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return outputShape;
   }
 

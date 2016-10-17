@@ -69,17 +69,12 @@ public final class LRNLayer extends LayerBase {
     this.paddingSize = (localSize - 1) / 2;
     this.matrixFactory = matrixFactory;
 
-    if (getInputShape().length == 2) {
-      this.inputChannel = 1;
-      this.inputSize = getInputShape()[0] * getInputShape()[1];
-    } else {
-      this.inputChannel = getInputShape()[0];
-      this.inputSize = getInputShape()[1] * getInputShape()[2];
-    }
+    this.inputChannel = getInputShape().getChannel();
+    this.inputSize = getInputShape().getHeight() * getInputShape().getWidth();
   }
 
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return getInputShape();
   }
 

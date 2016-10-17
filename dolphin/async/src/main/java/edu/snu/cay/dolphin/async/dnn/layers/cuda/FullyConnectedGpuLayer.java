@@ -22,6 +22,7 @@ import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -36,7 +37,7 @@ import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.getShapeLeng
  */
 public final class FullyConnectedGpuLayer extends LayerBase {
 
-  private final int[] outputShape;
+  private final LayerShape outputShape;
   private final MatrixFactory matrixFactory;
   private Matrix output;
   private Matrix layerError;
@@ -66,7 +67,7 @@ public final class FullyConnectedGpuLayer extends LayerBase {
 
   /** {@inheritDoc} */
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return outputShape;
   }
 

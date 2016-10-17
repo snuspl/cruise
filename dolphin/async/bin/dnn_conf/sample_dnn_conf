@@ -17,6 +17,7 @@
 batch_size: 10
 step_size: 1e-3
 input_shape {
+  dim: 1
   dim: 28
   dim: 28
 }
