@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.AvailableResourceTracker;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
@@ -65,7 +66,10 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    */
   private final long delayAfterOptimizationMs;
 
-  private final int maxNumEvals;
+  /**
+   * the maximum number of available evaluators, initially set as {@link Parameters.LocalRuntimeMaxNumEvaluators}.
+   */
+  private int maxNumEvals;
 
   /**
    * Weight decreasing factor used for metric EMA.
@@ -85,16 +89,23 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    */
   private final Map<String, Double> optimizerModelParams;
 
+  /**
+   * A tracker to track the number of resources currently available.
+   */
+  private AvailableResourceTracker resourceTracker;
+
   @Inject
   private OptimizationOrchestratorImpl(final Optimizer optimizer,
-                                   final PlanExecutor planExecutor,
-                                   final MetricManager metricManager,
-                                   @Parameter(WorkerEM.class) final ElasticMemory workerEM,
-                                   @Parameter(ServerEM.class) final ElasticMemory serverEM,
-                                   @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
-                                   @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
-                                   @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
-                                   @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
+                                       final PlanExecutor planExecutor,
+                                       final MetricManager metricManager,
+                                       final AvailableResourceTracker resourceTracker,
+                                       @Parameter(WorkerEM.class)final ElasticMemory workerEM,
+                                       @Parameter(ServerEM.class) final ElasticMemory serverEM,
+                                       @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
+                                       @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
+                                       @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
+                                       @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals)
+  {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.metricManager = metricManager;
@@ -104,6 +115,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     this.metricWeightFactor = metricWeightFactor;
     this.movingAvgWindowSize = movingAvgWindowSize;
     this.maxNumEvals = maxNumEvals;
+    this.resourceTracker = resourceTracker;
     this.optimizerModelParams = new HashMap<>();
   }
 
@@ -179,6 +191,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         // 4) Calculate the optimal plan with the metrics
         final Plan plan;
         try {
+          maxNumEvals = resourceTracker.getNumAvailableResources();
           plan = optimizer.optimize(evaluatorParameters, maxNumEvals, optimizerModelParams);
         } catch (final RuntimeException e) {
           LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
