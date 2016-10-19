@@ -45,6 +45,9 @@ public final class ConvolutionalLayer extends LayerBase {
   private final int strideWidth;
   private final int kernelHeight;
   private final int kernelWidth;
+  private final int inputHeight;
+  private final int inputWidth;
+  private final int inputChannel;
   private final MatrixFactory matrixFactory;
 
   /**
@@ -78,6 +81,9 @@ public final class ConvolutionalLayer extends LayerBase {
     this.strideWidth = strideWidth;
     this.kernelHeight = kernelHeight;
     this.kernelWidth = kernelWidth;
+    this.inputHeight = getInputShape().getHeight();
+    this.inputWidth = getInputShape().getWidth();
+    this.inputChannel = getInputShape().getChannel();
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.matrixFactory = matrixFactory;
   }

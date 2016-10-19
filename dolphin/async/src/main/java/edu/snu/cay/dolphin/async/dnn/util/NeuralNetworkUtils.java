@@ -46,7 +46,7 @@ public final class NeuralNetworkUtils {
   private static final String SHAPE_DELIMITER = ",";
 
   /**
-   * Converts a list of integers for a shape to a string.
+   * Converts a LayerShape to a string.
    * @param layerShape a layer shape.
    * @return a string for a shape.
    */
@@ -59,9 +59,9 @@ public final class NeuralNetworkUtils {
   }
 
   /**
-   * Converts a string for a shape to an array of integers.
+   * Converts a string for a shape to LayerShape.
    * @param shapeString a string for a shape.
-   * @return an array of integers for a shape.
+   * @return a LayerShape.
    */
   public static LayerShape shapeFromString(final String shapeString) {
     final String[] inputShapeStrings = shapeString.split(SHAPE_DELIMITER);
