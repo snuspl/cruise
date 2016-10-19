@@ -106,9 +106,6 @@ public final class ConvolutionalLayer extends LayerBase {
    * @return the converted rows.
    */
   private Matrix im2row(final int imageIndex, final Matrix input) {
-    final int inputChannel = getInputShape().getChannel();
-    final int inputWidth = getInputShape().getWidth();
-    final int inputHeight = getInputShape().getHeight();
     final int outputWidth = getOutputShape().getWidth();
     final int outputHeight = getOutputShape().getHeight();
     final int inputSize = inputHeight * inputWidth;
@@ -145,9 +142,6 @@ public final class ConvolutionalLayer extends LayerBase {
    */
   private Matrix row2im(final Matrix row) {
     final LayerShape inputShape = getInputShape();
-    final int inputChannel = inputShape.getChannel();
-    final int inputHeight = inputShape.getHeight();
-    final int inputWidth = inputShape.getWidth();
     final int outputHeight = outputShape.getHeight();
     final int outputWidth = outputShape.getWidth();
     final int inputSize = inputHeight * inputWidth;
@@ -221,7 +215,6 @@ public final class ConvolutionalLayer extends LayerBase {
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
-    final int inputChannel = getInputShape().getChannel();
     final int outputChannel = outputShape.getChannel();
     final int outputHeight = outputShape.getHeight();
     final int outputWidth = outputShape.getWidth();
