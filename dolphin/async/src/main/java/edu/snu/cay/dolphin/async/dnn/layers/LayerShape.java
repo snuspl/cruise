@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async.dnn.layers;
 import javax.inject.Inject;
 
 /**
- * The shape of layer which constructed by channel, width and height.
+ * The shape of layer which constructed by channel, height and width.
  */
 public final class LayerShape {
 
