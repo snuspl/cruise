@@ -314,7 +314,7 @@ public final class NeuralNetworkTest {
   @Test
   public void backPropagateTestForBatch() {
     final Matrix[] batchActivations = neuralNetwork.feedForward(batchInput);
-    final Matrix[] gradients = neuralNetwork.backPropagate(batchActivations, labels);
+    final Matrix[] gradients = neuralNetwork.backPropagate(ArrayUtils.add(batchActivations, 0, batchInput), labels);
     assertTrue(MatrixUtils.compare(expectedBatchErrors, gradients, TOLERANCE));
   }
 }
