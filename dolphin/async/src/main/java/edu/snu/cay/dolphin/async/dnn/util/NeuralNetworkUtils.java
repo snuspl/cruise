@@ -51,7 +51,7 @@ public final class NeuralNetworkUtils {
    * @return a string for a shape.
    */
   public static String shapeToString(final LayerShape layerShape) {
-    final List<Integer> dimensionList = new ArrayList<>();
+    final List<Integer> dimensionList = new ArrayList<>(3);
     dimensionList.add(layerShape.getChannel());
     dimensionList.add(layerShape.getWidth());
     dimensionList.add(layerShape.getHeight());
@@ -65,6 +65,10 @@ public final class NeuralNetworkUtils {
    */
   public static LayerShape shapeFromString(final String shapeString) {
     final String[] inputShapeStrings = shapeString.split(SHAPE_DELIMITER);
+    if (inputShapeStrings.length != 3) {
+      throw new IllegalArgumentException("LayerShape must have 3 elements: channel, height and width");
+    }
+
     final int[] inputShape = new int[inputShapeStrings.length];
     for (int i = 0; i < inputShapeStrings.length; ++i) {
       inputShape[i] = Integer.parseInt(inputShapeStrings[i]);
@@ -73,10 +77,7 @@ public final class NeuralNetworkUtils {
   }
 
   public static int getShapeLength(final LayerShape shape) {
-
-    int length = shape.getChannel();
-    length *= shape.getWidth();
-    length *= shape.getHeight();
+    final int length = shape.getChannel() * shape.getWidth() * shape.getHeight();
 
     if (length > 0) {
       return length;

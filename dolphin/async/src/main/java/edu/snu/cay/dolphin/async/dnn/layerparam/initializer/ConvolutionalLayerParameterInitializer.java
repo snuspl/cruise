@@ -131,12 +131,10 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
    * @return shape of output
    */
   private LayerShape computeOutputShape() {
-    final int[] computedShape = new int[3];
-
     final int channel = numOutput;
     final int height = (int) Math.ceil((float) (inputHeight - kernelHeight + 2 * paddingHeight) / strideHeight) + 1;
     final int width = (int) Math.ceil((float) (inputWidth - kernelWidth + 2 * paddingWidth) / strideWidth) + 1;
-    if (computedShape[0] < 0 || computedShape[1] < 0 || computedShape[2] < 0) {
+    if (channel < 0 || height < 0 || width < 0) {
       throw new IllegalArgumentException("Negative output size");
     }
     return new LayerShape(channel, height, width);

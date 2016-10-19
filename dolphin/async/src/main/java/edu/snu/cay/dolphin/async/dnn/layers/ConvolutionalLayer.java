@@ -106,8 +106,8 @@ public final class ConvolutionalLayer extends LayerBase {
    * @return the converted rows.
    */
   private Matrix im2row(final int imageIndex, final Matrix input) {
-    final int outputWidth = getOutputShape().getWidth();
-    final int outputHeight = getOutputShape().getHeight();
+    final int outputWidth = outputShape.getWidth();
+    final int outputHeight = outputShape.getHeight();
     final int inputSize = inputHeight * inputWidth;
     final int outputSize = outputHeight * outputWidth;
     final Matrix row =
@@ -141,11 +141,10 @@ public final class ConvolutionalLayer extends LayerBase {
    * @return the converted image.
    */
   private Matrix row2im(final Matrix row) {
-    final LayerShape inputShape = getInputShape();
     final int outputHeight = outputShape.getHeight();
     final int outputWidth = outputShape.getWidth();
     final int inputSize = inputHeight * inputWidth;
-    final Matrix im = matrixFactory.zeros(NeuralNetworkUtils.getShapeLength(inputShape));
+    final Matrix im = matrixFactory.zeros(NeuralNetworkUtils.getShapeLength(getInputShape()));
     int rowIndex = 0;
     for (int c = 0; c < inputChannel; ++c) {
       for (int kh = 0; kh < kernelHeight; ++kh) {
