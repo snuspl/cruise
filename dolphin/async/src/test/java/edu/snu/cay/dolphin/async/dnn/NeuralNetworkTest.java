@@ -42,7 +42,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.*;
+import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
@@ -59,50 +59,54 @@ public final class NeuralNetworkTest {
     return TestDevice.getTestDevices();
   }
 
-  private final MatrixFactory matrixFactory;
-  private final Configuration neuralNetworkConfiguration;
-  private final Configuration blasConfiguration;
+  private final boolean cpuOnly;
 
-  private final Matrix weightOne;
+  private MatrixFactory matrixFactory;
 
-  private final Matrix biasOne;
+  private Matrix weightOne;
 
-  private final Matrix weightTwo;
+  private Matrix biasOne;
 
-  private final Matrix biasTwo;
+  private Matrix weightTwo;
 
-  private final Matrix input;
+  private Matrix biasTwo;
 
-  private final Matrix expectedOutput;
+  private Matrix input;
 
-  private final Matrix label;
+  private Matrix expectedOutput;
+
+  private Matrix label;
 
   private final int numHiddenUnits = 5;
 
-  private final Matrix[] expectedActivations;
+  private Matrix[] expectedActivations;
 
-  private final Matrix[] expectedErrors;
+  private Matrix[] expectedErrors;
 
   private final int numBatch = 3;
 
-  private final Matrix batchInput;
+  private Matrix batchInput;
 
-  private final Matrix expectedBatchOutput;
+  private Matrix expectedBatchOutput;
 
-  private final Matrix labels;
+  private Matrix labels;
 
-  private final Matrix[] expectedBatchActivations;
+  private Matrix[] expectedBatchActivations;
 
-  private final Matrix[] expectedBatchErrors;
+  private Matrix[] expectedBatchErrors;
 
   private NeuralNetwork neuralNetwork;
   private ParameterWorker mockParameterWorker;
 
   public NeuralNetworkTest(final String testDevice) throws InjectionException {
+    cpuOnly = testDevice.equals(TestDevice.CPU);
+  }
 
-    this.blasConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+  @Before
+  public void buildNeuralNetwork() throws InjectionException {
+    final Configuration blasConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MatrixFactory.class,
-            testDevice.equals(TestDevice.CPU) ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
+            cpuOnly ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
         .build();
     this.matrixFactory = Tang.Factory.getTang().newInjector(blasConfiguration).getInstance(MatrixFactory.class);
 
@@ -150,30 +154,31 @@ public final class NeuralNetworkTest {
             1.41633804997e-01f, 1.56580984844e-01f, -5.13263858606e-02f, 2.11161195729e-01f, 3.34190372164e-01f}),
         matrixFactory.create(new float[]{6.99425825888e-01f, -4.28507738839e-01f, 5.79580557810e-01f})};
 
-    this.neuralNetworkConfiguration = NeuralNetworkConfigurationBuilder.newConfigurationBuilder()
+    final Configuration neuralNetworkConfiguration = NeuralNetworkConfigurationBuilder.newConfigurationBuilder()
         .setInputShape(input.getLength())
         .setStepSize(1e-2f)
         .setRandomSeed(10)
+        .setCpuOnly(cpuOnly)
         .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
             .setNumOutput(numHiddenUnits)
             .setInitWeight(0.0001f)
             .setInitBias(0.0002f)
-            .setCpuOnly(true)
+            .setCpuOnly(cpuOnly)
             .build())
         .addLayerConfiguration(ActivationLayerConfigurationBuilder.newConfigurationBuilder()
             .setActivationFunction("sigmoid")
-            .setCpuOnly(true)
+            .setCpuOnly(cpuOnly)
             .build())
         .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
             .setNumOutput(expectedOutput.getLength())
             .setInitWeight(0.2f)
             .setInitBias(0.3f)
-            .setCpuOnly(true)
+            .setCpuOnly(cpuOnly)
             .build())
         .addLayerConfiguration(ActivationWithLossLayerConfigurationBuilder.newConfigurationBuilder()
             .setActivationFunction("sigmoid")
             .setLossFunction("crossentropy")
-            .setCpuOnly(true)
+            .setCpuOnly(cpuOnly)
             .build())
         .build();
 
@@ -227,10 +232,6 @@ public final class NeuralNetworkTest {
             -3.01267876484e-01f, 5.71416319005e-01f, 5.79628523069e-01f},
             expectedOutput.getLength(), numBatch)};
 
-  }
-
-  @Before
-  public void buildNeuralNetwork() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector(blasConfiguration, neuralNetworkConfiguration);
     this.mockParameterWorker = mock(ParameterWorker.class);
     injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
@@ -251,6 +252,29 @@ public final class NeuralNetworkTest {
   @After
   public void tearDown() {
     neuralNetwork.cleanup();
+
+    MatrixUtils.free(weightOne);
+    MatrixUtils.free(biasOne);
+    MatrixUtils.free(weightTwo);
+    MatrixUtils.free(biasTwo);
+    MatrixUtils.free(input);
+    MatrixUtils.free(expectedOutput);
+    MatrixUtils.free(label);
+    for (final Matrix m : expectedActivations) {
+      MatrixUtils.free(m);
+    }
+    for (final Matrix m : expectedErrors) {
+      MatrixUtils.free(m);
+    }
+    MatrixUtils.free(batchInput);
+    MatrixUtils.free(expectedBatchOutput);
+    MatrixUtils.free(labels);
+    for (final Matrix m : expectedBatchActivations) {
+      MatrixUtils.free(m);
+    }
+    for (final Matrix m : expectedBatchErrors) {
+      MatrixUtils.free(m);
+    }
   }
 
   /**

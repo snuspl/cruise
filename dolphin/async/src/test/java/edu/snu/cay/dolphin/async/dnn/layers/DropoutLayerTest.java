@@ -18,10 +18,12 @@ package edu.snu.cay.dolphin.async.dnn.layers;
 import edu.snu.cay.dolphin.async.dnn.TestDevice;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.DropoutLayerConfigurationBuilder;
-import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
+import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.LayerIndex;
+import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.LayerInputShape;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -49,24 +51,31 @@ public final class DropoutLayerTest {
     return TestDevice.getTestDevices();
   }
 
-  private final Configuration matrixConf;
+  private final boolean cpuOnly;
 
-  private final MatrixFactory matrixFactory;
+  private Configuration matrixConf;
 
-  private final Matrix input;
+  private MatrixFactory matrixFactory;
 
-  private final Matrix nextError;
+  private Matrix input;
 
-  private final Matrix expectedDropoutActivation;
+  private Matrix nextError;
 
-  private final Matrix expectedDropoutError;
+  private Matrix expectedDropoutActivation;
+
+  private Matrix expectedDropoutError;
 
   private LayerBase dropoutLayer;
 
   public DropoutLayerTest(final String testDevice) throws InjectionException {
+    this.cpuOnly = testDevice.equals(TestDevice.CPU);
+  }
+
+  @Before
+  public void setup() throws InjectionException {
     this.matrixConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MatrixFactory.class,
-            testDevice.equals(TestDevice.CPU) ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
+            cpuOnly ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
         .build();
     this.matrixFactory = Tang.Factory.getTang().newInjector(matrixConf).getInstance(MatrixFactory.class);
 
@@ -93,10 +102,7 @@ public final class DropoutLayerTest {
         {0.6f, 0},
         {0, 0.8f},
         {0.8f, 0.2f}});
-  }
 
-  @Before
-  public void setup() throws InjectionException {
     final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
         .bindNamedParameter(LayerInputShape.class, "4")
@@ -117,6 +123,10 @@ public final class DropoutLayerTest {
   @After
   public void tearDown() {
     dropoutLayer.cleanup();
+    MatrixUtils.free(input);
+    MatrixUtils.free(nextError);
+    MatrixUtils.free(expectedDropoutActivation);
+    MatrixUtils.free(expectedDropoutError);
   }
 
   @Test
