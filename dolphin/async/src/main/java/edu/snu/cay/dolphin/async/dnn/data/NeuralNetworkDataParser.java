@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.dnn.data;
 import edu.snu.cay.dolphin.async.dnn.NeuralNetworkParameters.Delimiter;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.BatchSize;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.io.LongWritable;
@@ -92,6 +93,7 @@ public final class NeuralNetworkDataParser {
           } else {
             trainingBatchGenerator.push(data, label);
           }
+          MatrixUtils.free(input);
         } catch (final IOException e) {
           throw new RuntimeException("Failed to parse data: ", e);
         }
