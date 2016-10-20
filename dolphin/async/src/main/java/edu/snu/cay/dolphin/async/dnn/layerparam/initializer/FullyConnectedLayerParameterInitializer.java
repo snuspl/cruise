@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -84,7 +85,7 @@ public final class FullyConnectedLayerParameterInitializer implements LayerParam
   }
 
   @Override
-  public int[] getOutputShape() {
-    return new int[]{numOutput};
+  public LayerShape getOutputShape() {
+    return new LayerShape(numOutput, 1, 1);
   }
 }

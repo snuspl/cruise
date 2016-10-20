@@ -22,6 +22,7 @@
 batch_size: 256
 step_size: 0.01 #TODO #646: we need to decrease it every 100,000 iterations (about 20 epochs)
 input_shape {
+  dim: 3
   dim: 224
   dim: 224
 }

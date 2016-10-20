@@ -95,32 +95,48 @@ public final class MatrixCudaFactory implements MatrixFactory {
 
   @Override
   public Matrix rand(final int length) {
-    throw new UnsupportedOperationException("Not implemented");
+    return rand(length, 1);
   }
 
   @Override
   public Matrix rand(final int rows, final int columns) {
-    throw new UnsupportedOperationException("Not implemented");
+    final int length = rows * columns;
+    final float[] data = new float[length];
+
+    for (int i = 0; i < length; ++i) {
+      data[i] = randomGenerator.nextFloat();
+    }
+
+    return create(data, rows, columns);
   }
 
   @Override
   public Matrix rand(final int rows, final int columns, final long seed) {
-    throw new UnsupportedOperationException("Not implemented");
+    randomGenerator.setSeed(seed);
+    return rand(rows, columns);
   }
 
   @Override
   public Matrix randn(final int length) {
-    throw new UnsupportedOperationException("Not implemented");
+    return randn(length, 1);
   }
 
   @Override
   public Matrix randn(final int rows, final int columns) {
-    throw new UnsupportedOperationException("Not implemented");
+    final int length = rows * columns;
+    final float[] data = new float[length];
+
+    for (int i = 0; i < length; ++i) {
+      data[i] = (float) randomGenerator.nextGaussian();
+    }
+
+    return create(data, rows, columns);
   }
 
   @Override
   public Matrix randn(final int rows, final int columns, final long seed) {
-    throw new UnsupportedOperationException("Not implemented");
+    randomGenerator.setSeed(seed);
+    return randn(rows, columns);
   }
 
   @Override

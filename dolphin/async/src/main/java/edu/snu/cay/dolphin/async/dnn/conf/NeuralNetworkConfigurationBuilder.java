@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.dnn.conf;
 
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.*;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
@@ -59,12 +60,15 @@ public final class NeuralNetworkConfigurationBuilder implements Builder<Configur
   }
 
   public synchronized NeuralNetworkConfigurationBuilder setInputShape(final List<Integer> inputShapeList) {
-    this.inputShape = shapeToString(inputShapeList);
+    final LayerShape layerShape = new LayerShape(inputShapeList.get(0), inputShapeList.get(1), inputShapeList.get(2));
+    this.inputShape = shapeToString(layerShape);
     return this;
   }
 
-  public synchronized NeuralNetworkConfigurationBuilder setInputShape(final int... inputShape) {
-    this.inputShape = shapeToString(inputShape);
+  public synchronized NeuralNetworkConfigurationBuilder setInputShape(
+      final int channel, final int height, final int width) {
+    final LayerShape layerShape = new LayerShape(channel, height, width);
+    this.inputShape = shapeToString(layerShape);
     return this;
   }
 

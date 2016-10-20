@@ -19,8 +19,8 @@ import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -28,7 +28,7 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -46,46 +46,38 @@ public final class NeuralNetworkUtils {
   private static final String SHAPE_DELIMITER = ",";
 
   /**
-   * Converts a list of integers for a shape to a string.
-   * @param dimensionList a list of integers for a shape.
+   * Converts a LayerShape to a string.
+   * @param layerShape a layer shape.
    * @return a string for a shape.
    */
-  public static String shapeToString(final List<Integer> dimensionList) {
+  public static String shapeToString(final LayerShape layerShape) {
+    final List<Integer> dimensionList = new ArrayList<>(3);
+    dimensionList.add(layerShape.getChannel());
+    dimensionList.add(layerShape.getWidth());
+    dimensionList.add(layerShape.getHeight());
     return StringUtils.join(dimensionList, SHAPE_DELIMITER);
   }
 
   /**
-   * Converts an array of {@code int}s for a shape to a string.
-   * @param dimensions an array of {@code int}s for a shape.
-   * @return a string for a shape.
-   */
-  public static String shapeToString(final int[] dimensions) {
-    return shapeToString(Arrays.asList(ArrayUtils.toObject(dimensions)));
-  }
-
-  /**
-   * Converts a string for a shape to an array of integers.
+   * Converts a string for a shape to LayerShape.
    * @param shapeString a string for a shape.
-   * @return an array of integers for a shape.
+   * @return a LayerShape.
    */
-  public static int[] shapeFromString(final String shapeString) {
+  public static LayerShape shapeFromString(final String shapeString) {
     final String[] inputShapeStrings = shapeString.split(SHAPE_DELIMITER);
+    if (inputShapeStrings.length != 3) {
+      throw new IllegalArgumentException("LayerShape must have 3 elements: channel, height and width");
+    }
+
     final int[] inputShape = new int[inputShapeStrings.length];
     for (int i = 0; i < inputShapeStrings.length; ++i) {
       inputShape[i] = Integer.parseInt(inputShapeStrings[i]);
     }
-    return inputShape;
+    return new LayerShape(inputShape[0], inputShape[1], inputShape[2]);
   }
 
-  public static int getShapeLength(final int[] shape) {
-    if (shape.length < 1) {
-      throw new IllegalArgumentException("the shape must have one or more dimensions");
-    }
-
-    int length = shape[0];
-    for (int i = 1; i < shape.length; ++i) {
-      length *= shape[i];
-    }
+  public static int getShapeLength(final LayerShape shape) {
+    final int length = shape.getChannel() * shape.getWidth() * shape.getHeight();
 
     if (length > 0) {
       return length;

@@ -68,7 +68,7 @@ public final class ActivationLayerTest {
   public void setup() throws InjectionException {
     final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-        .bindNamedParameter(LayerInputShape.class, shapeToString(new int[]{input.getLength()}))
+        .bindNamedParameter(LayerInputShape.class, shapeToString(new LayerShape(input.getLength(), 1, 1)))
         .build();
 
     final Configuration sigmoidActivationLayerConf = ActivationLayerConfigurationBuilder.newConfigurationBuilder()

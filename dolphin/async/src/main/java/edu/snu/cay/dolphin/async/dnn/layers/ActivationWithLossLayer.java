@@ -75,7 +75,7 @@ public final class ActivationWithLossLayer extends LayerBase {
   }
 
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return activationLayer.getOutputShape();
   }
 

@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.layerparam.initializer;
 
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -31,8 +32,8 @@ import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.shapeFromStr
 public final class PoolingLayerParameterInitializer implements LayerParameterInitializer {
 
   private final int index;
-  private final int[] inputShape;
-  private final int[] outputShape;
+  private final LayerShape inputShape;
+  private final LayerShape outputShape;
   private final int paddingHeight;
   private final int paddingWidth;
   private final int strideHeight;
@@ -73,15 +74,10 @@ public final class PoolingLayerParameterInitializer implements LayerParameterIni
     this.kernelWidth = kernelWidth;
     this.emptyLayerParam = LayerParameter.newEmptyInstance();
 
-    if (this.inputShape.length == 2) {
-      this.inputChannel = 1;
-      this.inputHeight = this.inputShape[0];
-      this.inputWidth = this.inputShape[1];
-    } else {
-      this.inputChannel = this.inputShape[0];
-      this.inputHeight = this.inputShape[1];
-      this.inputWidth = this.inputShape[2];
-    }
+    this.inputChannel = this.inputShape.getChannel();
+    this.inputHeight = this.inputShape.getHeight();
+    this.inputWidth = this.inputShape.getWidth();
+
     this.outputShape = computeOutputShape();
   }
 
@@ -107,10 +103,7 @@ public final class PoolingLayerParameterInitializer implements LayerParameterIni
    * col' = ceil((col − kernelWidth + 2 * paddingWidth) / strideWidth) + 1
    * @return shape of output
    */
-  private int[] computeOutputShape() {
-    if (inputShape.length != 2 && inputShape.length != 3) {
-      throw new IllegalArgumentException("Unsupported input dimensions: " + inputShape.length);
-    }
+  private LayerShape computeOutputShape() {
     if (paddingHeight >= kernelHeight) {
       throw new IllegalArgumentException("Padding height should be less than kernel height.");
     }
@@ -140,18 +133,14 @@ public final class PoolingLayerParameterInitializer implements LayerParameterIni
       throw new IllegalArgumentException("Negative output size");
     }
 
-    if (inputShape.length == 2) {
-      return new int[]{outputHeight, outputWidth};
-    } else {
-      return new int[]{inputChannel, outputHeight, outputWidth};
-    }
+    return new LayerShape(inputChannel, outputHeight, outputWidth);
   }
 
   /**
    * @return shape of output
    */
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return outputShape;
   }
 }

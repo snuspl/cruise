@@ -155,7 +155,7 @@ public final class NeuralNetworkTest {
         matrixFactory.create(new float[]{0.46177077293f, -0.73534011841f, 0.27356934547f})};
 
     final Configuration neuralNetworkConfiguration = NeuralNetworkConfigurationBuilder.newConfigurationBuilder()
-        .setInputShape(input.getLength())
+        .setInputShape(input.getLength(), 1, 1)
         .setStepSize(1e-2f)
         .setRandomSeed(10)
         .setCpuOnly(cpuOnly)

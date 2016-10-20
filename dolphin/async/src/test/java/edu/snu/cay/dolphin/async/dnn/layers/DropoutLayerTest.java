@@ -105,7 +105,7 @@ public final class DropoutLayerTest {
 
     final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-        .bindNamedParameter(LayerInputShape.class, "4")
+        .bindNamedParameter(LayerInputShape.class, "4,1,1")
         .build();
 
     final DropoutLayerConfigurationBuilder builder = DropoutLayerConfigurationBuilder
