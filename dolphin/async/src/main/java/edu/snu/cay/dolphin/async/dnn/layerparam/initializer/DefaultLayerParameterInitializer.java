@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.dnn.layerparam.initializer;
 
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -32,7 +33,7 @@ import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.shapeFromStr
 public final class DefaultLayerParameterInitializer implements LayerParameterInitializer {
 
   private final int index;
-  private final int[] inputShape;
+  private final LayerShape inputShape;
   private final LayerParameter emptyLayerParam;
 
   /**
@@ -62,7 +63,7 @@ public final class DefaultLayerParameterInitializer implements LayerParameterIni
   }
 
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return inputShape;
   }
 

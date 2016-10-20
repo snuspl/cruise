@@ -253,7 +253,7 @@ public final class PoolingGpuLayerTest {
     try {
       final Configuration layerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(LayerIndex.class, String.valueOf(0))
-          .bindNamedParameter(LayerInputShape.class, "3,3")
+          .bindNamedParameter(LayerInputShape.class, "1,3,3")
           .bindNamedParameter(NeuralNetworkConfigurationParameters.BatchSize.class, "2")
           .build();
 

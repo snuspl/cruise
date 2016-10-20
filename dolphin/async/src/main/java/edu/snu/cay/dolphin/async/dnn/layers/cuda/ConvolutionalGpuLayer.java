@@ -24,6 +24,7 @@ import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layerparam.initializer.LayerParameterInitializer;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.bytedeco.javacpp.Pointer;
@@ -42,7 +43,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   private final int inputChannel;
   private final int inputHeight;
   private final int inputWidth;
-  private final int[] outputShape;
+  private final LayerShape outputShape;
   private MatrixFactory matrixFactory;
   private Matrix output;
   private Matrix layerError;
@@ -95,24 +96,19 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     this.layerError = null;
     this.maxWorkspaceSize = 0;
 
-    if (getInputShape().length == 2) {
-      this.inputChannel = 1;
-      this.inputHeight = getInputShape()[0];
-      this.inputWidth = getInputShape()[1];
-    } else {
-      this.inputChannel = getInputShape()[0];
-      this.inputHeight = getInputShape()[1];
-      this.inputWidth = getInputShape()[2];
-    }
+    this.inputChannel = getInputShape().getChannel();
+    this.inputHeight = getInputShape().getHeight();
+    this.inputWidth = getInputShape().getWidth();
 
-    final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape[0]);
-    final Matrix biasGradient = matrixFactory.create(outputShape[0], 1);
+    final int outputChannel = outputShape.getChannel();
+    final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputChannel);
+    final Matrix biasGradient = matrixFactory.create(outputChannel, 1);
     this.parameterGradient = new LayerParameter(weightGradient, biasGradient);
 
     //setup
-    this.filterDesc = JavaCudnn.createFilterDesc(outputShape[0], inputChannel, kernelHeight, kernelWidth);
+    this.filterDesc = JavaCudnn.createFilterDesc(outputChannel, inputChannel, kernelHeight, kernelWidth);
     this.convDesc = JavaCudnn.createConvDesc(paddingHeight, paddingWidth, strideHeight, strideWidth);
-    this.biasDesc = JavaCudnn.createTensorDesc(1, outputShape[0], 1, 1);
+    this.biasDesc = JavaCudnn.createTensorDesc(1, outputChannel, 1, 1);
 
     this.inputDesc = new Pointer();
     this.activationDesc = new Pointer();
@@ -134,7 +130,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   }
 
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return outputShape;
   }
 
@@ -162,7 +158,8 @@ public final class ConvolutionalGpuLayer extends LayerBase {
       MatrixUtils.free(output);
 
       inputDesc = JavaCudnn.createTensorDesc(inputSize, inputChannel, inputHeight, inputWidth);
-      activationDesc = JavaCudnn.createTensorDesc(inputSize, outputShape[0], outputShape[1], outputShape[2]);
+      activationDesc = JavaCudnn.createTensorDesc(inputSize,
+          outputShape.getChannel(), outputShape.getHeight(), outputShape.getWidth());
       forwardAlgo = JavaCudnn.getConvForwardAlgo(inputDesc, filterDesc, convDesc, activationDesc);
       backwardDataAlgo = JavaCudnn.getConvBackwardDataAlgo(filterDesc, activationDesc, convDesc, inputDesc);
       backwardFilterAlgo = JavaCudnn.getConvBackwardFilterAlgo(inputDesc, activationDesc, convDesc, filterDesc);

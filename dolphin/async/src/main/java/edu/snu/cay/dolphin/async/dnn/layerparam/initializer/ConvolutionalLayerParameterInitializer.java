@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -37,8 +38,8 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
 
   private final MatrixFactory matrixFactory;
   private final int index;
-  private final int[] inputShape;
-  private final int[] outputShape;
+  private final LayerShape inputShape;
+  private final LayerShape outputShape;
   private final int paddingHeight;
   private final int paddingWidth;
   private final int strideHeight;
@@ -93,15 +94,10 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
     this.initWeight = initWeight;
     this.initBias = initBias;
 
-    if (this.inputShape.length == 2) {
-      this.inputChannel = 1;
-      this.inputHeight = this.inputShape[0];
-      this.inputWidth = this.inputShape[1];
-    } else {
-      this.inputChannel = this.inputShape[0];
-      this.inputHeight = this.inputShape[1];
-      this.inputWidth = this.inputShape[2];
-    }
+    this.inputChannel = this.inputShape.getChannel();
+    this.inputHeight = this.inputShape.getHeight();
+    this.inputWidth = this.inputShape.getWidth();
+
     this.outputShape = computeOutputShape();
   }
 
@@ -110,7 +106,9 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
    */
   public LayerParameter generateInitialParameter() {
     final Matrix weight = matrixFactory.randn(kernelHeight * kernelWidth * inputChannel, numOutput);
-    final Matrix bias = matrixFactory.create(outputShape[1] * outputShape[2] * numOutput, 1).fill(initBias);
+    // TODO #800: Should use numOutput for number of rows of bias matrix
+    final Matrix bias = matrixFactory.create(outputShape.getHeight() * outputShape.getWidth() * numOutput, 1);
+    bias.fill(initBias);
 
     weight.muli(initWeight); // multiply by standard deviation.
 
@@ -132,25 +130,21 @@ public final class ConvolutionalLayerParameterInitializer implements LayerParame
    * col' = ceil((col − kernelWidth + 2 * paddingWidth) / stride) + 1
    * @return shape of output
    */
-  private int[] computeOutputShape() {
-    final int[] computedShape = new int[3];
-    if (inputShape.length != 2 && inputShape.length != 3) {
-      throw new IllegalArgumentException("Unsupported input dimensions: " + inputShape.length);
-    }
-    computedShape[0] = numOutput;
-    computedShape[1] = (int) Math.ceil((float) (inputHeight - kernelHeight + 2 * paddingHeight) / strideHeight) + 1;
-    computedShape[2] = (int) Math.ceil((float) (inputWidth - kernelWidth + 2 * paddingWidth) / strideWidth) + 1;
-    if (computedShape[0] < 0 || computedShape[1] < 0 || computedShape[2] < 0) {
+  private LayerShape computeOutputShape() {
+    final int channel = numOutput;
+    final int height = (int) Math.ceil((float) (inputHeight - kernelHeight + 2 * paddingHeight) / strideHeight) + 1;
+    final int width = (int) Math.ceil((float) (inputWidth - kernelWidth + 2 * paddingWidth) / strideWidth) + 1;
+    if (channel < 0 || height < 0 || width < 0) {
       throw new IllegalArgumentException("Negative output size");
     }
-    return computedShape;
+    return new LayerShape(channel, height, width);
   }
 
   /**
    * @return shape of output
    */
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return outputShape;
   }
 }

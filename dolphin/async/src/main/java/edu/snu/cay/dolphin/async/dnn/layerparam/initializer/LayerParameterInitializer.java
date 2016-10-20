@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.dnn.layerparam.initializer;
 
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
@@ -39,5 +40,5 @@ public interface LayerParameterInitializer {
   /**
    * @return the shape of output.
    */
-  int[] getOutputShape();
+  LayerShape getOutputShape();
 }

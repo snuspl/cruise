@@ -26,7 +26,7 @@ public abstract class LayerBase {
 
   private final int index;
   private LayerParameter layerParameter;
-  private final int[] inputShape;
+  private final LayerShape inputShape;
 
   protected LayerBase(final int index, final String inputShapeString) {
     this.index = index;
@@ -43,14 +43,14 @@ public abstract class LayerBase {
   /**
    * @return the shape of inputs.
    */
-  public final int[] getInputShape() {
+  public final LayerShape getInputShape() {
     return this.inputShape;
   }
 
   /**
    * @return the shape of outputs.
    */
-  public abstract int[] getOutputShape();
+  public abstract LayerShape getOutputShape();
 
   /**
    * Replaces the parameter of the layer.

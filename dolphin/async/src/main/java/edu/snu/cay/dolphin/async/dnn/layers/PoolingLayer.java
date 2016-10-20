@@ -42,7 +42,7 @@ public final class PoolingLayer extends LayerBase {
   private enum PoolType {
     AVERAGE, MAX
   }
-  private final int[] outputShape;
+  private final LayerShape outputShape;
   private final PoolType poolingType;
   private final int paddingHeight;
   private final int paddingWidth;
@@ -93,24 +93,16 @@ public final class PoolingLayer extends LayerBase {
     this.outputShape = layerParameterInitializer.getOutputShape();
     this.poolingType = PoolType.valueOf(poolingType.toUpperCase());
     this.matrixFactory = matrixFactory;
-  
-    if (getInputShape().length == 2) {
-      this.inputChannel = 1;
-      this.inputHeight = getInputShape()[0];
-      this.inputWidth = getInputShape()[1];
-      this.outputHeight = outputShape[0];
-      this.outputWidth = outputHeight;
-    } else {
-      this.inputChannel = getInputShape()[0];
-      this.inputHeight = getInputShape()[1];
-      this.inputWidth = getInputShape()[2];
-      this.outputHeight = outputShape[1];
-      this.outputWidth = outputShape[2];
-    }
+
+    this.inputChannel = getInputShape().getChannel();
+    this.inputHeight = getInputShape().getHeight();
+    this.inputWidth = getInputShape().getWidth();
+    this.outputHeight = getOutputShape().getHeight();
+    this.outputWidth = getOutputShape().getWidth();
   }
 
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return outputShape;
   }
 

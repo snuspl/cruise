@@ -22,6 +22,7 @@ import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
 import edu.snu.cay.dolphin.async.dnn.conf.LayerConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
 import org.apache.reef.tang.annotations.Parameter;
 import org.bytedeco.javacpp.Pointer;
 
@@ -69,15 +70,9 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
     this.output = null;
     this.layerError = null;
 
-    if (getInputShape().length == 2) {
-      this.inputChannel = 1;
-      this.inputHeight = getInputShape()[0];
-      this.inputWidth = getInputShape()[1];
-    } else {
-      this.inputChannel = getInputShape()[0];
-      this.inputHeight = getInputShape()[1];
-      this.inputWidth = getInputShape()[2];
-    }
+    this.inputChannel = getInputShape().getChannel();
+    this.inputHeight = getInputShape().getHeight();
+    this.inputWidth = getInputShape().getWidth();
 
     //setup
     if (!activationFunction.toLowerCase().equals("softmax")) {
@@ -88,7 +83,7 @@ public final class ActivationWithLossGpuLayer extends LayerBase {
   }
 
   @Override
-  public int[] getOutputShape() {
+  public LayerShape getOutputShape() {
     return getInputShape();
   }
 
