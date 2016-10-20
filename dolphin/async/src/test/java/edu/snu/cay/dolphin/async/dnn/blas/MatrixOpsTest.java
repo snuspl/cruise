@@ -71,10 +71,15 @@ public final class MatrixOpsTest {
     final Matrix m = matrixFactory.create(input, 3, 2);
     assertEquals(0.5F, m.get(4));
     assertEquals(0.3F, m.get(2, 0));
+    final Matrix subMatrix = m.get(new int[] {0, 3, 4});
+    final float[] expectedData = {0.1F, 0.4F, 0.5F};
+    assertArrayEquals(expectedData, subMatrix.toFloatArray());
+    MatrixUtils.free(subMatrix);
     m.put(4, 5.0F);
     m.put(0, 1, -4.0F);
     assertEquals(-4.0F, m.get(3));
     assertEquals(5.0F, m.get(1, 1));
+
     assertEquals(-4.0F, m.min());
     assertEquals(5.0F, m.max());
     assertEquals(2.2F, m.sum());
