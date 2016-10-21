@@ -148,7 +148,7 @@ public final class MatrixCudaImpl implements Matrix {
     }
     devPtr.position(0);
 
-    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(1, indices.length);
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(indices.length, 1);
     for (int i = 0; i < indices.length; i++) {
       newMatrix.put(i, hostPtr.get(indices[i] - min));
     }
