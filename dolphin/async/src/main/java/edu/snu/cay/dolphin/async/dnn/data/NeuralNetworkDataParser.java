@@ -83,6 +83,7 @@ public final class NeuralNetworkDataParser {
           continue;
         }
         try {
+          // TODO #908: Modify NeuralNetworkParser not to create matrix twice when reading data
           final Matrix input = readNumpy(matrixFactory, new ByteArrayInputStream(text.getBytes()), delimiter);
           final Matrix data = input.get(range(0, input.getRows() - 2));
           final int label = (int) input.get(input.getRows() - 2);
