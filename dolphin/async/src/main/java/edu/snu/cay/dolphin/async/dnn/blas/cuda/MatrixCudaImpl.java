@@ -126,32 +126,21 @@ public final class MatrixCudaImpl implements Matrix {
 
   @Override
   public Matrix get(final int[] indices) {
-    if (indices == null) {
-      throw new RuntimeException("Array of indices cannot be null");
+    if (indices == null || indices.length == 0) {
+      throw new IllegalArgumentException("Array of indices cannot be null or zero-size");
     }
-
-    int min = Integer.MAX_VALUE;
-    int max = Integer.MIN_VALUE;
-    for (final int index : indices) {
-      if (index < min) {
-        min = index;
-      }
-      if (index > max) {
-        max = index;
-      }
-    }
-
-    final FloatPointer hostPtr = new FloatPointer(max - min + 1);
-    if (!JavaCuda.d2hMemcpy(hostPtr, devPtr.position(FLOAT_SIZE * min), FLOAT_SIZE * (max - min + 1))) {
-      devPtr.position(0);
-      throw new RuntimeException("Failed to copy memory from GPU.");
-    }
-    devPtr.position(0);
 
     final MatrixCudaImpl newMatrix = new MatrixCudaImpl(indices.length, 1);
     for (int i = 0; i < indices.length; i++) {
-      newMatrix.put(i, hostPtr.get(indices[i] - min));
+      if (!JavaCuda.d2hMemcpy(newMatrix.devPtr.position(i * FLOAT_SIZE),
+          devPtr.position(FLOAT_SIZE * indices[i]), FLOAT_SIZE)) {
+        devPtr.position(0);
+        newMatrix.free();
+        throw new RuntimeException("Failed to copy memory from GPU.");
+      }
     }
+    newMatrix.devPtr.position(0);
+    devPtr.position(0);
     return newMatrix;
   }
 
