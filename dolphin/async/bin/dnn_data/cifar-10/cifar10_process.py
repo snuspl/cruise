@@ -39,8 +39,7 @@ def save_processed_image(dict, filename, isValidation):
             fo.write("%d" % data[j])
             fo.write(',')
         fo.write("%d," % dict['labels'][i])
-        fo.write("%d" % isValidation)
-        fo.write('/n')
+        fo.write("%d\n" % isValidation)
     fo.close()
 
 
