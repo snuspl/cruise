@@ -54,14 +54,15 @@ public final class NeuralNetworkTest {
 
   private static final float TOLERANCE = 1e-7f;
 
+  private static final int NUM_HIDDEN_UNITS = 5;
+  private static final int BATCH_SIZE = 3;
+
   @Parameterized.Parameters
   public static Object[] data() throws IOException {
     return TestDevice.getTestDevices();
   }
 
   private final boolean cpuOnly;
-
-  private MatrixFactory matrixFactory;
 
   private Matrix weightOne;
 
@@ -77,13 +78,9 @@ public final class NeuralNetworkTest {
 
   private Matrix label;
 
-  private final int numHiddenUnits = 5;
-
   private Matrix[] expectedActivations;
 
   private Matrix[] expectedErrors;
-
-  private final int numBatch = 3;
 
   private Matrix batchInput;
 
@@ -96,7 +93,6 @@ public final class NeuralNetworkTest {
   private Matrix[] expectedBatchErrors;
 
   private NeuralNetwork neuralNetwork;
-  private ParameterWorker mockParameterWorker;
 
   public NeuralNetworkTest(final String testDevice) throws InjectionException {
     cpuOnly = testDevice.equals(TestDevice.CPU);
@@ -104,11 +100,11 @@ public final class NeuralNetworkTest {
 
   @Before
   public void buildNeuralNetwork() throws InjectionException {
-    final Configuration blasConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration blasConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MatrixFactory.class,
             cpuOnly ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
         .build();
-    this.matrixFactory = Tang.Factory.getTang().newInjector(blasConfiguration).getInstance(MatrixFactory.class);
+    final MatrixFactory matrixFactory = Tang.Factory.getTang().newInjector(blasConf).getInstance(MatrixFactory.class);
 
     this.weightOne = matrixFactory.create(new float[][]{
         {-1.00006793218e-04f, -1.54579829541e-05f, 6.94163973093e-05f, -1.06398147181e-04f,
@@ -160,7 +156,7 @@ public final class NeuralNetworkTest {
         .setRandomSeed(10)
         .setCpuOnly(cpuOnly)
         .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
-            .setNumOutput(numHiddenUnits)
+            .setNumOutput(NUM_HIDDEN_UNITS)
             .setInitWeight(0.0001f)
             .setInitBias(0.0002f)
             .setCpuOnly(cpuOnly)
@@ -185,34 +181,34 @@ public final class NeuralNetworkTest {
     this.batchInput = matrixFactory.create(new float[]{
         77, 57, 30, 26, 75, 74, 87, 75,
         61, 5, 18, 18, 16, 4, 67, 29,
-        68, 85, 4, 50, 19, 3, 5, 18}, input.getLength(), numBatch);
+        68, 85, 4, 50, 19, 3, 5, 18}, input.getLength(), BATCH_SIZE);
 
     this.expectedBatchOutput = matrixFactory.create(new float[]{
         4.61770762870e-01f, 2.64659881819e-01f, 2.73569355310e-01f,
         4.60887641401e-01f, 2.64983657349e-01f, 2.74128701250e-01f,
-        4.60964312255e-01f, 2.64988135049e-01f, 2.74047552696e-01f}, expectedOutput.getLength(), numBatch);
+        4.60964312255e-01f, 2.64988135049e-01f, 2.74047552696e-01f}, expectedOutput.getLength(), BATCH_SIZE);
 
     this.labels = matrixFactory.create(new float[]{
         0, 1, 0,
         0, 0, 1,
-        1, 0, 0}, expectedOutput.getLength(), numBatch);
+        1, 0, 0}, expectedOutput.getLength(), BATCH_SIZE);
 
     this.expectedBatchActivations = new Matrix[]{
         matrixFactory.create(new float[]{
             1.37635586396e-02f, 2.03896453321e-02f, 8.84165966865e-03f, 2.93623840734e-02f, -7.07257980630e-03f,
             -1.03681771740e-02f, 3.53007655740e-03f, -1.66967848856e-03f, 1.57861485705e-02f, -6.65068837926e-03f,
             -9.20206232816e-03f, 2.52719653249e-03f, 3.13138561007e-03f, 1.43411668226e-02f, -5.00741667077e-03f},
-            numHiddenUnits, numBatch),
+            NUM_HIDDEN_UNITS, BATCH_SIZE),
         matrixFactory.create(new float[]{
             5.03440835342e-01f, 5.05097234742e-01f, 5.02210400517e-01f, 5.07340068673e-01f, 4.98231862419e-01f,
             4.97407978926e-01f, 5.00882518223e-01f, 4.99582580475e-01f, 5.03946455187e-01f, 4.98337334034e-01f,
             4.97699500651e-01f, 5.00631798797e-01f, 5.00782845763e-01f, 5.03585230258e-01f, 4.98748148448e-01f},
-            numHiddenUnits, numBatch),
+            NUM_HIDDEN_UNITS, BATCH_SIZE),
         matrixFactory.create(new float[]{
             8.44565190562e-01f, 2.87942143690e-01f, 3.21051780914e-01f,
             8.41026105227e-01f, 2.87539973621e-01f, 3.21469528616e-01f,
             8.41267616553e-01f, 2.87632041900e-01f, 3.21248631631e-01f},
-            expectedOutput.getLength(), numBatch),
+            expectedOutput.getLength(), BATCH_SIZE),
         expectedBatchOutput};
 
     this.expectedBatchErrors = new Matrix[]{
@@ -220,20 +216,20 @@ public final class NeuralNetworkTest {
             1.35428765789e-02f, 4.32200990617e-02f, -1.24120442197e-02f, 2.40239556879e-02f, 6.40540421009e-02f,
             1.90382115543e-02f, 2.46846140362e-03f, 8.46128016710e-02f, 4.67371083796e-02f, -3.79565842450e-02f,
             -1.90889853984e-02f, -2.62955874205e-02f, -4.31329198182e-02f, -4.15659695864e-02f, -1.42468335107e-02f},
-            numHiddenUnits, numBatch),
+            NUM_HIDDEN_UNITS, BATCH_SIZE),
         matrixFactory.create(new float[]{
             5.41740730405e-02f, 1.72898367047e-01f, -4.96491491795e-02f, 9.61165353656e-02f, 2.56219387054e-01f,
             7.61548876762e-02f, 9.87387634814e-03f, 3.38451445103e-01f, 1.86960071325e-01f, -1.51828020811e-01f,
             -7.63575509191e-02f, -1.05182521045e-01f, -1.72532096505e-01f, -1.66272431612e-01f, -5.69876879454e-02f},
-            numHiddenUnits, numBatch),
+            NUM_HIDDEN_UNITS, BATCH_SIZE),
         matrixFactory.create(new float[]{
             4.61770772934e-01f, -7.35340118408e-01f, 2.73569345474e-01f,
             4.60887640715e-01f, 2.64983654022e-01f, -7.25871324539e-01f,
             -5.39035677910e-01f, 2.64988124371e-01f, 2.74047553539e-01f},
-            expectedOutput.getLength(), numBatch)};
+            expectedOutput.getLength(), BATCH_SIZE)};
 
-    final Injector injector = Tang.Factory.getTang().newInjector(blasConfiguration, neuralNetworkConfiguration);
-    this.mockParameterWorker = mock(ParameterWorker.class);
+    final Injector injector = Tang.Factory.getTang().newInjector(blasConf, neuralNetworkConfiguration);
+    final ParameterWorker mockParameterWorker = mock(ParameterWorker.class);
     injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
     this.neuralNetwork = injector.getInstance(NeuralNetwork.class);
 
@@ -278,43 +274,24 @@ public final class NeuralNetworkTest {
   }
 
   /**
-   * Unit test for feedforward of neural network.
+   * Unit test for neural network.
    */
   @Test
-  public void feedForwardTest() {
+  public void neuralNetworkTest() {
     final Matrix[] activations = neuralNetwork.feedForward(input);
-    assertTrue(expectedOutput.compare(activations[activations.length - 1], TOLERANCE));
     assertTrue(MatrixUtils.compare(activations, expectedActivations, TOLERANCE));
+    final Matrix[] errors = neuralNetwork.backPropagate(ArrayUtils.add(activations, 0, input), label);
+    assertTrue(MatrixUtils.compare(errors, expectedErrors, TOLERANCE));
   }
 
   /**
-   * Unit test for backprogation of neural network.
+   * Unit test for neural network with a batch input.
    */
   @Test
-  public void backPropagateTest() {
-    final Matrix[] activations = neuralNetwork.feedForward(input);
-    assertTrue(MatrixUtils.compare(activations, expectedActivations, TOLERANCE));
-    final Matrix[] gradients = neuralNetwork.backPropagate(ArrayUtils.add(activations, 0, input), label);
-    assertTrue(MatrixUtils.compare(expectedErrors, gradients, TOLERANCE));
-  }
-
-  /**
-   * Unit test for feedforward of neural network for a batch input.
-   */
-  @Test
-  public void feedForwardTestForBatch() {
+  public void neuralNetworkTestForBatch() {
     final Matrix[] batchActivations = neuralNetwork.feedForward(batchInput);
-    assertTrue(expectedBatchOutput.compare(batchActivations[batchActivations.length - 1], TOLERANCE));
     assertTrue(MatrixUtils.compare(batchActivations, expectedBatchActivations, TOLERANCE));
-  }
-
-  /**
-   * Unit test for backpropagate of neural network for a batch input.
-   */
-  @Test
-  public void backPropagateTestForBatch() {
-    final Matrix[] batchActivations = neuralNetwork.feedForward(batchInput);
-    final Matrix[] gradients = neuralNetwork.backPropagate(ArrayUtils.add(batchActivations, 0, batchInput), labels);
-    assertTrue(MatrixUtils.compare(expectedBatchErrors, gradients, TOLERANCE));
+    final Matrix[] batchErrors = neuralNetwork.backPropagate(ArrayUtils.add(batchActivations, 0, batchInput), labels);
+    assertTrue(MatrixUtils.compare(batchErrors, expectedBatchErrors, TOLERANCE));
   }
 }

@@ -53,10 +53,6 @@ public final class DropoutLayerTest {
 
   private final boolean cpuOnly;
 
-  private Configuration matrixConf;
-
-  private MatrixFactory matrixFactory;
-
   private Matrix input;
 
   private Matrix nextError;
@@ -73,11 +69,11 @@ public final class DropoutLayerTest {
 
   @Before
   public void setup() throws InjectionException {
-    this.matrixConf = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration blasConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MatrixFactory.class,
             cpuOnly ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
         .build();
-    this.matrixFactory = Tang.Factory.getTang().newInjector(matrixConf).getInstance(MatrixFactory.class);
+    final MatrixFactory matrixFactory = Tang.Factory.getTang().newInjector(blasConf).getInstance(MatrixFactory.class);
 
     this.input = matrixFactory.create(new float[][]{
         {0.4f, -2.0f},
@@ -112,7 +108,7 @@ public final class DropoutLayerTest {
         .newConfigurationBuilder()
         .setDropoutRatio(0.5f);
 
-    final Injector injector = Tang.Factory.getTang().newInjector(matrixConf);
+    final Injector injector = Tang.Factory.getTang().newInjector(blasConf);
     final MatrixFactory matrixFactoryForLayer = injector.getInstance(MatrixFactory.class);
 
     matrixFactoryForLayer.setRandomSeed(10);
