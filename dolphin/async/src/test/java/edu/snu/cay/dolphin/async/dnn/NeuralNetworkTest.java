@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.dnn;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
+import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.jblas.MatrixJBLASFactory;
 import edu.snu.cay.dolphin.async.dnn.conf.ActivationLayerConfigurationBuilder;
 import edu.snu.cay.dolphin.async.dnn.conf.ActivationWithLossLayerConfigurationBuilder;
@@ -33,119 +34,204 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.*;
+import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
 /**
  * Unit tests for neural network.
  */
+@RunWith(Parameterized.class)
 public final class NeuralNetworkTest {
 
-  private static MatrixFactory matrixFactory;
   private static final float TOLERANCE = 1e-7f;
 
-  static {
-    final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
-        .build();
-    try {
-      matrixFactory = Tang.Factory.getTang().newInjector(configuration).getInstance(MatrixFactory.class);
-    } catch (final InjectionException e) {
-      throw new RuntimeException("InjectionException while injecting a matrix factory: " + e);
-    }
+  private static final int NUM_HIDDEN_UNITS = 5;
+  private static final int BATCH_SIZE = 3;
+
+  @Parameterized.Parameters
+  public static Object[] data() throws IOException {
+    return TestDevice.getTestDevices();
   }
 
-  private final Matrix weightOne = matrixFactory.create(new float[][] {
-      {-1.00006793218e-04f, -1.54579829541e-05f, 6.94163973093e-05f, -1.06398147181e-04f,
-          2.24940842599e-04f, 2.46723706368e-04f, -1.06568011688e-04f, -4.03687081416e-05f},
-      {-4.79565023852e-05f, 4.79118025396e-05f, -1.03981255961e-04f, -5.14816019858e-05f,
-          1.58282928168e-04f, 5.05058269482e-05f, 6.63289756630e-05f, 5.64001311431e-05f},
-      {3.28793648805e-05f, -1.24143082302e-06f, 5.19458808412e-06f, -4.80942035210e-05f,
-          7.82513598096e-05f, 3.65737469110e-05f, -1.19681484648e-04f, 1.21497352665e-04f},
-      {1.23943522339e-04f, 5.48210773558e-05f, -3.73580915038e-05f, -2.88651972368e-05f,
-          1.00603145256e-04f, 1.37029155666e-05f, 1.04539096355e-04f, 9.48021261137e-06f},
-      {-6.45994732622e-05f, 1.08623662526e-05f, -3.13096330501e-04f, -4.43520293629e-05f,
-          4.67877107439e-05f, -1.47852388181e-05f, 2.29103789024e-05f, 4.29372485086e-05f}});
+  private final boolean cpuOnly;
 
-  private final Matrix biasOne = matrixFactory.create(new float[]
-      {1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f});
+  private Matrix weightOne;
 
-  private final Matrix weightTwo = matrixFactory.create(new float[][]{
-      {0.20476184785f, 0.12248460203f, 0.22612512111f, 0.35694047808f, 0.17052401602f},
-      {0.07434597611f, -0.15545003116f, 0.10352678596f, 0.09480648487f, -0.14262562990f},
-      {0.05223761871f, 0.00742011470f, -0.28489932417f, 0.00368047505f, 0.26537343859f}});
+  private Matrix biasOne;
 
-  private final Matrix biasTwo = matrixFactory.create(new float[]
-      {0.30000001192f, 0.30000001192f, 0.30000001192f});
+  private Matrix weightTwo;
 
-  private final Matrix input = matrixFactory.create(new float[]{77, 57, 30, 26, 75, 74, 87, 75});
-  private final Matrix expectedOutput =
-      matrixFactory.create(new float[]{6.99425825888e-01f, 5.71492261161e-01f, 5.79580557810e-01f});
-  private final Matrix label = matrixFactory.create(new float[]{0, 1, 0});
-  private final int numHiddenUnits = 5;
+  private Matrix biasTwo;
 
-  private final Matrix[] expectedActivations = new Matrix[] {
-      matrixFactory.create(new float[]{
-          1.37635586396e-02f, 2.03896453321e-02f, 8.84165966865e-03f, 2.93623840734e-02f, -7.07257980630e-03f}),
-      matrixFactory.create(new float[]{
-          5.03440835342e-01f, 5.05097234742e-01f, 5.02210400517e-01f, 5.07340068673e-01f, 4.98231862419e-01f}),
-      matrixFactory.create(new float[]{
-          8.44565190562e-01f, 2.87942143690e-01f, 3.21051780914e-01f}),
-      expectedOutput};
+  private Matrix input;
 
-  private final Configuration neuralNetworkConfiguration = NeuralNetworkConfigurationBuilder.newConfigurationBuilder()
-      .setInputShape(input.getLength(), 1, 1)
-      .setStepSize(1e-2f)
-      .setRandomSeed(10)
-      .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
-          .setNumOutput(numHiddenUnits)
-          .setInitWeight(0.0001f)
-          .setInitBias(0.0002f)
-          .setCpuOnly(true)
-          .build())
-      .addLayerConfiguration(ActivationLayerConfigurationBuilder.newConfigurationBuilder()
-          .setActivationFunction("sigmoid")
-          .setCpuOnly(true)
-          .build())
-      .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
-          .setNumOutput(expectedOutput.getLength())
-          .setInitWeight(0.2f)
-          .setInitBias(0.3f)
-          .setCpuOnly(true)
-          .build())
-      .addLayerConfiguration(ActivationWithLossLayerConfigurationBuilder.newConfigurationBuilder()
-          .setActivationFunction("sigmoid")
-          .setLossFunction("crossentropy")
-          .setCpuOnly(true)
-          .build())
-      .build();
+  private Matrix expectedOutput;
 
-  private final Configuration blasConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-      .bindImplementation(MatrixFactory.class, MatrixJBLASFactory.class)
-      .build();
+  private Matrix label;
+
+  private Matrix[] expectedActivations;
+
+  private Matrix[] expectedErrors;
+
+  private Matrix batchInput;
+
+  private Matrix expectedBatchOutput;
+
+  private Matrix labels;
+
+  private Matrix[] expectedBatchActivations;
+
+  private Matrix[] expectedBatchErrors;
 
   private NeuralNetwork neuralNetwork;
-  private ParameterWorker mockParameterWorker;
 
-  private final Matrix[] expectedErrors = new Matrix[] {
-      matrixFactory.create(new float[]{
-          3.54067743975e-02f, 3.91411779548e-02f, -1.28313456911e-02f, 5.27789222833e-02f, 8.35465482582e-02f}),
-      matrixFactory.create(new float[]{
-          1.41633804997e-01f, 1.56580984844e-01f, -5.13263858606e-02f, 2.11161195729e-01f, 3.34190372164e-01f}),
-      matrixFactory.create(new float[]{6.99425825888e-01f, -4.28507738839e-01f, 5.79580557810e-01f})};
+  public NeuralNetworkTest(final String testDevice) throws InjectionException {
+    cpuOnly = testDevice.equals(TestDevice.CPU);
+  }
 
   @Before
   public void buildNeuralNetwork() throws InjectionException {
-    final Injector injector = Tang.Factory.getTang().newInjector(blasConfiguration, neuralNetworkConfiguration);
-    mockParameterWorker = mock(ParameterWorker.class);
+    final Configuration blasConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(MatrixFactory.class,
+            cpuOnly ? MatrixJBLASFactory.class : MatrixCudaFactory.class)
+        .build();
+    final MatrixFactory matrixFactory = Tang.Factory.getTang().newInjector(blasConf).getInstance(MatrixFactory.class);
+
+    this.weightOne = matrixFactory.create(new float[][]{
+        {-1.00006793218e-04f, -1.54579829541e-05f, 6.94163973093e-05f, -1.06398147181e-04f,
+            2.24940842599e-04f, 2.46723706368e-04f, -1.06568011688e-04f, -4.03687081416e-05f},
+        {-4.79565023852e-05f, 4.79118025396e-05f, -1.03981255961e-04f, -5.14816019858e-05f,
+            1.58282928168e-04f, 5.05058269482e-05f, 6.63289756630e-05f, 5.64001311431e-05f},
+        {3.28793648805e-05f, -1.24143082302e-06f, 5.19458808412e-06f, -4.80942035210e-05f,
+            7.82513598096e-05f, 3.65737469110e-05f, -1.19681484648e-04f, 1.21497352665e-04f},
+        {1.23943522339e-04f, 5.48210773558e-05f, -3.73580915038e-05f, -2.88651972368e-05f,
+            1.00603145256e-04f, 1.37029155666e-05f, 1.04539096355e-04f, 9.48021261137e-06f},
+        {-6.45994732622e-05f, 1.08623662526e-05f, -3.13096330501e-04f, -4.43520293629e-05f,
+            4.67877107439e-05f, -1.47852388181e-05f, 2.29103789024e-05f, 4.29372485086e-05f}});
+
+    this.biasOne = matrixFactory.create(new float[]
+        {1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f, 1.99999994947e-04f});
+
+    this.weightTwo = matrixFactory.create(new float[][]{
+        {0.20476184785f, 0.12248460203f, 0.22612512111f, 0.35694047808f, 0.17052401602f},
+        {0.07434597611f, -0.15545003116f, 0.10352678596f, 0.09480648487f, -0.14262562990f},
+        {0.05223761871f, 0.00742011470f, -0.28489932417f, 0.00368047505f, 0.26537343859f}});
+
+    this.biasTwo = matrixFactory.create(new float[]
+        {0.30000001192f, 0.30000001192f, 0.30000001192f});
+
+    this.input = matrixFactory.create(new float[]{77, 57, 30, 26, 75, 74, 87, 75});
+    this.expectedOutput =
+        matrixFactory.create(new float[]{0.46177076f, 0.26465988f, 0.27356936f});
+    this.label = matrixFactory.create(new float[]{0, 1, 0});
+
+    this.expectedActivations = new Matrix[]{
+        matrixFactory.create(new float[]{
+            1.37635586396e-02f, 2.03896453321e-02f, 8.84165966865e-03f, 2.93623840734e-02f, -7.07257980630e-03f}),
+        matrixFactory.create(new float[]{
+            5.03440835342e-01f, 5.05097234742e-01f, 5.02210400517e-01f, 5.07340068673e-01f, 4.98231862419e-01f}),
+        matrixFactory.create(new float[]{
+            8.44565190562e-01f, 2.87942143690e-01f, 3.21051780914e-01f}),
+        expectedOutput};
+
+    this.expectedErrors = new Matrix[]{
+        matrixFactory.create(new float[]{
+            0.01354287658f, 0.04322009906f, -0.01241204422f, 0.02402395569f, 0.06405404210f}),
+        matrixFactory.create(new float[]{
+            0.05417407304f, 0.17289836705f, -0.04964914918f, 0.09611653537f, 0.25621938705f}),
+        matrixFactory.create(new float[]{0.46177077293f, -0.73534011841f, 0.27356934547f})};
+
+    final Configuration neuralNetworkConfiguration = NeuralNetworkConfigurationBuilder.newConfigurationBuilder()
+        .setInputShape(input.getLength(), 1, 1)
+        .setStepSize(1e-2f)
+        .setRandomSeed(10)
+        .setCpuOnly(cpuOnly)
+        .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
+            .setNumOutput(NUM_HIDDEN_UNITS)
+            .setInitWeight(0.0001f)
+            .setInitBias(0.0002f)
+            .setCpuOnly(cpuOnly)
+            .build())
+        .addLayerConfiguration(ActivationLayerConfigurationBuilder.newConfigurationBuilder()
+            .setActivationFunction("sigmoid")
+            .setCpuOnly(cpuOnly)
+            .build())
+        .addLayerConfiguration(FullyConnectedLayerConfigurationBuilder.newConfigurationBuilder()
+            .setNumOutput(expectedOutput.getLength())
+            .setInitWeight(0.2f)
+            .setInitBias(0.3f)
+            .setCpuOnly(cpuOnly)
+            .build())
+        .addLayerConfiguration(ActivationWithLossLayerConfigurationBuilder.newConfigurationBuilder()
+            .setActivationFunction("softmax")
+            .setLossFunction("crossentropy")
+            .setCpuOnly(cpuOnly)
+            .build())
+        .build();
+
+    this.batchInput = matrixFactory.create(new float[]{
+        77, 57, 30, 26, 75, 74, 87, 75,
+        61, 5, 18, 18, 16, 4, 67, 29,
+        68, 85, 4, 50, 19, 3, 5, 18}, input.getLength(), BATCH_SIZE);
+
+    this.expectedBatchOutput = matrixFactory.create(new float[]{
+        4.61770762870e-01f, 2.64659881819e-01f, 2.73569355310e-01f,
+        4.60887641401e-01f, 2.64983657349e-01f, 2.74128701250e-01f,
+        4.60964312255e-01f, 2.64988135049e-01f, 2.74047552696e-01f}, expectedOutput.getLength(), BATCH_SIZE);
+
+    this.labels = matrixFactory.create(new float[]{
+        0, 1, 0,
+        0, 0, 1,
+        1, 0, 0}, expectedOutput.getLength(), BATCH_SIZE);
+
+    this.expectedBatchActivations = new Matrix[]{
+        matrixFactory.create(new float[]{
+            1.37635586396e-02f, 2.03896453321e-02f, 8.84165966865e-03f, 2.93623840734e-02f, -7.07257980630e-03f,
+            -1.03681771740e-02f, 3.53007655740e-03f, -1.66967848856e-03f, 1.57861485705e-02f, -6.65068837926e-03f,
+            -9.20206232816e-03f, 2.52719653249e-03f, 3.13138561007e-03f, 1.43411668226e-02f, -5.00741667077e-03f},
+            NUM_HIDDEN_UNITS, BATCH_SIZE),
+        matrixFactory.create(new float[]{
+            5.03440835342e-01f, 5.05097234742e-01f, 5.02210400517e-01f, 5.07340068673e-01f, 4.98231862419e-01f,
+            4.97407978926e-01f, 5.00882518223e-01f, 4.99582580475e-01f, 5.03946455187e-01f, 4.98337334034e-01f,
+            4.97699500651e-01f, 5.00631798797e-01f, 5.00782845763e-01f, 5.03585230258e-01f, 4.98748148448e-01f},
+            NUM_HIDDEN_UNITS, BATCH_SIZE),
+        matrixFactory.create(new float[]{
+            8.44565190562e-01f, 2.87942143690e-01f, 3.21051780914e-01f,
+            8.41026105227e-01f, 2.87539973621e-01f, 3.21469528616e-01f,
+            8.41267616553e-01f, 2.87632041900e-01f, 3.21248631631e-01f},
+            expectedOutput.getLength(), BATCH_SIZE),
+        expectedBatchOutput};
+
+    this.expectedBatchErrors = new Matrix[]{
+        matrixFactory.create(new float[]{
+            1.35428765789e-02f, 4.32200990617e-02f, -1.24120442197e-02f, 2.40239556879e-02f, 6.40540421009e-02f,
+            1.90382115543e-02f, 2.46846140362e-03f, 8.46128016710e-02f, 4.67371083796e-02f, -3.79565842450e-02f,
+            -1.90889853984e-02f, -2.62955874205e-02f, -4.31329198182e-02f, -4.15659695864e-02f, -1.42468335107e-02f},
+            NUM_HIDDEN_UNITS, BATCH_SIZE),
+        matrixFactory.create(new float[]{
+            5.41740730405e-02f, 1.72898367047e-01f, -4.96491491795e-02f, 9.61165353656e-02f, 2.56219387054e-01f,
+            7.61548876762e-02f, 9.87387634814e-03f, 3.38451445103e-01f, 1.86960071325e-01f, -1.51828020811e-01f,
+            -7.63575509191e-02f, -1.05182521045e-01f, -1.72532096505e-01f, -1.66272431612e-01f, -5.69876879454e-02f},
+            NUM_HIDDEN_UNITS, BATCH_SIZE),
+        matrixFactory.create(new float[]{
+            4.61770772934e-01f, -7.35340118408e-01f, 2.73569345474e-01f,
+            4.60887640715e-01f, 2.64983654022e-01f, -7.25871324539e-01f,
+            -5.39035677910e-01f, 2.64988124371e-01f, 2.74047553539e-01f},
+            expectedOutput.getLength(), BATCH_SIZE)};
+
+    final Injector injector = Tang.Factory.getTang().newInjector(blasConf, neuralNetworkConfiguration);
+    final ParameterWorker mockParameterWorker = mock(ParameterWorker.class);
     injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
-    neuralNetwork = injector.getInstance(NeuralNetwork.class);
+    this.neuralNetwork = injector.getInstance(NeuralNetwork.class);
 
     doAnswer(invocation -> {
         final LayerParameter layerParameterOne = new LayerParameter(weightOne, biasOne);
@@ -162,99 +248,50 @@ public final class NeuralNetworkTest {
   @After
   public void tearDown() {
     neuralNetwork.cleanup();
+
+    MatrixUtils.free(weightOne);
+    MatrixUtils.free(biasOne);
+    MatrixUtils.free(weightTwo);
+    MatrixUtils.free(biasTwo);
+    MatrixUtils.free(input);
+    MatrixUtils.free(expectedOutput);
+    MatrixUtils.free(label);
+    for (final Matrix m : expectedActivations) {
+      MatrixUtils.free(m);
+    }
+    for (final Matrix m : expectedErrors) {
+      MatrixUtils.free(m);
+    }
+    MatrixUtils.free(batchInput);
+    MatrixUtils.free(expectedBatchOutput);
+    MatrixUtils.free(labels);
+    for (final Matrix m : expectedBatchActivations) {
+      MatrixUtils.free(m);
+    }
+    for (final Matrix m : expectedBatchErrors) {
+      MatrixUtils.free(m);
+    }
   }
 
   /**
-   * Unit test for feedforward of neural network.
+   * Unit test for neural network.
    */
   @Test
-  public void feedForwardTest() {
+  public void neuralNetworkTest() {
     final Matrix[] activations = neuralNetwork.feedForward(input);
-    assertTrue(expectedOutput.compare(activations[activations.length - 1], TOLERANCE));
     assertTrue(MatrixUtils.compare(activations, expectedActivations, TOLERANCE));
+    final Matrix[] errors = neuralNetwork.backPropagate(ArrayUtils.add(activations, 0, input), label);
+    assertTrue(MatrixUtils.compare(errors, expectedErrors, TOLERANCE));
   }
 
   /**
-   * Unit test for backprogation of neural network.
+   * Unit test for neural network with a batch input.
    */
   @Test
-  public void backPropagateTest() {
-    final Matrix[] activations = neuralNetwork.feedForward(input);
-    assertTrue(MatrixUtils.compare(activations, expectedActivations, TOLERANCE));
-
-    final Matrix[] gradients = neuralNetwork.backPropagate(ArrayUtils.add(activations, 0, input), label);
-    assertTrue(MatrixUtils.compare(expectedErrors, gradients, TOLERANCE));
-  }
-
-  private final int numBatch = 3;
-
-  private final Matrix batchInput = matrixFactory.create(new float[]{
-      77, 57, 30, 26, 75, 74, 87, 75,
-      61, 5, 18, 18, 16, 4, 67, 29,
-      68, 85, 4, 50, 19, 3, 5, 18}, input.getLength(), numBatch);
-
-  private final Matrix expectedBatchOutput = matrixFactory.create(new float[]{
-      6.99425825888e-01f, 5.71492261161e-01f, 5.79580557810e-01f,
-      6.98681281603e-01f, 5.71393771362e-01f, 5.79682345726e-01f,
-      6.98732123516e-01f, 5.71416319005e-01f, 5.79628523069e-01f}, expectedOutput.getLength(), numBatch);
-
-  private final Matrix labels = matrixFactory.create(new float[]{
-      0, 1, 0,
-      0, 0, 1,
-      1, 0, 0}, expectedOutput.getLength(), numBatch);
-
-  private final Matrix[] expectedBatchActivations = new Matrix[] {
-      matrixFactory.create(new float[]{
-          1.37635586396e-02f, 2.03896453321e-02f, 8.84165966865e-03f, 2.93623840734e-02f, -7.07257980630e-03f,
-          -1.03681771740e-02f, 3.53007655740e-03f, -1.66967848856e-03f, 1.57861485705e-02f, -6.65068837926e-03f,
-          -9.20206232816e-03f, 2.52719653249e-03f, 3.13138561007e-03f, 1.43411668226e-02f, -5.00741667077e-03f},
-          numHiddenUnits, numBatch),
-      matrixFactory.create(new float[]{
-          5.03440835342e-01f, 5.05097234742e-01f, 5.02210400517e-01f, 5.07340068673e-01f, 4.98231862419e-01f,
-          4.97407978926e-01f, 5.00882518223e-01f, 4.99582580475e-01f, 5.03946455187e-01f, 4.98337334034e-01f,
-          4.97699500651e-01f, 5.00631798797e-01f, 5.00782845763e-01f, 5.03585230258e-01f, 4.98748148448e-01f},
-          numHiddenUnits, numBatch),
-      matrixFactory.create(new float[]{
-          8.44565190562e-01f, 2.87942143690e-01f, 3.21051780914e-01f,
-          8.41026105227e-01f, 2.87539973621e-01f, 3.21469528616e-01f,
-          8.41267616553e-01f, 2.87632041900e-01f, 3.21248631631e-01f},
-          expectedOutput.getLength(), numBatch),
-      expectedBatchOutput};
-
-  private final Matrix[] expectedBatchErrors = new Matrix[] {
-      matrixFactory.create(new float[]{
-          3.54067743975e-02f, 3.91411779548e-02f, -1.28313456911e-02f, 5.27789222833e-02f, 8.35465482582e-02f,
-          4.08958273398e-02f, -1.59106512616e-03f, 8.42229824251e-02f, 7.54984157076e-02f, -1.84734459806e-02f,
-          2.76812889594e-03f, -3.03565626334e-02f, -4.35256740938e-02f, -1.28061956655e-02f, 5.23646752384e-03f},
-          numHiddenUnits, numBatch),
-      matrixFactory.create(new float[]{
-          1.41633804997e-01f, 1.56580984844e-01f, -5.13263858606e-02f, 2.11161195729e-01f, 3.34190372164e-01f,
-          1.63587705663e-01f, -6.36428033164e-03f, 3.36892164500e-01f, 3.02012477614e-01f, -7.38946010364e-02f,
-          1.10727499849e-02f, -1.21426444413e-01f, -1.74103123170e-01f, -5.12274165454e-02f, 2.09460013960e-02f},
-          numHiddenUnits, numBatch),
-      matrixFactory.create(new float[]{
-          6.99425825888e-01f, -4.28507738839e-01f, 5.79580557810e-01f,
-          6.98681281603e-01f, 5.71393771362e-01f, -4.20317654274e-01f,
-          -3.01267876484e-01f, 5.71416319005e-01f, 5.79628523069e-01f},
-          expectedOutput.getLength(), numBatch)};
-
-  /**
-   * Unit test for feedforward of neural network for a batch input.
-   */
-  @Test
-  public void feedForwardTestForBatch() {
+  public void neuralNetworkTestForBatch() {
     final Matrix[] batchActivations = neuralNetwork.feedForward(batchInput);
-    assertTrue(expectedBatchOutput.compare(batchActivations[batchActivations.length - 1], TOLERANCE));
     assertTrue(MatrixUtils.compare(batchActivations, expectedBatchActivations, TOLERANCE));
-  }
-
-  /**
-   * Unit test for backpropagate of neural network for a batch input.
-   */
-  @Test
-  public void backPropagateTestForBatch() {
-    final Matrix[] batchActivations = ArrayUtils.add(expectedBatchActivations, 0, batchInput);
-    final Matrix[] gradients = neuralNetwork.backPropagate(batchActivations, labels);
-    assertTrue(MatrixUtils.compare(expectedBatchErrors, gradients, TOLERANCE));
+    final Matrix[] batchErrors = neuralNetwork.backPropagate(ArrayUtils.add(batchActivations, 0, batchInput), labels);
+    assertTrue(MatrixUtils.compare(batchErrors, expectedBatchErrors, TOLERANCE));
   }
 }
