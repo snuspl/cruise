@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.dnn.data;
 import edu.snu.cay.dolphin.async.dnn.NeuralNetworkParameters.Delimiter;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.BatchSize;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.io.LongWritable;
@@ -82,6 +83,7 @@ public final class NeuralNetworkDataParser {
           continue;
         }
         try {
+          // TODO #908: Modify NeuralNetworkParser not to create matrix twice when reading data
           final Matrix input = readNumpy(matrixFactory, new ByteArrayInputStream(text.getBytes()), delimiter);
           final Matrix data = input.get(range(0, input.getRows() - 2));
           final int label = (int) input.get(input.getRows() - 2);
@@ -92,6 +94,7 @@ public final class NeuralNetworkDataParser {
           } else {
             trainingBatchGenerator.push(data, label);
           }
+          MatrixUtils.free(input);
         } catch (final IOException e) {
           throw new RuntimeException("Failed to parse data: ", e);
         }

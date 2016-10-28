@@ -126,7 +126,22 @@ public final class MatrixCudaImpl implements Matrix {
 
   @Override
   public Matrix get(final int[] indices) {
-    throw new UnsupportedOperationException("Not implemented");
+    if (indices == null || indices.length == 0) {
+      throw new IllegalArgumentException("Array of indices cannot be null or zero-size");
+    }
+
+    final MatrixCudaImpl newMatrix = new MatrixCudaImpl(indices.length, 1);
+    for (int i = 0; i < indices.length; i++) {
+      if (!JavaCuda.d2dMemcpy(newMatrix.devPtr.position(i * FLOAT_SIZE),
+          devPtr.position(FLOAT_SIZE * indices[i]), FLOAT_SIZE)) {
+        devPtr.position(0);
+        newMatrix.free();
+        throw new RuntimeException("Failed to copy memory from GPU.");
+      }
+    }
+    newMatrix.devPtr.position(0);
+    devPtr.position(0);
+    return newMatrix;
   }
 
   @Override
