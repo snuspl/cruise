@@ -132,7 +132,7 @@ public final class MatrixCudaImpl implements Matrix {
 
     final MatrixCudaImpl newMatrix = new MatrixCudaImpl(indices.length, 1);
     for (int i = 0; i < indices.length; i++) {
-      if (!JavaCuda.d2hMemcpy(newMatrix.devPtr.position(i * FLOAT_SIZE),
+      if (!JavaCuda.d2dMemcpy(newMatrix.devPtr.position(i * FLOAT_SIZE),
           devPtr.position(FLOAT_SIZE * indices[i]), FLOAT_SIZE)) {
         devPtr.position(0);
         newMatrix.free();
