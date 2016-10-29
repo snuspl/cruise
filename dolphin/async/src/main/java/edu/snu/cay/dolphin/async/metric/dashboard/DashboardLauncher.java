@@ -45,7 +45,7 @@ public final class DashboardLauncher {
    * @throws IOException when the given port is unavailable, failed to copy the server script,
    *           or failed to make processBuilder.
    */
-  public static void runDashboardServer(final int port) throws IOException {
+  public static void runDashboardServer(final int port) throws IOException, URISyntaxException {
     LOG.log(Level.INFO, "Now launch dashboard server");
 
     // Check if the port number is available by trying to connect a socket to given port.
@@ -62,40 +62,36 @@ public final class DashboardLauncher {
 
     final Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir"), DASHBOARD_DIR);
     // Copy the dashboard python script to /tmp
-    try {
-      final FileSystem fileSystem = FileSystems.newFileSystem(
-          DashboardLauncher.class.getResource("").toURI(),
-          Collections.<String, String>emptyMap()
-      );
+    final FileSystem fileSystem = FileSystems.newFileSystem(
+        DashboardLauncher.class.getResource("").toURI(),
+        Collections.<String, String>emptyMap()
+    );
 
-      final Path jarPath = fileSystem.getPath(DASHBOARD_DIR);
-      Files.walkFileTree(jarPath, new SimpleFileVisitor<Path>() {
-        @Override
-        public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
-          Files.createDirectories(tmpPath.resolve(jarPath.relativize(dir).toString()));
-          return FileVisitResult.CONTINUE;
-        }
+    final Path jarPath = fileSystem.getPath(DASHBOARD_DIR);
+    Files.walkFileTree(jarPath, new SimpleFileVisitor<Path>() {
+      @Override
+      public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
+        Files.createDirectories(tmpPath.resolve(jarPath.relativize(dir).toString()));
+        return FileVisitResult.CONTINUE;
+      }
 
-        @Override
-        public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
-          Files.copy(file, tmpPath.resolve(jarPath.relativize(file).toString()), StandardCopyOption.REPLACE_EXISTING);
-          return FileVisitResult.CONTINUE;
-        }
-      });
+      @Override
+      public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+        Files.copy(file, tmpPath.resolve(jarPath.relativize(file).toString()), StandardCopyOption.REPLACE_EXISTING);
+        return FileVisitResult.CONTINUE;
+      }
+    });
 
-      // Launch server
-      final String tmpScript = Paths.get(tmpPath.toString(), DASHBOARD_SCRIPT).toString();
-      final ProcessBuilder pb = new ProcessBuilder("python", tmpScript, String.valueOf(port)).inheritIO();
+    // Launch server
+    final String tmpScript = Paths.get(tmpPath.toString(), DASHBOARD_SCRIPT).toString();
+    final ProcessBuilder pb = new ProcessBuilder("python", tmpScript, String.valueOf(port)).inheritIO();
 
-      final Process p = pb.start();
-      Runtime.getRuntime().addShutdownHook(new Thread() {
-        @Override
-        public void run() {
-          p.destroy();
-        }
-      });
-    } catch (URISyntaxException e) {
-      LOG.log(Level.WARNING, "Failed to access current jar file.", e);
-    }
+    final Process p = pb.start();
+    Runtime.getRuntime().addShutdownHook(new Thread() {
+      @Override
+      public void run() {
+        p.destroy();
+      }
+    });
   }
 }
