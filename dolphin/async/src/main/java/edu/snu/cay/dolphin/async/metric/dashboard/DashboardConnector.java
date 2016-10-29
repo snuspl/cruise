@@ -16,7 +16,9 @@
 package edu.snu.cay.dolphin.async.metric.dashboard;
 
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.dolphin.async.metric.dashboard.parameters.Parameters;
+import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardEnabled;
+import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardHostAddress;
+import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardPort;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
@@ -69,9 +71,9 @@ public final class DashboardConnector {
    * @param port        Port number of dolphin dashboard server.
    */
   @Inject
-  private DashboardConnector(@Parameter(Parameters.DashboardEnabled.class) final boolean dashboardEnabled,
-                             @Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
-                             @Parameter(Parameters.DashboardPort.class) final int port) {
+  private DashboardConnector(@Parameter(DashboardEnabled.class) final boolean dashboardEnabled,
+                             @Parameter(DashboardHostAddress.class) final String hostAddress,
+                             @Parameter(DashboardPort.class) final int port) {
     this.dashboardSetupStatus = dashboardEnabled ? initDashboard(hostAddress, port) : DashboardSetupStatus.getFailed();
   }
 

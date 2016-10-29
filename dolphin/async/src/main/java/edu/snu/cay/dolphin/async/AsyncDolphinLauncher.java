@@ -18,7 +18,8 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.metric.dashboard.DashboardConfProvider;
 import edu.snu.cay.dolphin.async.metric.dashboard.DashboardLauncher;
-import edu.snu.cay.dolphin.async.metric.dashboard.parameters.Parameters;
+import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardEnabled;
+import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardPort;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MetricWeightFactor;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MovingAverageWindowSize;
@@ -196,10 +197,10 @@ public final class AsyncDolphinLauncher {
           .build();
 
       // run dashboard and get configuration
-      final boolean dashboardEnabled = basicParameterInjector.getNamedInstance(Parameters.DashboardEnabled.class);
+      final boolean dashboardEnabled = basicParameterInjector.getNamedInstance(DashboardEnabled.class);
       if (dashboardEnabled) {
         // Note that the job launch will fail if it fails to run dashboard server
-        final int dashboardPort = basicParameterInjector.getNamedInstance(Parameters.DashboardPort.class);
+        final int dashboardPort = basicParameterInjector.getNamedInstance(DashboardPort.class);
         DashboardLauncher.runDashboardServer(dashboardPort);
       }
       final Configuration dashboardConf = DashboardConfProvider.getConfiguration();
@@ -292,8 +293,8 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(ReceiverPort.class);
 
     // add dashboard parameters
-    basicParameterClassList.add(Parameters.DashboardEnabled.class);
-    basicParameterClassList.add(Parameters.DashboardPort.class);
+    basicParameterClassList.add(DashboardEnabled.class);
+    basicParameterClassList.add(DashboardPort.class);
 
     // add optimizer parameters
     basicParameterClassList.add(OptimizationIntervalMs.class);

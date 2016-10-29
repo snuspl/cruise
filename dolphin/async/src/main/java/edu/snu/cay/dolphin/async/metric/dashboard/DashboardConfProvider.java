@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.metric.dashboard;
 
-import edu.snu.cay.dolphin.async.metric.dashboard.parameters.Parameters;
+import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardHostAddress;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 
@@ -37,7 +37,7 @@ public final class DashboardConfProvider {
 
   public static Configuration getConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(Parameters.DashboardHostAddress.class, getHostAddress())
+        .bindNamedParameter(DashboardHostAddress.class, getHostAddress())
         .build();
   }
 
