@@ -15,49 +15,28 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
-import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
+import edu.snu.cay.dolphin.async.metric.dashboard.DashboardConnector;
 import edu.snu.cay.dolphin.async.optimizer.ServerEvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.WorkerEvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.concurrent.FutureCallback;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
-import org.apache.http.impl.nio.client.HttpAsyncClients;
-import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
-import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
-import org.apache.http.nio.reactor.IOReactorException;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.annotations.Parameter;
 
-import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
-import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * A temporary storage for holding worker and server metrics related to optimization.
- * Users can optionally run a dashboard server, which visualizes the received metrics
- * (See {@link edu.snu.cay.common.param.Parameters.DashboardPort}).
+ * It also sends the metrics to Dashboard, which visualizes the received metrics, using {@link DashboardConnector}.
  */
 @DriverSide
 public final class MetricManager {
   private static final Logger LOG = Logger.getLogger(MetricManager.class.getName());
-
-  /**
-   * Size of the queue for saving unsent metrics to the Dashboard server.
-   */
-  private static final int METRIC_QUEUE_SIZE = 1024;
 
   /**
    * Worker-side metrics for epochs, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
@@ -67,13 +46,11 @@ public final class MetricManager {
   /**
    * Worker-side metrics for mini-batches, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
    */
-  @GuardedBy("this")
   private final Map<String, List<EvaluatorParameters>> workerEvalMiniBatchParams;
 
   /**
    * Server-side metrics, each in the form of (serverId, {@link EvaluatorParameters}) mapping.
    */
-  @GuardedBy("this")
   private final Map<String, List<EvaluatorParameters>> serverEvalParams;
 
   /**
@@ -88,27 +65,13 @@ public final class MetricManager {
   private volatile Map<String, Integer> numBlockByEvalIdForWorker;
   private volatile Map<String, Integer> numBlockByEvalIdForServer;
 
-  private final DashboardSetupStatus dashboardSetupStatus;
-
-  /**
-   * Thread for sending metrics to dashboard server.
-   */
-  private final ExecutorService metricsSenderExecutor = Executors.newSingleThreadScheduledExecutor();
-
-  /**
-   * Metrics request queue which saves unsent requests.
-   */
-  private final ArrayBlockingQueue<String> metricsRequestQueue = new ArrayBlockingQueue<String>(METRIC_QUEUE_SIZE);
+  private final DashboardConnector dashboardConnector;
 
   /**
    * Constructor of MetricManager.
-   * @param hostAddress Host address of the dashboard server. The address is set lazily at the constructor
-   *                    if the client has configured a feasible port number.
-   * @param port        Port number of dolphin dashboard server.
    */
   @Inject
-  private MetricManager(@Parameter(Parameters.DashboardHostAddress.class) final String hostAddress,
-                        @Parameter(Parameters.DashboardPort.class) final int port) {
+  private MetricManager(final DashboardConnector dashboardConnector) {
     this.workerEvalEpochParams = Collections.synchronizedMap(new HashMap<>());
     this.workerEvalMiniBatchParams = new HashMap<>();
     this.serverEvalParams = new HashMap<>();
@@ -116,70 +79,7 @@ public final class MetricManager {
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
 
-    this.dashboardSetupStatus = initDashboard(hostAddress, port);
-  }
-
-  private static final class DashboardSetupStatus {
-    /**
-     * {@code true} if the Dashboard server is in use.
-     */
-    private final boolean dashboardEnabled;
-
-    /**
-     * URL of Dolphin dashboard server. Empty if not using dashboard.
-     */
-    private final String dashboardURL;
-
-    /**
-     * Reusable HTTP client managed with PoolingHttpClientConnectionManager.
-     */
-    private final CloseableHttpAsyncClient reusableHttpClient;
-
-    private DashboardSetupStatus(final boolean dashboardEnabled,
-                                 final String dashboardURL,
-                                 final CloseableHttpAsyncClient reusableHttpClient) {
-      this.dashboardEnabled = dashboardEnabled;
-      this.dashboardURL = dashboardURL;
-      this.reusableHttpClient = reusableHttpClient;
-    }
-
-    private static DashboardSetupStatus getFailed() {
-      return new DashboardSetupStatus(false, null, null);
-    }
-
-    private static DashboardSetupStatus getSuccessful(final String dashboardURL,
-                                                      final CloseableHttpAsyncClient reusableHttpClient) {
-      return new DashboardSetupStatus(true, dashboardURL, reusableHttpClient);
-    }
-  }
-
-  private DashboardSetupStatus initDashboard(final String hostAddress, final int port) {
-    final boolean invalidHostAddr = hostAddress.equals(AsyncDolphinLauncher.INVALID_HOST_ADDRESS);
-
-    if (invalidHostAddr) {
-      LOG.log(Level.INFO, "Dashboard is not in use");
-      return DashboardSetupStatus.getFailed();
-
-    } else {
-      final String dashboardURL = "http://" + hostAddress + ":" + port + "/";
-      try {
-        // make a pool of http requests with request limitation of INT_MAX.
-        final PoolingNHttpClientConnectionManager connectionManager
-            = new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor());
-        connectionManager.setMaxTotal(Integer.MAX_VALUE);
-        final CloseableHttpAsyncClient reusableHttpClient =
-            HttpAsyncClients.custom().setConnectionManager(connectionManager).build();
-        reusableHttpClient.start();
-
-        // run another thread to send metrics.
-        runMetricsSenderThread();
-
-        return DashboardSetupStatus.getSuccessful(dashboardURL, reusableHttpClient);
-      } catch (IOReactorException e) {
-        LOG.log(Level.WARNING, "Dashboard: Fail on initializing IOReactor.", e);
-        return DashboardSetupStatus.getFailed();
-      }
-    }
+    this.dashboardConnector = dashboardConnector;
   }
 
   /**
@@ -187,7 +87,7 @@ public final class MetricManager {
    * This method does not override existing metrics with the same {@code workerId}.
    * Instead, a new {@link EvaluatorParameters} object is allocated for each call.
    */
-  public void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
+  void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
     if (metricCollectionEnabled) {
       if (numBlockByEvalIdForWorker != null && numBlockByEvalIdForWorker.containsKey(workerId)) {
         final int numDataBlocks = numBlockByEvalIdForWorker.get(workerId);
@@ -227,15 +127,7 @@ public final class MetricManager {
       LOG.log(Level.FINE, "Metric collection disabled. Dropping metric from {0}", workerId);
     }
 
-    // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
-    if (dashboardSetupStatus.dashboardEnabled) {
-      try {
-        metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
-            workerId, metrics, System.currentTimeMillis()));
-      } catch (InterruptedException e) {
-        LOG.log(Level.WARNING, "Dashboard: Interrupted while taking metrics to send from the queue.", e);
-      }
-    }
+    dashboardConnector.sendWorkerMetric(workerId, metrics);
   }
 
   /**
@@ -243,7 +135,7 @@ public final class MetricManager {
    * This method does not override existing metrics with the same {@code serverId}.
    * Instead, a new {@link EvaluatorParameters} object is allocated for each call.
    */
-  public void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
+  void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
     if (metricCollectionEnabled) {
       if (numBlockByEvalIdForServer != null && numBlockByEvalIdForServer.containsKey(serverId)) {
         final int numModelBlocks = numBlockByEvalIdForServer.get(serverId);
@@ -271,44 +163,26 @@ public final class MetricManager {
       LOG.log(Level.FINE, "Metric collection disabled. Dropping metric from {0}", serverId);
     }
 
-    // Regardless of metrics' validity, we send metrics to the dashboard for monitoring purpose.
-    if (dashboardSetupStatus.dashboardEnabled) {
-      try {
-        metricsRequestQueue.put(String.format("id=%s&metrics=%s&time=%d",
-            serverId, metrics, System.currentTimeMillis()));
-      } catch (InterruptedException e) {
-        LOG.log(Level.WARNING, "Dashboard: Interrupted while taking metrics to send from the queue.", e);
-      }
-    }
+    dashboardConnector.sendServerMetric(serverId, metrics);
   }
 
   public Map<String, List<EvaluatorParameters>> getWorkerMiniBatchMetrics() {
-    synchronized (workerEvalMiniBatchParams) {
-      final Map<String, List<EvaluatorParameters>> currWorkerMetrics = new HashMap<>();
-
-      for (final Map.Entry<String, List<EvaluatorParameters>> entry : workerEvalMiniBatchParams.entrySet()) {
-        currWorkerMetrics.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-      }
-      return currWorkerMetrics;
-    }
+    return getMetrics(workerEvalMiniBatchParams);
   }
 
   public Map<String, List<EvaluatorParameters>> getWorkerEpochMetrics() {
-    synchronized (workerEvalEpochParams) {
-      final Map<String, List<EvaluatorParameters>> currWorkerMetrics = new HashMap<>();
-
-      for (final Map.Entry<String, List<EvaluatorParameters>> entry : workerEvalEpochParams.entrySet()) {
-        currWorkerMetrics.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-      }
-      return currWorkerMetrics;
-    }
+    return getMetrics(workerEvalEpochParams);
   }
 
   public Map<String, List<EvaluatorParameters>> getServerMetrics() {
-    synchronized (serverEvalParams) {
+    return getMetrics(serverEvalParams);
+  }
+
+  private Map<String, List<EvaluatorParameters>> getMetrics(final Map<String, List<EvaluatorParameters>> evalParams) {
+    synchronized (evalParams) {
       final Map<String, List<EvaluatorParameters>> currServerMetrics = new HashMap<>();
 
-      for (final Map.Entry<String, List<EvaluatorParameters>> entry : serverEvalParams.entrySet()) {
+      for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
         currServerMetrics.put(entry.getKey(), new ArrayList<>(entry.getValue()));
       }
       return currServerMetrics;
@@ -363,63 +237,6 @@ public final class MetricManager {
   private void clearServerMetrics() {
     synchronized (serverEvalParams) {
       serverEvalParams.clear();
-    }
-  }
-
-  /**
-   * Runs a thread watching the metrics queue to send the metrics from the metricsRequestQueue via http request.
-   */
-  private void runMetricsSenderThread() {
-    metricsSenderExecutor.execute(new Runnable() {
-      @Override
-      public void run() {
-        while (true) {
-          try {
-            final String request = metricsRequestQueue.take();
-            sendMetricsToDashboard(request);
-          } catch (InterruptedException e) {
-            LOG.log(Level.WARNING, "Dashboard: Interrupted while sending metrics to the dashboard server.", e);
-          }
-        }
-      }
-    });
-  }
-
-  private class DashboardResponseCallback implements FutureCallback<HttpResponse> {
-    @Override
-    public void completed(final HttpResponse result) {
-      final int code = result.getStatusLine().getStatusCode();
-      if (code != HttpStatus.SC_OK) {
-        LOG.log(Level.WARNING, "Dashboard: Post request failed. Code-{0}", code);
-      }
-    }
-
-    @Override
-    public void failed(final Exception ex) {
-      //TODO #772: deal with request failure.
-      LOG.log(Level.WARNING, "Dashboard: Post request failed.", ex);
-    }
-
-    @Override
-    public void cancelled() {
-      //TODO #772: deal with request failure.
-      LOG.log(Level.WARNING, "Dashboard: Post request cancelled.");
-    }
-  }
-
-  /**
-   * Send metrics to Dashboard server.
-   * @param request The POST request content which is to be sent to the dashboard server.
-   */
-  private void sendMetricsToDashboard(final String request) {
-    try {
-      final HttpPost httpPost = new HttpPost(dashboardSetupStatus.dashboardURL);
-      httpPost.setHeader("Content-Type", "application/x-www-form-urlencoded");
-      httpPost.setEntity(new StringEntity(request));
-      dashboardSetupStatus.reusableHttpClient.execute(httpPost, new DashboardResponseCallback());
-    } catch (IOException e) {
-      //TODO #772: deal with request failure.
-      LOG.log(Level.WARNING, "Dashboard: post request failed.", e);
     }
   }
 }

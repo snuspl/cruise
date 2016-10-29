@@ -91,17 +91,4 @@ public final class Parameters {
       default_value = "0")
   public final class OptimizationBenefitThreshold implements Name<Double> {
   }
-
-  @NamedParameter(doc = "Port number for client-side localhost Dashboard server, " +
-      "the number should be within (0, 65535), other numbers or occupied port numbers will lead to launch failure. " +
-      "You need to install Flask in python first.",
-      short_name = "dashboard_port",
-      default_value = "-1")
-  public final class DashboardPort implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "Host address of the client machine, which is used as the host address of Dashboard server, " +
-      "'INVALID' if failed to find valid host address.", default_value = "INVALID")
-  public final class DashboardHostAddress implements Name<String> {
-  }
 }
