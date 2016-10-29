@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.integration;
 
 import edu.snu.cay.common.param.Parameters.LocalRuntimeMaxNumEvaluators;
+import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers.*;

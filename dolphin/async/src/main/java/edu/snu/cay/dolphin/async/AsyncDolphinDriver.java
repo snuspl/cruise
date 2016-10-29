@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.metric.MetricsCollectionServiceConf;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher.*;
+import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgCodec;
 import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
 import edu.snu.cay.dolphin.async.optimizer.*;
