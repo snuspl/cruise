@@ -32,7 +32,8 @@ import java.util.logging.Logger;
 
 /**
  * A temporary storage for holding worker and server metrics related to optimization.
- * It also sends the metrics to Dashboard, which visualizes the received metrics, using {@link DashboardConnector}.
+ * After storing each metric, it also sends the metric to Dashboard,
+ * which visualizes the received metrics, using {@link DashboardConnector}.
  */
 @DriverSide
 public final class MetricManager {
@@ -65,6 +66,9 @@ public final class MetricManager {
   private volatile Map<String, Integer> numBlockByEvalIdForWorker;
   private volatile Map<String, Integer> numBlockByEvalIdForServer;
 
+  /**
+   * Connector for sending received metrics to Dashboard server.
+   */
   private final DashboardConnector dashboardConnector;
 
   /**
