@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.metric.dashboard;
+package edu.snu.cay.dolphin.async.dashboard;
 
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardEnabled;
-import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardHostAddress;
-import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardPort;
+import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardEnabled;
+import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardHostAddress;
+import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardPort;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;

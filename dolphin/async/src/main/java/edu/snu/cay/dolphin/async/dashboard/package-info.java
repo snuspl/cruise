@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Parameters used in Dashboard of Dolphin Async.
+ * Classes that are related to Dashboard of Async-Dolphin.
  */
-package edu.snu.cay.dolphin.async.metric.dashboard.parameters;
+package edu.snu.cay.dolphin.async.dashboard;

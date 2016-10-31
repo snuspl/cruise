@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.metric.dashboard.parameters;
+package edu.snu.cay.dolphin.async.dashboard.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Whether to enable dashboard or not.",
-    short_name = "dashboard_enabled",
-    default_value = "false")
-public final class DashboardEnabled implements Name<Boolean> {
+@NamedParameter(doc = "Host address of the client machine, which is used as the host address of Dashboard server.",
+    default_value = "")
+public final class DashboardHostAddress implements Name<String> {
 }

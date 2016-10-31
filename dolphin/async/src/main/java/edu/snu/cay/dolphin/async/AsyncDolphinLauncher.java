@@ -16,10 +16,10 @@
 package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.dolphin.async.metric.*;
-import edu.snu.cay.dolphin.async.metric.dashboard.DashboardConfProvider;
-import edu.snu.cay.dolphin.async.metric.dashboard.DashboardLauncher;
-import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardEnabled;
-import edu.snu.cay.dolphin.async.metric.dashboard.parameters.DashboardPort;
+import edu.snu.cay.dolphin.async.dashboard.DashboardConfProvider;
+import edu.snu.cay.dolphin.async.dashboard.DashboardLauncher;
+import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardEnabled;
+import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardPort;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MetricWeightFactor;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MovingAverageWindowSize;

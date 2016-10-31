@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.metric;
 
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.dolphin.async.metric.dashboard.DashboardConnector;
+import edu.snu.cay.dolphin.async.dashboard.DashboardConnector;
 import edu.snu.cay.dolphin.async.optimizer.ServerEvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.WorkerEvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;

@@ -13,12 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.metric.dashboard.parameters;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Host address of the client machine, which is used as the host address of Dashboard server.",
-  default_value = "")
-public final class DashboardHostAddress implements Name<String> {
-}
+/**
+ * Parameters used in Dashboard of Dolphin Async.
+ */
+package edu.snu.cay.dolphin.async.dashboard.parameters;

@@ -13,7 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Classes that are related to Dashboard of Async-Dolphin.
- */
-package edu.snu.cay.dolphin.async.metric.dashboard;
+package edu.snu.cay.dolphin.async.dashboard.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Whether to enable dashboard or not.",
+    short_name = "dashboard_enabled",
+    default_value = "false")
+public final class DashboardEnabled implements Name<Boolean> {
+}
