@@ -36,7 +36,6 @@ public final class DashboardLauncher {
 
   // Utility class should not be instantiated
   private DashboardLauncher() {
-
   }
 
   /**

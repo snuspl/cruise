@@ -93,6 +93,11 @@ public final class DashboardConnector {
      */
     private final CloseableHttpAsyncClient reusableHttpClient;
 
+    /**
+     * A static object indicating failed status.
+     */
+    private static final DashboardSetupStatus FAILED = new DashboardSetupStatus(false, null, null);
+
     private DashboardSetupStatus(final boolean dashboardEnabled,
                                  final String dashboardURL,
                                  final CloseableHttpAsyncClient reusableHttpClient) {
@@ -101,20 +106,20 @@ public final class DashboardConnector {
       this.reusableHttpClient = reusableHttpClient;
     }
 
-    private static DashboardSetupStatus getFailed() {
-      return new DashboardSetupStatus(false, null, null);
+    static DashboardSetupStatus getFailed() {
+      return FAILED;
     }
 
-    private static DashboardSetupStatus getSuccessful(final String dashboardURL,
-                                                      final CloseableHttpAsyncClient reusableHttpClient) {
+    static DashboardSetupStatus getSuccessful(final String dashboardURL,
+                                              final CloseableHttpAsyncClient reusableHttpClient) {
       return new DashboardSetupStatus(true, dashboardURL, reusableHttpClient);
     }
   }
 
   private DashboardSetupStatus initDashboard(final String hostAddress, final int port) {
-    final String dashboardURL = "http://" + hostAddress + ":" + port + "/";
+    final String dashboardURL = String.format("http://%s:%d/", hostAddress, port);
     try {
-      // make a pool of http requests with request limitation of INT_MAX.
+      // Create a pool of http client connection, which allow up to Integer.MAX_VALUE connections.
       final PoolingNHttpClientConnectionManager connectionManager
           = new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor());
       connectionManager.setMaxTotal(Integer.MAX_VALUE);
