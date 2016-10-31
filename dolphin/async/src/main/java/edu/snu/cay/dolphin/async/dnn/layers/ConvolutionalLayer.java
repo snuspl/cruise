@@ -183,9 +183,9 @@ public final class ConvolutionalLayer extends LayerBase {
     final Matrix output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix newValue = im2row(n, input).mmul(getLayerParameter().getWeightParam());
+      newValue.addiRowVector(getLayerParameter().getBiasParam().reshape(1, outputShape.getChannel()));
       output.putColumn(n, newValue.reshape(NeuralNetworkUtils.getShapeLength(outputShape), 1));
     }
-    output.addiColumnVector(getLayerParameter().getBiasParam());
     return output;
   }
 
@@ -223,7 +223,9 @@ public final class ConvolutionalLayer extends LayerBase {
       weightGradient.addi(row.tmmul(error.getColumn(n)
           .reshape(outputHeight * outputWidth, outputChannel)));
     }
-    final Matrix biasGradient = error.rowSums();
+    final Matrix biasGradient = error.rowSums() // sum across images
+        .reshape(outputHeight * outputWidth, outputChannel).columnSums() // sum across height & width
+        .reshape(outputChannel, 1);
     return new LayerParameter(weightGradient, biasGradient);
   }
 }
