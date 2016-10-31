@@ -46,7 +46,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class ConvolutionalLayerTest {
 
-  private static final float TOLERANCE = 1e-5f;
+  private static final float TOLERANCE = 1e-4f;
 
   private static final float[][] INPUT = new float[][]{
       {0, 10},
