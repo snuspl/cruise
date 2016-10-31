@@ -28,7 +28,7 @@ public final class NeuralNetworkData {
   private final boolean isValidation;
 
   /**
-   * @param matrix the values of input matrix in which each input instance stored in each row
+   * @param matrix the values of input matrix in which each input instance stored in each column
    * @param labels the labels of input instances
    * @param isValidation the flag indicating whether or not the data batch is for cross validation
    */

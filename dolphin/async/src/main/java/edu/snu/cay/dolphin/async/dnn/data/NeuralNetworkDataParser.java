@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.dnn.data;
 import edu.snu.cay.dolphin.async.dnn.NeuralNetworkParameters.Delimiter;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
-import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.BatchSize;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.io.LongWritable;
@@ -30,12 +29,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import static edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils.readNumpy;
 
 /**
  * Data parser for neural network.
@@ -82,21 +77,19 @@ public final class NeuralNetworkDataParser {
         if (text.startsWith("#") || 0 == text.length()) {
           continue;
         }
-        try {
-          // TODO #908: Modify NeuralNetworkParser not to create matrix twice when reading data
-          final Matrix input = readNumpy(matrixFactory, new ByteArrayInputStream(text.getBytes()), delimiter);
-          final Matrix data = input.get(range(0, input.getRows() - 2));
-          final int label = (int) input.get(input.getRows() - 2);
-          final boolean isValidation = ((int) input.get(input.getRows() - 1) == 1);
 
-          if (isValidation) {
-            validationBatchGenerator.push(data, label);
-          } else {
-            trainingBatchGenerator.push(data, label);
-          }
-          MatrixUtils.free(input);
-        } catch (final IOException e) {
-          throw new RuntimeException("Failed to parse data: ", e);
+        final String[] stringData = text.split(delimiter);
+        final int dataLength = stringData.length;
+        final float[] floatData = new float[dataLength - 2];
+        for (int i = 0; i < dataLength - 2; i++) {
+          floatData[i] = Float.parseFloat(stringData[i]);
+        }
+        final int label = Integer.parseInt(stringData[dataLength - 2]);
+        final boolean isValidation = Integer.parseInt(stringData[dataLength - 1]) == 1;
+        if (isValidation) {
+          validationBatchGenerator.push(floatData, label);
+        } else {
+          trainingBatchGenerator.push(floatData, label);
         }
       }
 
@@ -110,41 +103,19 @@ public final class NeuralNetworkDataParser {
   }
 
   /**
-   * Generates an array of integers from begin (inclusive) to end (exclusive).
-   *
-   * @param begin the beginning value, inclusive
-   * @param end the ending value, exclusive
-   * @return a generated array.
-   */
-  private int[] range(final int begin, final int end) {
-    if (begin > end) {
-      throw new IllegalArgumentException("The beginning value should be less than or equal to the ending value");
-    }
-    final int num = end - begin;
-    if (num == 0) {
-      return new int[0];
-    }
-    final int[] ret = new int[num];
-    for (int i = 0; i < num; ++i) {
-      ret[i] = begin + i;
-    }
-    return ret;
-  }
-
-  /**
    * Class for generating batch matrix and an array of labels with the specified batch size.
    */
   private class BatchGenerator {
     private final List<NeuralNetworkData> dataList;
     private final boolean isValidation;
-    private final List<Matrix> matrixList;
+    private final List<float[]> dataArray;
     private final List<Integer> labelList;
 
     public BatchGenerator(final List<NeuralNetworkData> dataList,
                           final boolean isValidation) {
       this.dataList = dataList;
       this.isValidation = isValidation;
-      this.matrixList = new ArrayList<>(batchSize);
+      this.dataArray = new ArrayList<>(batchSize);
       this.labelList = new ArrayList<>(batchSize);
     }
 
@@ -152,17 +123,18 @@ public final class NeuralNetworkDataParser {
      * @return the number of aggregated data.
      */
     public int size() {
-      return matrixList.size();
+      return dataArray.size();
     }
 
     /**
      * Pushes a matrix and label. When the specified batch size of matrix and label data have been gathered,
      * a new batch data is pushed to the list of data.
-     * @param data a single datum
+     *
+     * @param data  a single datum
      * @param label a label for the datum.
      */
-    public void push(final Matrix data, final int label) {
-      matrixList.add(data);
+    public void push(final float[] data, final int label) {
+      dataArray.add(data);
       labelList.add(label);
       if (size() == batchSize) {
         makeAndAddBatch();
@@ -183,31 +155,32 @@ public final class NeuralNetworkDataParser {
      * Makes a batch with the matrix and label data that have been pushed and adds it to the list of data.
      */
     private void makeAndAddBatch() {
-      final NeuralNetworkData data = new NeuralNetworkData(makeBatch(matrixList),
+      final NeuralNetworkData data = new NeuralNetworkData(makeBatch(dataArray),
           ArrayUtils.toPrimitive(labelList.toArray(new Integer[labelList.size()])),
           isValidation);
 
       dataList.add(data);
-      matrixList.clear();
+      dataArray.clear();
       labelList.clear();
     }
 
     /**
-     * Generates a batch input matrix with the specified list of input data.
+     * Generates a batch input {@link Matrix} with the specified list of input data.
+     *
      * @param inputs a list of input data
-     * @return a batch input matrix
+     * @return a batch input {@link Matrix}
      */
-    private Matrix makeBatch(final List<Matrix> inputs) {
-      if (inputs.size() > 0) {
-        final Matrix ret = matrixFactory.create(inputs.get(0).getLength(), inputs.size());
-        int i = 0;
-        for (final Matrix vector : inputs) {
-          ret.putColumn(i++, vector);
-        }
-        return ret;
-      } else {
+    private Matrix makeBatch(final List<float[]> inputs) {
+      if (inputs.size() == 0) {
         throw new IllegalArgumentException("At least one input is needed to make batch");
       }
+      final int dataSize = inputs.get(0).length; // all input arrays should have the same length
+      final float[] batch = new float[inputs.size() * dataSize];
+      for (int i = 0; i < inputs.size(); i++) {
+        System.arraycopy(inputs.get(i), 0, batch, dataSize * i, dataSize);
+      }
+      final Matrix ret = matrixFactory.create(batch, dataSize, inputs.size());
+      return ret;
     }
   }
 }
