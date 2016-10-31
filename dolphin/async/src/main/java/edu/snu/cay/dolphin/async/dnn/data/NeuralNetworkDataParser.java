@@ -71,6 +71,7 @@ public final class NeuralNetworkDataParser {
       final List<NeuralNetworkData> dataList = new ArrayList<>();
       final BatchGenerator trainingBatchGenerator = new BatchGenerator(dataList, false);
       final BatchGenerator validationBatchGenerator = new BatchGenerator(dataList, true);
+
       for (final Pair<LongWritable, Text> keyValue : dataSet) {
         final String text = keyValue.getSecond().toString().trim();
         if (text.startsWith("#") || 0 == text.length()) {
@@ -90,7 +91,6 @@ public final class NeuralNetworkDataParser {
         } else {
           trainingBatchGenerator.push(floatData, label);
         }
-
       }
 
       trainingBatchGenerator.cleanUp();
@@ -165,21 +165,21 @@ public final class NeuralNetworkDataParser {
     }
 
     /**
-     * Generates a batch input matrix with the specified list of input data.
+     * Generates a batch input {@link Matrix} with the specified list of input data.
      *
      * @param inputs a list of input data
-     * @return a batch input matrix
+     * @return a batch input {@link Matrix}
      */
     private Matrix makeBatch(final List<float[]> inputs) {
       if (inputs.size() == 0) {
         throw new IllegalArgumentException("At least one input is needed to make batch");
       }
-      final int dataSize = inputs.get(0).length;
-      final float[] matrixData = new float[inputs.size() * dataSize];
+      final int dataSize = inputs.get(0).length; // all input arrays should have the same length
+      final float[] batch = new float[inputs.size() * dataSize];
       for (int i = 0; i < inputs.size(); i++) {
-        System.arraycopy(inputs.get(i), 0, matrixData, dataSize * i, dataSize);
+        System.arraycopy(inputs.get(i), 0, batch, dataSize * i, dataSize);
       }
-      final Matrix ret = matrixFactory.create(matrixData, dataSize, inputs.size());
+      final Matrix ret = matrixFactory.create(batch, dataSize, inputs.size());
       return ret;
     }
   }
