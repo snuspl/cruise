@@ -29,11 +29,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -81,18 +76,21 @@ public final class NeuralNetworkDataParser {
         if (text.startsWith("#") || 0 == text.length()) {
           continue;
         }
-        try {
-          final List<DataInstance> dataInstances = readNumpy(new ByteArrayInputStream(text.getBytes()));
-          for (final DataInstance dataInstance : dataInstances) {
-            if (dataInstance.isValidation) {
-              validationBatchGenerator.push(dataInstance.data, dataInstance.label);
-            } else {
-              trainingBatchGenerator.push(dataInstance.data, dataInstance.label);
-            }
-          }
-        } catch (final IOException e) {
-          throw new RuntimeException("Failed to parse data: ", e);
+
+        final String[] stringData = text.split(delimiter);
+        final int dataLength = stringData.length;
+        final float[] floatData = new float[dataLength - 2];
+        for (int i = 0; i < dataLength - 2; i++) {
+          floatData[i] = Float.parseFloat(stringData[i]);
         }
+        final int label = Integer.parseInt(stringData[dataLength - 2]);
+        final boolean isValidation = Integer.parseInt(stringData[dataLength - 1]) == 1;
+        if (isValidation) {
+          validationBatchGenerator.push(floatData, label);
+        } else {
+          trainingBatchGenerator.push(floatData, label);
+        }
+
       }
 
       trainingBatchGenerator.cleanUp();
@@ -103,54 +101,6 @@ public final class NeuralNetworkDataParser {
 
     return result;
   }
-  /**
-   * Loads data instances from an input stream of a Numpy-compatible plain text file with the specified delimiter.
-   * @param inputStream a Numpy-compatible plain text input stream
-   * @return a loaded data instances
-   * @throws IOException
-   */
-  private List<DataInstance> readNumpy(final InputStream inputStream) throws IOException {
-    final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-    String line;
-    final List<DataInstance> dataList = new ArrayList<>();
-    int dataLength = -1;
-    while ((line = reader.readLine()) != null) {
-      final String[] data = line.trim().split(delimiter);
-      if (dataLength < 0) {
-        dataLength = data.length;
-      } else {
-        if (data.length != dataLength) {
-          throw new RuntimeException("Data has inconsistent length");
-        }
-      }
-      final float[] floatData = new float[dataLength - 2];
-      for (int i = 0; i < dataLength - 2; i++) {
-        floatData[i] = Float.parseFloat(data[i]);
-      }
-      final int label = Integer.parseInt(data[dataLength - 2]);
-      final boolean isValidation = Integer.parseInt(data[dataLength - 1]) == 1;
-      dataList.add(new DataInstance(floatData, label, isValidation));
-    }
-
-    return dataList;
-  }
-
-  /**
-   * Class for a data instance including label and validation bit.
-   */
-  private class DataInstance {
-    private final float[] data;
-    private final int label;
-    private final boolean isValidation;
-
-    public DataInstance(final float[] data,
-                        final int label,
-                        final boolean isValidation) {
-      this.data = data;
-      this.label = label;
-      this.isValidation = isValidation;
-    }
-  };
 
   /**
    * Class for generating batch matrix and an array of labels with the specified batch size.
@@ -158,14 +108,14 @@ public final class NeuralNetworkDataParser {
   private class BatchGenerator {
     private final List<NeuralNetworkData> dataList;
     private final boolean isValidation;
-    private final List<float[]> dataInstanceList;
+    private final List<float[]> dataArray;
     private final List<Integer> labelList;
 
     public BatchGenerator(final List<NeuralNetworkData> dataList,
                           final boolean isValidation) {
       this.dataList = dataList;
       this.isValidation = isValidation;
-      this.dataInstanceList = new ArrayList<>(batchSize);
+      this.dataArray = new ArrayList<>(batchSize);
       this.labelList = new ArrayList<>(batchSize);
     }
 
@@ -173,7 +123,7 @@ public final class NeuralNetworkDataParser {
      * @return the number of aggregated data.
      */
     public int size() {
-      return dataInstanceList.size();
+      return dataArray.size();
     }
 
     /**
@@ -184,7 +134,7 @@ public final class NeuralNetworkDataParser {
      * @param label a label for the datum.
      */
     public void push(final float[] data, final int label) {
-      dataInstanceList.add(data);
+      dataArray.add(data);
       labelList.add(label);
       if (size() == batchSize) {
         makeAndAddBatch();
@@ -205,12 +155,12 @@ public final class NeuralNetworkDataParser {
      * Makes a batch with the matrix and label data that have been pushed and adds it to the list of data.
      */
     private void makeAndAddBatch() {
-      final NeuralNetworkData data = new NeuralNetworkData(makeBatch(dataInstanceList),
+      final NeuralNetworkData data = new NeuralNetworkData(makeBatch(dataArray),
           ArrayUtils.toPrimitive(labelList.toArray(new Integer[labelList.size()])),
           isValidation);
 
       dataList.add(data);
-      dataInstanceList.clear();
+      dataArray.clear();
       labelList.clear();
     }
 
@@ -224,11 +174,12 @@ public final class NeuralNetworkDataParser {
       if (inputs.size() == 0) {
         throw new IllegalArgumentException("At least one input is needed to make batch");
       }
-
-      final Matrix ret = matrixFactory.create(inputs.get(0).length, inputs.size());
+      final int dataSize = inputs.get(0).length;
+      final float[] matrixData = new float[inputs.size() * dataSize];
       for (int i = 0; i < inputs.size(); i++) {
-        ret.putColumn(i, matrixFactory.create(inputs.get(i)));
+        System.arraycopy(inputs.get(i), 0, matrixData, dataSize * i, dataSize);
       }
+      final Matrix ret = matrixFactory.create(matrixData);
       return ret;
     }
   }
