@@ -15,6 +15,7 @@
 # name: "cifar10_dnn_conf"
 # description: neural network configuration for processed(by dnn_data/cifar-10/cifar10_process.py) cifar10 data.
 # See http://www.cs.toronto.edu/~kriz/cifar.html
+# This net conf is referenced from https://github.com/BVLC/caffe/blob/master/examples/cifar10/cifar10_full.prototxt
 
 batch_size: 100
 step_size: 0.001
