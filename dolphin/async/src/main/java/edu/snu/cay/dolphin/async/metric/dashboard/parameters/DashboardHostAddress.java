@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.metric.dashboard.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Host address of the client machine, which is used as the host address of Dashboard server")
+@NamedParameter(doc = "Host address of the client machine, which is used as the host address of Dashboard server.",
+  default_value = "")
 public final class DashboardHostAddress implements Name<String> {
 }

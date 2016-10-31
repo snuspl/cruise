@@ -199,11 +199,11 @@ public final class AsyncDolphinLauncher {
       // run dashboard and get configuration
       final boolean dashboardEnabled = basicParameterInjector.getNamedInstance(DashboardEnabled.class);
       if (dashboardEnabled) {
-        // Note that the job launch will fail if it fails to run dashboard server
         final int dashboardPort = basicParameterInjector.getNamedInstance(DashboardPort.class);
+        // Note that the job will fail when an exception occurs while initializing dashboard server.
         DashboardLauncher.runDashboardServer(dashboardPort);
       }
-      final Configuration dashboardConf = DashboardConfProvider.getConfiguration();
+      final Configuration dashboardConf = DashboardConfProvider.getConfiguration(dashboardEnabled);
 
       // driver-side configurations
       final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
