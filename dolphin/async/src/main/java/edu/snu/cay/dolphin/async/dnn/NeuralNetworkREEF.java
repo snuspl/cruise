@@ -105,7 +105,7 @@ public final class NeuralNetworkREEF {
     final JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLineFilter clf = new CommandLineFilter(cb);
 
-    clf.registerShortNameOfClass(OnLocal.class, true);
+    clf.registerShortNameOfClass(OnLocal.class, false);
     clf.registerShortNameOfClass(ConfigurationPath.class);
 
     clf.processCommandLine(args);
