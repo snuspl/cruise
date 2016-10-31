@@ -179,7 +179,7 @@ public final class NeuralNetworkDataParser {
       for (int i = 0; i < inputs.size(); i++) {
         System.arraycopy(inputs.get(i), 0, matrixData, dataSize * i, dataSize);
       }
-      final Matrix ret = matrixFactory.create(matrixData);
+      final Matrix ret = matrixFactory.create(matrixData, dataSize, inputs.size());
       return ret;
     }
   }
