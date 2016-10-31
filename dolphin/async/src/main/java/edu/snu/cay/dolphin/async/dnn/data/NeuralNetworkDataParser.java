@@ -45,7 +45,6 @@ import java.util.logging.Logger;
  * Parses Numpy compatible plain text file.
  */
 public final class NeuralNetworkDataParser {
-  private static final Logger LOG = Logger.getLogger(NeuralNetworkDataParser.class.getName());
 
   private final MatrixFactory matrixFactory;
   private final DataSet<LongWritable, Text> dataSet;
