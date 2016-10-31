@@ -17,8 +17,6 @@ package edu.snu.cay.dolphin.async.dnn.blas;
 
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaImpl;
 
-import java.io.*;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -64,64 +62,6 @@ public final class MatrixUtils {
    */
   public static boolean compare(final Matrix[] a, final Matrix[] b, final float tolerance) {
     return compare(Arrays.asList(a), Arrays.asList(b), tolerance);
-  }
-
-
-  /**
-   * Loads a matrix from an input stream of a Numpy-compatible plain text file with the specified delimiter.
-   * @param matrixFactory a matrix factory used to create a matrix
-   * @param inputStream a Numpy-compatible plain text input stream
-   * @param delimiter a delimiter
-   * @return a loaded matrix
-   * @throws IOException
-   */
-  public static Matrix readNumpy(final MatrixFactory matrixFactory,
-                                 final InputStream inputStream,
-                                 final String delimiter) throws IOException {
-    final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-    String line;
-    final List<float[]> dataList = new ArrayList<>();
-    int numRows = -1;
-    final Matrix ret;
-    while ((line = reader.readLine()) != null) {
-      final String[] data = line.trim().split(delimiter);
-      if (numRows < 0) {
-        numRows = data.length;
-      } else {
-        if (data.length != numRows) {
-          throw new RuntimeException("Data has inconsistent length");
-        }
-      }
-      dataList.add(readSplit(data));
-    }
-
-    ret = matrixFactory.create(numRows, dataList.size());
-    for (int i = 0; i < dataList.size(); i++) {
-      ret.putColumn(i, matrixFactory.create(dataList.get(i)));
-    }
-    return ret;
-  }
-
-  private static float[] readSplit(final String[] split) {
-    final float[] ret = new float[split.length];
-    for (int i = 0; i < split.length; i++) {
-      ret[i] = Float.parseFloat(split[i]);
-    }
-    return ret;
-  }
-
-  /**
-   * Loads a matrix from a Numpy-compatible plain text file with the specified delimiter.
-   * @param matrixFactory a matrix factory used to create a matrix
-   * @param filePath a path for the Numpy-compatible plain text file
-   * @param delimiter a delimiter
-   * @return a loaded matrix
-   * @throws IOException
-   */
-  public static Matrix readNumpy(final MatrixFactory matrixFactory,
-                                 final String filePath,
-                                 final String delimiter) throws IOException {
-    return readNumpy(matrixFactory, new FileInputStream(filePath), delimiter);
   }
 
   /**
