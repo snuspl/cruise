@@ -15,6 +15,9 @@
 
 # EXAMPLE USAGE
 # ./cifar10_process.py [cifar10-python-data-directory-path] [cifar10-processed-data-directory-path]
+# You can download python version data from https://www.cs.toronto.edu/~kriz/cifar.html.
+# The CIFAR-10 dataset consists of 60000 32x32 RGB images in 10 classes, with 6000 images per class.
+# There are 50000 training images and 10000 test images.
 
 import sys
 
