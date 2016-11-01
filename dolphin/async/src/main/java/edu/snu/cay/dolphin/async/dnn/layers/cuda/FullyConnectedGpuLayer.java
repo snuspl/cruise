@@ -111,9 +111,9 @@ public final class FullyConnectedGpuLayer extends LayerBase {
 
   /** {@inheritDoc} */
   @Override
-  public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
-    error.mmult(input, parameterGradient.getWeightParam());
-    error.rowSums(parameterGradient.getBiasParam());
+  public LayerParameter generateParameterGradient(final Matrix input, final Matrix nextError) {
+    nextError.mmult(input, parameterGradient.getWeightParam());
+    nextError.rowSums(parameterGradient.getBiasParam());
     return parameterGradient;
   }
 

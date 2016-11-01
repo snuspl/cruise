@@ -107,7 +107,7 @@ public final class ActivationWithLossLayer extends LayerBase {
   }
 
   @Override
-  public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
+  public LayerParameter generateParameterGradient(final Matrix input, final Matrix nextError) {
     throw new RuntimeException("This layer is not learnable");
   }
 }
