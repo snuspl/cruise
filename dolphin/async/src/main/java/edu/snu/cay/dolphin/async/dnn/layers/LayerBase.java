@@ -104,11 +104,11 @@ public abstract class LayerBase {
   /**
    * Computes parameter gradients for this layer.
    * @param input inputs for this layer.
-   * @param error errors for this layer.
+   * @param nextError the errors of the next layer - the one closer to the output layer.
    * @return the element-wise sum of parameter gradients for the specified input and error,
    *         or {@code null} if this layer is not learnable.
    */
-  public abstract LayerParameter generateParameterGradient(final Matrix input, final Matrix error);
+  public abstract LayerParameter generateParameterGradient(final Matrix input, final Matrix nextError);
 
   /**
    * Clean up variables associated with this layer, this is called when this layer is no longer used.

@@ -183,9 +183,9 @@ public final class ConvolutionalLayer extends LayerBase {
     final Matrix output = matrixFactory.create(NeuralNetworkUtils.getShapeLength(outputShape), input.getColumns());
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix newValue = im2row(n, input).mmul(getLayerParameter().getWeightParam());
+      newValue.addiRowVector(getLayerParameter().getBiasParam());
       output.putColumn(n, newValue.reshape(NeuralNetworkUtils.getShapeLength(outputShape), 1));
     }
-    output.addiColumnVector(getLayerParameter().getBiasParam());
     return output;
   }
 
@@ -198,11 +198,11 @@ public final class ConvolutionalLayer extends LayerBase {
    */
   @Override
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
+    final int outputChannel = outputShape.getChannel();
+    final int outputHeight = outputShape.getHeight();
+    final int outputWidth = outputShape.getWidth();
     final Matrix error = matrixFactory.create(input.getRows(), input.getColumns());
     for (int n = 0; n < input.getColumns(); ++n) {
-      final int outputChannel = outputShape.getChannel();
-      final int outputHeight = outputShape.getHeight();
-      final int outputWidth = outputShape.getWidth();
       final Matrix singleNextError = nextError.getColumn(n).reshape(outputHeight * outputWidth, outputChannel);
       final Matrix row = singleNextError.mmult(getLayerParameter().getWeightParam());
       final Matrix im = row2im(row);
@@ -213,17 +213,18 @@ public final class ConvolutionalLayer extends LayerBase {
 
   /** {@inheritDoc} */
   @Override
-  public LayerParameter generateParameterGradient(final Matrix input, final Matrix error) {
+  public LayerParameter generateParameterGradient(final Matrix input, final Matrix nextError) {
     final int outputChannel = outputShape.getChannel();
     final int outputHeight = outputShape.getHeight();
     final int outputWidth = outputShape.getWidth();
     final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputChannel);
     for (int n = 0; n < input.getColumns(); ++n) {
       final Matrix row = im2row(n, input);
-      weightGradient.addi(row.tmmul(error.getColumn(n)
+      weightGradient.addi(row.tmmul(nextError.getColumn(n)
           .reshape(outputHeight * outputWidth, outputChannel)));
     }
-    final Matrix biasGradient = error.rowSums();
+    final Matrix biasGradient = nextError.rowSums() // sum across images
+        .reshape(outputHeight * outputWidth, outputChannel).columnSums(); // sum across height & width
     return new LayerParameter(weightGradient, biasGradient);
   }
 }
