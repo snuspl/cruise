@@ -102,7 +102,7 @@ public final class ConvolutionalGpuLayer extends LayerBase {
 
     final int outputChannel = outputShape.getChannel();
     final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputChannel);
-    final Matrix biasGradient = matrixFactory.create(outputChannel, 1);
+    final Matrix biasGradient = matrixFactory.create(1, outputChannel);
     this.parameterGradient = new LayerParameter(weightGradient, biasGradient);
 
     //setup
