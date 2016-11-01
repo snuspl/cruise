@@ -158,7 +158,7 @@ public class ConvolutionalLayerTest {
       {0.5f, 0.9f},
       {2.2f, 0.3f},
       {1.2f, 1.4f}};
-  private static final float[] EXPECTED_BIAS_GRADIENT_3D = new float[] {0.4f, 0.7f};
+  private static final float[][] EXPECTED_BIAS_GRADIENT_3D = new float[][] {{0.4f, 0.7f}};
 
   @Parameterized.Parameters
   public static Object[] data() throws IOException {
