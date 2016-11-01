@@ -34,17 +34,18 @@ public final class Validator {
   public void validate(final Matrix input, final int[] labels) {
     final Matrix[] activations = network.feedForward(input);
     final Matrix outputMatrix = activations[activations.length - 1];
+    final float[] outputArray = outputMatrix.toFloatArray();
+    final int rows = outputMatrix.getRows();
+    final int columns = outputMatrix.getColumns();
 
-    for (int i = 0; i < outputMatrix.getColumns(); ++i) {
-      final Matrix output = outputMatrix.getColumn(i);
-      float maxValue = output.get(0);
+    for (int i = 0; i < columns; ++i) {
+      float maxValue = Float.MIN_VALUE;
+      int maxIndex = -1;
 
-      // Find the index with highest probability.
-      int maxIndex = 0;
-      for (int j = 1; j < output.getLength(); ++j) {
-        if (output.get(j) > maxValue) {
-          maxValue = output.get(j);
-          maxIndex = j;
+      for (int j = rows * i; j < rows * (i + 1); ++j) {
+        if (outputArray[j] > maxValue) {
+          maxValue = outputArray[j];
+          maxIndex = j % rows;
         }
       }
 
