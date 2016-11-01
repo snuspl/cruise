@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.metric;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.dolphin.async.optimizer.MetricManager;
 import edu.snu.cay.services.ps.metric.ServerMetricsMsgCodec;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.annotations.audience.DriverSide;

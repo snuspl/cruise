@@ -16,6 +16,10 @@
 package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.dolphin.async.metric.*;
+import edu.snu.cay.dolphin.async.dashboard.DashboardConfProvider;
+import edu.snu.cay.dolphin.async.dashboard.DashboardLauncher;
+import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardEnabled;
+import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardPort;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MetricWeightFactor;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MovingAverageWindowSize;
@@ -77,17 +81,10 @@ import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.impl.Tuple2;
 
 import java.io.*;
-import java.net.*;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Collections;
-import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 /**
  * Main entry point for launching a {@code dolphin-async} application.
@@ -96,9 +93,6 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 @ClientSide
 public final class AsyncDolphinLauncher {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinLauncher.class.getName());
-  private static final String DASHBOARD_DIR = "/dashboard";
-  private static final String DASHBOARD_SCRIPT = "dashboard.py";
-  public static final String INVALID_HOST_ADDRESS = "INVALID";
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
   final class SerializedParameterConfiguration implements Name<String> {
@@ -202,32 +196,27 @@ public final class AsyncDolphinLauncher {
           .bindNamedParameter(SerializedEMServerClientConfiguration.class, confSerializer.toString(emServerClientConf))
           .build();
 
+      // run dashboard and get configuration
+      final boolean dashboardEnabled = basicParameterInjector.getNamedInstance(DashboardEnabled.class);
+      if (dashboardEnabled) {
+        final int dashboardPort = basicParameterInjector.getNamedInstance(DashboardPort.class);
+        // Note that the job will fail when an exception occurs while initializing dashboard server.
+        DashboardLauncher.runDashboardServer(dashboardPort);
+      }
+      final Configuration dashboardConf = DashboardConfProvider.getConfiguration(dashboardEnabled);
+
       // driver-side configurations
       final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
 
-      // run dashboard and add configuration
-      final JavaConfigurationBuilder dashboardConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
-      final int port = basicParameterInjector.getNamedInstance(DashboardPort.class);
-      try {
-        if (port > 0) {
-          final String hostAddress = getHostAddress(port);
-          runDashboardServer(port);
-          dashboardConfBuilder
-              .bindNamedParameter(DashboardHostAddress.class, hostAddress);
-        }
-      } catch (IOException e) {
-        LOG.log(Level.WARNING, "Launching dashboard has failed", e);
-      } finally {
-        final Configuration dashboardConf = dashboardConfBuilder.build();
-        final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
-            Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
-                serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf,
-                dashboardConf),
-            timeout);
-        LOG.log(Level.INFO, "REEF job completed: {0}", status);
-        return status;
-      }
+      final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
+          Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
+              serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf,
+              dashboardConf),
+          timeout);
+      LOG.log(Level.INFO, "REEF job completed: {0}", status);
+      return status;
+
     } catch (final Exception e) {
       final LauncherStatus status = LauncherStatus.failed(e);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
@@ -270,7 +259,6 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(Iterations.class);
     basicParameterClassList.add(JVMHeapSlack.class);
     basicParameterClassList.add(MiniBatchSize.class);
-    basicParameterClassList.add(DashboardPort.class);
     basicParameterClassList.add(OptimizationBenefitThreshold.class);
 
     // add ps parameters
@@ -303,6 +291,10 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(ReceiverType.class);
     basicParameterClassList.add(ReceiverHost.class);
     basicParameterClassList.add(ReceiverPort.class);
+
+    // add dashboard parameters
+    basicParameterClassList.add(DashboardEnabled.class);
+    basicParameterClassList.add(DashboardPort.class);
 
     // add optimizer parameters
     basicParameterClassList.add(OptimizationIntervalMs.class);
@@ -413,93 +405,6 @@ public final class AsyncDolphinLauncher {
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
             .build());
-  }
-
-  /**
-   * Find the Host address of Client machine.
-   * @param port is the port number provided by user.
-   * @return String of HostAddress.
-   * @throws IOException when the port number is invalid or failed to find the host address.
-   */
-  private static String getHostAddress(final int port) throws IOException {
-    String hostAddress = INVALID_HOST_ADDRESS;
-
-    // Find IP address of client PC.
-    final Enumeration e = NetworkInterface.getNetworkInterfaces();
-    while (e.hasMoreElements()) {
-      final NetworkInterface n = (NetworkInterface) e.nextElement();
-      if (n.isLoopback() || n.isVirtual() || !n.isUp()) {
-        continue;
-      }
-      final Enumeration ee = n.getInetAddresses();
-      while (ee.hasMoreElements()) {
-        final InetAddress i = (InetAddress) ee.nextElement();
-        if (i.isLinkLocalAddress()) {
-          continue;
-        }
-        hostAddress = i.getHostAddress();
-        break;
-      }
-    }
-
-    // Check if the port number is available by trying to connect a socket to given port.
-    // If the connection is successful, it means the port number is already in use.
-    // Only when connectionException occurs means that the port number is available.
-    try {
-      (new Socket(hostAddress, port)).close();
-      LOG.log(Level.WARNING, "Port number already in use.");
-      throw new IOException("Port number already in use.");
-    } catch (ConnectException connectException) {
-      LOG.log(Level.INFO, "URL found: {0}:{1}", new Object[]{hostAddress, port});
-      return hostAddress;
-    }
-  }
-
-  /**
-   * Copy the server launching script directory to java tmpdir and run Dashboard server on localhost.
-   * @param port The port number provided by user.
-   * @throws IOException when failed to copy the server script or failed to make processBuilder.
-   */
-  private static void runDashboardServer(final int port) throws IOException {
-    LOG.log(Level.INFO, "Now launch dashboard server");
-
-    final Path tmpPath = Paths.get(System.getProperty("java.io.tmpdir"), DASHBOARD_DIR);
-    // Copy the dashboard python script to /tmp
-    try {
-      final FileSystem fileSystem = FileSystems.newFileSystem(
-          AsyncDolphinLauncher.class.getResource("").toURI(),
-          Collections.<String, String>emptyMap()
-      );
-
-      final Path jarPath = fileSystem.getPath(DASHBOARD_DIR);
-      Files.walkFileTree(jarPath, new SimpleFileVisitor<Path>() {
-        @Override
-        public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
-          Files.createDirectories(tmpPath.resolve(jarPath.relativize(dir).toString()));
-          return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
-          Files.copy(file, tmpPath.resolve(jarPath.relativize(file).toString()), REPLACE_EXISTING);
-          return FileVisitResult.CONTINUE;
-        }
-      });
-
-      // Launch server
-      final String tmpScript = Paths.get(tmpPath.toString(), DASHBOARD_SCRIPT).toString();
-      final ProcessBuilder pb = new ProcessBuilder("python", tmpScript, String.valueOf(port)).inheritIO();
-
-      final Process p = pb.start();
-      Runtime.getRuntime().addShutdownHook(new Thread() {
-        @Override
-        public void run() {
-          p.destroy();
-        }
-      });
-    } catch (URISyntaxException e) {
-      LOG.log(Level.WARNING, "Failed to access current jar file.", e);
-    }
   }
 
   private static AggregationConfiguration.Builder getAggregationConfigurationDefaultBuilder() {
