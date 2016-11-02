@@ -107,7 +107,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     } else if (cores <= 0) {
       throw new RuntimeException("The CPU cores of evaluators must be positive, but requested: " + cores);
     } else {
-      evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlerList);
+      evaluatorManager.allocateEvaluators(number, megaBytes, cores,
+          evaluatorAllocatedHandler, contextActiveHandlerList);
     }
   }
 

@@ -161,6 +161,10 @@ public final class AsyncDolphinDriver {
    */
   private final int initServerCount;
 
+  private final int evalNumCores;
+
+  private final int evalMemSizeInMB;
+
   /**
    * Counter for incrementally indexing contexts of workers.
    */
@@ -303,6 +307,7 @@ public final class AsyncDolphinDriver {
                                  final String serializedEMWorkerClientConf,
                              @Parameter(SerializedEMServerClientConfiguration.class)
                                  final String serializedEMServerClientConf,
+                             @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(Parameters.Iterations.class) final int iterations,
@@ -315,6 +320,8 @@ public final class AsyncDolphinDriver {
     this.dataLoadingService = dataLoadingService;
     this.synchronizationManager = synchronizationManager;
     this.clockManager = clockManager;
+    this.evalNumCores = 1;
+    this.evalMemSizeInMB = evalMemSizeInMB;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.initServerCount = numServers;
     this.identifierFactory = identifierFactory;
@@ -388,13 +395,14 @@ public final class AsyncDolphinDriver {
       final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>(2);
       contextActiveHandlersForServer.add(getFirstContextActiveHandlerForServer(false));
       contextActiveHandlersForServer.add(getSecondContextActiveHandlerForServer());
-      evaluatorManager.allocateEvaluators(initServerCount, evalAllocHandlerForServer, contextActiveHandlersForServer);
+      evaluatorManager.allocateEvaluators(initServerCount, evalMemSizeInMB, evalNumCores,
+          evalAllocHandlerForServer, contextActiveHandlersForServer);
 
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = getEvalAllocHandlerForWorker();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForWorker = new ArrayList<>(2);
       contextActiveHandlersForWorker.add(getFirstContextActiveHandlerForWorker(false));
       contextActiveHandlersForWorker.add(getSecondContextActiveHandlerForWorker(false));
-      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
+      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(), evalMemSizeInMB, evalNumCores,
           evalAllocHandlerForWorker, contextActiveHandlersForWorker);
 
       // Register the driver to the Network.

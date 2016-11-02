@@ -18,30 +18,28 @@
  */
 package edu.snu.cay.services.evalmanager.impl;
 
-import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.Tuple2;
 
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * An implementation for {@link EvaluatorManager}.
- * Only requests for homogeneous evaluators, with 1 core and {@link Parameters.EvaluatorSize} MBs of memory.
+ * It is capable of requesting heterogeneous evaluators with different CPU cores and memory size.
+ * To make it possible, it does not submit a EvaluatorRequest to {@link EvaluatorRequestor},
+ * which is incapable of mapping request and result, until the previous request is completed.
  *
  * Since one of the purposes of {@link EvaluatorManager} is to help stacking REEF contexts on evaluators,
  * the following assumptions are reasonable: <br>
@@ -55,8 +53,8 @@ import java.util.logging.Logger;
  * With the assumptions above, this class is thread-safe.
  */
 @DriverSide
-public final class HomogeneousEvalManager implements EvaluatorManager {
-  private static final Logger LOG = Logger.getLogger(HomogeneousEvalManager.class.getName());
+public final class HeterogeneousEvalManager implements EvaluatorManager {
+  private static final Logger LOG = Logger.getLogger(HeterogeneousEvalManager.class.getName());
 
   /**
    * A waiting queue for evaluator-related event handling plans.
@@ -71,39 +69,47 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
 
   private final EvaluatorRequestor evaluatorRequestor;
 
-  private final int evalMemSizeInMB;
+  /**
+   * Only one request can be executed at a time.
+   * Following requests wait for the request to be completed.
+   * The request will be completed after all requested number of evaluators are allocated.
+   */
+  private final AtomicReference<CountDownLatch> ongoingEvaluatorRequest = new AtomicReference<>(new CountDownLatch(0));
 
   @Inject
-  HomogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor,
-                         @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB) {
+  HeterogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor) {
     this.pendingEvalRequests = new ConcurrentLinkedQueue<>();
     this.evalIdToPendingContextHandlers = new ConcurrentHashMap<>();
     this.evaluatorRequestor = evaluatorRequestor;
-    this.evalMemSizeInMB = evalMemSizeInMB;
   }
 
   /**
    * {@inheritDoc}
    */
   public void allocateEvaluators(final int evalNum, final int megaBytes, final int cores,
-                                 final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
-                                 final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
+                                              final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
+                                              final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
+    try {
+      ongoingEvaluatorRequest.get().await();
+    } catch (final InterruptedException e) {
+      LOG.log(Level.WARNING, "Interrupted while waiting for ongoing request to be finished", e);
+    }
+
     LOG.log(Level.INFO, "Requesting {0} evaluators...", evalNum);
 
-    for (int i = 0; i < evalNum; i++) {
-      final Queue<EventHandler<ActiveContext>> handlerQueue
-          = new ArrayBlockingQueue<>(contextActiveHandlerList.isEmpty() ? 1 : contextActiveHandlerList.size());
-      for (int j = 0; j < contextActiveHandlerList.size(); j++) {
-        handlerQueue.add(contextActiveHandlerList.get(j));
+    synchronized (this) {
+      for (int i = 0; i < evalNum; i++) {
+        final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);
+        pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
       }
-      pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
+      final EvaluatorRequest request = EvaluatorRequest.newBuilder()
+          .setNumber(evalNum)
+          .setNumberOfCores(cores)
+          .setMemory(megaBytes)
+          .build();
+      evaluatorRequestor.submit(request);
+      ongoingEvaluatorRequest.set(new CountDownLatch(request.getNumber()));
     }
-    final EvaluatorRequest request = EvaluatorRequest.newBuilder()
-        .setNumber(evalNum)
-        .setNumberOfCores(1)
-        .setMemory(evalMemSizeInMB)
-        .build();
-    evaluatorRequestor.submit(request);
   }
 
   /**
@@ -118,6 +124,11 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
       evalIdToPendingContextHandlers.put(allocatedEvaluator.getId(), contextActiveHandlers);
     }
     evaluatorAllocatedHandler.onNext(allocatedEvaluator);
+
+    synchronized (this) {
+      final CountDownLatch latch = ongoingEvaluatorRequest.get();
+      latch.countDown();
+    }
   }
 
   /**

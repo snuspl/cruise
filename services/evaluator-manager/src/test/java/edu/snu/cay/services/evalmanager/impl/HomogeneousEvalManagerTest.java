@@ -60,6 +60,8 @@ public final class HomogeneousEvalManagerTest {
   private static final int THREAD_POOL_SIZE = 5;
   private static final int MAX_SLEEP_MILLIS = 20;
   private static final int TEST_TIMEOUT_MILLIS = 60000;
+  private static final int EVAL_MEM_SIZE = 128;
+  private static final int EVAL_NUM_CORES = 1;
 
   private EvaluatorManager evaluatorManager;
   private final EStage<Object> eventStage = new ThreadPoolStage<>(new EventHandler<Object>() {
@@ -105,7 +107,7 @@ public final class HomogeneousEvalManagerTest {
         = getHandlersFromPlan(plan);
     finishedCounter = new CountDownLatch(evalNum);
 
-    evaluatorManager.allocateEvaluators(evalNum, handlers.getT1(), handlers.getT2());
+    evaluatorManager.allocateEvaluators(evalNum, EVAL_MEM_SIZE, EVAL_NUM_CORES, handlers.getT1(), handlers.getT2());
 
     try {
       finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
@@ -131,7 +133,7 @@ public final class HomogeneousEvalManagerTest {
         = getHandlersFromPlan(plan);
     finishedCounter = new CountDownLatch(evalNum);
 
-    evaluatorManager.allocateEvaluators(evalNum, handlers.getT1(), handlers.getT2());
+    evaluatorManager.allocateEvaluators(evalNum, EVAL_MEM_SIZE, EVAL_NUM_CORES, handlers.getT1(), handlers.getT2());
 
     try {
       finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
@@ -171,9 +173,12 @@ public final class HomogeneousEvalManagerTest {
 
     finishedCounter = new CountDownLatch(evalNumForPlan1 + evalNumForPlan2 + evalNumForPlan3);
 
-    evaluatorManager.allocateEvaluators(evalNumForPlan1, handlersForPlan1.getT1(), handlersForPlan1.getT2());
-    evaluatorManager.allocateEvaluators(evalNumForPlan2, handlersForPlan2.getT1(), handlersForPlan2.getT2());
-    evaluatorManager.allocateEvaluators(evalNumForPlan3, handlersForPlan3.getT1(), handlersForPlan3.getT2());
+    evaluatorManager.allocateEvaluators(evalNumForPlan1, EVAL_MEM_SIZE, EVAL_NUM_CORES,
+        handlersForPlan1.getT1(), handlersForPlan1.getT2());
+    evaluatorManager.allocateEvaluators(evalNumForPlan2, EVAL_MEM_SIZE, EVAL_NUM_CORES,
+        handlersForPlan2.getT1(), handlersForPlan2.getT2());
+    evaluatorManager.allocateEvaluators(evalNumForPlan3, EVAL_MEM_SIZE, EVAL_NUM_CORES,
+        handlersForPlan3.getT1(), handlersForPlan3.getT2());
 
     try {
       finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
