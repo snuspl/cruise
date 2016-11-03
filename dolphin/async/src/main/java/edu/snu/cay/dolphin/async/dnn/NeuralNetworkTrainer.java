@@ -85,7 +85,6 @@ final class NeuralNetworkTrainer implements Trainer {
   public void run(final int iteration) {
     final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
     final Collection<NeuralNetworkData> workload = workloadMap.values();
-    final Collection<NeuralNetworkData> validationWorkload = new ArrayList<>();
 
     for (final NeuralNetworkData data : workload) {
       final Matrix input = data.getMatrix();
@@ -95,23 +94,23 @@ final class NeuralNetworkTrainer implements Trainer {
         throw new RuntimeException("Invalid data: the number of inputs is not equal to the number of labels");
       }
 
-      if (data.isValidation()) {
-        validationWorkload.add(data);
-      } else {
+      if (!data.isValidation()) {
         neuralNetwork.train(input, labels);
-        trainingValidator.validate(input, labels);
       }
     }
 
-    for (final NeuralNetworkData data : validationWorkload) {
+    // update parameters for model validation
+    neuralNetwork.updateParameters();
+
+    for (final NeuralNetworkData data : workload) {
       final Matrix input = data.getMatrix();
       final int[] labels = data.getLabels();
 
-      if (input.getColumns() != labels.length) {
-        throw new RuntimeException("Invalid data: the number of inputs is not equal to the number of labels");
+      if (data.isValidation()) {
+        crossValidator.validate(input, labels);
+      } else {
+        trainingValidator.validate(input, labels);
       }
-
-      crossValidator.validate(input, labels);
     }
 
     LOG.log(Level.INFO, generateIterationLog(
