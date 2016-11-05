@@ -23,11 +23,11 @@ import org.junit.Test;
  * Tests that {@link HeterogeneousEvalManager} requests for evaluators and handles REEF events correctly.
  */
 public final class HeterogeneousEvalManagerTest {
-  private final EvaluatorManagerTest evaluatorManagerTest = new EvaluatorManagerTest();
+  private final EvaluatorManagerTestHelper evaluatorManagerTestHelper = new EvaluatorManagerTestHelper();
 
   @Before
   public void setUp() throws InjectionException {
-    evaluatorManagerTest.setUp(true);
+    evaluatorManagerTestHelper.setUp(true);
   }
 
   /**
@@ -36,7 +36,7 @@ public final class HeterogeneousEvalManagerTest {
    */
   @Test
   public void testSinglePlanSingleContext() {
-    evaluatorManagerTest.testSinglePlanSingleContext();
+    evaluatorManagerTestHelper.testSinglePlanSingleContext();
   }
 
   /**
@@ -45,7 +45,7 @@ public final class HeterogeneousEvalManagerTest {
    */
   @Test
   public void testSinglePlanMultipleContext() {
-    evaluatorManagerTest.testSinglePlanMultipleContext();
+    evaluatorManagerTestHelper.testSinglePlanMultipleContext();
   }
 
   /**
@@ -54,7 +54,7 @@ public final class HeterogeneousEvalManagerTest {
    */
   @Test
   public void testMultiplePlanMultipleContext() {
-    evaluatorManagerTest.testMultiplePlanMultipleContext();
+    evaluatorManagerTestHelper.testMultiplePlanMultipleContext();
   }
 
   /**
@@ -63,6 +63,6 @@ public final class HeterogeneousEvalManagerTest {
    */
   @Test
   public void testHeteroEvalRequest() {
-    evaluatorManagerTest.testHeteroEvalRequest();
+    evaluatorManagerTestHelper.testHeteroEvalRequest();
   }
 }

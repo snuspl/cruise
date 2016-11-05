@@ -49,9 +49,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests that {@link EvaluatorManager} requests for evaluators and handles REEF events correctly.
+ * A helper class for testing that {@link EvaluatorManager} requests for evaluators and handles REEF events correctly.
  */
-final class EvaluatorManagerTest {
+final class EvaluatorManagerTestHelper {
   private static final String EVAL_PREFIX = "eval-";
   private static final String CONTEXT_A_ID = "A";
   private static final String CONTEXT_B_ID = "B";
