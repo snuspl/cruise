@@ -13,9 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Evaluator Manager classes.
- */
 package edu.snu.cay.services.evalmanager.impl;
 
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
@@ -36,21 +33,21 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * An implementation for {@link EvaluatorManager}.
- * It is capable of requesting heterogeneous evaluators with different CPU cores and memory size.
- * To make it possible, it does not submit a EvaluatorRequest to {@link EvaluatorRequestor},
- * which is incapable of mapping request and result, until the previous request is completed.
+ * An implementation of {@link EvaluatorManager} that can request
+ * heterogeneous evaluators (i.e., with the different number of CPU cores and memory size).
+ * Because the current {@link EvaluatorRequestor} does not provide a way to match request and result,
+ * EvaluatorRequestor is submitted only after the previous request has been finished.
  *
- * Since one of the purposes of {@link EvaluatorManager} is to help stacking REEF contexts on evaluators,
- * the following assumptions are reasonable: <br>
- * 1) methods of this class are invoked in the following order: <br>
- * allocateEvaluators() -> onEvaluatorAllocated() -> onContextActive() (can be invoked multiple times) <br>
+ * This class is thread-safe under the following assumptions:
+ * 1) methods of this class are invoked in the following order:
+ * allocateEvaluators() -> onEvaluatorAllocated() -> onContextActive() (can be invoked multiple times)
  * 2) the driver does not call {@code onEvent()} multiple times
- * for the same {@link AllocatedEvaluator} or {@link ActiveContext} event <br>
+ * for the same {@link AllocatedEvaluator} or {@link ActiveContext} event
  * 3) there are no REEF event handlers which submit context
- * except for the handlers passed by {@code allocateEvaluators} <br>
+ * except for the handlers passed by {@code allocateEvaluators}
  *
- * With the assumptions above, this class is thread-safe.
+ * The assumptions above are reasonable since one of the {@link EvaluatorManager}'s role is
+ * to help stacking REEF contexts on evaluators.
  */
 @DriverSide
 public final class HeterogeneousEvalManager implements EvaluatorManager {

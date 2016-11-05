@@ -43,16 +43,16 @@ import java.util.logging.Logger;
  * An implementation for {@link EvaluatorManager}.
  * Only requests for homogeneous evaluators, with 1 core and {@link Parameters.EvaluatorSize} MBs of memory.
  *
- * Since one of the purposes of {@link EvaluatorManager} is to help stacking REEF contexts on evaluators,
- * the following assumptions are reasonable: <br>
- * 1) methods of this class are invoked in the following order: <br>
- * allocateEvaluators() -> onEvaluatorAllocated() -> onContextActive() (can be invoked multiple times) <br>
+ * This class is thread-safe under the following assumptions:
+ * 1) methods of this class are invoked in the following order:
+ * allocateEvaluators() -> onEvaluatorAllocated() -> onContextActive() (can be invoked multiple times)
  * 2) the driver does not call {@code onEvent()} multiple times
- * for the same {@link AllocatedEvaluator} or {@link ActiveContext} event <br>
+ * for the same {@link AllocatedEvaluator} or {@link ActiveContext} event
  * 3) there are no REEF event handlers which submit context
- * except for the handlers passed by {@code allocateEvaluators} <br>
+ * except for the handlers passed by {@code allocateEvaluators}
  *
- * With the assumptions above, this class is thread-safe.
+ * The assumptions above are reasonable since one of the {@link EvaluatorManager}'s role is
+ * to help stacking REEF contexts on evaluators.
  */
 @DriverSide
 public final class HomogeneousEvalManager implements EvaluatorManager {
