@@ -49,8 +49,8 @@
     <jetty.version>6.1.26</jetty.version>
     <jackson.version>1.9.13</jackson.version>
     <protobuf.version>2.5.0</protobuf.version>
-    <maven-checkstyle-plugin.version>2.15</maven-checkstyle-plugin.version>
-    <checkstyle.version>6.6</checkstyle.version>
+    <maven-checkstyle-plugin.version>2.17</maven-checkstyle-plugin.version>
+    <checkstyle.version>7.2</checkstyle.version>
     <mockito.version>1.10.19</mockito.version>
     <powermock.version>1.6.5</powermock.version>
     <ojalgo.version>37.1</ojalgo.version>
