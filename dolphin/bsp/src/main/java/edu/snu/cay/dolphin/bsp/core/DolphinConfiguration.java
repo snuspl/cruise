@@ -37,6 +37,7 @@ public final class DolphinConfiguration extends ConfigurationModuleBuilder {
 
   public static Configuration getConfiguration(final String[] args, final CommandLine cl) throws IOException {
     cl.registerShortNameOfClass(EvaluatorSize.class);
+    cl.registerShortNameOfClass(EvaluatorCores.class);
     cl.registerShortNameOfClass(OnLocal.class);
     cl.registerShortNameOfClass(LocalRuntimeMaxNumEvaluators.class);
     cl.registerShortNameOfClass(Splits.class);

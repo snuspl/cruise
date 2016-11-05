@@ -245,6 +245,7 @@ public final class DolphinDriver {
   @Inject
   private DolphinDriver(final EvaluatorManager evaluatorManager,
                         @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
+                        @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores,
                         final GroupCommDriver groupCommDriver,
                         final GroupCommParameters groupCommParameters,
                         final ShuffleDriver shuffleDriver,
@@ -266,7 +267,7 @@ public final class DolphinDriver {
     hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
     this.evalMemSizeInMB = evalMemSizeInMB;
-    this.evalNumCores = 1;
+    this.evalNumCores = evalNumCores;
     this.groupCommDriver = groupCommDriver;
     this.groupCommParameters = groupCommParameters;
     this.shuffleDriver = shuffleDriver;

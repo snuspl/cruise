@@ -41,7 +41,8 @@ import java.util.logging.Logger;
 
 /**
  * An implementation for {@link EvaluatorManager}.
- * Only requests for homogeneous evaluators, with 1 core and {@link Parameters.EvaluatorSize} MBs of memory.
+ * Only requests for homogeneous evaluators,
+ * with {@link Parameters.EvaluatorCores} cores and {@link Parameters.EvaluatorSize} MBs of memory.
  *
  * This class is thread-safe under the following assumptions:
  * 1) methods of this class are invoked in the following order:
@@ -72,14 +73,17 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
   private final EvaluatorRequestor evaluatorRequestor;
 
   private final int evalMemSizeInMB;
+  private final int evalNumCores;
 
   @Inject
   HomogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor,
-                         @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB) {
+                         @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
+                         @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores) {
     this.pendingEvalRequests = new ConcurrentLinkedQueue<>();
     this.evalIdToPendingContextHandlers = new ConcurrentHashMap<>();
     this.evaluatorRequestor = evaluatorRequestor;
     this.evalMemSizeInMB = evalMemSizeInMB;
+    this.evalNumCores = evalNumCores;
   }
 
   /**
@@ -100,7 +104,7 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
     }
     final EvaluatorRequest request = EvaluatorRequest.newBuilder()
         .setNumber(evalNum)
-        .setNumberOfCores(1)
+        .setNumberOfCores(evalNumCores)
         .setMemory(evalMemSizeInMB)
         .build();
     evaluatorRequestor.submit(request);

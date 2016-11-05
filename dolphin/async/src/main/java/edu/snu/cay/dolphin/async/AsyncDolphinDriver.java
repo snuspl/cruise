@@ -308,6 +308,7 @@ public final class AsyncDolphinDriver {
                              @Parameter(SerializedEMServerClientConfiguration.class)
                                  final String serializedEMServerClientConf,
                              @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
+                             @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(Parameters.Iterations.class) final int iterations,
@@ -320,7 +321,7 @@ public final class AsyncDolphinDriver {
     this.dataLoadingService = dataLoadingService;
     this.synchronizationManager = synchronizationManager;
     this.clockManager = clockManager;
-    this.evalNumCores = 1;
+    this.evalNumCores = evalNumCores;
     this.evalMemSizeInMB = evalMemSizeInMB;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.initServerCount = numServers;

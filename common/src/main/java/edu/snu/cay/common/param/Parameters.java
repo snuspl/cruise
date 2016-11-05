@@ -34,6 +34,12 @@ public final class Parameters {
   public final class EvaluatorSize implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "The number of CPU cores for each evaluator",
+                  short_name = "eval_cores",
+                  default_value = "1")
+  public final class EvaluatorCores implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "File or directory to read input data from",
                   short_name = "input")
   public final class InputDir implements Name<String> {

@@ -97,6 +97,7 @@ public final class PSExampleDriver {
   private PSExampleDriver(final PSDriver psDriver,
                           final EvaluatorManager evaluatorManager,
                           @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
+                          @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores,
                           @Parameter(NumServers.class) final int numServers,
                           @Parameter(NumWorkers.class) final int numWorkers,
                           @Parameter(NumUpdates.class) final int numUpdates,
@@ -115,7 +116,7 @@ public final class PSExampleDriver {
 
     this.psDriver = psDriver;
     this.evaluatorManager = evaluatorManager;
-    this.evalNumCores = 1;
+    this.evalNumCores = evalNumCores;
     this.evalMemSizeInMB = evalMemSizeInMB;
     this.numServers = numServers;
     this.numWorkers = numWorkers;
