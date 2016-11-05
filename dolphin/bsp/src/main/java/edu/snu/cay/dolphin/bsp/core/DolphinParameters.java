@@ -49,7 +49,7 @@ public final class DolphinParameters {
                             final UserParameters userParameters,
                             @Parameter(Splits.class) final int desiredSplits,
                             @Parameter(EvaluatorSize.class) final int evalSize,
-                            @Parameter(EvaluatorSize.class) final int evalNumCores,
+                            @Parameter(EvaluatorCores.class) final int evalNumCores,
                             @Parameter(InputDir.class) final String inputDir,
                             @Parameter(OutputDir.class) final String outputDir,
                             @Parameter(OnLocal.class) final boolean onLocal,
