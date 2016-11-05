@@ -86,7 +86,7 @@ public final class HeterogeneousEvalManager implements EvaluatorManager {
   /**
    * {@inheritDoc}
    */
-  public void allocateEvaluators(final int evalNum, final int megaBytes, final int cores,
+  public synchronized void allocateEvaluators(final int evalNum, final int megaBytes, final int cores,
                                               final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                                               final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
     try {
@@ -97,19 +97,18 @@ public final class HeterogeneousEvalManager implements EvaluatorManager {
 
     LOG.log(Level.INFO, "Requesting {0} evaluators...", evalNum);
 
-    synchronized (this) {
-      for (int i = 0; i < evalNum; i++) {
-        final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);
-        pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
-      }
-      final EvaluatorRequest request = EvaluatorRequest.newBuilder()
-          .setNumber(evalNum)
-          .setNumberOfCores(cores)
-          .setMemory(megaBytes)
-          .build();
-      evaluatorRequestor.submit(request);
-      ongoingEvaluatorRequest.set(new CountDownLatch(request.getNumber()));
+    for (int i = 0; i < evalNum; i++) {
+      final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);
+      pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
     }
+    final EvaluatorRequest request = EvaluatorRequest.newBuilder()
+        .setNumber(evalNum)
+        .setNumberOfCores(cores)
+        .setMemory(megaBytes)
+        .build();
+
+    ongoingEvaluatorRequest.set(new CountDownLatch(request.getNumber()));
+    evaluatorRequestor.submit(request);
   }
 
   /**
@@ -125,10 +124,7 @@ public final class HeterogeneousEvalManager implements EvaluatorManager {
     }
     evaluatorAllocatedHandler.onNext(allocatedEvaluator);
 
-    synchronized (this) {
-      final CountDownLatch latch = ongoingEvaluatorRequest.get();
-      latch.countDown();
-    }
+    ongoingEvaluatorRequest.get().countDown();
   }
 
   /**
