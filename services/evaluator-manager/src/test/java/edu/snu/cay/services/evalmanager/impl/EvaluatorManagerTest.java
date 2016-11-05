@@ -26,6 +26,7 @@ import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EStage;
@@ -63,6 +64,10 @@ final class EvaluatorManagerTest {
   private static final int EVAL_NUM_CORES = 1;
 
   private EvaluatorManager evaluatorManager;
+
+  /**
+   * A stage for handling both {@link AllocatedEvaluator} and {@link ActiveContext} events.
+   */
   private final EStage<Object> eventStage = new ThreadPoolStage<>(new EventHandler<Object>() {
     @Override
     public void onNext(final Object o) {
@@ -81,18 +86,27 @@ final class EvaluatorManagerTest {
     }
   }, THREAD_POOL_SIZE);
 
-  private AtomicInteger evalCounter;
-  private CountDownLatch finishedCounter;
-  private Map<String, List<String>> evalIdToActualContextIdStack;
-  private Map<String, List<String>> evalIdToExpectedContextIdStack;
+  private AtomicInteger evalIndexCounter = new AtomicInteger(0);
+  private CountDownLatch finishedEvalCounter;
+  private Map<String, List<String>> evalIdToActualContextIdStack = new ConcurrentHashMap<>();
+  private Map<String, List<String>> evalIdToExpectedContextIdStack = new ConcurrentHashMap<>();
 
-  void setUp(final boolean heterogeneous) {
-    evaluatorManager = heterogeneous ?
-        new HeterogeneousEvalManager(generateMockedEvaluatorRequestor()) :
-        new HomogeneousEvalManager(generateMockedEvaluatorRequestor(), 0);
-    evalCounter = new AtomicInteger(0);
-    evalIdToActualContextIdStack = new ConcurrentHashMap<>();
-    evalIdToExpectedContextIdStack = new ConcurrentHashMap<>();
+  void setUp(final boolean heterogeneous) throws InjectionException {
+    final Class<? extends EvaluatorManager> evalManagerClass = heterogeneous ?
+        HeterogeneousEvalManager.class : HomogeneousEvalManager.class;
+
+    final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(EvaluatorManager.class, evalManagerClass)
+        .build();
+
+    final Injector injector = Tang.Factory.getTang().newInjector(conf);
+    injector.bindVolatileInstance(EvaluatorRequestor.class, generateMockedEvaluatorRequestor());
+
+    evaluatorManager = injector.getInstance(EvaluatorManager.class);
+
+    evalIndexCounter.set(0);
+    evalIdToActualContextIdStack.clear();
+    evalIdToExpectedContextIdStack.clear();
   }
 
   /**
@@ -101,23 +115,19 @@ final class EvaluatorManagerTest {
    */
   void testSinglePlanSingleContext() {
     final List<String> plan = Lists.newArrayList(CONTEXT_A_ID);
-    final int evalNum = 3;
+    final int numEvals = 3;
     final Tuple2<EventHandler<AllocatedEvaluator>, List<EventHandler<ActiveContext>>> handlers
         = getHandlersFromPlan(plan);
-    finishedCounter = new CountDownLatch(evalNum);
+    finishedEvalCounter = new CountDownLatch(numEvals);
 
-    evaluatorManager.allocateEvaluators(evalNum, EVAL_MEM_SIZE, EVAL_NUM_CORES, handlers.getT1(), handlers.getT2());
+    evaluatorManager.allocateEvaluators(numEvals, EVAL_MEM_SIZE, EVAL_NUM_CORES, handlers.getT1(), handlers.getT2());
 
     try {
-      finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+      finishedEvalCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
-    for (final String evalId : evalIdToActualContextIdStack.keySet()) {
-      final List<String> expectedContextIdStack = evalIdToExpectedContextIdStack.get(evalId);
-      final List<String> actualContextIdStack = evalIdToActualContextIdStack.get(evalId);
-      assertEquals(expectedContextIdStack, actualContextIdStack);
-    }
+    verifyContextStackResult();
   }
 
   /**
@@ -126,23 +136,19 @@ final class EvaluatorManagerTest {
    */
   void testSinglePlanMultipleContext() {
     final List<String> plan = Lists.newArrayList(CONTEXT_A_ID, CONTEXT_B_ID, CONTEXT_C_ID, CONTEXT_D_ID);
-    final int evalNum = 3;
+    final int numEvals = 3;
     final Tuple2<EventHandler<AllocatedEvaluator>, List<EventHandler<ActiveContext>>> handlers
         = getHandlersFromPlan(plan);
-    finishedCounter = new CountDownLatch(evalNum);
+    finishedEvalCounter = new CountDownLatch(numEvals);
 
-    evaluatorManager.allocateEvaluators(evalNum, EVAL_MEM_SIZE, EVAL_NUM_CORES, handlers.getT1(), handlers.getT2());
+    evaluatorManager.allocateEvaluators(numEvals, EVAL_MEM_SIZE, EVAL_NUM_CORES, handlers.getT1(), handlers.getT2());
 
     try {
-      finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+      finishedEvalCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
-    for (final String evalId : evalIdToActualContextIdStack.keySet()) {
-      final List<String> expectedContextIdStack = evalIdToExpectedContextIdStack.get(evalId);
-      final List<String> actualContextIdStack = evalIdToActualContextIdStack.get(evalId);
-      assertEquals(expectedContextIdStack, actualContextIdStack);
-    }
+    verifyContextStackResult();
   }
 
   /**
@@ -152,41 +158,37 @@ final class EvaluatorManagerTest {
   void testMultiplePlanMultipleContext() {
     // Context Stack: A -> B -> C
     final List<String> plan1 = Lists.newArrayList(CONTEXT_A_ID, CONTEXT_B_ID, CONTEXT_C_ID);
-    final int evalNumForPlan1 = 500;
+    final int numEvalsForPlan1 = 500;
     final Tuple2<EventHandler<AllocatedEvaluator>, List<EventHandler<ActiveContext>>> handlersForPlan1
         = getHandlersFromPlan(plan1);
 
     // Context Stack: D -> A -> B -> C
     final List<String> plan2 = Lists.newArrayList(CONTEXT_D_ID, CONTEXT_A_ID, CONTEXT_B_ID, CONTEXT_C_ID);
-    final int evalNumForPlan2 = 500;
+    final int numEvalsForPlan2 = 500;
     final Tuple2<EventHandler<AllocatedEvaluator>, List<EventHandler<ActiveContext>>> handlersForPlan2
         = getHandlersFromPlan(plan2);
 
     // Context Stack: B -> D -> A -> A
     final List<String> plan3 = Lists.newArrayList(CONTEXT_B_ID, CONTEXT_D_ID, CONTEXT_A_ID, CONTEXT_A_ID);
-    final int evalNumForPlan3 = 500;
+    final int numEvalsForPlan3 = 500;
     final Tuple2<EventHandler<AllocatedEvaluator>, List<EventHandler<ActiveContext>>> handlersForPlan3
         = getHandlersFromPlan(plan3);
 
-    finishedCounter = new CountDownLatch(evalNumForPlan1 + evalNumForPlan2 + evalNumForPlan3);
+    finishedEvalCounter = new CountDownLatch(numEvalsForPlan1 + numEvalsForPlan2 + numEvalsForPlan3);
 
-    evaluatorManager.allocateEvaluators(evalNumForPlan1, EVAL_MEM_SIZE, EVAL_NUM_CORES,
+    evaluatorManager.allocateEvaluators(numEvalsForPlan1, EVAL_MEM_SIZE, EVAL_NUM_CORES,
         handlersForPlan1.getT1(), handlersForPlan1.getT2());
-    evaluatorManager.allocateEvaluators(evalNumForPlan2, EVAL_MEM_SIZE, EVAL_NUM_CORES,
+    evaluatorManager.allocateEvaluators(numEvalsForPlan2, EVAL_MEM_SIZE, EVAL_NUM_CORES,
         handlersForPlan2.getT1(), handlersForPlan2.getT2());
-    evaluatorManager.allocateEvaluators(evalNumForPlan3, EVAL_MEM_SIZE, EVAL_NUM_CORES,
+    evaluatorManager.allocateEvaluators(numEvalsForPlan3, EVAL_MEM_SIZE, EVAL_NUM_CORES,
         handlersForPlan3.getT1(), handlersForPlan3.getT2());
 
     try {
-      finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+      finishedEvalCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
-    for (final String evalId : evalIdToActualContextIdStack.keySet()) {
-      final List<String> expectedContextIdStack = evalIdToExpectedContextIdStack.get(evalId);
-      final List<String> actualContextIdStack = evalIdToActualContextIdStack.get(evalId);
-      assertEquals(expectedContextIdStack, actualContextIdStack);
-    }
+    verifyContextStackResult();
   }
 
   /**
@@ -194,28 +196,28 @@ final class EvaluatorManagerTest {
    * Checks that allocated evaluators's resource type is as requested.
    */
   void testHeteroEvalRequest() {
-    final int evalNumForReq1 = 500;
-    final int evalNumForReq2 = 500;
-    final int evalNumForReq3 = 500;
+    final int numEvalsForReq1 = 500;
+    final int numEvalsForReq2 = 500;
+    final int numEvalsForReq3 = 500;
 
     final int numCoresForReq1 = 1;
-    final int numCoresForReq2 = 1;
-    final int numCoresForReq3 = 1;
+    final int numCoresForReq2 = 2;
+    final int numCoresForReq3 = 3;
     final int memSizeForReq1 = 100;
     final int memSizeForReq2 = 200;
     final int memSizeForReq3 = 300;
 
-    finishedCounter = new CountDownLatch(evalNumForReq1 + evalNumForReq2 + evalNumForReq3);
+    finishedEvalCounter = new CountDownLatch(numEvalsForReq1 + numEvalsForReq2 + numEvalsForReq3);
 
-    evaluatorManager.allocateEvaluators(evalNumForReq1, memSizeForReq1, numCoresForReq1,
-        new EvalTypeChecker(numCoresForReq1, memSizeForReq1, finishedCounter), Collections.emptyList());
-    evaluatorManager.allocateEvaluators(evalNumForReq2, memSizeForReq2, numCoresForReq2,
-        new EvalTypeChecker(numCoresForReq2, memSizeForReq2, finishedCounter), Collections.emptyList());
-    evaluatorManager.allocateEvaluators(evalNumForReq3, memSizeForReq3, numCoresForReq3,
-        new EvalTypeChecker(numCoresForReq3, memSizeForReq3, finishedCounter), Collections.emptyList());
+    evaluatorManager.allocateEvaluators(numEvalsForReq1, memSizeForReq1, numCoresForReq1,
+        new EvalTypeChecker(numCoresForReq1, memSizeForReq1, finishedEvalCounter), Collections.emptyList());
+    evaluatorManager.allocateEvaluators(numEvalsForReq2, memSizeForReq2, numCoresForReq2,
+        new EvalTypeChecker(numCoresForReq2, memSizeForReq2, finishedEvalCounter), Collections.emptyList());
+    evaluatorManager.allocateEvaluators(numEvalsForReq3, memSizeForReq3, numCoresForReq3,
+        new EvalTypeChecker(numCoresForReq3, memSizeForReq3, finishedEvalCounter), Collections.emptyList());
 
     try {
-      finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+      finishedEvalCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -256,7 +258,7 @@ final class EvaluatorManagerTest {
    * @return mocked {@link AllocatedEvaluator}
    */
   private AllocatedEvaluator generateMockedEvaluator(final int numCores, final int memSizeInMB) {
-    final String evalId = EVAL_PREFIX + evalCounter.getAndIncrement();
+    final String evalId = EVAL_PREFIX + evalIndexCounter.getAndIncrement();
     final AllocatedEvaluator mockedEvaluator = mock(AllocatedEvaluator.class);
     when(mockedEvaluator.getId()).thenReturn(evalId);
     doAnswer(new Answer() {
@@ -317,6 +319,17 @@ final class EvaluatorManagerTest {
   }
 
   /**
+   * Verify that the result of context stack in each evaluator is as expected.
+   */
+  private void verifyContextStackResult() {
+    for (final String evalId : evalIdToActualContextIdStack.keySet()) {
+      final List<String> expectedContextIdStack = evalIdToExpectedContextIdStack.get(evalId);
+      final List<String> actualContextIdStack = evalIdToActualContextIdStack.get(evalId);
+      assertEquals(expectedContextIdStack, actualContextIdStack);
+    }
+  }
+
+  /**
    * {@link AllocatedEvaluator} handler which checks the resource type is as requested.
    */
   private final class EvalTypeChecker implements EventHandler<AllocatedEvaluator> {
@@ -355,7 +368,7 @@ final class EvaluatorManagerTest {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       evalIdToExpectedContextIdStack.put(allocatedEvaluator.getId(), expectedContextIdStack);
-      evalIdToActualContextIdStack.put(allocatedEvaluator.getId(), new ArrayList<String>());
+      evalIdToActualContextIdStack.put(allocatedEvaluator.getId(), new ArrayList<>());
       final Configuration contextConf = ContextConfiguration.CONF
           .set(ContextConfiguration.IDENTIFIER, contextId)
           .build();
@@ -392,7 +405,7 @@ final class EvaluatorManagerTest {
     @Override
     public void onNext(final ActiveContext activeContext) {
       evalIdToActualContextIdStack.get(activeContext.getEvaluatorId()).add(activeContext.getId());
-      finishedCounter.countDown();
+      finishedEvalCounter.countDown();
     }
   }
 }
