@@ -192,7 +192,7 @@ final class EvaluatorManagerTestHelper {
   }
 
   /**
-   * Tests multiple requests for heterogeneous evaluators.
+   * Tests multiple requests for heterogeneous evaluators without no context submit.
    * Checks that allocated evaluators's resource type is as requested.
    */
   void testHeteroEvalRequest() {
@@ -210,11 +210,11 @@ final class EvaluatorManagerTestHelper {
     finishedEvalCounter = new CountDownLatch(numEvalsForReq1 + numEvalsForReq2 + numEvalsForReq3);
 
     evaluatorManager.allocateEvaluators(numEvalsForReq1, memSizeForReq1, numCoresForReq1,
-        new EvalTypeChecker(numCoresForReq1, memSizeForReq1, finishedEvalCounter), Collections.emptyList());
+        new EvalTypeChecker(numCoresForReq1, memSizeForReq1), Collections.emptyList());
     evaluatorManager.allocateEvaluators(numEvalsForReq2, memSizeForReq2, numCoresForReq2,
-        new EvalTypeChecker(numCoresForReq2, memSizeForReq2, finishedEvalCounter), Collections.emptyList());
+        new EvalTypeChecker(numCoresForReq2, memSizeForReq2), Collections.emptyList());
     evaluatorManager.allocateEvaluators(numEvalsForReq3, memSizeForReq3, numCoresForReq3,
-        new EvalTypeChecker(numCoresForReq3, memSizeForReq3, finishedEvalCounter), Collections.emptyList());
+        new EvalTypeChecker(numCoresForReq3, memSizeForReq3), Collections.emptyList());
 
     try {
       finishedEvalCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
@@ -335,12 +335,10 @@ final class EvaluatorManagerTestHelper {
   private final class EvalTypeChecker implements EventHandler<AllocatedEvaluator> {
     private final int numCores;
     private final int memSizeInMB;
-    private final CountDownLatch latch;
 
-    EvalTypeChecker(final int numCores, final int memSizeInMB, final CountDownLatch latch) {
+    EvalTypeChecker(final int numCores, final int memSizeInMB) {
       this.numCores = numCores;
       this.memSizeInMB = memSizeInMB;
-      this.latch = latch;
     }
 
     @Override
@@ -348,7 +346,7 @@ final class EvaluatorManagerTestHelper {
       final EvaluatorDescriptor evalDesc = allocatedEvaluator.getEvaluatorDescriptor();
       assertEquals(evalDesc.getNumberOfCores(), numCores);
       assertEquals(evalDesc.getMemory(), memSizeInMB);
-      latch.countDown();
+      finishedEvalCounter.countDown();
     }
   }
 
