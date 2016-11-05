@@ -49,7 +49,7 @@ public final class VectorListCodec implements Codec<List<Vector>> {
             + Integer.SIZE
             + Double.SIZE * length * list.size());
 
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(list.size());
       daos.writeInt(length);
       for (final Vector vector : list) {
@@ -68,7 +68,7 @@ public final class VectorListCodec implements Codec<List<Vector>> {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final List<Vector> resultList = new LinkedList<>();
 
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       final int listSize = dais.readInt();
       final int length = dais.readInt();
       for (int i = 0; i < listSize; i++) {

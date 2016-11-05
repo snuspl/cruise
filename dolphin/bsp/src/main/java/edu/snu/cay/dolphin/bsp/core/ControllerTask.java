@@ -100,16 +100,16 @@ public final class ControllerTask implements Task {
 
     initializeGroupCommOperators();
     userControllerTask.initialize();
-    try (final MetricsCollector metricsCollector = this.metricsCollector;) {
+    try (MetricsCollector metricsCollector = this.metricsCollector;) {
       metricsCollector.registerTrackers(metricTrackerSet);
       while (!userControllerTask.isTerminated(iteration)) {
-        try (final TraceScope traceScope = Trace.startSpan("pause-" + iteration, taskTraceInfo)) {
+        try (TraceScope traceScope = Trace.startSpan("pause-" + iteration, taskTraceInfo)) {
           if (controllerTaskSync.update(getIterationInfo())) {
             updateTopology();
           }
         }
 
-        try (final TraceScope traceScope = Trace.startSpan("iter-" + iteration, taskTraceInfo)) {
+        try (TraceScope traceScope = Trace.startSpan("iter-" + iteration, taskTraceInfo)) {
           userTaskTrace.setParentTraceInfo(TraceInfo.fromSpan(traceScope.getSpan()));
           metricsCollector.start();
           ctrlMessageBroadcast.send(CtrlMessage.RUN);

@@ -40,7 +40,7 @@ public class LinearRegSummaryCodec implements Codec<LinearRegSummary> {
         + Integer.SIZE // parameter size
         + Double.SIZE * model.getParameters().length());
 
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(sgdSummary.getCount());
       daos.writeDouble(sgdSummary.getLoss());
       daos.writeInt(model.getParameters().length());
@@ -63,7 +63,7 @@ public class LinearRegSummaryCodec implements Codec<LinearRegSummary> {
     final int count;
     final double loss;
 
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       count = dais.readInt();
       loss = dais.readDouble();
       final int vecSize = dais.readInt();

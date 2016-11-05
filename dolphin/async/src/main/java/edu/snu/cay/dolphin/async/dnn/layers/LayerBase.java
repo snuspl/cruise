@@ -88,7 +88,7 @@ public abstract class LayerBase {
    * @param input input values for this layer.
    * @return output values for this layer.
    */
-  public abstract Matrix feedForward(final Matrix input);
+  public abstract Matrix feedForward(Matrix input);
 
   /**
    * Computes errors.
@@ -97,9 +97,9 @@ public abstract class LayerBase {
    * @param nextError the errors of the next layer - the one closer to the output layer.
    * @return errors for this layer with the specified input value.
    */
-  public abstract Matrix backPropagate(final Matrix input,
-                                       final Matrix activation,
-                                       final Matrix nextError);
+  public abstract Matrix backPropagate(Matrix input,
+                                       Matrix activation,
+                                       Matrix nextError);
 
   /**
    * Computes parameter gradients for this layer.
@@ -108,7 +108,7 @@ public abstract class LayerBase {
    * @return the element-wise sum of parameter gradients for the specified input and error,
    *         or {@code null} if this layer is not learnable.
    */
-  public abstract LayerParameter generateParameterGradient(final Matrix input, final Matrix nextError);
+  public abstract LayerParameter generateParameterGradient(Matrix input, Matrix nextError);
 
   /**
    * Clean up variables associated with this layer, this is called when this layer is no longer used.

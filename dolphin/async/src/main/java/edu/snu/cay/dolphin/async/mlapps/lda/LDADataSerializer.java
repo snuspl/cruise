@@ -46,8 +46,8 @@ final class LDADataSerializer implements Serializer {
     public byte[] encode(final Document document) {
       final int numBytes = (document.getWords().size() * 2 + numTopics + 1) * Integer.BYTES;
 
-      try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
-           final DataOutputStream daos = new DataOutputStream(baos)) {
+      try (ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
+           DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(document, daos);
         return baos.toByteArray();
       } catch (final IOException e) {
@@ -57,7 +57,7 @@ final class LDADataSerializer implements Serializer {
 
     @Override
     public Document decode(final byte[] bytes) {
-      try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+      try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
         return decodeFromStream(dis);
       } catch (final IOException e) {
         throw new RuntimeException(e.getCause());

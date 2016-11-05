@@ -297,7 +297,7 @@ public final class EMRoutingTableManager {
     for (final String workerId : activeWorkerIds) {
       Span detached = null;
 
-      try (final TraceScope traceScope = Trace.startSpan("send_routing_table_update_msg. worker_id: " + workerId,
+      try (TraceScope traceScope = Trace.startSpan("send_routing_table_update_msg. worker_id: " + workerId,
           parentTraceInfo)) {
 
         detached = traceScope.detach();

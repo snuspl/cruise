@@ -41,8 +41,8 @@ public final class DenseRowCodec implements Codec<Row>, StreamingCodec<Row> {
 
   @Override
   public byte[] encode(final Row row) {
-    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(row));
-         final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(row));
+         DataOutputStream daos = new DataOutputStream(baos)) {
       encodeToStream(row, daos);
       return baos.toByteArray();
     } catch (final IOException e) {
@@ -62,7 +62,7 @@ public final class DenseRowCodec implements Codec<Row>, StreamingCodec<Row> {
 
   @Override
   public Row decode(final byte[] bytes) {
-    try (final DataInputStream dais = new DataInputStream(new ByteArrayInputStream(bytes))) {
+    try (DataInputStream dais = new DataInputStream(new ByteArrayInputStream(bytes))) {
       return decodeFromStream(dais);
     } catch (final IOException e) {
       throw new RuntimeException(e);

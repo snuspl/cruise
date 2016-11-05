@@ -143,7 +143,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   public void cleanup() {
 
     //output the centroids of the clusters
-    try (final DataOutputStream centroidStream = outputStreamProvider.create("centroids")) {
+    try (DataOutputStream centroidStream = outputStreamProvider.create("centroids")) {
       centroidStream.writeBytes(String.format("cluster_id,centroid%n"));
       for (int i = 0; i < centroids.size(); i++) {
         centroidStream.writeBytes(String.format("%d,%s%n", (i + 1), centroids.get(i).toString()));

@@ -100,7 +100,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
 
     final Codec<V> dataCodec = serializer.getCodec();
 
-    try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {
+    try (TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
 
       // encode data
@@ -239,7 +239,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
         new Object[]{operation.getOpId(), operation.getOrigEvalId()});
 
     // send the original store the result (RemoteOpResultMsg)
-    try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
+    try (TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
       final Codec<V> dataCodec = serializer.getCodec();
 
       final Optional<String> origEvalId = operation.getOrigEvalId();

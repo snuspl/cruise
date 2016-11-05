@@ -69,5 +69,5 @@ public interface VectorFactory {
    * @param vectors list of vectors to concatenate
    * @return the vector created by concatenation
    */
-  Vector concatDense(final List<Vector> vectors);
+  Vector concatDense(List<Vector> vectors);
 }

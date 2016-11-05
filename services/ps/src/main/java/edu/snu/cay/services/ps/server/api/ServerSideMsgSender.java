@@ -34,7 +34,7 @@ public interface ServerSideMsgSender<K, P, V> {
    * @param traceInfo Information for Trace
    */
   void sendPullReplyMsg(String destId, K key, V value, int requestId, long elapsedTimeInServer,
-                        @Nullable final TraceInfo traceInfo);
+                        @Nullable TraceInfo traceInfo);
 
   /**
    * Sends a push msg for {@code key} to a corresponding server.
@@ -43,7 +43,7 @@ public interface ServerSideMsgSender<K, P, V> {
    * @param key      a key to push
    * @param preValue a previous value to push
    */
-  void sendPushMsg(final String destId, final K key, final P preValue);
+  void sendPushMsg(String destId, K key, P preValue);
 
   /**
    * Sends a pull msg for {@code key} to a corresponding server.
@@ -54,6 +54,6 @@ public interface ServerSideMsgSender<K, P, V> {
    * @param requestId pull request id assigned by ParameterWorker
    * @param traceInfo Information for Trace
    */
-  void sendPullMsg(final String destId, final String requesterId, final K key, final int requestId,
-                   @Nullable final TraceInfo traceInfo);
+  void sendPullMsg(String destId, String requesterId, K key, int requestId,
+                   @Nullable TraceInfo traceInfo);
 }

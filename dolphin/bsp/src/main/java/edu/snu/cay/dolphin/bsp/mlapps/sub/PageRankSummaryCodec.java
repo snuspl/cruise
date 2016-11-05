@@ -35,7 +35,7 @@ public class PageRankSummaryCodec implements Codec<PageRankSummary> {
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE // count
         + (Integer.SIZE + Double.SIZE) * model.size());
 
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(model.size());
 
       for (final Map.Entry<Integer, Double> entry : model.entrySet()) {
@@ -54,7 +54,7 @@ public class PageRankSummaryCodec implements Codec<PageRankSummary> {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final Map<Integer, Double> model = new HashMap<>();
 
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       final int count = dais.readInt();
       for (int i = 0; i < count; i++) {
         final Integer nodeId = dais.readInt();

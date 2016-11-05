@@ -227,7 +227,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
     // for stitching the spans from other threads as its children
     Span detached = null;
-    try (final TraceScope pullScope = traceEnabled ?
+    try (TraceScope pullScope = traceEnabled ?
         Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()), pwTraceScope.getSpan()) :
         NullScope.INSTANCE) {
       final int threadId = getThreadIndex(encodedKey.getHash());
@@ -258,7 +258,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   }
 
   private List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
-    try (final TraceScope pullListScope =
+    try (TraceScope pullListScope =
         Trace.startSpan(String.format("pull_list. num_keys: %d", encodedKeys.size()), pwTraceScope.getSpan())) {
       final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
 
@@ -268,7 +268,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         // for stitching the spans from other threads as its children
         final boolean traceEnabled = ThreadLocalRandom.current().nextDouble() < traceProbability;
         Span detached = null;
-        try (final TraceScope pullEnqueueScope = traceEnabled ?
+        try (TraceScope pullEnqueueScope = traceEnabled ?
             Trace.startSpan(String.format("pull. key: %s", encodedKey.getKey()), pullListScope.getSpan()) :
             NullScope.INSTANCE) {
           final int threadId = getThreadIndex(encodedKey.getHash());
@@ -306,19 +306,18 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   public void close(final long timeoutMs) throws InterruptedException, TimeoutException, ExecutionException {
 
     final Future result = Executors.newSingleThreadExecutor().submit(() -> {
-        // Close all threads
-        for (int i = 0; i < numWorkerThreads; i++) {
-          workerThreads[i].startClose();
-        }
-        retryThread.startClose();
-
-        // Wait for close to complete on all threads
-        for (int i = 0; i < numWorkerThreads; i++) {
-          workerThreads[i].waitForClose();
-        }
-        retryThread.waitForClose();
+      // Close all threads
+      for (int i = 0; i < numWorkerThreads; i++) {
+        workerThreads[i].startClose();
       }
-    );
+      retryThread.startClose();
+
+      // Wait for close to complete on all threads
+      for (int i = 0; i < numWorkerThreads; i++) {
+        workerThreads[i].waitForClose();
+      }
+      retryThread.waitForClose();
+    });
 
     result.get(timeoutMs, TimeUnit.MILLISECONDS);
     pwTraceScope.close();
@@ -334,7 +333,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   @Override
   public void processPullReply(final K key, final V value, final int requestId, final long elapsedTimeInServer,
                                final int numReceivedBytes, @Nullable final TraceInfo traceInfo) {
-    try (final TraceScope processPullReplyScope = Trace.startSpan(
+    try (TraceScope processPullReplyScope = Trace.startSpan(
         String.format("process_pull_reply. key: %s, request_id: %d", key, requestId), traceInfo)) {
       final EncodedKey<K> encodedKey;
       try {
@@ -411,7 +410,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
     // for stitching the spans from other threads as its children
     Span detached = null;
-    try (final TraceScope sendPullMsgScope = Trace.startSpan(
+    try (TraceScope sendPullMsgScope = Trace.startSpan(
         String.format("send_pull_msg. key: %s, request_id: %d", encodedKey.getKey(), requestId), traceInfo)) {
       while (true) {
         if (resendCount++ > MAX_RESEND_COUNT) {
@@ -594,7 +593,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
             workerThread.wait();
           }
 
-          try (final TraceScope startPullRequestScope = Trace.startSpan(
+          try (TraceScope startPullRequestScope = Trace.startSpan(
               String.format("start_pull_request. key: %s, worker_pending_ops: %d",
                   encodedKey.getKey(), workerThread.opsPending()),
               parentTraceInfo)) {
@@ -609,7 +608,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
           }
           // wait with other operations that were previously requested, if the pull request has been sent already
         } else {
-          try (final TraceScope ridePullRequestScope = Trace.startSpan(String.format("ride_pull_request." +
+          try (TraceScope ridePullRequestScope = Trace.startSpan(String.format("ride_pull_request." +
               " key: %s, request_id: %d, pending_ops: %d",
               encodedKey.getKey(), pullRequest.getRequestId(), workerThread.opsPending()), parentTraceInfo)) {
             this.pullStartTime = ticker.read();
@@ -729,7 +728,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * @throws RuntimeException if the retrial count exceeded maximum number of retries
      */
     synchronized void retry() {
-      try (final TraceScope retryScope = Trace.startSpan("pull_retry.", pullRequestScope.getSpan())) {
+      try (TraceScope retryScope = Trace.startSpan("pull_retry.", pullRequestScope.getSpan())) {
         if (retryCount++ >= MAX_PULL_RETRY_COUNT) {
           throw new RuntimeException("Fail to load a value for pull");
         }

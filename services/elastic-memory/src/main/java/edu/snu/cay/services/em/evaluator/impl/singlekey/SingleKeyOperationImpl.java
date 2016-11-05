@@ -57,7 +57,7 @@ final class SingleKeyOperationImpl<K, V> implements SingleKeyOperation<K, V> {
    * @param dataValue an Optional with the value of data.
    *                  It is empty when the operation is one of GET or REMOVE.
    */
-  public SingleKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
+  SingleKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
                                 final DataOpType operationType, final K dataKey,
                                 final Optional<V> dataValue) {
     this.origEvalId = origEvalId;

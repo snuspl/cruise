@@ -42,7 +42,7 @@ public interface ParameterServer<K, P, V> {
    * @param preValue preValue sent from the worker
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
-  void push(final K key, final P preValue, final int keyHash);
+  void push(K key, P preValue, int keyHash);
 
   /**
    * Reply to requesterId via {@link ServerSideMsgSender}
@@ -56,8 +56,8 @@ public interface ParameterServer<K, P, V> {
    * @param requestId pull request id assigned by ParameterWorker
    * @param traceInfo Information for Trace
    */
-  void pull(final K key, final String requesterId, final int keyHash, final int requestId,
-            @Nullable final TraceInfo traceInfo);
+  void pull(K key, String requesterId, int keyHash, int requestId,
+            @Nullable TraceInfo traceInfo);
 
   /**
    * Counts the number of pending operations.

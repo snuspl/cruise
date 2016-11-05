@@ -38,8 +38,8 @@ public final class LayerParameterCodec implements StreamingCodec<LayerParameter>
 
   @Override
   public byte[] encode(final LayerParameter layerParameter) {
-    try (final ByteArrayOutputStream bstream = new ByteArrayOutputStream();
-         final DataOutputStream dstream = new DataOutputStream(bstream)) {
+    try (ByteArrayOutputStream bstream = new ByteArrayOutputStream();
+         DataOutputStream dstream = new DataOutputStream(bstream)) {
       encodeToStream(layerParameter, dstream);
       return bstream.toByteArray();
 
@@ -56,7 +56,7 @@ public final class LayerParameterCodec implements StreamingCodec<LayerParameter>
 
   @Override
   public LayerParameter decode(final byte[] data) {
-    try (final DataInputStream dstream = new DataInputStream(new ByteArrayInputStream(data))) {
+    try (DataInputStream dstream = new DataInputStream(new ByteArrayInputStream(data))) {
       return decodeFromStream(dstream);
 
     } catch (final IOException e) {

@@ -55,7 +55,7 @@ public final class Row {
   @Override
   public int hashCode() {
     int result;
-    long temp;
+    final long temp;
     temp = Double.doubleToLongBits(output);
     result = (int) (temp ^ (temp >>> 32));
     result = 31 * result + feature.hashCode();

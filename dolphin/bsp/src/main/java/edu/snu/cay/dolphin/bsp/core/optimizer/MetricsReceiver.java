@@ -71,7 +71,7 @@ final class MetricsReceiver {
   /**
    * @param optimizationOrchestrator the optimization orchestrator that instantiates this instance
    */
-  public MetricsReceiver(final OptimizationOrchestrator optimizationOrchestrator,
+  MetricsReceiver(final OptimizationOrchestrator optimizationOrchestrator,
                          final boolean optimizable,
                          final int numTasks) {
     this.optimizationOrchestrator = optimizationOrchestrator;

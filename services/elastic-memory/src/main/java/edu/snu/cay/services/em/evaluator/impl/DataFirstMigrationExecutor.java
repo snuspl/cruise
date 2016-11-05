@@ -122,7 +122,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
     Span detached = null;
 
     Trace.setProcessId("src_eval");
-    try (final TraceScope onMoveInitMsgScope = Trace.startSpan("on_move_init_msg",
+    try (TraceScope onMoveInitMsgScope = Trace.startSpan("on_move_init_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       detached = onMoveInitMsgScope.detach();
@@ -135,7 +135,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
             final Map<K, Object> blockData = memoryStore.getBlock(blockId);
 
             final List<KeyValuePair> keyValuePairs;
-            try (final TraceScope encodeDataScope = Trace.startSpan("encode_data", traceInfo)) {
+            try (TraceScope encodeDataScope = Trace.startSpan("encode_data", traceInfo)) {
               keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
             }
 
@@ -162,7 +162,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
     Span detached = null;
 
     Trace.setProcessId("dst_eval");
-    try (final TraceScope onDataMsgScope = Trace.startSpan(String.format("on_data_msg. blockId: %d", blockId),
+    try (TraceScope onDataMsgScope = Trace.startSpan(String.format("on_data_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       detached = onDataMsgScope.detach();
@@ -172,7 +172,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
         @Override
         public void run() {
           final Map<K, Object> dataMap;
-          try (final TraceScope decodeDataScope = Trace.startSpan("decode_data", traceInfo)) {
+          try (TraceScope decodeDataScope = Trace.startSpan("decode_data", traceInfo)) {
             dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
           }
 
@@ -208,7 +208,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
     Span detached = null;
 
     Trace.setProcessId("src_eval");
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
+    try (TraceScope onOwnershipMsgScope = Trace.startSpan(String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       detached = onOwnershipMsgScope.detach();

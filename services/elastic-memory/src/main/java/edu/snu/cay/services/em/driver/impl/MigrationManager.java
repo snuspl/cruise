@@ -162,7 +162,7 @@ final class MigrationManager {
   private void broadcastSuccess(final Migration migration, @Nullable final TraceInfo parentTraceInfo) {
     Trace.setProcessId(MigrationManager.class.getSimpleName());
 
-    try (final TraceScope broadcastSuccessScope = Trace.startSpan("broadcast_table_update", parentTraceInfo)) {
+    try (TraceScope broadcastSuccessScope = Trace.startSpan("broadcast_table_update", parentTraceInfo)) {
       final Set<String> activeEvaluatorIds = blockManager.getActiveEvaluators();
       final String senderId = migration.getSenderId();
       final String receiverId = migration.getReceiverId();
@@ -188,7 +188,7 @@ final class MigrationManager {
                                                   @Nullable final TraceInfo parentTraceInfo) {
     Trace.setProcessId(MigrationManager.class.getSimpleName());
 
-    try (final TraceScope notifyUpdateToClientsScope = Trace.startSpan("notify_update_to_clients", parentTraceInfo)) {
+    try (TraceScope notifyUpdateToClientsScope = Trace.startSpan("notify_update_to_clients", parentTraceInfo)) {
       final int oldOwnerId = blockManager.getMemoryStoreId(senderId);
       final int newOwnerId = blockManager.getMemoryStoreId(receiverId);
 

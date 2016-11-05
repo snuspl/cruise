@@ -52,7 +52,7 @@ final class Migration {
    * @param receiverId Identifier of the receiver.
    * @param blockIds Identifiers of the blocks to move.
    */
-  public Migration(final String senderId,
+  Migration(final String senderId,
                    final String receiverId,
                    final List<Integer> blockIds,
                    final TraceScope traceScope) {

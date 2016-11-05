@@ -37,7 +37,7 @@ public final class PageRankCodec implements Codec<Map<Integer, Double>> {
 
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(
         Integer.SIZE + (Integer.SIZE + Double.SIZE) * size);
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(size);
       for (final Map.Entry<Integer, Double> entry : map.entrySet()) {
         daos.writeInt(entry.getKey());
@@ -55,7 +55,7 @@ public final class PageRankCodec implements Codec<Map<Integer, Double>> {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final Map<Integer, Double> map = new HashMap<>();
 
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       final int size = dais.readInt();
 
       for (int i = 0; i < size; i++) {
