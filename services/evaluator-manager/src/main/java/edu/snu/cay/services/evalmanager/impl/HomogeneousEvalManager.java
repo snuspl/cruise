@@ -32,7 +32,6 @@ import org.apache.reef.wake.remote.impl.Tuple2;
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
