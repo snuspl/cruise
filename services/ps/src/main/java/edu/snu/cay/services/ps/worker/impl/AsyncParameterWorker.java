@@ -826,9 +826,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   // TODO #803: Current codebase does not maintain local cache. We should implement this later for higher performance.
   private final class WorkerThread implements Runnable {
     private static final long QUEUE_TIMEOUT_MS = 3000;
-    private static final String STATE_RUNNING = "RUNNING";
-    private static final String STATE_CLOSING = "CLOSING";
-    private static final String STATE_CLOSED = "CLOSED";
 
     private final Map<K, PullRequest> pendingPullRequests;
     private final BlockingQueue<Op> queue;
@@ -879,12 +876,12 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     private StateMachine initStateMachine() {
       return StateMachine.newBuilder()
-          .addState(STATE_RUNNING, "PW thread is running. It executes operations in the queue.")
-          .addState(STATE_CLOSING, "PW thread is closing. It will be closed after processing whole remaining ops.")
-          .addState(STATE_CLOSED, "PW thread is closed. It finished processing whole remaining operations.")
-          .addTransition(STATE_RUNNING, STATE_CLOSING, "Time to close the thread.")
-          .addTransition(STATE_CLOSING, STATE_CLOSED, "Closing the thread is done.")
-          .setInitialState(STATE_RUNNING)
+          .addState(State.RUNNING, "PW thread is running. It executes operations in the queue.")
+          .addState(State.CLOSING, "PW thread is closing. It will be closed after processing whole remaining ops.")
+          .addState(State.CLOSED, "PW thread is closed. It finished processing whole remaining operations.")
+          .addTransition(State.RUNNING, State.CLOSING, "Time to close the thread.")
+          .addTransition(State.CLOSING, State.CLOSED, "Closing the thread is done.")
+          .setInitialState(State.RUNNING)
           .build();
     }
 
@@ -1015,7 +1012,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
     public void run() {
       currentThread = Thread.currentThread();
       try {
-        while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty() || !retryQueue.isEmpty()) {
+        while (stateMachine.getCurrentState().equals(State.RUNNING) || !queue.isEmpty() || !retryQueue.isEmpty()) {
           // poll, the timeout allows the run thread to close cleanly within timeout ms.
           final Op op;
           try {
@@ -1073,7 +1070,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * The thread will be closed after processing for all pending operations.
      */
     void startClose() {
-      stateMachine.setState(STATE_CLOSING);
+      stateMachine.setState(State.CLOSING);
     }
 
     /**
@@ -1081,7 +1078,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * It wakes up threads waiting in {@link #waitForClose()}.
      */
     private synchronized void finishClose() {
-      stateMachine.setState(STATE_CLOSED);
+      stateMachine.setState(State.CLOSED);
       notifyAll();
     }
 
@@ -1089,7 +1086,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
      * Wait until thread is closed successfully.
      */
     synchronized void waitForClose() {
-      while (!stateMachine.getCurrentState().equals(STATE_CLOSED)) {
+      while (!stateMachine.getCurrentState().equals(State.CLOSED)) {
         try {
           wait();
         } catch (final InterruptedException e) {
@@ -1117,10 +1114,6 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * but small enough to quickly recover from 3).
    */
   private final class RetryThread implements Runnable {
-    private static final String STATE_RUNNING = "RUNNING";
-    private static final String STATE_CLOSING = "CLOSING";
-    private static final String STATE_CLOSED = "CLOSED";
-
     private Thread currentThread;
     private final StateMachine stateMachine;
     private final long pullRetryTimeoutMs;
@@ -1132,13 +1125,13 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
     private StateMachine initStateMachine() {
       return StateMachine.newBuilder()
-          .addState(STATE_RUNNING, "Retry thread is running." +
+          .addState(State.RUNNING, "Retry thread is running." +
               "It checks pendingPullRequests and enqueues to proper retry queue if necessary.")
-          .addState(STATE_CLOSING, "Retry thread is closing.")
-          .addState(STATE_CLOSED, "Retry thread is closed.")
-          .addTransition(STATE_RUNNING, STATE_CLOSING, "Time to close the thread.")
-          .addTransition(STATE_CLOSING, STATE_CLOSED, "Closing the thread is done.")
-          .setInitialState(STATE_RUNNING)
+          .addState(State.CLOSING, "Retry thread is closing.")
+          .addState(State.CLOSED, "Retry thread is closed.")
+          .addTransition(State.RUNNING, State.CLOSING, "Time to close the thread.")
+          .addTransition(State.CLOSING, State.CLOSED, "Closing the thread is done.")
+          .setInitialState(State.RUNNING)
           .build();
     }
 
@@ -1151,7 +1144,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
 
       long elapsedTimeInMs = 0;
 
-      while (stateMachine.getCurrentState().equals(STATE_RUNNING)) {
+      while (stateMachine.getCurrentState().equals(State.RUNNING)) {
         // if previous scan took more than pullRetryTimeoutMs, do not sleep
         if (elapsedTimeInMs < pullRetryTimeoutMs) {
           try {
@@ -1159,7 +1152,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
             Thread.sleep(pullRetryTimeoutMs - elapsedTimeInMs);
           } catch (final InterruptedException e) {
             // interrupt on this thread is always requested by startClose()
-            if (stateMachine.getCurrentState().equals(STATE_CLOSING)) {
+            if (stateMachine.getCurrentState().equals(State.CLOSING)) {
               break;
             } else {
               throw new RuntimeException(e);
@@ -1197,7 +1190,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       if (pullRetryTimeoutMs == TIMEOUT_NO_RETRY) {
         return;
       }
-      stateMachine.setState(STATE_CLOSING);
+      stateMachine.setState(State.CLOSING);
       currentThread.interrupt();
     }
 
@@ -1209,7 +1202,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       if (pullRetryTimeoutMs == TIMEOUT_NO_RETRY) {
         return;
       }
-      stateMachine.setState(STATE_CLOSED);
+      stateMachine.setState(State.CLOSED);
       notifyAll();
     }
 
@@ -1220,7 +1213,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
       if (pullRetryTimeoutMs == TIMEOUT_NO_RETRY) {
         return;
       }
-      while (!stateMachine.getCurrentState().equals(STATE_CLOSED)) {
+      while (!stateMachine.getCurrentState().equals(State.CLOSED)) {
         try {
           wait();
         } catch (final InterruptedException e) {
@@ -1228,5 +1221,11 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         }
       }
     }
+  }
+
+  private enum State {
+    RUNNING,
+    CLOSING,
+    CLOSED
   }
 }

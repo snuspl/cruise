@@ -50,11 +50,6 @@ import java.util.logging.Logger;
 public final class DriverSync implements EventHandler<Message<AvroSyncMessage>> {
   private static final Logger LOG = Logger.getLogger(DriverSync.class.getName());
 
-  static final String RUNNING = "RUNNING";
-  static final String WAITING_PAUSE_RESULT = "WAITING_PAUSE_RESULT";
-  static final String PAUSED = "PAUSED";
-  static final String CANCELLING = "CANCELLING";
-
   private final StateMachine stateMachine;
   private final InjectionFuture<SyncNetworkSetup> pauseNetworkSetup;
   private final IdentifierFactory identifierFactory;
@@ -74,24 +69,31 @@ public final class DriverSync implements EventHandler<Message<AvroSyncMessage>> 
 
   private StateMachine initStateMachine() {
     return StateMachine.newBuilder()
-        .addState(RUNNING, "Running normally, with no outstanding pauses")
-        .addState(WAITING_PAUSE_RESULT, "Waiting for pause confirmation from Controller Task")
-        .addState(PAUSED, "Controller Task has paused")
-        .addState(CANCELLING, "Pause is being cancelled")
-        .setInitialState(RUNNING)
+        .addState(State.RUNNING, "Running normally, with no outstanding pauses")
+        .addState(State.WAITING_PAUSE_RESULT, "Waiting for pause confirmation from Controller Task")
+        .addState(State.PAUSED, "Controller Task has paused")
+        .addState(State.CANCELLING, "Pause is being cancelled")
+        .setInitialState(State.RUNNING)
         // Normal-case transitions
-        .addTransition(RUNNING, WAITING_PAUSE_RESULT,
+        .addTransition(State.RUNNING, State.WAITING_PAUSE_RESULT,
             "The pause request has been sent")
-        .addTransition(WAITING_PAUSE_RESULT, PAUSED,
+        .addTransition(State.WAITING_PAUSE_RESULT, State.PAUSED,
             "The Controller Task has confirmed pause")
-        .addTransition(PAUSED, RUNNING,
+        .addTransition(State.PAUSED, State.RUNNING,
             "The resume request has been sent")
         // Error-case transitions
-        .addTransition(WAITING_PAUSE_RESULT, CANCELLING,
+        .addTransition(State.WAITING_PAUSE_RESULT, State.CANCELLING,
             "The pause request cannot be satisfied")
-        .addTransition(CANCELLING, RUNNING,
+        .addTransition(State.CANCELLING, State.RUNNING,
             "The pause has been cancelled")
         .build();
+  }
+
+  private enum State {
+    RUNNING,
+    WAITING_PAUSE_RESULT,
+    PAUSED,
+    CANCELLING
   }
 
   public synchronized void onStageStart(final String newGroupName, final String newControllerTaskId) {
@@ -104,8 +106,8 @@ public final class DriverSync implements EventHandler<Message<AvroSyncMessage>> 
   public synchronized void onStageStop(final String stoppedGroupName) {
     LOG.log(Level.INFO, "Stage {0} stopped", stoppedGroupName);
     if (stoppedGroupName.equals(groupName) &&
-        WAITING_PAUSE_RESULT.equals(stateMachine.getCurrentState())) {
-      stateMachine.setState(CANCELLING);
+        State.WAITING_PAUSE_RESULT.equals(stateMachine.getCurrentState())) {
+      stateMachine.setState(State.CANCELLING);
       notify();
     }
   }
@@ -131,22 +133,22 @@ public final class DriverSync implements EventHandler<Message<AvroSyncMessage>> 
       return;
     }
 
-    stateMachine.setState(WAITING_PAUSE_RESULT);
+    stateMachine.setState(State.WAITING_PAUSE_RESULT);
 
     wait();
-    if (CANCELLING.equals(stateMachine.getCurrentState())) {
+    if (State.CANCELLING.equals(stateMachine.getCurrentState())) {
       LOG.log(Level.INFO, "Pause was cancelled");
       pauseFailedHandler.onNext(null);
       sendResumeRequest();
-      stateMachine.setState(RUNNING);
+      stateMachine.setState(State.RUNNING);
       return;
     }
     LOG.log(Level.INFO, "Paused at iteration {0}.", iterationInfo);
-    stateMachine.setState(PAUSED);
+    stateMachine.setState(State.PAUSED);
 
     handler.onNext(iterationInfo);
     sendResumeRequest();
-    stateMachine.setState(RUNNING);
+    stateMachine.setState(State.RUNNING);
 
     LOG.exiting(DriverSync.class.getSimpleName(), "execute", handler);
   }
@@ -210,7 +212,7 @@ public final class DriverSync implements EventHandler<Message<AvroSyncMessage>> 
   }
 
   private void assertStage(final IterationInfo pausedIteration) {
-    if (!WAITING_PAUSE_RESULT.equals(stateMachine.getCurrentState())) {
+    if (!State.WAITING_PAUSE_RESULT.equals(stateMachine.getCurrentState())) {
       throw new RuntimeException("Unexpected state on pause result receipt " + stateMachine.getCurrentState());
     } else if (!pausedIteration.getCommGroupName().toString().equals(groupName)) {
       throw new RuntimeException("Expected groupName " + groupName +

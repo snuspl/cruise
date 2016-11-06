@@ -22,28 +22,30 @@ import edu.snu.cay.utils.StateMachine;
  */
 public final class PushShuffleSenderState {
 
-  public static final String INIT = "INIT";
-  public static final String SENDING = "SENDING";
-  public static final String COMPLETED = "COMPLETED";
-  public static final String FINISHED = "FINISHED";
+  public enum State {
+    INIT,
+    SENDING,
+    COMPLETED,
+    FINISHED
+  }
 
   /**
    * @return a state machine for PushShuffleSender
    */
   public static StateMachine createStateMachine() {
     return StateMachine.newBuilder()
-        .addState(INIT, "A sender is initialized. It sends a SENDER_INITIALIZED message to the manager")
-        .addState(SENDING, "Sending tuples to receivers")
-        .addState(COMPLETED, "Waiting for all receivers are completed to receive tuples from senders")
-        .addState(FINISHED, "Finished sending data")
-        .setInitialState(INIT)
-        .addTransition(INIT, SENDING,
+        .addState(State.INIT, "A sender is initialized. It sends a SENDER_INITIALIZED message to the manager")
+        .addState(State.SENDING, "Sending tuples to receivers")
+        .addState(State.COMPLETED, "Waiting for all receivers are completed to receive tuples from senders")
+        .addState(State.FINISHED, "Finished sending data")
+        .setInitialState(State.INIT)
+        .addTransition(State.INIT, State.SENDING,
             "When a SENDER_CAN_SEND message arrived from the manager.")
-        .addTransition(SENDING, COMPLETED,
+        .addTransition(State.SENDING, State.COMPLETED,
             "When a user calls complete() method. It broadcasts SENDER_COMPLETED messages to all receivers.")
-        .addTransition(COMPLETED, SENDING,
+        .addTransition(State.COMPLETED, State.SENDING,
             "When a SENDER_CAN_SEND message arrived from the manager.")
-        .addTransition(COMPLETED, FINISHED,
+        .addTransition(State.COMPLETED, State.FINISHED,
             "When a SENDER_SHUTDOWN message arrived from the manager.")
         .build();
   }

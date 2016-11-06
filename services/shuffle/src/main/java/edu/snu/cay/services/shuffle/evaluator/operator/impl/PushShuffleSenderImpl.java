@@ -119,7 +119,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public List<String> sendTuple(final Tuple<K, V> tuple) {
     waitForSenderInitialized();
-    stateMachine.checkState(PushShuffleSenderState.SENDING);
+    stateMachine.checkState(PushShuffleSenderState.State.SENDING);
     final List<String> sentReceiverIdList = tupleSender.sendTuple(tuple);
     messageChecker.messageSent(sentReceiverIdList.size());
     return sentReceiverIdList;
@@ -128,7 +128,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public List<String> sendTuple(final List<Tuple<K, V>> tupleList) {
     waitForSenderInitialized();
-    stateMachine.checkState(PushShuffleSenderState.SENDING);
+    stateMachine.checkState(PushShuffleSenderState.State.SENDING);
     final List<String> sentReceiverIdList = tupleSender.sendTuple(tupleList);
     messageChecker.messageSent(sentReceiverIdList.size());
     return sentReceiverIdList;
@@ -137,7 +137,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public void sendTupleTo(final String receiverId, final Tuple<K, V> tuple) {
     waitForSenderInitialized();
-    stateMachine.checkState(PushShuffleSenderState.SENDING);
+    stateMachine.checkState(PushShuffleSenderState.State.SENDING);
     tupleSender.sendTupleTo(receiverId, tuple);
     messageChecker.messageSent(1);
   }
@@ -145,16 +145,16 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList) {
     waitForSenderInitialized();
-    stateMachine.checkState(PushShuffleSenderState.SENDING);
+    stateMachine.checkState(PushShuffleSenderState.State.SENDING);
     tupleSender.sendTupleTo(receiverId, tupleList);
     messageChecker.messageSent(1);
   }
 
   private void waitForSenderInitialized() {
-    if (stateMachine.getCurrentState().equals(PushShuffleSenderState.INIT)) {
+    if (stateMachine.getCurrentState().equals(PushShuffleSenderState.State.INIT)) {
       waitForSenderCanSendData();
-      if (stateMachine.compareAndSetState(PushShuffleSenderState.INIT, PushShuffleSenderState.SENDING)) {
-        throw new RuntimeException("The expected current state [" + PushShuffleSenderState.INIT +
+      if (stateMachine.compareAndSetState(PushShuffleSenderState.State.INIT, PushShuffleSenderState.State.SENDING)) {
+        throw new RuntimeException("The expected current state [" + PushShuffleSenderState.State.INIT +
             "] is different from the actual state");
       }
     }
@@ -163,8 +163,8 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public boolean complete() {
     LOG.log(Level.INFO, "Complete to send data");
-    if (stateMachine.compareAndSetState(PushShuffleSenderState.SENDING, PushShuffleSenderState.COMPLETED)) {
-      throw new RuntimeException("The expected current state [" + PushShuffleSenderState.SENDING +
+    if (stateMachine.compareAndSetState(PushShuffleSenderState.State.SENDING, PushShuffleSenderState.State.COMPLETED)) {
+      throw new RuntimeException("The expected current state [" + PushShuffleSenderState.State.SENDING +
           "] is different from the actual state");
     }
     messageChecker.waitForAllMessagesAreTransferred();
@@ -176,16 +176,18 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     waitForSenderCanSendData();
     if (shutdown) {
       LOG.log(Level.INFO, "The sender was finished.");
-      if (stateMachine.compareAndSetState(PushShuffleSenderState.COMPLETED, PushShuffleSenderState.FINISHED)) {
-        throw new RuntimeException("The expected current state [" + PushShuffleSenderState.COMPLETED +
+      if (stateMachine.compareAndSetState(PushShuffleSenderState.State.COMPLETED,
+          PushShuffleSenderState.State.FINISHED)) {
+        throw new RuntimeException("The expected current state [" + PushShuffleSenderState.State.COMPLETED +
             "] is different from the actual state");
       }
       controlMessageSender.sendToManager(PushShuffleCode.SENDER_FINISHED);
       return true;
     } else {
       LOG.log(Level.INFO, "The sender can send data");
-      if (stateMachine.compareAndSetState(PushShuffleSenderState.COMPLETED, PushShuffleSenderState.SENDING)) {
-        throw new RuntimeException("The expected current state [" + PushShuffleSenderState.COMPLETED +
+      if (stateMachine.compareAndSetState(PushShuffleSenderState.State.COMPLETED,
+          PushShuffleSenderState.State.SENDING)) {
+        throw new RuntimeException("The expected current state [" + PushShuffleSenderState.State.COMPLETED +
             "] is different from the actual state");
       }
       return false;

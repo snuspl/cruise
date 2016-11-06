@@ -41,7 +41,7 @@ public final class StateMachine {
    * @param expectedCurrentState an expected current state
    * @throws RuntimeException if the expectedCurrentState is not same as actual current state
    */
-  public synchronized void checkState(final String expectedCurrentState) {
+  public synchronized void checkState(final Enum expectedCurrentState) {
     if (!currentState.stateEnum.equals(expectedCurrentState)) {
       final String exceptionMessage = new StringBuilder()
           .append("The expected current state is ")
@@ -287,7 +287,9 @@ public final class StateMachine {
       final Map<Enum, State> stateMap = new HashMap<>();
       for (final Enum stateEnum : stateEnumSet) {
         stateMap.put(stateEnum, new State(stateEnum, stateDescriptionMap.get(stateEnum)));
+      }
 
+      for (final Enum stateEnum : stateEnumSet) {
         final State state = stateMap.get(stateEnum);
         if (transitionMap.containsKey(stateEnum)) {
           for (final Tuple<Enum, String> transition : transitionMap.get(stateEnum)) {
