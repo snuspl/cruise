@@ -143,7 +143,7 @@ final class CostCalculator {
     private final Collection<EvaluatorParameters> computeTasksParameters;
 
     DolphinTaskParameters(final EvaluatorParameters controllerTaskParameters,
-                                 final Collection<EvaluatorParameters> computeTasksParameters) {
+                          final Collection<EvaluatorParameters> computeTasksParameters) {
       this.controllerTaskParameters = controllerTaskParameters;
       this.computeTasksParameters = computeTasksParameters;
     }

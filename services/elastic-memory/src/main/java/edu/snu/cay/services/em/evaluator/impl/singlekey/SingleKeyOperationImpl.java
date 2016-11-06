@@ -58,8 +58,8 @@ final class SingleKeyOperationImpl<K, V> implements SingleKeyOperation<K, V> {
    *                  It is empty when the operation is one of GET or REMOVE.
    */
   SingleKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
-                                final DataOpType operationType, final K dataKey,
-                                final Optional<V> dataValue) {
+                         final DataOpType operationType, final K dataKey,
+                         final Optional<V> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;

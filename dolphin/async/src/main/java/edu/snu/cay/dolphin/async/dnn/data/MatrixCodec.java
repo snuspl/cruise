@@ -44,7 +44,7 @@ public final class MatrixCodec implements StreamingCodec<Matrix> {
   @Override
   public byte[] encode(final Matrix matrix) {
     try (ByteArrayOutputStream bstream = new ByteArrayOutputStream(Integer.BYTES * 2 +
-                                                                         Float.BYTES * matrix.getLength());
+                                                                   Float.BYTES * matrix.getLength());
          DataOutputStream dstream = new DataOutputStream(bstream)) {
 
       encodeToStream(matrix, dstream);
