@@ -63,12 +63,14 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
    * A waiting queue for evaluator-related event handling plans.
    * {@code onEvent(AllocatedEvaluator)} pops an element from this, and assigns it to the evaluator.
    */
-  private final Queue<Tuple2<EventHandler<AllocatedEvaluator>, Queue<EventHandler<ActiveContext>>>> pendingEvalRequests;
+  private final Queue<Tuple2<EventHandler<AllocatedEvaluator>, Queue<EventHandler<ActiveContext>>>> pendingEvalRequests
+      = new ConcurrentLinkedQueue<>();
 
   /**
    * Maps evaluator id to {@link ActiveContext} event handling plan.
    */
-  private final ConcurrentMap<String, Queue<EventHandler<ActiveContext>>> evalIdToPendingContextHandlers;
+  private final ConcurrentMap<String, Queue<EventHandler<ActiveContext>>> evalIdToPendingContextHandlers
+      = new ConcurrentHashMap<>();
 
   private final EvaluatorRequestor evaluatorRequestor;
 
@@ -76,11 +78,9 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
   private final int evalNumCores;
 
   @Inject
-  HomogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor,
-                         @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
-                         @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores) {
-    this.pendingEvalRequests = new ConcurrentLinkedQueue<>();
-    this.evalIdToPendingContextHandlers = new ConcurrentHashMap<>();
+  private HomogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor,
+                                 @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
+                                 @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.evalMemSizeInMB = evalMemSizeInMB;
     this.evalNumCores = evalNumCores;
@@ -95,11 +95,7 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
     LOG.log(Level.INFO, "Requesting {0} evaluators...", evalNum);
 
     for (int i = 0; i < evalNum; i++) {
-      final Queue<EventHandler<ActiveContext>> handlerQueue
-          = new ArrayBlockingQueue<>(contextActiveHandlerList.isEmpty() ? 1 : contextActiveHandlerList.size());
-      for (int j = 0; j < contextActiveHandlerList.size(); j++) {
-        handlerQueue.add(contextActiveHandlerList.get(j));
-      }
+      final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);
       pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
     }
     final EvaluatorRequest request = EvaluatorRequest.newBuilder()

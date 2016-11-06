@@ -57,14 +57,14 @@ public final class HeterogeneousEvalManager implements EvaluatorManager {
    * A waiting queue for evaluator-related event handling plans.
    * {@code onEvent(AllocatedEvaluator)} pops an element from this, and assigns it to the evaluator.
    */
-  private final Queue<Tuple2<EventHandler<AllocatedEvaluator>, Queue<EventHandler<ActiveContext>>>> pendingEvalRequests;
+  private final Queue<Tuple2<EventHandler<AllocatedEvaluator>, Queue<EventHandler<ActiveContext>>>> pendingEvalRequests
+      = new ConcurrentLinkedQueue<>();
 
   /**
    * Maps evaluator id to {@link ActiveContext} event handling plan.
    */
-  private final ConcurrentMap<String, Queue<EventHandler<ActiveContext>>> evalIdToPendingContextHandlers;
-
-  private final EvaluatorRequestor evaluatorRequestor;
+  private final ConcurrentMap<String, Queue<EventHandler<ActiveContext>>> evalIdToPendingContextHandlers
+      = new ConcurrentHashMap<>();
 
   /**
    * Only one request can be executed at a time.
@@ -73,10 +73,10 @@ public final class HeterogeneousEvalManager implements EvaluatorManager {
    */
   private final AtomicReference<CountDownLatch> ongoingEvaluatorRequest = new AtomicReference<>(new CountDownLatch(0));
 
+  private final EvaluatorRequestor evaluatorRequestor;
+
   @Inject
-  HeterogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor) {
-    this.pendingEvalRequests = new ConcurrentLinkedQueue<>();
-    this.evalIdToPendingContextHandlers = new ConcurrentHashMap<>();
+  private HeterogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor) {
     this.evaluatorRequestor = evaluatorRequestor;
   }
 
