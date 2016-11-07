@@ -74,15 +74,15 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
   private final EvaluatorRequestor evaluatorRequestor;
 
   private final int evalMemSizeInMB;
-  private final int evalNumCores;
+  private final int numEvalCores;
 
   @Inject
   private HomogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor,
                                  @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
-                                 @Parameter(Parameters.NumEvaluatorCores.class) final int evalNumCores) {
+                                 @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.evalMemSizeInMB = evalMemSizeInMB;
-    this.evalNumCores = evalNumCores;
+    this.numEvalCores = numEvalCores;
   }
 
   /**
@@ -92,7 +92,7 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
                                  final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                                  final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
     LOG.log(Level.INFO, "Requesting {0} evaluators with {1} MB memory and {2} cores...",
-        new Object[]{evalNum, evalMemSizeInMB, evalNumCores});
+        new Object[]{evalNum, evalMemSizeInMB, numEvalCores});
 
     for (int i = 0; i < evalNum; i++) {
       final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);
@@ -100,7 +100,7 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
     }
     final EvaluatorRequest request = EvaluatorRequest.newBuilder()
         .setNumber(evalNum)
-        .setNumberOfCores(evalNumCores)
+        .setNumberOfCores(numEvalCores)
         .setMemory(evalMemSizeInMB)
         .build();
     evaluatorRequestor.submit(request);

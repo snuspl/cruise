@@ -68,7 +68,7 @@ public final class PSExampleDriver {
   private final PSDriver psDriver;
   private final EvaluatorManager evaluatorManager;
 
-  private final int evalNumCores;
+  private final int numEvalCores;
   private final int evalMemSizeInMB;
   private final int numServers;
   private final int numWorkers;
@@ -97,7 +97,7 @@ public final class PSExampleDriver {
   private PSExampleDriver(final PSDriver psDriver,
                           final EvaluatorManager evaluatorManager,
                           @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
-                          @Parameter(Parameters.NumEvaluatorCores.class) final int evalNumCores,
+                          @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores,
                           @Parameter(NumServers.class) final int numServers,
                           @Parameter(NumWorkers.class) final int numWorkers,
                           @Parameter(NumUpdates.class) final int numUpdates,
@@ -116,7 +116,7 @@ public final class PSExampleDriver {
 
     this.psDriver = psDriver;
     this.evaluatorManager = evaluatorManager;
-    this.evalNumCores = evalNumCores;
+    this.numEvalCores = numEvalCores;
     this.evalMemSizeInMB = evalMemSizeInMB;
     this.numServers = numServers;
     this.numWorkers = numWorkers;
@@ -136,11 +136,11 @@ public final class PSExampleDriver {
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForServer = getEvalAllocHandlerForServer();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>(1);
       contextActiveHandlersForServer.add(getContextActiveHandlerForServer());
-      evaluatorManager.allocateEvaluators(numServers, evalMemSizeInMB, evalNumCores, evalAllocHandlerForServer,
+      evaluatorManager.allocateEvaluators(numServers, evalMemSizeInMB, numEvalCores, evalAllocHandlerForServer,
           contextActiveHandlersForServer);
 
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = getEvalAllocHandlerForWorker();
-      evaluatorManager.allocateEvaluators(numWorkers, evalMemSizeInMB, evalNumCores, evalAllocHandlerForWorker,
+      evaluatorManager.allocateEvaluators(numWorkers, evalMemSizeInMB, numEvalCores, evalAllocHandlerForWorker,
           new ArrayList<>());
     }
   }

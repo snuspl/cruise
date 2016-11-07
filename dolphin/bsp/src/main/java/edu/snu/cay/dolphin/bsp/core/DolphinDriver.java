@@ -213,7 +213,7 @@ public final class DolphinDriver {
 
   private final TraceInfo jobTraceInfo;
 
-  private final int evalNumCores;
+  private final int numEvalCores;
 
   private final int evalMemSizeInMB;
 
@@ -245,7 +245,7 @@ public final class DolphinDriver {
   @Inject
   private DolphinDriver(final EvaluatorManager evaluatorManager,
                         @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
-                        @Parameter(Parameters.NumEvaluatorCores.class) final int evalNumCores,
+                        @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores,
                         final GroupCommDriver groupCommDriver,
                         final GroupCommParameters groupCommParameters,
                         final ShuffleDriver shuffleDriver,
@@ -267,7 +267,7 @@ public final class DolphinDriver {
     hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
     this.evalMemSizeInMB = evalMemSizeInMB;
-    this.evalNumCores = evalNumCores;
+    this.numEvalCores = numEvalCores;
     this.groupCommDriver = groupCommDriver;
     this.groupCommParameters = groupCommParameters;
     this.shuffleDriver = shuffleDriver;
@@ -417,14 +417,14 @@ public final class DolphinDriver {
       final List<EventHandler<ActiveContext>> contextActiveHandlersForControllerTask = new ArrayList<>();
       contextActiveHandlersForControllerTask.add(getFirstContextActiveHandlerForControllerTask());
       contextActiveHandlersForControllerTask.add(getSubmittingTaskHandler());
-      evaluatorManager.allocateEvaluators(1, evalMemSizeInMB, evalNumCores, evalAllocHandlerForControllerTask,
+      evaluatorManager.allocateEvaluators(1, evalMemSizeInMB, numEvalCores, evalAllocHandlerForControllerTask,
           contextActiveHandlersForControllerTask);
 
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForComputeTask = getEvalAllocHandlerForComputeTask();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForComputeTask = new ArrayList<>();
       contextActiveHandlersForComputeTask.add(getFirstContextActiveHandlerForComputeTask());
       contextActiveHandlersForComputeTask.add(getSubmittingTaskHandler());
-      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(), evalMemSizeInMB, evalNumCores,
+      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(), evalMemSizeInMB, numEvalCores,
           evalAllocHandlerForComputeTask, contextActiveHandlersForComputeTask);
     }
 

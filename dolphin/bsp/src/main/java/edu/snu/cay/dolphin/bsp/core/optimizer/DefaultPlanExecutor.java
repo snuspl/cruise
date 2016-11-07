@@ -73,7 +73,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   private final DriverSync driverSync;
   private final InjectionFuture<DolphinDriver> dolphinDriver;
   private final int evalSize;
-  private final int evalNumCores;
+  private final int numEvalCores;
 
   private final ExecutorService mainExecutor = Executors.newSingleThreadExecutor();
 
@@ -84,12 +84,12 @@ public final class DefaultPlanExecutor implements PlanExecutor {
                               final DriverSync driverSync,
                               final InjectionFuture<DolphinDriver> dolphinDriver,
                               @Parameter(Parameters.EvaluatorSize.class) final int evalSize,
-                              @Parameter(Parameters.NumEvaluatorCores.class) final int evalNumCores) {
+                              @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores) {
     this.elasticMemory = elasticMemory;
     this.driverSync = driverSync;
     this.dolphinDriver = dolphinDriver;
     this.evalSize = evalSize;
-    this.evalNumCores = evalNumCores;
+    this.numEvalCores = numEvalCores;
   }
 
   /**
@@ -127,7 +127,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         contextActiveHandlers.add(new ContextActiveHandler());
         for (final String evaluatorToAdd : plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP)) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
-          elasticMemory.add(1, evalSize, evalNumCores, evaluatorAllocatedHandler, contextActiveHandlers);
+          elasticMemory.add(1, evalSize, numEvalCores, evaluatorAllocatedHandler, contextActiveHandlers);
         }
         executingPlan.awaitActiveContexts();
 
