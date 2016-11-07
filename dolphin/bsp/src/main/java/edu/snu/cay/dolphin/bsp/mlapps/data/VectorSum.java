@@ -114,7 +114,7 @@ public final class VectorSum implements Serializable {
   @Override
   public String toString() {
     final StringBuilder b = new StringBuilder("VectorSum(");
-    try (final Formatter formatter = new Formatter(b, Locale.US)) {
+    try (Formatter formatter = new Formatter(b, Locale.US)) {
       formatter.format("Count %d, ", getCount());
 
       if (getSum() == null || getSum().size() == 0) {

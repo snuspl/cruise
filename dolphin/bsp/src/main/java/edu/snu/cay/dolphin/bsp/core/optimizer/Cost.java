@@ -41,7 +41,7 @@ final class Cost {
     private final double cmpCost;
     private final DataInfo dataInfo;
 
-    public ComputeTaskCost(final String id, final double cmpCost, final DataInfo datainfo) {
+    ComputeTaskCost(final String id, final double cmpCost, final DataInfo datainfo) {
       this.id = id;
       this.cmpCost = cmpCost;
       this.dataInfo = datainfo;

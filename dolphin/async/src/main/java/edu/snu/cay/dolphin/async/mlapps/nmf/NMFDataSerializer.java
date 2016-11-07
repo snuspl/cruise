@@ -49,8 +49,8 @@ final class NMFDataSerializer implements Serializer {
     public byte[] encode(final NMFData nmfData) {
       final int numBytes =
           denseVectorCodec.getNumBytes(nmfData.getVector()) + getNumBytes(nmfData.getColumns()) + Integer.BYTES;
-      try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
-           final DataOutputStream daos = new DataOutputStream(baos)) {
+      try (ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
+           DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(nmfData, daos);
         return baos.toByteArray();
       } catch (final IOException e) {
@@ -60,7 +60,7 @@ final class NMFDataSerializer implements Serializer {
 
     @Override
     public NMFData decode(final byte[] bytes) {
-      try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+      try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
         return decodeFromStream(dis);
       } catch (final IOException e) {
         throw new RuntimeException(e.getCause());

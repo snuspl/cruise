@@ -51,7 +51,7 @@ public final class ClusterSummary {
   @Override
   public String toString() {
     final StringBuilder b = new StringBuilder("Cluster Summary:\n");
-    try (final Formatter formatter = new Formatter(b, Locale.US)) {
+    try (Formatter formatter = new Formatter(b, Locale.US)) {
       formatter.format("Prior probability: %f\n, ", prior);
       formatter.format("Centroid: ");
       for (int i = 0; i < centroid.size(); ++i) {

@@ -117,7 +117,7 @@ public final class ServerSideMsgHandler<K, P, V> implements EventHandler<Message
   }
 
   private void onPullMsg(final PullMsg pullMsg, @Nullable final TraceInfo traceInfo) {
-    try (final TraceScope onPullMsgScope = Trace.startSpan(
+    try (TraceScope onPullMsgScope = Trace.startSpan(
         String.format("on_pull_msg. server_id: %s", endpointId), traceInfo)) {
       final K key = keyCodec.decode(pullMsg.getKey().array());
       final int keyHash = hash(pullMsg.getKey().array());

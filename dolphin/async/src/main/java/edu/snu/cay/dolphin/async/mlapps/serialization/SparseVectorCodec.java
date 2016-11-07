@@ -39,8 +39,8 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
 
   @Override
   public byte[] encode(final Vector vector) {
-    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(vector));
-         final DataOutputStream dos = new DataOutputStream(baos)) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(vector));
+         DataOutputStream dos = new DataOutputStream(baos)) {
       encodeToStream(vector, dos);
       return baos.toByteArray();
     } catch (final IOException e) {
@@ -68,7 +68,7 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
 
   @Override
   public Vector decode(final byte[] bytes) {
-    try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+    try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
       return decodeFromStream(dis);
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());

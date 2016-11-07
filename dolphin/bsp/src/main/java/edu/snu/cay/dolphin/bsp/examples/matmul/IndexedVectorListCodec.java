@@ -39,7 +39,7 @@ public final class IndexedVectorListCodec implements Codec<List<IndexedVector>> 
 
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE + totalSizeOfIndexedVector);
 
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(list.size());
       for (final IndexedVector indexedVector : list) {
         daos.writeInt(indexedVector.getIndex());
@@ -60,7 +60,7 @@ public final class IndexedVectorListCodec implements Codec<List<IndexedVector>> 
   @Override
   public List<IndexedVector> decode(final byte[] bytes) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       final int size = dais.readInt();
       final List<IndexedVector> resultList = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {

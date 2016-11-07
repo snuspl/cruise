@@ -34,8 +34,8 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
 
   @Override
   public byte[] encode(final int[] array) {
-    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(array));
-         final DataOutputStream dos = new DataOutputStream(baos)) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(array));
+         DataOutputStream dos = new DataOutputStream(baos)) {
       encodeToStream(array, dos);
       return baos.toByteArray();
     } catch (final IOException e) {
@@ -68,7 +68,7 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
 
   @Override
   public int[] decode(final byte[] bytes) {
-    try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+    try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
       return decodeFromStream(dis);
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());

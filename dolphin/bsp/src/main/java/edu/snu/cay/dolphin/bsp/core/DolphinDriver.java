@@ -685,7 +685,7 @@ public final class DolphinDriver {
     if (isCtrlTaskContextId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
       final String ctrlTaskId = getCtrlTaskId(stageSequence);
-      try (final TraceScope controllerTaskTraceScope = Trace.startSpan(ctrlTaskId, jobTraceInfo)) {
+      try (TraceScope controllerTaskTraceScope = Trace.startSpan(ctrlTaskId, jobTraceInfo)) {
 
         dolphinTaskConfBuilder
             .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass());
@@ -705,7 +705,7 @@ public final class DolphinDriver {
       LOG.log(Level.INFO, "Submit ComputeTask");
       final int taskId = taskIdCounter.getAndIncrement();
       final String cmpTaskId = getCmpTaskId(taskId);
-      try (final TraceScope computeTaskTraceScope = Trace.startSpan(cmpTaskId, jobTraceInfo)) {
+      try (TraceScope computeTaskTraceScope = Trace.startSpan(cmpTaskId, jobTraceInfo)) {
 
         dolphinTaskConfBuilder
             .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass());

@@ -35,7 +35,7 @@ public interface PushShuffleSender<K, V> extends ShuffleSender<K, V> {
    * @param tuple a tuple
    * @return the selected receiver id list
    */
-  List<String> sendTuple(final Tuple<K, V> tuple);
+  List<String> sendTuple(Tuple<K, V> tuple);
 
   /**
    * Send a tupleList to selected receivers using ShuffleStrategy of the shuffle.
@@ -48,7 +48,7 @@ public interface PushShuffleSender<K, V> extends ShuffleSender<K, V> {
    * @param tupleList a tuple list
    * @return the selected receiver id list
    */
-  List<String> sendTuple(final List<Tuple<K, V>> tupleList);
+  List<String> sendTuple(List<Tuple<K, V>> tupleList);
 
   /**
    * Send a tuple to the specific receiver.
@@ -58,7 +58,7 @@ public interface PushShuffleSender<K, V> extends ShuffleSender<K, V> {
    * @param receiverId a receiver id
    * @param tuple a tuple
    */
-  void sendTupleTo(final String receiverId, final Tuple<K, V> tuple);
+  void sendTupleTo(String receiverId, Tuple<K, V> tuple);
 
   /**
    * Send a tuple list to the specific receiver. Note that this method does not use ShuffleStrategy to select
@@ -69,7 +69,7 @@ public interface PushShuffleSender<K, V> extends ShuffleSender<K, V> {
    * @param receiverId a receiver id
    * @param tupleList a tuple list
    */
-  void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList);
+  void sendTupleTo(String receiverId, List<Tuple<K, V>> tupleList);
 
   /**
    * Complete one iteration of pushing data. The caller is blocking until a SENDER_CAN_SEND message

@@ -156,7 +156,7 @@ public final class OperationRouter<K> {
    */
   private void requestRoutingTable() {
     LOG.log(Level.FINE, "Sends a request for the routing table");
-    try (final TraceScope traceScope = Trace.startSpan("ROUTING_TABLE_REQUEST")) {
+    try (TraceScope traceScope = Trace.startSpan("ROUTING_TABLE_REQUEST")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       msgSender.get().sendRoutingTableInitReqMsg(traceInfo);
     }

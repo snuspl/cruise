@@ -29,7 +29,7 @@ public interface Loss {
    * @param output value of dependent variable
    * @return loss computed by predict and output
    */
-  double loss(final double predict, final double output);
+  double loss(double predict, double output);
 
   /**
    * @param feature values of independent variables
@@ -37,5 +37,5 @@ public interface Loss {
    * @param output value of dependent variable
    * @return gradient of the loss function at the given feature
    */
-  Vector gradient(final Vector feature, final double predict, final double output);
+  Vector gradient(Vector feature, double predict, double output);
 }

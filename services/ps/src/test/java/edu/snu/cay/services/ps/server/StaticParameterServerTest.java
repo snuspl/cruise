@@ -151,10 +151,10 @@ public final class StaticParameterServerTest {
 
     final AtomicMarkableReference<Integer> replayValue = new AtomicMarkableReference<>(null, false);
     doAnswer(invocation -> {
-        final int value = invocation.getArgumentAt(2, Integer.class);
-        replayValue.set(value, true);
-        return null;
-      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
+      final int value = invocation.getArgumentAt(2, Integer.class);
+      replayValue.set(value, true);
+      return null;
+    }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
       final int key = threadIndex;
@@ -184,10 +184,10 @@ public final class StaticParameterServerTest {
     final int numPulls = 5;
 
     doAnswer(invocation -> {
-        // sleep to guarantee the queue not empty when closing server
-        Thread.sleep(1000);
-        return null;
-      }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
+      // sleep to guarantee the queue not empty when closing server
+      Thread.sleep(1000);
+      return null;
+    }).when(mockSender).sendPullReplyMsg(anyString(), anyInt(), anyInt(), anyInt(), anyLong(), any(TraceInfo.class));
 
     for (int i = 0; i < numPulls; i++) {
       final int key = i;

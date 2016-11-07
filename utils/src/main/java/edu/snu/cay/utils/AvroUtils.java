@@ -40,7 +40,7 @@ public final class AvroUtils {
   public static <T> byte[] toBytes(final T avroObject, final Class<T> theClass) {
     final DatumWriter<T> datumWriter = new SpecificDatumWriter<>(theClass);
     final byte[] theBytes;
-    try (final ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       final BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
       datumWriter.write(avroObject, encoder);
       encoder.flush();

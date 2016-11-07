@@ -221,12 +221,12 @@ public final class AsyncParameterWorkerTest {
         (AsyncParameterWorker<Integer, Integer, Integer>) parameterWorker;
 
     pool.submit(() -> {
-        for (int pull = 0; pull < numPulls; ++pull) {
-          asyncParameterWorker.pull(0);
-          asyncParameterWorker.invalidateAll();
-        }
-        countDownLatch.countDown();
-      });
+      for (int pull = 0; pull < numPulls; ++pull) {
+        asyncParameterWorker.pull(0);
+        asyncParameterWorker.invalidateAll();
+      }
+      countDownLatch.countDown();
+    });
     pool.shutdown();
 
     final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
@@ -257,10 +257,9 @@ public final class AsyncParameterWorkerTest {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
 
     pool.execute(() -> {
-        parameterWorker.pull(key);
-        countDownLatch.countDown();
-      }
-    );
+      parameterWorker.pull(key);
+      countDownLatch.countDown();
+    });
     pool.shutdown();
     Thread.sleep(gracePeriodMs);
     parameterWorker.push(key, pushValue);

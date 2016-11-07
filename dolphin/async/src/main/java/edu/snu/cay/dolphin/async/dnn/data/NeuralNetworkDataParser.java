@@ -111,8 +111,8 @@ public final class NeuralNetworkDataParser {
     private final List<float[]> dataArray;
     private final List<Integer> labelList;
 
-    public BatchGenerator(final List<NeuralNetworkData> dataList,
-                          final boolean isValidation) {
+    BatchGenerator(final List<NeuralNetworkData> dataList,
+                   final boolean isValidation) {
       this.dataList = dataList;
       this.isValidation = isValidation;
       this.dataArray = new ArrayList<>(batchSize);

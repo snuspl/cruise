@@ -53,7 +53,7 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
             + Double.SIZE * (isDiagonalCovariance ?
             dimension : dimension * dimension) * numClusters); // for covariance matrices
 
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(numClusters);
       daos.writeInt(dimension);
 
@@ -86,7 +86,7 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final List<ClusterSummary> resultList = new ArrayList<>();
 
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       final int numClusters = dais.readInt();
       final int dimension = dais.readInt();
 

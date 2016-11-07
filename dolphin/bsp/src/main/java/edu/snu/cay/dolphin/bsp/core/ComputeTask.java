@@ -163,10 +163,10 @@ public final class ComputeTask implements Task {
     final Future<?> result = executor.submit(new Runnable() {
       @Override
       public void run() {
-        try (final MetricsCollector collector = metricsCollector) {
+        try (MetricsCollector collector = metricsCollector) {
           collector.registerTrackers(metricTrackerSet);
           while (!isTerminated()) {
-            try (final TraceScope traceScope = Trace.startSpan("iter-" + iteration, taskTraceInfo)) {
+            try (TraceScope traceScope = Trace.startSpan("iter-" + iteration, taskTraceInfo)) {
               userTaskTrace.setParentTraceInfo(TraceInfo.fromSpan(traceScope.getSpan()));
               collector.start();
               receiveData();

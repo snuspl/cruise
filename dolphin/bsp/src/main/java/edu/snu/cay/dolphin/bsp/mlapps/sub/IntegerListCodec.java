@@ -38,8 +38,8 @@ public final class IntegerListCodec implements Codec<List<Integer>>, StreamingCo
 
   @Override
   public byte[] encode(final List<Integer> list) {
-    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(list));
-         final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(list));
+         DataOutputStream daos = new DataOutputStream(baos)) {
       encodeToStream(list, daos);
       return baos.toByteArray();
     } catch (final IOException e) {
@@ -61,7 +61,7 @@ public final class IntegerListCodec implements Codec<List<Integer>>, StreamingCo
 
   @Override
   public List<Integer> decode(final byte[] bytes) {
-    try (final DataInputStream dais = new DataInputStream(new ByteArrayInputStream(bytes))) {
+    try (DataInputStream dais = new DataInputStream(new ByteArrayInputStream(bytes))) {
       return decodeFromStream(dais);
     } catch (final IOException e) {
       throw new RuntimeException(e);

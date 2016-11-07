@@ -46,7 +46,7 @@ public interface RangeKeyOperation<K, V> extends DataOperation {
    * So it should be called before {@link #waitRemoteOps(long)}.
    * @param numSubOps the total number of sub operations
    */
-  void setNumSubOps(final int numSubOps);
+  void setNumSubOps(int numSubOps);
 
   /**
    * Commits the result of a sub operation and returns the number of remaining sub operations.

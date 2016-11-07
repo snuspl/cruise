@@ -81,15 +81,15 @@ public final class ClockManagerTest {
     this.codec = injector.getInstance(ClockMsgCodec.class);
 
     doAnswer(invocation -> {
-        // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
-        // because mockAggregationSlave couldn't send its source id(no network connection).
-        final String workerId = invocation.getArgumentAt(0, String.class);
-        final byte[] data = invocation.getArgumentAt(1, byte[].class);
-        final AggregationMessage aggregationMessage = getTestAggregationMessage(workerId, data);
+      // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
+      // because mockAggregationSlave couldn't send its source id(no network connection).
+      final String workerId = invocation.getArgumentAt(0, String.class);
+      final byte[] data = invocation.getArgumentAt(1, byte[].class);
+      final AggregationMessage aggregationMessage = getTestAggregationMessage(workerId, data);
 
-        clockMessageHandler.onNext(aggregationMessage);
-        return null;
-      }).when(mockAggregationSlave).send(anyString(), anyObject());
+      clockMessageHandler.onNext(aggregationMessage);
+      return null;
+    }).when(mockAggregationSlave).send(anyString(), anyObject());
   }
 
   /**
@@ -199,15 +199,15 @@ public final class ClockManagerTest {
     final AtomicInteger numberOfBroadcastMessages = new AtomicInteger(0);
 
     doAnswer(invocation -> {
-        final byte[] data = invocation.getArgumentAt(2, byte[].class);
-        final AvroClockMsg sendMsg = codec.decode(data);
+      final byte[] data = invocation.getArgumentAt(2, byte[].class);
+      final AvroClockMsg sendMsg = codec.decode(data);
 
-        if (sendMsg.getType() == ClockMsgType.BroadcastMinClockMsg) {
-          // check broadcast count is same as number of minimum clock updates
-          numberOfBroadcastMessages.incrementAndGet();
-        }
-        return null;
-      }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
+      if (sendMsg.getType() == ClockMsgType.BroadcastMinClockMsg) {
+        // check broadcast count is same as number of minimum clock updates
+        numberOfBroadcastMessages.incrementAndGet();
+      }
+      return null;
+    }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
 
     // add workers first to set same initial clock to all workers
     for (int workerIdx = 0; workerIdx < NUM_WORKERS; workerIdx++) {

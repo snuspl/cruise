@@ -23,7 +23,7 @@ final class EncodedKey<K> {
   private final int hash;
   private final byte[] encoded;
 
-  public EncodedKey(final K key, final Codec<K> keyCodec) {
+  EncodedKey(final K key, final Codec<K> keyCodec) {
     this.key = key;
     this.encoded = keyCodec.encode(key);
     this.hash = computeHash();

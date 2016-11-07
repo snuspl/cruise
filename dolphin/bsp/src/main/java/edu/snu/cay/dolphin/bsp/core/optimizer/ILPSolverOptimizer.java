@@ -448,10 +448,10 @@ public final class ILPSolverOptimizer implements Optimizer {
 
     private final Order order;
 
-    public DataBlocksToMoveComparator() {
+    DataBlocksToMoveComparator() {
       this.order = Order.ASCENDING;
     }
-    public DataBlocksToMoveComparator(final Order order) {
+    DataBlocksToMoveComparator(final Order order) {
       this.order = order;
     }
 

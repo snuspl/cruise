@@ -38,5 +38,5 @@ public interface WorkerHandler<K, P, V> {
    * @param traceInfo Information for Trace
    */
   void processPullReply(K key, V value, int requestId, long elapsedTimeInServer, int numReceivedBytes,
-                        @Nullable final TraceInfo traceInfo);
+                        @Nullable TraceInfo traceInfo);
 }

@@ -86,7 +86,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendRemoteOpReqMsgScope = Trace.startSpan("send_remote_op_req_msg", parentTraceInfo)) {
+    try (TraceScope sendRemoteOpReqMsgScope = Trace.startSpan("send_remote_op_req_msg", parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
           operationType});
@@ -116,7 +116,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendRemoteOpReqMsgScope = Trace.startSpan("send_remote_op_req_msg", parentTraceInfo)) {
+    try (TraceScope sendRemoteOpReqMsgScope = Trace.startSpan("send_remote_op_req_msg", parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
           operationType});
@@ -171,7 +171,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendRemoteOpResultMsgScope = Trace.startSpan("send_remote_op_result_msg", parentTraceInfo)) {
+    try (TraceScope sendRemoteOpResultMsgScope = Trace.startSpan("send_remote_op_result_msg", parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
 
@@ -198,7 +198,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendRemoteOpResultMsgScope = Trace.startSpan("send_remote_op_result_msg", parentTraceInfo)) {
+    try (TraceScope sendRemoteOpResultMsgScope = Trace.startSpan("send_remote_op_result_msg", parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
 
@@ -245,7 +245,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendRoutingInitReqMsgScope =
+    try (TraceScope sendRoutingInitReqMsgScope =
              Trace.startSpan("send_routing_table_init_req_msg", parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
@@ -283,7 +283,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendRoutingTableInitMsgScope =
+    try (TraceScope sendRoutingTableInitMsgScope =
              Trace.startSpan("send_routing_table_init_msg", parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
@@ -322,7 +322,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendRoutingTableUpdateMsgScope =
+    try (TraceScope sendRoutingTableUpdateMsgScope =
              Trace.startSpan(String.format("send_routing_table_update_msg. destId: %s", destId), parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
@@ -365,7 +365,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     Span detached = null;
 
     // sending MoveInit msg is the starting point of the migration protocol
-    try (final TraceScope sendMoveInitMsgScope = Trace.startSpan("send_move_init_msg", parentTraceInfo)) {
+    try (TraceScope sendMoveInitMsgScope = Trace.startSpan("send_move_init_msg", parentTraceInfo)) {
 
       detached = sendMoveInitMsgScope.detach();
 
@@ -416,7 +416,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     Span detached = null;
 
     // sending data msg is the second step of the migration protocol
-    try (final TraceScope sendDataMsgScope = Trace.startSpan(String.format(
+    try (TraceScope sendDataMsgScope = Trace.startSpan(String.format(
         "send_data_msg. op_id: %s, dest: %s, block_id: %d, num_kv_pairs: %d, (k_bytes, v_bytes): (%d, %d)",
         operationId, destId, blockId, keyValuePairs.size(), totalKeyBytes, totalValueBytes),
         parentTraceInfo)) {
@@ -463,7 +463,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     Span detached = null;
 
     // sending data msg is the second step of the migration protocol
-    try (final TraceScope sendDataAckMsgScope = Trace.startSpan(String.format(
+    try (TraceScope sendDataAckMsgScope = Trace.startSpan(String.format(
         "send_data_ack_msg. op_id: %s, dest: %s, block_id: %d", operationId, destId, blockId),
         parentTraceInfo)) {
 
@@ -511,7 +511,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // sending ownership msg to driver is the third step and to src eval is the fourth step of the migration protocol
     final String destId = destIdOptional.isPresent() ? destIdOptional.get() : driverId;
 
-    try (final TraceScope sendOwnershipMsgScope = Trace.startSpan(
+    try (TraceScope sendOwnershipMsgScope = Trace.startSpan(
         String.format("send_ownership_msg. blockId: %d", blockId), parentTraceInfo)) {
 
       detached = sendOwnershipMsgScope.detach();
@@ -553,7 +553,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // sending ownership msg to driver is the third step and to src eval is the fourth step of the migration protocol
     final String destId = destIdOptional.isPresent() ? destIdOptional.get() : driverId;
 
-    try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan(
+    try (TraceScope sendOwnershipAckMsgScope = Trace.startSpan(
         String.format("send_ownership_ack_msg. blockId: %d", blockId), parentTraceInfo)) {
 
       detached = sendOwnershipAckMsgScope.detach();
@@ -591,7 +591,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendBlockMovedMsgScope = Trace.startSpan(
+    try (TraceScope sendBlockMovedMsgScope = Trace.startSpan(
         String.format("send_block_moved_msg. blockId : %d", blockId), parentTraceInfo)) {
 
       detached = sendBlockMovedMsgScope.detach();
@@ -625,7 +625,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendFailureMsgScope = Trace.startSpan("send_failure_msg", parentTraceInfo)) {
+    try (TraceScope sendFailureMsgScope = Trace.startSpan("send_failure_msg", parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",
           new Object[]{operationId, reason});

@@ -77,21 +77,21 @@ public class TrainingDataProviderTest {
     final BlockResolver<Long> mockBlockResolver = mock(BlockResolver.class);
     injector.bindVolatileInstance(BlockResolver.class, mockBlockResolver);
     doAnswer(invocation -> {
-        throw new NotImplementedException();
-      }).when(mockBlockResolver).resolveBlock(anyLong());
+      throw new NotImplementedException();
+    }).when(mockBlockResolver).resolveBlock(anyLong());
 
     // the redefinition of resolveBlocksForOrderedKeys below works only when minKey == maxKey
     // in other words, it works only when searching for 1 key, not a range of keys.
     doAnswer(invocation -> {
-        final Long minKey = (Long) invocation.getArguments()[0];
-        final Long maxKey = (Long) invocation.getArguments()[1];
-        final Map<Integer, Pair<Long, Long>> blockToKeyRange = new HashMap<>();
+      final Long minKey = (Long) invocation.getArguments()[0];
+      final Long maxKey = (Long) invocation.getArguments()[1];
+      final Map<Integer, Pair<Long, Long>> blockToKeyRange = new HashMap<>();
 
-        assertEquals(minKey, maxKey);
-        blockToKeyRange.put((minKey.intValue() / BLOCK_SIZE), new Pair<>(minKey, maxKey));
+      assertEquals(minKey, maxKey);
+      blockToKeyRange.put((minKey.intValue() / BLOCK_SIZE), new Pair<>(minKey, maxKey));
 
-        return blockToKeyRange;
-      }).when(mockBlockResolver).resolveBlocksForOrderedKeys(anyLong(), anyLong());
+      return blockToKeyRange;
+    }).when(mockBlockResolver).resolveBlocksForOrderedKeys(anyLong(), anyLong());
 
     memoryStore = injector.getInstance(MemoryStore.class);
     operationRouter = injector.getInstance(OperationRouter.class);
