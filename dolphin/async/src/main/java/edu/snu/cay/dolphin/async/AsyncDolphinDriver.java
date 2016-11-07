@@ -308,7 +308,7 @@ public final class AsyncDolphinDriver {
                              @Parameter(SerializedEMServerClientConfiguration.class)
                                  final String serializedEMServerClientConf,
                              @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
-                             @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores,
+                             @Parameter(Parameters.NumEvaluatorCores.class) final int evalNumCores,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(Parameters.Iterations.class) final int iterations,

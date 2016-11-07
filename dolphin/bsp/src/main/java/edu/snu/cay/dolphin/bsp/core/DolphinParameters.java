@@ -49,7 +49,7 @@ public final class DolphinParameters {
                             final UserParameters userParameters,
                             @Parameter(Splits.class) final int desiredSplits,
                             @Parameter(EvaluatorSize.class) final int evalSize,
-                            @Parameter(EvaluatorCores.class) final int evalNumCores,
+                            @Parameter(NumEvaluatorCores.class) final int evalNumCores,
                             @Parameter(InputDir.class) final String inputDir,
                             @Parameter(OutputDir.class) final String outputDir,
                             @Parameter(OnLocal.class) final boolean onLocal,
@@ -78,7 +78,7 @@ public final class DolphinParameters {
     final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(Splits.class, String.valueOf(desiredSplits))
         .bindNamedParameter(EvaluatorSize.class, String.valueOf(evalSize))
-        .bindNamedParameter(EvaluatorCores.class, String.valueOf(evalNumCores))
+        .bindNamedParameter(NumEvaluatorCores.class, String.valueOf(evalNumCores))
         .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
         .bindNamedParameter(StartTrace.class, String.valueOf(startTrace))
         .bindImplementation(UserJobInfo.class, userJobInfo.getClass())

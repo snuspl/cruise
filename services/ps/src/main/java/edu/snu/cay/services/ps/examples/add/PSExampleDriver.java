@@ -97,7 +97,7 @@ public final class PSExampleDriver {
   private PSExampleDriver(final PSDriver psDriver,
                           final EvaluatorManager evaluatorManager,
                           @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
-                          @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores,
+                          @Parameter(Parameters.NumEvaluatorCores.class) final int evalNumCores,
                           @Parameter(NumServers.class) final int numServers,
                           @Parameter(NumWorkers.class) final int numWorkers,
                           @Parameter(NumUpdates.class) final int numUpdates,

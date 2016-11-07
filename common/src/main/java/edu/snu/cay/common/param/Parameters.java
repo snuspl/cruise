@@ -35,9 +35,9 @@ public final class Parameters {
   }
 
   @NamedParameter(doc = "The number of CPU cores for each evaluator",
-                  short_name = "eval_cores",
+                  short_name = "num_eval_cores",
                   default_value = "1")
-  public final class EvaluatorCores implements Name<Integer> {
+  public final class NumEvaluatorCores implements Name<Integer> {
   }
 
   @NamedParameter(doc = "File or directory to read input data from",

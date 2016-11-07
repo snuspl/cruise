@@ -245,7 +245,7 @@ public final class DolphinDriver {
   @Inject
   private DolphinDriver(final EvaluatorManager evaluatorManager,
                         @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
-                        @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores,
+                        @Parameter(Parameters.NumEvaluatorCores.class) final int evalNumCores,
                         final GroupCommDriver groupCommDriver,
                         final GroupCommParameters groupCommParameters,
                         final ShuffleDriver shuffleDriver,

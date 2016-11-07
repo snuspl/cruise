@@ -41,7 +41,7 @@ import java.util.logging.Logger;
 /**
  * An implementation for {@link EvaluatorManager}.
  * Only requests for homogeneous evaluators,
- * with {@link Parameters.EvaluatorCores} cores and {@link Parameters.EvaluatorSize} MBs of memory.
+ * with {@link Parameters.NumEvaluatorCores} cores and {@link Parameters.EvaluatorSize} MBs of memory.
  *
  * This class is thread-safe under the following assumptions:
  * 1) methods of this class are invoked in the following order:
@@ -79,7 +79,7 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
   @Inject
   private HomogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor,
                                  @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
-                                 @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores) {
+                                 @Parameter(Parameters.NumEvaluatorCores.class) final int evalNumCores) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.evalMemSizeInMB = evalMemSizeInMB;
     this.evalNumCores = evalNumCores;

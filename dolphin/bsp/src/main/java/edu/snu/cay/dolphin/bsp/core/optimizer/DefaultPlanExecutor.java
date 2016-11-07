@@ -84,7 +84,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
                               final DriverSync driverSync,
                               final InjectionFuture<DolphinDriver> dolphinDriver,
                               @Parameter(Parameters.EvaluatorSize.class) final int evalSize,
-                              @Parameter(Parameters.EvaluatorCores.class) final int evalNumCores) {
+                              @Parameter(Parameters.NumEvaluatorCores.class) final int evalNumCores) {
     this.elasticMemory = elasticMemory;
     this.driverSync = driverSync;
     this.dolphinDriver = dolphinDriver;

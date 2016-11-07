@@ -251,7 +251,7 @@ public final class AsyncDolphinLauncher {
     final List<Class<? extends Name<?>>> basicParameterClassList = new LinkedList<>();
     basicParameterClassList.add(DriverMemory.class);
     basicParameterClassList.add(EvaluatorSize.class);
-    basicParameterClassList.add(EvaluatorCores.class);
+    basicParameterClassList.add(NumEvaluatorCores.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
     basicParameterClassList.add(Splits.class);
