@@ -55,7 +55,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
         + Double.SIZE * dimension * mapSize// for point sum
         + Double.SIZE * (diagonalCovariance ? dimension : dimension * dimension) * mapSize); // for outer product sum
 
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(map.size());
       daos.writeInt(dimension);
       for (final Integer id : map.keySet()) {
@@ -89,7 +89,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final Map<Integer, ClusterStats> resultMap = new HashMap<>();
 
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       final int mapSize = dais.readInt();
       final int dimension = dais.readInt();
       for (int i = 0; i < mapSize; i++) {

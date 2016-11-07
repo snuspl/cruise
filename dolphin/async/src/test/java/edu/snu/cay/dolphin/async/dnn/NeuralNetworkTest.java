@@ -234,13 +234,13 @@ public final class NeuralNetworkTest {
     this.neuralNetwork = injector.getInstance(NeuralNetwork.class);
 
     doAnswer(invocation -> {
-        final LayerParameter layerParameterOne = new LayerParameter(weightOne, biasOne);
-        final LayerParameter layerParameterTwo = new LayerParameter(weightTwo, biasTwo);
-        final List<LayerParameter> result = new ArrayList<>();
-        result.add(layerParameterOne);
-        result.add(layerParameterTwo);
-        return result;
-      }).when(mockParameterWorker).pull(anyObject());
+      final LayerParameter layerParameterOne = new LayerParameter(weightOne, biasOne);
+      final LayerParameter layerParameterTwo = new LayerParameter(weightTwo, biasTwo);
+      final List<LayerParameter> result = new ArrayList<>();
+      result.add(layerParameterOne);
+      result.add(layerParameterTwo);
+      return result;
+    }).when(mockParameterWorker).pull(anyObject());
 
     neuralNetwork.updateParameters();
   }

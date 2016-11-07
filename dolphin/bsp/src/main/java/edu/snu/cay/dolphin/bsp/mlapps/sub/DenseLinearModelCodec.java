@@ -33,8 +33,8 @@ public final class DenseLinearModelCodec implements Codec<LinearModel>, Streamin
 
   @Override
   public byte[] encode(final LinearModel model) {
-    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(model));
-         final DataOutputStream dos = new DataOutputStream(baos)) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(model));
+         DataOutputStream dos = new DataOutputStream(baos)) {
       encodeToStream(model, dos);
       return baos.toByteArray();
     } catch (final IOException e) {
@@ -49,7 +49,7 @@ public final class DenseLinearModelCodec implements Codec<LinearModel>, Streamin
 
   @Override
   public LinearModel decode(final byte[] bytes) {
-    try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+    try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
       return decodeFromStream(dis);
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());

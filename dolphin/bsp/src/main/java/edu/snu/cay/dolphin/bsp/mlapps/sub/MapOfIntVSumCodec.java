@@ -51,7 +51,7 @@ public final class MapOfIntVSumCodec implements Codec<Map<Integer, VectorSum>> {
         new ByteArrayOutputStream(Integer.SIZE
             + Integer.SIZE * 3 * map.size()
             + Double.SIZE * vectorSizeSum);
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(map.size());
       for (final Integer integer : map.keySet()) {
         final VectorSum vectorSum = map.get(integer);
@@ -74,7 +74,7 @@ public final class MapOfIntVSumCodec implements Codec<Map<Integer, VectorSum>> {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final Map<Integer, VectorSum> resultMap = new HashMap<>();
 
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       final int mapSize = dais.readInt();
       for (int i = 0; i < mapSize; i++) {
         final int mapInt = dais.readInt();

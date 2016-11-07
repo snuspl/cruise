@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.core.optimizer;
 
-import edu.snu.cay.common.param.Parameters.EvaluatorSize;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.bsp.core.sync.DriverSync;
 import edu.snu.cay.dolphin.bsp.core.DolphinDriver;
 import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
@@ -73,6 +73,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   private final DriverSync driverSync;
   private final InjectionFuture<DolphinDriver> dolphinDriver;
   private final int evalSize;
+  private final int numEvalCores;
 
   private final ExecutorService mainExecutor = Executors.newSingleThreadExecutor();
 
@@ -82,11 +83,13 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   private DefaultPlanExecutor(final ElasticMemory elasticMemory,
                               final DriverSync driverSync,
                               final InjectionFuture<DolphinDriver> dolphinDriver,
-                              @Parameter(EvaluatorSize.class) final int evalSize) {
+                              @Parameter(Parameters.EvaluatorSize.class) final int evalSize,
+                              @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores) {
     this.elasticMemory = elasticMemory;
     this.driverSync = driverSync;
     this.dolphinDriver = dolphinDriver;
     this.evalSize = evalSize;
+    this.numEvalCores = numEvalCores;
   }
 
   /**
@@ -124,7 +127,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         contextActiveHandlers.add(new ContextActiveHandler());
         for (final String evaluatorToAdd : plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP)) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
-          elasticMemory.add(1, evalSize, 1, evaluatorAllocatedHandler, contextActiveHandlers);
+          elasticMemory.add(1, evalSize, numEvalCores, evaluatorAllocatedHandler, contextActiveHandlers);
         }
         executingPlan.awaitActiveContexts();
 

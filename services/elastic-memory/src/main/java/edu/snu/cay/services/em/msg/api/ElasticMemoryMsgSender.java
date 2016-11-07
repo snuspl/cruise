@@ -38,13 +38,13 @@ public interface ElasticMemoryMsgSender {
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRemoteOpReqMsg(final String origId,
-                          final String destId,
-                          final DataOpType operationType,
-                          final List<KeyRange> dataKeyRanges,
-                          final List<KeyValuePair> dataKVPairList,
-                          final String operationId,
-                          @Nullable final TraceInfo parentTraceInfo);
+  void sendRemoteOpReqMsg(String origId,
+                          String destId,
+                          DataOpType operationType,
+                          List<KeyRange> dataKeyRanges,
+                          List<KeyValuePair> dataKVPairList,
+                          String operationId,
+                          @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a RemoteOpReqMsg that requests the Evaluator specified with {@code destId} to
@@ -54,53 +54,53 @@ public interface ElasticMemoryMsgSender {
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRemoteOpReqMsg(final String origId, final String destId, final DataOpType operationType,
-                          final DataKey dataKey, final DataValue dataValue, final String operationId,
-                          @Nullable final TraceInfo parentTraceInfo);
+  void sendRemoteOpReqMsg(String origId, String destId, DataOpType operationType,
+                          DataKey dataKey, DataValue dataValue, String operationId,
+                          @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a RemoteOpResultMsg that contains the result of the data operation specified with {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRemoteOpResultMsg(final String destId,
-                             final List<KeyValuePair> dataKVPairList,
-                             final List<KeyRange> failedRanges,
-                             final String operationId,
-                             @Nullable final TraceInfo parentTraceInfo);
+  void sendRemoteOpResultMsg(String destId,
+                             List<KeyValuePair> dataKVPairList,
+                             List<KeyRange> failedRanges,
+                             String operationId,
+                             @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a RemoteOpResultMsg that contains the result of the data operation specified with {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRemoteOpResultMsg(final String destId,
-                             final DataValue dataValue,
-                             final boolean isSuccess,
-                             final String operationId,
-                             @Nullable final TraceInfo parentTraceInfo);
+  void sendRemoteOpResultMsg(String destId,
+                             DataValue dataValue,
+                             boolean isSuccess,
+                             String operationId,
+                             @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a RoutingTableInitReqMsg that tells the driver to reply with the up-to-date global routing table.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRoutingTableInitReqMsg(@Nullable final TraceInfo parentTraceInfo);
+  void sendRoutingTableInitReqMsg(@Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a RoutingTableInitMsg that contains the up-to-date global routing table {@code blockLocations}.
    * It is always sent by Driver to the evaluator {@code destId} as a response for RoutingTableInitReqMsg.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRoutingTableInitMsg(final String destId,
-                               final List<Integer> blockLocations,
-                               @Nullable final TraceInfo parentTraceInfo);
+  void sendRoutingTableInitMsg(String destId,
+                               List<Integer> blockLocations,
+                               @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a RoutingTableUpdateMsg that contains recently updated block information by EM.move().
    * It is for Driver to tell evaluator {@code destId} that
    * {@code blocks} are moved from {@code oldEvalId} to {@code newEvalId}.
    */
-  void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
-                                 final String oldEvalId, final String newEvalId,
-                                 @Nullable final TraceInfo parentTraceInfo);
+  void sendRoutingTableUpdateMsg(String destId, List<Integer> blocks,
+                                 String oldEvalId, String newEvalId,
+                                 @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a MoveInitMsg to initiate moving data blocks to the source Evaluator.
@@ -111,68 +111,68 @@ public interface ElasticMemoryMsgSender {
    * @param operationId id associated with this operation
    * @param parentTraceInfo Trace information for HTrace
    */
-  void sendMoveInitMsg(final String destId,
-                       final String receiverId,
-                       final List<Integer> blocks,
-                       final String operationId,
-                       @Nullable final TraceInfo parentTraceInfo);
+  void sendMoveInitMsg(String destId,
+                       String receiverId,
+                       List<Integer> blocks,
+                       String operationId,
+                       @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a DataMsg containing list of {@code keyValuePairs} to the Evaluator named {@code destId}.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendDataMsg(final String destId,
-                   final List<KeyValuePair> keyValuePairs,
-                   final int blockId,
-                   final String operationId,
-                   @Nullable final TraceInfo parentTraceInfo);
+  void sendDataMsg(String destId,
+                   List<KeyValuePair> keyValuePairs,
+                   int blockId,
+                   String operationId,
+                   @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a response message for DataMsg to the Evaluator named {@code destId}.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendDataAckMsg(final String destId,
-                      final int blockId,
-                      final String operationId,
-                      @Nullable final TraceInfo parentTraceInfo);
+  void sendDataAckMsg(String destId,
+                      int blockId,
+                      String operationId,
+                      @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a request to update ownership for the given block.
    * @param destId Specifies the destination. The recipient is Driver when this field is empty.
    */
-  void sendOwnershipMsg(final Optional<String> destId,
-                        final String senderId,
-                        final String operationId,
-                        final int blockId,
-                        final int oldOwnerId,
-                        final int newOwnerId,
-                        @Nullable final TraceInfo parentTraceInfo);
+  void sendOwnershipMsg(Optional<String> destId,
+                        String senderId,
+                        String operationId,
+                        int blockId,
+                        int oldOwnerId,
+                        int newOwnerId,
+                        @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a response message for OwnershipMsg.
    * @param destId Specifies the destination. The recipient is Driver when this field is empty.
    */
-  void sendOwnershipAckMsg(final Optional<String> destId,
-                           final String operationId,
-                           final int blockId,
-                           final int oldOwnerId,
-                           final int newOwnerId,
-                           @Nullable final TraceInfo parentTraceInfo);
+  void sendOwnershipAckMsg(Optional<String> destId,
+                           String operationId,
+                           int blockId,
+                           int oldOwnerId,
+                           int newOwnerId,
+                           @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a BlockMoved message to driver for notifying that the moving a block is completed.
    */
-  void sendBlockMovedMsg(final String operationId,
-                         final int blockId,
-                         @Nullable final TraceInfo parentTraceInfo);
+  void sendBlockMovedMsg(String operationId,
+                         int blockId,
+                         @Nullable TraceInfo parentTraceInfo);
 
   /**
    * TODO #90: handle failures during move
    * Sends a FailureMsg to notify the failure to the Driver.
    */
-  void sendFailureMsg(final String operationId,
-                      final String reason,
-                      @Nullable final TraceInfo parentTraceInfo);
+  void sendFailureMsg(String operationId,
+                      String reason,
+                      @Nullable TraceInfo parentTraceInfo);
 }

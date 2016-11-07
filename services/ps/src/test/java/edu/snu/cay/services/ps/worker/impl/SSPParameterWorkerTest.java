@@ -147,11 +147,11 @@ public final class SSPParameterWorkerTest {
     // Stub to simulate the behavior of SSPWorkerClock.MessageHandler.
     // The message handler responds to the Aggregation message from Driver, which consists of the global minimum clock.
     doAnswer(invocation -> {
-        final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
-        final AggregationMessage aggregationMessage = getTestAggregationMessage(DRIVER_ID, initClockMsgData);
-        sspWorkerClockMessageHandler.onNext(aggregationMessage);
-        return null;
-      }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
+      final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
+      final AggregationMessage aggregationMessage = getTestAggregationMessage(DRIVER_ID, initClockMsgData);
+      sspWorkerClockMessageHandler.onNext(aggregationMessage);
+      return null;
+    }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
   }
 
   /**
@@ -419,12 +419,12 @@ public final class SSPParameterWorkerTest {
         (SSPParameterWorker<Integer, Integer, Integer>) parameterWorker;
 
     pool.submit(() -> {
-        for (int pull = 0; pull < numPulls; ++pull) {
-          sspParameterWorker.pull(0);
-          sspParameterWorker.invalidateAll();
-        }
-        countDownLatch.countDown();
-      });
+      for (int pull = 0; pull < numPulls; ++pull) {
+        sspParameterWorker.pull(0);
+        sspParameterWorker.invalidateAll();
+      }
+      countDownLatch.countDown();
+    });
     pool.shutdown();
 
     final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);

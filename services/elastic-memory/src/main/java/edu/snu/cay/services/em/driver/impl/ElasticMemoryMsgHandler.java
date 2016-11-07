@@ -105,7 +105,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
   }
 
   private void onRoutingTableInitReqMsg(final RoutingTableMsg msg) {
-    try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan("on_routing_table_init_req_msg",
+    try (TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan("on_routing_table_init_req_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final RoutingTableInitReqMsg routingTableInitReqMsg = msg.getRoutingTableInitReqMsg();
@@ -152,7 +152,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     final int oldOwnerId = ownershipMsg.getOldOwnerId();
     final int newOwnerId = ownershipMsg.getNewOwnerId();
 
-    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(
+    try (TraceScope onOwnershipMsgScope = Trace.startSpan(
         String.format("on_ownership_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
@@ -181,7 +181,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     final int oldOwnerId = ownershipAckMsg.getOldOwnerId();
     final int newOwnerId = ownershipAckMsg.getNewOwnerId();
 
-    try (final TraceScope onOwnershipAckMsgScope = Trace.startSpan(
+    try (TraceScope onOwnershipAckMsgScope = Trace.startSpan(
         String.format("on_ownership_ack_msg. blockId: %d", blockId),
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
@@ -222,7 +222,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope onBlockMovedMsgScope = Trace.startSpan(
+    try (TraceScope onBlockMovedMsgScope = Trace.startSpan(
         String.format("on_block_moved_msg. blockId: %d", blockId), HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       // In ownership-first migration, the order of OwnershipAckMsg and BlockMovedMsg is not fixed.
@@ -256,7 +256,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
   }
 
   private void onFailureMsg(final MigrationMsg msg) {
-    try (final TraceScope onFailureMsgScope =
+    try (TraceScope onFailureMsgScope =
              Trace.startSpan("on_failure_msg", HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final FailureMsg failureMsg = msg.getFailureMsg();
 

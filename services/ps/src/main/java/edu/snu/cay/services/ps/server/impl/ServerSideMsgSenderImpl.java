@@ -109,7 +109,7 @@ public final class ServerSideMsgSenderImpl<K, P, V> implements ServerSideMsgSend
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
     // for stitching the spans from other threads as its children
     Span detached = null;
-    try (final TraceScope sendPullReplyScope = Trace.startSpan(
+    try (TraceScope sendPullReplyScope = Trace.startSpan(
         String.format("send_pull_reply. key: %s, request_id: %d", key, requestId), traceInfo)) {
       final PullReplyMsg pullReplyMsg = PullReplyMsg.newBuilder()
           .setKey(ByteBuffer.wrap(keyCodec.encode(key)))
@@ -155,7 +155,7 @@ public final class ServerSideMsgSenderImpl<K, P, V> implements ServerSideMsgSend
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (final TraceScope sendPushMsgScope = Trace.startSpan(
+    try (TraceScope sendPushMsgScope = Trace.startSpan(
         String.format("redirect_pull_msg. key: %s, req_id: %d, server_id: %s", key, requestId, destId), traceInfo)) {
 
       detached = sendPushMsgScope.detach();

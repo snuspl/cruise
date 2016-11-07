@@ -20,14 +20,14 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Tests that {@link HomogeneousEvalManager} requests for evaluators and handles REEF events correctly.
+ * Tests that {@link HeterogeneousEvalManager} requests for evaluators and handles REEF events correctly.
  */
-public final class HomogeneousEvalManagerTest {
+public final class HeterogeneousEvalManagerTest {
   private final EvaluatorManagerTestHelper evaluatorManagerTestHelper = new EvaluatorManagerTestHelper();
 
   @Before
   public void setUp() throws InjectionException {
-    evaluatorManagerTestHelper.setUp(false);
+    evaluatorManagerTestHelper.setUp(true);
   }
 
   /**
@@ -55,5 +55,14 @@ public final class HomogeneousEvalManagerTest {
   @Test
   public void testMultiplePlanMultipleContext() {
     evaluatorManagerTestHelper.testMultiplePlanMultipleContext();
+  }
+
+  /**
+   * Tests multiple requests for heterogeneous evaluators.
+   * Checks that allocated evaluators's resource type is as requested.
+   */
+  @Test
+  public void testHeteroEvalRequest() {
+    evaluatorManagerTestHelper.testHeteroEvalRequest();
   }
 }

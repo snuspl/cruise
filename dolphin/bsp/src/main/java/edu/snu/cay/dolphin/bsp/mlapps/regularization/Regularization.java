@@ -29,7 +29,7 @@ public interface Regularization {
    * @param model model to perform computation on
    * @return value of regularization term for a certain model
    */
-  double regularize(final Model model);
+  double regularize(Model model);
 
   /**
    * calculate the gradient of the regularization term for a certain model,
@@ -38,5 +38,5 @@ public interface Regularization {
    * @param model model to perform computation on
    * @return value of the gradient of the regularization term for a certain model
    */
-  Vector gradient(final Model model);
+  Vector gradient(Model model);
 }

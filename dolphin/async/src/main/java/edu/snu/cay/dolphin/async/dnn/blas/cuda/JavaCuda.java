@@ -39,7 +39,7 @@ public class JavaCuda extends Pointer {
   private native void allocate();
 
   @Cast(value = "void*")
-  public static native Pointer cudaDeviceMalloc(@Cast(value = "size_t") final long size);
+  public static native Pointer cudaDeviceMalloc(@Cast(value = "size_t") long size);
 
   public static Pointer deviceMalloc(final long size) {
     if (size == 0) {
@@ -54,7 +54,7 @@ public class JavaCuda extends Pointer {
   }
 
   @Cast(value = "bool")
-  public static native boolean cudaDeviceFree(final Pointer devPtr);
+  public static native boolean cudaDeviceFree(Pointer devPtr);
 
   public static void deviceFree(final Pointer pointer) {
     final boolean success = cudaDeviceFree(pointer);
@@ -65,119 +65,119 @@ public class JavaCuda extends Pointer {
   }
 
   @Cast(value = "bool")
-  public static native boolean set(final FloatPointer y, final float a, final int n);
+  public static native boolean set(FloatPointer y, float a, int n);
 
   @Cast(value = "bool")
-  public static native boolean d2hMemcpy(final Pointer dst, final Pointer src, final int n);
+  public static native boolean d2hMemcpy(Pointer dst, Pointer src, int n);
 
   @Cast(value = "bool")
-  public static native boolean h2dMemcpy(final Pointer dst, final Pointer src, final int n);
+  public static native boolean h2dMemcpy(Pointer dst, Pointer src, int n);
 
   @Cast(value = "bool")
-  public static native boolean d2dMemcpy(final Pointer dst, final Pointer src, final int n);
+  public static native boolean d2dMemcpy(Pointer dst, Pointer src, int n);
 
   @Cast(value = "bool")
-  public static native boolean d2dMemcpy2D(final Pointer dst, final int dpitch, final Pointer src,
-                                           final int spitch, final int length, final int n);
+  public static native boolean d2dMemcpy2D(Pointer dst, int dpitch, Pointer src,
+                                           int spitch, int length, int n);
 
   @Cast(value = "bool")
-  public static native boolean copy(final int n, final FloatPointer x, final int incx,
-                                    final FloatPointer y, final int incy);
+  public static native boolean copy(int n, FloatPointer x, int incx,
+                                    FloatPointer y, int incy);
 
   @Cast(value = "bool")
-  public static native boolean compare(final int n, final FloatPointer x,
-                                       final FloatPointer y, final float tolerance);
+  public static native boolean compare(int n, FloatPointer x,
+                                       FloatPointer y, float tolerance);
 
   @Cast(value = "bool")
-  public static native boolean equal(final int n, final FloatPointer x,
-                                       final FloatPointer y);
+  public static native boolean equal(int n, FloatPointer x,
+                                     FloatPointer y);
 
-  public static native float sum(final int n, final FloatPointer x);
+  public static native float sum(int n, FloatPointer x);
 
-  public static native float max(final int n, final FloatPointer x);
+  public static native float max(int n, FloatPointer x);
 
-  public static native float min(final int n, final FloatPointer x);
-
-  @Cast(value = "bool")
-  public static native boolean columnMax(final int m, final int n,
-                                         final FloatPointer x, final FloatPointer y);
+  public static native float min(int n, FloatPointer x);
 
   @Cast(value = "bool")
-  public static native boolean rowMax(final int m, final int n,
-                                      final FloatPointer x, final FloatPointer y);
+  public static native boolean columnMax(int m, int n,
+                                         FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean columnMin(final int m, final int n,
-                                         final FloatPointer x, final FloatPointer y);
+  public static native boolean rowMax(int m, int n,
+                                      FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean rowMin(final int m, final int n,
-                                      final FloatPointer x, final FloatPointer y);
+  public static native boolean columnMin(int m, int n,
+                                         FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean addScalar(final int n, final float a,
-                                         final FloatPointer x, final FloatPointer y);
+  public static native boolean rowMin(int m, int n,
+                                      FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean mulScalar(final int n, final float a,
-                                         final FloatPointer x, final FloatPointer y);
+  public static native boolean addScalar(int n, float a,
+                                         FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean rsubScalar(final int n, final float a,
-                                          final FloatPointer x, final FloatPointer y);
+  public static native boolean mulScalar(int n, float a,
+                                         FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean rdivScalar(final int n, final float a,
-                                          final FloatPointer x, final FloatPointer y);
+  public static native boolean rsubScalar(int n, float a,
+                                          FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean mulColumnVector(final int m, final int n, final FloatPointer v,
-                                               final FloatPointer x, final FloatPointer y);
+  public static native boolean rdivScalar(int n, float a,
+                                          FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean mulRowVector(final int m, final int n, final FloatPointer v,
-                                            final FloatPointer x, final FloatPointer y);
+  public static native boolean mulColumnVector(int m, int n, FloatPointer v,
+                                               FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean divColumnVector(final int m, final int n, final FloatPointer v,
-                                               final FloatPointer x, final FloatPointer y);
+  public static native boolean mulRowVector(int m, int n, FloatPointer v,
+                                            FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean divRowVector(final int m, final int n, final FloatPointer v,
-                                            final FloatPointer x, final FloatPointer y);
+  public static native boolean divColumnVector(int m, int n, FloatPointer v,
+                                               FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean add(final int n, final FloatPointer a,
-                                   final FloatPointer b, final FloatPointer y);
+  public static native boolean divRowVector(int m, int n, FloatPointer v,
+                                            FloatPointer x, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean sub(final int n, final FloatPointer a,
-                                   final FloatPointer b, final FloatPointer y);
+  public static native boolean add(int n, FloatPointer a,
+                                   FloatPointer b, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean mul(final int n, final FloatPointer a,
-                                   final FloatPointer b, final FloatPointer y);
+  public static native boolean sub(int n, FloatPointer a,
+                                   FloatPointer b, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean div(final int n, final FloatPointer a,
-                                   final FloatPointer b, final FloatPointer y);
+  public static native boolean mul(int n, FloatPointer a,
+                                   FloatPointer b, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean geam(final char transa, final char transb, final int m, final int n,
-                                    final float alpha, final FloatPointer a, final int lda,
-                                    final float beta, final FloatPointer b, final int ldb,
-                                    final FloatPointer c, final int ldc);
+  public static native boolean div(int n, FloatPointer a,
+                                   FloatPointer b, FloatPointer y);
 
   @Cast(value = "bool")
-  public static native boolean gemv(final char trans, final int m, final int n,
-                                    final float alpha, final FloatPointer a, final int lda,
-                                    final FloatPointer x, final int incx,
-                                    final float beta, final FloatPointer y, final int incy);
+  public static native boolean geam(char transa, char transb, int m, int n,
+                                    float alpha, FloatPointer a, int lda,
+                                    float beta, FloatPointer b, int ldb,
+                                    FloatPointer c, int ldc);
 
   @Cast(value = "bool")
-  public static native boolean gemm(final char transa, final char transb,
-                                    final int m, final int n, final int k,
-                                    final float alpha, final FloatPointer a, final int lda,
-                                    final FloatPointer b, final int ldb, final float beta,
-                                    final FloatPointer c, final int ldc);
+  public static native boolean gemv(char trans, int m, int n,
+                                    float alpha, FloatPointer a, int lda,
+                                    FloatPointer x, int incx,
+                                    float beta, FloatPointer y, int incy);
+
+  @Cast(value = "bool")
+  public static native boolean gemm(char transa, char transb,
+                                    int m, int n, int k,
+                                    float alpha, FloatPointer a, int lda,
+                                    FloatPointer b, int ldb, float beta,
+                                    FloatPointer c, int ldc);
 }

@@ -29,7 +29,7 @@ public final class IndexedElementCodec implements Codec<IndexedElement> {
   @Override
   public IndexedElement decode(final byte[] bytes) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       final int row = dais.readInt();
       final int column = dais.readInt();
       final double value = dais.readDouble();
@@ -43,7 +43,7 @@ public final class IndexedElementCodec implements Codec<IndexedElement> {
   @Override
   public byte[] encode(final IndexedElement indexedElement) {
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE * 2 + Double.SIZE);
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(indexedElement.getRow());
       daos.writeInt(indexedElement.getColumn());
       daos.writeDouble(indexedElement.getValue());

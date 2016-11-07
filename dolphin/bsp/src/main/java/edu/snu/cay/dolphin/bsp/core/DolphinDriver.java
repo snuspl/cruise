@@ -19,6 +19,7 @@ import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.metric.MetricTracker;
 import edu.snu.cay.common.metric.MetricTrackers;
 import edu.snu.cay.common.metric.MetricsCollectionServiceConf;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.bsp.core.metric.MetricsMessageCodec;
 import edu.snu.cay.dolphin.bsp.core.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator;
@@ -212,6 +213,10 @@ public final class DolphinDriver {
 
   private final TraceInfo jobTraceInfo;
 
+  private final int numEvalCores;
+
+  private final int evalMemSizeInMB;
+
   /**
    * Map of evaluator id to component id who requested the evaluator.
    */
@@ -239,6 +244,8 @@ public final class DolphinDriver {
    */
   @Inject
   private DolphinDriver(final EvaluatorManager evaluatorManager,
+                        @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB,
+                        @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores,
                         final GroupCommDriver groupCommDriver,
                         final GroupCommParameters groupCommParameters,
                         final ShuffleDriver shuffleDriver,
@@ -259,6 +266,8 @@ public final class DolphinDriver {
                         final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher) {
     hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
+    this.evalMemSizeInMB = evalMemSizeInMB;
+    this.numEvalCores = numEvalCores;
     this.groupCommDriver = groupCommDriver;
     this.groupCommParameters = groupCommParameters;
     this.shuffleDriver = shuffleDriver;
@@ -408,13 +417,14 @@ public final class DolphinDriver {
       final List<EventHandler<ActiveContext>> contextActiveHandlersForControllerTask = new ArrayList<>();
       contextActiveHandlersForControllerTask.add(getFirstContextActiveHandlerForControllerTask());
       contextActiveHandlersForControllerTask.add(getSubmittingTaskHandler());
-      evaluatorManager.allocateEvaluators(1, evalAllocHandlerForControllerTask, contextActiveHandlersForControllerTask);
+      evaluatorManager.allocateEvaluators(1, evalMemSizeInMB, numEvalCores, evalAllocHandlerForControllerTask,
+          contextActiveHandlersForControllerTask);
 
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForComputeTask = getEvalAllocHandlerForComputeTask();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForComputeTask = new ArrayList<>();
       contextActiveHandlersForComputeTask.add(getFirstContextActiveHandlerForComputeTask());
       contextActiveHandlersForComputeTask.add(getSubmittingTaskHandler());
-      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
+      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(), evalMemSizeInMB, numEvalCores,
           evalAllocHandlerForComputeTask, contextActiveHandlersForComputeTask);
     }
 
@@ -685,7 +695,7 @@ public final class DolphinDriver {
     if (isCtrlTaskContextId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
       final String ctrlTaskId = getCtrlTaskId(stageSequence);
-      try (final TraceScope controllerTaskTraceScope = Trace.startSpan(ctrlTaskId, jobTraceInfo)) {
+      try (TraceScope controllerTaskTraceScope = Trace.startSpan(ctrlTaskId, jobTraceInfo)) {
 
         dolphinTaskConfBuilder
             .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass());
@@ -705,7 +715,7 @@ public final class DolphinDriver {
       LOG.log(Level.INFO, "Submit ComputeTask");
       final int taskId = taskIdCounter.getAndIncrement();
       final String cmpTaskId = getCmpTaskId(taskId);
-      try (final TraceScope computeTaskTraceScope = Trace.startSpan(cmpTaskId, jobTraceInfo)) {
+      try (TraceScope computeTaskTraceScope = Trace.startSpan(cmpTaskId, jobTraceInfo)) {
 
         dolphinTaskConfBuilder
             .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass());

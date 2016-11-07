@@ -106,12 +106,12 @@ final class ParameterWorkerTestUtil {
       throws NetworkException {
     // pull messages to asynchronous parameter worker should return values s.t. key == value
     doAnswer(invocationOnMock -> {
-        final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        final int requestId = (Integer) invocationOnMock.getArguments()[2];
-        // assume it always succeeds, otherwise it will throw IllegalArgumentException
-        pullKeyQueue.add(Pair.of(encodedKey, requestId));
-        return null;
-      }).when(workerMsgSender).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
+      final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
+      final int requestId = (Integer) invocationOnMock.getArguments()[2];
+      // assume it always succeeds, otherwise it will throw IllegalArgumentException
+      pullKeyQueue.add(Pair.of(encodedKey, requestId));
+      return null;
+    }).when(workerMsgSender).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
   }
 
   static void close(final ParameterWorker<Integer, ?, Integer> worker,
@@ -129,9 +129,9 @@ final class ParameterWorkerTestUtil {
     worker.close(CLOSE_TIMEOUT);
 
     pool.submit((Runnable) () -> {
-        worker.pull(0);
-        countDownLatch.countDown();
-      });
+      worker.pull(0);
+      countDownLatch.countDown();
+    });
     pool.shutdown();
 
     final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
@@ -270,18 +270,18 @@ final class ParameterWorkerTestUtil {
 
     // throw exception when worker sends a pull msg
     doAnswer(invocationOnMock -> {
-        if (sendPullCounter.getAndIncrement() < AsyncParameterWorker.MAX_RESEND_COUNT) {
-          throw new NetworkException("exception");
-        }
-        finishLatch.countDown();
+      if (sendPullCounter.getAndIncrement() < AsyncParameterWorker.MAX_RESEND_COUNT) {
+        throw new NetworkException("exception");
+      }
+      finishLatch.countDown();
 
-        // reply at the last chance to prevent PS worker thread from throwing RuntimeException
-        final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        final int requestId = (int) invocationOnMock.getArguments()[2];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
-            SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES, EMPTY_TRACE);
-        return null;
-      }).when(sender).sendPullMsg(anyString(), any(EncodedKey.class), anyInt(), any(TraceInfo.class));
+      // reply at the last chance to prevent PS worker thread from throwing RuntimeException
+      final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
+      final int requestId = (int) invocationOnMock.getArguments()[2];
+      handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
+          SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES, EMPTY_TRACE);
+      return null;
+    }).when(sender).sendPullMsg(anyString(), any(EncodedKey.class), anyInt(), any(TraceInfo.class));
 
     final int key = 0;
 
@@ -309,13 +309,13 @@ final class ParameterWorkerTestUtil {
 
     // throw exception when worker sends a push msg
     doAnswer(invocationOnMock -> {
-        // skip at the last chance to prevent PS worker thread from throwing RuntimeException
-        if (sendPushCounter.getAndIncrement() < AsyncParameterWorker.MAX_RESEND_COUNT) {
-          throw new NetworkException("exception");
-        }
-        finishLatch.countDown();
-        return null;
-      }).when(sender).sendPushMsg(anyString(), any(EncodedKey.class), anyObject());
+      // skip at the last chance to prevent PS worker thread from throwing RuntimeException
+      if (sendPushCounter.getAndIncrement() < AsyncParameterWorker.MAX_RESEND_COUNT) {
+        throw new NetworkException("exception");
+      }
+      finishLatch.countDown();
+      return null;
+    }).when(sender).sendPushMsg(anyString(), any(EncodedKey.class), anyObject());
 
     final int key = 0;
 
@@ -346,18 +346,18 @@ final class ParameterWorkerTestUtil {
 
     // Do not reply when worker sends a pull msg
     doAnswer(invocationOnMock -> {
-        if (sendPullCounter.getAndIncrement() < AsyncParameterWorker.MAX_PULL_RETRY_COUNT) {
-          return null;
-        }
-        finishLatch.countDown();
-
-        // reply at the last chance to prevent PS worker thread from throwing RuntimeException
-        final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
-        final int requestId = (int) invocationOnMock.getArguments()[2];
-        handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
-            SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES, EMPTY_TRACE);
+      if (sendPullCounter.getAndIncrement() < AsyncParameterWorker.MAX_PULL_RETRY_COUNT) {
         return null;
-      }).when(sender).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
+      }
+      finishLatch.countDown();
+
+      // reply at the last chance to prevent PS worker thread from throwing RuntimeException
+      final EncodedKey<Integer> encodedKey = (EncodedKey) invocationOnMock.getArguments()[1];
+      final int requestId = (int) invocationOnMock.getArguments()[2];
+      handler.processPullReply(encodedKey.getKey(), encodedKey.getKey(), requestId,
+          SERVER_PROCESSING_TIME, NUM_RECEIVED_BYTES, EMPTY_TRACE);
+      return null;
+    }).when(sender).sendPullMsg(anyString(), anyObject(), anyInt(), any(TraceInfo.class));
 
     pool.execute(() -> worker.pull(key));
 

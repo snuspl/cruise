@@ -104,7 +104,7 @@ public final class ValidatorTask implements Task {
   }
 
   private static class IntegerValidationException extends Exception {
-    public IntegerValidationException(final int key, final int expected, final int actual) {
+    IntegerValidationException(final int key, final int expected, final int actual) {
       super(String.format("For key %d, expected value %d but received %d", key, expected, actual));
     }
   }

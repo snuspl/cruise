@@ -315,9 +315,9 @@ public class OperationRouterTest {
     final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(numBlocksToMove);
     for (final int blockId : blocksToMove) {
       ownershipUpdateExecutor.submit(() -> {
-          router.updateOwnership(blockId, storeId, destStoreId);
-          updateLatch.countDown();
-        });
+        router.updateOwnership(blockId, storeId, destStoreId);
+        updateLatch.countDown();
+      });
     }
 
     assertFalse("Thread should not be finished before unlock router", updateLatch.await(2000, TimeUnit.MILLISECONDS));

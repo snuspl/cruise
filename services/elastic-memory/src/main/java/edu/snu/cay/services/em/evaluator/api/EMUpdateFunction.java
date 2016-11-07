@@ -34,7 +34,7 @@ public interface EMUpdateFunction<K, V> {
    * @param key a key
    * @return an initial value
    */
-  V getInitValue(final K key);
+  V getInitValue(K key);
 
   /**
    * Gets an update value by applying deltaValue to oldValue when {@link MemoryStore#update} is called.
@@ -43,5 +43,5 @@ public interface EMUpdateFunction<K, V> {
    * @param deltaValue a delta value
    * @return an update value
    */
-  V getUpdateValue(final V oldValue, final V deltaValue);
+  V getUpdateValue(V oldValue, V deltaValue);
 }

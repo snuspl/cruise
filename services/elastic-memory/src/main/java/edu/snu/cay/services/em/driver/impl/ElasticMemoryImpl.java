@@ -107,7 +107,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     } else if (cores <= 0) {
       throw new RuntimeException("The CPU cores of evaluators must be positive, but requested: " + cores);
     } else {
-      evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlerList);
+      evaluatorManager.allocateEvaluators(number, megaBytes, cores,
+          evaluatorAllocatedHandler, contextActiveHandlerList);
     }
   }
 
@@ -164,7 +165,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
                    @Nullable final EventHandler<MigrationMsg> finishedCallback) {
     Trace.setProcessId("elastic_memory");
-    try (final TraceScope moveScope = Trace.startSpan(OP_MOVE, traceSampler)) {
+    try (TraceScope moveScope = Trace.startSpan(OP_MOVE, traceSampler)) {
       final String operationId = String.format("%s-%d", OP_MOVE, operationIdCounter.getAndIncrement());
       migrationManager.startMigration(operationId, srcEvalId, destEvalId, numBlocks,
           TraceInfo.fromSpan(moveScope.getSpan()), finishedCallback);

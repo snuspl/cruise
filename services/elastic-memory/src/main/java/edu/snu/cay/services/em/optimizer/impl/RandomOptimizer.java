@@ -290,13 +290,13 @@ public final class RandomOptimizer implements Optimizer {
     private int dataAllocated;
     private int dataRequested;
 
-    public OptimizedEvaluator(final String id, final DataInfo dataInfo) {
+    OptimizedEvaluator(final String id, final DataInfo dataInfo) {
       this.id = id;
       this.dataAllocated = dataInfo.getNumBlocks();
       this.dataRequested = 0;
     }
 
-    public OptimizedEvaluator(final String id) {
+    OptimizedEvaluator(final String id) {
       this.id = id;
       this.dataAllocated = 0;
       this.dataRequested = 0;

@@ -104,14 +104,14 @@ public final class EMRoutingTableManagerTest {
 
     // mock PS msg sender to monitor on sending a worker replay msg
     doAnswer(invocation -> {
-        final String workerId = invocation.getArgumentAt(0, String.class);
-        final AvroPSMsg msg = invocation.getArgumentAt(1, AvroPSMsg.class);
+      final String workerId = invocation.getArgumentAt(0, String.class);
+      final AvroPSMsg msg = invocation.getArgumentAt(1, AvroPSMsg.class);
 
-        assertTrue(workerIds.remove(workerId));
-        assertEquals(Type.WorkerRegisterReplyMsg, msg.getType());
-        countDownLatch.countDown();
-        return null;
-      }).when(mockPSSender).send(anyString(), anyObject());
+      assertTrue(workerIds.remove(workerId));
+      assertEquals(Type.WorkerRegisterReplyMsg, msg.getType());
+      countDownLatch.countDown();
+      return null;
+    }).when(mockPSSender).send(anyString(), anyObject());
 
     // 1. Register early workers
     for (int workerIdx = 0; workerIdx < numEarlyWorkers; workerIdx++) {
@@ -169,51 +169,51 @@ public final class EMRoutingTableManagerTest {
 
     // mock EM msg sender to simulate migration
     doAnswer(invocation -> {
-        final String senderId = invocation.getArgumentAt(0, String.class);
-        final String receiverId = invocation.getArgumentAt(1, String.class);
-        final List<Integer> blocks = invocation.getArgumentAt(2, List.class);
-        final String opId = invocation.getArgumentAt(3, String.class);
+      final String senderId = invocation.getArgumentAt(0, String.class);
+      final String receiverId = invocation.getArgumentAt(1, String.class);
+      final List<Integer> blocks = invocation.getArgumentAt(2, List.class);
+      final String opId = invocation.getArgumentAt(3, String.class);
 
-        // OwnershipAckMsg and BlockMovedMsg will finish the migration
-        for (final int blockId : blocks) {
-          final OwnershipAckMsg ownershipAckMsg = OwnershipAckMsg.newBuilder()
-              .setOldOwnerId(getStoreId(senderId))
-              .setNewOwnerId(getStoreId(receiverId))
-              .setBlockId(blockId)
-              .build();
+      // OwnershipAckMsg and BlockMovedMsg will finish the migration
+      for (final int blockId : blocks) {
+        final OwnershipAckMsg ownershipAckMsg = OwnershipAckMsg.newBuilder()
+            .setOldOwnerId(getStoreId(senderId))
+            .setNewOwnerId(getStoreId(receiverId))
+            .setBlockId(blockId)
+            .build();
 
-          MigrationMsg migrationMsg = MigrationMsg.newBuilder()
-              .setType(MigrationMsgType.OwnershipAckMsg)
-              .setOperationId(opId)
-              .setOwnershipAckMsg(ownershipAckMsg)
-              .build();
+        MigrationMsg migrationMsg = MigrationMsg.newBuilder()
+            .setType(MigrationMsgType.OwnershipAckMsg)
+            .setOperationId(opId)
+            .setOwnershipAckMsg(ownershipAckMsg)
+            .build();
 
-          EMMsg emMsg = EMMsg.newBuilder()
-              .setType(EMMsgType.MigrationMsg)
-              .setMigrationMsg(migrationMsg)
-              .build();
+        EMMsg emMsg = EMMsg.newBuilder()
+            .setType(EMMsgType.MigrationMsg)
+            .setMigrationMsg(migrationMsg)
+            .build();
 
-          emMsgHandler.onNext(new NSMessage<>(null, null, emMsg));
+        emMsgHandler.onNext(new NSMessage<>(null, null, emMsg));
 
-          final BlockMovedMsg blockMovedMsg = BlockMovedMsg.newBuilder()
-              .setBlockId(blockId)
-              .build();
+        final BlockMovedMsg blockMovedMsg = BlockMovedMsg.newBuilder()
+            .setBlockId(blockId)
+            .build();
 
-          migrationMsg = MigrationMsg.newBuilder()
-              .setType(MigrationMsgType.BlockMovedMsg)
-              .setOperationId(opId)
-              .setBlockMovedMsg(blockMovedMsg)
-              .build();
+        migrationMsg = MigrationMsg.newBuilder()
+            .setType(MigrationMsgType.BlockMovedMsg)
+            .setOperationId(opId)
+            .setBlockMovedMsg(blockMovedMsg)
+            .build();
 
-          emMsg = EMMsg.newBuilder()
-              .setType(EMMsgType.MigrationMsg)
-              .setMigrationMsg(migrationMsg)
-              .build();
+        emMsg = EMMsg.newBuilder()
+            .setType(EMMsgType.MigrationMsg)
+            .setMigrationMsg(migrationMsg)
+            .build();
 
-          emMsgHandler.onNext(new NSMessage<>(null, null, emMsg));
-        }
-        return null;
-      }).when(mockEMSender)
+        emMsgHandler.onNext(new NSMessage<>(null, null, emMsg));
+      }
+      return null;
+    }).when(mockEMSender)
         .sendMoveInitMsg(anyString(), anyString(), anyListOf(Integer.class), anyString(), anyObject());
 
     final int numBlocksToMove = 5;
@@ -234,12 +234,12 @@ public final class EMRoutingTableManagerTest {
 
     // mock PS msg sender to monitor on sending a routing update msg
     doAnswer(invocation -> {
-        final AvroPSMsg msg = invocation.getArgumentAt(1, AvroPSMsg.class);
+      final AvroPSMsg msg = invocation.getArgumentAt(1, AvroPSMsg.class);
 
-        assertEquals(Type.RoutingTableUpdateMsg, msg.getType());
-        countDownLatch.countDown();
-        return null;
-      }).when(mockPSSender).send(anyString(), anyObject());
+      assertEquals(Type.RoutingTableUpdateMsg, msg.getType());
+      countDownLatch.countDown();
+      return null;
+    }).when(mockPSSender).send(anyString(), anyObject());
 
     for (int i = 0; i < numFirstMoves; i++) {
       serverEM.move(numBlocksToMove, srcServerId, destServerId, null);

@@ -33,8 +33,8 @@ final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleControlM
 
   @Override
   public byte[] encode(final ShuffleControlMessage msg) {
-    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-      try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      try (DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(msg, daos);
       }
       return baos.toByteArray();
@@ -45,8 +45,8 @@ final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleControlM
 
   @Override
   public ShuffleControlMessage decode(final byte[] data) {
-    try (final ByteArrayInputStream bais = new ByteArrayInputStream(data)) {
-      try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(data)) {
+      try (DataInputStream dais = new DataInputStream(bais)) {
         return decodeFromStream(dais);
       }
     } catch (final IOException e) {

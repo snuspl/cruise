@@ -52,7 +52,7 @@ public final class MatrixMulCtrlTask extends UserControllerTask implements DataR
       }
     });
 
-    try (final DataOutputStream daos = outputStreamProvider.create("result")) {
+    try (DataOutputStream daos = outputStreamProvider.create("result")) {
       if (data.size() == 0) {
         daos.writeBytes(String.format("No data"));
         return;

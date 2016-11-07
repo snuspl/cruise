@@ -128,7 +128,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg,
                                        @Nullable final TraceInfo traceInfo) {
     Trace.setProcessId("worker");
-    try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_routing_table_update_msg", traceInfo)) {
+    try (TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_routing_table_update_msg", traceInfo)) {
 
       final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();
       final int newOwnerId = routingTableUpdateMsg.getNewOwnerId();
@@ -146,7 +146,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   }
 
   private void onPullReplyMsg(final PullReplyMsg pullReplyMsg, @Nullable final TraceInfo traceInfo) {
-    try (final TraceScope onPullReplyScope = Trace.startSpan("on_pull_reply", traceInfo)) {
+    try (TraceScope onPullReplyScope = Trace.startSpan("on_pull_reply", traceInfo)) {
       final byte[] serializedKey = pullReplyMsg.getKey().array();
       final byte[] serializedValue = pullReplyMsg.getValue().array();
       final K key = keyCodec.decode(serializedKey);

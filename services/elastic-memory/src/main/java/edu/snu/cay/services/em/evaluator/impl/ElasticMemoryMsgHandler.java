@@ -114,7 +114,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
     Span detached = null;
 
     Trace.setProcessId("eval");
-    try (final TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_table_update_msg",
+    try (TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_table_update_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       detached = onRoutingTableUpdateMsgScope.detach();

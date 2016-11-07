@@ -117,7 +117,7 @@ public class PageRankMainCtrlTask extends UserControllerTask
   @Override
   public void cleanup() {
     //output the ranks
-    try (final DataOutputStream rankStream = outputStreamProvider.create("rank")) {
+    try (DataOutputStream rankStream = outputStreamProvider.create("rank")) {
       rankStream.writeBytes(String.format("node_id,rank%n"));
       for (final Map.Entry<Integer, Double> entry : rank.entrySet()) {
         rankStream.writeBytes(String.format("%d,%f%n", entry.getKey(), entry.getValue()));

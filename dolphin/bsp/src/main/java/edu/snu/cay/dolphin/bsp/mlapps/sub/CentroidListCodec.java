@@ -50,7 +50,7 @@ public final class CentroidListCodec implements Codec<List<Vector>> {
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(
         Integer.SIZE * 2 // for dimension and the number of clusters
             + Double.SIZE * dimension * numClusters);
-    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+    try (DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(numClusters);
       daos.writeInt(dimension);
       for (final Vector centroid : list) {
@@ -72,7 +72,7 @@ public final class CentroidListCodec implements Codec<List<Vector>> {
     int numClusters = 0;
     int dimension = 0;
 
-    try (final DataInputStream dais = new DataInputStream(bais)) {
+    try (DataInputStream dais = new DataInputStream(bais)) {
       numClusters = dais.readInt();
       dimension = dais.readInt();
 

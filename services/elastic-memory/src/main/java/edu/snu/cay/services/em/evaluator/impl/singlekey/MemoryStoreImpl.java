@@ -267,9 +267,9 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
      */
     private V update(final K key, final V deltaValue) {
       return subDataMap.compute(key, (k, v) -> {
-          final V oldValue = (v == null) ? emUpdateFunction.getInitValue(k) : v;
-          return emUpdateFunction.getUpdateValue(oldValue, deltaValue);
-        });
+        final V oldValue = (v == null) ? emUpdateFunction.getInitValue(k) : v;
+        return emUpdateFunction.getUpdateValue(oldValue, deltaValue);
+      });
     }
 
     /**

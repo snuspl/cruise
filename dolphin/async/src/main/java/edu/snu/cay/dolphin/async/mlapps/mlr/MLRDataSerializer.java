@@ -46,8 +46,8 @@ final class MLRDataSerializer implements Serializer {
     @Override
     public byte[] encode(final Pair<Vector, Integer> mlrData) {
       final int numBytes = sparseVectorCodec.getNumBytes(mlrData.getFirst()) + Integer.BYTES;
-      try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
-           final DataOutputStream daos = new DataOutputStream(baos)) {
+      try (ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
+           DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(mlrData, daos);
         return baos.toByteArray();
       } catch (final IOException e) {
@@ -57,7 +57,7 @@ final class MLRDataSerializer implements Serializer {
 
     @Override
     public Pair<Vector, Integer> decode(final byte[] bytes) {
-      try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+      try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
         return decodeFromStream(dis);
       } catch (final IOException e) {
         throw new RuntimeException(e.getCause());

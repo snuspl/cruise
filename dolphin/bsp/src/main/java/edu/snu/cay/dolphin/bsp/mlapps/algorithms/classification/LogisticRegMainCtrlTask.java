@@ -85,8 +85,8 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
   public void cleanup() {
 
     //output the learned model and its accuracy
-    try (final DataOutputStream modelStream = outputStreamProvider.create("model");
-         final DataOutputStream accuracyStream = outputStreamProvider.create("accuracy")) {
+    try (DataOutputStream modelStream = outputStreamProvider.create("model");
+         DataOutputStream accuracyStream = outputStreamProvider.create("accuracy")) {
       modelStream.writeBytes(model.toString());
       accuracyStream.writeBytes(String.valueOf(accuracy));
     } catch (final IOException e) {

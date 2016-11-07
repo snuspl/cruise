@@ -66,7 +66,7 @@ final class RangeKeyOperationImpl<K, V> implements RangeKeyOperation<K, V> {
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
-  public RangeKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
+  RangeKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
                                final DataOpType operationType, final List<Pair<K, K>> dataKeyRanges,
                                final Optional<NavigableMap<K, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
@@ -86,7 +86,7 @@ final class RangeKeyOperationImpl<K, V> implements RangeKeyOperation<K, V> {
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
-  public RangeKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
+  RangeKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
                                final DataOpType operationType, final Pair<K, K> dataKeyRange,
                                final Optional<NavigableMap<K, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
@@ -110,7 +110,7 @@ final class RangeKeyOperationImpl<K, V> implements RangeKeyOperation<K, V> {
    * @param dataValue an Optional with the value of data.
    *                  It is empty when the operation is one of GET or REMOVE.
    */
-  public RangeKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
+  RangeKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
                                final DataOpType operationType, final K dataKey, final Optional<V> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
