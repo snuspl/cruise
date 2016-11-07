@@ -261,6 +261,24 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+          <filesets>
+            <fileset>
+              <directory>src/main/cpp</directory>
+              <includes>
+                <include>CMakeCache.txt</include>
+                <include>CmakeFiles/**</include>
+                <include>cmake_install.cmake</include>
+                <include>lib/**</include>
+              </includes>
+              <followSymlinks>false</followSymlinks>
+            </fileset>
+          </filesets>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
