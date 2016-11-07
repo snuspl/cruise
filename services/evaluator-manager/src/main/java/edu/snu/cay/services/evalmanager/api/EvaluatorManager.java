@@ -39,16 +39,18 @@ import java.util.List;
 public interface EvaluatorManager {
 
   /**
-   * Requests for {@code evalNum} evaluators.
+   * Requests for {@code evalNum} evaluators with {@code megaBytes} memory and {@code cores} CPUs.
    * {@code evaluatorAllocatedHandler} and {@code contextActiveHandlerList} specifies
    * the plan for handling REEF events for these requested evaluators.
    * {@link ActiveContext} handlers will be executed with the sequence specified in {@code contextActiveHandlerList},
    * results in well-ordered context & service stack.
    * @param evalNum number of evaluators to request
+   * @param megaBytes memory size of each new evaluator in MB
+   * @param cores number of cores of each new evaluator
    * @param evaluatorAllocatedHandler plan for handling {@link AllocatedEvaluator} event
    * @param contextActiveHandlerList plan for handling {@link ActiveContext} events
    */
-  void allocateEvaluators(int evalNum,
+  void allocateEvaluators(int evalNum, int megaBytes, int cores,
                           EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                           List<EventHandler<ActiveContext>> contextActiveHandlerList);
 

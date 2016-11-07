@@ -35,6 +35,7 @@ public final class DolphinParameters {
   private final UserParameters userParameters;
   private final int desiredSplits;
   private final int evalSize;
+  private final int numEvalCores;
   private final String inputDir;
   private final String outputDir;
   private final boolean onLocal;
@@ -48,6 +49,7 @@ public final class DolphinParameters {
                             final UserParameters userParameters,
                             @Parameter(Splits.class) final int desiredSplits,
                             @Parameter(EvaluatorSize.class) final int evalSize,
+                            @Parameter(NumEvaluatorCores.class) final int numEvalCores,
                             @Parameter(InputDir.class) final String inputDir,
                             @Parameter(OutputDir.class) final String outputDir,
                             @Parameter(OnLocal.class) final boolean onLocal,
@@ -59,6 +61,7 @@ public final class DolphinParameters {
     this.userParameters = userParameters;
     this.desiredSplits = desiredSplits;
     this.evalSize = evalSize;
+    this.numEvalCores = numEvalCores;
     this.inputDir = inputDir;
     this.outputDir = outputDir;
     this.onLocal = onLocal;
@@ -75,6 +78,7 @@ public final class DolphinParameters {
     final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(Splits.class, String.valueOf(desiredSplits))
         .bindNamedParameter(EvaluatorSize.class, String.valueOf(evalSize))
+        .bindNamedParameter(NumEvaluatorCores.class, String.valueOf(numEvalCores))
         .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
         .bindNamedParameter(StartTrace.class, String.valueOf(startTrace))
         .bindImplementation(UserJobInfo.class, userJobInfo.getClass())
@@ -107,6 +111,10 @@ public final class DolphinParameters {
 
   public int getEvalSize() {
     return evalSize;
+  }
+
+  public int getNumEvalCores() {
+    return numEvalCores;
   }
 
   public String getInputDir() {
