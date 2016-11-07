@@ -86,13 +86,17 @@ public final class HeterogeneousEvalManager implements EvaluatorManager {
   public synchronized void allocateEvaluators(final int evalNum, final int megaBytes, final int cores,
                                               final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                                               final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
-    try {
-      ongoingEvaluatorRequest.get().await();
-    } catch (final InterruptedException e) {
-      LOG.log(Level.WARNING, "Interrupted while waiting for ongoing request to be finished", e);
+    while (true) {
+      try {
+        ongoingEvaluatorRequest.get().await();
+        break;
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while waiting for ongoing request to be finished", e);
+      }
     }
 
-    LOG.log(Level.INFO, "Requesting {0} evaluators...", evalNum);
+    LOG.log(Level.INFO, "Requesting {0} evaluators with {1} MB memory and {2} cores...",
+        new Object[]{evalNum, megaBytes, cores});
 
     for (int i = 0; i < evalNum; i++) {
       final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);

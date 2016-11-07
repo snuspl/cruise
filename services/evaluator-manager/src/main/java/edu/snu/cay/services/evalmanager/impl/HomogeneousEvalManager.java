@@ -91,7 +91,8 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
   public void allocateEvaluators(final int evalNum, final int megaBytes, final int cores,
                                  final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                                  final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
-    LOG.log(Level.INFO, "Requesting {0} evaluators...", evalNum);
+    LOG.log(Level.INFO, "Requesting {0} evaluators with {1} MB memory and {2} cores...",
+        new Object[]{evalNum, evalMemSizeInMB, evalNumCores});
 
     for (int i = 0; i < evalNum; i++) {
       final Queue<EventHandler<ActiveContext>> handlerQueue = new ConcurrentLinkedQueue<>(contextActiveHandlerList);
