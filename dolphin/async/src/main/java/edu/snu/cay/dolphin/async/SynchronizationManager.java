@@ -53,10 +53,6 @@ final class SynchronizationManager {
 
   static final String AGGREGATION_CLIENT_NAME = SynchronizationManager.class.getName();
 
-  static final String STATE_INIT = "INIT";
-  static final String STATE_RUN = "RUN";
-  static final String STATE_CLEANUP = "CLEANUP";
-
   /**
    * A latch that releases waiting threads when workers finish initialization.
    */
@@ -75,7 +71,7 @@ final class SynchronizationManager {
 
   private final AggregationMaster aggregationMaster;
 
-  private final Codec<String> codec;
+  private final Codec<Enum> codec;
 
   @GuardedBy("this")
   private final StateMachine globalStateMachine;
@@ -99,7 +95,7 @@ final class SynchronizationManager {
 
   @Inject
   private SynchronizationManager(final AggregationMaster aggregationMaster,
-                                 final SerializableCodec<String> codec,
+                                 final SerializableCodec<Enum> codec,
                                  final DataLoadingService dataLoadingService) {
     this.aggregationMaster = aggregationMaster;
     this.codec = codec;
@@ -109,14 +105,20 @@ final class SynchronizationManager {
     this.globalStateMachine = initStateMachine();
   }
 
+  public enum State {
+    INIT,
+    RUN,
+    CLEANUP
+  }
+
   static StateMachine initStateMachine() {
     return StateMachine.newBuilder()
-        .addState(STATE_INIT, "Workers are initializing themselves")
-        .addState(STATE_RUN, "Workers are running their tasks")
-        .addState(STATE_CLEANUP, "Workers are cleaning up the task")
-        .addTransition(STATE_INIT, STATE_RUN, "The initialization is finished, time to start running task")
-        .addTransition(STATE_RUN, STATE_CLEANUP, "The task execution is finished, time to clean up the task")
-        .setInitialState(STATE_INIT)
+        .addState(State.INIT, "Workers are initializing themselves")
+        .addState(State.RUN, "Workers are running their tasks")
+        .addState(State.CLEANUP, "Workers are cleaning up the task")
+        .addTransition(State.INIT, State.RUN, "The initialization is finished, time to start running task")
+        .addTransition(State.RUN, State.CLEANUP, "The task execution is finished, time to clean up the task")
+        .setInitialState(State.INIT)
         .build();
   }
 
@@ -152,18 +154,18 @@ final class SynchronizationManager {
    * @param stateMachine a state machine
    */
   static void transitState(final StateMachine stateMachine) {
-    final String currentState = stateMachine.getCurrentState();
+    final State currentState = (State) stateMachine.getCurrentState();
 
     switch (currentState) {
-    case STATE_INIT:
-      stateMachine.setState(STATE_RUN);
+    case INIT:
+      stateMachine.setState(State.RUN);
       LOG.log(Level.INFO, "State transition: STATE_INIT -> STATE_RUN");
       break;
-    case STATE_RUN:
-      stateMachine.setState(STATE_CLEANUP);
+    case RUN:
+      stateMachine.setState(State.CLEANUP);
       LOG.log(Level.INFO, "State transition: STATE_RUN -> STATE_CLEANUP");
       break;
-    case STATE_CLEANUP:
+    case CLEANUP:
       throw new RuntimeException("No more transition is allowed after STATE_CLEANUP state");
     default:
       throw new RuntimeException("Invalid state");
@@ -182,7 +184,7 @@ final class SynchronizationManager {
    * @return true if workers are in the initialization state
    */
   synchronized boolean workersInitializing() {
-    return globalStateMachine.getCurrentState().equals(STATE_INIT);
+    return globalStateMachine.getCurrentState().equals(State.INIT);
   }
 
   /**
@@ -201,10 +203,10 @@ final class SynchronizationManager {
   }
 
   private synchronized void tryReleaseWorkers() {
-    final String currentState = globalStateMachine.getCurrentState();
+    final State currentState = (State) globalStateMachine.getCurrentState();
 
     // check whether all initial workers are added through onWorkerAdded()
-    if (currentState.equals(STATE_INIT)) {
+    if (currentState.equals(State.INIT)) {
       if (numWorkers < numInitialWorkers) {
         LOG.log(Level.FINE, "Need {0} more initial workers to start", numInitialWorkers - numWorkers);
         return;
@@ -215,12 +217,12 @@ final class SynchronizationManager {
       LOG.log(Level.INFO, "Try releasing {0} blocked workers: {1}", new Object[]{numWorkers, blockedWorkerIds});
 
       // wake threads waiting initialization in waitInitialization()
-      if (currentState.equals(STATE_INIT)) {
+      if (currentState.equals(State.INIT)) {
         initLatch.countDown();
 
       // Let workers enter the cleanup state after assuring that there's no ongoing optimization.
       // Note that in the STATE_CLEANUP state, orchestrator never trigger further optimization.
-      } else if (currentState.equals(STATE_RUN)) {
+      } else if (currentState.equals(State.RUN)) {
         final int numWorkersBeforeSleep = numWorkers;
         LOG.log(Level.INFO, "Wait for driver to allow workers to enter cleanup state");
         while (!allowCleanup) {
@@ -287,29 +289,29 @@ final class SynchronizationManager {
     public void onNext(final AggregationMessage aggregationMessage) {
       synchronized (SynchronizationManager.this) {
         final String workerId = aggregationMessage.getSourceId().toString();
-        final String localState = codec.decode(aggregationMessage.getData().array());
-        final String globalState = globalStateMachine.getCurrentState();
+        final State localState = (State) codec.decode(aggregationMessage.getData().array());
+        final State globalState = (State) globalStateMachine.getCurrentState();
 
         // In case when a worker's local state is behind the globally synchronized state,
         // this implies the worker is added by EM.
         // If so, the worker is replied to continue until it reaches the global state.
         switch (globalState) {
-        case STATE_INIT:
-          if (localState.equals(STATE_INIT)) {
+        case INIT:
+          if (localState.equals(State.INIT)) {
             blockWorker(workerId);
           } else {
             throw new RuntimeException("Individual workers cannot overtake the global state");
           }
 
           break;
-        case STATE_RUN:
-          if (localState.equals(STATE_RUN)) {
+        case RUN:
+          if (localState.equals(State.RUN)) {
             // worker finishes their main iteration and is waiting for response to enter the cleanup stage
             if (waitingCleanup.compareAndSet(false, true)) {
               LOG.log(Level.INFO, "One of worker starts waiting for cleanup");
             }
             blockWorker(workerId);
-          } else if (localState.equals(STATE_INIT)) {
+          } else if (localState.equals(State.INIT)) {
             // let added evaluators skip the initial barriers
             sendResponseMessage(workerId, EMPTY_DATA);
           } else {
@@ -317,7 +319,7 @@ final class SynchronizationManager {
           }
 
           break;
-        case STATE_CLEANUP:
+        case CLEANUP:
           // Though workers already exit their barrier before CLEANUP phase,
           // added workers can request the barriers. In this case, we let the workers proceed immediately.
           sendResponseMessage(workerId, EMPTY_DATA);

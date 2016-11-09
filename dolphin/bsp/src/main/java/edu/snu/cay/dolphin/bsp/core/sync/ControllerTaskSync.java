@@ -48,10 +48,6 @@ import java.util.logging.Logger;
 public final class ControllerTaskSync implements EventHandler<Message<AvroSyncMessage>> {
   private static final Logger LOG = Logger.getLogger(ControllerTaskSync.class.getName());
 
-  static final String RUNNING = "RUNNING";
-  static final String PAUSE_PENDING = "PAUSE_PENDING";
-  static final String PAUSED = "PAUSED";
-
   private final StateMachine stateMachine;
   private final InjectionFuture<SyncNetworkSetup> pauseNetworkSetup;
   private final IdentifierFactory identifierFactory;
@@ -67,19 +63,25 @@ public final class ControllerTaskSync implements EventHandler<Message<AvroSyncMe
     this.driverId = driverId;
   }
 
+  private enum State {
+    RUNNING,
+    PAUSE_PENDING,
+    PAUSED
+  }
+
   private StateMachine initStateMachine() {
     return StateMachine.newBuilder()
-        .addState(RUNNING, "The task is running with no outstanding pause requests")
-        .addState(PAUSE_PENDING, "There is an outstanding pause request")
-        .addState(PAUSED, "The task has been paused")
-        .setInitialState(RUNNING)
-        .addTransition(RUNNING, PAUSE_PENDING,
+        .addState(State.RUNNING, "The task is running with no outstanding pause requests")
+        .addState(State.PAUSE_PENDING, "There is an outstanding pause request")
+        .addState(State.PAUSED, "The task has been paused")
+        .setInitialState(State.RUNNING)
+        .addTransition(State.RUNNING, State.PAUSE_PENDING,
             "A pause request has been received")
-        .addTransition(PAUSE_PENDING, PAUSED,
+        .addTransition(State.PAUSE_PENDING, State.PAUSED,
             "The task is pausing before an iteration")
-        .addTransition(PAUSE_PENDING, RUNNING,
+        .addTransition(State.PAUSE_PENDING, State.RUNNING,
             "The task has been resumed before it was paused")
-        .addTransition(PAUSED, RUNNING,
+        .addTransition(State.PAUSED, State.RUNNING,
             "The paused task has been resumed")
         .build();
   }
@@ -94,14 +96,14 @@ public final class ControllerTaskSync implements EventHandler<Message<AvroSyncMe
   public synchronized boolean update(final IterationInfo iterationInfo) throws InterruptedException {
     LOG.entering(ControllerTaskSync.class.getSimpleName(), "update", iterationInfo);
 
-    if (!PAUSE_PENDING.equals(stateMachine.getCurrentState())) {
+    if (!State.PAUSE_PENDING.equals(stateMachine.getCurrentState())) {
       return false;
     }
 
     sendPauseResult(iterationInfo);
 
     LOG.log(Level.INFO, "Pause start.");
-    stateMachine.setState(PAUSED);
+    stateMachine.setState(State.PAUSED);
     wait();
     LOG.log(Level.INFO, "Pause end.");
 
@@ -155,11 +157,11 @@ public final class ControllerTaskSync implements EventHandler<Message<AvroSyncMe
   }
 
   private void onPauseRequestMsg(final AvroSyncMessage msg) {
-    stateMachine.setState(PAUSE_PENDING);
+    stateMachine.setState(State.PAUSE_PENDING);
   }
 
   private void onResumeRequestMsg(final AvroSyncMessage msg) {
-    stateMachine.setState(RUNNING);
+    stateMachine.setState(State.RUNNING);
     notify();
   }
 }

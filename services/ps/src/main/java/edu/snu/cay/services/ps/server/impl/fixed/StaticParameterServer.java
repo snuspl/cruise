@@ -409,9 +409,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
    */
   private static class ServerThread<K, V> implements Runnable {
     private static final long QUEUE_TIMEOUT_MS = 3000;
-    private static final String STATE_RUNNING = "RUNNING";
-    private static final String STATE_CLOSING = "CLOSING";
-    private static final String STATE_CLOSED = "CLOSED";
 
     private final Map<K, V> kvStore;
     private final BlockingQueue<Op<K, V>> queue;
@@ -428,14 +425,20 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       this.stateMachine = initStateMachine();
     }
 
+    private enum State {
+      RUNNING,
+      CLOSING,
+      CLOSED
+    }
+
     private StateMachine initStateMachine() {
       return StateMachine.newBuilder()
-          .addState(STATE_RUNNING, "Server thread is running. It executes operations in the queue.")
-          .addState(STATE_CLOSING, "Server thread is closing. It will be closed after processing whole remaining ops.")
-          .addState(STATE_CLOSED, "Server thread is closed. It finished processing whole remaining operations.")
-          .addTransition(STATE_RUNNING, STATE_CLOSING, "Time to close the thread.")
-          .addTransition(STATE_CLOSING, STATE_CLOSED, "Closing the thread is done.")
-          .setInitialState(STATE_RUNNING)
+          .addState(State.RUNNING, "Server thread is running. It executes operations in the queue.")
+          .addState(State.CLOSING, "Server thread is closing. It will be closed after processing whole remaining ops.")
+          .addState(State.CLOSED, "Server thread is closed. It finished processing whole remaining operations.")
+          .addTransition(State.RUNNING, State.CLOSING, "Time to close the thread.")
+          .addTransition(State.CLOSING, State.CLOSED, "Closing the thread is done.")
+          .setInitialState(State.RUNNING)
           .build();
     }
 
@@ -472,7 +475,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     @Override
     public void run() {
       try {
-        while (stateMachine.getCurrentState().equals(STATE_RUNNING) || !queue.isEmpty()) {
+        while (stateMachine.getCurrentState().equals(State.RUNNING) || !queue.isEmpty()) {
           // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
           try {
             final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -507,7 +510,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
      * The thread will be closed after processing for all pending operations.
      */
     void startClose() {
-      stateMachine.setState(STATE_CLOSING);
+      stateMachine.setState(State.CLOSING);
     }
 
     /**
@@ -515,7 +518,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
      * It wakes up threads waiting in {@link #waitForClose()}.
      */
     private synchronized void finishClose() {
-      stateMachine.setState(STATE_CLOSED);
+      stateMachine.setState(State.CLOSED);
       notifyAll();
     }
 
@@ -523,7 +526,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
      * Wait until thread is closed successfully.
      */
     synchronized void waitForClose() {
-      while (!stateMachine.getCurrentState().equals(STATE_CLOSED)) {
+      while (!stateMachine.getCurrentState().equals(State.CLOSED)) {
         try {
           wait();
         } catch (final InterruptedException e) {

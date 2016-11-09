@@ -27,26 +27,26 @@ import java.util.logging.Logger;
 public final class StateMachine {
   private static final Logger LOG = Logger.getLogger(StateMachine.class.getName());
 
-  private final Map<String, State> stateMap;
+  private final Map<Enum, State> stateMap;
   private State currentState;
 
-  private StateMachine(final Map<String, State> stateMap, final String initialState) {
+  private StateMachine(final Map<Enum, State> stateMap, final Enum initialState) {
     this.stateMap = stateMap;
     this.currentState = stateMap.get(initialState);
   }
 
   /**
-   * Check whether current state is same as the expectedCurrentState.
+   * Checks whether the current state is same as the {@code expectedCurrentState}.
    *
-   * @param expectedCurrentState an expected current state
-   * @throws RuntimeException if the expectedCurrentState is not same as actual current state
+   * @param expectedCurrentState the expected current state
+   * @throws RuntimeException if the expectedCurrentState is not same as the actual current state
    */
-  public synchronized void checkState(final String expectedCurrentState) {
-    if (!currentState.name.equals(expectedCurrentState)) {
+  public synchronized void checkState(final Enum expectedCurrentState) {
+    if (!currentState.stateEnum.equals(expectedCurrentState)) {
       final String exceptionMessage = new StringBuilder()
           .append("The expected current state is ")
           .append(expectedCurrentState)
-          .append(" but the state is ")
+          .append(" but the actual state is ")
           .append(currentState).append('\n')
           .append(getPossibleTransitionsFromCurrentState())
           .toString();
@@ -56,13 +56,13 @@ public final class StateMachine {
   }
 
   /**
-   * Set current state as a certain state.
+   * Sets the current state as a certain state.
    *
    * @param state a state
    * @throws RuntimeException if the state is unknown state, or the transition
    * from the current state to the specified state is illegal
    */
-  public synchronized void setState(final String state) {
+  public synchronized void setState(final Enum state) {
     if (!stateMap.containsKey(state)) {
       throw new RuntimeException("Unknown state " + state);
     }
@@ -88,18 +88,18 @@ public final class StateMachine {
    *
    * @param expectedCurrentState an expected state
    * @param state a state
-   * @return true if successful. False return indicates that
+   * @return {@code true} if successful. {@code false} indicates that
    * the actual value was not equal to the expected value.
    * @throws RuntimeException if the state is unknown state, or the transition
    * from the current state to the specified state is illegal
    */
-  public synchronized boolean compareAndSetState(final String expectedCurrentState, final String state) {
-    final boolean compared = currentState.name.equals(expectedCurrentState);
+  public synchronized boolean compareAndSetState(final Enum expectedCurrentState, final Enum state) {
+    final boolean compared = currentState.stateEnum.equals(expectedCurrentState);
     if (compared) {
       setState(state);
     } else {
       LOG.log(Level.FINE, "The expected current state [" + expectedCurrentState +
-              "] is different from the actual state [" + currentState.name + "]");
+              "] is different from the actual state [" + currentState.stateEnum + "]");
     }
 
     return compared;
@@ -108,8 +108,8 @@ public final class StateMachine {
   /**
    * @return the name of the current state.
    */
-  public synchronized String getCurrentState() {
-    return currentState.name;
+  public synchronized Enum getCurrentState() {
+    return currentState.stateEnum;
   }
 
   private String getPossibleTransitionsFromCurrentState() {
@@ -145,12 +145,12 @@ public final class StateMachine {
   }
 
   private static final class State {
-    private final String name;
+    private final Enum stateEnum;
     private final String description;
-    private final Map<String, Transition> transitions;
+    private final Map<Enum, Transition> transitions;
 
-    private State(final String name, final String description) {
-      this.name = name;
+    private State(final Enum stateEnum, final String description) {
+      this.stateEnum = stateEnum;
       this.description = description;
       this.transitions = new HashMap<>();
     }
@@ -160,10 +160,10 @@ public final class StateMachine {
         throw new RuntimeException("An illegal transition " + transition + " was added to " + this);
       }
 
-      transitions.put(transition.to.name, transition);
+      transitions.put(transition.to.stateEnum, transition);
     }
 
-    private boolean isLegalTransition(final String to) {
+    private boolean isLegalTransition(final Enum to) {
       return transitions.containsKey(to);
     }
 
@@ -173,7 +173,7 @@ public final class StateMachine {
 
     @Override
     public String toString() {
-      return name + "[" + description + "]";
+      return stateEnum + "[" + description + "]";
     }
   }
 
@@ -197,33 +197,33 @@ public final class StateMachine {
    * Builder that builds a StateMachine.
    */
   public static final class Builder {
-    private final Set<String> stateSet;
-    private final Map<String, String> stateDescriptionMap;
-    private final Map<String, Set<Tuple<String, String>>> transitionMap;
+    private final Set<Enum> stateEnumSet;
+    private final Map<Enum, String> stateDescriptionMap;
+    private final Map<Enum, Set<Tuple<Enum, String>>> transitionMap;
 
-    private String initialState;
+    private Enum initialState;
 
     private Builder() {
-      this.stateSet = new HashSet<>();
+      this.stateEnumSet = new HashSet<>();
       this.stateDescriptionMap = new HashMap<>();
       this.transitionMap = new HashMap<>();
     }
 
     /**
-     * Add a state with name and description.
+     * Adds a state with name and description.
      *
-     * @param name name of the state
+     * @param stateEnum enumeration indicating the state
      * @param description description of the state
      * @return the builder
      * @throws RuntimeException if the state was already added
      */
-    public Builder addState(final String name, final String description) {
-      if (stateSet.contains(name)) {
-        throw new RuntimeException("A state " + name + " was already added");
+    public Builder addState(final Enum stateEnum, final String description) {
+      if (stateEnumSet.contains(stateEnum)) {
+        throw new RuntimeException("A state " + stateEnum + " was already added");
       }
 
-      stateSet.add(name);
-      stateDescriptionMap.put(name, description);
+      stateEnumSet.add(stateEnum);
+      stateDescriptionMap.put(stateEnum, description);
       return this;
     }
 
@@ -232,8 +232,8 @@ public final class StateMachine {
      * @return the builder
      * @throws RuntimeException if the initial state was not added first
      */
-    public Builder setInitialState(final String initialState) {
-      if (!stateSet.contains(initialState)) {
+    public Builder setInitialState(final Enum initialState) {
+      if (!stateEnumSet.contains(initialState)) {
         throw new RuntimeException("A state " + initialState + " should be added first");
       }
       this.initialState = initialState;
@@ -241,7 +241,7 @@ public final class StateMachine {
     }
 
     /**
-     * Add a transition with description.
+     * Adds a transition with description.
      *
      * @param from from state name
      * @param to to state name
@@ -250,19 +250,19 @@ public final class StateMachine {
      * @throws RuntimeException if either from or to state was not added, or the same transition
      * was already added
      */
-    public Builder addTransition(final String from, final String to, final String description) {
-      if (!stateSet.contains(from)) {
+    public Builder addTransition(final Enum from, final Enum to, final String description) {
+      if (!stateEnumSet.contains(from)) {
         throw new RuntimeException("A state " + from + " should be added first");
       }
 
-      if (!stateSet.contains(to)) {
+      if (!stateEnumSet.contains(to)) {
         throw new RuntimeException("A state " + to + " should be added first");
       }
 
-      final Tuple<String, String> transition = new Tuple<>(to, description);
+      final Tuple<Enum, String> transition = new Tuple<>(to, description);
 
       if (!transitionMap.containsKey(from)) {
-        transitionMap.put(from, new HashSet<Tuple<String, String>>());
+        transitionMap.put(from, new HashSet<>());
       }
 
       if (transitionMap.get(from).contains(transition)) {
@@ -274,7 +274,7 @@ public final class StateMachine {
     }
 
     /**
-     * Build and return the StateMachine.
+     * Builds and returns the StateMachine.
      *
      * @return the StateMachine
      * @throws RuntimeException if an initial state was not set
@@ -284,15 +284,15 @@ public final class StateMachine {
         throw new RuntimeException("An initial state should be set");
       }
 
-      final Map<String, State> stateMap = new HashMap<>();
-      for (final String stateName : stateSet) {
-        stateMap.put(stateName, new State(stateName, stateDescriptionMap.get(stateName)));
+      final Map<Enum, State> stateMap = new HashMap<>();
+      for (final Enum stateEnum : stateEnumSet) {
+        stateMap.put(stateEnum, new State(stateEnum, stateDescriptionMap.get(stateEnum)));
       }
 
-      for (final String stateName : stateSet) {
-        final State state = stateMap.get(stateName);
-        if (transitionMap.containsKey(stateName)) {
-          for (final Tuple<String, String> transition : transitionMap.get(stateName)) {
+      for (final Enum stateEnum : stateEnumSet) {
+        final State state = stateMap.get(stateEnum);
+        if (transitionMap.containsKey(stateEnum)) {
+          for (final Tuple<Enum, String> transition : transitionMap.get(stateEnum)) {
             state.addTransition(new Transition(state, stateMap.get(transition.getKey()), transition.getValue()));
           }
         }

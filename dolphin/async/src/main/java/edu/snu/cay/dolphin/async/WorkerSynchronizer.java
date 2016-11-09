@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.dolphin.async.SynchronizationManager.State;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
@@ -48,7 +49,7 @@ final class WorkerSynchronizer {
 
   @Inject
   private WorkerSynchronizer(final AggregationSlave aggregationSlave,
-                             final SerializableCodec<String> codec) {
+                             final SerializableCodec<Enum> codec) {
     this.localStateMachine = SynchronizationManager.initStateMachine();
     // TODO #681: Need to add numWorkerThreads concept after multi-thread worker is enabled
     this.cyclicBarrier = new CyclicBarrier(1, new Runnable() {
@@ -71,13 +72,13 @@ final class WorkerSynchronizer {
    * After receiving the reply, this {@link WorkerSynchronizer} releases all threads from the barrier.
    */
   void globalBarrier() {
-    final String currentState = localStateMachine.getCurrentState();
+    final State currentState = (State) localStateMachine.getCurrentState();
 
     switch (currentState) {
-    case SynchronizationManager.STATE_INIT:
-    case SynchronizationManager.STATE_RUN:
+    case INIT:
+    case RUN:
       break;
-    case SynchronizationManager.STATE_CLEANUP:
+    case CLEANUP:
       throw new RuntimeException("Workers never call the global barrier in cleanup");
     default:
       throw new RuntimeException("Invalid state");

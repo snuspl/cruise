@@ -22,27 +22,29 @@ import edu.snu.cay.utils.StateMachine;
  */
 public final class PushShuffleReceiverState {
 
-  public static final String RECEIVING = "RECEIVING";
-  public static final String COMPLETED = "COMPLETED";
-  public static final String FINISHED = "FINISHED";
+  public enum State {
+    RECEIVING,
+    COMPLETED,
+    FINISHED
+  }
 
   /**
    * @return a state machine for PushShuffleReceiver
    */
   public static StateMachine createStateMachine() {
     return StateMachine.newBuilder()
-        .addState(RECEIVING, "Receiving data from senders."
+        .addState(State.RECEIVING, "Receiving data from senders."
             + " It sends a RECEIVER_INITIALIZED message to the manager when it is initialized.")
-        .addState(COMPLETED, "Completed to receive data from all senders in one iteration")
-        .addState(FINISHED, "Finished receiving data")
-        .setInitialState(RECEIVING)
-        .addTransition(RECEIVING, COMPLETED,
+        .addState(State.COMPLETED, "Completed to receive data from all senders in one iteration")
+        .addState(State.FINISHED, "Finished receiving data")
+        .setInitialState(State.RECEIVING)
+        .addTransition(State.RECEIVING, State.COMPLETED,
             "When SENDER_COMPLETED messages arrived from all senders."
                 + " It sends a RECEIVER_COMPLETED message to the manager.")
-        .addTransition(COMPLETED, RECEIVING,
+        .addTransition(State.COMPLETED, State.RECEIVING,
             "When a RECEIVER_CAN_RECEIVE message arrived from the manager."
                 + " It sends a RECEIVER_READIED message to the manager.")
-        .addTransition(COMPLETED, FINISHED,
+        .addTransition(State.COMPLETED, State.FINISHED,
             "When a RECEIVER_SHUTDOWN message arrived from the manager.")
         .build();
   }
