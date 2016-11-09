@@ -409,9 +409,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
    */
   private static class ServerThread<K, V> implements Runnable {
     private static final long QUEUE_TIMEOUT_MS = 3000;
-    private static final String STATE_RUNNING = "RUNNING";
-    private static final String STATE_CLOSING = "CLOSING";
-    private static final String STATE_CLOSED = "CLOSED";
 
     private final Map<K, V> kvStore;
     private final BlockingQueue<Op<K, V>> queue;
@@ -428,6 +425,12 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
       this.stateMachine = initStateMachine();
     }
 
+    private enum State {
+      RUNNING,
+      CLOSING,
+      CLOSED
+    }
+
     private StateMachine initStateMachine() {
       return StateMachine.newBuilder()
           .addState(State.RUNNING, "Server thread is running. It executes operations in the queue.")
@@ -437,12 +440,6 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
           .addTransition(State.CLOSING, State.CLOSED, "Closing the thread is done.")
           .setInitialState(State.RUNNING)
           .build();
-    }
-
-    private enum State {
-      RUNNING,
-      CLOSING,
-      CLOSED
     }
 
     /**

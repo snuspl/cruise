@@ -36,17 +36,17 @@ public final class StateMachine {
   }
 
   /**
-   * Check whether current state is same as the expectedCurrentState.
+   * Checks whether the current state is same as the {@code expectedCurrentState}.
    *
-   * @param expectedCurrentState an expected current state
-   * @throws RuntimeException if the expectedCurrentState is not same as actual current state
+   * @param expectedCurrentState the expected current state
+   * @throws RuntimeException if the expectedCurrentState is not same as the actual current state
    */
   public synchronized void checkState(final Enum expectedCurrentState) {
     if (!currentState.stateEnum.equals(expectedCurrentState)) {
       final String exceptionMessage = new StringBuilder()
           .append("The expected current state is ")
           .append(expectedCurrentState)
-          .append(" but the state is ")
+          .append(" but the actual state is ")
           .append(currentState).append('\n')
           .append(getPossibleTransitionsFromCurrentState())
           .toString();
@@ -56,7 +56,7 @@ public final class StateMachine {
   }
 
   /**
-   * Set current state as a certain state.
+   * Sets the current state as a certain state.
    *
    * @param state a state
    * @throws RuntimeException if the state is unknown state, or the transition
@@ -88,7 +88,7 @@ public final class StateMachine {
    *
    * @param expectedCurrentState an expected state
    * @param state a state
-   * @return true if successful. False return indicates that
+   * @return {@code true} if successful. {@code false} indicates that
    * the actual value was not equal to the expected value.
    * @throws RuntimeException if the state is unknown state, or the transition
    * from the current state to the specified state is illegal
@@ -210,7 +210,7 @@ public final class StateMachine {
     }
 
     /**
-     * Add a state with name and description.
+     * Adds a state with name and description.
      *
      * @param stateEnum enumeration indicating the state
      * @param description description of the state
@@ -241,7 +241,7 @@ public final class StateMachine {
     }
 
     /**
-     * Add a transition with description.
+     * Adds a transition with description.
      *
      * @param from from state name
      * @param to to state name
@@ -274,7 +274,7 @@ public final class StateMachine {
     }
 
     /**
-     * Build and return the StateMachine.
+     * Builds and returns the StateMachine.
      *
      * @return the StateMachine
      * @throws RuntimeException if an initial state was not set

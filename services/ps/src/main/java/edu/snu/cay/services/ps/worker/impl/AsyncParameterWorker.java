@@ -136,6 +136,12 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
   private final TraceScope pwTraceScope;
   private final double traceProbability;
 
+  private enum State {
+    RUNNING,
+    CLOSING,
+    CLOSED
+  }
+
   @Inject
   private AsyncParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numWorkerThreads,
                                @Parameter(WorkerQueueSize.class) final int queueSize,
@@ -1220,11 +1226,5 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
         }
       }
     }
-  }
-
-  private enum State {
-    RUNNING,
-    CLOSING,
-    CLOSED
   }
 }

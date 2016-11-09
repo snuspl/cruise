@@ -63,6 +63,12 @@ public final class ControllerTaskSync implements EventHandler<Message<AvroSyncMe
     this.driverId = driverId;
   }
 
+  private enum State {
+    RUNNING,
+    PAUSE_PENDING,
+    PAUSED
+  }
+
   private StateMachine initStateMachine() {
     return StateMachine.newBuilder()
         .addState(State.RUNNING, "The task is running with no outstanding pause requests")
@@ -78,12 +84,6 @@ public final class ControllerTaskSync implements EventHandler<Message<AvroSyncMe
         .addTransition(State.PAUSED, State.RUNNING,
             "The paused task has been resumed")
         .build();
-  }
-
-  private enum State {
-    RUNNING,
-    PAUSE_PENDING,
-    PAUSED
   }
 
   /**

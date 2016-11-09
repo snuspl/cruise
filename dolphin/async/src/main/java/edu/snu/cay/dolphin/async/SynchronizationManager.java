@@ -105,6 +105,12 @@ final class SynchronizationManager {
     this.globalStateMachine = initStateMachine();
   }
 
+  public enum State {
+    INIT,
+    RUN,
+    CLEANUP
+  }
+
   static StateMachine initStateMachine() {
     return StateMachine.newBuilder()
         .addState(State.INIT, "Workers are initializing themselves")
@@ -114,12 +120,6 @@ final class SynchronizationManager {
         .addTransition(State.RUN, State.CLEANUP, "The task execution is finished, time to clean up the task")
         .setInitialState(State.INIT)
         .build();
-  }
-
-  public enum State {
-    INIT,
-    RUN,
-    CLEANUP
   }
 
   /**

@@ -488,6 +488,12 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
       this.stateMachine = initStateMachine();
     }
 
+    private enum State {
+      RUNNING,
+      CLOSING,
+      CLOSED
+    }
+
     private StateMachine initStateMachine() {
       return StateMachine.newBuilder()
           .addState(State.RUNNING, "Server thread is running. It executes operations in the queue.")
@@ -497,12 +503,6 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
           .addTransition(State.CLOSING, State.CLOSED, "Closing the thread is done.")
           .setInitialState(State.RUNNING)
           .build();
-    }
-
-    private enum State {
-      RUNNING,
-      CLOSING,
-      CLOSED
     }
 
     /**

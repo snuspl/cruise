@@ -365,6 +365,13 @@ public final class AsyncDolphinDriver {
     }
   }
 
+  private enum State {
+    RUNNING,
+    CLOSING_WORKERS,
+    CLOSING_SERVERS,
+    CLOSING_ROOT_CONTEXTS,
+  }
+
   private StateMachine initStateMachine() {
     return StateMachine.newBuilder()
         .addState(State.RUNNING, "The job is running")
@@ -379,13 +386,6 @@ public final class AsyncDolphinDriver {
         .addTransition(State.CLOSING_SERVERS, State.CLOSING_ROOT_CONTEXTS,
             "Both worker and server contexts are finished, time to close their root contexts")
         .build();
-  }
-
-  private enum State {
-    RUNNING,
-    CLOSING_WORKERS,
-    CLOSING_SERVERS,
-    CLOSING_ROOT_CONTEXTS,
   }
 
   final class StartHandler implements EventHandler<StartTime> {

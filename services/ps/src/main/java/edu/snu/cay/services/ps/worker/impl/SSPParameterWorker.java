@@ -124,6 +124,12 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   private final WorkerClock workerClock;
   private final int stalenessBound;
 
+  private enum State {
+    RUNNING,
+    CLOSING,
+    CLOSED
+  }
+
   @Inject
   private SSPParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
                              @Parameter(WorkerQueueSize.class) final int queueSize,
@@ -806,11 +812,5 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
         }
       }
     }
-  }
-
-  private enum State {
-    RUNNING,
-    CLOSING,
-    CLOSED
   }
 }

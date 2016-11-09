@@ -67,6 +67,13 @@ public final class DriverSync implements EventHandler<Message<AvroSyncMessage>> 
     this.stateMachine = initStateMachine();
   }
 
+  private enum State {
+    RUNNING,
+    WAITING_PAUSE_RESULT,
+    PAUSED,
+    CANCELLING
+  }
+
   private StateMachine initStateMachine() {
     return StateMachine.newBuilder()
         .addState(State.RUNNING, "Running normally, with no outstanding pauses")
@@ -87,13 +94,6 @@ public final class DriverSync implements EventHandler<Message<AvroSyncMessage>> 
         .addTransition(State.CANCELLING, State.RUNNING,
             "The pause has been cancelled")
         .build();
-  }
-
-  private enum State {
-    RUNNING,
-    WAITING_PAUSE_RESULT,
-    PAUSED,
-    CANCELLING
   }
 
   public synchronized void onStageStart(final String newGroupName, final String newControllerTaskId) {

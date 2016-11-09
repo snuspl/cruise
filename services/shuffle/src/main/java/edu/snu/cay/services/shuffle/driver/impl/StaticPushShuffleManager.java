@@ -62,6 +62,13 @@ public final class StaticPushShuffleManager implements ShuffleManager {
 
   private PushShuffleListener pushShuffleListener;
 
+  private enum State {
+    INIT,
+    CAN_SEND,
+    RECEIVERS_COMPLETED,
+    FINISHED
+  }
+
   @Inject
   private StaticPushShuffleManager(
       final ShuffleDescription shuffleDescription,
@@ -392,10 +399,4 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     }
   }
 
-  private enum State {
-    INIT,
-    CAN_SEND,
-    RECEIVERS_COMPLETED,
-    FINISHED
-  }
 }
