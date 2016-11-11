@@ -20,9 +20,14 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.snu.cay.services</groupId>
   <version>0.1-SNAPSHOT</version>
-  <packaging>pom</packaging>
   <name>Elastic Tables</name>
   <artifactId>elastic-tables</artifactId>
+
+  <parent>
+    <groupId>edu.snu.cay</groupId>
+    <artifactId>cay</artifactId>
+    <version>0.1-SNAPSHOT</version>
+  </parent>
 
   <licenses>
     <license>
@@ -35,8 +40,14 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <reef.version>0.16.0-SNAPSHOT</reef.version>
+    <cay.version>0.1-SNAPSHOT</cay.version>
     <htrace.version>3.0.4</htrace.version>
     <avro.version>1.7.7</avro.version>
+    <junit.version>4.12</junit.version>
+    <jdk.version>1.8</jdk.version>
+    <properties-maven-plugin.version>1.0.0</properties-maven-plugin.version>
+    <apache-rat-plugin.version>0.11</apache-rat-plugin.version>
+    <maven-compiler-plugin.version>3.1</maven-compiler-plugin.version>
     <maven-checkstyle-plugin.version>2.17</maven-checkstyle-plugin.version>
     <checkstyle.version>7.2</checkstyle.version>
     <build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
@@ -46,204 +57,130 @@
     <maven>3.0</maven>
   </prerequisites>
 
-  <dependencyManagement>
-    <dependencies>
-      <!-- REEF -->
-      <dependency>
-        <groupId>org.apache.reef</groupId>
-        <artifactId>reef-common</artifactId>
-        <version>${reef.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.reef</groupId>
-        <artifactId>reef-io</artifactId>
-        <version>${reef.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.reef</groupId>
-        <artifactId>reef-runtime-local</artifactId>
-        <version>${reef.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.reef</groupId>
-        <artifactId>reef-runtime-yarn</artifactId>
-        <version>${reef.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.reef</groupId>
-        <artifactId>tang</artifactId>
-        <version>${reef.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.reef</groupId>
-        <artifactId>wake</artifactId>
-        <version>${reef.version}</version>
-      </dependency>
-      <!-- End of REEF -->
-      <!-- CAY -->
-      <dependency>
-        <groupId>edu.snu.cay.services</groupId>
-        <artifactId>evaluator-manager</artifactId>
-        <version>0.1-SNAPSHOT</version>
-      </dependency>
-      <!-- End of CAY -->
-      <!-- HTrace -->
-      <dependency>
-        <groupId>org.htrace</groupId>
-        <artifactId>htrace-core</artifactId>
-        <version>${htrace.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.htrace</groupId>
-        <artifactId>htrace-zipkin</artifactId>
-        <version>${htrace.version}</version>
-      </dependency>
-      <!-- End of HTRACE -->
-      <dependency>
-        <groupId>org.apache.avro</groupId>
-        <artifactId>avro</artifactId>
-        <version>${avro.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>junit</groupId>
-        <artifactId>junit</artifactId>
-        <version>4.12</version>
-        <scope>test</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
+  <dependencies>
+    <!-- REEF -->
+    <dependency>
+      <groupId>org.apache.reef</groupId>
+      <artifactId>reef-common</artifactId>
+      <version>${reef.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.reef</groupId>
+      <artifactId>reef-io</artifactId>
+      <version>${reef.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.reef</groupId>
+      <artifactId>reef-runtime-local</artifactId>
+      <version>${reef.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.reef</groupId>
+      <artifactId>reef-runtime-yarn</artifactId>
+      <version>${reef.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.reef</groupId>
+      <artifactId>tang</artifactId>
+      <version>${reef.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.reef</groupId>
+      <artifactId>wake</artifactId>
+      <version>${reef.version}</version>
+    </dependency>
+    <!-- End of REEF -->
+    <!-- CAY -->
+    <dependency>
+      <groupId>edu.snu.cay.services</groupId>
+      <artifactId>evaluator-manager</artifactId>
+      <version>${cay.version}</version>
+    </dependency>
+    <!-- End of CAY -->
+    <!-- HTrace -->
+    <dependency>
+      <groupId>org.htrace</groupId>
+      <artifactId>htrace-core</artifactId>
+      <version>${htrace.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.htrace</groupId>
+      <artifactId>htrace-zipkin</artifactId>
+      <version>${htrace.version}</version>
+    </dependency>
+    <!-- End of HTRACE -->
+    <dependency>
+      <groupId>org.apache.avro</groupId>
+      <artifactId>avro</artifactId>
+      <version>${avro.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
   <build>
-    <pluginManagement>
-      <plugins>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.1</version>
-          <configuration>
-            <source>1.8</source>
-            <target>1.8</target>
-            <showDeprecation>true</showDeprecation>
-            <encoding>${project.build.sourceEncoding}</encoding>
-          </configuration>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-shade-plugin</artifactId>
-          <version>2.3</version>
-          <executions>
-            <execution>
-              <phase>package</phase>
-              <goals>
-                <goal>shade</goal>
-              </goals>
-            </execution>
-          </executions>
-          <configuration>
-            <outputFile>
-              ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
-            </outputFile>
-            <filters>
-              <filter>
-                <artifact>*:*</artifact>
-                <excludes>
-                  <exclude>META-INF/*</exclude>
-                  <exclude>LICENSE</exclude>
-                  <exclude>yarn-default.xml</exclude>
-                  <exclude>yarn-version-info.properties</exclude>
-                  <exclude>core-default.xml</exclude>
-                </excludes>
-              </filter>
-            </filters>
-          </configuration>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-jar-plugin</artifactId>
-          <version>3.0.2</version>
-          <executions>
-            <execution>
-              <goals>
-                <goal>test-jar</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.avro</groupId>
-          <artifactId>avro-maven-plugin</artifactId>
-          <version>${avro.version}</version>
-        </plugin>
-        <plugin>
-          <groupId>org.codehaus.mojo</groupId>
-          <artifactId>build-helper-maven-plugin</artifactId>
-          <version>1.9.1</version>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.rat</groupId>
-          <artifactId>apache-rat-plugin</artifactId>
-          <version>0.11</version>
-          <configuration>
-            <excludes>
-              <!-- Markdown files such as README.md -->
-              <exclude>**/*.md</exclude>
-              <!-- REEF files that the CI server generates -->
-              <exclude>reef/**</exclude>
-              <!-- Git files -->
-              <exclude>.gitattributes</exclude>
-              <exclude>.gitignore</exclude>
-              <exclude>.git/**</exclude>
-              <!-- Intellij idea project files -->
-              <exclude>lang/java/.idea/**</exclude>
-              <exclude>**/.idea/**</exclude>
-              <exclude>**/*.iml</exclude>
-              <!-- Maven build files -->
-              <exclude>**/target/**</exclude>
-              <!-- REEF run files -->
-              <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
-              <!-- Output files -->
-              <exclude>**/output*/**</exclude>
-              <!-- JVM error logs, especially troublesome on CI servers -->
-              <exclude>**/hs_err_*.log</exclude>
-            </excludes>
-          </configuration>
-          <dependencies>
-            <dependency>
-              <groupId>org.apache.maven.doxia</groupId>
-              <artifactId>doxia-core</artifactId>
-              <version>1.6</version>
-              <exclusions>
-                <exclusion>
-                  <groupId>xerces</groupId>
-                  <artifactId>xercesImpl</artifactId>
-                </exclusion>
-              </exclusions>
-            </dependency>
-          </dependencies>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-checkstyle-plugin</artifactId>
-          <version>${maven-checkstyle-plugin.version}</version>
-          <dependencies>
-            <dependency>
-              <groupId>com.puppycrawl.tools</groupId>
-              <artifactId>checkstyle</artifactId>
-              <version>${checkstyle.version}</version>
-            </dependency>
-          </dependencies>
-          <configuration>
-            <configLocation>checkstyle.xml</configLocation>
-            <outputFile>${project.build.directory}/checkstyle-errors.xml</outputFile>
-            <includeTestSourceDirectory>true</includeTestSourceDirectory>
-          </configuration>
-        </plugin>
-      </plugins>
-    </pluginManagement>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+        <configuration>
+          <source>${jdk.version}</source>
+          <target>${jdk.version}</target>
+          <showDeprecation>true</showDeprecation>
+          <encoding>${project.build.sourceEncoding}</encoding>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <outputFile>
+            ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
+          </outputFile>
+          <filters>
+            <filter>
+              <artifact>*:*</artifact>
+              <excludes>
+                <exclude>META-INF/*</exclude>
+                <exclude>LICENSE</exclude>
+                <exclude>yarn-default.xml</exclude>
+                <exclude>yarn-version-info.properties</exclude>
+                <exclude>core-default.xml</exclude>
+              </excludes>
+            </filter>
+          </filters>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.0.2</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
+        <version>${apache-rat-plugin.version}</version>
         <executions>
           <execution>
             <id>validate</id>
@@ -253,10 +190,48 @@
             </goals>
           </execution>
         </executions>
+        <configuration>
+          <excludes>
+            <!-- Markdown files such as README.md -->
+            <exclude>**/*.md</exclude>
+            <!-- REEF files that the CI server generates -->
+            <exclude>reef/**</exclude>
+            <!-- Git files -->
+            <exclude>.gitattributes</exclude>
+            <exclude>.gitignore</exclude>
+            <exclude>.git/**</exclude>
+            <!-- Intellij idea project files -->
+            <exclude>lang/java/.idea/**</exclude>
+            <exclude>**/.idea/**</exclude>
+            <exclude>**/*.iml</exclude>
+            <!-- Maven build files -->
+            <exclude>**/target/**</exclude>
+            <!-- REEF run files -->
+            <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
+            <!-- Output files -->
+            <exclude>**/output*/**</exclude>
+            <!-- JVM error logs, especially troublesome on CI servers -->
+            <exclude>**/hs_err_*.log</exclude>
+          </excludes>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.maven.doxia</groupId>
+            <artifactId>doxia-core</artifactId>
+            <version>1.6</version>
+            <exclusions>
+              <exclusion>
+                <groupId>xerces</groupId>
+                <artifactId>xercesImpl</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+        </dependencies>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${maven-checkstyle-plugin.version}</version>
         <executions>
           <execution>
             <id>validate</id>
@@ -264,6 +239,34 @@
             <goals>
               <goal>check</goal>
             </goals>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>${checkstyle.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <configLocation>checkstyle.xml</configLocation>
+          <outputFile>${project.build.directory}/checkstyle-errors.xml</outputFile>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>properties-maven-plugin</artifactId>
+        <version>${properties-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>write-project-properties</goal>
+            </goals>
+            <configuration>
+              <outputFile>${project.build.testOutputDirectory}/elastic-table.properties</outputFile>
+            </configuration>
           </execution>
         </executions>
       </plugin>
