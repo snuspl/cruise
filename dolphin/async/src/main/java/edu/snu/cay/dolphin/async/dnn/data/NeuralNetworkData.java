@@ -15,33 +15,31 @@
  */
 package edu.snu.cay.dolphin.async.dnn.data;
 
-import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
-import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
-
 /**
  * Data object used for deep neural network jobs.
  */
 public final class NeuralNetworkData {
 
-  private final Matrix matrix;
+  private final float[][] instances;
   private final int[] labels;
   private final boolean isValidation;
 
+
   /**
-   * @param matrix the values of input matrix in which each input instance stored in each column
+   * @param instances the input instances, each instance is represented as a float array
    * @param labels the labels of input instances
    * @param isValidation the flag indicating whether or not the data batch is for cross validation
    */
-  public NeuralNetworkData(final Matrix matrix,
+  public NeuralNetworkData(final float[][] instances,
                            final int[] labels,
                            final boolean isValidation) {
-    this.matrix = matrix;
+    this.instances = instances;
     this.labels = labels;
     this.isValidation = isValidation;
   }
 
-  public Matrix getMatrix() {
-    return this.matrix;
+  public float[][] getInstances() {
+    return this.instances;
   }
 
   public int[] getLabels() {
@@ -50,9 +48,5 @@ public final class NeuralNetworkData {
 
   public boolean isValidation() {
     return this.isValidation;
-  }
-
-  public void cleanup() {
-    MatrixUtils.free(matrix);
   }
 }

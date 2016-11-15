@@ -87,23 +87,26 @@ final class NeuralNetworkTrainer implements Trainer {
     final Collection<NeuralNetworkData> workload = workloadMap.values();
 
     for (final NeuralNetworkData data : workload) {
-      final Matrix input = data.getMatrix();
+      if (data.isValidation()) {
+        continue;
+      }
+
+      final Matrix input = dataParser.asMatrix(data.getInstances());
       final int[] labels = data.getLabels();
 
       if (input.getColumns() != labels.length) {
         throw new RuntimeException("Invalid data: the number of inputs is not equal to the number of labels");
       }
 
-      if (!data.isValidation()) {
-        neuralNetwork.train(input, labels);
-      }
+      neuralNetwork.train(input, labels);
+      MatrixUtils.free(input);
     }
 
     // update parameters for model validation
     neuralNetwork.updateParameters();
 
     for (final NeuralNetworkData data : workload) {
-      final Matrix input = data.getMatrix();
+      final Matrix input = dataParser.asMatrix(data.getInstances());
       final int[] labels = data.getLabels();
 
       if (data.isValidation()) {
@@ -111,6 +114,8 @@ final class NeuralNetworkTrainer implements Trainer {
       } else {
         trainingValidator.validate(input, labels);
       }
+
+      MatrixUtils.free(input);
     }
 
     LOG.log(Level.INFO, generateIterationLog(
@@ -123,12 +128,5 @@ final class NeuralNetworkTrainer implements Trainer {
   @Override
   public void cleanup() {
     neuralNetwork.cleanup();
-
-    final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
-    final Collection<NeuralNetworkData> workload = workloadMap.values();
-    for (final NeuralNetworkData data : workload) {
-      final Matrix input = data.getMatrix();
-      MatrixUtils.free(input);
-    }
   }
 }

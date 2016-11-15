@@ -103,6 +103,25 @@ public final class NeuralNetworkDataParser {
   }
 
   /**
+   * Generates a batch input {@link Matrix} with the specified list of input data.
+   *
+   * @param inputs a input data 2d array, each row contains an instance
+   * @return a batch input {@link Matrix}
+   */
+  public Matrix asMatrix(final float[][] inputs) {
+    if (inputs.length == 0) {
+      throw new IllegalArgumentException("At least one input is needed to make batch");
+    }
+    final int dataSize = inputs[0].length; // all input arrays should have the same length
+    final float[] batch = new float[inputs.length * dataSize];
+    for (int i = 0; i < inputs.length; i++) {
+      System.arraycopy(inputs[i], 0, batch, dataSize * i, dataSize);
+    }
+    final Matrix ret = matrixFactory.create(batch, dataSize, inputs.length);
+    return ret;
+  }
+
+  /**
    * Class for generating batch matrix and an array of labels with the specified batch size.
    */
   private class BatchGenerator {
@@ -155,7 +174,9 @@ public final class NeuralNetworkDataParser {
      * Makes a batch with the matrix and label data that have been pushed and adds it to the list of data.
      */
     private void makeAndAddBatch() {
-      final NeuralNetworkData data = new NeuralNetworkData(makeBatch(dataArray),
+      final float[][] instances = new float[dataArray.size()][];
+      final NeuralNetworkData data = new NeuralNetworkData(
+          dataArray.toArray(instances),
           ArrayUtils.toPrimitive(labelList.toArray(new Integer[labelList.size()])),
           isValidation);
 
@@ -164,23 +185,5 @@ public final class NeuralNetworkDataParser {
       labelList.clear();
     }
 
-    /**
-     * Generates a batch input {@link Matrix} with the specified list of input data.
-     *
-     * @param inputs a list of input data
-     * @return a batch input {@link Matrix}
-     */
-    private Matrix makeBatch(final List<float[]> inputs) {
-      if (inputs.size() == 0) {
-        throw new IllegalArgumentException("At least one input is needed to make batch");
-      }
-      final int dataSize = inputs.get(0).length; // all input arrays should have the same length
-      final float[] batch = new float[inputs.size() * dataSize];
-      for (int i = 0; i < inputs.size(); i++) {
-        System.arraycopy(inputs.get(i), 0, batch, dataSize * i, dataSize);
-      }
-      final Matrix ret = matrixFactory.create(batch, dataSize, inputs.size());
-      return ret;
-    }
   }
 }
