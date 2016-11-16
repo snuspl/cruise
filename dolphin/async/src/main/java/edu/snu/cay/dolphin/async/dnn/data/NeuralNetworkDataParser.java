@@ -48,13 +48,14 @@ public final class NeuralNetworkDataParser {
   private final String delimiter;
   private final int batchSize;
   private List<NeuralNetworkData> result;
-  private final int dataSize;
+  private final int inputLength;
 
   /**
    * @param injector the injector having the matrix factory configuration
    * @param dataSet the set of unparsed input data
    * @param delimiter the delimiter used in the input file
    * @param batchSize the size of input batch
+   * @param inputShape the shape of input
    */
   @Inject
   private NeuralNetworkDataParser(final Injector injector,
@@ -71,14 +72,14 @@ public final class NeuralNetworkDataParser {
     this.delimiter = delimiter;
     this.batchSize = batchSize;
     final LayerShape shape = NeuralNetworkUtils.shapeFromString(inputShape);
-    this.dataSize = NeuralNetworkUtils.getShapeLength(shape);
+    this.inputLength = NeuralNetworkUtils.getShapeLength(shape);
   }
 
   public List<NeuralNetworkData> get() {
     if (result == null) {
       final List<NeuralNetworkData> dataList = new ArrayList<>();
-      final BatchGenerator trainingBatchGenerator = new BatchGenerator(dataList, false, dataSize);
-      final BatchGenerator validationBatchGenerator = new BatchGenerator(dataList, true, dataSize);
+      final BatchGenerator trainingBatchGenerator = new BatchGenerator(dataList, false);
+      final BatchGenerator validationBatchGenerator = new BatchGenerator(dataList, true);
 
       for (final Pair<LongWritable, Text> keyValue : dataSet) {
         final String text = keyValue.getSecond().toString().trim();
@@ -88,10 +89,10 @@ public final class NeuralNetworkDataParser {
 
         final String[] stringData = text.split(delimiter);
         final int dataLength = stringData.length;
-        if (dataLength - 2 != dataSize) {
-          new RuntimeException("data size is different with expected size");
+        if (dataLength - 2 != inputLength) {
+          throw new RuntimeException("Input length is different from expected length");
         }
-        final float[] floatData = new float[dataLength - 2];
+        final float[] floatData = new float[inputLength];
         for (int i = 0; i < dataLength - 2; i++) {
           floatData[i] = Float.parseFloat(stringData[i]);
         }
@@ -114,7 +115,7 @@ public final class NeuralNetworkDataParser {
   }
 
   /**
-   * Generates a batch input {@link Matrix} with the specified list of input data.
+   * Generates a batch input {@link Matrix} with the specified input data.
    *
    * @param inputs a input data as an array.
    * @return a batch input {@link Matrix}
@@ -123,8 +124,7 @@ public final class NeuralNetworkDataParser {
     if (inputs.length == 0) {
       throw new IllegalArgumentException("At least one input is needed to make batch");
     }
-    final Matrix ret = matrixFactory.create(inputs, dataSize, inputs.length / dataSize);
-    return ret;
+    return matrixFactory.create(inputs, inputLength, inputs.length / inputLength);
   }
 
   /**
@@ -134,18 +134,15 @@ public final class NeuralNetworkDataParser {
     private final List<NeuralNetworkData> dataList;
     private final boolean isValidation;
     private final List<Integer> labelList;
-    private final int dataSize;
     private int numData;
     private float[] dataArray;
 
     BatchGenerator(final List<NeuralNetworkData> dataList,
-                   final boolean isValidation,
-                   final int dataSize) {
+                   final boolean isValidation) {
       this.dataList = dataList;
       this.isValidation = isValidation;
       this.labelList = new ArrayList<>(batchSize);
-      this.dataSize = dataSize;
-      this.dataArray = new float[dataSize * batchSize];
+      this.dataArray = new float[inputLength * batchSize];
       this.numData = 0;
     }
 
@@ -164,7 +161,7 @@ public final class NeuralNetworkDataParser {
      * @param label a label for the datum.
      */
     public void push(final float[] data, final int label) {
-      System.arraycopy(data, 0, dataArray, numData * dataSize, dataSize);
+      System.arraycopy(data, 0, dataArray, numData * inputLength, inputLength);
       numData++;
       labelList.add(label);
       if (size() == batchSize) {
@@ -187,12 +184,12 @@ public final class NeuralNetworkDataParser {
      */
     private void makeAndAddBatch() {
       final NeuralNetworkData data = new NeuralNetworkData(
-          size() == batchSize ? dataArray : Arrays.copyOf(dataArray, size() * dataSize),
+          size() == batchSize ? dataArray : Arrays.copyOf(dataArray, size() * inputLength),
           ArrayUtils.toPrimitive(labelList.toArray(new Integer[labelList.size()])),
           isValidation);
 
       dataList.add(data);
-      dataArray = new float[dataSize * batchSize];
+      dataArray = new float[inputLength * batchSize];
       numData = 0;
       labelList.clear();
     }
