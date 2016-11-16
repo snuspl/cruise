@@ -20,7 +20,7 @@ package edu.snu.cay.dolphin.async.dnn.data;
  */
 public final class NeuralNetworkData {
 
-  private final float[][] instances;
+  private final float[] instances;
   private final int[] labels;
   private final boolean isValidation;
 
@@ -30,7 +30,7 @@ public final class NeuralNetworkData {
    * @param labels the labels of input instances
    * @param isValidation the flag indicating whether or not the data batch is for cross validation
    */
-  public NeuralNetworkData(final float[][] instances,
+  public NeuralNetworkData(final float[] instances,
                            final int[] labels,
                            final boolean isValidation) {
     this.instances = instances;
@@ -38,7 +38,7 @@ public final class NeuralNetworkData {
     this.isValidation = isValidation;
   }
 
-  public float[][] getInstances() {
+  public float[] getInstances() {
     return this.instances;
   }
 
