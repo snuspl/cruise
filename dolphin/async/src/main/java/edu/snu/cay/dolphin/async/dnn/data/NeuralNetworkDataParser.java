@@ -18,7 +18,10 @@ package edu.snu.cay.dolphin.async.dnn.data;
 import edu.snu.cay.dolphin.async.dnn.NeuralNetworkParameters.Delimiter;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
+import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.InputShape;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.BatchSize;
+import edu.snu.cay.dolphin.async.dnn.layers.LayerShape;
+import edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -30,6 +33,7 @@ import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -44,18 +48,21 @@ public final class NeuralNetworkDataParser {
   private final String delimiter;
   private final int batchSize;
   private List<NeuralNetworkData> result;
+  private final int inputLength;
 
   /**
    * @param injector the injector having the matrix factory configuration
    * @param dataSet the set of unparsed input data
    * @param delimiter the delimiter used in the input file
    * @param batchSize the size of input batch
+   * @param inputShape the shape of input
    */
   @Inject
   private NeuralNetworkDataParser(final Injector injector,
                                   final DataSet<LongWritable, Text> dataSet,
                                   @Parameter(Delimiter.class) final String delimiter,
-                                  @Parameter(BatchSize.class) final int batchSize) {
+                                  @Parameter(BatchSize.class) final int batchSize,
+                                  @Parameter(InputShape.class) final String inputShape) {
     try {
       this.matrixFactory = injector.forkInjector().getInstance(MatrixFactory.class);
     } catch (final InjectionException ie) {
@@ -64,6 +71,8 @@ public final class NeuralNetworkDataParser {
     this.dataSet = dataSet;
     this.delimiter = delimiter;
     this.batchSize = batchSize;
+    final LayerShape shape = NeuralNetworkUtils.shapeFromString(inputShape);
+    this.inputLength = NeuralNetworkUtils.getShapeLength(shape);
   }
 
   public List<NeuralNetworkData> get() {
@@ -80,7 +89,10 @@ public final class NeuralNetworkDataParser {
 
         final String[] stringData = text.split(delimiter);
         final int dataLength = stringData.length;
-        final float[] floatData = new float[dataLength - 2];
+        if (dataLength - 2 != inputLength) {
+          throw new RuntimeException("Input length is different from expected length");
+        }
+        final float[] floatData = new float[inputLength];
         for (int i = 0; i < dataLength - 2; i++) {
           floatData[i] = Float.parseFloat(stringData[i]);
         }
@@ -103,27 +115,42 @@ public final class NeuralNetworkDataParser {
   }
 
   /**
+   * Generates a batch input {@link Matrix} with the specified input data.
+   *
+   * @param inputs a input data as an array.
+   * @return a batch input {@link Matrix}
+   */
+  public Matrix asMatrix(final float[] inputs) {
+    if (inputs.length == 0) {
+      throw new IllegalArgumentException("At least one input is needed to make batch");
+    }
+    return matrixFactory.create(inputs, inputLength, inputs.length / inputLength);
+  }
+
+  /**
    * Class for generating batch matrix and an array of labels with the specified batch size.
    */
   private class BatchGenerator {
     private final List<NeuralNetworkData> dataList;
     private final boolean isValidation;
-    private final List<float[]> dataArray;
     private final List<Integer> labelList;
+    private int numData;
+    private float[] dataArray;
 
     BatchGenerator(final List<NeuralNetworkData> dataList,
                    final boolean isValidation) {
       this.dataList = dataList;
       this.isValidation = isValidation;
-      this.dataArray = new ArrayList<>(batchSize);
       this.labelList = new ArrayList<>(batchSize);
+      this.dataArray = new float[inputLength * batchSize];
+      this.numData = 0;
     }
 
     /**
      * @return the number of aggregated data.
      */
     public int size() {
-      return dataArray.size();
+      return numData;
     }
 
     /**
@@ -134,7 +161,8 @@ public final class NeuralNetworkDataParser {
      * @param label a label for the datum.
      */
     public void push(final float[] data, final int label) {
-      dataArray.add(data);
+      System.arraycopy(data, 0, dataArray, numData * inputLength, inputLength);
+      numData++;
       labelList.add(label);
       if (size() == batchSize) {
         makeAndAddBatch();
@@ -155,32 +183,15 @@ public final class NeuralNetworkDataParser {
      * Makes a batch with the matrix and label data that have been pushed and adds it to the list of data.
      */
     private void makeAndAddBatch() {
-      final NeuralNetworkData data = new NeuralNetworkData(makeBatch(dataArray),
+      final NeuralNetworkData data = new NeuralNetworkData(
+          size() == batchSize ? dataArray : Arrays.copyOf(dataArray, size() * inputLength),
           ArrayUtils.toPrimitive(labelList.toArray(new Integer[labelList.size()])),
           isValidation);
 
       dataList.add(data);
-      dataArray.clear();
+      dataArray = new float[inputLength * batchSize];
+      numData = 0;
       labelList.clear();
-    }
-
-    /**
-     * Generates a batch input {@link Matrix} with the specified list of input data.
-     *
-     * @param inputs a list of input data
-     * @return a batch input {@link Matrix}
-     */
-    private Matrix makeBatch(final List<float[]> inputs) {
-      if (inputs.size() == 0) {
-        throw new IllegalArgumentException("At least one input is needed to make batch");
-      }
-      final int dataSize = inputs.get(0).length; // all input arrays should have the same length
-      final float[] batch = new float[inputs.size() * dataSize];
-      for (int i = 0; i < inputs.size(); i++) {
-        System.arraycopy(inputs.get(i), 0, batch, dataSize * i, dataSize);
-      }
-      final Matrix ret = matrixFactory.create(batch, dataSize, inputs.size());
-      return ret;
     }
   }
 }
