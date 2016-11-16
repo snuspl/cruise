@@ -26,7 +26,7 @@ public final class NeuralNetworkData {
 
 
   /**
-   * @param instances the input instances, each instance is represented as a float array
+   * @param instances the input instances
    * @param labels the labels of input instances
    * @param isValidation the flag indicating whether or not the data batch is for cross validation
    */

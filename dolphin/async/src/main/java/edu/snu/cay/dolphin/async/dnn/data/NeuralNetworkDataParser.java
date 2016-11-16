@@ -71,7 +71,7 @@ public final class NeuralNetworkDataParser {
     this.delimiter = delimiter;
     this.batchSize = batchSize;
     final LayerShape shape = NeuralNetworkUtils.shapeFromString(inputShape);
-    dataSize = NeuralNetworkUtils.getShapeLength(shape);
+    this.dataSize = NeuralNetworkUtils.getShapeLength(shape);
   }
 
   public List<NeuralNetworkData> get() {
@@ -88,6 +88,9 @@ public final class NeuralNetworkDataParser {
 
         final String[] stringData = text.split(delimiter);
         final int dataLength = stringData.length;
+        if (dataLength - 2 != dataSize) {
+          new RuntimeException("data size is different with expected size");
+        }
         final float[] floatData = new float[dataLength - 2];
         for (int i = 0; i < dataLength - 2; i++) {
           floatData[i] = Float.parseFloat(stringData[i]);
@@ -132,7 +135,7 @@ public final class NeuralNetworkDataParser {
     private final boolean isValidation;
     private final List<Integer> labelList;
     private final int dataSize;
-    private int dataIndex;
+    private int numData;
     private float[] dataArray;
 
     BatchGenerator(final List<NeuralNetworkData> dataList,
@@ -143,13 +146,14 @@ public final class NeuralNetworkDataParser {
       this.labelList = new ArrayList<>(batchSize);
       this.dataSize = dataSize;
       this.dataArray = new float[dataSize * batchSize];
+      this.numData = 0;
     }
 
     /**
      * @return the number of aggregated data.
      */
     public int size() {
-      return dataIndex + 1;
+      return numData;
     }
 
     /**
@@ -160,8 +164,8 @@ public final class NeuralNetworkDataParser {
      * @param label a label for the datum.
      */
     public void push(final float[] data, final int label) {
-      System.arraycopy(data, 0, dataArray, dataIndex * dataSize, dataSize);
-      dataIndex++;
+      System.arraycopy(data, 0, dataArray, numData * dataSize, dataSize);
+      numData++;
       labelList.add(label);
       if (size() == batchSize) {
         makeAndAddBatch();
@@ -189,9 +193,8 @@ public final class NeuralNetworkDataParser {
 
       dataList.add(data);
       dataArray = new float[dataSize * batchSize];
-      dataIndex = 0;
+      numData = 0;
       labelList.clear();
     }
-
   }
 }
