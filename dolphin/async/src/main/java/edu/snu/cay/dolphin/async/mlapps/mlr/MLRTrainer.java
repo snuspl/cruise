@@ -50,7 +50,7 @@ final class MLRTrainer implements Trainer {
   /**
    * Parser object for fetching and parsing the input dataset.
    */
-  private final MLRParser mlrParser;
+  private final MLRDataParser mlrDataParser;
 
   /**
    * ParameterWorker object used to interact with the parameter server.
@@ -124,7 +124,7 @@ final class MLRTrainer implements Trainer {
   private final Tracer computeTracer;
 
   @Inject
-  private MLRTrainer(final MLRParser mlrParser,
+  private MLRTrainer(final MLRDataParser mlrDataParser,
                      final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                      @Parameter(NumClasses.class) final int numClasses,
                      @Parameter(NumFeatures.class) final int numFeatures,
@@ -139,7 +139,7 @@ final class MLRTrainer implements Trainer {
                      final TrainingDataProvider<Long> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final VectorFactory vectorFactory) {
-    this.mlrParser = mlrParser;
+    this.mlrDataParser = mlrDataParser;
     this.parameterWorker = parameterWorker;
     this.numClasses = numClasses;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
@@ -171,7 +171,7 @@ final class MLRTrainer implements Trainer {
   @Override
   public void initialize() {
     // The input dataset, given as a list of pairs which are in the form, (input vector, label).
-    final List<Pair<Vector, Integer>> dataValues = mlrParser.parse();
+    final List<Pair<Vector, Integer>> dataValues = mlrDataParser.parse();
 
     final List<Long> dataKeys;
     try {

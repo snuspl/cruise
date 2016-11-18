@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
+import edu.snu.cay.dolphin.async.DataParser;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.io.data.loading.api.DataSet;
@@ -37,7 +38,7 @@ import java.util.List;
  * </p>
  * In this format, one-based indexing is used.
  */
-final class NMFDataParser {
+final class NMFDataParser implements DataParser<NMFData> {
   private final DataSet<LongWritable, Text> dataSet;
   private final NMFModelGenerator modelGenerator;
 
@@ -83,7 +84,7 @@ final class NMFDataParser {
     return result;
   }
 
-  List<NMFData> parse() {
+  public List<NMFData> parse() {
     final List<NMFData> result = new LinkedList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {

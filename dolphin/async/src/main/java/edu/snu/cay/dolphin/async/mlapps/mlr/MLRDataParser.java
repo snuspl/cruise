@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.dolphin.async.DataParser;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.io.data.loading.api.DataSet;
@@ -37,7 +38,7 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumFeatures;
  *   [output] [index]:[value] [index]:[value] ...
  * </p>
  */
-final class MLRParser {
+final class MLRDataParser implements DataParser<Pair<Vector, Integer>> {
 
   private final DataSet<LongWritable, Text> dataSet;
   private final VectorFactory vectorFactory;
@@ -45,17 +46,17 @@ final class MLRParser {
   private final int numFeatures;
 
   @Inject
-  private MLRParser(final DataSet<LongWritable, Text> dataSet,
-                    final VectorFactory vectorFactory,
-                    @Parameter(NumClasses.class)final int numClasses,
-                    @Parameter(NumFeatures.class) final int numFeatures) {
+  private MLRDataParser(final DataSet<LongWritable, Text> dataSet,
+                        final VectorFactory vectorFactory,
+                        @Parameter(NumClasses.class)final int numClasses,
+                        @Parameter(NumFeatures.class) final int numFeatures) {
     this.dataSet = dataSet;
     this.vectorFactory = vectorFactory;
     this.numClasses = numClasses;
     this.numFeatures = numFeatures;
   }
 
-  List<Pair<Vector, Integer>> parse() {
+  public List<Pair<Vector, Integer>> parse() {
     final List<Pair<Vector, Integer>> retList = new LinkedList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
