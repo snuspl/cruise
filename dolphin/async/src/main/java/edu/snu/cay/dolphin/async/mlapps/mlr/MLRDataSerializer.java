@@ -42,10 +42,10 @@ final class MLRDataSerializer implements Serializer {
     return mlrDataCodec;
   }
 
-  private final class MLRDataCodec implements Codec<Pair<Vector, Integer>>, StreamingCodec<Pair<Vector, Integer>> {
+  private final class MLRDataCodec implements Codec<MLRData>, StreamingCodec<MLRData> {
     @Override
-    public byte[] encode(final Pair<Vector, Integer> mlrData) {
-      final int numBytes = sparseVectorCodec.getNumBytes(mlrData.getFirst()) + Integer.BYTES;
+    public byte[] encode(final MLRData mlrData) {
+      final int numBytes = sparseVectorCodec.getNumBytes(mlrData.getFeature()) + Integer.BYTES;
       try (ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
            DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(mlrData, daos);
@@ -56,7 +56,7 @@ final class MLRDataSerializer implements Serializer {
     }
 
     @Override
-    public Pair<Vector, Integer> decode(final byte[] bytes) {
+    public MLRData decode(final byte[] bytes) {
       try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
         return decodeFromStream(dis);
       } catch (final IOException e) {
@@ -65,21 +65,21 @@ final class MLRDataSerializer implements Serializer {
     }
 
     @Override
-    public void encodeToStream(final Pair<Vector, Integer> mlrData, final DataOutputStream daos) {
+    public void encodeToStream(final MLRData mlrData, final DataOutputStream daos) {
       try {
-        sparseVectorCodec.encodeToStream(mlrData.getFirst(), daos);
-        daos.writeInt(mlrData.getSecond());
+        sparseVectorCodec.encodeToStream(mlrData.getFeature(), daos);
+        daos.writeInt(mlrData.getOutput());
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
     }
 
     @Override
-    public Pair<Vector, Integer> decodeFromStream(final DataInputStream dais) {
+    public MLRData decodeFromStream(final DataInputStream dais) {
       try {
-        final Vector vector = sparseVectorCodec.decodeFromStream(dais);
-        final int label = dais.readInt();
-        return new Pair<>(vector, label);
+        final Vector featureVector = sparseVectorCodec.decodeFromStream(dais);
+        final int output = dais.readInt();
+        return new MLRData(featureVector, output);
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }

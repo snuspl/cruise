@@ -171,7 +171,7 @@ final class MLRTrainer implements Trainer {
   @Override
   public void initialize() {
     // The input dataset, given as a list of pairs which are in the form, (input vector, label).
-    final List<Pair<Vector, Integer>> dataValues = mlrDataParser.parse();
+    final List<MLRData> dataValues = mlrDataParser.parse();
 
     final List<Long> dataKeys;
     try {

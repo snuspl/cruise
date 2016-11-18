@@ -38,7 +38,7 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumFeatures;
  *   [output] [index]:[value] [index]:[value] ...
  * </p>
  */
-final class MLRDataParser implements DataParser<Pair<Vector, Integer>> {
+final class MLRDataParser implements DataParser<MLRData> {
 
   private final DataSet<LongWritable, Text> dataSet;
   private final VectorFactory vectorFactory;
@@ -56,8 +56,8 @@ final class MLRDataParser implements DataParser<Pair<Vector, Integer>> {
     this.numFeatures = numFeatures;
   }
 
-  public List<Pair<Vector, Integer>> parse() {
-    final List<Pair<Vector, Integer>> retList = new LinkedList<>();
+  public List<MLRData> parse() {
+    final List<MLRData> retList = new LinkedList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
       final String text = keyValue.getSecond().toString().trim();
@@ -80,7 +80,7 @@ final class MLRDataParser implements DataParser<Pair<Vector, Integer>> {
       }
 
       final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
-      retList.add(new Pair<>(feature, output));
+      retList.add(new MLRData(feature, output));
     }
 
     return retList;
