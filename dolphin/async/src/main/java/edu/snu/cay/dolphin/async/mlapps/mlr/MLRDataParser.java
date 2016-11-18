@@ -35,7 +35,7 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumFeatures;
  * A data parser for sparse vector classification input.
  * Assumes the following data format.
  * <p>
- *   [output] [index]:[value] [index]:[value] ...
+ *   [label] [index]:[value] [index]:[value] ...
  * </p>
  */
 final class MLRDataParser implements DataParser<MLRData> {
@@ -67,8 +67,8 @@ final class MLRDataParser implements DataParser<MLRData> {
       }
 
       final String[] split = text.split("\\s+|:");
-      final int output = Integer.parseInt(split[0]);
-      if (output < 0 || output > numClasses) {
+      final int label = Integer.parseInt(split[0]);
+      if (label < 0 || label > numClasses) {
         throw new RuntimeException(String.format("Label should be >= %d and < %d%n%s", 0, numClasses, text));
       }
 
@@ -80,7 +80,7 @@ final class MLRDataParser implements DataParser<MLRData> {
       }
 
       final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
-      retList.add(new MLRData(feature, output));
+      retList.add(new MLRData(feature, label));
     }
 
     return retList;

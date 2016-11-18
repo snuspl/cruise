@@ -18,15 +18,15 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.math.linalg.Vector;
 
 /**
- * Abstraction for training data used in MLR, consisting of feature vector and output (class).
+ * Abstraction for training data used in MLR, consisting of feature vector and label (class).
  */
 final class MLRData {
   private final Vector feature;
-  private final int output;
+  private final int label;
 
-  MLRData(final Vector feature, final int output) {
+  MLRData(final Vector feature, final int label) {
     this.feature = feature;
-    this.output = output;
+    this.label = label;
   }
 
   /**
@@ -37,9 +37,9 @@ final class MLRData {
   }
 
   /**
-   * @return Output of the training data instance.
+   * @return Label of the training data instance.
    */
-  int getOutput() {
-    return output;
+  int getLabel() {
+    return label;
   }
 }

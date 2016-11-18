@@ -208,10 +208,10 @@ final class MLRTrainer implements Trainer {
 
     int miniBatchIdx = 0;
     int numTotalInstancesProcessed = 0;
-    final List<Pair<Vector, Integer>> totalInstancesProcessed = new LinkedList<>();
+    final List<MLRData> totalInstancesProcessed = new LinkedList<>();
 
-    Map<Long, Pair<Vector, Integer>> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    List<Pair<Vector, Integer>> instances = new ArrayList<>(nextTrainingData.values());
+    Map<Long, MLRData> nextTrainingData = trainingDataProvider.getNextTrainingData();
+    List<MLRData> instances = new ArrayList<>(nextTrainingData.values());
     int numInstancesToProcess = instances.size();
     while (!nextTrainingData.isEmpty()) {
       resetTracers();
@@ -221,13 +221,13 @@ final class MLRTrainer implements Trainer {
       pullModels();
 
       computeTracer.startTimer();
-      for (final Pair<Vector, Integer> instance : instances) {
+      for (final MLRData instance : instances) {
 
-        final Vector features = instance.getFirst();
-        final int label = instance.getSecond();
+        final Vector feature = instance.getFeature();
+        final int label = instance.getLabel();
 
         // compute h(x, w) = softmax(x dot w)
-        final Vector predictions = predict(features);
+        final Vector predictions = predict(feature);
 
         // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
         // instead of allocating a new vector for the error,
@@ -237,12 +237,12 @@ final class MLRTrainer implements Trainer {
         // gradient_j = -stepSize * error_j * x
         if (lambda != 0) {
           for (int j = 0; j < numClasses; ++j) {
-            newModels[j].axpy(-predictions.get(j) * stepSize, features);
+            newModels[j].axpy(-predictions.get(j) * stepSize, feature);
             newModels[j].axpy(-stepSize * lambda, newModels[j]);
           }
         } else {
           for (int j = 0; j < numClasses; ++j) {
-            newModels[j].axpy(-predictions.get(j) * stepSize, features);
+            newModels[j].axpy(-predictions.get(j) * stepSize, feature);
           }
         }
       }
@@ -341,14 +341,14 @@ final class MLRTrainer implements Trainer {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Double> computeLoss(final List<Pair<Vector, Integer>> data) {
+  private Tuple3<Double, Double, Double> computeLoss(final List<MLRData> data) {
     double loss = 0;
     int correctPredictions = 0;
 
-    for (final Pair<Vector, Integer> entry : data) {
-      final Vector features = entry.getFirst();
-      final int label = entry.getSecond();
-      final Vector predictions = predict(features);
+    for (final MLRData entry : data) {
+      final Vector feature = entry.getFeature();
+      final int label = entry.getLabel();
+      final Vector predictions = predict(feature);
       final int prediction = max(predictions).getFirst();
 
       if (label == prediction) {

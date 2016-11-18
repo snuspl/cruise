@@ -19,7 +19,6 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.mlapps.serialization.SparseVectorCodec;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.network.impl.StreamingCodec;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
@@ -68,7 +67,7 @@ final class MLRDataSerializer implements Serializer {
     public void encodeToStream(final MLRData mlrData, final DataOutputStream daos) {
       try {
         sparseVectorCodec.encodeToStream(mlrData.getFeature(), daos);
-        daos.writeInt(mlrData.getOutput());
+        daos.writeInt(mlrData.getLabel());
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
@@ -78,8 +77,8 @@ final class MLRDataSerializer implements Serializer {
     public MLRData decodeFromStream(final DataInputStream dais) {
       try {
         final Vector featureVector = sparseVectorCodec.decodeFromStream(dais);
-        final int output = dais.readInt();
-        return new MLRData(featureVector, output);
+        final int label = dais.readInt();
+        return new MLRData(featureVector, label);
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
