@@ -20,7 +20,8 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import java.util.List;
 
 /**
- * Parses training data in the app-specific format.
+ * Parses training data in the app-specific format. If the application does not need any parser (e.g., examples),
+ * then the parser class should be set as {@link NullDataParser} in {@link AsyncDolphinConfiguration}.
  * @param <T> Type of the training data instances.
  */
 @EvaluatorSide

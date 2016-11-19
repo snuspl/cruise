@@ -16,10 +16,11 @@
 package edu.snu.cay.dolphin.async;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * DataParser that does not parse any data. This implementation is for the testing code or
+ * DataParser that returns an empty list. This implementation is for the example app or
  * those who do not use {@link TrainingDataProvider} (i.e., run without data migration).
  */
 public final class NullDataParser implements DataParser<Void> {
@@ -29,6 +30,6 @@ public final class NullDataParser implements DataParser<Void> {
 
   @Override
   public List<Void> parse() {
-    return null;
+    return new ArrayList<>(0);
   }
 }

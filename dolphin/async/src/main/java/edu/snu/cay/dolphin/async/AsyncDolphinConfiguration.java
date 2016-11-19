@@ -196,13 +196,9 @@ public final class AsyncDolphinConfiguration {
 
     @Override
     public AsyncDolphinConfiguration build() {
-      if (trainerClass == null) {
-        throw new RuntimeException("Trainer class is required.");
-      }
-
-      if (updaterClass == null) {
-        throw new RuntimeException("Updater class is required.");
-      }
+      BuilderUtils.notNull(trainerClass);
+      BuilderUtils.notNull(updaterClass);
+      BuilderUtils.notNull(parserClass);
 
       return new AsyncDolphinConfiguration(trainerClass, updaterClass, parserClass,
           keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList,
