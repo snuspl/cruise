@@ -50,7 +50,7 @@ final class LDATrainer implements Trainer {
   private final MemoryStore<Long> memoryStore;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final TrainingDataProvider<Long, List<Document>> trainingDataProvider;
+  private final TrainingDataProvider<Long, Document> trainingDataProvider;
 
   /**
    * Number of training data instances to be processed per mini-batch.
@@ -69,7 +69,7 @@ final class LDATrainer implements Trainer {
                      final LDAStatCalculator statCalculator,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                     final TrainingDataProvider<Long, List<Document>> trainingDataProvider,
+                     final TrainingDataProvider<Long, Document> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize) {
