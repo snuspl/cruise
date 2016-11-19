@@ -113,9 +113,8 @@ final class MLRTrainer implements Trainer {
    */
   private final int decayPeriod;
 
-  private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
-  private final TrainingDataProvider<Long> trainingDataProvider;
+  private final TrainingDataProvider<Long, MLRData> trainingDataProvider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -134,9 +133,8 @@ final class MLRTrainer implements Trainer {
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
-                     final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
-                     final TrainingDataProvider<Long> trainingDataProvider,
+                     final TrainingDataProvider<Long, MLRData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final VectorFactory vectorFactory) {
     this.mlrDataParser = mlrDataParser;
@@ -156,7 +154,6 @@ final class MLRTrainer implements Trainer {
     this.decayRate = decayRate;
     this.decayPeriod = decayPeriod;
     this.metricsMsgSender = metricsMsgSender;
-    this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
 
@@ -170,18 +167,6 @@ final class MLRTrainer implements Trainer {
    */
   @Override
   public void initialize() {
-    // The input dataset, given as a list of pairs which are in the form, (input vector, label).
-    final List<MLRData> dataValues = mlrDataParser.parse();
-
-    final List<Long> dataKeys;
-    try {
-      dataKeys = idFactory.getIds(dataValues.size());
-    } catch (final IdGenerationException e) {
-      throw new RuntimeException("Fail to generate data keys", e);
-    }
-
-    memoryStore.putList(dataKeys, dataValues);
-
     classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
@@ -195,7 +180,7 @@ final class MLRTrainer implements Trainer {
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
-    LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
+
   }
 
   @Override

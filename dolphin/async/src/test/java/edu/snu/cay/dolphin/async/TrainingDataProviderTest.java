@@ -54,7 +54,7 @@ public class TrainingDataProviderTest {
 
   private MemoryStore<Long> memoryStore;
   private OperationRouter<Long> operationRouter;
-  private TrainingDataProvider<Long> trainingDataProvider;
+  private TrainingDataProvider<Long, Integer> trainingDataProvider;
   private BlockHandler<Long> blockHandler;
 
   @Before

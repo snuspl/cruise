@@ -17,7 +17,9 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -37,46 +39,42 @@ import java.util.logging.Logger;
  */
 @TaskSide
 @ThreadSafe
-public final class TrainingDataProvider<K> {
+public final class TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
 
   @GuardedBy("this")
   private final List<K> trainingDataKeys = new LinkedList<>();
 
   private final int miniBatchSize;
+
   private final MemoryStore<K> memoryStore;
-
-  /**
-   * A listener registered to the MemoryStore to catch block addition/removal events.
-   * the block changes in the MemoryStore will be immediately applied to training data in this provider.
-   */
-  private final class BlockUpdateListenerImpl implements BlockUpdateListener<K> {
-
-    @Override
-    public void onAddedBlock(final int blockId, final Set<K> addedKeys) {
-      synchronized (TrainingDataProvider.this) {
-        trainingDataKeys.addAll(addedKeys);
-        LOG.log(Level.INFO, "Added key set size = " + addedKeys.size()
-            + ", changed training data key set size = " + trainingDataKeys.size());
-      }
-    }
-
-    @Override
-    public void onRemovedBlock(final int blockId, final Set<K> removedKeys) {
-      synchronized (TrainingDataProvider.this) {
-        trainingDataKeys.removeAll(removedKeys);
-        LOG.log(Level.INFO, "Removed key set size = " + removedKeys.size()
-            + ", changed training data key set size = " + trainingDataKeys.size());
-      }
-    }
-  }
+  private final DataIdFactory<K> dataIdFactory;
+  private final DataParser<V> dataParser;
 
   @Inject
   private TrainingDataProvider(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
-                               final MemoryStore<K> memoryStore) {
+                               final MemoryStore<K> memoryStore,
+                               final DataIdFactory<K> dataIdFactory,
+                               final DataParser<V> dataParser) {
     this.miniBatchSize = miniBatchSize;
     this.memoryStore = memoryStore;
+    this.dataIdFactory = dataIdFactory;
+    this.dataParser = dataParser;
     memoryStore.registerBlockUpdateListener(new BlockUpdateListenerImpl());
+  }
+
+  void initialize() {
+    final List<V> dataValues = dataParser.parse();
+    final List<K> dataKeys;
+    try {
+      dataKeys = dataIdFactory.getIds(dataValues.size());
+    } catch (final IdGenerationException e) {
+      throw new RuntimeException("Fail to generate data keys", e);
+    }
+
+    memoryStore.putList(dataKeys, dataValues);
+
+    LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
   }
 
   /**
@@ -124,5 +122,30 @@ public final class TrainingDataProvider<K> {
     }
 
     return nextTrainingData;
+  }
+
+  /**
+   * A listener registered to the MemoryStore to catch block addition/removal events.
+   * the block changes in the MemoryStore will be immediately applied to training data in this provider.
+   */
+  private final class BlockUpdateListenerImpl implements BlockUpdateListener<K> {
+
+    @Override
+    public void onAddedBlock(final int blockId, final Set<K> addedKeys) {
+      synchronized (TrainingDataProvider.this) {
+        trainingDataKeys.addAll(addedKeys);
+        LOG.log(Level.INFO, "Added key set size = " + addedKeys.size()
+            + ", changed training data key set size = " + trainingDataKeys.size());
+      }
+    }
+
+    @Override
+    public void onRemovedBlock(final int blockId, final Set<K> removedKeys) {
+      synchronized (TrainingDataProvider.this) {
+        trainingDataKeys.removeAll(removedKeys);
+        LOG.log(Level.INFO, "Removed key set size = " + removedKeys.size()
+            + ", changed training data key set size = " + trainingDataKeys.size());
+      }
+    }
   }
 }
