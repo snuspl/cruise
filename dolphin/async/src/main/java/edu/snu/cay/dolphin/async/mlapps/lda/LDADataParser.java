@@ -42,6 +42,7 @@ final class LDADataParser implements DataParser<Document> {
     this.numTopics = numTopics;
   }
 
+  @Override
   public List<Document> parse() {
     final List<Document> documents = new LinkedList<>();
     for (final Pair<LongWritable, Text> keyValue : dataSet) {

@@ -84,6 +84,7 @@ final class NMFDataParser implements DataParser<NMFData> {
     return result;
   }
 
+  @Override
   public List<NMFData> parse() {
     final List<NMFData> result = new LinkedList<>();
 

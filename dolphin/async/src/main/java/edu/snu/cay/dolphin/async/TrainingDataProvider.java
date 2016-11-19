@@ -63,6 +63,9 @@ public final class TrainingDataProvider<K, V> {
     memoryStore.registerBlockUpdateListener(new BlockUpdateListenerImpl());
   }
 
+  /**
+   * Prepares the training data to be accessible via MemoryStore.
+   */
   void initialize() {
     final List<V> dataValues = dataParser.parse();
     final List<K> dataKeys;
@@ -80,7 +83,7 @@ public final class TrainingDataProvider<K, V> {
   /**
    * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
    */
-  public synchronized void prepareDataForEpoch() {
+  synchronized void prepareDataForEpoch() {
     trainingDataKeys.addAll(memoryStore.getAll().keySet());
     Collections.shuffle(trainingDataKeys);
     LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
@@ -88,10 +91,9 @@ public final class TrainingDataProvider<K, V> {
 
   /**
    * Provides the training data instances to compute in the next mini-batch.
-   * @param <V> the type of training data
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
-  public <V> Map<K, V> getNextTrainingData() {
+  public Map<K, V> getNextTrainingData() {
     final List<K> nextTrainingDataKeyList;
     synchronized (this) {
       if (trainingDataKeys.isEmpty()) {

@@ -30,7 +30,7 @@ import java.util.List;
 public interface DataParser<T> {
 
   /**
-   * @return the set of training
+   * @return the list of training data
    */
   List<T> parse();
 }

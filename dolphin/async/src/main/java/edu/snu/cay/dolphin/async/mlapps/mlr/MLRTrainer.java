@@ -46,11 +46,6 @@ final class MLRTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(MLRTrainer.class.getName());
 
   /**
-   * Parser object for fetching and parsing the input dataset.
-   */
-  private final MLRDataParser mlrDataParser;
-
-  /**
    * ParameterWorker object used to interact with the parameter server.
    */
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
@@ -121,8 +116,7 @@ final class MLRTrainer implements Trainer {
   private final Tracer computeTracer;
 
   @Inject
-  private MLRTrainer(final MLRDataParser mlrDataParser,
-                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+  private MLRTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                      @Parameter(NumClasses.class) final int numClasses,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
@@ -135,7 +129,6 @@ final class MLRTrainer implements Trainer {
                      final TrainingDataProvider<Long, MLRData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final VectorFactory vectorFactory) {
-    this.mlrDataParser = mlrDataParser;
     this.parameterWorker = parameterWorker;
     this.numClasses = numClasses;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
@@ -178,7 +171,6 @@ final class MLRTrainer implements Trainer {
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
-
   }
 
   @Override
