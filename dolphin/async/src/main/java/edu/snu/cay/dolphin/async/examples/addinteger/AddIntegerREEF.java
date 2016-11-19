@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
+import edu.snu.cay.dolphin.async.NullDataParser;
 import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
@@ -45,6 +46,7 @@ public final class AddIntegerREEF {
     return AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(AddIntegerTrainer.class)
         .setUpdaterClass(AddIntegerUpdater.class)
+        .setParserClass(NullDataParser.class)
         .addParameterClass(ExampleParameters.DeltaValue.class)
         .addParameterClass(ExampleParameters.NumKeys.class)
         .addParameterClass(NumUpdatesPerItr.class)

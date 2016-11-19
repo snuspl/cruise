@@ -37,6 +37,7 @@ public final class NMFREEF {
     AsyncDolphinLauncher.launch("MatrixFactorizationREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(NMFTrainer.class)
         .setUpdaterClass(NMFUpdater.class)
+        .setParserClass(NMFDataParser.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)
