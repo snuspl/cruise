@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async;
 
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.List;
 
@@ -25,6 +26,7 @@ import java.util.List;
  * @param <T> Type of the training data instances.
  */
 @EvaluatorSide
+@DefaultImplementation(NullDataParser.class)
 public interface DataParser<T> {
 
   /**
