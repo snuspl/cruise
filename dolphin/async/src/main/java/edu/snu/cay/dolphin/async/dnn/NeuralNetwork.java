@@ -142,9 +142,7 @@ public final class NeuralNetwork {
 
     final Matrix[] activations = ArrayUtils.add(feedForward(input), 0, input); // inserts input at the beginning.
     final Matrix[] errors = backPropagate(activations, label);
-    final LayerParameter[] parameterGradients = generateParameterGradients(activations, errors);
-
-    pushGradients(input.getColumns(), parameterGradients);
+    generateAndPushParameterGradients(input.getColumns(), activations, errors);
   }
 
   /**
@@ -161,23 +159,6 @@ public final class NeuralNetwork {
     }
     setOutputMatrix(labelMatrix, labels, labelRows);
     train(input, labelMatrix);
-  }
-
-  /**
-   * Pushes parameter gradients to the parameter servers.
-   * @param inputSize the number of instance in an input batch
-   * @param parameterGradients the list of parameter gradients
-   */
-  void pushGradients(final int inputSize, final LayerParameter[] parameterGradients) {
-    // average parameter gradients
-    for (int i = 0; i < parameterGradients.length; ++i) {
-      if (layers[i].isLearnable()) {
-        parameterGradients[i].getWeightParam().divi(inputSize);
-        parameterGradients[i].getBiasParam().divi(inputSize);
-
-        parameterWorker.push(i, parameterGradients[i]);
-      }
-    }
   }
 
   /**
@@ -312,27 +293,29 @@ public final class NeuralNetwork {
   }
 
   /**
-   * Generates parameter gradients for all layers.
+   * Generates and pushes parameter gradients for all layers.
+   * @param inputSize the number of instance in an input batch
    * @param activations the activation values for each layer.
    * @param errors the errors for each layer.
-   * @return an array of parameter gradients for each layer.
    */
-  public LayerParameter[] generateParameterGradients(final Matrix[] activations,
+  public void generateAndPushParameterGradients(final int inputSize,
+                                                     final Matrix[] activations,
                                                      final Matrix[] errors) {
-    return generateParameterGradients(0, layers.length - 1, activations, errors);
+    generateAndPushParameterGradients(inputSize, 0, layers.length - 1, activations, errors);
   }
 
   /**
-   * Generates parameter gradients for each layer from the specified beginning layer to the specified ending layer.
+   * Generates and pushes parameter gradients for each layer from the beginning layer to the ending layer.
+   * @param inputSize the number of instance in an input batch
    * @param begin the index of beginning layer, inclusive.
    * @param end the index of ending layer, inclusive.
    * @param activations the activation values for each layer.
    * @param errors the errors for each layer.
-   * @return an array of parameter gradients for each layer.
    */
-  public LayerParameter[] generateParameterGradients(final int begin, final int end,
-                                                     final Matrix[] activations,
-                                                     final Matrix[] errors) {
+  public void generateAndPushParameterGradients(final int inputSize,
+                                                final int begin, final int end,
+                                                final Matrix[] activations,
+                                                final Matrix[] errors) {
     if (begin > end) {
       throw new IllegalArgumentException(String.format(
           "The beginning index (%d) must be less than or equal to the ending index (%d).", begin, end));
@@ -340,15 +323,17 @@ public final class NeuralNetwork {
 
     checkIndices(begin, end, true);
 
-    final LayerParameter[] parameterGradients = new LayerParameter[end - begin + 1];
     for (int i = begin; i <= end; ++i) {
       if (layers[i].isLearnable()) {
-        parameterGradients[i - begin] = layers[i].generateParameterGradient(activations[i], errors[i]);
-      } else {
-        parameterGradients[i - begin] = emptyLayerParam;
+        final LayerParameter parameterGradients =
+            layers[i].generateParameterGradient(activations[i], errors[i]);
+        parameterGradients.getWeightParam().divi(inputSize);
+        parameterGradients.getBiasParam().divi(inputSize);
+
+        parameterWorker.push(i, parameterGradients);
+        parameterGradients.cleanup();
       }
     }
-    return parameterGradients;
   }
 
   /**

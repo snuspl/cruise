@@ -43,6 +43,8 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   private final int inputChannel;
   private final int inputHeight;
   private final int inputWidth;
+  private final int kernelWidth;
+  private final int kernelHeight;
   private final LayerShape outputShape;
   private MatrixFactory matrixFactory;
   private Matrix output;
@@ -63,7 +65,6 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   private long backwardDataWorkspaceSize;
   private long maxWorkspaceSize;
   private Pointer workspace;
-  private final LayerParameter parameterGradient;
 
   /**
    * @param index the index of this layer
@@ -99,11 +100,10 @@ public final class ConvolutionalGpuLayer extends LayerBase {
     this.inputChannel = getInputShape().getChannel();
     this.inputHeight = getInputShape().getHeight();
     this.inputWidth = getInputShape().getWidth();
+    this.kernelHeight = kernelHeight;
+    this.kernelWidth = kernelWidth;
 
     final int outputChannel = outputShape.getChannel();
-    final Matrix weightGradient = matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputChannel);
-    final Matrix biasGradient = matrixFactory.create(1, outputChannel);
-    this.parameterGradient = new LayerParameter(weightGradient, biasGradient);
 
     //setup
     this.filterDesc = JavaCudnn.createFilterDesc(outputChannel, inputChannel, kernelHeight, kernelWidth);
@@ -216,6 +216,10 @@ public final class ConvolutionalGpuLayer extends LayerBase {
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix nextError) {
+    final Matrix weightGradient =
+        matrixFactory.create(kernelHeight * kernelWidth * inputChannel, outputShape.getChannel());
+    final Matrix biasGradient = matrixFactory.create(1, outputShape.getChannel());
+    final LayerParameter parameterGradient = new LayerParameter(weightGradient, biasGradient);
     if (!JavaCudnn.convGenWeightGradient(inputDesc, ((MatrixCudaImpl) input).getDevicePointer(),
         activationDesc, ((MatrixCudaImpl) nextError).getDevicePointer(), convDesc, backwardFilterAlgo, workspace,
         backwardFilterWorkspaceSize, filterDesc,
@@ -247,6 +251,5 @@ public final class ConvolutionalGpuLayer extends LayerBase {
 
     MatrixUtils.free(output);
     MatrixUtils.free(layerError);
-    parameterGradient.cleanup();
   }
 }
