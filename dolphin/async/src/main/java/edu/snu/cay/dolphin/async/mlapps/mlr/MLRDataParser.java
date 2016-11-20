@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.dolphin.async.DataParser;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.io.data.loading.api.DataSet;
@@ -34,10 +35,10 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.NumFeatures;
  * A data parser for sparse vector classification input.
  * Assumes the following data format.
  * <p>
- *   [output] [index]:[value] [index]:[value] ...
+ *   [label] [index]:[value] [index]:[value] ...
  * </p>
  */
-final class MLRParser {
+final class MLRDataParser implements DataParser<MLRData> {
 
   private final DataSet<LongWritable, Text> dataSet;
   private final VectorFactory vectorFactory;
@@ -45,18 +46,19 @@ final class MLRParser {
   private final int numFeatures;
 
   @Inject
-  private MLRParser(final DataSet<LongWritable, Text> dataSet,
-                    final VectorFactory vectorFactory,
-                    @Parameter(NumClasses.class)final int numClasses,
-                    @Parameter(NumFeatures.class) final int numFeatures) {
+  private MLRDataParser(final DataSet<LongWritable, Text> dataSet,
+                        final VectorFactory vectorFactory,
+                        @Parameter(NumClasses.class)final int numClasses,
+                        @Parameter(NumFeatures.class) final int numFeatures) {
     this.dataSet = dataSet;
     this.vectorFactory = vectorFactory;
     this.numClasses = numClasses;
     this.numFeatures = numFeatures;
   }
 
-  List<Pair<Vector, Integer>> parse() {
-    final List<Pair<Vector, Integer>> retList = new LinkedList<>();
+  @Override
+  public List<MLRData> parse() {
+    final List<MLRData> retList = new LinkedList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
       final String text = keyValue.getSecond().toString().trim();
@@ -66,8 +68,8 @@ final class MLRParser {
       }
 
       final String[] split = text.split("\\s+|:");
-      final int output = Integer.parseInt(split[0]);
-      if (output < 0 || output > numClasses) {
+      final int label = Integer.parseInt(split[0]);
+      if (label < 0 || label > numClasses) {
         throw new RuntimeException(String.format("Label should be >= %d and < %d%n%s", 0, numClasses, text));
       }
 
@@ -79,7 +81,7 @@ final class MLRParser {
       }
 
       final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
-      retList.add(new Pair<>(feature, output));
+      retList.add(new MLRData(feature, label));
     }
 
     return retList;

@@ -36,6 +36,7 @@ public final class LDAREEF {
     AsyncDolphinLauncher.launch("LDAREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(LDATrainer.class)
         .setUpdaterClass(LDAUpdater.class)
+        .setParserClass(LDADataParser.class)
         .setKeyCodecClass(SerializableCodec.class)
         .setPreValueCodecClass(SerializableCodec.class)
         .setValueCodecClass(SparseArrayCodec.class)

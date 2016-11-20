@@ -20,6 +20,7 @@ import com.google.protobuf.TextFormat;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
+import edu.snu.cay.dolphin.async.NullDataParser;
 import edu.snu.cay.dolphin.async.dnn.NeuralNetworkParameters.*;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.cuda.MatrixCudaFactory;
@@ -90,6 +91,7 @@ public final class NeuralNetworkREEF {
       AsyncDolphinLauncher.launch("NeuralNetworkREEF", args, AsyncDolphinConfiguration.newBuilder()
           .setTrainerClass(NeuralNetworkTrainer.class)
           .setUpdaterClass(NeuralNetworkParameterUpdater.class)
+          .setParserClass(NullDataParser.class)
           .setPreValueCodecClass(LayerParameterCodec.class)
           .setValueCodecClass(LayerParameterCodec.class)
           .addParameterClass(Delimiter.class)

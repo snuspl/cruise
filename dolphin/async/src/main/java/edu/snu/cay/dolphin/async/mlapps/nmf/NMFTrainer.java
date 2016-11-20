@@ -27,9 +27,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -53,7 +51,6 @@ final class NMFTrainer implements Trainer {
 
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
   private final VectorFactory vectorFactory;
-  private final NMFDataParser dataParser;
   private final int rank;
   private final double stepSize;
   private final double lambda;
@@ -68,9 +65,8 @@ final class NMFTrainer implements Trainer {
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
 
-  private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
-  private final TrainingDataProvider<Long> trainingDataProvider;
+  private final TrainingDataProvider<Long, NMFData> trainingDataProvider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -80,8 +76,7 @@ final class NMFTrainer implements Trainer {
   private final Tracer computeTracer;
 
   @Inject
-  private NMFTrainer(final NMFDataParser dataParser,
-                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+  private NMFTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                      final VectorFactory vectorFactory,
                      @Parameter(Rank.class) final int rank,
                      @Parameter(StepSize.class) final double stepSize,
@@ -89,20 +84,17 @@ final class NMFTrainer implements Trainer {
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      final NMFModelGenerator modelGenerator,
-                     final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
-                     final TrainingDataProvider<Long> trainingDataProvider,
+                     final TrainingDataProvider<Long, NMFData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.vectorFactory = vectorFactory;
-    this.dataParser = dataParser;
     this.rank = rank;
     this.stepSize = stepSize;
     this.lambda = lambda;
     this.miniBatchSize = miniBatchSize;
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
-    this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
     this.metricsMsgSender = metricsMsgSender;
@@ -117,21 +109,9 @@ final class NMFTrainer implements Trainer {
 
   @Override
   public void initialize() {
-    final List<NMFData> dataValues = dataParser.parse();
-
-    final List<Long> dataKeys;
-    try {
-      dataKeys = idFactory.getIds(dataValues.size());
-    } catch (final IdGenerationException e) {
-      throw new RuntimeException(e);
-    }
-
-    memoryStore.putList(dataKeys, dataValues);
-
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
-    LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(dataValues).size());
-    LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
+
   }
 
   @Override
@@ -148,6 +128,7 @@ final class NMFTrainer implements Trainer {
 
     Map<Long, NMFData> nextTrainingData = trainingDataProvider.getNextTrainingData();
     Collection<NMFData> workload = nextTrainingData.values();
+    LOG.log(Level.INFO, "Total number of keys = {0}", getKeys(workload).size());
     int numInstancesToProcess = workload.size();
     while (!nextTrainingData.isEmpty()) {
       resetTracers();

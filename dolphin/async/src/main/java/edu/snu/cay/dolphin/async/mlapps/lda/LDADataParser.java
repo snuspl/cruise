@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.dolphin.async.DataParser;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.io.data.loading.api.DataSet;
@@ -27,7 +28,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-final class LDADataParser {
+final class LDADataParser implements DataParser<Document> {
 
   private static final Logger LOG = Logger.getLogger(LDADataParser.class.getName());
 
@@ -41,7 +42,8 @@ final class LDADataParser {
     this.numTopics = numTopics;
   }
 
-  List<Document> parse() {
+  @Override
+  public List<Document> parse() {
     final List<Document> documents = new LinkedList<>();
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
       final String text = keyValue.getSecond().toString().trim();

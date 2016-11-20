@@ -24,6 +24,7 @@ import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.util.BuilderUtils;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -31,8 +32,8 @@ import java.util.List;
 /**
  * Job configuration of a {@code dolphin-async} application.
  *
- * Call {@code newBuilder} and supply classes for {@link Trainer}, {@link ParameterUpdater}, codecs, parameters,
- * configuration for workers, and configuration for servers.
+ * Call {@code newBuilder} and supply classes for {@link Trainer}, {@link ParameterUpdater}, {@link DataParser}, codecs,
+ * parameters, configuration for workers, and configuration for servers.
  * {@link SerializableCodec}s are used in case codec classes are not given. Parameter classes are also optional.
  * Use with {@link AsyncDolphinLauncher#launch(String, String[], AsyncDolphinConfiguration)} to launch application.
  */
@@ -40,6 +41,7 @@ import java.util.List;
 public final class AsyncDolphinConfiguration {
   private final Class<? extends Trainer> trainerClass;
   private final Class<? extends ParameterUpdater> updaterClass;
+  private final Class<? extends DataParser> parserClass;
   private final Class<? extends Codec> keyCodecClass;
   private final Class<? extends Codec> preValueCodecClass;
   private final Class<? extends Codec> valueCodecClass;
@@ -52,6 +54,7 @@ public final class AsyncDolphinConfiguration {
 
   private AsyncDolphinConfiguration(final Class<? extends Trainer> trainerClass,
                                     final Class<? extends ParameterUpdater> updaterClass,
+                                    final Class<? extends DataParser> parserClass,
                                     final Class<? extends Codec> keyCodecClass,
                                     final Class<? extends Codec> preValueCodecClass,
                                     final Class<? extends Codec> valueCodecClass,
@@ -62,6 +65,7 @@ public final class AsyncDolphinConfiguration {
                                     final Configuration serverConfiguration) {
     this.trainerClass = trainerClass;
     this.updaterClass = updaterClass;
+    this.parserClass = parserClass;
     this.keyCodecClass = keyCodecClass;
     this.preValueCodecClass = preValueCodecClass;
     this.valueCodecClass = valueCodecClass;
@@ -78,6 +82,10 @@ public final class AsyncDolphinConfiguration {
 
   public Class<? extends ParameterUpdater> getUpdaterClass() {
     return updaterClass;
+  }
+
+  public Class<? extends DataParser> getParserClass() {
+    return parserClass;
   }
 
   public Class<? extends Codec> getKeyCodecClass() {
@@ -120,6 +128,7 @@ public final class AsyncDolphinConfiguration {
   public static class Builder implements org.apache.reef.util.Builder<AsyncDolphinConfiguration> {
     private Class<? extends Trainer> trainerClass;
     private Class<? extends ParameterUpdater> updaterClass;
+    private Class<? extends DataParser> parserClass;
     private Class<? extends Codec> keyCodecClass = SerializableCodec.class;
     private Class<? extends Codec> preValueCodecClass = SerializableCodec.class;
     private Class<? extends Codec> valueCodecClass = SerializableCodec.class;
@@ -137,6 +146,11 @@ public final class AsyncDolphinConfiguration {
 
     public Builder setUpdaterClass(final Class<? extends ParameterUpdater> updaterClass) {
       this.updaterClass = updaterClass;
+      return this;
+    }
+
+    public Builder setParserClass(final Class<? extends DataParser> parserClass) {
+      this.parserClass = parserClass;
       return this;
     }
 
@@ -182,15 +196,11 @@ public final class AsyncDolphinConfiguration {
 
     @Override
     public AsyncDolphinConfiguration build() {
-      if (trainerClass == null) {
-        throw new RuntimeException("Trainer class is required.");
-      }
+      BuilderUtils.notNull(trainerClass);
+      BuilderUtils.notNull(updaterClass);
+      BuilderUtils.notNull(parserClass);
 
-      if (updaterClass == null) {
-        throw new RuntimeException("Updater class is required.");
-      }
-
-      return new AsyncDolphinConfiguration(trainerClass, updaterClass,
+      return new AsyncDolphinConfiguration(trainerClass, updaterClass, parserClass,
           keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList,
           workerSerializerClass, serverSerializerClass, workerConfiguration, serverConfiguration);
     }

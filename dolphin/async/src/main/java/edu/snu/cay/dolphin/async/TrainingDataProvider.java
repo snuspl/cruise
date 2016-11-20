@@ -17,7 +17,9 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -37,52 +39,51 @@ import java.util.logging.Logger;
  */
 @TaskSide
 @ThreadSafe
-public final class TrainingDataProvider<K> {
+public final class TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
 
   @GuardedBy("this")
   private final List<K> trainingDataKeys = new LinkedList<>();
 
   private final int miniBatchSize;
+
   private final MemoryStore<K> memoryStore;
-
-  /**
-   * A listener registered to the MemoryStore to catch block addition/removal events.
-   * the block changes in the MemoryStore will be immediately applied to training data in this provider.
-   */
-  private final class BlockUpdateListenerImpl implements BlockUpdateListener<K> {
-
-    @Override
-    public void onAddedBlock(final int blockId, final Set<K> addedKeys) {
-      synchronized (TrainingDataProvider.this) {
-        trainingDataKeys.addAll(addedKeys);
-        LOG.log(Level.INFO, "Added key set size = " + addedKeys.size()
-            + ", changed training data key set size = " + trainingDataKeys.size());
-      }
-    }
-
-    @Override
-    public void onRemovedBlock(final int blockId, final Set<K> removedKeys) {
-      synchronized (TrainingDataProvider.this) {
-        trainingDataKeys.removeAll(removedKeys);
-        LOG.log(Level.INFO, "Removed key set size = " + removedKeys.size()
-            + ", changed training data key set size = " + trainingDataKeys.size());
-      }
-    }
-  }
+  private final DataIdFactory<K> dataIdFactory;
+  private final DataParser<V> dataParser;
 
   @Inject
   private TrainingDataProvider(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
-                               final MemoryStore<K> memoryStore) {
+                               final MemoryStore<K> memoryStore,
+                               final DataIdFactory<K> dataIdFactory,
+                               final DataParser<V> dataParser) {
     this.miniBatchSize = miniBatchSize;
     this.memoryStore = memoryStore;
+    this.dataIdFactory = dataIdFactory;
+    this.dataParser = dataParser;
     memoryStore.registerBlockUpdateListener(new BlockUpdateListenerImpl());
+  }
+
+  /**
+   * Prepares the training data to be accessible via MemoryStore.
+   */
+  void initialize() {
+    final List<V> dataValues = dataParser.parse();
+    final List<K> dataKeys;
+    try {
+      dataKeys = dataIdFactory.getIds(dataValues.size());
+    } catch (final IdGenerationException e) {
+      throw new RuntimeException("Fail to generate data keys", e);
+    }
+
+    memoryStore.putList(dataKeys, dataValues);
+
+    LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
   }
 
   /**
    * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
    */
-  public synchronized void prepareDataForEpoch() {
+  synchronized void prepareDataForEpoch() {
     trainingDataKeys.addAll(memoryStore.getAll().keySet());
     Collections.shuffle(trainingDataKeys);
     LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
@@ -90,10 +91,9 @@ public final class TrainingDataProvider<K> {
 
   /**
    * Provides the training data instances to compute in the next mini-batch.
-   * @param <V> the type of training data
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
-  public <V> Map<K, V> getNextTrainingData() {
+  public Map<K, V> getNextTrainingData() {
     final List<K> nextTrainingDataKeyList;
     synchronized (this) {
       if (trainingDataKeys.isEmpty()) {
@@ -124,5 +124,30 @@ public final class TrainingDataProvider<K> {
     }
 
     return nextTrainingData;
+  }
+
+  /**
+   * A listener registered to the MemoryStore to catch block addition/removal events.
+   * the block changes in the MemoryStore will be immediately applied to training data in this provider.
+   */
+  private final class BlockUpdateListenerImpl implements BlockUpdateListener<K> {
+
+    @Override
+    public void onAddedBlock(final int blockId, final Set<K> addedKeys) {
+      synchronized (TrainingDataProvider.this) {
+        trainingDataKeys.addAll(addedKeys);
+        LOG.log(Level.INFO, "Added key set size = " + addedKeys.size()
+            + ", changed training data key set size = " + trainingDataKeys.size());
+      }
+    }
+
+    @Override
+    public void onRemovedBlock(final int blockId, final Set<K> removedKeys) {
+      synchronized (TrainingDataProvider.this) {
+        trainingDataKeys.removeAll(removedKeys);
+        LOG.log(Level.INFO, "Removed key set size = " + removedKeys.size()
+            + ", changed training data key set size = " + trainingDataKeys.size());
+      }
+    }
   }
 }

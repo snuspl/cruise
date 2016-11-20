@@ -24,9 +24,7 @@ import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
@@ -46,11 +44,6 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
  */
 final class MLRTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(MLRTrainer.class.getName());
-
-  /**
-   * Parser object for fetching and parsing the input dataset.
-   */
-  private final MLRParser mlrParser;
 
   /**
    * ParameterWorker object used to interact with the parameter server.
@@ -113,9 +106,8 @@ final class MLRTrainer implements Trainer {
    */
   private final int decayPeriod;
 
-  private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
-  private final TrainingDataProvider<Long> trainingDataProvider;
+  private final TrainingDataProvider<Long, MLRData> trainingDataProvider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -124,8 +116,7 @@ final class MLRTrainer implements Trainer {
   private final Tracer computeTracer;
 
   @Inject
-  private MLRTrainer(final MLRParser mlrParser,
-                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+  private MLRTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                      @Parameter(NumClasses.class) final int numClasses,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
@@ -134,12 +125,10 @@ final class MLRTrainer implements Trainer {
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
-                     final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
-                     final TrainingDataProvider<Long> trainingDataProvider,
+                     final TrainingDataProvider<Long, MLRData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final VectorFactory vectorFactory) {
-    this.mlrParser = mlrParser;
     this.parameterWorker = parameterWorker;
     this.numClasses = numClasses;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
@@ -156,7 +145,6 @@ final class MLRTrainer implements Trainer {
     this.decayRate = decayRate;
     this.decayPeriod = decayPeriod;
     this.metricsMsgSender = metricsMsgSender;
-    this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
 
@@ -170,18 +158,6 @@ final class MLRTrainer implements Trainer {
    */
   @Override
   public void initialize() {
-    // The input dataset, given as a list of pairs which are in the form, (input vector, label).
-    final List<Pair<Vector, Integer>> dataValues = mlrParser.parse();
-
-    final List<Long> dataKeys;
-    try {
-      dataKeys = idFactory.getIds(dataValues.size());
-    } catch (final IdGenerationException e) {
-      throw new RuntimeException("Fail to generate data keys", e);
-    }
-
-    memoryStore.putList(dataKeys, dataValues);
-
     classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
@@ -195,7 +171,6 @@ final class MLRTrainer implements Trainer {
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
-    LOG.log(Level.INFO, "Total number of training data items = {0}", dataValues.size());
   }
 
   @Override
@@ -208,10 +183,10 @@ final class MLRTrainer implements Trainer {
 
     int miniBatchIdx = 0;
     int numTotalInstancesProcessed = 0;
-    final List<Pair<Vector, Integer>> totalInstancesProcessed = new LinkedList<>();
+    final List<MLRData> totalInstancesProcessed = new LinkedList<>();
 
-    Map<Long, Pair<Vector, Integer>> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    List<Pair<Vector, Integer>> instances = new ArrayList<>(nextTrainingData.values());
+    Map<Long, MLRData> nextTrainingData = trainingDataProvider.getNextTrainingData();
+    List<MLRData> instances = new ArrayList<>(nextTrainingData.values());
     int numInstancesToProcess = instances.size();
     while (!nextTrainingData.isEmpty()) {
       resetTracers();
@@ -221,13 +196,13 @@ final class MLRTrainer implements Trainer {
       pullModels();
 
       computeTracer.startTimer();
-      for (final Pair<Vector, Integer> instance : instances) {
+      for (final MLRData instance : instances) {
 
-        final Vector features = instance.getFirst();
-        final int label = instance.getSecond();
+        final Vector feature = instance.getFeature();
+        final int label = instance.getLabel();
 
         // compute h(x, w) = softmax(x dot w)
-        final Vector predictions = predict(features);
+        final Vector predictions = predict(feature);
 
         // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
         // instead of allocating a new vector for the error,
@@ -237,12 +212,12 @@ final class MLRTrainer implements Trainer {
         // gradient_j = -stepSize * error_j * x
         if (lambda != 0) {
           for (int j = 0; j < numClasses; ++j) {
-            newModels[j].axpy(-predictions.get(j) * stepSize, features);
+            newModels[j].axpy(-predictions.get(j) * stepSize, feature);
             newModels[j].axpy(-stepSize * lambda, newModels[j]);
           }
         } else {
           for (int j = 0; j < numClasses; ++j) {
-            newModels[j].axpy(-predictions.get(j) * stepSize, features);
+            newModels[j].axpy(-predictions.get(j) * stepSize, feature);
           }
         }
       }
@@ -341,14 +316,14 @@ final class MLRTrainer implements Trainer {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Double> computeLoss(final List<Pair<Vector, Integer>> data) {
+  private Tuple3<Double, Double, Double> computeLoss(final List<MLRData> data) {
     double loss = 0;
     int correctPredictions = 0;
 
-    for (final Pair<Vector, Integer> entry : data) {
-      final Vector features = entry.getFirst();
-      final int label = entry.getSecond();
-      final Vector predictions = predict(features);
+    for (final MLRData entry : data) {
+      final Vector feature = entry.getFeature();
+      final int label = entry.getLabel();
+      final Vector predictions = predict(feature);
       final int prediction = max(predictions).getFirst();
 
       if (label == prediction) {

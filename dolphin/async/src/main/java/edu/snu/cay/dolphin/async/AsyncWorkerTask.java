@@ -68,6 +68,9 @@ final class AsyncWorkerTask implements Task {
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
+    // Prepare the training data to be accessible via TrainingDataProvider.
+    trainingDataProvider.initialize();
+
     // TODO #681: Need to add numWorkerThreads concept after multi-thread trainer is enabled
     trainer.initialize();
 

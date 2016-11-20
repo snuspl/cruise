@@ -23,9 +23,7 @@ import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -43,18 +41,16 @@ final class LDATrainer implements Trainer {
 
   private static final Logger LOG = Logger.getLogger(LDATrainer.class.getName());
 
-  private final LDADataParser dataParser;
   private final LDABatchParameterWorker batchParameterWorker;
   private final SparseLDASampler sampler;
   private final LDAStatCalculator statCalculator;
   private final int numVocabs;
   private final List<Integer> vocabList;
 
-  private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final TrainingDataProvider<Long> trainingDataProvider;
+  private final TrainingDataProvider<Long, Document> trainingDataProvider;
 
   /**
    * Number of training data instances to be processed per mini-batch.
@@ -68,22 +64,18 @@ final class LDATrainer implements Trainer {
   private final Tracer computeTracer;
 
   @Inject
-  private LDATrainer(final LDADataParser dataParser,
-                     final LDABatchParameterWorker batchParameterWorker,
+  private LDATrainer(final LDABatchParameterWorker batchParameterWorker,
                      final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
-                     final DataIdFactory<Long> idFactory,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                     final TrainingDataProvider<Long> trainingDataProvider,
+                     final TrainingDataProvider<Long, Document> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize) {
-    this.dataParser = dataParser;
     this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
     this.statCalculator = statCalculator;
-    this.idFactory = idFactory;
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
     this.trainingDataProvider = trainingDataProvider;
@@ -104,18 +96,9 @@ final class LDATrainer implements Trainer {
 
   @Override
   public void initialize() {
-    final List<Document> documents = dataParser.parse();
-    final List<Long> dataKeys;
-
-    try {
-      dataKeys = idFactory.getIds(documents.size());
-    } catch (final IdGenerationException e) {
-      throw new RuntimeException(e);
-    }
-
-    memoryStore.putList(dataKeys, documents);
-
-    for (final Document document : documents) {
+    // In LDA, topic counts should be initialized by pushing values before running.
+    final Map<Long, Document> data = memoryStore.getAll();
+    for (final Document document : data.values()) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
         batchParameterWorker.addTopicChange(word, document.getAssignment(i), 1);
