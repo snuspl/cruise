@@ -86,6 +86,7 @@ public final class FullyConnectedGpuLayer extends LayerBase {
   public Matrix feedForward(final Matrix input) {
     final Matrix weight = getLayerParameter().getWeightParam();
     if (output == null || output.getColumns() != input.getColumns()) {
+      MatrixUtils.free(output);
       output = matrixFactory.create(weight.getRows(), input.getColumns());
     }
     // (output matrix) = (weight matrix) x (input matrix) + (bias column vector)
@@ -103,6 +104,7 @@ public final class FullyConnectedGpuLayer extends LayerBase {
   public Matrix backPropagate(final Matrix input, final Matrix activation, final Matrix nextError) {
     final Matrix weight = getLayerParameter().getWeightParam();
     if (layerError == null || layerError.getColumns() != nextError.getColumns()) {
+      MatrixUtils.free(layerError);
       layerError = matrixFactory.create(weight.getColumns(), nextError.getColumns());
     }
     // (error matrix) = (transposed weight matrix) x (next error matrix)
