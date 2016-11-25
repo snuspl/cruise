@@ -18,9 +18,6 @@ package edu.snu.cay.services.et.configuration.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * A common identifier that is shared across the driver and containers.
- */
 @NamedParameter(doc = "Identifier that represents ElasticTable service.", default_value = "ET")
 public final class ETIdentifier implements Name<String> {
 }
