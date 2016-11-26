@@ -31,24 +31,27 @@ import java.util.*;
  *
  * So it guarantees {@link #getSplits(JobConf, int)} to return the splits as requested numbers
  * except following exceptional cases:
- * 1) the number of total line in a file is smaller than the number of requested splits.
+ * 1) when the number of total line in a file is smaller than the number of requested splits.
  * 2) when a file format is not splitable (see {@link #isSplitable}, which can be overridden).
- * 3) a file is not specified (will return one empty split)
+ * 3) when a file is not specified (will return one empty split).
  *
- * For simplicity, this class restricts the number of files to be loaded at once to one.
+ * For simplicity, this class restricts only one file to be handled at once.
  * We may extend it to support loading multiple files with some policy.
  *
  * Most of code is resembled from {@link FileInputFormat} and
  * a code deciding split size (see line 65) is modified and so subsequent codes.
  */
 public abstract class ExactNumSplitFileInputFormat<K, V> extends FileInputFormat<K, V> {
+
+  // if remaining bytes in a file is smaller than GOAL_SPLIT_SIZE * SPLIT_SLOP,
+  // makes them as one split.
   private static final double SPLIT_SLOP = 1.1; // 10% slop
 
   @Override
   public InputSplit[] getSplits(final JobConf job, final int numSplits)
       throws IOException {
     final FileStatus[] files = listStatus(job);
-    if (files.length != 1) {
+    if (files.length > 1) {
       throw new IOException("Cannot support multiple files");
     }
 
