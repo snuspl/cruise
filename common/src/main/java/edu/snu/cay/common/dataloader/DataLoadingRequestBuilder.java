@@ -16,7 +16,6 @@
 package edu.snu.cay.common.dataloader;
 
 import org.apache.hadoop.mapred.InputFormat;
-import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.data.loading.api.DistributedDataSet;
 import org.apache.reef.io.data.loading.api.EvaluatorToPartitionStrategy;
