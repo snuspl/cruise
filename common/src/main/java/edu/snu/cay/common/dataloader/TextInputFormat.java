@@ -49,12 +49,12 @@ public class TextInputFormat extends ExactNumSplitFileInputFormat<LongWritable, 
   }
 
   public RecordReader<LongWritable, Text> getRecordReader(
-      InputSplit genericSplit, JobConf job,
-      Reporter reporter)
+      final InputSplit genericSplit, final JobConf job,
+      final Reporter reporter)
       throws IOException {
 
     reporter.setStatus(genericSplit.toString());
-    String delimiter = job.get("textinputformat.record.delimiter");
+    final String delimiter = job.get("textinputformat.record.delimiter");
     byte[] recordDelimiterBytes = null;
     if (null != delimiter) {
       recordDelimiterBytes = delimiter.getBytes(Charsets.UTF_8);
