@@ -36,13 +36,15 @@ import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A {@link ContainerManager} implementation.
- * Assumes that REEF allocates evaluators following resource specifications exactly.
+ * A manager class of Containers.
+ * It allocates new containers and manages existing containers.
  */
 @Private
 @DriverSide
@@ -57,6 +59,8 @@ final class ContainerManager {
   private final String driverIdentifier;
 
   private final AtomicInteger contextIdCounter = new AtomicInteger(0);
+
+  private final Map<String, AllocatedContainer> containers = new ConcurrentHashMap<>();
 
   @Inject
   private ContainerManager(final EvaluatorManager evaluatorManager,
@@ -93,6 +97,13 @@ final class ContainerManager {
   }
 
   /**
+   * @return AllocatedContainer whose id is {@code containerId}
+   */
+  AllocatedContainer getContainer(final String containerId) {
+    return containers.get(containerId);
+  }
+
+  /**
    * Submits ET context when evaluator is allocated.
    */
   private final EventHandler<AllocatedEvaluator> allocatedEvalHandler = new EventHandler<AllocatedEvaluator>() {
@@ -126,6 +137,7 @@ final class ContainerManager {
     public void onNext(final ActiveContext activeContext) {
       final AllocatedContainer allocatedContainer = new AllocatedContainerImpl(activeContext);
       LOG.log(Level.INFO, "Allocated container: {0}", allocatedContainer.getId());
+      containers.put(allocatedContainer.getId(), allocatedContainer);
       callback.onNext(allocatedContainer);
     }
   }

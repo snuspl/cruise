@@ -16,10 +16,13 @@
 package edu.snu.cay.services.et.driver.api;
 
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
+import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.impl.ETMasterImpl;
+import edu.snu.cay.services.et.driver.impl.RawTable;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
-import org.apache.reef.wake.EventHandler;
+
+import java.util.List;
 
 /**
  * Driver-side API.
@@ -30,10 +33,18 @@ public interface ETMaster {
 
   /**
    * Allocates new {@code num} containers of the equal resource specification.
-   * {@code callback} will be invoked when requested containers are allocated.
    * @param num the number of containers
    * @param resConf resource configuration
-   * @param callback callback to invoke when allocating is done
+   * @return a list of {@link AllocatedContainer}s
    */
-  void addContainers(int num, ResourceConfiguration resConf, EventHandler<AllocatedContainer> callback);
+  List<AllocatedContainer> addContainers(int num, ResourceConfiguration resConf);
+
+  /**
+   * Creates a Table using the given table configuration.
+   * @param tableConf a configuration of table (See {@link TableConfiguration})
+   * @return a logical representation of Table ({@link RawTable}),
+   *   which will be converted to a {@link edu.snu.cay.services.et.driver.impl.MaterializedTable}
+   *   at the associated Containers.
+   */
+  RawTable createTable(TableConfiguration tableConf);
 }

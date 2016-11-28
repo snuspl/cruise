@@ -21,6 +21,8 @@ import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Provides {@link EventHandler} implementation for {@link CompletedTask}.
@@ -28,15 +30,20 @@ import javax.inject.Inject;
 @Private
 @DriverSide
 public final class TaskCompletedHandler implements EventHandler<CompletedTask> {
+  private static final Logger LOG = Logger.getLogger(TaskCompletedHandler.class.getName());
+  private final ContainerManager containerManager;
 
   @Inject
-  private TaskCompletedHandler() {
+  private TaskCompletedHandler(final ContainerManager containerManager) {
+    this.containerManager = containerManager;
   }
 
   @Override
   public void onNext(final CompletedTask completedTask) {
-    // simply close the context, which is a root context of evaluator.
-    // so evaluator(==container) will be released
-    completedTask.getActiveContext().close();
+
+    final String containerId = completedTask.getActiveContext().getEvaluatorId();
+    LOG.log(Level.INFO, "Task completed in container {0}", containerId);
+
+    containerManager.getContainer(containerId).close();
   }
 }

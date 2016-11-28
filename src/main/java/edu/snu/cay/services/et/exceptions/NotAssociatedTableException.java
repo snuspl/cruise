@@ -13,29 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.driver.api;
-
-import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.Configuration;
+package edu.snu.cay.services.et.exceptions;
 
 /**
- * Represents an allocated container.
+ * An exception that a table has not associated with any containers.
  */
-@DriverSide
-public interface AllocatedContainer {
-  /**
-   * @return the identifier of the allocated container.
-   */
-  String getId();
-
-  /**
-   * Assign task to container.
-   * @param taskConf task configuration.
-   */
-  void submitTask(Configuration taskConf);
-
-  /**
-   * Closes the container.
-   */
-  void close();
+public class NotAssociatedTableException extends Exception {
 }

@@ -16,8 +16,11 @@
 package edu.snu.cay.services.et.integration;
 
 import edu.snu.cay.services.et.examples.simple.SimpleET;
+import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test class for running example apps.
@@ -26,6 +29,6 @@ public class ExampleTest {
 
   @Test
   public void testSimpleET() throws InjectionException {
-    SimpleET.runSimpleET();
+    assertEquals(LauncherStatus.COMPLETED, SimpleET.runSimpleET());
   }
 }

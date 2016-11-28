@@ -13,29 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.driver.api;
+package edu.snu.cay.services.et.configuration.parameters;
 
-import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * Represents an allocated container.
- */
-@DriverSide
-public interface AllocatedContainer {
-  /**
-   * @return the identifier of the allocated container.
-   */
-  String getId();
-
-  /**
-   * Assign task to container.
-   * @param taskConf task configuration.
-   */
-  void submitTask(Configuration taskConf);
-
-  /**
-   * Closes the container.
-   */
-  void close();
+@NamedParameter(doc = "Identifier of Table.")
+public final class TableIdentifier implements Name<String> {
 }

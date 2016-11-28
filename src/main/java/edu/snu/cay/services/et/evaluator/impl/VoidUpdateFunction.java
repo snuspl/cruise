@@ -13,29 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.driver.api;
+package edu.snu.cay.services.et.evaluator.impl;
 
-import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.Configuration;
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+
+import javax.inject.Inject;
 
 /**
- * Represents an allocated container.
+ * An empty implementation of UpdateFunction.
  */
-@DriverSide
-public interface AllocatedContainer {
-  /**
-   * @return the identifier of the allocated container.
-   */
-  String getId();
+public final class VoidUpdateFunction implements UpdateFunction<Void, Void> {
 
   /**
-   * Assign task to container.
-   * @param taskConf task configuration.
+   * Injectable constructor.
    */
-  void submitTask(Configuration taskConf);
+  @Inject
+  private VoidUpdateFunction() {
+  }
 
-  /**
-   * Closes the container.
-   */
-  void close();
+  @Override
+  public Void initValue(final Void key) {
+    return null;
+  }
+
+  @Override
+  public Void updateValue(final Void oldValue, final Void deltaValue) {
+    return null;
+  }
 }

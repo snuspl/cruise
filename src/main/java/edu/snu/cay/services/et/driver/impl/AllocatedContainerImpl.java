@@ -25,12 +25,12 @@ import org.apache.reef.tang.Configuration;
  */
 @DriverSide
 final class AllocatedContainerImpl implements AllocatedContainer {
-  private final ActiveContext activeContext;
+  private final ActiveContext rootContext;
   private final String identifier;
 
-  AllocatedContainerImpl(final ActiveContext activeContext) {
-    this.activeContext = activeContext;
-    this.identifier = activeContext.getEvaluatorId();
+  AllocatedContainerImpl(final ActiveContext rootContext) {
+    this.rootContext = rootContext;
+    this.identifier = rootContext.getEvaluatorId();
   }
 
   @Override
@@ -39,12 +39,15 @@ final class AllocatedContainerImpl implements AllocatedContainer {
   }
 
   @Override
-  public void close() {
-    activeContext.close();
+  public void submitTask(final Configuration taskConf) {
+    rootContext.submitTask(taskConf);
   }
 
   @Override
-  public void submitTask(final Configuration taskConf) {
-    activeContext.submitTask(taskConf);
+  public void close() {
+
+    // simply close the context, which is a root context of evaluator.
+    // so evaluator(==container) will be released
+    rootContext.close();
   }
 }

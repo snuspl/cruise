@@ -40,7 +40,7 @@ public final class SimpleET {
   private static final Logger LOG = Logger.getLogger(SimpleET.class.getName());
 
   private static final String DRIVER_IDENTIFIER = "Simple";
-  private static final int MAX_NUMBER_OF_EVALUATORS = 2;
+  private static final int MAX_NUMBER_OF_EVALUATORS = 3;
   private static final int JOB_TIMEOUT = 10000; // 10 sec.
 
   /**
@@ -50,14 +50,15 @@ public final class SimpleET {
   }
 
   public static void main(final String[] args) throws InjectionException {
-    runSimpleET();
+    final LauncherStatus status = runSimpleET();
+    LOG.log(Level.INFO, "ET job completed: {0}", status);
   }
 
   /**
    * Runs SimpleET example app.
    * @throws InjectionException when fail to inject DriverLauncher
    */
-  public static void runSimpleET() throws InjectionException {
+  public static LauncherStatus runSimpleET() throws InjectionException {
     final Configuration runtimeConfiguration = LocalRuntimeConfiguration.CONF
         .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, MAX_NUMBER_OF_EVALUATORS)
         .build();
@@ -72,9 +73,8 @@ public final class SimpleET {
     final Configuration implConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
-    final LauncherStatus status = DriverLauncher.getLauncher(runtimeConfiguration)
+    return DriverLauncher.getLauncher(runtimeConfiguration)
         .run(Configurations.merge(driverConfiguration, etDriverConfiguration, nameServerConfiguration,
             nameClientConfiguration, implConfiguration), JOB_TIMEOUT);
-    LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 }
