@@ -27,8 +27,8 @@ import org.apache.hadoop.mapred.*;
 
 /**
  * An {@link InputFormat} for plain text files. Files are broken into lines.
- * Either linefeed or carriage-return are used to signal end of line.  Keys are
- * the position in the file, and values are the line of text..
+ * Either linefeed or carriage-return are used to signal end of line.
+ * Keys are the position in the file, and values are the line of text.
  *
  * It's a resembled from {@link org.apache.hadoop.mapred.TextInputFormat} and modified to
  * extend {@link ExactNumSplitFileInputFormat} to break the dependency between

@@ -162,10 +162,10 @@ public final class DataLoadingRequestBuilder
         Boolean.toString(this.inMemory))
         .bindNamedParameter(JobConfExternalConstructor.InputFormatClass.class, inputFormatClass);
 
-    for (final DistributedDataSetPartition aDistributedDataSet : this.distributedDataSet) {
+    for (final DistributedDataSetPartition partition : this.distributedDataSet) {
       jcb.bindSetEntry(
           DistributedDataSetPartitionSerializer.DistributedDataSetPartitions.class,
-          DistributedDataSetPartitionSerializer.serialize(aDistributedDataSet));
+          DistributedDataSetPartitionSerializer.serialize(partition));
     }
 
     // we do this check for backwards compatibility, if the user defined it
