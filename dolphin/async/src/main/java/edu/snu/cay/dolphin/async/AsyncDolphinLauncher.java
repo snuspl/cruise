@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.dashboard.DashboardConfProvider;
 import edu.snu.cay.dolphin.async.dashboard.DashboardLauncher;
@@ -57,7 +58,6 @@ import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.parameters.ReceiverHost;
 import edu.snu.cay.utils.trace.parameters.ReceiverPort;
 import edu.snu.cay.utils.trace.parameters.ReceiverType;
-import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -356,7 +356,6 @@ public final class AsyncDolphinLauncher {
       final String jobName, final Injector injector) throws InjectionException {
     final ConfigurationModule driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDolphinDriver.class))
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.DRIVER_MEMORY, injector.getNamedInstance(DriverMemory.class))
         .set(DriverConfiguration.ON_DRIVER_STARTED, AsyncDolphinDriver.StartHandler.class)

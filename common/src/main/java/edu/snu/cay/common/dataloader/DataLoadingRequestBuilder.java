@@ -16,7 +16,6 @@
 package edu.snu.cay.common.dataloader;
 
 import org.apache.hadoop.mapred.InputFormat;
-import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.data.loading.api.DistributedDataSet;
 import org.apache.reef.io.data.loading.api.EvaluatorToPartitionStrategy;
@@ -30,16 +29,13 @@ import org.apache.reef.runtime.common.utils.Constants;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.BindException;
 import org.apache.reef.tang.formats.ConfigurationModule;
 
-import java.util.Iterator;
-import java.util.Set;
-
 /**
  * Builder to create a request to the DataLoadingService.
+ * It's resembled from {@link org.apache.reef.io.data.loading.api.DataLoadingRequestBuilder}
+ * to separate out its resource request and management part.
  */
 public final class DataLoadingRequestBuilder
     implements org.apache.reef.util.Builder<Configuration> {
@@ -166,11 +162,10 @@ public final class DataLoadingRequestBuilder
         Boolean.toString(this.inMemory))
         .bindNamedParameter(JobConfExternalConstructor.InputFormatClass.class, inputFormatClass);
 
-    final Iterator<DistributedDataSetPartition> partitions = this.distributedDataSet.iterator();
-    while (partitions.hasNext()) {
+    for (final DistributedDataSetPartition partition : this.distributedDataSet) {
       jcb.bindSetEntry(
           DistributedDataSetPartitionSerializer.DistributedDataSetPartitions.class,
-          DistributedDataSetPartitionSerializer.serialize(partitions.next()));
+          DistributedDataSetPartitionSerializer.serialize(partition));
     }
 
     // we do this check for backwards compatibility, if the user defined it
@@ -184,21 +179,5 @@ public final class DataLoadingRequestBuilder
     }
 
     return jcb.bindImplementation(DataLoadingService.class, InputFormatLoadingService.class).build();
-  }
-
-  /**
-   * Allows to specify a set of compute requests to send to the DataLoader.
-   */
-  @NamedParameter(doc = "Sets of compute requests to request to the DataLoader, " +
-      "i.e. evaluators requests that will not load data")
-  static final class DataLoadingComputeRequests implements Name<Set<String>> {
-  }
-
-  /**
-   * Allows to specify a set of data requests to send to the DataLoader.
-   */
-  @NamedParameter(doc = "Sets of data requests to request to the DataLoader, " +
-      "i.e. evaluators requests that will load data")
-  static final class DataLoadingDataRequests implements Name<Set<String>> {
   }
 }
