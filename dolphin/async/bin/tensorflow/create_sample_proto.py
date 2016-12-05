@@ -15,10 +15,12 @@
 import tensorflow as tf
 
 # Create some variables.
-b = tf.Variable(tf.zeros([100]), name="b")
-W = tf.Variable(tf.random_uniform([784,100], -1, 1), name="W")
-x = tf.placeholder(name="x", name="x")
-relu = tf.nn.relu(tf.matmul(W, x) + b, name="relu")
+with tf.device("/cpu:0"):
+    b = tf.Variable(tf.zeros([100]), name="b")
+with tf.device("/gpu:0"):
+    W = tf.Variable(tf.random_uniform([784,100], -1, 1), name="W")
+    x = tf.placeholder(name="x", name="x")
+    relu = tf.nn.relu(tf.matmul(W, x) + b, name="relu")
 
 # Add an op to initialize the variables.
 init_op = tf.global_variables_initializer()
