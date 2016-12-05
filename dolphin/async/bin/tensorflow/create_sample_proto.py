@@ -19,7 +19,7 @@ with tf.device("/cpu:0"):
     b = tf.Variable(tf.zeros([100]), name="b")
 with tf.device("/gpu:0"):
     W = tf.Variable(tf.random_uniform([784,100], -1, 1), name="W")
-    x = tf.placeholder(name="x", name="x")
+    x = tf.placeholder(tf.float32, shape=(100, 1), name="x")
     relu = tf.nn.relu(tf.matmul(W, x) + b, name="relu")
 
 # Add an op to initialize the variables.
@@ -32,6 +32,14 @@ saver = tf.train.Saver()
 # variables to disk.
 with tf.Session() as sess:
   sess.run(init_op)
+  
+  # Use a saver_def to get the "magic" strings to restore
+  saver_def = saver.as_saver_def()
+  print saver_def.filename_tensor_name
+  print saver_def.restore_op_name
+
   # Save the variables to disk.
-  save_path = saver.save(sess, "./trained_model.proto")
-  print("Model saved in file: %s" % save_path)
+  saver.save(sess, 'trained_model.sd')
+  tf.train.write_graph(sess.graph_def, '.', 'trained_model.proto', as_text=False)
+  tf.train.write_graph(sess.graph_def, '.', 'trained_model.txt', as_text=True)
+
