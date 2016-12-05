@@ -109,11 +109,17 @@
     <dependency>
       <groupId>org.bytedeco</groupId>
       <artifactId>javacpp</artifactId>
+      <version>1.2</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpasyncclient</artifactId>
       <version>4.1.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco.javacpp-presets</groupId>
+      <artifactId>tensorflow</artifactId>
+      <version>0.9.0-1.2</version>
     </dependency>
   </dependencies>
 
