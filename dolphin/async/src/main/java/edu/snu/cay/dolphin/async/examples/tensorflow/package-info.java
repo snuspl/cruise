@@ -13,24 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.tensorflow;
-
-import edu.snu.cay.dolphin.async.Trainer;
-
-public class TensorflowTrainer implements Trainer {
-
-  @Override
-  public void initialize() {
-
-  }
-
-  @Override
-  public void run(final int iteration) {
-
-  }
-
-  @Override
-  public void cleanup() {
-
-  }
-}
+/**
+ * Classes for Tensorflow examples.
+ */
+package edu.snu.cay.dolphin.async.examples.tensorflow;
