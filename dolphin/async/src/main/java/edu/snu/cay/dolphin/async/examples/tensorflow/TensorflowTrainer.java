@@ -57,34 +57,39 @@ final class TensorflowTrainer implements Trainer {
       SetDefaultDevice("/cpu:0", graphDef);
     }
 
-    final tensorflow.Scope root = tensorflow.Scope.NewRootScope();
+    final tensorflow.GraphDefBuilder builder = new tensorflow.GraphDefBuilder();
 
     // a = [3 2; -1 0]
-    final tensorflow.Output a = Const(root, tensorflow.Tensor.create(new float[] {3.f, 2.f, -1.f, 0.f},
-                                                                      new tensorflow.TensorShape(2, 2)));
+    final tensorflow.Node a = Const(new float[] {3.f, 2.f, -1.f, 0.f},
+        new tensorflow.TensorShape(2, 2), builder.opts());
 
     // x = [1.0; 1.0]
-    final tensorflow.Output x = Const(root.WithOpName("x"),
-        tensorflow.Tensor.create(new float[] {1.f, 1.f}, new tensorflow.TensorShape(2, 1)));
+    final tensorflow.GraphDefBuilder.Options xOptions = new tensorflow.GraphDefBuilder.Options(builder.opts());
+    xOptions.WithName("x");
+    final tensorflow.Node x = Const(new float[] {1.f, 1.f}, new tensorflow.TensorShape(2, 1), xOptions);
 
     // y = a * x
-    final tensorflow.MatMul y = new tensorflow.MatMul(root.WithOpName("y"),
-        new tensorflow.Input(a), new tensorflow.Input(x));
+    final tensorflow.GraphDefBuilder.Options yOptions = new tensorflow.GraphDefBuilder.Options(builder.opts());
+    xOptions.WithName("y");
+    final tensorflow.Node y = MatMul(a, x, yOptions);
 
     // y2 = y.^2
-    final tensorflow.Square y2 = new tensorflow.Square(root, y.asInput());
+    final tensorflow.Node y2 = Square(y, builder.opts());
 
     // y2_sum = sum(y2)
-    final tensorflow.Sum y2Sum = new tensorflow.Sum(root, y2.asInput(), new tensorflow.Input(0));
+    final tensorflow.Node y2Sum = Sum(y2, Const(0, builder.opts()), builder.opts());
 
     // yNorm = sqrt(y2Sum)
-    final tensorflow.Sqrt yNorm = new tensorflow.Sqrt(root, y2Sum.asInput());
+    final tensorflow.Node yNorm = Sqrt(y2Sum, builder.opts());
 
     // y_normalized = y ./ yNorm
-    final tensorflow.Div div = new tensorflow.Div(root.WithOpName("y_normalized"), y.asInput(), yNorm.asInput());
+    final tensorflow.GraphDefBuilder.Options yNormalizedOptions =
+        new tensorflow.GraphDefBuilder.Options(builder.opts());
+    yNormalizedOptions.WithName("y_normalized");
+    final tensorflow.Node div = Div(y, yNorm, yNormalizedOptions);
 
     graphDef = new tensorflow.GraphDef();
-    final tensorflow.Status s = root.ToGraphDef(graphDef);
+    final tensorflow.Status s = builder.ToGraphDef(graphDef);
     if (!s.ok()) {
       throw new RuntimeException(s.error_message().getString());
     }
