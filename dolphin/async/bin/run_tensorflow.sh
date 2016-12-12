@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_tensorflow.sh -use_gpu false -local true -split 3 -num_servers 2 -num_partitions 4 -max_iter 2 -mini_batch_size 10 -max_num_eval_local 5 -input run_tensorflow.sh -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000
+# ./run_tensorflow.sh -use_gpu false -local true -split 3 -num_servers 2 -num_partitions 4 -max_iter 2 -mini_batch_size 10 -max_num_eval_local 5 -input run_tensorflow.sh -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000 -eval_size 4096
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
