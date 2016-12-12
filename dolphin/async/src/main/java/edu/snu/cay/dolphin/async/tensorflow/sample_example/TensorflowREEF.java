@@ -44,6 +44,7 @@ public final class TensorflowREEF {
         .setTrainerClass(TensorflowTrainer.class)
         .setUpdaterClass(TensorflowUpdater.class)
         .setParserClass(NullDataParser.class)
+        .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)
         .addParameterClass(TensorflowParameters.UseGPU.class)
