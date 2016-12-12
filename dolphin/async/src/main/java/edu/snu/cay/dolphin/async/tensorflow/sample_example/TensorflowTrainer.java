@@ -133,7 +133,7 @@ final class TensorflowTrainer implements Trainer {
       newParameter[0] = yNorm.tensor_data().asBuffer().asFloatBuffer().get(0);
       newParameter[1] = yNorm.tensor_data().asBuffer().asFloatBuffer().get(1);
       parameterWorker.push(0, vectorFactory.createDense(newParameter));
-      LOG.log(Level.INFO, "Pushed parameter : {0}, {1}", newParameter);
+      LOG.log(Level.INFO, "Pushed parameter : {0}, {1}", new Object[]{newParameter[0], newParameter[1]});
     }
   }
 
