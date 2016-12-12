@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.examples.tensorflow;
+package edu.snu.cay.dolphin.async.tensorflow.sample_example;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.tensorflow.TensorflowParameters;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 import org.bytedeco.javacpp.tensorflow;
@@ -33,16 +34,19 @@ import static org.bytedeco.javacpp.tensorflow.*;
 final class TensorflowTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(TensorflowTrainer.class.getName());
 
+  private final boolean useGPU;
   private final int miniBatchSize;
   private final ParameterWorker parameterWorker;
   private final VectorFactory vectorFactory;
-  private tensorflow.GraphDef graphDef;
   private tensorflow.Session session;
+  private tensorflow.GraphDef graphDef;
 
   @Inject
-  private TensorflowTrainer(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+  private TensorflowTrainer(@Parameter(TensorflowParameters.UseGPU.class) final boolean useGPU,
+                            @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                             final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                             final VectorFactory vectorFactory) {
+    this.useGPU = useGPU;
     this.miniBatchSize = miniBatchSize;
     this.parameterWorker = parameterWorker;
     this.vectorFactory = vectorFactory;
@@ -50,46 +54,31 @@ final class TensorflowTrainer implements Trainer {
 
   @Override
   public void initialize() {
-    // Creates a session.
-    final tensorflow.SessionOptions options = new tensorflow.SessionOptions();
-    session = new tensorflow.Session(options);
-    if (options.target() == null) {
-      SetDefaultDevice("/cpu:0", graphDef);
-    }
-
-    final tensorflow.GraphDefBuilder builder = new tensorflow.GraphDefBuilder();
+    final Scope root = Scope.NewRootScope();
 
     // a = [3 2; -1 0]
-    final tensorflow.Node a = Const(new float[] {3.f, 2.f, -1.f, 0.f},
-        new tensorflow.TensorShape(2, 2), builder.opts());
+    final Output a = Const(root, Tensor.create(new float[] {3.f, 2.f, -1.f, 0.f}, new TensorShape(2, 2)));
 
     // x = [1.0; 1.0]
-    final tensorflow.GraphDefBuilder.Options xOptions = new tensorflow.GraphDefBuilder.Options(builder.opts());
-    xOptions.WithName("x");
-    final tensorflow.Node x = Const(new float[] {1.f, 1.f}, new tensorflow.TensorShape(2, 1), xOptions);
+    final Output x = Const(root.WithOpName("x"), Tensor.create(new float[] {1.f, 1.f}, new TensorShape(2, 1)));
 
     // y = a * x
-    final tensorflow.GraphDefBuilder.Options yOptions = new tensorflow.GraphDefBuilder.Options(builder.opts());
-    xOptions.WithName("y");
-    final tensorflow.Node y = MatMul(a, x, yOptions);
+    final MatMul y = new MatMul(root.WithOpName("y"), new Input(a), new Input(x));
 
     // y2 = y.^2
-    final tensorflow.Node y2 = Square(y, builder.opts());
+    final Square y2 = new Square(root, y.asInput());
 
-    // y2_sum = sum(y2)
-    final tensorflow.Node y2Sum = Sum(y2, Const(0, builder.opts()), builder.opts());
+    // y2Sum = sum(y2)
+    final Sum y2Sum = new Sum(root, y2.asInput(), new Input(0));
 
     // yNorm = sqrt(y2Sum)
-    final tensorflow.Node yNorm = Sqrt(y2Sum, builder.opts());
+    final Sqrt yNorm = new Sqrt(root, y2Sum.asInput());
 
     // y_normalized = y ./ yNorm
-    final tensorflow.GraphDefBuilder.Options yNormalizedOptions =
-        new tensorflow.GraphDefBuilder.Options(builder.opts());
-    yNormalizedOptions.WithName("y_normalized");
-    final tensorflow.Node div = Div(y, yNorm, yNormalizedOptions);
+    new Div(root.WithOpName("y_normalized"), y.asInput(), yNorm.asInput());
 
-    graphDef = new tensorflow.GraphDef();
-    final tensorflow.Status s = builder.ToGraphDef(graphDef);
+    this.graphDef = new GraphDef();
+    final Status s = root.ToGraphDef(graphDef);
     if (!s.ok()) {
       throw new RuntimeException(s.error_message().getString());
     }
@@ -110,7 +99,13 @@ final class TensorflowTrainer implements Trainer {
   @Override
   public void run(final int iteration) {
 
-    tensorflow.Status s = session.Create(graphDef);
+    final SessionOptions options = new SessionOptions();
+    this.session = new Session(options);
+    if (options.target() == null) {
+      SetDefaultDevice(useGPU ? "/gpu:0" : "/cpu:0", graphDef);
+    }
+
+    Status s = session.Create(graphDef);
     if (!s.ok()) {
       throw new RuntimeException(s.error_message().getString());
     }

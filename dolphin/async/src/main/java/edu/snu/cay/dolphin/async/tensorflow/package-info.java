@@ -15,5 +15,9 @@
  */
 /**
  * Classes for Tensorflow examples.
+ * Requirements
+ * 1) installed tensorflow v0.11,
+ * 2) javacpp-presets-tensorflow jar files(including platform dependent jar), which is v0.11.0-1.3-SNAPSHOT,
+ *    under the cay/dolphin/async/lib/org/bytedeco/javacpp-presets/tensorflow/0.11.0-1.3-SNAPSHOT
  */
-package edu.snu.cay.dolphin.async.examples.tensorflow;
+package edu.snu.cay.dolphin.async.tensorflow;

@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.examples.tensorflow;
+package edu.snu.cay.dolphin.async.tensorflow.sample_example;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.NullDataParser;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
+import edu.snu.cay.dolphin.async.tensorflow.TensorflowParameters;
 import org.apache.reef.client.LauncherStatus;
 
 /**
@@ -45,6 +46,7 @@ public final class TensorflowREEF {
         .setParserClass(NullDataParser.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)
+        .addParameterClass(TensorflowParameters.UseGPU.class)
         .build());
   }
 
