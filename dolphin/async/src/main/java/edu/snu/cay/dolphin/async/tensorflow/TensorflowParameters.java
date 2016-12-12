@@ -23,6 +23,10 @@ import org.apache.reef.tang.annotations.NamedParameter;
  */
 public final class TensorflowParameters {
   @NamedParameter(doc = "Whether to use gpu or not", short_name = "use_gpu")
-  public final class UseGPU implements Name<Boolean> {
+  public final class UseGpu implements Name<Boolean> {
+  }
+
+  @NamedParameter(doc = "GPU memory fraction per process", short_name = "gpu_memory_fraction", default_value = "1.0f")
+  public final class GpuMemoryFraction implements Name<Float> {
   }
 }

@@ -34,7 +34,8 @@ import static org.bytedeco.javacpp.tensorflow.*;
 final class TensorflowTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(TensorflowTrainer.class.getName());
 
-  private final boolean useGPU;
+  private final boolean useGpu;
+  private final float gpuMemoryFraction;
   private final int miniBatchSize;
   private final ParameterWorker parameterWorker;
   private final VectorFactory vectorFactory;
@@ -42,11 +43,13 @@ final class TensorflowTrainer implements Trainer {
   private tensorflow.GraphDef graphDef;
 
   @Inject
-  private TensorflowTrainer(@Parameter(TensorflowParameters.UseGPU.class) final boolean useGPU,
+  private TensorflowTrainer(@Parameter(TensorflowParameters.UseGpu.class) final boolean useGpu,
+                            @Parameter(TensorflowParameters.GpuMemoryFraction.class) final float gpuMemoryFraction,
                             @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                             final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                             final VectorFactory vectorFactory) {
-    this.useGPU = useGPU;
+    this.useGpu = useGpu;
+    this.gpuMemoryFraction = gpuMemoryFraction;
     this.miniBatchSize = miniBatchSize;
     this.parameterWorker = parameterWorker;
     this.vectorFactory = vectorFactory;
@@ -78,7 +81,22 @@ final class TensorflowTrainer implements Trainer {
     new Div(root.WithOpName("y_normalized"), y.asInput(), yNorm.asInput());
 
     this.graphDef = new GraphDef();
-    final Status s = root.ToGraphDef(graphDef);
+    Status s = root.ToGraphDef(graphDef);
+    if (!s.ok()) {
+      throw new RuntimeException(s.error_message().getString());
+    }
+
+
+    final SessionOptions options = new SessionOptions();
+    if (useGpu) {
+      options.config().gpu_options().set_per_process_gpu_memory_fraction(gpuMemoryFraction);
+    }
+    this.session = new Session(options);
+    if (options.target() == null) {
+      SetDefaultDevice(useGpu ? "/gpu:0" : "/cpu:0", graphDef);
+    }
+
+    s = session.Create(graphDef);
     if (!s.ok()) {
       throw new RuntimeException(s.error_message().getString());
     }
@@ -98,18 +116,6 @@ final class TensorflowTrainer implements Trainer {
 
   @Override
   public void run(final int iteration) {
-
-    final SessionOptions options = new SessionOptions();
-    this.session = new Session(options);
-    if (options.target() == null) {
-      SetDefaultDevice(useGPU ? "/gpu:0" : "/cpu:0", graphDef);
-    }
-
-    Status s = session.Create(graphDef);
-    if (!s.ok()) {
-      throw new RuntimeException(s.error_message().getString());
-    }
-
     for (int step = 0; step < miniBatchSize; step++) {
       final Vector parameterVec = (Vector) parameterWorker.pull(0);
       final tensorflow.Tensor x = new tensorflow.Tensor(DT_FLOAT, new tensorflow.TensorShape(2, 1));
@@ -120,7 +126,7 @@ final class TensorflowTrainer implements Trainer {
 
       final tensorflow.TensorVector outputs = new tensorflow.TensorVector();
       outputs.resize(0);
-      s = session.Run(new tensorflow.StringTensorPairVector(new String[]{"x"}, new tensorflow.Tensor[]{x}),
+      final Status s = session.Run(new tensorflow.StringTensorPairVector(new String[]{"x"}, new tensorflow.Tensor[]{x}),
           new tensorflow.StringVector("y_normalized:0"), new tensorflow.StringVector(), outputs);
       if (!s.ok()) {
         throw new RuntimeException(s.error_message().getString());

@@ -48,7 +48,8 @@ public final class TensorflowREEF {
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)
         .setWorkerSerializerClass(DenseVectorSerializer.class)
-        .addParameterClass(TensorflowParameters.UseGPU.class)
+        .addParameterClass(TensorflowParameters.UseGpu.class)
+        .addParameterClass(TensorflowParameters.GpuMemoryFraction.class)
         .build());
   }
 
