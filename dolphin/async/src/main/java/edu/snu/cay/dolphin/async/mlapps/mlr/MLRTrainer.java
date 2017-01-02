@@ -287,10 +287,10 @@ final class MLRTrainer implements Trainer {
     // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
     // instead of allocating a new vector for the error,
     // we use the same object for convenience
-    predictions.set(label,predictions.get(label)-1);
+    predictions.set(label, predictions.get(label) - 1);
 
     // gradient_j = -stepSize * error_j * x
-    if(lambda !=0) {
+    if (lambda != 0) {
       for (int j = 0; j < numClasses; ++j) {
         newModels[j].axpy(-predictions.get(j) * stepSize, feature);
         newModels[j].axpy(-stepSize * lambda, newModels[j]);
