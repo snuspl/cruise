@@ -125,6 +125,7 @@ final class NMFTrainer implements Trainer {
     int miniBatchIdx = 0;
     int numTotalInstancesProcessed = 0;
     final List<NMFData> totalInstancesProcessed = new LinkedList<>();
+    final Set<Integer> totalKeysProcessed = Sets.newTreeSet();
 
     Map<Long, NMFData> nextTrainingData = trainingDataProvider.getNextTrainingData();
     Collection<NMFData> workload = nextTrainingData.values();
@@ -135,7 +136,8 @@ final class NMFTrainer implements Trainer {
       final long miniBatchStartTime = System.currentTimeMillis();
 
       // pull data when mini-batch is started
-      pullRMatrix(getKeys(workload));
+      final List<Integer> keys = getKeys(workload);
+      pullRMatrix(keys);
 
       computeTracer.startTimer();
       for (final NMFData datum : workload) {
@@ -178,9 +180,10 @@ final class NMFTrainer implements Trainer {
       // push gradients
       pushAndResetGradients();
 
-      // update the total number of instances processed so far
+      // update the keys and instances that have been processed so far
       numTotalInstancesProcessed += numInstancesToProcess;
       totalInstancesProcessed.addAll(workload);
+      totalKeysProcessed.addAll(keys);
 
       // load the set of training data instances to process in the next mini-batch
       nextTrainingData = trainingDataProvider.getNextTrainingData();
@@ -198,7 +201,7 @@ final class NMFTrainer implements Trainer {
     }
 
     LOG.log(Level.INFO, "Pull model to compute loss value");
-    pullRMatrix(getKeys(totalInstancesProcessed));
+    pullRMatrix(new ArrayList<>(totalKeysProcessed));
 
     LOG.log(Level.INFO, "Start computing loss value");
     final double loss = computeLoss(totalInstancesProcessed);
