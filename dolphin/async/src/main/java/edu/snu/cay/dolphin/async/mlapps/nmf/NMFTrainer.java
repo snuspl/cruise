@@ -117,7 +117,6 @@ final class NMFTrainer implements Trainer {
   @Override
   public void run(final int iteration) {
     final long epochStartTime = System.currentTimeMillis();
-    double lossSum = 0.0;
 
     // Record the number of EM data blocks at the beginning of this iteration
     // to filter out stale metrics for optimization
@@ -125,6 +124,8 @@ final class NMFTrainer implements Trainer {
 
     int miniBatchIdx = 0;
     int numTotalInstancesProcessed = 0;
+    final List<NMFData> totalInstancesProcessed = new LinkedList<>();
+    final Set<Integer> totalKeysProcessed = Sets.newTreeSet();
 
     Map<Long, NMFData> nextTrainingData = trainingDataProvider.getNextTrainingData();
     Collection<NMFData> workload = nextTrainingData.values();
@@ -135,7 +136,8 @@ final class NMFTrainer implements Trainer {
       final long miniBatchStartTime = System.currentTimeMillis();
 
       // pull data when mini-batch is started
-      pullRMatrix(getKeys(workload));
+      final List<Integer> keys = getKeys(workload);
+      pullRMatrix(keys);
 
       computeTracer.startTimer();
       for (final NMFData datum : workload) {
@@ -168,9 +170,6 @@ final class NMFTrainer implements Trainer {
 
           // save R matrix gradients
           saveRMatrixGradient(colIdx, rGrad);
-
-          // aggregate loss
-          lossSum += error * error;
         }
 
         // update L matrix
@@ -181,8 +180,10 @@ final class NMFTrainer implements Trainer {
       // push gradients
       pushAndResetGradients();
 
-      // update the total number of instances processed so far
+      // update the keys and instances that have been processed so far
       numTotalInstancesProcessed += numInstancesToProcess;
+      totalInstancesProcessed.addAll(workload);
+      totalKeysProcessed.addAll(keys);
 
       // load the set of training data instances to process in the next mini-batch
       nextTrainingData = trainingDataProvider.getNextTrainingData();
@@ -199,10 +200,16 @@ final class NMFTrainer implements Trainer {
       miniBatchIdx++;
     }
 
+    LOG.log(Level.INFO, "Pull model to compute loss value");
+    pullRMatrix(new ArrayList<>(totalKeysProcessed));
+
+    LOG.log(Level.INFO, "Start computing loss value");
+    final double loss = computeLoss(totalInstancesProcessed);
+
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
     final WorkerMetrics epochMetric =
         buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
-            numTotalInstancesProcessed, lossSum, epochElapsedTime);
+            numTotalInstancesProcessed, loss, epochElapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
@@ -261,6 +268,26 @@ final class NMFTrainer implements Trainer {
     pushTracer.recordTime(gradients.size());
     // clear gradients
     gradients.clear();
+  }
+
+  /**
+   * Compute the loss value using the current models and given data instances.
+   * May take long, so do not call frequently.
+   * @param instances The training data instances to evaluate training loss.
+   * @return the loss value, computed by the sum of the errors.
+   */
+  private double computeLoss(final List<NMFData> instances) {
+    double loss = 0.0;
+    for (final NMFData datum : instances) {
+      final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
+      for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
+        final int colIdx = column.getFirst();
+        final Vector rVec = rMatrix.get(colIdx); // R_{*, j} : j-th column of R
+        final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
+        loss += error * error;
+      }
+    }
+    return loss;
   }
 
   /**
@@ -336,9 +363,9 @@ final class NMFTrainer implements Trainer {
 
   private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
                                          final int numDataBlocks, final int numProcessedDataItemCount,
-                                         final double lossSum, final double elapsedTime) {
+                                         final double loss, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(NMFParameters.MetricKeys.SUM_LOSS, lossSum);
+    appMetricMap.put(NMFParameters.MetricKeys.LOSS_SUM, loss);
     parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
 
     return WorkerMetrics.newBuilder()
