@@ -370,8 +370,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     return isPlanExecuting.get();
   }
 
-  private int getNumRunningInstances(final EMMaster em) {
-    return em.getStoreIdToBlockIds().size();
+  private int getNumRunningInstances(final EMMaster emMaster) {
+    return emMaster.getStoreIdToBlockIds().size();
   }
 
   private int getNumMetricSources(final Map<String, List<EvaluatorParameters>> evalParams) {
