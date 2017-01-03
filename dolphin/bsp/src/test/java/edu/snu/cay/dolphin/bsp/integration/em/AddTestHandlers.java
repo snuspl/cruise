@@ -46,7 +46,7 @@ final class AddTestHandlers {
   private static final Logger LOG = Logger.getLogger(AddTestHandlers.class.getName());
   private static final String EM_CONTEXT_ID_PREFIX = "EM-Context-";
 
-  private final EMMaster EMMaster;
+  private final EMMaster eMMaster;
   private final int numAdd;
   private final int numThreads;
   private final CountDownLatch allocationCounter;
@@ -55,10 +55,10 @@ final class AddTestHandlers {
   private RuntimeException runtimeException;
 
   @Inject
-  private AddTestHandlers(final EMMaster EMMaster,
+  private AddTestHandlers(final EMMaster eMMaster,
                           @Parameter(AddIntegrationTest.AddEvalNumber.class) final int numAdd,
                           @Parameter(AddIntegrationTest.AddThreadNumber.class) final int numThreads) {
-    this.EMMaster = EMMaster;
+    this.eMMaster = eMMaster;
     this.numAdd = numAdd;
     this.numThreads = numThreads;
     this.allocationCounter = new CountDownLatch(numAdd);
@@ -165,7 +165,7 @@ final class AddTestHandlers {
           }
         });
 
-        EMMaster.add(addsPerThread, 128, 1, evaluatorAllocatedHandler, contextActiveHandlers);
+        eMMaster.add(addsPerThread, 128, 1, evaluatorAllocatedHandler, contextActiveHandlers);
       }
     }
   }
