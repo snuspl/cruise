@@ -19,7 +19,7 @@ import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.bsp.groupcomm.conf.GroupCommParameters;
 import edu.snu.cay.dolphin.bsp.parameters.OutputDir;
 import edu.snu.cay.dolphin.bsp.parameters.StartTrace;
-import edu.snu.cay.services.em.common.parameters.ElasticMemoryParameters;
+import edu.snu.cay.services.em.common.parameters.EMParameters;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerParameters;
 import edu.snu.cay.services.em.plan.conf.PlanExecutorParameters;
 import edu.snu.cay.utils.trace.HTraceParameters;
@@ -49,7 +49,7 @@ public final class DolphinConfiguration extends ConfigurationModuleBuilder {
     OptimizerParameters.registerShortNames(cl);
     PlanExecutorParameters.registerShortNames(cl);
     GroupCommParameters.registerShortNames(cl);
-    ElasticMemoryParameters.registerShortNames(cl);
+    EMParameters.registerShortNames(cl);
     final ConfigurationBuilder cb = cl.getBuilder();
     cl.processCommandLine(args);
     return cb.build();

@@ -17,8 +17,8 @@ package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMCallbackRouter;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
@@ -44,9 +44,9 @@ import java.util.logging.Logger;
 final class MigrationManager {
   private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
 
-  private final InjectionFuture<ElasticMemoryMsgSender> sender;
+  private final InjectionFuture<EMMsgSender> sender;
   private final BlockManager blockManager;
-  private final ElasticMemoryCallbackRouter callbackRouter;
+  private final EMCallbackRouter callbackRouter;
 
   /**
    * This is a mapping from operation id to the {@link Migration}
@@ -61,9 +61,9 @@ final class MigrationManager {
   private Map<String, EventHandler<EMRoutingTableUpdate>> updateCallbacks = new HashMap<>();
 
   @Inject
-  private MigrationManager(final InjectionFuture<ElasticMemoryMsgSender> sender,
+  private MigrationManager(final InjectionFuture<EMMsgSender> sender,
                            final BlockManager blockManager,
-                           final ElasticMemoryCallbackRouter callbackRouter) {
+                           final EMCallbackRouter callbackRouter) {
     this.sender = sender;
     this.blockManager = blockManager;
     this.callbackRouter = callbackRouter;

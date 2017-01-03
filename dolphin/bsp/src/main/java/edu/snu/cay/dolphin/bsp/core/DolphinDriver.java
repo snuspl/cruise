@@ -35,7 +35,7 @@ import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.MigrationMsgType;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.EMConfiguration;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
@@ -168,7 +168,7 @@ public final class DolphinDriver {
   /**
    * Manager of the configuration of Elastic Memory service.
    */
-  private final ElasticMemoryConfiguration emConf;
+  private final EMConfiguration emConf;
 
   /**
    * Job to execute.
@@ -256,7 +256,7 @@ public final class DolphinDriver {
                         final OptimizationOrchestrator optimizationOrchestrator,
                         final DriverSync driverSync,
                         final TaskTracker taskTracker,
-                        final ElasticMemoryConfiguration emConf,
+                        final EMConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
                         final HTraceParameters traceParameters,

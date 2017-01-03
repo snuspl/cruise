@@ -92,7 +92,7 @@ public final class BlockManager {
                                             final int numInitialEvals) {
     if (evalIdPrefix == null) {
       // TODO #509: remove the assumption on the format of contextId
-      // The same prefix is used in ElasticMemoryConfiguration and OperationRouter.
+      // The same prefix is used in EMConfiguration and OperationRouter.
       evalIdPrefix = contextId.split("-")[0];
     }
 

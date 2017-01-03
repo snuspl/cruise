@@ -19,7 +19,7 @@ import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.evaluator.api.MigrationExecutor;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.io.network.util.Pair;
@@ -67,7 +67,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
   private final RemoteAccessibleMemoryStore<K> memoryStore;
   private final OperationRouter router;
-  private final InjectionFuture<ElasticMemoryMsgSender> sender;
+  private final InjectionFuture<EMMsgSender> sender;
 
   // Thread pools to handle the messages in separate threads to prevent NCS threads' overhead.
   private final ExecutorService blockSenderExecutor = Executors.newFixedThreadPool(NUM_BLOCK_SENDER_THREADS);
@@ -93,7 +93,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   @Inject
   private OwnershipFirstMigrationExecutor(final RemoteAccessibleMemoryStore<K> memoryStore,
                                           final OperationRouter router,
-                                          final InjectionFuture<ElasticMemoryMsgSender> sender,
+                                          final InjectionFuture<EMMsgSender> sender,
                                           @Parameter(KeyCodecName.class)final Codec<K> keyCodec,
                                           final Serializer serializer) {
     this.memoryStore = memoryStore;
@@ -463,7 +463,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
    */
   private int getStoreId(final String evalId) {
     // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
-    // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver()).
+    // and EMConfiguration.getServiceConfigurationWithoutNameResolver()).
     return Integer.valueOf(evalId.split("-")[1]);
   }
 }

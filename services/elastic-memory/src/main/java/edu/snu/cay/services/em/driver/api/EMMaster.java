@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Driver-side API of ElasticMemoryService.
+ * Driver-side API of EMService.
  */
 @DriverSide
 @DefaultImplementation(EMMasterImpl.class)

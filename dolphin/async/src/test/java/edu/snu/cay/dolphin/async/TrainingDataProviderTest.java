@@ -23,7 +23,7 @@ import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -71,7 +71,7 @@ public class TrainingDataProviderTest {
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
-    injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
+    injector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
     injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
 
     final BlockResolver<Long> mockBlockResolver = mock(BlockResolver.class);

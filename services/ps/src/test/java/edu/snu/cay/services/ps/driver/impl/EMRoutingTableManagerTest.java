@@ -19,8 +19,8 @@ import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
-import edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.driver.impl.EMMsgHandler;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.avro.Type;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
@@ -66,8 +66,8 @@ public final class EMRoutingTableManagerTest {
 
   private PSMessageSender mockPSSender;
 
-  private ElasticMemoryMsgSender mockEMSender;
-  private ElasticMemoryMsgHandler emMsgHandler;
+  private EMMsgSender mockEMSender;
+  private EMMsgHandler emMsgHandler;
 
   @Before
   public void setup() throws InjectionException {
@@ -83,10 +83,10 @@ public final class EMRoutingTableManagerTest {
     mockPSSender = mock(PSMessageSender.class);
     injector.bindVolatileInstance(PSMessageSender.class, mockPSSender);
 
-    mockEMSender = mock(ElasticMemoryMsgSender.class);
-    injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mockEMSender);
+    mockEMSender = mock(EMMsgSender.class);
+    injector.bindVolatileInstance(EMMsgSender.class, mockEMSender);
 
-    emMsgHandler = injector.getInstance(ElasticMemoryMsgHandler.class);
+    emMsgHandler = injector.getInstance(EMMsgHandler.class);
     serverEM = injector.getInstance(EMMaster.class);
     blockManager = injector.getInstance(BlockManager.class);
     emRoutingTableManager = injector.getInstance(EMRoutingTableManager.class);
@@ -262,7 +262,7 @@ public final class EMRoutingTableManagerTest {
    */
   private int getStoreId(final String evalId) {
     // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
-    // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver()).
+    // and EMConfiguration.getServiceConfigurationWithoutNameResolver()).
     return Integer.valueOf(evalId.split("-")[1]);
   }
 }

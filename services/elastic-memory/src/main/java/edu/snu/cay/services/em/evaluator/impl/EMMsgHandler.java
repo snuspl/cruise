@@ -43,8 +43,8 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 @Private
-public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg>> {
-  private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
+public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
+  private static final Logger LOG = Logger.getLogger(EMMsgHandler.class.getName());
   private static final int NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS = 2;
 
   private final OperationRouter router;
@@ -55,9 +55,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
       = Executors.newFixedThreadPool(NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS);
 
   @Inject
-  private ElasticMemoryMsgHandler(final OperationRouter router,
-                                  final RemoteOpHandler remoteOpHandler,
-                                  final MigrationExecutor migrationExecutor) {
+  private EMMsgHandler(final OperationRouter router,
+                       final RemoteOpHandler remoteOpHandler,
+                       final MigrationExecutor migrationExecutor) {
     this.router = router;
     this.remoteOpHandler = remoteOpHandler;
     this.migrationExecutor = migrationExecutor;
@@ -65,7 +65,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
 
   @Override
   public void onNext(final Message<EMMsg> msg) {
-    LOG.entering(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+    LOG.entering(EMMsgHandler.class.getSimpleName(), "onNext", msg);
 
     final EMMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
@@ -85,7 +85,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
       throw new RuntimeException("Unexpected message: " + msg);
     }
 
-    LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+    LOG.exiting(EMMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
   private void onRoutingTableMsg(final RoutingTableMsg msg) {

@@ -20,7 +20,7 @@ import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.Tuple;
@@ -76,7 +76,7 @@ public final class OperationRouter<K> {
 
   private final BlockResolver<K> blockResolver;
 
-  private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
+  private final InjectionFuture<EMMsgSender> msgSender;
 
   /**
    * The number of total blocks.
@@ -100,7 +100,7 @@ public final class OperationRouter<K> {
 
   @Inject
   private OperationRouter(final BlockResolver<K> blockResolver,
-                          final InjectionFuture<ElasticMemoryMsgSender> msgSender,
+                          final InjectionFuture<EMMsgSender> msgSender,
                           @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                           @Parameter(NumInitialEvals.class) final int numInitialEvals,
                           @Parameter(MemoryStoreId.class) final int memoryStoreId,

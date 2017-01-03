@@ -25,19 +25,19 @@ import javax.inject.Inject;
 /**
  * Configures the parameters used in Elastic Memory.
  */
-public final class ElasticMemoryParameters {
+public final class EMParameters {
   private final int numTotalBlocks;
   private final int numStoreThreads;
 
   @Inject
-  private ElasticMemoryParameters(@Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-                                  @Parameter(NumStoreThreads.class) final int numStoreThreads) {
+  private EMParameters(@Parameter(NumTotalBlocks.class) final int numTotalBlocks,
+                       @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     this.numTotalBlocks = numTotalBlocks;
     this.numStoreThreads = numStoreThreads;
   }
 
   /**
-   * @return A fully-configured Tang Configuration given the instantiated ElasticMemoryParameters.
+   * @return A fully-configured Tang Configuration given the instantiated EMParameters.
    *         This configuration should be used to launch the Driver.
    */
   public Configuration getConfiguration() {

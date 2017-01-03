@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.msg.impl;
 
 import edu.snu.cay.services.em.avro.MigrationMsg;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
+import edu.snu.cay.services.em.msg.api.EMCallbackRouter;
 import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
@@ -26,13 +26,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A thread-safe implementation of ElasticMemoryCallbackRouter.
+ * A thread-safe implementation of EMCallbackRouter.
  * Each operationId has exactly one callback. Warnings are logged when this does not hold on
  * register or onNext.
  * Each callback is executed within the thread that calls onCompleted.
  */
-public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallbackRouter {
-  private static final Logger LOG = Logger.getLogger(ElasticMemoryCallbackRouterImpl.class.getName());
+public final class EMCallbackRouterImpl implements EMCallbackRouter {
+  private static final Logger LOG = Logger.getLogger(EMCallbackRouterImpl.class.getName());
 
   private static final EventHandler<MigrationMsg> NOOP_CALLBACK =
       new EventHandler<MigrationMsg>() {
@@ -46,7 +46,7 @@ public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallb
       new ConcurrentHashMap<>();
 
   @Inject
-  private ElasticMemoryCallbackRouterImpl() {
+  private EMCallbackRouterImpl() {
   }
 
   @Override

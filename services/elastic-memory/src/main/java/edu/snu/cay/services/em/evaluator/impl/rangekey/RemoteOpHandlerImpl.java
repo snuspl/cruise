@@ -21,7 +21,7 @@ import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RangeKeyOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
@@ -57,7 +57,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
 
   private Serializer serializer;
   private Codec<K> keyCodec;
-  private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
+  private final InjectionFuture<EMMsgSender> msgSender;
 
   private final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore;
 
@@ -65,7 +65,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   private RemoteOpHandlerImpl(final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore,
                               final Serializer serializer,
                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
-                              final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
+                              final InjectionFuture<EMMsgSender> msgSender) {
     this.memoryStore = memoryStore;
     this.serializer = serializer;
     this.keyCodec = keyCodec;

@@ -28,7 +28,7 @@ import javax.inject.Inject;
 @DriverSide
 public final class EMWrapper {
   private final EMMaster eMMaster;
-  private final ElasticMemoryConfiguration conf;
+  private final EMConfiguration conf;
   private final EMNetworkSetup networkSetup;
 
   /**
@@ -36,7 +36,7 @@ public final class EMWrapper {
    */
   @Inject
   public EMWrapper(final EMMaster eMMaster,
-                   final ElasticMemoryConfiguration conf,
+                   final EMConfiguration conf,
                    final EMNetworkSetup networkSetup) throws InjectionException {
     this.eMMaster = eMMaster;
     this.conf = conf;
@@ -53,7 +53,7 @@ public final class EMWrapper {
   /**
    * @return The helper class for configuration in EM.
    */
-  public ElasticMemoryConfiguration getConf() {
+  public EMConfiguration getConf() {
     return conf;
   }
 

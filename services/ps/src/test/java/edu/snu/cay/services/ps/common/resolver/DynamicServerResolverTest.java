@@ -21,7 +21,7 @@ import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
@@ -79,7 +79,7 @@ public class DynamicServerResolverTest {
     final Injector driverInjector = Tang.Factory.getTang().newInjector(serverConf);
     driverInjector.bindVolatileInstance(EvaluatorManager.class, mock(EvaluatorManager.class));
     driverInjector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
-    driverInjector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
+    driverInjector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
     serverEM = driverInjector.getInstance(EMMaster.class);
     final BlockManager blockManager = driverInjector.getInstance(BlockManager.class);
 

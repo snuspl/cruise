@@ -25,11 +25,11 @@ import javax.inject.Inject;
  * Codec for EMMsgs.
  * Simply uses AvroUtils to encode and decode messages.
  */
-public final class ElasticMemoryMsgCodec
+public final class EMMsgCodec
     implements Codec<EMMsg> {
 
   @Inject
-  private ElasticMemoryMsgCodec() {
+  private EMMsgCodec() {
   }
 
   @Override

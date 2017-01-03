@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -70,7 +70,7 @@ public class MigrationManagerTest {
   @Before
   public void setUp() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(ElasticMemoryMsgSender.class, MockedMsgSender.class)
+        .bindImplementation(EMMsgSender.class, MockedMsgSender.class)
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
@@ -81,7 +81,7 @@ public class MigrationManagerTest {
     blockManager.registerEvaluator(EVAL_PREFIX + 1, NUM_INIT_EVALS);
     blockManager.registerEvaluator(EVAL_PREFIX + 2, NUM_INIT_EVALS);
 
-    messageSender = (MockedMsgSender) injector.getInstance(ElasticMemoryMsgSender.class);
+    messageSender = (MockedMsgSender) injector.getInstance(EMMsgSender.class);
     migrationManager = injector.getInstance(MigrationManager.class);
   }
 
@@ -400,7 +400,7 @@ public class MigrationManagerTest {
   /**
    * Mocked message sender simulates migration without actual network communications.
    */
-  private static final class MockedMsgSender implements ElasticMemoryMsgSender {
+  private static final class MockedMsgSender implements EMMsgSender {
 
     /**
      * A counter for the number of broadcasts.

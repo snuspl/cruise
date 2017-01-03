@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.*;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.Private;
@@ -42,13 +42,13 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @Private
-public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg>> {
-  private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
+public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
+  private static final Logger LOG = Logger.getLogger(EMMsgHandler.class.getName());
 
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
 
-  private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
+  private final InjectionFuture<EMMsgSender> msgSender;
 
   /**
    * In ownership-first migration, the {@link OwnershipAckMsg} and {@link BlockMovedMsg} can arrive out-of-order.
@@ -63,9 +63,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
   private final Map<Integer, Optional<TraceInfo>> msgArrivedBlocks = new ConcurrentHashMap<>();
 
   @Inject
-  private ElasticMemoryMsgHandler(final BlockManager blockManager,
-                                  final MigrationManager migrationManager,
-                                  final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
+  private EMMsgHandler(final BlockManager blockManager,
+                       final MigrationManager migrationManager,
+                       final InjectionFuture<EMMsgSender> msgSender) {
     this.blockManager = blockManager;
     this.migrationManager = migrationManager;
     this.msgSender = msgSender;
@@ -73,7 +73,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
 
   @Override
   public void onNext(final Message<EMMsg> msg) {
-    LOG.entering(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+    LOG.entering(EMMsgHandler.class.getSimpleName(), "onNext", msg);
 
     Trace.setProcessId("driver");
     final EMMsg innerMsg = SingleMessageExtractor.extract(msg);
@@ -90,7 +90,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<EMMsg
       throw new RuntimeException("Unexpected message: " + msg);
     }
 
-    LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+    LOG.exiting(EMMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
   private void onRoutingTableMsg(final RoutingTableMsg msg) {
