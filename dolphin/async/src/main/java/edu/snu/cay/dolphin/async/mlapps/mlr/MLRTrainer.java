@@ -197,29 +197,7 @@ final class MLRTrainer implements Trainer {
 
       computeTracer.startTimer();
       for (final MLRData instance : instances) {
-
-        final Vector feature = instance.getFeature();
-        final int label = instance.getLabel();
-
-        // compute h(x, w) = softmax(x dot w)
-        final Vector predictions = predict(feature);
-
-        // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
-        // instead of allocating a new vector for the error,
-        // we use the same object for convenience
-        predictions.set(label, predictions.get(label) - 1);
-
-        // gradient_j = -stepSize * error_j * x
-        if (lambda != 0) {
-          for (int j = 0; j < numClasses; ++j) {
-            newModels[j].axpy(-predictions.get(j) * stepSize, feature);
-            newModels[j].axpy(-stepSize * lambda, newModels[j]);
-          }
-        } else {
-          for (int j = 0; j < numClasses; ++j) {
-            newModels[j].axpy(-predictions.get(j) * stepSize, feature);
-          }
-        }
+        updateModel(instance);
       }
       computeTracer.recordTime(numInstancesToProcess);
 
@@ -286,13 +264,42 @@ final class MLRTrainer implements Trainer {
       // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
       // and so on
       final List<Vector> partialModelsForThisClass =
-          partitions.subList(classIndex * numPartitionsPerClass, (classIndex  + 1) * numPartitionsPerClass);
+          partitions.subList(classIndex * numPartitionsPerClass, (classIndex + 1) * numPartitionsPerClass);
 
       // concat partitions into one long vector
       oldModels[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
       newModels[classIndex] = oldModels[classIndex].copy();
     }
     computeTracer.recordTime(0);
+  }
+
+  /**
+   * Processes one training data instance and update the intermediate model.
+   * @param instance training data instance
+   */
+  private void updateModel(final MLRData instance) {
+    final Vector feature = instance.getFeature();
+    final int label = instance.getLabel();
+
+    // compute h(x, w) = softmax(x dot w)
+    final Vector predictions = predict(feature);
+
+    // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
+    // instead of allocating a new vector for the error,
+    // we use the same object for convenience
+    predictions.set(label, predictions.get(label) - 1);
+
+    // gradient_j = -stepSize * error_j * x
+    if (lambda != 0) {
+      for (int j = 0; j < numClasses; ++j) {
+        newModels[j].axpy(-predictions.get(j) * stepSize, feature);
+        newModels[j].axpy(-stepSize * lambda, newModels[j]);
+      }
+    } else {
+      for (int j = 0; j < numClasses; ++j) {
+        newModels[j].axpy(-predictions.get(j) * stepSize, feature);
+      }
+    }
   }
 
   private void pushAndResetGradients() {
