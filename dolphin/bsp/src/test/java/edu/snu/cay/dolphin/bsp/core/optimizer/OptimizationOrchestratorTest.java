@@ -20,7 +20,7 @@ import edu.snu.cay.dolphin.bsp.core.UserJobInfo;
 import edu.snu.cay.dolphin.bsp.examples.simple.SimpleCmpTask;
 import edu.snu.cay.dolphin.bsp.examples.simple.SimpleCommGroup;
 import edu.snu.cay.dolphin.bsp.examples.simple.SimpleCtrlTask;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.RandomOptimizer;
@@ -56,13 +56,13 @@ public final class OptimizationOrchestratorTest {
   private OptimizationOrchestrator orchestrator;
 
   /**
-   * Setup orchestration with a RandomOptimizer that calls a mock ElasticMemory instance.
+   * Setup orchestration with a RandomOptimizer that calls a mock EMMaster instance.
    */
   @Before
   public void setUp() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector(
         getRandomOptimizerConfiguration());
-    injector.bindVolatileInstance(ElasticMemory.class, mock(ElasticMemory.class));
+    injector.bindVolatileInstance(EMMaster.class, mock(EMMaster.class));
 
     final List<StageInfo> stageInfoList = new ArrayList<>(1);
     stageInfoList.add(

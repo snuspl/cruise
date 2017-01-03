@@ -17,7 +17,7 @@ package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -61,7 +61,7 @@ public final class EMRoutingTableManagerTest {
 
   private EMRoutingTableManager emRoutingTableManager;
 
-  private ElasticMemory serverEM;
+  private EMMaster serverEM;
   private BlockManager blockManager; // a sub component of serverEM
 
   private PSMessageSender mockPSSender;
@@ -87,7 +87,7 @@ public final class EMRoutingTableManagerTest {
     injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mockEMSender);
 
     emMsgHandler = injector.getInstance(ElasticMemoryMsgHandler.class);
-    serverEM = injector.getInstance(ElasticMemory.class);
+    serverEM = injector.getInstance(EMMaster.class);
     blockManager = injector.getInstance(BlockManager.class);
     emRoutingTableManager = injector.getInstance(EMRoutingTableManager.class);
   }

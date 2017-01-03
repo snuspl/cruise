@@ -21,7 +21,7 @@ import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
@@ -60,8 +60,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
   private final int maxNumEvals;
 
-  private final ElasticMemory workerEM;
-  private final ElasticMemory serverEM;
+  private final EMMaster workerEM;
+  private final EMMaster serverEM;
 
   /**
    * A map containing parameters that may be required for the optimization model.
@@ -76,8 +76,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
   @Inject
   private TestingOrchestrator(final PlanExecutor planExecutor,
                               final MetricManager metricManager,
-                              @Parameter(WorkerEM.class) final ElasticMemory workerEM,
-                              @Parameter(ServerEM.class) final ElasticMemory serverEM,
+                              @Parameter(WorkerEM.class) final EMMaster workerEM,
+                              @Parameter(ServerEM.class) final EMMaster serverEM,
                               @Parameter(LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals,
                               final AddOneServerOptimizer addOneServerOptimizer,
                               final AddOneWorkerOptimizer addOneWorkerOptimizer,
@@ -370,7 +370,7 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     return isPlanExecuting.get();
   }
 
-  private int getNumRunningInstances(final ElasticMemory em) {
+  private int getNumRunningInstances(final EMMaster em) {
     return em.getStoreIdToBlockIds().size();
   }
 

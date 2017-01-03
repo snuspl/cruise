@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Server-side EM instance")
-public final class ServerEM implements Name<ElasticMemory> {
+public final class ServerEM implements Name<EMMaster> {
 }

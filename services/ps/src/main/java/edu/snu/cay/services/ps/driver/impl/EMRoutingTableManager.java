@@ -18,7 +18,7 @@ package edu.snu.cay.services.ps.driver.impl;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.driver.impl.EMRoutingTableUpdateImpl;
 import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
@@ -60,9 +60,9 @@ public final class EMRoutingTableManager {
   private final BiMap<Integer, String> storeIdToEndpointId = HashBiMap.create();;
 
   /**
-   * Server-side ElasticMemory instance.
+   * Server-side EMMaster instance.
    */
-  private final ElasticMemory serverEM;
+  private final EMMaster serverEM;
 
   private final InjectionFuture<PSMessageSender> sender;
 
@@ -94,7 +94,7 @@ public final class EMRoutingTableManager {
   private volatile boolean initialServersReady = false;
 
   @Inject
-  EMRoutingTableManager(final ElasticMemory serverEM,
+  EMRoutingTableManager(final EMMaster serverEM,
                         @Parameter(NumServers.class) final int numServers,
                         final InjectionFuture<PSMessageSender> sender) {
     this.serverEM = serverEM;

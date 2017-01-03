@@ -19,7 +19,7 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
@@ -60,7 +60,7 @@ public class DynamicServerResolverTest {
 
   private DynamicServerResolver serverResolver;
 
-  private ElasticMemory serverEM;
+  private EMMaster serverEM;
 
   private WorkerMsgSender msgSender;
 
@@ -80,7 +80,7 @@ public class DynamicServerResolverTest {
     driverInjector.bindVolatileInstance(EvaluatorManager.class, mock(EvaluatorManager.class));
     driverInjector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     driverInjector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
-    serverEM = driverInjector.getInstance(ElasticMemory.class);
+    serverEM = driverInjector.getInstance(EMMaster.class);
     final BlockManager blockManager = driverInjector.getInstance(BlockManager.class);
 
     storeIdToEndpointIdBiMap = HashBiMap.create();
@@ -92,7 +92,7 @@ public class DynamicServerResolverTest {
       storeIdToEndpointIdBiMap.put(storeId, endpointId);
     }
 
-    // ElasticMemory gets storeIdToBlockIds information from blockManager
+    // EMMaster gets storeIdToBlockIds information from blockManager
     final EMRoutingTable initRoutingTable
         = new EMRoutingTable(serverEM.getStoreIdToBlockIds(), storeIdToEndpointIdBiMap);
 

@@ -22,7 +22,7 @@ import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MetricWeightFactor;
 import edu.snu.cay.dolphin.async.optimizer.parameters.MovingAverageWindowSize;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
@@ -78,8 +78,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    */
   private final int movingAvgWindowSize;
 
-  private final ElasticMemory workerEM;
-  private final ElasticMemory serverEM;
+  private final EMMaster workerEM;
+  private final EMMaster serverEM;
 
   /**
    * A map containing parameters that may be required for the optimization model.
@@ -90,8 +90,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   private OptimizationOrchestratorImpl(final Optimizer optimizer,
                                    final PlanExecutor planExecutor,
                                    final MetricManager metricManager,
-                                   @Parameter(WorkerEM.class) final ElasticMemory workerEM,
-                                   @Parameter(ServerEM.class) final ElasticMemory serverEM,
+                                   @Parameter(WorkerEM.class) final EMMaster workerEM,
+                                   @Parameter(ServerEM.class) final EMMaster serverEM,
                                    @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                    @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
                                    @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
@@ -238,7 +238,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     return isPlanExecuting.get();
   }
 
-  private int getNumRunningInstances(final ElasticMemory em) {
+  private int getNumRunningInstances(final EMMaster em) {
     return em.getStoreIdToBlockIds().size();
   }
 

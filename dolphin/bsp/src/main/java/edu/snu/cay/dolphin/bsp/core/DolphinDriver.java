@@ -520,14 +520,14 @@ public final class DolphinDriver {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
       LOG.log(Level.WARNING, "Evaluator failed {0}", failedEvaluator);
-      // Failure handling for evaluators. We may use ElasticMemory.checkpoint to do this.
+      // Failure handling for evaluators. We may use EMMaster.checkpoint to do this.
       // TODO #114: Implement Checkpoint
     }
   }
 
   /**
    * Gives context configuration submitted on
-   * both DataLoader requested evaluators and ElasticMemory requested evaluators.
+   * both DataLoader requested evaluators and EMMaster requested evaluators.
    */
   public Configuration getContextConfiguration() {
     final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
@@ -538,7 +538,7 @@ public final class DolphinDriver {
 
   /**
    * Gives service configuration submitted on
-   * both DataLoader requested evaluators and ElasticMemory requested evaluators.
+   * both DataLoader requested evaluators and EMMaster requested evaluators.
    * @param contextId Identifier of the context that the service will run on
    */
   public Configuration getServiceConfiguration(final String contextId) {

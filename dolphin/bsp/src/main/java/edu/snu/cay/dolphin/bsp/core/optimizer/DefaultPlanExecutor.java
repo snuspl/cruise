@@ -22,7 +22,7 @@ import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
 import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
@@ -59,7 +59,7 @@ import static edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator.NA
 
 /**
  * A Plan Executor that executes a Plan.
- * It immediately adds Evaluators with the appropriate contexts via ElasticMemory.
+ * It immediately adds Evaluators with the appropriate contexts via EMMaster.
  * It then makes use of DriverSync to guarantee the following happen between Task iterations.
  *   Execute moves according to the plan, by making use of the EM.move callbacks.
  *   Submit Tasks that are added to GroupCommunication Topologies (ensures GroupComm is correctly synchronized).
@@ -69,7 +69,7 @@ import static edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator.NA
  */
 public final class DefaultPlanExecutor implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(DefaultPlanExecutor.class.getName());
-  private final ElasticMemory elasticMemory;
+  private final EMMaster EMMaster;
   private final DriverSync driverSync;
   private final InjectionFuture<DolphinDriver> dolphinDriver;
   private final int evalSize;
@@ -80,12 +80,12 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   private ExecutingPlan executingPlan;
 
   @Inject
-  private DefaultPlanExecutor(final ElasticMemory elasticMemory,
+  private DefaultPlanExecutor(final EMMaster EMMaster,
                               final DriverSync driverSync,
                               final InjectionFuture<DolphinDriver> dolphinDriver,
                               @Parameter(Parameters.EvaluatorSize.class) final int evalSize,
                               @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores) {
-    this.elasticMemory = elasticMemory;
+    this.EMMaster = EMMaster;
     this.driverSync = driverSync;
     this.dolphinDriver = dolphinDriver;
     this.evalSize = evalSize;
@@ -93,13 +93,13 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * Executes a plan using ElasticMemory and DriverSync.
+   * Executes a plan using EMMaster and DriverSync.
    *
    * The main steps are as follows. Intermediate steps take place within respective handlers,
    * as summarized in {@link ExecutingPlan}.
    * 1. Create and assign an executingPlan
-   * 2. Call ElasticMemory.add(), wait for active contexts
-   * 3. Call ElasticMemory.move(), wait for data transfers to complete
+   * 2. Call EMMaster.add(), wait for active contexts
+   * 3. Call EMMaster.move(), wait for data transfers to complete
    * 4. Call DriverSync.execute() which executes {@link SynchronizedExecutionHandler}, wait for execution to complete
    * 5. Clear executingPlan and return
    *
@@ -110,7 +110,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   public Future<PlanResult> execute(final Plan plan) {
     return mainExecutor.submit(new Callable<PlanResult>() {
       /**
-       * Immediately add Evaluators via ElasticMemory.
+       * Immediately add Evaluators via EMMaster.
        * Once Contexts are ready, the Sync protocol is invoked with the PauseHandler that executes task submission.
        */
       @Override
@@ -127,7 +127,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         contextActiveHandlers.add(new ContextActiveHandler());
         for (final String evaluatorToAdd : plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP)) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
-          elasticMemory.add(1, evalSize, numEvalCores, evaluatorAllocatedHandler, contextActiveHandlers);
+          EMMaster.add(1, evalSize, numEvalCores, evaluatorAllocatedHandler, contextActiveHandlers);
         }
         executingPlan.awaitActiveContexts();
 
@@ -137,7 +137,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         // TODO #90: Perhaps the handlers should receive this failure information instead.
         try {
           for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP)) {
-            elasticMemory.move(
+            EMMaster.move(
                 transferStep.getDataInfo().getNumBlocks(),
                 transferStep.getSrcId(),
                 executingPlan.getActualContextId(transferStep.getDstId()),
@@ -175,7 +175,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as a callback to ElasticMemory.add().
+   * This handler is registered as a callback to EMMaster.add().
    */
   private final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     @Override
@@ -200,7 +200,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as a callback to ElasticMemory.add().
+   * This handler is registered as a callback to EMMaster.add().
    */
   private final class ContextActiveHandler implements EventHandler<ActiveContext> {
     @Override
@@ -216,7 +216,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as the second callback to ElasticMemory.move().
+   * This handler is registered as the second callback to EMMaster.move().
    */
   private final class MovedHandler implements EventHandler<MigrationMsg> {
     @Override
@@ -262,7 +262,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
       }
       LOG.log(Level.INFO, "deleting evaluators.");
       for (final String evaluatorId : executingPlan.getEvaluatorsToDelete()) {
-        elasticMemory.delete(evaluatorId, new DeletedHandler());
+        EMMaster.delete(evaluatorId, new DeletedHandler());
       }
 
       LOG.log(Level.INFO, "Waiting for RunningTasks.");
@@ -297,7 +297,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
 
 
   /**
-   * This handler is registered as the callback to ElasticMemory.delete().
+   * This handler is registered as the callback to EMMaster.delete().
    */
   private final class DeletedHandler implements EventHandler<MigrationMsg> {
     @Override
