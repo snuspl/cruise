@@ -23,8 +23,8 @@ import edu.snu.cay.dolphin.bsp.core.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.bsp.core.sync.DriverSyncRegister;
 import edu.snu.cay.dolphin.bsp.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.bsp.groupcomm.conf.GroupCommParameters;
-import edu.snu.cay.services.em.common.parameters.ElasticMemoryParameters;
-import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.common.parameters.EMParameters;
+import edu.snu.cay.services.em.driver.EMConfiguration;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerParameters;
@@ -68,7 +68,7 @@ public final class DolphinLauncher {
   private final OptimizerParameters optimizerParameters;
   private final PlanExecutorParameters planExecutorParameters;
   private final GroupCommParameters groupCommParameters;
-  private final ElasticMemoryParameters elasticMemoryParameters;
+  private final EMParameters emParameters;
 
   @Inject
   private DolphinLauncher(final DolphinParameters dolphinParameters,
@@ -76,13 +76,13 @@ public final class DolphinLauncher {
                           final OptimizerParameters optimizerParameters,
                           final PlanExecutorParameters planExecutorParameters,
                           final GroupCommParameters groupCommParameters,
-                          final ElasticMemoryParameters elasticMemoryParameters) {
+                          final EMParameters emParameters) {
     this.dolphinParameters = dolphinParameters;
     this.traceParameters = traceParameters;
     this.optimizerParameters = optimizerParameters;
     this.planExecutorParameters = planExecutorParameters;
     this.groupCommParameters = groupCommParameters;
-    this.elasticMemoryParameters = elasticMemoryParameters;
+    this.emParameters = emParameters;
   }
 
   public static LauncherStatus run(final Configuration dolphinConfig, final Configuration... driverConfigs) {
@@ -167,10 +167,10 @@ public final class DolphinLauncher {
         planExecutorParameters.getConfiguration(),
         traceParameters.getConfiguration(),
         groupCommParameters.getConfiguration(),
-        elasticMemoryParameters.getConfiguration(),
+        emParameters.getConfiguration(),
         SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
-        ElasticMemoryConfiguration.getDriverConfiguration(),
+        EMConfiguration.getDriverConfiguration(),
         aggregationConf.getDriverConfiguration(),
         idConf,
         NameServerConfiguration.CONF.build(),

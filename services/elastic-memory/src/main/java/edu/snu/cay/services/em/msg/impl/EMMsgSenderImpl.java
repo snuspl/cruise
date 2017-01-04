@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.msg.impl;
 
 import edu.snu.cay.services.em.avro.*;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.util.Optional;
@@ -41,8 +41,8 @@ import java.util.logging.Logger;
  * Sender class that uses NetworkConnectionService to
  * send EMMsgs to the driver and evaluators.
  */
-public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender {
-  private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgSenderImpl.class.getName());
+public final class EMMsgSenderImpl implements EMMsgSender {
+  private static final Logger LOG = Logger.getLogger(EMMsgSenderImpl.class.getName());
 
   private final EMNetworkSetup emNetworkSetup;
   private final IdentifierFactory identifierFactory;
@@ -50,9 +50,9 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private final String driverId;
 
   @Inject
-  private ElasticMemoryMsgSenderImpl(final EMNetworkSetup emNetworkSetup,
-                                     final IdentifierFactory identifierFactory,
-                                     @Parameter(DriverIdentifier.class) final String driverId) throws NetworkException {
+  private EMMsgSenderImpl(final EMNetworkSetup emNetworkSetup,
+                          final IdentifierFactory identifierFactory,
+                          @Parameter(DriverIdentifier.class) final String driverId) throws NetworkException {
     this.emNetworkSetup = emNetworkSetup;
     this.identifierFactory = identifierFactory;
 
@@ -60,7 +60,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   private void send(final String destId, final EMMsg msg) {
-    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
+    LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
 
     final Connection<EMMsg> conn = emNetworkSetup.getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(destId));
@@ -72,7 +72,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       throw new RuntimeException("NetworkException", ex);
     }
 
-    LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
+    LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
   }
 
   @Override
@@ -88,7 +88,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     try (TraceScope sendRemoteOpReqMsgScope = Trace.startSpan("send_remote_op_req_msg", parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
           operationType});
 
       // the operation begins with a local client, when the origId is null
@@ -99,7 +99,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId, generateRemoteOpReqMsg(origEvalId, operationType,
           dataKeyRanges, dataKVPairList, operationId, TraceInfo.fromSpan(detached)));
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
           operationType});
     } finally {
       Trace.continueSpan(detached).close();
@@ -118,7 +118,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     try (TraceScope sendRemoteOpReqMsgScope = Trace.startSpan("send_remote_op_req_msg", parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
           operationType});
 
       // the operation begins with a local client, when the origId is null
@@ -129,7 +129,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId, generateRemoteOpReqMsg(origEvalId, operationType,
           dataKey, dataValue, operationId, TraceInfo.fromSpan(detached)));
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRemoteOpReqMsg", new Object[]{destId,
           operationType});
     } finally {
       Trace.continueSpan(detached).close();
@@ -173,7 +173,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     try (TraceScope sendRemoteOpResultMsgScope = Trace.startSpan("send_remote_op_result_msg", parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
 
       final boolean isSuccess = failedRanges.isEmpty();
 
@@ -183,7 +183,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           generateRemoteOpResultMsg(dataKVPairList, isSuccess, failedRanges, operationId,
               TraceInfo.fromSpan(detached)));
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
     } finally {
       Trace.continueSpan(detached).close();
     }
@@ -200,7 +200,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     try (TraceScope sendRemoteOpResultMsgScope = Trace.startSpan("send_remote_op_result_msg", parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
 
       detached = sendRemoteOpResultMsgScope.detach();
 
@@ -208,7 +208,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           generateRemoteOpResultMsg(dataValue, isSuccess, null, operationId,
               TraceInfo.fromSpan(detached)));
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
     } finally {
       Trace.continueSpan(detached).close();
     }
@@ -248,7 +248,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     try (TraceScope sendRoutingInitReqMsgScope =
              Trace.startSpan("send_routing_table_init_req_msg", parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
 
       detached = sendRoutingInitReqMsgScope.detach();
 
@@ -268,7 +268,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setRoutingTableMsg(routingTableMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
     } finally {
       Trace.continueSpan(detached).close();
     }
@@ -286,7 +286,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     try (TraceScope sendRoutingTableInitMsgScope =
              Trace.startSpan("send_routing_table_init_msg", parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
 
       detached = sendRoutingTableInitMsgScope.detach();
 
@@ -306,7 +306,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setRoutingTableMsg(routingTableMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
     } finally {
       Trace.continueSpan(detached).close();
     }
@@ -325,7 +325,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     try (TraceScope sendRoutingTableUpdateMsgScope =
              Trace.startSpan(String.format("send_routing_table_update_msg. destId: %s", destId), parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
 
       detached = sendRoutingTableUpdateMsgScope.detach();
 
@@ -347,7 +347,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setRoutingTableMsg(routingTableMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
 
     } finally {
       Trace.continueSpan(detached).close();
@@ -421,7 +421,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
         operationId, destId, blockId, keyValuePairs.size(), totalKeyBytes, totalValueBytes),
         parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
           new Object[]{destId});
 
       detached = sendDataMsgScope.detach();
@@ -446,7 +446,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setMigrationMsg(migrationMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
           new Object[]{destId});
     } finally {
       Trace.continueSpan(detached).close();
@@ -467,7 +467,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
         "send_data_ack_msg. op_id: %s, dest: %s, block_id: %d", operationId, destId, blockId),
         parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg",
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg",
           new Object[]{destId});
 
       detached = sendDataAckMsgScope.detach();
@@ -491,7 +491,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setMigrationMsg(migrationMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg",
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg",
           new Object[]{destId});
     } finally {
       Trace.continueSpan(detached).close();
@@ -627,7 +627,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
     try (TraceScope sendFailureMsgScope = Trace.startSpan("send_failure_msg", parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",
           new Object[]{operationId, reason});
 
       detached = sendFailureMsgScope.detach();
@@ -651,7 +651,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setMigrationMsg(migrationMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",
           new Object[]{operationId, reason});
     } finally {
       Trace.continueSpan(detached).close();

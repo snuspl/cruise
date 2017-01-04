@@ -30,13 +30,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public final class ElasticMemoryCallbackRouterImplTest {
+public final class EMMasterCallbackRouterImplTest {
 
-  private ElasticMemoryCallbackRouterImpl callbackRouter;
+  private EMCallbackRouterImpl callbackRouter;
 
   @Before
   public void setUp() throws InjectionException {
-    callbackRouter = Tang.Factory.getTang().newInjector().getInstance(ElasticMemoryCallbackRouterImpl.class);
+    callbackRouter = Tang.Factory.getTang().newInjector().getInstance(EMCallbackRouterImpl.class);
   }
 
   /**

@@ -16,12 +16,12 @@
 package edu.snu.cay.dolphin.async.plan;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinDriver;
-import edu.snu.cay.dolphin.async.optimizer.ServerEM;
-import edu.snu.cay.dolphin.async.optimizer.WorkerEM;
+import edu.snu.cay.dolphin.async.optimizer.ServerEMMaster;
+import edu.snu.cay.dolphin.async.optimizer.WorkerEMMaster;
 import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.plan.api.*;
 import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
@@ -64,8 +64,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     IN_PROGRESS, COMPLETE
   }
 
-  private final ElasticMemory serverEM;
-  private final ElasticMemory workerEM;
+  private final EMMaster serverEMMaster;
+  private final EMMaster workerEMMaster;
 
   private final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver;
 
@@ -91,17 +91,17 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
-                                   @Parameter(ServerEM.class) final ElasticMemory serverEM,
-                                   @Parameter(WorkerEM.class) final ElasticMemory workerEM,
+                                   @Parameter(ServerEMMaster.class) final EMMaster serverEMMaster,
+                                   @Parameter(WorkerEMMaster.class) final EMMaster workerEMMaster,
                                    final EMRoutingTableManager routingTableManager) {
     this.asyncDolphinDriver = asyncDolphinDriver;
-    this.serverEM = serverEM;
-    this.workerEM = workerEM;
+    this.serverEMMaster = serverEMMaster;
+    this.workerEMMaster = workerEMMaster;
     this.routingTableManager = routingTableManager;
   }
 
   /**
-   * Executes a plan using ElasticMemory.
+   * Executes a plan using EMMaster.
    *
    * The execution of a {@link Plan} is executed concurrently for independent EM operations.
    * Dependency is given by the DAG representation of a plan.
@@ -159,7 +159,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as the allocated evaluator callback of ElasticMemory.add().
+   * This handler is registered as the allocated evaluator callback of EMMaster.add().
    */
   private EventHandler<AllocatedEvaluator> getAllocatedEvalHandler(final String namespace) {
     final EventHandler<AllocatedEvaluator> eventHandler;
@@ -177,7 +177,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as a callback to ElasticMemory.add() for Workers.
+   * This handler is registered as a callback to EMMaster.add() for Workers.
    */
   private final class WorkerEvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     @Override
@@ -195,7 +195,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as the active context callback of ElasticMemory.add().
+   * This handler is registered as the active context callback of EMMaster.add().
    */
   private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace,
                                                                     final PlanOperation addOperation) {
@@ -216,7 +216,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as a callback to ElasticMemory.add() for servers.
+   * This handler is registered as a callback to EMMaster.add() for servers.
    */
   private final class ServerContextActiveHandler implements EventHandler<ActiveContext> {
     private final PlanOperation completedOp;
@@ -237,7 +237,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as a callback to ElasticMemory.add() for workers.
+   * This handler is registered as a callback to EMMaster.add() for workers.
    */
   private final class WorkerContextActiveHandler implements EventHandler<ActiveContext> {
     private final PlanOperation completedOp;
@@ -257,7 +257,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as the second callback to ElasticMemory.move().
+   * This handler is registered as the second callback to EMMaster.move().
    */
   private final class MovedHandler implements EventHandler<MigrationMsg> {
     private final PlanOperation completeOp;
@@ -280,7 +280,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as the callback to ElasticMemory.delete().
+   * This handler is registered as the callback to EMMaster.delete().
    */
   private final class DeletedHandler implements EventHandler<MigrationMsg> {
     private final PlanOperation completeOp;
@@ -429,13 +429,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     switch (namespace) {
     case NAMESPACE_SERVER:
       LOG.log(Level.FINE, "ADD: server {0}", operation.getEvalId().get());
-      serverEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+      serverEMMaster.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
           getAllocatedEvalHandler(NAMESPACE_SERVER),
           getActiveContextHandler(NAMESPACE_SERVER, operation));
       break;
     case NAMESPACE_WORKER:
       LOG.log(Level.FINE, "ADD: worker {0}", operation.getEvalId().get());
-      workerEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+      workerEMMaster.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
           getAllocatedEvalHandler(NAMESPACE_WORKER),
           getActiveContextHandler(NAMESPACE_WORKER, operation));
       break;
@@ -451,11 +451,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     switch (namespace) {
     case NAMESPACE_SERVER:
       LOG.log(Level.FINE, "DELETE: server {0}", evaluatorId);
-      serverEM.delete(evaluatorId, new DeletedHandler(operation));
+      serverEMMaster.delete(evaluatorId, new DeletedHandler(operation));
       break;
     case NAMESPACE_WORKER:
       LOG.log(Level.FINE, "DELETE: worker {0}", evaluatorId);
-      workerEM.delete(evaluatorId, new DeletedHandler(operation));
+      workerEMMaster.delete(evaluatorId, new DeletedHandler(operation));
       break;
     default:
       throw new RuntimeException("Unsupported namespace");
@@ -473,7 +473,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       destId = executingPlan.getServerActualContextId(transferStep.getDstId());
       LOG.log(Level.FINE, "MOVE: server {0} -> {1}", new Object[]{transferStep.getSrcId(), destId});
 
-      serverEM.move(
+      serverEMMaster.move(
           transferStep.getDataInfo().getNumBlocks(),
           transferStep.getSrcId(),
           destId,
@@ -483,7 +483,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       destId = executingPlan.getWorkerActualContextId(transferStep.getDstId());
       LOG.log(Level.FINE, "MOVE: worker {0} -> {1}", new Object[]{transferStep.getSrcId(), destId});
 
-      workerEM.move(
+      workerEMMaster.move(
           transferStep.getDataInfo().getNumBlocks(),
           transferStep.getSrcId(),
           destId,

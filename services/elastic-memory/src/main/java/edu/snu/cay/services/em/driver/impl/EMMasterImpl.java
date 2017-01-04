@@ -19,7 +19,7 @@ import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
@@ -46,8 +46,8 @@ import java.util.logging.Logger;
 
 @DriverSide
 @Private
-public final class ElasticMemoryImpl implements ElasticMemory {
-  private static final Logger LOG = Logger.getLogger(ElasticMemoryImpl.class.getName());
+public final class EMMasterImpl implements EMMaster {
+  private static final Logger LOG = Logger.getLogger(EMMasterImpl.class.getName());
   private static final String OP_MOVE = "move";
 
   private final MigrationManager migrationManager;
@@ -69,12 +69,12 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final Sampler traceSampler;
 
   @Inject
-  private ElasticMemoryImpl(final EvaluatorManager evaluatorManager,
-                            final MigrationManager migrationManager,
-                            final InjectionFuture<EMDeleteExecutor> deleteExecutor,
-                            final BlockManager blockManager,
-                            @Parameter(EMTraceEnabled.class) final boolean emTraceEnabled,
-                            final HTrace hTrace) {
+  private EMMasterImpl(final EvaluatorManager evaluatorManager,
+                       final MigrationManager migrationManager,
+                       final InjectionFuture<EMDeleteExecutor> deleteExecutor,
+                       final BlockManager blockManager,
+                       @Parameter(EMTraceEnabled.class) final boolean emTraceEnabled,
+                       final HTrace hTrace) {
     this.evaluatorManager = evaluatorManager;
     this.migrationManager = migrationManager;
     this.deleteExecutor = deleteExecutor;

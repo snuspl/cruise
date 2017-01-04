@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.msg.api;
 
 import edu.snu.cay.services.em.avro.*;
-import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
+import edu.snu.cay.services.em.msg.impl.EMMsgSenderImpl;
 import org.apache.reef.util.Optional;
 import org.htrace.TraceInfo;
 import org.apache.reef.tang.annotations.DefaultImplementation;
@@ -27,8 +27,8 @@ import java.util.List;
 /**
  * Interface for sending EMMsgs to the driver and evaluators.
  */
-@DefaultImplementation(ElasticMemoryMsgSenderImpl.class)
-public interface ElasticMemoryMsgSender {
+@DefaultImplementation(EMMsgSenderImpl.class)
+public interface EMMsgSender {
 
   /**
    * Sends a RemoteOpReqMsg that requests the Evaluator specified with {@code destId} to

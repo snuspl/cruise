@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
-import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.EMConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.examples.simple.parameters.NumMoves;
@@ -57,7 +57,7 @@ final class SimpleEMDriver {
 
   private final EvaluatorRequestor requestor;
   private final AggregationManager aggregationManager;
-  private final ElasticMemoryConfiguration emConf;
+  private final EMConfiguration emConf;
   private final HTraceParameters traceParameters;
 
   private final boolean rangeSupport;
@@ -66,7 +66,7 @@ final class SimpleEMDriver {
   @Inject
   private SimpleEMDriver(final EvaluatorRequestor requestor,
                          final AggregationManager aggregationManager,
-                         final ElasticMemoryConfiguration emConf,
+                         final EMConfiguration emConf,
                          final HTraceParameters traceParameters,
                          @Parameter(RangeSupport.class) final boolean rangeSupport,
                          @Parameter(NumMoves.class) final int numMoves) throws InjectionException {

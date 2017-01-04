@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.examples.remote;
 
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
-import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.EMConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
@@ -63,7 +63,7 @@ final class RemoteEMDriver {
 
   private final AggregationManager aggregationManager;
 
-  private final ElasticMemoryConfiguration emConf;
+  private final EMConfiguration emConf;
   private final HTraceParameters traceParameters;
 
   private final boolean rangeSupport;
@@ -71,7 +71,7 @@ final class RemoteEMDriver {
   @Inject
   private RemoteEMDriver(final EvaluatorRequestor requestor,
                          final AggregationManager aggregationManager,
-                         final ElasticMemoryConfiguration emConf,
+                         final EMConfiguration emConf,
                          final HTraceParameters traceParameters,
                          @Parameter(RangeSupport.class) final boolean rangeSupport) throws InjectionException {
     this.requestor = requestor;

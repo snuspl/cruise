@@ -22,9 +22,9 @@ import edu.snu.cay.services.em.evaluator.api.MigrationExecutor;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
 import edu.snu.cay.services.em.evaluator.impl.DataFirstMigrationExecutor;
-import edu.snu.cay.services.em.evaluator.impl.ElasticMemoryMsgHandler;
+import edu.snu.cay.services.em.evaluator.impl.EMMsgHandler;
 import edu.snu.cay.services.em.evaluator.impl.OwnershipFirstMigrationExecutor;
-import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
+import edu.snu.cay.services.em.msg.EMMsgCodec;
 import edu.snu.cay.services.em.ns.NetworkContextRegister;
 import edu.snu.cay.services.em.ns.NetworkDriverRegister;
 import edu.snu.cay.services.em.ns.parameters.EMCodec;
@@ -50,10 +50,10 @@ import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import javax.inject.Inject;
 
 /**
- * Configuration class for setting evaluator configurations of ElasticMemoryService.
+ * Configuration class for setting evaluator configurations of the Elastic Memory Service.
  */
 @DriverSide
-public final class ElasticMemoryConfiguration {
+public final class EMConfiguration {
 
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
@@ -66,15 +66,15 @@ public final class ElasticMemoryConfiguration {
   private final String identifier;
 
   @Inject
-  private ElasticMemoryConfiguration(final NameServer nameServer,
-                                     final LocalAddressProvider localAddressProvider,
-                                     @Parameter(DriverIdentifier.class) final String driverId,
-                                     @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-                                     @Parameter(NumStoreThreads.class) final int numStoreThreads,
-                                     @Parameter(RangeSupport.class) final boolean rangeSupport,
-                                     @Parameter(ConsistencyPreserved.class) final boolean consistencyPreserved,
-                                     @Parameter(EMIdentifier.class) final String identifier,
-                                     final BlockManager blockManager) {
+  private EMConfiguration(final NameServer nameServer,
+                          final LocalAddressProvider localAddressProvider,
+                          @Parameter(DriverIdentifier.class) final String driverId,
+                          @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
+                          @Parameter(NumStoreThreads.class) final int numStoreThreads,
+                          @Parameter(RangeSupport.class) final boolean rangeSupport,
+                          @Parameter(ConsistencyPreserved.class) final boolean consistencyPreserved,
+                          @Parameter(EMIdentifier.class) final String identifier,
+                          final BlockManager blockManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
@@ -88,20 +88,20 @@ public final class ElasticMemoryConfiguration {
 
   /**
    * Configuration for REEF driver when using Elastic Memory.
-   * Binds NetworkConnectionService registration handlers and ElasticMemoryMsg codec/handler.
+   * Binds NetworkConnectionService registration handlers and EMMsg codec/handler.
    *
    * @return configuration that should be submitted with a DriverConfiguration
    */
   public static Configuration getDriverConfiguration() {
     return getNetworkConfigurationBuilder()
         .bindSetEntry(DriverStartHandler.class, NetworkDriverRegister.RegisterDriverHandler.class)
-        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler.class)
+        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.impl.EMMsgHandler.class)
         .build();
   }
 
   /**
    * Configuration for REEF driver when using Elastic Memory.
-   * Different from {@link ElasticMemoryConfiguration#getDriverConfiguration()},
+   * Different from {@link EMConfiguration#getDriverConfiguration()},
    * this version does not bind the RegisterDriverHandler.
    * The {@link edu.snu.cay.services.em.ns.EMNetworkSetup#registerConnectionFactory(org.apache.reef.wake.Identifier)}
    * should be called explicitly in {@link DriverStartHandler}.
@@ -112,7 +112,7 @@ public final class ElasticMemoryConfiguration {
    */
   public static Configuration getDriverConfigurationWithoutRegisterDriver() {
     return getNetworkConfigurationBuilder()
-        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler.class)
+        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.impl.EMMsgHandler.class)
         .build();
   }
 
@@ -131,7 +131,7 @@ public final class ElasticMemoryConfiguration {
 
   /**
    * Configuration for REEF service with Elastic Memory.
-   * Sets up ElasticMemoryMsg codec/handler and ElasticMemoryStore, both required for Elastic Memory.
+   * Sets up EMMsg codec/handler and MemoryStore, both required for Elastic Memory.
    *
    * @param contextId Identifier of the context that the service will run on
    * @param numInitialEvals The number of Evaluators that are allocated initially.
@@ -167,7 +167,7 @@ public final class ElasticMemoryConfiguration {
         OwnershipFirstMigrationExecutor.class :
         DataFirstMigrationExecutor.class;
 
-    final Class evalMsgHandlerClass = ElasticMemoryMsgHandler.class;
+    final Class evalMsgHandlerClass = EMMsgHandler.class;
 
     final Configuration networkConf = getNetworkConfigurationBuilder()
         .bindNamedParameter(EMMessageHandler.class, evalMsgHandlerClass)
@@ -198,6 +198,6 @@ public final class ElasticMemoryConfiguration {
 
   private static JavaConfigurationBuilder getNetworkConfigurationBuilder() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(EMCodec.class, ElasticMemoryMsgCodec.class);
+        .bindNamedParameter(EMCodec.class, EMMsgCodec.class);
   }
 }

@@ -23,7 +23,7 @@ import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
 import edu.snu.cay.services.ps.ns.EndpointId;
@@ -101,7 +101,7 @@ public final class DynamicParameterServerTest {
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
     injector.bindVolatileInstance(ServerSideMsgSender.class, mock(ServerSideMsgSender.class));
-    injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
+    injector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     injector.bindVolatileInstance(MetricsHandler.class, mock(MetricsHandler.class));
     injector.bindVolatileInstance(MetricsMsgSender.class, mock(MetricsMsgSender.class));

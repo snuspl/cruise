@@ -355,8 +355,8 @@ public final class AsyncDolphinDriver {
       this.jobStateMachine = initStateMachine();
 
       final Injector optimizerInjector = injector.forkInjector();
-      optimizerInjector.bindVolatileParameter(ServerEM.class, serverEMWrapper.getInstance());
-      optimizerInjector.bindVolatileParameter(WorkerEM.class, workerEMWrapper.getInstance());
+      optimizerInjector.bindVolatileParameter(ServerEMMaster.class, serverEMWrapper.getInstance());
+      optimizerInjector.bindVolatileParameter(WorkerEMMaster.class, workerEMWrapper.getInstance());
       optimizerInjector.bindVolatileInstance(EMRoutingTableManager.class, emRoutingTableManager);
       optimizerInjector.bindVolatileInstance(AsyncDolphinDriver.class, this);
       this.optimizationOrchestrator = optimizerInjector.getInstance(OptimizationOrchestrator.class);
@@ -427,7 +427,8 @@ public final class AsyncDolphinDriver {
             }
 
             // 2. Start collecting metrics from evaluators.
-            //    Load metric manager's data validation map using ServerEM and WorkerEM, which are initialized by now.
+            //    Load metric manager's data validation map using server-side and worker-side EMMaster,
+            //    which are initialized by now.
             metricManager.loadMetricValidationInfo(workerEMWrapper.getInstance().getEvalIdToNumBlocks(),
                 serverEMWrapper.getInstance().getEvalIdToNumBlocks());
             metricManager.startMetricCollection();

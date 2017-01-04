@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -23,37 +23,37 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import javax.inject.Inject;
 
 /**
- * Wrapper object that is responsible to instantiate ElasticMemory in Driver.
+ * Wrapper object that is responsible to instantiate EMMaster in Driver.
  */
 @DriverSide
 public final class EMWrapper {
-  private final ElasticMemory elasticMemory;
-  private final ElasticMemoryConfiguration conf;
+  private final EMMaster emMaster;
+  private final EMConfiguration conf;
   private final EMNetworkSetup networkSetup;
 
   /**
    * Inject the instances.
    */
   @Inject
-  public EMWrapper(final ElasticMemory elasticMemory,
-                   final ElasticMemoryConfiguration conf,
+  public EMWrapper(final EMMaster emMaster,
+                   final EMConfiguration conf,
                    final EMNetworkSetup networkSetup) throws InjectionException {
-    this.elasticMemory = elasticMemory;
+    this.emMaster = emMaster;
     this.conf = conf;
     this.networkSetup = networkSetup;
   }
 
   /**
-   * @return The instance of ElasticMemory, which is an endpoint for Optimizer.
+   * @return The instance of EMMaster, which is an endpoint for Optimizer.
    */
-  public ElasticMemory getInstance() {
-    return elasticMemory;
+  public EMMaster getInstance() {
+    return emMaster;
   }
 
   /**
    * @return The helper class for configuration in EM.
    */
-  public ElasticMemoryConfiguration getConf() {
+  public EMConfiguration getConf() {
     return conf;
   }
 

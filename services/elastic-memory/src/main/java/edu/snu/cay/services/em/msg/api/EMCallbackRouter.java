@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.msg.api;
 
 import edu.snu.cay.services.em.avro.MigrationMsg;
-import edu.snu.cay.services.em.msg.impl.ElasticMemoryCallbackRouterImpl;
+import edu.snu.cay.services.em.msg.impl.EMCallbackRouterImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
@@ -27,8 +27,8 @@ import javax.annotation.Nullable;
  * Elastic Memory registers each callback when the operation is called, and routes to that callback's onNext method
  * when the operation is completed.
  */
-@DefaultImplementation(ElasticMemoryCallbackRouterImpl.class)
-public interface ElasticMemoryCallbackRouter {
+@DefaultImplementation(EMCallbackRouterImpl.class)
+public interface EMCallbackRouter {
 
   /**
    * Register a new callback for an EM operation.

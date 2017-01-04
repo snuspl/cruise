@@ -35,7 +35,7 @@ import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.MigrationMsgType;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.EMConfiguration;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
@@ -168,7 +168,7 @@ public final class DolphinDriver {
   /**
    * Manager of the configuration of Elastic Memory service.
    */
-  private final ElasticMemoryConfiguration emConf;
+  private final EMConfiguration emConf;
 
   /**
    * Job to execute.
@@ -256,7 +256,7 @@ public final class DolphinDriver {
                         final OptimizationOrchestrator optimizationOrchestrator,
                         final DriverSync driverSync,
                         final TaskTracker taskTracker,
-                        final ElasticMemoryConfiguration emConf,
+                        final EMConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
                         final HTraceParameters traceParameters,
@@ -520,14 +520,14 @@ public final class DolphinDriver {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
       LOG.log(Level.WARNING, "Evaluator failed {0}", failedEvaluator);
-      // Failure handling for evaluators. We may use ElasticMemory.checkpoint to do this.
+      // Failure handling for evaluators. We may use EMMaster.checkpoint to do this.
       // TODO #114: Implement Checkpoint
     }
   }
 
   /**
    * Gives context configuration submitted on
-   * both DataLoader requested evaluators and ElasticMemory requested evaluators.
+   * both DataLoader requested evaluators and EMMaster requested evaluators.
    */
   public Configuration getContextConfiguration() {
     final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
@@ -538,7 +538,7 @@ public final class DolphinDriver {
 
   /**
    * Gives service configuration submitted on
-   * both DataLoader requested evaluators and ElasticMemory requested evaluators.
+   * both DataLoader requested evaluators and EMMaster requested evaluators.
    * @param contextId Identifier of the context that the service will run on
    */
   public Configuration getServiceConfiguration(final String contextId) {

@@ -19,9 +19,9 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
@@ -60,7 +60,7 @@ public class DynamicServerResolverTest {
 
   private DynamicServerResolver serverResolver;
 
-  private ElasticMemory serverEM;
+  private EMMaster serverEMMaster;
 
   private WorkerMsgSender msgSender;
 
@@ -79,8 +79,8 @@ public class DynamicServerResolverTest {
     final Injector driverInjector = Tang.Factory.getTang().newInjector(serverConf);
     driverInjector.bindVolatileInstance(EvaluatorManager.class, mock(EvaluatorManager.class));
     driverInjector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
-    driverInjector.bindVolatileInstance(ElasticMemoryMsgSender.class, mock(ElasticMemoryMsgSender.class));
-    serverEM = driverInjector.getInstance(ElasticMemory.class);
+    driverInjector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
+    serverEMMaster = driverInjector.getInstance(EMMaster.class);
     final BlockManager blockManager = driverInjector.getInstance(BlockManager.class);
 
     storeIdToEndpointIdBiMap = HashBiMap.create();
@@ -92,9 +92,9 @@ public class DynamicServerResolverTest {
       storeIdToEndpointIdBiMap.put(storeId, endpointId);
     }
 
-    // ElasticMemory gets storeIdToBlockIds information from blockManager
+    // EMMaster gets storeIdToBlockIds information from blockManager
     final EMRoutingTable initRoutingTable
-        = new EMRoutingTable(serverEM.getStoreIdToBlockIds(), storeIdToEndpointIdBiMap);
+        = new EMRoutingTable(serverEMMaster.getStoreIdToBlockIds(), storeIdToEndpointIdBiMap);
 
     // 2. worker-side setup
     final Configuration workerConf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -140,7 +140,7 @@ public class DynamicServerResolverTest {
     // confirm that the resolver is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
 
-    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
+    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEMMaster.getStoreIdToBlockIds();
 
     // While multiple threads use router, the initialization never be triggered because it's already initialized.
     final Runnable[] threads = new Runnable[numThreads];
@@ -178,7 +178,7 @@ public class DynamicServerResolverTest {
 
     final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
-    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
+    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEMMaster.getStoreIdToBlockIds();
 
     // While multiple threads use resolver, they will wait until the initialization is done.
     final Runnable[] threads = new Runnable[numThreads];

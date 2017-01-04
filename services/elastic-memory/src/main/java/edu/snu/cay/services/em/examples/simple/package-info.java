@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * A simple example that uses {@code ElasticMemory.move()}.
+ * A simple example that uses {@code EMMaster.move()}.
  */
 package edu.snu.cay.services.em.examples.simple;

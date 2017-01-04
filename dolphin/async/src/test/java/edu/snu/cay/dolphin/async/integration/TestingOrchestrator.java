@@ -21,7 +21,7 @@ import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
@@ -60,8 +60,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
   private final int maxNumEvals;
 
-  private final ElasticMemory workerEM;
-  private final ElasticMemory serverEM;
+  private final EMMaster workerEMMaster;
+  private final EMMaster serverEMMaster;
 
   /**
    * A map containing parameters that may be required for the optimization model.
@@ -76,8 +76,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
   @Inject
   private TestingOrchestrator(final PlanExecutor planExecutor,
                               final MetricManager metricManager,
-                              @Parameter(WorkerEM.class) final ElasticMemory workerEM,
-                              @Parameter(ServerEM.class) final ElasticMemory serverEM,
+                              @Parameter(WorkerEMMaster.class) final EMMaster workerEMMaster,
+                              @Parameter(ServerEMMaster.class) final EMMaster serverEMMaster,
                               @Parameter(LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals,
                               final AddOneServerOptimizer addOneServerOptimizer,
                               final AddOneWorkerOptimizer addOneWorkerOptimizer,
@@ -86,8 +86,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
                               final ExchangeOneOptimizer exchangeOneOptimizer) {
     this.planExecutor = planExecutor;
     this.metricManager = metricManager;
-    this.workerEM = workerEM;
-    this.serverEM = serverEM;
+    this.workerEMMaster = workerEMMaster;
+    this.serverEMMaster = serverEMMaster;
     this.maxNumEvals = maxNumEvals;
     this.optimizerModelParams = new HashMap<>();
 
@@ -125,8 +125,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
     final int numWorkerMetricSources = getNumMetricSources(currentWorkerEpochMetrics);
-    final int numRunningServers = getNumRunningInstances(serverEM);
-    final int numRunningWorkers = getNumRunningInstances(workerEM);
+    final int numRunningServers = getNumRunningInstances(serverEMMaster);
+    final int numRunningWorkers = getNumRunningInstances(workerEMMaster);
 
     if (numServerMetricSources < numRunningServers || numWorkerMetricSources < numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because there are missing metrics." +
@@ -191,13 +191,13 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
 
     // obtain the state of EMs, before executing the plan
     final Map<Integer, Integer> beforeServerStoreIdToNumBlocks = new HashMap<>();
-    for (final Map.Entry<Integer, Set<Integer>> entry : serverEM.getStoreIdToBlockIds().entrySet()) {
+    for (final Map.Entry<Integer, Set<Integer>> entry : serverEMMaster.getStoreIdToBlockIds().entrySet()) {
       final int storeId = entry.getKey();
       final int numBlocks = entry.getValue().size();
       beforeServerStoreIdToNumBlocks.put(storeId, numBlocks);
     }
     final Map<Integer, Integer> beforeWorkerStoreIdToNumBlocks = new HashMap<>();
-    for (final Map.Entry<Integer, Set<Integer>> entry : workerEM.getStoreIdToBlockIds().entrySet()) {
+    for (final Map.Entry<Integer, Set<Integer>> entry : workerEMMaster.getStoreIdToBlockIds().entrySet()) {
       final int storeId = entry.getKey();
       final int numBlocks = entry.getValue().size();
       beforeWorkerStoreIdToNumBlocks.put(storeId, numBlocks);
@@ -214,18 +214,19 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
         throw new RuntimeException("The number of executed operations is different from the expectation");
       }
 
-      metricManager.loadMetricValidationInfo(workerEM.getEvalIdToNumBlocks(), serverEM.getEvalIdToNumBlocks());
+      metricManager.loadMetricValidationInfo(workerEMMaster.getEvalIdToNumBlocks(),
+                                             serverEMMaster.getEvalIdToNumBlocks());
       metricManager.startMetricCollection();
 
       // obtain the state of EMs, after executing the plan
       final Map<Integer, Integer> afterServerStoreIdToNumBlocks = new HashMap<>();
-      for (final Map.Entry<Integer, Set<Integer>> entry : serverEM.getStoreIdToBlockIds().entrySet()) {
+      for (final Map.Entry<Integer, Set<Integer>> entry : serverEMMaster.getStoreIdToBlockIds().entrySet()) {
         final int storeId = entry.getKey();
         final int numBlocks = entry.getValue().size();
         afterServerStoreIdToNumBlocks.put(storeId, numBlocks);
       }
       final Map<Integer, Integer> afterWorkerStoreIdToNumBlocks = new HashMap<>();
-      for (final Map.Entry<Integer, Set<Integer>> entry : workerEM.getStoreIdToBlockIds().entrySet()) {
+      for (final Map.Entry<Integer, Set<Integer>> entry : workerEMMaster.getStoreIdToBlockIds().entrySet()) {
         final int storeId = entry.getKey();
         final int numBlocks = entry.getValue().size();
         afterWorkerStoreIdToNumBlocks.put(storeId, numBlocks);
@@ -370,8 +371,8 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     return isPlanExecuting.get();
   }
 
-  private int getNumRunningInstances(final ElasticMemory em) {
-    return em.getStoreIdToBlockIds().size();
+  private int getNumRunningInstances(final EMMaster emMaster) {
+    return emMaster.getStoreIdToBlockIds().size();
   }
 
   private int getNumMetricSources(final Map<String, List<EvaluatorParameters>> evalParams) {

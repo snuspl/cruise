@@ -21,8 +21,8 @@ import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
-import edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.driver.impl.EMMsgHandler;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.io.network.impl.NSMessage;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
@@ -58,7 +58,7 @@ public class OperationRouterTest {
   // TODO #509: EM assumes that the eval prefix has "-" at the end
   private static final String EVAL_ID_PREFIX = "EVAL-";
 
-  private ElasticMemoryMsgSender evalMsgSender;
+  private EMMsgSender evalMsgSender;
   private CountDownLatch initLatch;
 
   /**
@@ -83,8 +83,8 @@ public class OperationRouterTest {
         .build();
     final Injector evalInjector = Tang.Factory.getTang().newInjector(evalConf);
 
-    evalMsgSender = mock(ElasticMemoryMsgSender.class);
-    evalInjector.bindVolatileInstance(ElasticMemoryMsgSender.class, evalMsgSender);
+    evalMsgSender = mock(EMMsgSender.class);
+    evalInjector.bindVolatileInstance(EMMsgSender.class, evalMsgSender);
     final OperationRouter router = evalInjector.getInstance(OperationRouter.class);
 
     // 2. If it is a router for a newly added evaluator,
@@ -109,10 +109,10 @@ public class OperationRouterTest {
         blockManager.registerEvaluator(endpointId, numInitialEvals);
       }
 
-      final ElasticMemoryMsgSender driverMsgSender = mock(ElasticMemoryMsgSender.class);
-      driverInjector.bindVolatileInstance(ElasticMemoryMsgSender.class, driverMsgSender);
+      final EMMsgSender driverMsgSender = mock(EMMsgSender.class);
+      driverInjector.bindVolatileInstance(EMMsgSender.class, driverMsgSender);
 
-      final ElasticMemoryMsgHandler driverMsgHandler = driverInjector.getInstance(ElasticMemoryMsgHandler.class);
+      final EMMsgHandler driverMsgHandler = driverInjector.getInstance(EMMsgHandler.class);
 
       final IdentifierFactory identifierFactory = driverInjector.getInstance(StringIdentifierFactory.class);
 

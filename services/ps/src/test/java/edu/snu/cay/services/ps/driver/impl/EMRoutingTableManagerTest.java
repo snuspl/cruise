@@ -17,10 +17,10 @@ package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
-import edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.driver.impl.EMMsgHandler;
+import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.ps.avro.AvroPSMsg;
 import edu.snu.cay.services.ps.avro.Type;
 import edu.snu.cay.services.ps.common.parameters.NumServers;
@@ -61,13 +61,13 @@ public final class EMRoutingTableManagerTest {
 
   private EMRoutingTableManager emRoutingTableManager;
 
-  private ElasticMemory serverEM;
-  private BlockManager blockManager; // a sub component of serverEM
+  private EMMaster serverEMMaster;
+  private BlockManager blockManager; // a sub component of serverEMMaster
 
   private PSMessageSender mockPSSender;
 
-  private ElasticMemoryMsgSender mockEMSender;
-  private ElasticMemoryMsgHandler emMsgHandler;
+  private EMMsgSender mockEMMsgSender;
+  private EMMsgHandler emMsgHandler;
 
   @Before
   public void setup() throws InjectionException {
@@ -83,11 +83,11 @@ public final class EMRoutingTableManagerTest {
     mockPSSender = mock(PSMessageSender.class);
     injector.bindVolatileInstance(PSMessageSender.class, mockPSSender);
 
-    mockEMSender = mock(ElasticMemoryMsgSender.class);
-    injector.bindVolatileInstance(ElasticMemoryMsgSender.class, mockEMSender);
+    mockEMMsgSender = mock(EMMsgSender.class);
+    injector.bindVolatileInstance(EMMsgSender.class, mockEMMsgSender);
 
-    emMsgHandler = injector.getInstance(ElasticMemoryMsgHandler.class);
-    serverEM = injector.getInstance(ElasticMemory.class);
+    emMsgHandler = injector.getInstance(EMMsgHandler.class);
+    serverEMMaster = injector.getInstance(EMMaster.class);
     blockManager = injector.getInstance(BlockManager.class);
     emRoutingTableManager = injector.getInstance(EMRoutingTableManager.class);
   }
@@ -213,7 +213,7 @@ public final class EMRoutingTableManagerTest {
         emMsgHandler.onNext(new NSMessage<>(null, null, emMsg));
       }
       return null;
-    }).when(mockEMSender)
+    }).when(mockEMMsgSender)
         .sendMoveInitMsg(anyString(), anyString(), anyListOf(Integer.class), anyString(), anyObject());
 
     final int numBlocksToMove = 5;
@@ -242,14 +242,14 @@ public final class EMRoutingTableManagerTest {
     }).when(mockPSSender).send(anyString(), anyObject());
 
     for (int i = 0; i < numFirstMoves; i++) {
-      serverEM.move(numBlocksToMove, srcServerId, destServerId, null);
+      serverEMMaster.move(numBlocksToMove, srcServerId, destServerId, null);
     }
 
     countDownLatch.awaitAndReset(numSecondUpdates);
     verify(mockPSSender, times(numFirstUpdates)).send(anyString(), anyObject());
 
     for (int i = 0; i < numSecondMoves; i++) {
-      serverEM.move(numBlocksToMove, srcServerId, destServerId, null);
+      serverEMMaster.move(numBlocksToMove, srcServerId, destServerId, null);
     }
 
     countDownLatch.await();
@@ -262,7 +262,7 @@ public final class EMRoutingTableManagerTest {
    */
   private int getStoreId(final String evalId) {
     // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
-    // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver()).
+    // and EMConfiguration.getServiceConfigurationWithoutNameResolver()).
     return Integer.valueOf(evalId.split("-")[1]);
   }
 }

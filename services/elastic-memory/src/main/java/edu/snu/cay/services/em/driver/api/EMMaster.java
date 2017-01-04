@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.driver.api;
 
 import edu.snu.cay.services.em.avro.MigrationMsg;
-import edu.snu.cay.services.em.driver.impl.ElasticMemoryImpl;
+import edu.snu.cay.services.em.driver.impl.EMMasterImpl;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -29,11 +29,11 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Driver-side API of ElasticMemoryService.
+ * Driver-side API of the Elastic Memory Service.
  */
 @DriverSide
-@DefaultImplementation(ElasticMemoryImpl.class)
-public interface ElasticMemory {
+@DefaultImplementation(EMMasterImpl.class)
+public interface EMMaster {
 
   /**
    * Add new evaluators as specified.

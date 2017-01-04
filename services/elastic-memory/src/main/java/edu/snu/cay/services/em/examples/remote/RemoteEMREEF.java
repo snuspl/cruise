@@ -17,9 +17,9 @@
 package edu.snu.cay.services.em.examples.remote;
 
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
-import edu.snu.cay.services.em.common.parameters.ElasticMemoryParameters;
+import edu.snu.cay.services.em.common.parameters.EMParameters;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
-import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.EMConfiguration;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -67,7 +67,7 @@ public final class RemoteEMREEF {
     final CommandLine cl = new CommandLine(cb);
 
     cl.registerShortNameOfClass(OnLocal.class);
-    ElasticMemoryParameters.registerShortNames(cl);
+    EMParameters.registerShortNames(cl);
     HTraceParameters.registerShortNames(cl);
 
     cl.processCommandLine(args);
@@ -106,7 +106,7 @@ public final class RemoteEMREEF {
 
     // spawn the name server at the driver
     return Configurations.merge(driverConfiguration,
-        ElasticMemoryConfiguration.getDriverConfiguration(),
+        EMConfiguration.getDriverConfiguration(),
         aggregationConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
