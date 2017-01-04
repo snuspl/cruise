@@ -90,8 +90,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   private OptimizationOrchestratorImpl(final Optimizer optimizer,
                                    final PlanExecutor planExecutor,
                                    final MetricManager metricManager,
-                                   @Parameter(WorkerEM.class) final EMMaster workerEMMaster,
-                                   @Parameter(ServerEM.class) final EMMaster serverEMMaster,
+                                   @Parameter(WorkerEMMaster.class) final EMMaster workerEMMaster,
+                                   @Parameter(ServerEMMaster.class) final EMMaster serverEMMaster,
                                    @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                    @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
                                    @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
@@ -207,7 +207,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
           // 7) Once the execution is complete, restart metric collection.
           isPlanExecuting.set(false);
           metricManager.loadMetricValidationInfo(workerEMMaster.getEvalIdToNumBlocks(),
-              serverEMMaster.getEvalIdToNumBlocks());
+                                                 serverEMMaster.getEvalIdToNumBlocks());
           metricManager.startMetricCollection();
         }
       }

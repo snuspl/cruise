@@ -20,5 +20,5 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Worker-side EM instance")
-public final class WorkerEM implements Name<EMMaster> {
+public final class WorkerEMMaster implements Name<EMMaster> {
 }

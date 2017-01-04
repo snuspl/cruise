@@ -115,8 +115,8 @@ public final class EMRoutingTableManager {
     if (!initialServersReady && storeIdToEndpointId.size() == numInitServers) {
       initialServersReady = true;
 
-      final EMRoutingTable routingTable =
-          new EMRoutingTable(serverEMMaster.getStoreIdToBlockIds(), storeIdToEndpointId);
+      final EMRoutingTable routingTable = new EMRoutingTable(serverEMMaster.getStoreIdToBlockIds(),
+                                                             storeIdToEndpointId);
 
       for (final String workerId : waitingWorkers) {
         sendWorkerRegisterReplyMsg(workerId, routingTable);
@@ -212,8 +212,8 @@ public final class EMRoutingTableManager {
       waitingWorkers.add(workerId);
 
     } else {
-      final EMRoutingTable routingTable =
-          new EMRoutingTable(serverEMMaster.getStoreIdToBlockIds(), storeIdToEndpointId);
+      final EMRoutingTable routingTable = new EMRoutingTable(serverEMMaster.getStoreIdToBlockIds(),
+                                                             storeIdToEndpointId);
       sendWorkerRegisterReplyMsg(workerId, routingTable);
     }
   }

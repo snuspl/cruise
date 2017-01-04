@@ -60,7 +60,7 @@ public class DynamicServerResolverTest {
 
   private DynamicServerResolver serverResolver;
 
-  private EMMaster serverEM;
+  private EMMaster serverEMMaster;
 
   private WorkerMsgSender msgSender;
 
@@ -80,7 +80,7 @@ public class DynamicServerResolverTest {
     driverInjector.bindVolatileInstance(EvaluatorManager.class, mock(EvaluatorManager.class));
     driverInjector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     driverInjector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
-    serverEM = driverInjector.getInstance(EMMaster.class);
+    serverEMMaster = driverInjector.getInstance(EMMaster.class);
     final BlockManager blockManager = driverInjector.getInstance(BlockManager.class);
 
     storeIdToEndpointIdBiMap = HashBiMap.create();
@@ -94,7 +94,7 @@ public class DynamicServerResolverTest {
 
     // EMMaster gets storeIdToBlockIds information from blockManager
     final EMRoutingTable initRoutingTable
-        = new EMRoutingTable(serverEM.getStoreIdToBlockIds(), storeIdToEndpointIdBiMap);
+        = new EMRoutingTable(serverEMMaster.getStoreIdToBlockIds(), storeIdToEndpointIdBiMap);
 
     // 2. worker-side setup
     final Configuration workerConf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -140,7 +140,7 @@ public class DynamicServerResolverTest {
     // confirm that the resolver is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
 
-    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
+    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEMMaster.getStoreIdToBlockIds();
 
     // While multiple threads use router, the initialization never be triggered because it's already initialized.
     final Runnable[] threads = new Runnable[numThreads];
@@ -178,7 +178,7 @@ public class DynamicServerResolverTest {
 
     final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
-    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEM.getStoreIdToBlockIds();
+    final Map<Integer, Set<Integer>> storeIdToBlockIds = serverEMMaster.getStoreIdToBlockIds();
 
     // While multiple threads use resolver, they will wait until the initialization is done.
     final Runnable[] threads = new Runnable[numThreads];

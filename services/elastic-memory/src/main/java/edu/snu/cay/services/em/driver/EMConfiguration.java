@@ -50,7 +50,7 @@ import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import javax.inject.Inject;
 
 /**
- * Configuration class for setting evaluator configurations of EMService.
+ * Configuration class for setting evaluator configurations of the Elastic Memory Service.
  */
 @DriverSide
 public final class EMConfiguration {

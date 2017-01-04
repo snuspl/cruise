@@ -16,8 +16,8 @@
 package edu.snu.cay.dolphin.async.plan;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinDriver;
-import edu.snu.cay.dolphin.async.optimizer.ServerEM;
-import edu.snu.cay.dolphin.async.optimizer.WorkerEM;
+import edu.snu.cay.dolphin.async.optimizer.ServerEMMaster;
+import edu.snu.cay.dolphin.async.optimizer.WorkerEMMaster;
 import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
@@ -64,8 +64,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     IN_PROGRESS, COMPLETE
   }
 
-  private final EMMaster serverEM;
-  private final EMMaster workerEM;
+  private final EMMaster serverEMMaster;
+  private final EMMaster workerEMMaster;
 
   private final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver;
 
@@ -91,12 +91,12 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
-                                   @Parameter(ServerEM.class) final EMMaster serverEM,
-                                   @Parameter(WorkerEM.class) final EMMaster workerEM,
+                                   @Parameter(ServerEMMaster.class) final EMMaster serverEMMaster,
+                                   @Parameter(WorkerEMMaster.class) final EMMaster workerEMMaster,
                                    final EMRoutingTableManager routingTableManager) {
     this.asyncDolphinDriver = asyncDolphinDriver;
-    this.serverEM = serverEM;
-    this.workerEM = workerEM;
+    this.serverEMMaster = serverEMMaster;
+    this.workerEMMaster = workerEMMaster;
     this.routingTableManager = routingTableManager;
   }
 
@@ -429,13 +429,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     switch (namespace) {
     case NAMESPACE_SERVER:
       LOG.log(Level.FINE, "ADD: server {0}", operation.getEvalId().get());
-      serverEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+      serverEMMaster.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
           getAllocatedEvalHandler(NAMESPACE_SERVER),
           getActiveContextHandler(NAMESPACE_SERVER, operation));
       break;
     case NAMESPACE_WORKER:
       LOG.log(Level.FINE, "ADD: worker {0}", operation.getEvalId().get());
-      workerEM.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
+      workerEMMaster.add(1, DEFAULT_EVAL_MEM_SIZE, DEFAULT_EVAL_NUM_CORES,
           getAllocatedEvalHandler(NAMESPACE_WORKER),
           getActiveContextHandler(NAMESPACE_WORKER, operation));
       break;
@@ -451,11 +451,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     switch (namespace) {
     case NAMESPACE_SERVER:
       LOG.log(Level.FINE, "DELETE: server {0}", evaluatorId);
-      serverEM.delete(evaluatorId, new DeletedHandler(operation));
+      serverEMMaster.delete(evaluatorId, new DeletedHandler(operation));
       break;
     case NAMESPACE_WORKER:
       LOG.log(Level.FINE, "DELETE: worker {0}", evaluatorId);
-      workerEM.delete(evaluatorId, new DeletedHandler(operation));
+      workerEMMaster.delete(evaluatorId, new DeletedHandler(operation));
       break;
     default:
       throw new RuntimeException("Unsupported namespace");
@@ -473,7 +473,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       destId = executingPlan.getServerActualContextId(transferStep.getDstId());
       LOG.log(Level.FINE, "MOVE: server {0} -> {1}", new Object[]{transferStep.getSrcId(), destId});
 
-      serverEM.move(
+      serverEMMaster.move(
           transferStep.getDataInfo().getNumBlocks(),
           transferStep.getSrcId(),
           destId,
@@ -483,7 +483,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       destId = executingPlan.getWorkerActualContextId(transferStep.getDstId());
       LOG.log(Level.FINE, "MOVE: worker {0} -> {1}", new Object[]{transferStep.getSrcId(), destId});
 
-      workerEM.move(
+      workerEMMaster.move(
           transferStep.getDataInfo().getNumBlocks(),
           transferStep.getSrcId(),
           destId,

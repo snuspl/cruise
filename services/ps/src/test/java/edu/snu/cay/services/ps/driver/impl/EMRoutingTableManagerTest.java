@@ -61,12 +61,12 @@ public final class EMRoutingTableManagerTest {
 
   private EMRoutingTableManager emRoutingTableManager;
 
-  private EMMaster serverEM;
-  private BlockManager blockManager; // a sub component of serverEM
+  private EMMaster serverEMMaster;
+  private BlockManager blockManager; // a sub component of serverEMMaster
 
   private PSMessageSender mockPSSender;
 
-  private EMMsgSender mockEMSender;
+  private EMMsgSender mockEMMsgSender;
   private EMMsgHandler emMsgHandler;
 
   @Before
@@ -83,11 +83,11 @@ public final class EMRoutingTableManagerTest {
     mockPSSender = mock(PSMessageSender.class);
     injector.bindVolatileInstance(PSMessageSender.class, mockPSSender);
 
-    mockEMSender = mock(EMMsgSender.class);
-    injector.bindVolatileInstance(EMMsgSender.class, mockEMSender);
+    mockEMMsgSender = mock(EMMsgSender.class);
+    injector.bindVolatileInstance(EMMsgSender.class, mockEMMsgSender);
 
     emMsgHandler = injector.getInstance(EMMsgHandler.class);
-    serverEM = injector.getInstance(EMMaster.class);
+    serverEMMaster = injector.getInstance(EMMaster.class);
     blockManager = injector.getInstance(BlockManager.class);
     emRoutingTableManager = injector.getInstance(EMRoutingTableManager.class);
   }
@@ -213,7 +213,7 @@ public final class EMRoutingTableManagerTest {
         emMsgHandler.onNext(new NSMessage<>(null, null, emMsg));
       }
       return null;
-    }).when(mockEMSender)
+    }).when(mockEMMsgSender)
         .sendMoveInitMsg(anyString(), anyString(), anyListOf(Integer.class), anyString(), anyObject());
 
     final int numBlocksToMove = 5;
@@ -242,14 +242,14 @@ public final class EMRoutingTableManagerTest {
     }).when(mockPSSender).send(anyString(), anyObject());
 
     for (int i = 0; i < numFirstMoves; i++) {
-      serverEM.move(numBlocksToMove, srcServerId, destServerId, null);
+      serverEMMaster.move(numBlocksToMove, srcServerId, destServerId, null);
     }
 
     countDownLatch.awaitAndReset(numSecondUpdates);
     verify(mockPSSender, times(numFirstUpdates)).send(anyString(), anyObject());
 
     for (int i = 0; i < numSecondMoves; i++) {
-      serverEM.move(numBlocksToMove, srcServerId, destServerId, null);
+      serverEMMaster.move(numBlocksToMove, srcServerId, destServerId, null);
     }
 
     countDownLatch.await();
