@@ -93,8 +93,8 @@ public final class AsyncDolphinDriver {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinDriver.class.getName());
   private static final String WORKER_CONTEXT_ID_PREFIX = "WorkerContext";
   private static final String SERVER_CONTEXT_ID_PREFIX = "ServerContext";
-  private static final String WORKER_EM_IDENTIFIER = "WorkerEMMaster";
-  private static final String SERVER_EM_IDENTIFIER = "ServerEMMaster";
+  private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
+  private static final String SERVER_EM_IDENTIFIER = "ServerEM";
 
   /**
    * A state machine representing the state of job.
@@ -427,7 +427,7 @@ public final class AsyncDolphinDriver {
             }
 
             // 2. Start collecting metrics from evaluators.
-            //    Load metric manager's data validation map using ServerEMMaster and WorkerEMMaster,
+            //    Load metric manager's data validation map using server-side and worker-side EMMaster,
             //    which are initialized by now.
             metricManager.loadMetricValidationInfo(workerEMWrapper.getInstance().getEvalIdToNumBlocks(),
                 serverEMWrapper.getInstance().getEvalIdToNumBlocks());
