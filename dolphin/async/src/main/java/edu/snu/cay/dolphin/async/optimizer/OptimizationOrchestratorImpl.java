@@ -78,8 +78,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    */
   private final int movingAvgWindowSize;
 
-  private final EMMaster workerEM;
-  private final EMMaster serverEM;
+  private final EMMaster workerEMMaster;
+  private final EMMaster serverEMMaster;
 
   /**
    * A map containing parameters that may be required for the optimization model.
@@ -90,8 +90,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
   private OptimizationOrchestratorImpl(final Optimizer optimizer,
                                    final PlanExecutor planExecutor,
                                    final MetricManager metricManager,
-                                   @Parameter(WorkerEM.class) final EMMaster workerEM,
-                                   @Parameter(ServerEM.class) final EMMaster serverEM,
+                                   @Parameter(WorkerEM.class) final EMMaster workerEMMaster,
+                                   @Parameter(ServerEM.class) final EMMaster serverEMMaster,
                                    @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                    @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
                                    @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
@@ -99,8 +99,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.metricManager = metricManager;
-    this.workerEM = workerEM;
-    this.serverEM = serverEM;
+    this.workerEMMaster = workerEMMaster;
+    this.serverEMMaster = serverEMMaster;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
     this.metricWeightFactor = metricWeightFactor;
     this.movingAvgWindowSize = movingAvgWindowSize;
@@ -134,8 +134,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     // Optimization is skipped if there are missing epoch metrics,
     final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
     final int numWorkerMetricSources = getNumMetricSources(currentWorkerEpochMetrics);
-    final int numRunningServers = getNumRunningInstances(serverEM);
-    final int numRunningWorkers = getNumRunningInstances(workerEM);
+    final int numRunningServers = getNumRunningInstances(serverEMMaster);
+    final int numRunningWorkers = getNumRunningInstances(workerEMMaster);
 
     if (numServerMetricSources < numRunningServers || numWorkerMetricSources < numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because there are missing metrics." +
@@ -206,7 +206,8 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         } finally {
           // 7) Once the execution is complete, restart metric collection.
           isPlanExecuting.set(false);
-          metricManager.loadMetricValidationInfo(workerEM.getEvalIdToNumBlocks(), serverEM.getEvalIdToNumBlocks());
+          metricManager.loadMetricValidationInfo(workerEMMaster.getEvalIdToNumBlocks(),
+              serverEMMaster.getEvalIdToNumBlocks());
           metricManager.startMetricCollection();
         }
       }

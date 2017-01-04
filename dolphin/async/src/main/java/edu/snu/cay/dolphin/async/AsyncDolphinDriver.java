@@ -240,12 +240,12 @@ public final class AsyncDolphinDriver {
   private final String driverIdStr;
 
   /**
-   * A Wrapper object of EMMaster for Workers.
+   * A Wrapper object of ElasticMemory for Workers.
    */
   private final EMWrapper workerEMWrapper;
 
   /**
-   * A Wrapper object of EMMaster for Servers.
+   * A Wrapper object of ElasticMemory for Servers.
    */
   private final EMWrapper serverEMWrapper;
 

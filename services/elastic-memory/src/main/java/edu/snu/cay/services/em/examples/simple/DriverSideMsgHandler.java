@@ -47,7 +47,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
 
   static final String READY = "READY";
 
-  private final EMMaster eMMaster;
+  private final EMMaster emMaster;
   private final BlockManager blockManager;
 
   private final AggregationMaster aggregationMaster;
@@ -59,12 +59,12 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
 
   @Inject
   private DriverSideMsgHandler(final AggregationMaster aggregationMaster,
-                               final EMMaster eMMaster,
+                               final EMMaster emMaster,
                                final BlockManager blockManager,
                                final SerializableCodec<String> codec,
                                @Parameter(NumMoves.class) final int numMoves) {
     this.aggregationMaster = aggregationMaster;
-    this.eMMaster = eMMaster;
+    this.emMaster = emMaster;
     this.blockManager = blockManager;
     this.codec = codec;
     this.numMoves = numMoves;
@@ -169,7 +169,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
 
       final boolean[] moveSucceeded = {false};
 
-      eMMaster.move(numToMove, srcId, destId,
+      emMaster.move(numToMove, srcId, destId,
           new EventHandler<MigrationMsg>() {
             @Override
             public void onNext(final MigrationMsg msg) {

@@ -27,7 +27,7 @@ import javax.inject.Inject;
  */
 @DriverSide
 public final class EMWrapper {
-  private final EMMaster eMMaster;
+  private final EMMaster emMaster;
   private final EMConfiguration conf;
   private final EMNetworkSetup networkSetup;
 
@@ -35,10 +35,10 @@ public final class EMWrapper {
    * Inject the instances.
    */
   @Inject
-  public EMWrapper(final EMMaster eMMaster,
+  public EMWrapper(final EMMaster emMaster,
                    final EMConfiguration conf,
                    final EMNetworkSetup networkSetup) throws InjectionException {
-    this.eMMaster = eMMaster;
+    this.emMaster = emMaster;
     this.conf = conf;
     this.networkSetup = networkSetup;
   }
@@ -47,7 +47,7 @@ public final class EMWrapper {
    * @return The instance of EMMaster, which is an endpoint for Optimizer.
    */
   public EMMaster getInstance() {
-    return eMMaster;
+    return emMaster;
   }
 
   /**

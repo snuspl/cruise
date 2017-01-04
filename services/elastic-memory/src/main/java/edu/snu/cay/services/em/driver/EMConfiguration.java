@@ -131,7 +131,7 @@ public final class EMConfiguration {
 
   /**
    * Configuration for REEF service with Elastic Memory.
-   * Sets up EMMsg codec/handler and EMStore, both required for Elastic Memory.
+   * Sets up EMMsg codec/handler and MemoryStore, both required for Elastic Memory.
    *
    * @param contextId Identifier of the context that the service will run on
    * @param numInitialEvals The number of Evaluators that are allocated initially.

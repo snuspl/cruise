@@ -68,7 +68,7 @@ public final class DolphinLauncher {
   private final OptimizerParameters optimizerParameters;
   private final PlanExecutorParameters planExecutorParameters;
   private final GroupCommParameters groupCommParameters;
-  private final EMParameters eMParameters;
+  private final EMParameters emParameters;
 
   @Inject
   private DolphinLauncher(final DolphinParameters dolphinParameters,
@@ -76,13 +76,13 @@ public final class DolphinLauncher {
                           final OptimizerParameters optimizerParameters,
                           final PlanExecutorParameters planExecutorParameters,
                           final GroupCommParameters groupCommParameters,
-                          final EMParameters eMParameters) {
+                          final EMParameters emParameters) {
     this.dolphinParameters = dolphinParameters;
     this.traceParameters = traceParameters;
     this.optimizerParameters = optimizerParameters;
     this.planExecutorParameters = planExecutorParameters;
     this.groupCommParameters = groupCommParameters;
-    this.eMParameters = eMParameters;
+    this.emParameters = emParameters;
   }
 
   public static LauncherStatus run(final Configuration dolphinConfig, final Configuration... driverConfigs) {
@@ -167,7 +167,7 @@ public final class DolphinLauncher {
         planExecutorParameters.getConfiguration(),
         traceParameters.getConfiguration(),
         groupCommParameters.getConfiguration(),
-        eMParameters.getConfiguration(),
+        emParameters.getConfiguration(),
         SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
         EMConfiguration.getDriverConfiguration(),

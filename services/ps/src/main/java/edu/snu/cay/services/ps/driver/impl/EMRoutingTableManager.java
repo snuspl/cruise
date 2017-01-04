@@ -62,7 +62,7 @@ public final class EMRoutingTableManager {
   /**
    * Server-side EMMaster instance.
    */
-  private final EMMaster serverEM;
+  private final EMMaster serverEMMaster;
 
   private final InjectionFuture<PSMessageSender> sender;
 
@@ -94,10 +94,10 @@ public final class EMRoutingTableManager {
   private volatile boolean initialServersReady = false;
 
   @Inject
-  EMRoutingTableManager(final EMMaster serverEM,
+  EMRoutingTableManager(final EMMaster serverEMMaster,
                         @Parameter(NumServers.class) final int numServers,
                         final InjectionFuture<PSMessageSender> sender) {
-    this.serverEM = serverEM;
+    this.serverEMMaster = serverEMMaster;
     this.numInitServers = numServers;
     this.sender = sender;
   }
@@ -115,7 +115,8 @@ public final class EMRoutingTableManager {
     if (!initialServersReady && storeIdToEndpointId.size() == numInitServers) {
       initialServersReady = true;
 
-      final EMRoutingTable routingTable = new EMRoutingTable(serverEM.getStoreIdToBlockIds(), storeIdToEndpointId);
+      final EMRoutingTable routingTable =
+          new EMRoutingTable(serverEMMaster.getStoreIdToBlockIds(), storeIdToEndpointId);
 
       for (final String workerId : waitingWorkers) {
         sendWorkerRegisterReplyMsg(workerId, routingTable);
@@ -202,7 +203,7 @@ public final class EMRoutingTableManager {
    */
   synchronized void registerWorker(final String workerId) {
     if (activeWorkerIds.isEmpty()) {
-      serverEM.registerRoutingTableUpdateCallback(CLIENT_ID, new EMRoutingTableUpdateHandler());
+      serverEMMaster.registerRoutingTableUpdateCallback(CLIENT_ID, new EMRoutingTableUpdateHandler());
     }
     activeWorkerIds.add(workerId);
 
@@ -211,7 +212,8 @@ public final class EMRoutingTableManager {
       waitingWorkers.add(workerId);
 
     } else {
-      final EMRoutingTable routingTable = new EMRoutingTable(serverEM.getStoreIdToBlockIds(), storeIdToEndpointId);
+      final EMRoutingTable routingTable =
+          new EMRoutingTable(serverEMMaster.getStoreIdToBlockIds(), storeIdToEndpointId);
       sendWorkerRegisterReplyMsg(workerId, routingTable);
     }
   }
@@ -224,7 +226,7 @@ public final class EMRoutingTableManager {
   synchronized void deregisterWorker(final String workerId) {
     activeWorkerIds.remove(workerId);
     if (activeWorkerIds.isEmpty()) {
-      serverEM.deregisterRoutingTableUpdateCallback(CLIENT_ID);
+      serverEMMaster.deregisterRoutingTableUpdateCallback(CLIENT_ID);
     }
 
     // check all ongoing syncs
