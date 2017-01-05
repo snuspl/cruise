@@ -19,11 +19,11 @@ import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
-import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
