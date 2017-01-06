@@ -32,6 +32,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -89,6 +90,7 @@ final class MLRTrainer implements Trainer {
    * Model vectors that represent each class.
    */
   private final Vector[] oldModels;
+  private final Vector[] gradients;
 
   private final MLRModelHolder modelHolder;
 
@@ -109,6 +111,11 @@ final class MLRTrainer implements Trainer {
 
   private final MemoryStore<Long> memoryStore;
   private final TrainingDataProvider<Long, MLRData> trainingDataProvider;
+
+  private final ExecutorService executor;
+  private final CyclicBarrier barrier;
+  private final ConcurrentLinkedQueue<MLRData> instances;
+  private final int numTrainerThreads;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -143,6 +150,11 @@ final class MLRTrainer implements Trainer {
     this.lambda = lambda;
     this.vectorFactory = vectorFactory;
     this.oldModels = new Vector[numClasses];
+    this.gradients = new Vector[numClasses];
+    for (int classIdx = 0; classIdx < gradients.length; classIdx++) {
+      gradients[classIdx] = vectorFactory.createDenseZeros(numFeatures);
+    }
+
     this.modelHolder = mlrModelHolder;
     this.decayRate = decayRate;
     if (decayRate <= 0.0 || decayRate > 1.0) {
@@ -155,6 +167,11 @@ final class MLRTrainer implements Trainer {
     this.metricsMsgSender = metricsMsgSender;
     this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
+
+    this.numTrainerThreads = 2; // TODO #821: Make it parameter
+    this.executor = Executors.newFixedThreadPool(numTrainerThreads);
+    this.barrier = new CyclicBarrier(numTrainerThreads + 1);
+    this.instances = new ConcurrentLinkedQueue<>();
 
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
@@ -176,6 +193,7 @@ final class MLRTrainer implements Trainer {
       }
     }
 
+    LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
@@ -194,9 +212,10 @@ final class MLRTrainer implements Trainer {
     final List<MLRData> totalInstancesProcessed = new LinkedList<>();
 
     Map<Long, MLRData> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    List<MLRData> instances = new ArrayList<>(nextTrainingData.values());
-    int numInstancesToProcess = instances.size();
+    instances.addAll(nextTrainingData.values());
     while (!nextTrainingData.isEmpty()) {
+      final int fIteration = iteration;
+      final int numInstancesToProcess = instances.size();
       resetTracers();
       final long miniBatchStartTime = System.currentTimeMillis();
 
@@ -204,17 +223,41 @@ final class MLRTrainer implements Trainer {
       pullModels();
 
       computeTracer.startTimer();
-      for (final MLRData instance : instances) {
-        updateModel(instance);
+      try {
+        for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
+          executor.submit(() -> {
+            int count = 0;
+            while (!instances.isEmpty()) {
+              final MLRData instance = instances.poll();
+              updateModel(instance);
+              count++;
+            }
+            LOG.log(Level.INFO, "Thread {0} has finished processing {1} (out of {2} instances in this batch.",
+                new Object[]{count, numInstancesToProcess});
+            barrier.await();
+            final Vector[] model = modelHolder.getModel();
+            LOG.log(Level.INFO, "The current model for {0} in batch {2} is {1}",
+                new Object[] {Thread.currentThread(), model, fIteration});
+            aggregateGradient(model);
+            return null;
+          });
+        }
+        barrier.await();
+      } catch (final InterruptedException | BrokenBarrierException e) {
+        throw new RuntimeException(e);
       }
+
+      LOG.log(Level.INFO, "Compute complete");
+
       computeTracer.recordTime(numInstancesToProcess);
+      LOG.log(Level.INFO, "Computation is done. Push the change and start the next batch");
 
       // push gradients
       pushAndResetGradients();
 
       // update the instances processed so far
       numTotalInstancesProcessed += numInstancesToProcess;
-      totalInstancesProcessed.addAll(instances);
+      totalInstancesProcessed.addAll(nextTrainingData.values());
 
       // load the set of training data instances to process in the next mini-batch
       nextTrainingData = trainingDataProvider.getNextTrainingData();
@@ -225,8 +268,8 @@ final class MLRTrainer implements Trainer {
       LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
       sendMetrics(miniBatchMetric);
 
-      instances = new ArrayList<>(nextTrainingData.values());
-      numInstancesToProcess = instances.size();
+      assert instances.isEmpty();
+      instances.addAll(nextTrainingData.values());
       miniBatchIdx++;
     }
 
@@ -280,7 +323,7 @@ final class MLRTrainer implements Trainer {
       oldModels[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
       newModels[classIndex] = oldModels[classIndex].copy();
     }
-    modelHolder.updateModel(newModels);
+    modelHolder.setModel(newModels);
     computeTracer.recordTime(0);
   }
 
@@ -293,6 +336,7 @@ final class MLRTrainer implements Trainer {
     final int label = instance.getLabel();
 
     final Vector[] model = modelHolder.getModel();
+    LOG.log(Level.INFO, "getModel completes returning {0}", Arrays.toString(model));
 
     // compute h(x, w) = softmax(x dot w)
     final Vector predictions = predict(feature, model);
@@ -301,7 +345,12 @@ final class MLRTrainer implements Trainer {
     // instead of allocating a new vector for the error,
     // we use the same object for convenience
     predictions.set(label, predictions.get(label) - 1);
+    LOG.log(Level.INFO, "Prediction completes {0}", predictions);
 
+    final Runtime runtime = Runtime.getRuntime();
+    LOG.log(Level.INFO, "[Used] {0}\n[Free] {1}\n[Total] {2}\n[Max] {3}",
+        new Object[]{(runtime.totalMemory() - runtime.freeMemory()) / 1048576, runtime.freeMemory() / 1048576,
+            runtime.totalMemory() / 1048576, runtime.maxMemory() / 1048576});
     // gradient_j = -stepSize * error_j * x
     if (lambda != 0) {
       for (int j = 0; j < numClasses; ++j) {
@@ -313,14 +362,22 @@ final class MLRTrainer implements Trainer {
         model[j].axpy(-predictions.get(j) * stepSize, feature);
       }
     }
-    modelHolder.updateModel(model);
+    LOG.log(Level.INFO, "before setModel {0}", model);
+    modelHolder.setModel(model);
+    LOG.log(Level.INFO, "getModel completes returning {0}", model);
+  }
+
+  private synchronized void aggregateGradient(final Vector[] newModels) {
+    for (int classIdx = 0; classIdx < numClasses; classIdx++) {
+      gradients[classIdx].addi(newModels[classIdx]);
+      gradients[classIdx].subi(oldModels[classIdx]);
+    }
   }
 
   private void pushAndResetGradients() {
-    final Vector[] newModels = modelHolder.getModel();
     for (int classIndex = 0; classIndex < numClasses; classIndex++) {
       computeTracer.startTimer();
-      final Vector gradient = newModels[classIndex].sub(oldModels[classIndex]);
+      final Vector gradient = gradients[classIndex];
       computeTracer.recordTime(0);
 
       pushTracer.startTimer();
@@ -331,6 +388,7 @@ final class MLRTrainer implements Trainer {
             gradient.slice(partitionStart, partitionEnd));
       }
       pushTracer.recordTime(numPartitionsPerClass);
+      gradients[classIndex].scalei(0.0);
     }
   }
 

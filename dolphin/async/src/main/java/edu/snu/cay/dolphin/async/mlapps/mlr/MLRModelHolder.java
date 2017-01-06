@@ -24,22 +24,28 @@ import javax.inject.Inject;
  * Created by yunseong on 1/6/17.
  */
 final class MLRModelHolder {
-  private final ThreadLocal<Vector[]> perThreadModel = new ThreadLocal<>();
+  private final int numClasses;
+
+  private final Vector[] model;
 
   @Inject
   MLRModelHolder(@Parameter(MLRParameters.NumClasses.class) final int numClasses) {
-    this.perThreadModel.set(new Vector[numClasses]);
+    this.numClasses = numClasses;
+    this.model = new Vector[numClasses];
   }
 
   Vector[] getModel() {
+    final ThreadLocal<Vector[]> perThreadModel = new ThreadLocal<Vector[]>() {
+      @Override
+      protected Vector[] initialValue() {
+        return model.clone();
+      }
+    };
     return perThreadModel.get();
   }
 
-  void updateModel(final Vector[] newModel) {
-    final Vector[] model = perThreadModel.get();
+  void setModel(final Vector[] newModel) {
     assert newModel.length == model.length;
-    for (int i = 0; i < newModel.length; i++) {
-      model[i] = newModel[i].copy();
-    }
+    System.arraycopy(newModel, 0, model, 0, newModel.length);
   }
 }
