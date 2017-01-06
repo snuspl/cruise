@@ -23,7 +23,7 @@ import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -72,9 +72,8 @@ public final class MemoryStoreTest {
     injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
     memoryStore = injector.getInstance(MemoryStore.class);
 
-    // router should be initialized explicitly
-    final OperationRouter<Long> router = injector.getInstance(OperationRouter.class);
-    router.triggerInitialization();
+    // OwnershipCache should be initialized explicitly
+    injector.getInstance(OwnershipCache.class).triggerInitialization();
   }
 
   /**

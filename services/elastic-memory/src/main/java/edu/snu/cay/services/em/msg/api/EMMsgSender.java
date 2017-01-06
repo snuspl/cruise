@@ -79,28 +79,28 @@ public interface EMMsgSender {
                              @Nullable TraceInfo parentTraceInfo);
 
   /**
-   * Sends a RoutingTableInitReqMsg that tells the driver to reply with the up-to-date global routing table.
+   * Sends a OwnershipCacheInitReqMsg that tells the driver to reply with the up-to-date global ownership info.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRoutingTableInitReqMsg(@Nullable TraceInfo parentTraceInfo);
+  void sendOwnershipCacheInitReqMsg(@Nullable TraceInfo parentTraceInfo);
 
   /**
-   * Sends a RoutingTableInitMsg that contains the up-to-date global routing table {@code blockLocations}.
-   * It is always sent by Driver to the evaluator {@code destId} as a response for RoutingTableInitReqMsg.
+   * Sends a OwnershipCacheInitMsg that contains the up-to-date global ownership info {@code blockLocations}.
+   * It is always sent by Driver to the evaluator {@code destId} as a response for OwnershipCacheInitReqMsg.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRoutingTableInitMsg(String destId,
-                               List<Integer> blockLocations,
-                               @Nullable TraceInfo parentTraceInfo);
+  void sendOwnershipCacheInitMsg(String destId,
+                                 List<Integer> blockLocations,
+                                 @Nullable TraceInfo parentTraceInfo);
 
   /**
-   * Sends a RoutingTableUpdateMsg that contains recently updated block information by EM.move().
+   * Sends a OwnershipCacheUpdateMsg that contains recently updated block information by EM.move().
    * It is for Driver to tell evaluator {@code destId} that
    * {@code blocks} are moved from {@code oldEvalId} to {@code newEvalId}.
    */
-  void sendRoutingTableUpdateMsg(String destId, List<Integer> blocks,
-                                 String oldEvalId, String newEvalId,
-                                 @Nullable TraceInfo parentTraceInfo);
+  void sendOwnershipCacheUpdateMsg(String destId, List<Integer> blocks,
+                                   String oldEvalId, String newEvalId,
+                                   @Nullable TraceInfo parentTraceInfo);
 
   /**
    * Sends a MoveInitMsg to initiate moving data blocks to the source Evaluator.

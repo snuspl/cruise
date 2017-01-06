@@ -20,7 +20,7 @@ import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
@@ -124,8 +124,7 @@ public final class DynamicParameterServerTest {
     });
 
     // EM's router should be initialized explicitly
-    final OperationRouter<Integer> router = injector.getInstance(OperationRouter.class);
-    router.triggerInitialization();
+    injector.getInstance(OwnershipCache.class).triggerInitialization();
 
     memoryStore = injector.getInstance(MemoryStore.class);
     mockSender = injector.getInstance(ServerSideMsgSender.class);

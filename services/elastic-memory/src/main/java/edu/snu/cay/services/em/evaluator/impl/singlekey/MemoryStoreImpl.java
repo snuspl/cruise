@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.io.Tuple;
@@ -51,6 +52,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   private final ConcurrentMap<Integer, Block> blocks = new ConcurrentHashMap<>();
 
   private final OperationRouter<K> router;
+  private final OwnershipCache ownershipCache;
   private final BlockResolver<K> blockResolver;
   private final RemoteOpHandlerImpl<K> remoteOpHandlerImpl;
 
@@ -68,12 +70,14 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter<K> router,
+                          final OwnershipCache ownershipCache,
                           final BlockResolver<K> blockResolver,
                           final RemoteOpHandlerImpl<K> remoteOpHandlerImpl,
                           final EMUpdateFunction<K, ?> updateFunction,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
+    this.ownershipCache = ownershipCache;
     this.blockResolver = blockResolver;
     this.remoteOpHandlerImpl = remoteOpHandlerImpl;
     this.updateFunction = updateFunction;
@@ -85,7 +89,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
    * Initialize the blocks in the local MemoryStore.
    */
   private void initBlocks() {
-    for (final int blockId : router.getInitialLocalBlockIds()) {
+    for (final int blockId : ownershipCache.getInitialLocalBlockIds()) {
       blocks.put(blockId, new Block());
     }
   }
@@ -360,7 +364,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public <V> Map<K, V> getAll() {
     final Map<K, V> result;
 
-    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
     final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
@@ -447,7 +451,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public <V> Map<K, V> removeAll() {
     final Map<K, V> result;
 
-    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
     final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map

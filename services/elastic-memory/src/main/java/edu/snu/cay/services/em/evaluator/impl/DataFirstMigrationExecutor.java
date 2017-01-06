@@ -60,7 +60,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
   private static final int NUM_OWNERSHIP_MSG_RECEIVER_THREADS = 2;
 
   private final RemoteAccessibleMemoryStore<K> memoryStore;
-  private final OperationRouter router;
+  private final OwnershipCache ownershipCache;
   private final InjectionFuture<EMMsgSender> sender;
 
   /**
@@ -76,12 +76,12 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
 
   @Inject
   private DataFirstMigrationExecutor(final RemoteAccessibleMemoryStore<K> memoryStore,
-                                     final OperationRouter router,
+                                     final OwnershipCache ownershipCache,
                                      final InjectionFuture<EMMsgSender> sender,
                                      @Parameter(KeyCodecName.class)final Codec<K> keyCodec,
                                      final Serializer serializer) {
     this.memoryStore = memoryStore;
-    this.router = router;
+    this.ownershipCache = ownershipCache;
     this.sender = sender;
     this.keyCodec = keyCodec;
     this.serializer = serializer;
@@ -183,7 +183,7 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
 
           memoryStore.putBlock(blockId, dataMap);
 
-          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+          ownershipCache.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
           // Notify the driver that the ownership has been updated by setting empty destination id.
           sender.get().sendOwnershipMsg(Optional.empty(), senderId, operationId,
@@ -218,8 +218,8 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
         @Override
         public void run() {
           // Update the owner of the block to the new one.
-          // Operations being executed keep a read lock on router while being executed.
-          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+          // Operations being executed keep a read lock on OwnershipCache while being executed.
+          ownershipCache.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
           // After the ownership is updated, the data is never accessed locally,
           // so it is safe to remove the local data block.

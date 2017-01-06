@@ -102,12 +102,12 @@
 },
 
 /**
- * An avro message format for evaluators to request a initial routing table to driver.
+ * An avro message format for evaluators to request an up-to-date ownership info to driver.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "RoutingTableInitReqMsg",
+  "name": "OwnershipCacheInitReqMsg",
   "fields":
   [
     {"name": "evalId", "type" : "string"}
@@ -115,13 +115,13 @@
 },
 
 /**
- * An avro message format for driver to send a initial routing table to evaluators.
+ * An avro message format for driver to send an up-to-date ownership info to evaluators.
  * {@code blockLocations} is a list whose index is the block id and value is the store id.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "RoutingTableInitMsg",
+  "name": "OwnershipCacheInitMsg",
   "fields":
   [
     {"name": "blockLocations", "type": {"type": "array", "items": "int"}}
@@ -134,7 +134,7 @@
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "RoutingTableUpdateMsg",
+  "name": "OwnershipCacheUpdateMsg",
   "fields":
   [
       {"name": "blockIds", "type": {"type": "array", "items": "int"}},
@@ -285,22 +285,22 @@
 },
 
 /**
- * The message protocol used for routing table management of Elastic Memory.
- * RoutingTableInitReqMsg, RoutingTableInitMsg, and RoutingTableUpdateMsg are all included as nullable fields, and
+ * The message protocol used for ownership cache management of Elastic Memory.
+ * OwnershipCacheInitReqMsg, OwnershipCacheInitMsg, and OwnershipCacheUpdateMsg are all included as nullable fields, and
  * an enum type indicates which field is not null.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "RoutingTableMsg",
+  "name": "OwnershipCacheMsg",
   "fields":
   [
-    {"name": "type", "type": {"type": "enum", "name": "RoutingTableMsgType",
-        "symbols": ["RoutingTableInitReqMsg", "RoutingTableInitMsg", "RoutingTableUpdateMsg"]}},
+    {"name": "type", "type": {"type": "enum", "name": "OwnershipCacheMsgType",
+        "symbols": ["OwnershipCacheInitReqMsg", "OwnershipCacheInitMsg", "OwnershipCacheUpdateMsg"]}},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
-    {"name": "routingTableInitReqMsg", "type": ["null", "RoutingTableInitReqMsg"], "default": null},
-    {"name": "routingTableInitMsg", "type": ["null", "RoutingTableInitMsg"], "default": null},
-    {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null}
+    {"name": "ownershipCacheInitReqMsg", "type": ["null", "OwnershipCacheInitReqMsg"], "default": null},
+    {"name": "ownershipCacheInitMsg", "type": ["null", "OwnershipCacheInitMsg"], "default": null},
+    {"name": "ownershipCacheUpdateMsg", "type": ["null", "OwnershipCacheUpdateMsg"], "default": null}
   ]
 },
 
@@ -335,7 +335,7 @@
  * The message protocol used for Elastic Memory.
  * Messages are categorized into 3 types:
  * (1) RemoteOpMsg: Message regarding remote operations,
- * (2) RoutingTableMsg: Message to manage routing table, and
+ * (2) OwnershipCacheMsg: Message to manage ownership cache, and
  * (3) MigrationMsg: Message used for data migration.
  * They are all included as nullable fields, and an enum type indicates which field is not null.
  */
@@ -346,9 +346,9 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "EMMsgType",
-        "symbols": ["RemoteOpMsg", "RoutingTableMsg", "MigrationMsg"]}},
+        "symbols": ["RemoteOpMsg", "OwnershipCacheMsg", "MigrationMsg"]}},
     {"name": "remoteOpMsg", "type": ["null", "RemoteOpMsg"], "default": null},
-    {"name": "routingTableMsg", "type": ["null", "RoutingTableMsg"], "default": null},
+    {"name": "ownershipCacheMsg", "type": ["null", "OwnershipCacheMsg"], "default": null},
     {"name": "migrationMsg", "type": ["null", "MigrationMsg"], "default": null}
   ]
 }

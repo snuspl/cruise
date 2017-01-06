@@ -176,7 +176,7 @@ final class MigrationManager {
       final TraceInfo traceInfo = TraceInfo.fromSpan(broadcastSuccessScope.getSpan());
 
       for (final String evalId : activeEvaluatorIds) {
-        sender.get().sendRoutingTableUpdateMsg(evalId, blockIds, senderId, receiverId, traceInfo);
+        sender.get().sendOwnershipCacheUpdateMsg(evalId, blockIds, senderId, receiverId, traceInfo);
       }
     }
   }
