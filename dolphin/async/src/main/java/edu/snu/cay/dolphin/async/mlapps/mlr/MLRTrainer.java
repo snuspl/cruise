@@ -89,7 +89,8 @@ final class MLRTrainer implements Trainer {
    * Model vectors that represent each class.
    */
   private final Vector[] oldModels;
-  private final Vector[] newModels;
+
+  private final MLRModelHolder modelHolder;
 
   /**
    * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@link #pullModels()}.
@@ -125,6 +126,7 @@ final class MLRTrainer implements Trainer {
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                     final MLRModelHolder mlrModelHolder,
                      final MemoryStore<Long> memoryStore,
                      final TrainingDataProvider<Long, MLRData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
@@ -141,7 +143,7 @@ final class MLRTrainer implements Trainer {
     this.lambda = lambda;
     this.vectorFactory = vectorFactory;
     this.oldModels = new Vector[numClasses];
-    this.newModels = new Vector[numClasses];
+    this.modelHolder = mlrModelHolder;
     this.decayRate = decayRate;
     if (decayRate <= 0.0 || decayRate > 1.0) {
       throw new IllegalArgumentException("decay_rate must be larger than 0 and less than or equal to 1");
@@ -237,9 +239,10 @@ final class MLRTrainer implements Trainer {
 
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
-    
+
+    final Vector[] model = modelHolder.getModel();
     LOG.log(Level.INFO, "Start computing loss value");
-    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed);
+    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed, model);
     
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
     final double sampleLoss = lossRegLossAccuracy.getFirst();
@@ -265,6 +268,7 @@ final class MLRTrainer implements Trainer {
     final List<Vector> partitions = parameterWorker.pull(classPartitionIndices);
     pullTracer.recordTime(partitions.size());
     computeTracer.startTimer();
+    final Vector[] newModels = new Vector[numClasses];
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       // 0 ~ (numPartitionsPerClass - 1) is for class 0
       // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
@@ -276,6 +280,7 @@ final class MLRTrainer implements Trainer {
       oldModels[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
       newModels[classIndex] = oldModels[classIndex].copy();
     }
+    modelHolder.updateModel(newModels);
     computeTracer.recordTime(0);
   }
 
@@ -287,8 +292,10 @@ final class MLRTrainer implements Trainer {
     final Vector feature = instance.getFeature();
     final int label = instance.getLabel();
 
+    final Vector[] model = modelHolder.getModel();
+
     // compute h(x, w) = softmax(x dot w)
-    final Vector predictions = predict(feature);
+    final Vector predictions = predict(feature, model);
 
     // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
     // instead of allocating a new vector for the error,
@@ -298,17 +305,19 @@ final class MLRTrainer implements Trainer {
     // gradient_j = -stepSize * error_j * x
     if (lambda != 0) {
       for (int j = 0; j < numClasses; ++j) {
-        newModels[j].axpy(-predictions.get(j) * stepSize, feature);
-        newModels[j].axpy(-stepSize * lambda, newModels[j]);
+        model[j].axpy(-predictions.get(j) * stepSize, feature);
+        model[j].axpy(-stepSize * lambda, model[j]);
       }
     } else {
       for (int j = 0; j < numClasses; ++j) {
-        newModels[j].axpy(-predictions.get(j) * stepSize, feature);
+        model[j].axpy(-predictions.get(j) * stepSize, feature);
       }
     }
+    modelHolder.updateModel(model);
   }
 
   private void pushAndResetGradients() {
+    final Vector[] newModels = modelHolder.getModel();
     for (int classIndex = 0; classIndex < numClasses; classIndex++) {
       computeTracer.startTimer();
       final Vector gradient = newModels[classIndex].sub(oldModels[classIndex]);
@@ -329,14 +338,14 @@ final class MLRTrainer implements Trainer {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Double> computeLoss(final List<MLRData> data) {
+  private Tuple3<Double, Double, Double> computeLoss(final List<MLRData> data, final Vector[] model) {
     double loss = 0;
     int correctPredictions = 0;
 
     for (final MLRData entry : data) {
       final Vector feature = entry.getFeature();
       final int label = entry.getLabel();
-      final Vector predictions = predict(feature);
+      final Vector predictions = predict(feature, model);
       final int prediction = max(predictions).getFirst();
 
       if (label == prediction) {
@@ -356,10 +365,10 @@ final class MLRTrainer implements Trainer {
     if (lambda != 0) {
       // skip this part entirely if lambda is zero, to avoid regularization operation overheads
       for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
-        final Vector model = newModels[classIndex];
+        final Vector perClassModel = model[classIndex];
         double l2norm = 0;
-        for (int vectorIndex = 0; vectorIndex < model.length(); ++vectorIndex) {
-          l2norm += model.get(vectorIndex) * model.get(vectorIndex);
+        for (int vectorIndex = 0; vectorIndex < perClassModel.length(); ++vectorIndex) {
+          l2norm += perClassModel.get(vectorIndex) * perClassModel.get(vectorIndex);
         }
         regLoss += l2norm * lambda / 2;
       }
@@ -372,10 +381,10 @@ final class MLRTrainer implements Trainer {
   /**
    * Compute the probability vector of the given data instance, represented by {@code features}.
    */
-  private Vector predict(final Vector features) {
+  private Vector predict(final Vector features, final Vector[] model) {
     final double[] predict = new double[numClasses];
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
-      predict[classIndex] = newModels[classIndex].dot(features);
+      predict[classIndex] = model[classIndex].dot(features);
     }
     return softmax(vectorFactory.createDense(predict));
   }
