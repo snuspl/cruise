@@ -47,7 +47,6 @@ public final class OperationRouter<K> {
    */
   private final CountDownLatch initLatch = new CountDownLatch(1);
 
-
   /**
    * A prefix of evaluator id will be set by {@link #initialize(String)},
    * and used by {@link #getEvalId(int)} to make the complete evaluator id.
