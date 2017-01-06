@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
-import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import org.apache.reef.io.Tuple;
@@ -64,11 +63,6 @@ public final class OwnershipCache {
   private final int numTotalBlocks;
 
   /**
-   * The number of initial Evaluators.
-   */
-  private final int numInitialEvals;
-
-  /**
    * Array representing block locations.
    * Its index is the blockId and value is the storeId.
    */
@@ -82,33 +76,29 @@ public final class OwnershipCache {
   private OwnershipCache(
       final InjectionFuture<EMMsgSender> msgSender,
       @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-      @Parameter(MemoryStoreId.class) final int memoryStoreId,
-      @Parameter(NumInitialEvals.class) final int numInitialEvals) {
+      @Parameter(MemoryStoreId.class) final int memoryStoreId) {
     this.msgSender = msgSender;
     this.localStoreId = memoryStoreId;
     this.numTotalBlocks = numTotalBlocks;
-    this.numInitialEvals = numInitialEvals;
 
     this.blockLocations = new AtomicIntegerArray(numTotalBlocks);
     this.initialLocalBlocks = Collections.emptyList();
   }
 
   /**
-   * Requests a routing table to driver.
+   * Requests an ownership info to driver.
    */
-  private void requestRoutingTable() {
-    LOG.log(Level.FINE, "Sends a request for the routing table");
-    try (TraceScope traceScope = Trace.startSpan("ROUTING_TABLE_REQUEST")) {
+  private void requestOwnershipInfo() {
+    LOG.log(Level.FINE, "Sends a request for the ownership info");
+    try (TraceScope traceScope = Trace.startSpan("OWNERSHIP_INFO_REQUEST")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       msgSender.get().sendRoutingTableInitReqMsg(traceInfo);
     }
   }
 
   /**
-   * Initializes the routing table with the info received from the driver.
-   * This method is only for evaluators added by EM.add(),
-   * whose routing table should be initiated from the existing information.
-   * It'd be invoked by the network response of {@link #requestRoutingTable()}.
+   * Initializes with the info received from the driver.
+   * It'd be invoked by the network response of {@link #requestOwnershipInfo()}.
    */
   public synchronized void initOwnershipInfo(final List<Integer> initBlockLocations) {
     if (initLatch.getCount() == 0) {
@@ -116,7 +106,7 @@ public final class OwnershipCache {
     }
 
     if (initBlockLocations.size() != numTotalBlocks) {
-      throw new RuntimeException("Imperfect routing table");
+      throw new RuntimeException("Imperfect ownership info");
     }
 
     for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
@@ -128,28 +118,27 @@ public final class OwnershipCache {
   }
 
   /**
-   * Triggers initialization by requesting initial routing table to driver and waits within a bounded time.
-   * It throws RuntimeException, if the table is not initialized til the end.
-   * For evaluators not added by EM, it does not trigger initialization.
-   * @return a future of initialization thread, a completed future for evaluators not added by EM
+   * Triggers initialization by requesting up-to-date ownership info to driver and waits within a bounded time.
+   * It throws RuntimeException, if a response is not arrived til the end.
+   * @return a future of initialization thread
    */
   public Future triggerInitialization() {
     return Executors.newSingleThreadExecutor().submit(() -> {
       // sends init request and waits for several times
       for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
-        requestRoutingTable();
+        requestOwnershipInfo();
 
-        LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
+        LOG.log(Level.INFO, "Waiting {0} ms for init response", INIT_WAIT_TIMEOUT_MS);
         try {
           if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-            LOG.log(Level.INFO, "Operation router is initialized");
+            LOG.log(Level.INFO, "Ownership cache is initialized");
             return;
           }
         } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+          LOG.log(Level.WARNING, "Interrupted while waiting for init response", e);
         }
       }
-      throw new RuntimeException("Fail to initialize the router");
+      throw new RuntimeException("Fail to initialize the ownership cache");
     });
   }
 
@@ -158,8 +147,8 @@ public final class OwnershipCache {
   }
 
   /**
-   * Checks the initialization of the routing table.
-   * It returns if the routing table has been initialized,
+   * Checks the initialization of the ownership cache.
+   * It returns if the ownership cache has been initialized,
    * otherwise waits the initialization within a bounded time.
    */
   private void checkInitialization() {
@@ -168,38 +157,39 @@ public final class OwnershipCache {
         initLatch.await();
         break;
       } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "Interrupted while waiting for routing table initialization from driver", e);
+        LOG.log(Level.WARNING, "Interrupted while waiting for init response from driver", e);
       }
     }
   }
 
   /**
-   * Resolves an evaluator id for a block id.
+   * Resolves a store id for a block id.
    * Be aware that the result of this method might become wrong by {@link #updateOwnership}.
    * @param blockId an id of block
-   * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore
+   * @return a store id that the block belongs to
    */
-  public Optional<Integer> resolveStore(final int blockId) {
+  public Integer resolveStore(final int blockId) {
     checkInitialization();
 
-    final int memoryStoreId = blockLocations.get(blockId);
-    return Optional.of(memoryStoreId);
+    return blockLocations.get(blockId);
   }
 
   /**
-   * Resolves an evaluator id for a block id.
+   * Resolves a store id for a block id.
+   * Note that this method guarantees that the state of ownership cache does not change
+   * before an user unlocks the returned lock.
    * Be aware that the result of this method might become wrong by {@link #updateOwnership}.
    * @param blockId an id of block
-   * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore
+   * @return a Tuple of a store id and a lock that prevents updates to ownership cache
    */
-  public Tuple<Optional<Integer>, Lock> resolveStoreWithLock(final int blockId) {
+  public Tuple<Integer, Lock> resolveStoreWithLock(final int blockId) {
     checkInitialization();
 
     final Lock readLock = ownershipLock.readLock();
     readLock.lock();
 
     final int memoryStoreId = blockLocations.get(blockId);
-    return new Tuple<>(Optional.of(memoryStoreId), readLock);
+    return new Tuple<>(memoryStoreId, readLock);
   }
 
   /**
@@ -226,8 +216,9 @@ public final class OwnershipCache {
   }
 
   /**
-   * Updates the owner of the block. Note that this method must be synchronized
-   * to prevent other threads from reading the routing information while updating it.
+   * Updates the owner of the block.
+   * This method acquires a write lock to prevent other threads
+   * from reading the ownership information while updating it.
    * @param blockId id of the block to update its ownership.
    * @param oldOwnerId id of the MemoryStore that was owner.
    * @param newOwnerId id of the MemoryStore that will be new owner.
@@ -239,7 +230,7 @@ public final class OwnershipCache {
     try {
       final int localOldOwnerId = blockLocations.getAndSet(blockId, newOwnerId);
       if (localOldOwnerId != oldOwnerId) {
-        LOG.log(Level.WARNING, "Local routing table thought block {0} was in store {1}, but it was actually in {2}",
+        LOG.log(Level.WARNING, "Local ownership cache thought block {0} was in store {1}, but it was actually in {2}",
             new Object[]{blockId, oldOwnerId, newOwnerId});
       }
       LOG.log(Level.FINE, "Ownership of block {0} is updated from store {1} to store {2}",

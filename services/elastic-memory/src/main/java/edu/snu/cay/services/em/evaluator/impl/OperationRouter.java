@@ -97,13 +97,14 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * Routes the data key range of the operation. Note that this method must be synchronized to prevent other threads
-   * from updating the routing information while reading it.
-   *
+   * Routes the data key range of the operation.
+   * Note that this method guarantees that the state of routing table does not change
+   * before an user unlocks the returned lock.
    * This method does not work with Ownership-first migration protocol.
    * @param dataKeyRanges a range of data keys
-   * @return a pair of a map between a block id and a corresponding sub key range,
-   * and a map between evaluator id and corresponding sub key ranges.
+   * @return a tuple of a map between a block id and a corresponding sub key range,
+   *        and a map between evaluator id and corresponding sub key ranges,
+   *        and a lock that prevents updates to ownership cache
    */
   public Tuple3<Map<Integer, List<Pair<K, K>>>, Map<String, List<Pair<K, K>>>, Lock> route(
       final List<Pair<K, K>> dataKeyRanges) {
@@ -112,7 +113,8 @@ public final class OperationRouter<K> {
     final Map<Integer, List<Pair<K, K>>> localBlockToSubKeyRangesMap = new HashMap<>();
     final Map<String, List<Pair<K, K>>> remoteEvalToSubKeyRangesMap = new HashMap<>();
 
-    final Lock readLock = new ReentrantLock(); //routerLock.readLock();
+    // TODO #957: need to clean up. currently it exploits method for single key to acquire a lock
+    final Lock readLock = ownershipCache.resolveStoreWithLock(0).getValue();
     readLock.lock();
 
     // dataKeyRanges has at least one element
@@ -125,7 +127,7 @@ public final class OperationRouter<K> {
         final int blockId = blockToSubKeyRange.getKey();
         final Pair<K, K> minMaxKeyPair = blockToSubKeyRange.getValue();
 
-        final int memoryStoreId = ownershipCache.resolveStore(blockId).get();
+        final int memoryStoreId = ownershipCache.resolveStore(blockId);
 
         // aggregate sub ranges
         if (memoryStoreId != localStoreId) {
@@ -150,16 +152,16 @@ public final class OperationRouter<K> {
 
   /**
    * Resolves an evaluator id for a block id.
-   * Be aware that the result of this method might become wrong by ownership change in {@link OwnershipCache}.
+   * Be aware that the result of this method might become wrong by change in {@link OwnershipCache}.
    * @param blockId an id of block
-   * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore
+   * @return an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore
    */
   public Optional<String> resolveEval(final int blockId) {
-    final Optional<Integer> storeIdOptional = ownershipCache.resolveStore(blockId);
-    if (!storeIdOptional.isPresent() || storeIdOptional.get() == localStoreId) {
+    final Integer storeId = ownershipCache.resolveStore(blockId);
+    if (storeId == localStoreId) {
       return Optional.empty();
     } else {
-      return Optional.of(getEvalId(storeIdOptional.get()));
+      return Optional.of(getEvalId(storeId));
     }
   }
 
@@ -169,16 +171,16 @@ public final class OperationRouter<K> {
    * before an user unlocks the returned lock.
    * @param blockId an id of block
    * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore,
-   *        and a lock that prevents updates to routing table
+   *        and a lock that prevents updates to ownership cache
    */
   public Tuple<Optional<String>, Lock> resolveEvalWithLock(final int blockId) {
-    final Tuple<Optional<Integer>, Lock> storeIdWithLock = ownershipCache.resolveStoreWithLock(blockId);
+    final Tuple<Integer, Lock> storeIdWithLock = ownershipCache.resolveStoreWithLock(blockId);
 
-    final Optional<Integer> storeIdOptional = storeIdWithLock.getKey();
-    if (!storeIdOptional.isPresent() || storeIdOptional.get() == localStoreId) {
+    final Integer storeId = storeIdWithLock.getKey();
+    if (storeId == localStoreId) {
       return new Tuple<>(Optional.empty(), storeIdWithLock.getValue());
     } else {
-      return new Tuple<>(Optional.of(getEvalId(storeIdOptional.get())), storeIdWithLock.getValue());
+      return new Tuple<>(Optional.of(getEvalId(storeId)), storeIdWithLock.getValue());
     }
   }
 
