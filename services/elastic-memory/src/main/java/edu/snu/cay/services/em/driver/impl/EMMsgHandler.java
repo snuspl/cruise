@@ -78,8 +78,8 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
     Trace.setProcessId("driver");
     final EMMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-    case RoutingTableMsg:
-      onRoutingTableMsg(innerMsg.getRoutingTableMsg());
+    case OwnershipCacheMsg:
+      onOwnershipCacheMsg(innerMsg.getOwnershipCacheMsg());
       break;
 
     case MigrationMsg:
@@ -93,10 +93,10 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
     LOG.exiting(EMMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
-  private void onRoutingTableMsg(final RoutingTableMsg msg) {
+  private void onOwnershipCacheMsg(final OwnershipCacheMsg msg) {
     switch (msg.getType()) {
-    case RoutingTableInitReqMsg:
-      onRoutingTableInitReqMsg(msg);
+    case OwnershipCacheInitReqMsg:
+      onOwnershipCacheInitReqMsg(msg);
       break;
 
     default:
@@ -104,16 +104,16 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
     }
   }
 
-  private void onRoutingTableInitReqMsg(final RoutingTableMsg msg) {
-    try (TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan("on_routing_table_init_req_msg",
+  private void onOwnershipCacheInitReqMsg(final OwnershipCacheMsg msg) {
+    try (TraceScope onOwnershipCacheInitReqMsgScope = Trace.startSpan("on_ownership_cache_init_req_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      final RoutingTableInitReqMsg routingTableInitReqMsg = msg.getRoutingTableInitReqMsg();
-      final String evalId = routingTableInitReqMsg.getEvalId().toString();
+      final OwnershipCacheInitReqMsg ownershipCacheInitReqMsg = msg.getOwnershipCacheInitReqMsg();
+      final String evalId = ownershipCacheInitReqMsg.getEvalId().toString();
       final List<Integer> blockLocations = blockManager.getBlockLocations();
 
-      msgSender.get().sendRoutingTableInitMsg(evalId, blockLocations,
-          TraceInfo.fromSpan(onRoutingTableInitReqMsgScope.getSpan()));
+      msgSender.get().sendOwnershipCacheInitMsg(evalId, blockLocations,
+          TraceInfo.fromSpan(onOwnershipCacheInitReqMsgScope.getSpan()));
     }
   }
 

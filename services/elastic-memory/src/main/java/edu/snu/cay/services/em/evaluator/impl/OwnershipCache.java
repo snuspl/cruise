@@ -21,7 +21,6 @@ import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.util.Optional;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -40,7 +39,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
+ * An ownership cache. It maintains ownership info received from {@link edu.snu.cay.services.em.driver.api.EMMaster}.
+ * It regulates accesses with RWLock.
  */
 public final class OwnershipCache {
   private static final Logger LOG = Logger.getLogger(OwnershipCache.class.getName());
@@ -92,7 +92,7 @@ public final class OwnershipCache {
     LOG.log(Level.FINE, "Sends a request for the ownership info");
     try (TraceScope traceScope = Trace.startSpan("OWNERSHIP_INFO_REQUEST")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      msgSender.get().sendRoutingTableInitReqMsg(traceInfo);
+      msgSender.get().sendOwnershipCacheInitReqMsg(traceInfo);
     }
   }
 

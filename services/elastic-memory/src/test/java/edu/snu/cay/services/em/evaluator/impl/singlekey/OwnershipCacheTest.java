@@ -30,7 +30,6 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.util.Optional;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 import org.htrace.TraceInfo;
@@ -74,14 +73,14 @@ public class OwnershipCacheTest {
 
     ownershipCaches = new LinkedList<>();
 
-    // driverMsgHander.onNext will invoke driverMsgSender.sendRoutingTableInitMsg with the routine table
+    // driverMsgHander.onNext will invoke driverMsgSender.sendOwnershipCacheInitMsg with the routine table
     doAnswer(invocation -> {
       final List<Integer> blockLocations = invocation.getArgumentAt(1, List.class);
       for (final OwnershipCache cache : ownershipCaches) {
         cache.initOwnershipInfo(blockLocations);
       }
       return null;
-    }).when(driverMsgSender).sendRoutingTableInitMsg(anyString(), anyList(), any(TraceInfo.class));
+    }).when(driverMsgSender).sendOwnershipCacheInitMsg(anyString(), anyList(), any(TraceInfo.class));
   }
 
   private OwnershipCache newOwnershipCache(final int numInitialEvals,
@@ -123,25 +122,25 @@ public class OwnershipCacheTest {
     final Identifier driverIdentifier = identifierFactory.getNewInstance(driverId);
 
     doAnswer(invocation -> {
-      Thread.sleep(1000); // delay for fetching the routing table from driver
+      Thread.sleep(1000); // delay for fetching the ownership info from driver
 
-      final RoutingTableInitReqMsg routingTableInitReqMsg = RoutingTableInitReqMsg.newBuilder()
+      final OwnershipCacheInitReqMsg ownershipCacheInitReqMsg = OwnershipCacheInitReqMsg.newBuilder()
           .setEvalId(evalId)
           .build();
 
-      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
-          .setType(RoutingTableMsgType.RoutingTableInitReqMsg)
-          .setRoutingTableInitReqMsg(routingTableInitReqMsg)
+      final OwnershipCacheMsg ownershipCacheMsg = OwnershipCacheMsg.newBuilder()
+          .setType(OwnershipCacheMsgType.OwnershipCacheInitReqMsg)
+          .setOwnershipCacheInitReqMsg(ownershipCacheInitReqMsg)
           .build();
 
       final EMMsg msg = EMMsg.newBuilder()
-          .setType(EMMsgType.RoutingTableMsg)
-          .setRoutingTableMsg(routingTableMsg)
+          .setType(EMMsgType.OwnershipCacheMsg)
+          .setOwnershipCacheMsg(ownershipCacheMsg)
           .build();
 
       driverMsgHandler.onNext(new NSMessage<>(evalIdentifier, driverIdentifier, msg));
       return null;
-    }).when(evalMsgSender).sendRoutingTableInitReqMsg(any(TraceInfo.class));
+    }).when(evalMsgSender).sendOwnershipCacheInitReqMsg(any(TraceInfo.class));
 
     return ownershipCache;
   }
@@ -216,7 +215,7 @@ public class OwnershipCacheTest {
     final List<Integer> initialBlocks = ownershipCache.getInitialLocalBlockIds();
     final List<Integer> blocksToMove = initialBlocks.subList(0, numBlocksToMove);
 
-    // Resolving a single block locks the whole routing table
+    // Resolving a single block locks the whole ownership cache
     final Lock ownershipCacheLock = ownershipCache.resolveStoreWithLock(blocksToMove.get(0)).getValue();
 
     final int destStoreId = 1;
@@ -268,27 +267,14 @@ public class OwnershipCacheTest {
       // -1 means that memory store id for the block has not been found yet
       int firstAnswer = -1;
 
-      boolean localStoreFound = false;
-
       // check all OwnershipCaches give same answer
       for (int storeId = 0; storeId < numMemoryStores; storeId++) {
-        final Optional<Integer> blockOwner = ownershipCacheArray[storeId].resolveStore(blockId);
-
-        final int targetStoreId;
-        // OperationRouter.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
-        if (!blockOwner.isPresent()) {
-          assertFalse("Block should belong to only one store", localStoreFound);
-          localStoreFound = true;
-
-          targetStoreId = storeId;
-        } else {
-          targetStoreId = blockOwner.get();
-        }
+        final int blockOwner = ownershipCacheArray[storeId].resolveStore(blockId);
 
         if (firstAnswer == -1) {
-          firstAnswer = targetStoreId; // it's set by the first OwnershipCache's answer
+          firstAnswer = blockOwner; // it's set by the first OwnershipCache's answer
         } else {
-          assertEquals("Routers should give the same memory store id for the same block", firstAnswer, targetStoreId);
+          assertEquals("Routers should give the same memory store id for the same block", firstAnswer, blockOwner);
         }
       }
     }
@@ -311,7 +297,7 @@ public class OwnershipCacheTest {
     final int storeId1 = 1;
 
     final OwnershipCache ownershipCache0 = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, storeId0);
-    final OwnershipCache ownershipCache1 = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, storeId0);
+    final OwnershipCache ownershipCache1 = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, storeId1);
 
     ownershipCache0.triggerInitialization();
     ownershipCache1.triggerInitialization();
@@ -326,16 +312,10 @@ public class OwnershipCacheTest {
     for (int idx = 0; idx < numThreads; idx++) {
       threads[idx] = () -> {
         for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-          final Optional<Integer> storeIdFromCache0 = ownershipCache0.resolveStore(blockId);
-          final Optional<Integer> storeIdFromCache1 = ownershipCache1.resolveStore(blockId);
+          final Integer storeIdFromCache0 = ownershipCache0.resolveStore(blockId);
+          final Integer storeIdFromCache1 = ownershipCache1.resolveStore(blockId);
 
-          if (!storeIdFromCache0.isPresent()) { // storeId0 is local
-            assertEquals(storeId0, storeIdFromCache1.get().intValue());
-          } else if (!storeIdFromCache1.isPresent()) { // storeId1 is local
-            assertEquals(storeId1, storeIdFromCache0.get().intValue());
-          } else {
-            assertEquals(storeIdFromCache0.get(), storeIdFromCache1.get());
-          }
+          assertEquals(storeIdFromCache0, storeIdFromCache1);
         }
       };
 
@@ -370,16 +350,10 @@ public class OwnershipCacheTest {
     for (int idx = 0; idx < numThreads; idx++) {
       threads[idx] = () -> {
         for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-          final Optional<Integer> storeIdFromCache0 = ownershipCache0.resolveStore(blockId);
-          final Optional<Integer> storeIdFromCache1 = ownershipCache1.resolveStore(blockId);
+          final Integer storeIdFromCache0 = ownershipCache0.resolveStore(blockId);
+          final Integer storeIdFromCache1 = ownershipCache1.resolveStore(blockId);
 
-          if (!storeIdFromCache0.isPresent()) { // storeId0 is local
-            assertEquals(storeId0, storeIdFromCache1.get().intValue());
-          } else if (!storeIdFromCache1.isPresent()) { // storeId1 is local
-            assertEquals(storeId1, storeIdFromCache0.get().intValue());
-          } else {
-            assertEquals(storeIdFromCache0.get(), storeIdFromCache1.get());
-          }
+          assertEquals(storeIdFromCache0, storeIdFromCache1);
         }
         threadLatch.countDown();
       };
