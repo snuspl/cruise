@@ -15,31 +15,21 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
-import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
-import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
-import org.htrace.Trace;
-import org.htrace.TraceInfo;
-import org.htrace.TraceScope;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -53,21 +43,14 @@ import java.util.logging.Logger;
 public final class OperationRouter<K> {
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 
-  private static final long INIT_WAIT_TIMEOUT_MS = 5000;
-  private static final int MAX_NUM_INIT_REQUESTS = 3;
-
   /**
    * A latch that opens when initialization is done.
    */
   private final CountDownLatch initLatch = new CountDownLatch(1);
 
-  /**
-   * A boolean representing whether the evaluator is added by EM.add().
-   */
-  private final boolean addedEval;
 
   /**
-   * A prefix of evaluator id will be set by {@link #setEndpointIdPrefix(String)},
+   * A prefix of evaluator id will be set by {@link #initialize(String)},
    * and used by {@link #getEvalId(int)} to make the complete evaluator id.
    */
   private volatile String evalPrefix;
@@ -76,130 +59,33 @@ public final class OperationRouter<K> {
 
   private final BlockResolver<K> blockResolver;
 
-  private final InjectionFuture<EMMsgSender> msgSender;
-
-  /**
-   * The number of total blocks.
-   */
-  private final int numTotalBlocks;
-
-  /**
-   * The number of initial Evaluators.
-   */
-  private final int numInitialEvals;
-
-  /**
-   * Array representing block locations.
-   * Its index is the blockId and value is the storeId.
-   */
-  private final AtomicIntegerArray blockLocations;
-  private final List<Integer> initialLocalBlocks;
-
-  private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
-  private final Map<Integer, CountDownLatch> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
+  private final OwnershipCache ownershipCache;
 
   @Inject
   private OperationRouter(final BlockResolver<K> blockResolver,
-                          final InjectionFuture<EMMsgSender> msgSender,
-                          @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-                          @Parameter(NumInitialEvals.class) final int numInitialEvals,
-                          @Parameter(MemoryStoreId.class) final int memoryStoreId,
-                          @Parameter(AddedEval.class) final boolean addedEval) {
+                          final OwnershipCache ownershipCache,
+                          @Parameter(MemoryStoreId.class) final int memoryStoreId) {
     this.blockResolver = blockResolver;
-    this.msgSender = msgSender;
+    this.ownershipCache = ownershipCache;
     this.localStoreId = memoryStoreId;
-    this.numTotalBlocks = numTotalBlocks;
-    this.numInitialEvals = numInitialEvals;
-    this.addedEval = addedEval;
-    this.blockLocations = new AtomicIntegerArray(numTotalBlocks);
-
-    if (!addedEval) {
-      final int numInitialLocalBlocks = numTotalBlocks / numInitialEvals + 1; // +1 for remainders
-      this.initialLocalBlocks = new ArrayList<>(numInitialLocalBlocks);
-      initRoutingTableWithoutDriver();
-    } else {
-      this.initialLocalBlocks = Collections.emptyList();
-    }
   }
-
-  /**
-   * Initializes routing table of this MemoryStore with its local blocks, which are determined statically.
-   * Note that if the MemoryStore is created by EM.add(), this method should not be called
-   * because the block location might have been updated by EM.move() calls before this add() is called.
-   */
-  private void initRoutingTableWithoutDriver() {
-    // initial evaluators can initialize the routing table by itself
-    for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
-      initialLocalBlocks.add(blockId);
-    }
-
-    // blocks are initially distributed across Evaluators in round-robin.
-    for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-      final int storeId = blockId % numInitialEvals;
-      blockLocations.set(blockId, storeId);
-    }
-  }
-
 
   /**
    * Sets a prefix of evaluator that will be used to resolve remote evaluators.
-   * Note that this method should be invoked before {@link #triggerInitialization()}.
    */
-  public void setEndpointIdPrefix(final String endpointId) {
+  public void initialize(final String endpointId) {
     // TODO #509: Remove assumption on the format of context id
     this.evalPrefix = endpointId.split("-")[0];
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
-  }
-
-  /**
-   * Requests a routing table to driver.
-   */
-  private void requestRoutingTable() {
-    LOG.log(Level.FINE, "Sends a request for the routing table");
-    try (TraceScope traceScope = Trace.startSpan("ROUTING_TABLE_REQUEST")) {
-      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      msgSender.get().sendRoutingTableInitReqMsg(traceInfo);
-    }
-  }
-
-  /**
-   * Initializes the routing table with the info received from the driver.
-   * This method is only for evaluators added by EM.add(),
-   * whose routing table should be initiated from the existing information.
-   * It'd be invoked by the network response of {@link #requestRoutingTable()}.
-   */
-  public synchronized void initRoutingTableWithDriver(final List<Integer> initBlockLocations) {
-    if (!addedEval || initLatch.getCount() == 0) {
-      return;
-    }
-
-    if (initBlockLocations.size() != numTotalBlocks) {
-      throw new RuntimeException("Imperfect routing table");
-    }
-
-    for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-      final int storeId = initBlockLocations.get(blockId);
-
-      // the evaluators initiated though this evaluators should not have any stores at the beginning
-      if (storeId == localStoreId) {
-        throw new RuntimeException("Wrong initial routing table");
-      }
-      this.blockLocations.set(blockId, storeId);
-    }
-
     initLatch.countDown();
   }
 
   /**
-   * Checks the initialization of the routing table.
-   * It returns if the routing table has been initialized,
+   * Checks the initialization of the router.
+   * It returns if the router has been initialized,
    * otherwise waits the initialization within a bounded time.
    */
   private void checkInitialization() {
-    if (!addedEval) {
-      return;
-    }
-
     while (true) {
       try {
         initLatch.await();
@@ -208,39 +94,6 @@ public final class OperationRouter<K> {
         LOG.log(Level.WARNING, "Interrupted while waiting for routing table initialization from driver", e);
       }
     }
-  }
-
-  /**
-   * Triggers initialization by requesting initial routing table to driver and waits within a bounded time.
-   * It throws RuntimeException, if the table is not initialized til the end.
-   * For evaluators not added by EM, it does not trigger initialization.
-   * @return a future of initialization thread, a completed future for evaluators not added by EM
-   */
-  public Future triggerInitialization() {
-    if (!addedEval) {
-      return CompletableFuture.completedFuture(null);
-    }
-
-    return Executors.newSingleThreadExecutor().submit(new Runnable() {
-      @Override
-      public void run() {
-        // sends init request and waits for several times
-        for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
-          requestRoutingTable();
-
-          LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
-          try {
-            if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-              LOG.log(Level.INFO, "Operation router is initialized");
-              return;
-            }
-          } catch (final InterruptedException e) {
-            LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
-          }
-        }
-        throw new RuntimeException("Fail to initialize the router");
-      }
-    });
   }
 
   /**
@@ -259,7 +112,7 @@ public final class OperationRouter<K> {
     final Map<Integer, List<Pair<K, K>>> localBlockToSubKeyRangesMap = new HashMap<>();
     final Map<String, List<Pair<K, K>>> remoteEvalToSubKeyRangesMap = new HashMap<>();
 
-    final Lock readLock = routerLock.readLock();
+    final Lock readLock = new ReentrantLock(); //routerLock.readLock();
     readLock.lock();
 
     // dataKeyRanges has at least one element
@@ -272,7 +125,7 @@ public final class OperationRouter<K> {
         final int blockId = blockToSubKeyRange.getKey();
         final Pair<K, K> minMaxKeyPair = blockToSubKeyRange.getValue();
 
-        final int memoryStoreId = blockLocations.get(blockId);
+        final int memoryStoreId = ownershipCache.resolveStore(blockId).get();
 
         // aggregate sub ranges
         if (memoryStoreId != localStoreId) {
@@ -297,18 +150,16 @@ public final class OperationRouter<K> {
 
   /**
    * Resolves an evaluator id for a block id.
-   * Be aware that the result of this method might become wrong by {@link #updateOwnership}.
+   * Be aware that the result of this method might become wrong by ownership change in {@link OwnershipCache}.
    * @param blockId an id of block
    * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore
    */
   public Optional<String> resolveEval(final int blockId) {
-    checkInitialization();
-
-    final int memoryStoreId = blockLocations.get(blockId);
-    if (memoryStoreId == localStoreId) {
+    final Optional<Integer> storeIdOptional = ownershipCache.resolveStore(blockId);
+    if (!storeIdOptional.isPresent() || storeIdOptional.get() == localStoreId) {
       return Optional.empty();
     } else {
-      return Optional.of(getEvalId(memoryStoreId));
+      return Optional.of(getEvalId(storeIdOptional.get()));
     }
   }
 
@@ -321,105 +172,13 @@ public final class OperationRouter<K> {
    *        and a lock that prevents updates to routing table
    */
   public Tuple<Optional<String>, Lock> resolveEvalWithLock(final int blockId) {
-    checkInitialization();
+    final Tuple<Optional<Integer>, Lock> storeIdWithLock = ownershipCache.resolveStoreWithLock(blockId);
 
-    waitBlockMigrationToEnd(blockId);
-
-    final Lock readLock = routerLock.readLock();
-    readLock.lock();
-    final int memoryStoreId = blockLocations.get(blockId);
-    if (memoryStoreId == localStoreId) {
-      return new Tuple<>(Optional.empty(), readLock);
+    final Optional<Integer> storeIdOptional = storeIdWithLock.getKey();
+    if (!storeIdOptional.isPresent() || storeIdOptional.get() == localStoreId) {
+      return new Tuple<>(Optional.empty(), storeIdWithLock.getValue());
     } else {
-      return new Tuple<>(Optional.of(getEvalId(memoryStoreId)), readLock);
-    }
-  }
-
-  private void waitBlockMigrationToEnd(final int blockId) {
-    final CountDownLatch blockMigratingLatch = migratingBlocks.get(blockId);
-    if (blockMigratingLatch != null) {
-      try {
-        blockMigratingLatch.await();
-      } catch (final InterruptedException e) {
-        throw new RuntimeException("Interrupted while waiting for block migration to be finished", e);
-      }
-    }
-  }
-
-  /**
-   * @return a list of block ids which are initially assigned to the local MemoryStore.
-   */
-  public List<Integer> getInitialLocalBlockIds() {
-    return Collections.unmodifiableList(initialLocalBlocks);
-  }
-
-  /**
-   * @return a list of block ids which are currently assigned to the local MemoryStore.
-   */
-  public List<Integer> getCurrentLocalBlockIds() {
-    checkInitialization();
-
-    final List<Integer> localBlockIds = new ArrayList<>();
-    for (int blockId = 0; blockId < blockLocations.length(); blockId++) {
-      final int storeId = blockLocations.get(blockId);
-      if (storeId == localStoreId) {
-        localBlockIds.add(blockId);
-      }
-    }
-    return localBlockIds;
-  }
-
-  /**
-   * Updates the owner of the block. Note that this method must be synchronized
-   * to prevent other threads from reading the routing information while updating it.
-   * @param blockId id of the block to update its ownership.
-   * @param oldOwnerId id of the MemoryStore that was owner.
-   * @param newOwnerId id of the MemoryStore that will be new owner.
-   */
-  public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
-    checkInitialization();
-
-    routerLock.writeLock().lock();
-    try {
-      final int localOldOwnerId = blockLocations.getAndSet(blockId, newOwnerId);
-      if (localOldOwnerId != oldOwnerId) {
-        LOG.log(Level.WARNING, "Local routing table thought block {0} was in store {1}, but it was actually in {2}",
-            new Object[]{blockId, oldOwnerId, newOwnerId});
-      }
-      LOG.log(Level.FINE, "Ownership of block {0} is updated from store {1} to store {2}",
-          new Object[]{blockId, oldOwnerId, newOwnerId});
-    } finally {
-      routerLock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * Mark a block as migrating and stop client's access on the migrating block.
-   * @param blockId id of the block
-   */
-  void markBlockAsMigrating(final int blockId) {
-    synchronized (migratingBlocks) {
-      if (migratingBlocks.containsKey(blockId)) {
-        throw new RuntimeException("Block" + blockId + " is already in migrating state");
-      }
-
-      migratingBlocks.put(blockId, new CountDownLatch(1));
-    }
-  }
-
-  /**
-   * Release the block that was marked by {@link #markBlockAsMigrating(int)}
-   * and allow clients access the migrated block, which can be either in local or remote MemoryStore.
-   * @param blockId id of the block
-   */
-  void releaseMigratedBlock(final int blockId) {
-    synchronized (migratingBlocks) {
-      if (!migratingBlocks.containsKey(blockId)) {
-        throw new RuntimeException("Block " + blockId + " is not in migrating state");
-      }
-
-      final CountDownLatch blockMigratingLatch = migratingBlocks.remove(blockId);
-      blockMigratingLatch.countDown();
+      return new Tuple<>(Optional.of(getEvalId(storeIdOptional.get())), storeIdWithLock.getValue());
     }
   }
 

@@ -47,7 +47,7 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
   private static final Logger LOG = Logger.getLogger(EMMsgHandler.class.getName());
   private static final int NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS = 2;
 
-  private final OperationRouter router;
+  private final OwnershipCache ownershipCache;
   private final RemoteOpHandler remoteOpHandler;
   private final MigrationExecutor migrationExecutor;
 
@@ -55,10 +55,10 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
       = Executors.newFixedThreadPool(NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS);
 
   @Inject
-  private EMMsgHandler(final OperationRouter router,
+  private EMMsgHandler(final OwnershipCache ownershipCache,
                        final RemoteOpHandler remoteOpHandler,
                        final MigrationExecutor migrationExecutor) {
-    this.router = router;
+    this.ownershipCache = ownershipCache;
     this.remoteOpHandler = remoteOpHandler;
     this.migrationExecutor = migrationExecutor;
   }
@@ -104,7 +104,7 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
   }
 
   private void onRoutingTableInitMsg(final RoutingTableMsg msg) {
-    router.initRoutingTableWithDriver(msg.getRoutingTableInitMsg().getBlockLocations());
+    ownershipCache.initOwnershipInfo(msg.getRoutingTableInitMsg().getBlockLocations());
   }
 
   private void onRoutingTableUpdateMsg(final RoutingTableMsg msg) {
@@ -133,7 +133,7 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
               new Object[]{newOwnerId, oldOwnerId, blockIds});
 
           for (final int blockId : blockIds) {
-            router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+            ownershipCache.updateOwnership(blockId, oldOwnerId, newOwnerId);
           }
         }
       });
