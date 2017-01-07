@@ -50,7 +50,7 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 @Private
-public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> {
+public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>, BlockHandler<Long> {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
   private static final int QUEUE_SIZE = 1024;

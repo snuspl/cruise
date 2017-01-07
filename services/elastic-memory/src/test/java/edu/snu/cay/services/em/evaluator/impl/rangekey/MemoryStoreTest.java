@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.evaluator.api.BlockHandler;
 import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
@@ -54,6 +55,7 @@ public final class MemoryStoreTest {
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_REMOVE_ALL_ASSERTION = "getAll() after removeAll()";
 
+  private BlockHandler<Long> blockHandler;
   private MemoryStore<Long> memoryStore;
 
   @Before
@@ -61,6 +63,7 @@ public final class MemoryStoreTest {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindImplementation(BlockHandler.class, MemoryStoreImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(1))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
@@ -71,6 +74,7 @@ public final class MemoryStoreTest {
     injector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
     injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
     memoryStore = injector.getInstance(MemoryStore.class);
+    blockHandler = injector.getInstance(BlockHandler.class);
 
     // router should be initialized explicitly
     final OperationRouter<Long> router = injector.getInstance(OperationRouter.class);
@@ -353,7 +357,6 @@ public final class MemoryStoreTest {
     // the value of blockIdBase is chosen to avoid conflict with the existing blocks.
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfListener * numOfBlockPut);
-    final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
 
     // register block update notification observers to the Memory Store
     for (int i = 0; i < numOfListener; i++) {
@@ -375,7 +378,7 @@ public final class MemoryStoreTest {
         data.put(keyId, keyId);
       }
 
-      memoryStoreImpl.putBlock(blockId, data);
+      blockHandler.putBlock(blockId, data);
     }
 
     // wait for count down latch with a bound of time
@@ -397,7 +400,6 @@ public final class MemoryStoreTest {
     // the value of blockIdBase is chosen to avoid conflict with the existing blocks.
     final int blockIdBase = 0x80;
     final CountDownLatch countDownLatch = new CountDownLatch(numOfObserver * numOfBlockPut);
-    final MemoryStoreImpl memoryStoreImpl = (MemoryStoreImpl) memoryStore;
 
     // register block update notification observers to the Memory Store
     for (int i = 0; i < numOfObserver; i++) {
@@ -418,14 +420,14 @@ public final class MemoryStoreTest {
         data.put(keyId, keyId);
       }
 
-      memoryStoreImpl.putBlock(blockId, data);
+      blockHandler.putBlock(blockId, data);
     }
 
     // remove all the blocks stored in the Memory Store
     // and it will call onRemovedBlock callback of MemoryStoreTestUtils.BlockRemoveListenerImpl class
     for (int i = 0; i < numOfBlockPut; i++) {
       final int blockId = blockIdBase + i;
-      memoryStoreImpl.removeBlock(blockId);
+      blockHandler.removeBlock(blockId);
     }
 
     // wait for count down latch with a bounded time
