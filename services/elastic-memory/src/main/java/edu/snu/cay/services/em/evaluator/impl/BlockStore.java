@@ -54,7 +54,7 @@ public final class BlockStore<K, V> implements BlockHandler<K, V> {
   }
 
   /**
-   * Initialize the blocks in the local MemoryStore.
+   * Initialize local blocks.
    */
   private void initBlocks() {
     for (final int blockId : router.getInitialLocalBlockIds()) {

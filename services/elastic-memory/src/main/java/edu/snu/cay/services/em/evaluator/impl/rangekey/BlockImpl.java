@@ -33,7 +33,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 final class BlockImpl<Long, V> implements Block<Long, V> {
 
   BlockImpl() {
-
   }
 
   /**

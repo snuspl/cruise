@@ -23,9 +23,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import java.util.Map;
 
 /**
- * Interface for getting/putting data from/to the MemoryStore.
- * Methods in this class manage the data in the MemoryStore in block-level,
- * contrary to public APIs where the data is accessed in key-level.
+ * Interface for getting/putting block data.
  */
 @EvaluatorSide
 @Private

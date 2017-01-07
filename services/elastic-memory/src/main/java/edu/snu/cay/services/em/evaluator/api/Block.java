@@ -19,7 +19,7 @@ import java.util.Map;
 
 /**
  * A class representing Block which is an unit of EM's move.
- * It has a internal data structure to store key-value data.
+ * It maintains an internal data structure to store key-value data.
  * @param <K> a type of key
  * @param <V> a type of value
  */
