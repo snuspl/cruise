@@ -24,6 +24,5 @@ import org.apache.reef.wake.EventHandler;
  */
 @EvaluatorSide
 @Private
-public interface RemoteAccessibleMemoryStore<K> extends
-    MemoryStore<K>, EventHandler<DataOperation> {
+public interface RemoteAccessibleMemoryStore<K> extends MemoryStore<K>, EventHandler<DataOperation> {
 }
