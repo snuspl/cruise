@@ -239,7 +239,9 @@ final class MLRTrainer implements Trainer {
         throw new RuntimeException(e);
       }
 
-      final Vector[] gradients = aggregateGradient(results);
+      // TODO #821: Use Java stream
+      final List<Vector[]> newModels = retrieveModels(results);
+      final Vector[] gradients = aggregateGradient(newModels);
       LOG.log(Level.INFO, "Gradient completes");
       // push gradients
       pushAndResetGradients(gradients);
@@ -286,6 +288,18 @@ final class MLRTrainer implements Trainer {
 
       LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
       sendMetrics(epochMetric);
+    }
+  }
+
+  private List<Vector[]> retrieveModels(final List<Future<Vector[]>> results) {
+    try {
+      final List<Vector[]> newModels = new ArrayList<>(results.size());
+      for (final Future<Vector[]> future : results) {
+        newModels.add(future.get());
+      }
+      return newModels;
+    } catch (final InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -347,20 +361,14 @@ final class MLRTrainer implements Trainer {
     }
   }
 
-  private Vector[] aggregateGradient(final List<Future<Vector[]>> results) {
+  private Vector[] aggregateGradient(final List<Vector[]> results) {
     final Vector[] gradients = new Vector[numClasses];
     for (int classIdx = 0; classIdx < numClasses; classIdx++) {
       gradients[classIdx] = oldModels[classIdx].scale(-1.0);
     }
 
     final double coefficient = 1.0 / numTrainerThreads;
-    for (final Future<Vector[]> result : results) {
-      final Vector[] newModels;
-      try {
-        newModels = result.get();
-      } catch (final InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
+    for (final Vector[] newModels : results) {
       for (int classIdx = 0; classIdx < numClasses; classIdx++) {
         gradients[classIdx].axpy(coefficient, newModels[classIdx]);
       }
