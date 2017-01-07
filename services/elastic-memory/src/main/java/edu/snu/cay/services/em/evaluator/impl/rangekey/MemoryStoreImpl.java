@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.evaluator.impl.rangekey;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.*;
+import edu.snu.cay.services.em.evaluator.impl.BlockStore;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.Tuple3;
@@ -36,40 +37,27 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * A {@code MemoryStore} implementation for a key of long type, supporting range operations.
- * All data is stored in multiple Blocks embedding a {@code TreeMap}, ordered by data ids.
- * Each Block has {@code ReentrantReadWriteLock} for synchronization between {@code get}, {@code put},
- * and {@code remove} operations within Block.
+ * It routes operations to local {@link BlockStore} or remote through {@link RemoteOpHandler}
+ * based on the routing result from {@link OperationRouter}.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
 @EvaluatorSide
 @Private
-public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>, BlockHandler<Long> {
+public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
   private static final int QUEUE_SIZE = 1024;
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
-  /**
-   * Maintains blocks associated with blockIds.
-   */
-  private final ConcurrentMap<Integer, Block> blocks = new ConcurrentHashMap<>();
-
   private final OperationRouter<Long> router;
   private final BlockResolver<Long> blockResolver;
   private final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl;
-
-  /**
-   * Block update listeners that clients have registered.
-   */
-  private final Set<BlockUpdateListener<Long>> blockUpdateListeners
-      = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final BlockStore blockStore;
 
   /**
    * A counter for issuing ids for operations requested from local clients.
@@ -88,22 +76,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
                           final OperationRouter<Long> router,
                           final BlockResolver<Long> blockResolver,
                           final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl,
+                          final BlockStore blockStore,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
     this.blockResolver = blockResolver;
     this.remoteOpHandlerImpl = remoteOpHandlerImpl;
-    initBlocks();
+    this.blockStore = blockStore;
     initExecutor(numStoreThreads);
-  }
-
-  /**
-   * Initialize the blocks in the local MemoryStore.
-   */
-  private void initBlocks() {
-    for (final int blockId : router.getInitialLocalBlockIds()) {
-      blocks.put(blockId, new Block());
-    }
   }
 
   /**
@@ -118,56 +98,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
   }
 
   @Override
-  public void putBlock(final int blockId, final Map<Long, Object> data) {
-    final Block block = new Block();
-    block.putAll(data);
-
-    if (blocks.putIfAbsent(blockId, block) != null) {
-      throw new RuntimeException("Block with id " + blockId + " already exists.");
-    }
-
-    notifyBlockAddition(blockId, block);
-  }
-
-  @Override
-  public Map<Long, Object> getBlock(final int blockId) {
-    final Block block = blocks.get(blockId);
-    if (null == block) {
-      throw new RuntimeException("Block with id " + blockId + "does not exist.");
-    }
-
-    return block.getAll();
-  }
-
-  @Override
-  public void removeBlock(final int blockId) {
-    final Block block = blocks.remove(blockId);
-    if (null == block) {
-      throw new RuntimeException("Block with id " + blockId + "does not exist.");
-    }
-
-    notifyBlockRemoval(blockId, block);
-  }
-
-  @Override
   public boolean registerBlockUpdateListener(final BlockUpdateListener listener) {
-    return blockUpdateListeners.add(listener);
-  }
-
-  private void notifyBlockRemoval(final int blockId, final Block block) {
-    final Map<Long, Object> kvData = block.getAll();
-    final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateListener<Long> listener : blockUpdateListeners) {
-      listener.onRemovedBlock(blockId, keySet);
-    }
-  }
-
-  private void notifyBlockAddition(final int blockId, final Block block) {
-    final Map<Long, Object> kvData = block.getAll();
-    final Set<Long> keySet = kvData.keySet();
-    for (final BlockUpdateListener<Long> listener : blockUpdateListeners) {
-      listener.onAddedBlock(blockId, keySet);
-    }
+    return blockStore.registerBlockUpdateListener(listener);
   }
 
   /**
@@ -207,7 +139,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
         final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
         final boolean isLocal = !remoteEvalIdOptional.isPresent();
         if (isLocal) {
-          final Block block = blocks.get(blockId);
+          final BlockImpl block = (BlockImpl) blockStore.get(blockId);
           final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRanges);
           submitLocalResult(operation, result, Collections.emptyList());
         } else {
@@ -227,133 +159,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
         final Lock routerLock = remoteEvalIdWithLock.getValue();
         routerLock.unlock();
       }
-    }
-  }
-
-  /**
-   * Block class that has a {@code subDataMap}, which is an unit of EM's move.
-   * Also it's a concurrency unit for data operations because it has a {@code ReadWriteLock},
-   * which regulates accesses to {@code subDataMap}.
-   */
-  private final class Block<V> {
-    /**
-     * The map serves as a collection of data in a Block.
-     * Its implementation {@code TreeMap} is used for guaranteeing log(n) read and write operations, especially
-     * {@code getRange()} and {@code removeRange()} which are ranged queries based on the ids.
-     */
-    private final NavigableMap<Long, V> subDataMap = new TreeMap<>();
-
-    /**
-     * A read-write lock for {@code subDataMap} of the block.
-     * Let's set fairness option as true to prevent starvation.
-     */
-    private final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
-
-    /**
-     * Executes sub operation on data keys assigned to this block.
-     * All operations both from remote and local clients are executed via this method.
-     */
-    private Map<Long, V> executeSubOperation(final RangeKeyOperation<Long, V> operation,
-                                             final List<Pair<Long, Long>> keyRanges) {
-      final DataOpType operationType = operation.getOpType();
-
-      final Map<Long, V> outputData = new HashMap<>();
-      switch (operationType) {
-      case PUT:
-        rwLock.writeLock().lock();
-        try {
-          final NavigableMap<Long, V> dataKeyValueMap = operation.getDataKVMap().get();
-          for (final Pair<Long, Long> keyRange : keyRanges) {
-            // extract matching entries from the input kv data map and put it all to subDataMap
-            final NavigableMap<Long, V> subMap =
-                dataKeyValueMap.subMap(keyRange.getFirst(), true, keyRange.getSecond(), true);
-            subDataMap.putAll(subMap);
-          }
-
-          // PUT operations always succeed for all the ranges, because it overwrites map with the given input value.
-          // So, outputData for PUT operations should be determined in other places.
-        } finally {
-          rwLock.writeLock().unlock();
-        }
-        break;
-      case GET:
-        rwLock.readLock().lock();
-        try {
-          for (final Pair<Long, Long> keyRange : keyRanges) {
-            outputData.putAll(subDataMap.subMap(keyRange.getFirst(), true,
-                keyRange.getSecond(), true));
-          }
-        } finally {
-          rwLock.readLock().unlock();
-        }
-        break;
-      case REMOVE:
-        rwLock.writeLock().lock();
-        try {
-          for (final Pair<Long, Long> keyRange : keyRanges) {
-            outputData.putAll(subDataMap.subMap(keyRange.getFirst(), true,
-                keyRange.getSecond(), true));
-          }
-          subDataMap.keySet().removeAll(outputData.keySet());
-        } finally {
-          rwLock.writeLock().unlock();
-        }
-        break;
-      default:
-        throw new RuntimeException("Undefined operation");
-      }
-
-      return outputData;
-    }
-
-    /**
-     * Returns all data in a block.
-     * It is for supporting getAll method of MemoryStore.
-     */
-    private Map<Long, V> getAll() {
-      rwLock.readLock().lock();
-      try {
-        return (Map<Long, V>) ((TreeMap) subDataMap).clone();
-      } finally {
-        rwLock.readLock().unlock();
-      }
-    }
-
-    /**
-     * Puts all data from the given Map to the block.
-     */
-    private void putAll(final Map<Long, V> toPut) {
-      rwLock.writeLock().lock();
-      try {
-        subDataMap.putAll(toPut);
-      } finally {
-        rwLock.writeLock().unlock();
-      }
-    }
-
-    /**
-     * Removes all data in a block.
-     * It is for supporting removeAll method of MemoryStore.
-     */
-    private Map<Long, V> removeAll() {
-      final Map<Long, V> result;
-      rwLock.writeLock().lock();
-      try {
-        result = (Map<Long, V>) ((TreeMap) subDataMap).clone();
-        subDataMap.clear();
-      } finally {
-        rwLock.writeLock().unlock();
-      }
-
-      return result;
-    }
-
-    /**
-     * Returns the number of data in a block.
-     * It is for supporting getNumUnits method of MemoryStore.
-     */
-    private int getNumUnits() {
-      return subDataMap.size();
     }
   }
 
@@ -469,7 +274,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
     // first execute a head range to reuse the returned map object for a return map
     if (blockToSubKeyRangesIterator.hasNext()) {
       final Map.Entry<Integer, List<Pair<Long, Long>>> blockToSubKeyRanges = blockToSubKeyRangesIterator.next();
-      final Block<V> block = blocks.get(blockToSubKeyRanges.getKey());
+      final BlockImpl block = (BlockImpl) blockStore.get(blockToSubKeyRanges.getKey());
       final List<Pair<Long, Long>> subKeyRanges = blockToSubKeyRanges.getValue();
 
       outputData = block.executeSubOperation(operation, subKeyRanges);
@@ -480,7 +285,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
     // execute remaining ranges if exist
     while (blockToSubKeyRangesIterator.hasNext()) {
       final Map.Entry<Integer, List<Pair<Long, Long>>> blockToSubKeyRanges = blockToSubKeyRangesIterator.next();
-      final Block<V> block = blocks.get(blockToSubKeyRanges.getKey());
+      final BlockImpl block = (BlockImpl) blockStore.get(blockToSubKeyRanges.getKey());
       final List<Pair<Long, Long>> subKeyRanges = blockToSubKeyRanges.getValue();
 
       final Map<Long, V> partialOutput = block.executeSubOperation(operation, subKeyRanges);
@@ -629,7 +434,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIdIterator.hasNext()) {
-      final Block<V> block = blocks.get(blockIdIterator.next());
+      final Block block = blockStore.get(blockIdIterator.next());
       result = block.getAll();
     } else {
       return Collections.emptyMap();
@@ -637,7 +442,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
 
     // execute on remaining blocks if exist
     while (blockIdIterator.hasNext()) {
-      final Block<V> block = blocks.get(blockIdIterator.next());
+      final Block block = blockStore.get(blockIdIterator.next());
       // huge memory pressure may happen here
       result.putAll(block.getAll());
     }
@@ -686,7 +491,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIdIterator.hasNext()) {
-      final Block<V> block = blocks.get(blockIdIterator.next());
+      final Block block = blockStore.get(blockIdIterator.next());
       result = block.removeAll();
     } else {
       return Collections.emptyMap();
@@ -694,7 +499,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
 
     // execute on remaining blocks if exist
     while (blockIdIterator.hasNext()) {
-      final Block<V> block = blocks.get(blockIdIterator.next());
+      final Block block = blockStore.get(blockIdIterator.next());
       // huge memory pressure may happen here
       result.putAll(block.removeAll());
     }
@@ -715,12 +520,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
     return operation.getOutputData();
   }
 
-  /**
-   * @return the number of blocks
-   */
   @Override
   public int getNumBlocks() {
-    return blocks.size();
+    return blockStore.getNumBlocks();
   }
 
   @Override
