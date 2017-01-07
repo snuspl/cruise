@@ -349,7 +349,11 @@ final class MLRTrainer implements Trainer {
 
   private Vector[] aggregateGradient(final List<Future<Vector[]>> results) {
     final Vector[] gradients = new Vector[numClasses];
+    for (int classIdx = 0; classIdx < numClasses; classIdx++) {
+      gradients[classIdx] = oldModels[classIdx].scale(-1.0);
+    }
 
+    final double coefficient = 1.0 / numTrainerThreads;
     for (final Future<Vector[]> result : results) {
       final Vector[] newModels;
       try {
@@ -358,12 +362,7 @@ final class MLRTrainer implements Trainer {
         throw new RuntimeException(e);
       }
       for (int classIdx = 0; classIdx < numClasses; classIdx++) {
-        if (gradients[classIdx] == null) {
-          gradients[classIdx] = newModels[classIdx].sub(oldModels[classIdx]);
-        } else {
-          gradients[classIdx].addi(newModels[classIdx]);
-          gradients[classIdx].subi(oldModels[classIdx]);
-        }
+        gradients[classIdx].axpy(coefficient, newModels[classIdx]);
       }
     }
     return gradients;
