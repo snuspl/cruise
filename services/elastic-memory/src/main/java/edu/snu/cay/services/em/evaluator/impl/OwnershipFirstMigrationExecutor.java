@@ -17,8 +17,8 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
+import edu.snu.cay.services.em.evaluator.api.BlockHandler;
 import edu.snu.cay.services.em.evaluator.api.MigrationExecutor;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.utils.trace.HTraceUtils;
@@ -65,7 +65,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private static final int NUM_DATA_MSG_HANDLER_THREADS = 2;
   private static final int NUM_OWNERSHIP_MSG_HANDLER_THREADS = 2;
 
-  private final RemoteAccessibleMemoryStore<K> memoryStore;
+  private final BlockHandler<K> blockHandler;
   private final OperationRouter router;
   private final InjectionFuture<EMMsgSender> sender;
 
@@ -91,12 +91,12 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private final Serializer serializer;
 
   @Inject
-  private OwnershipFirstMigrationExecutor(final RemoteAccessibleMemoryStore<K> memoryStore,
+  private OwnershipFirstMigrationExecutor(final BlockHandler<K> blockHandler,
                                           final OperationRouter router,
                                           final InjectionFuture<EMMsgSender> sender,
                                           @Parameter(KeyCodecName.class)final Codec<K> keyCodec,
                                           final Serializer serializer) {
-    this.memoryStore = memoryStore;
+    this.blockHandler = blockHandler;
     this.router = router;
     this.sender = sender;
     this.keyCodec = keyCodec;
@@ -312,7 +312,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
   private void processDataMsg(final String operationId, final String senderId,
                               final int blockId, final Map<K, Object> dataMap, final TraceInfo traceInfo) {
-    memoryStore.putBlock(blockId, dataMap);
+    blockHandler.putBlock(blockId, dataMap);
 
     // Unmark block marked in onOwnershipMsg.
     // It wakes up waiting client threads to access immigrated data.
@@ -347,7 +347,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
         @Override
         public void run() {
           // After the data is migrated, it's safe to remove the local data block.
-          memoryStore.removeBlock(blockId);
+          blockHandler.removeBlock(blockId);
 
           sender.get().sendBlockMovedMsg(operationId, blockId, traceInfo);
         }
@@ -405,7 +405,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // stop clients's access before starting migration
           router.markBlockAsMigrating(blockIdToMigrate);
 
-          final Map<K, Object> blockData = memoryStore.getBlock(blockIdToMigrate);
+          final Map<K, Object> blockData = blockHandler.getBlock(blockIdToMigrate);
           final List<KeyValuePair> keyValuePairs;
           try (TraceScope decodeDataScope = Trace.startSpan("encode_data", traceInfo)) {
             keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());

@@ -17,10 +17,7 @@ package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.driver.impl.BlockManager;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.MigrationExecutor;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
-import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
+import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.DataFirstMigrationExecutor;
 import edu.snu.cay.services.em.evaluator.impl.EMMsgHandler;
 import edu.snu.cay.services.em.evaluator.impl.OwnershipFirstMigrationExecutor;
@@ -182,6 +179,7 @@ public final class EMConfiguration {
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, memoryStoreClass)
         .bindImplementation(RemoteAccessibleMemoryStore.class, memoryStoreClass)
+        .bindImplementation(BlockHandler.class, memoryStoreClass)
         .bindImplementation(RemoteOpHandler.class, remoteOpHandlerClass)
         .bindImplementation(MigrationExecutor.class, migrationExecutorClass)
         .bindNamedParameter(DriverIdentifier.class, driverId)
