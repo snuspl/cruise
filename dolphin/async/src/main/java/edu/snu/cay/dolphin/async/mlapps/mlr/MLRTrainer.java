@@ -130,6 +130,7 @@ final class MLRTrainer implements Trainer {
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                     @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final MemoryStore<Long> memoryStore,
                      final TrainingDataProvider<Long, MLRData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
@@ -159,7 +160,7 @@ final class MLRTrainer implements Trainer {
     this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
 
-    this.numTrainerThreads = 1; // TODO #821: Make it parameter
+    this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
     this.barrier = new CyclicBarrier(numTrainerThreads + 1);
     this.instances = new ConcurrentLinkedQueue<>();
@@ -239,7 +240,7 @@ final class MLRTrainer implements Trainer {
       }
 
       final Vector[] gradients = aggregateGradient(results);
-      LOG.log(Level.INFO, "Gradient copmletes");
+      LOG.log(Level.INFO, "Gradient completes");
       // push gradients
       pushAndResetGradients(gradients);
 
