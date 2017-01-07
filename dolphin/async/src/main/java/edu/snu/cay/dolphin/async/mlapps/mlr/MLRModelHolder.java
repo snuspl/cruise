@@ -16,32 +16,29 @@
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import org.apache.reef.tang.annotations.Parameter;
 
-import javax.inject.Inject;
-import java.util.logging.Logger;
+import java.io.Closeable;
 
 /**
  * Created by yunseong on 1/6/17.
  */
-final class MLRModelHolder {
+final class MLRModelHolder implements Closeable {
 
-  private ThreadLocal<Vector[]> model;
-  private Vector[] shared;
+  private final ThreadLocal<Vector[]> model;
 
-  @Inject
-  MLRModelHolder(@Parameter(MLRParameters.NumClasses.class) final int numClasses) {
-    this.shared = new Vector[numClasses];
+  MLRModelHolder(final Vector[] newModel) {
+    this.model = ThreadLocal.withInitial(newModel::clone);
   }
 
-  // Get the current model. Per-thread in this case.
+  /**
+   * Get the current model. Per-thread in this case.
+   */
   Vector[] getModel() {
     return model.get();
   }
 
-  // When pull
-  void initialize(final Vector[] newModel) {
-    this.shared = newModel;
-    this.model = ThreadLocal.withInitial(() -> shared.clone());
+  @Override
+  public void close() {
+    this.model.remove();
   }
 }
