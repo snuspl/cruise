@@ -19,33 +19,29 @@ import edu.snu.cay.common.math.linalg.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.logging.Logger;
 
 /**
  * Created by yunseong on 1/6/17.
  */
 final class MLRModelHolder {
-  private final int numClasses;
 
-  private final Vector[] model;
+  private ThreadLocal<Vector[]> model;
+  private Vector[] shared;
 
   @Inject
   MLRModelHolder(@Parameter(MLRParameters.NumClasses.class) final int numClasses) {
-    this.numClasses = numClasses;
-    this.model = new Vector[numClasses];
+    this.shared = new Vector[numClasses];
   }
 
+  // Get the current model. Per-thread in this case.
   Vector[] getModel() {
-    final ThreadLocal<Vector[]> perThreadModel = new ThreadLocal<Vector[]>() {
-      @Override
-      protected Vector[] initialValue() {
-        return model.clone();
-      }
-    };
-    return perThreadModel.get();
+    return model.get();
   }
 
-  void setModel(final Vector[] newModel) {
-    assert newModel.length == model.length;
-    System.arraycopy(newModel, 0, model, 0, newModel.length);
+  // When pull
+  void initialize(final Vector[] newModel) {
+    this.shared = newModel;
+    this.model = ThreadLocal.withInitial(() -> shared.clone());
   }
 }
