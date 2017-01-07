@@ -90,7 +90,6 @@ final class MLRTrainer implements Trainer {
    * Model vectors that represent each class.
    */
   private final Vector[] oldModels;
-  private final Vector[] gradients;
 
   /**
    * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@link #pullModels()}.
@@ -147,10 +146,6 @@ final class MLRTrainer implements Trainer {
     this.lambda = lambda;
     this.vectorFactory = vectorFactory;
     this.oldModels = new Vector[numClasses];
-    this.gradients = new Vector[numClasses];
-    for (int classIdx = 0; classIdx < gradients.length; classIdx++) {
-      gradients[classIdx] = vectorFactory.createDenseZeros(numFeatures);
-    }
 
     this.decayRate = decayRate;
     if (decayRate <= 0.0 || decayRate > 1.0) {
@@ -214,11 +209,13 @@ final class MLRTrainer implements Trainer {
       resetTracers();
       final long miniBatchStartTime = System.currentTimeMillis();
 
+      final List<Future<Vector[]>> results = new ArrayList<>(numTrainerThreads);
+
       // pull data when mini-batch is started
       try (final MLRModelHolder modelHolder = pullModels()) {
         computeTracer.startTimer();
         for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
-          executor.submit(() -> {
+          final Future<Vector[]> perThreadResult = executor.submit(() -> {
             int count = 0;
             while (!instances.isEmpty()) {
               final MLRData instance = instances.poll();
@@ -226,19 +223,25 @@ final class MLRTrainer implements Trainer {
               count++;
             }
             barrier.await();
-            final Vector[] model = modelHolder.getModel();
-            aggregateGradient(model);
-            return null;
+            LOG.log(Level.INFO, "Computation is done");
+            return modelHolder.getModel();
           });
+          LOG.log(Level.INFO, "Before get the result");
+          results.add(perThreadResult);
+          LOG.log(Level.INFO, "Result from thread {0} has been added", threadIdx);
         }
         barrier.await();
+        LOG.log(Level.INFO, "Barrier passed.");
         computeTracer.recordTime(numInstancesToProcess);
       } catch (final InterruptedException | BrokenBarrierException e) {
+        LOG.log(Level.SEVERE, "Exception occurred.", e);
         throw new RuntimeException(e);
       }
 
+      final Vector[] gradients = aggregateGradient(results);
+      LOG.log(Level.INFO, "Gradient copmletes");
       // push gradients
-      pushAndResetGradients();
+      pushAndResetGradients(gradients);
 
       // update the instances processed so far
       numTotalInstancesProcessed += numInstancesToProcess;
@@ -343,13 +346,29 @@ final class MLRTrainer implements Trainer {
     }
   }
 
-  private synchronized void aggregateGradient(final Vector[] newModels) {
-    for (int classIdx = 0; classIdx < numClasses; classIdx++) {
-      gradients[classIdx] = newModels[classIdx].sub(oldModels[classIdx]);
+  private Vector[] aggregateGradient(final List<Future<Vector[]>> results) {
+    final Vector[] gradients = new Vector[numClasses];
+
+    for (final Future<Vector[]> result : results) {
+      final Vector[] newModels;
+      try {
+        newModels = result.get();
+      } catch (final InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+      for (int classIdx = 0; classIdx < numClasses; classIdx++) {
+        if (gradients[classIdx] == null) {
+          gradients[classIdx] = newModels[classIdx].sub(oldModels[classIdx]);
+        } else {
+          gradients[classIdx].addi(newModels[classIdx]);
+          gradients[classIdx].subi(oldModels[classIdx]);
+        }
+      }
     }
+    return gradients;
   }
 
-  private void pushAndResetGradients() {
+  private void pushAndResetGradients(final Vector[] gradients) {
     for (int classIndex = 0; classIndex < numClasses; classIndex++) {
       computeTracer.startTimer();
       final Vector gradient = gradients[classIndex];
