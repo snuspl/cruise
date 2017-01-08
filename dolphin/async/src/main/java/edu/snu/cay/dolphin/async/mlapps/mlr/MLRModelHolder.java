@@ -22,7 +22,7 @@ import java.io.Closeable;
 /**
  * Created by yunseong on 1/6/17.
  */
-final class MLRModelHolder implements Closeable {
+final class MLRModelHolder {
 
   private final ThreadLocal<Vector[]> model;
 
@@ -35,10 +35,5 @@ final class MLRModelHolder implements Closeable {
    */
   Vector[] getModel() {
     return model.get();
-  }
-
-  @Override
-  public void close() {
-    this.model.remove();
   }
 }

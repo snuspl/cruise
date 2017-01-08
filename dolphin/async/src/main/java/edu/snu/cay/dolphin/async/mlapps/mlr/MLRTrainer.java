@@ -213,26 +213,25 @@ final class MLRTrainer implements Trainer {
       final List<Future<Vector[]>> results = new ArrayList<>(numTrainerThreads);
 
       // pull data when mini-batch is started
-      try (final MLRModelHolder modelHolder = pullModels()) {
+      final Vector[] model = pullModels();
+      try {
         computeTracer.startTimer();
         for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
-          final Future<Vector[]> perThreadResult = executor.submit(() -> {
+          final int finalThreadIdx = threadIdx;
+          final Future<Vector[]> resultFuture = executor.submit(() -> {
             int count = 0;
             while (!instances.isEmpty()) {
               final MLRData instance = instances.poll();
-              updateModel(instance, modelHolder.getModel());
+              updateModel(instance, model);
               count++;
             }
             barrier.await();
-            LOG.log(Level.INFO, "Computation is done");
-            return modelHolder.getModel();
+            LOG.log(Level.INFO, "{0}-th thread computed {1} instances", new Object[] {finalThreadIdx, count});
+            return model;
           });
-          LOG.log(Level.INFO, "Before get the result");
-          results.add(perThreadResult);
-          LOG.log(Level.INFO, "Result from thread {0} has been added", threadIdx);
+          results.add(resultFuture);
         }
         barrier.await();
-        LOG.log(Level.INFO, "Barrier passed.");
         computeTracer.recordTime(numInstancesToProcess);
       } catch (final InterruptedException | BrokenBarrierException e) {
         LOG.log(Level.SEVERE, "Exception occurred.", e);
@@ -242,7 +241,7 @@ final class MLRTrainer implements Trainer {
       // TODO #821: Use Java stream
       final List<Vector[]> newModels = retrieveModels(results);
       final Vector[] gradients = aggregateGradient(newModels);
-      LOG.log(Level.INFO, "Gradient completes");
+
       // push gradients
       pushAndResetGradients(gradients);
 
@@ -272,23 +271,21 @@ final class MLRTrainer implements Trainer {
     }
 
     LOG.log(Level.INFO, "Pull model to compute loss value");
-    try (final MLRModelHolder holder = pullModels()) {
-      final Vector[] model = holder.getModel();
+    final Vector[] model = pullModels();
 
-      LOG.log(Level.INFO, "Start computing loss value");
-      final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed, model);
+    LOG.log(Level.INFO, "Start computing loss value");
+    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed, model);
 
-      final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-      final double sampleLoss = lossRegLossAccuracy.getFirst();
-      final double regLoss = lossRegLossAccuracy.getSecond();
-      final double accuracy = lossRegLossAccuracy.getThird();
-      final WorkerMetrics epochMetric =
-          buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
-              numTotalInstancesProcessed, sampleLoss, regLoss, accuracy, epochElapsedTime);
+    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+    final double sampleLoss = lossRegLossAccuracy.getFirst();
+    final double regLoss = lossRegLossAccuracy.getSecond();
+    final double accuracy = lossRegLossAccuracy.getThird();
+    final WorkerMetrics epochMetric =
+        buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
+            numTotalInstancesProcessed, sampleLoss, regLoss, accuracy, epochElapsedTime);
 
-      LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
-      sendMetrics(epochMetric);
-    }
+    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
   }
 
   private List<Vector[]> retrieveModels(final List<Future<Vector[]>> results) {
@@ -310,10 +307,11 @@ final class MLRTrainer implements Trainer {
   public void cleanup() {
   }
 
-  private MLRModelHolder pullModels() {
+  private Vector[] pullModels() {
     pullTracer.startTimer();
     final List<Vector> partitions = parameterWorker.pull(classPartitionIndices);
     pullTracer.recordTime(partitions.size());
+
     computeTracer.startTimer();
     final Vector[] newModels = new Vector[numClasses];
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
@@ -329,7 +327,8 @@ final class MLRTrainer implements Trainer {
     }
     final MLRModelHolder holder = new MLRModelHolder(newModels);
     computeTracer.recordTime(0);
-    return holder;
+
+    return holder.getModel();
   }
 
   /**
