@@ -514,7 +514,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
   }
 
   private <V> Map<Long, V> executeLocalSubOperation(final RangeKeyOperation<Long, V> operation,
-                              final int blockId, final List<Pair<Long, Long>> subKeyRanges) {
+                                                    final int blockId, final List<Pair<Long, Long>> subKeyRanges) {
     final Map<Long, V> outputData;
     final Lock readLock = router.resolveEvalWithLock(blockId).getValue();
     try {
