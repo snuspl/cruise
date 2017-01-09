@@ -143,7 +143,13 @@ final class MLRTrainer implements Trainer {
     this.oldModels = new Vector[numClasses];
     this.newModels = new Vector[numClasses];
     this.decayRate = decayRate;
+    if (decayRate < 0.0 || decayRate > 1.0) {
+      throw new RuntimeException("decay_rate must be the value between 0 and 1");
+    }
     this.decayPeriod = decayPeriod;
+    if (decayPeriod < 0) {
+      throw new RuntimeException("decay_period must be non-negative value");
+    }
     this.metricsMsgSender = metricsMsgSender;
     this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
@@ -222,7 +228,7 @@ final class MLRTrainer implements Trainer {
       miniBatchIdx++;
     }
 
-    if (iteration % decayPeriod == 0) {
+    if (!(decayPeriod == 0) && iteration % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",

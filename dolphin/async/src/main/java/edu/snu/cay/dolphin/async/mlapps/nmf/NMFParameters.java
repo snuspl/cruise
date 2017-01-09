@@ -35,13 +35,17 @@ final class NMFParameters {
   static final class Lambda implements Name<Double> {
   }
 
-  @NamedParameter(doc = "ratio which learning rate decreases by (multiplicative)",
-      short_name = "decay_rate")
+  @NamedParameter(doc = "ratio which learning rate decreases by (multiplicative). this value must be a value " +
+      "between 0 and 1",
+      short_name = "decay_rate",
+      default_value="1.0")
   static final class DecayRate implements Name<Double> {
   }
 
-  @NamedParameter(doc = "number of iterations to wait until learning rate decreases (periodic)",
-      short_name = "decay_period")
+  @NamedParameter(doc = "number of iterations to wait until learning rate decreases (periodic). this value must be " +
+      "a non-negative value",
+      short_name = "decay_period",
+      default_value="0")
   static final class DecayPeriod implements Name<Integer> {
   }
 

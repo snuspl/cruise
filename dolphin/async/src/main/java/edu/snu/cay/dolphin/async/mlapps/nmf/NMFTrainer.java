@@ -105,7 +105,13 @@ final class NMFTrainer implements Trainer {
     this.stepSize = stepSize;
     this.lambda = lambda;
     this.decayRate = decayRate;
+    if (decayRate < 0.0 || decayRate > 1.0) {
+      throw new RuntimeException("decay_rate must be the value between 0 and 1");
+    }
     this.decayPeriod = decayPeriod;
+    if (decayPeriod < 0) {
+      throw new RuntimeException("decay_period must be non-negative value");
+    }
     this.miniBatchSize = miniBatchSize;
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
@@ -182,7 +188,7 @@ final class NMFTrainer implements Trainer {
       miniBatchIdx++;
     }
 
-    if (iteration % decayPeriod == 0) {
+    if (!(decayPeriod == 0) && iteration % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
