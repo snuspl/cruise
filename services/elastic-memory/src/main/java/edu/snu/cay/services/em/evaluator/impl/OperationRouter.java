@@ -41,8 +41,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * OperationRouter that redirects incoming operations on specific data ids to corresponding blocks and evaluators.
- * Note that this class is not thread-safe, which means client of this class must synchronize explicitly.
+ * OperationRouter that maintains ownership info, which is a mapping between blocks and owning evaluators.
+ * In addition, it locks and unlocks block upon migration, which should be excluded from block access.
  */
 @Private
 @NotThreadSafe
