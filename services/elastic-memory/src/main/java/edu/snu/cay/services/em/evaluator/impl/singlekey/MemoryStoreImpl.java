@@ -39,7 +39,7 @@ import java.util.logging.Logger;
  * All data is stored in multiple Blocks embedding a {@code ConcurrentHashMap}.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
-public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> {
+public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>, BlockHandler<K> {
   private static final Logger LOG = Logger.getLogger(MemoryStore.class.getName());
 
   private static final int QUEUE_SIZE = 1024;
