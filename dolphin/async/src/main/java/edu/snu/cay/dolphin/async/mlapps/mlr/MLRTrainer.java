@@ -20,12 +20,14 @@ import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.ModelHolder;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -87,9 +89,9 @@ final class MLRTrainer implements Trainer {
   private final VectorFactory vectorFactory;
 
   /**
-   * Model vectors that represent each class.
+   * Preserves the model parameters that are pulled from server, in order to compute the gradients to push.
    */
-  private final Vector[] oldModels;
+  private final Vector[] oldParams;
 
   /**
    * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@link #pullModels()}.
@@ -109,9 +111,24 @@ final class MLRTrainer implements Trainer {
   private final MemoryStore<Long> memoryStore;
   private final TrainingDataProvider<Long, MLRData> trainingDataProvider;
 
+  /**
+   * Executes the Trainer threads.
+   */
   private final ExecutorService executor;
+
+  /**
+   * Barrier to wait until all threads finish their batch.
+   */
   private final CyclicBarrier barrier;
+
+  /**
+   * A queue that keeps the training data instances to process.
+   */
   private final ConcurrentLinkedQueue<MLRData> instances;
+
+  /**
+   * Number of Trainer threads that train concurrently.
+   */
   private final int numTrainerThreads;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
@@ -146,7 +163,7 @@ final class MLRTrainer implements Trainer {
     this.stepSize = initStepSize;
     this.lambda = lambda;
     this.vectorFactory = vectorFactory;
-    this.oldModels = new Vector[numClasses];
+    this.oldParams = new Vector[numClasses];
 
     this.decayRate = decayRate;
     if (decayRate <= 0.0 || decayRate > 1.0) {
@@ -210,15 +227,15 @@ final class MLRTrainer implements Trainer {
       resetTracers();
       final long miniBatchStartTime = System.currentTimeMillis();
 
-      final List<Future<Vector[]>> results = new ArrayList<>(numTrainerThreads);
-
       // pull data when mini-batch is started
-      final Vector[] model = pullModels();
+      final MLRModel model = pullModels();
+
+      // collects the results
+      final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
       try {
         computeTracer.startTimer();
         for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
-          final int finalThreadIdx = threadIdx;
-          final Future<Vector[]> resultFuture = executor.submit(() -> {
+          final Future<MLRModel> future = executor.submit(() -> {
             int count = 0;
             while (!instances.isEmpty()) {
               final MLRData instance = instances.poll();
@@ -226,10 +243,11 @@ final class MLRTrainer implements Trainer {
               count++;
             }
             barrier.await();
-            LOG.log(Level.INFO, "{0}-th thread computed {1} instances", new Object[] {finalThreadIdx, count});
+            LOG.log(Level.INFO, "{0} has computed {1} instances",
+                new Object[] {Thread.currentThread().getName(), count});
             return model;
           });
-          results.add(resultFuture);
+          futures.add(future);
         }
         barrier.await();
         computeTracer.recordTime(numInstancesToProcess);
@@ -238,8 +256,7 @@ final class MLRTrainer implements Trainer {
         throw new RuntimeException(e);
       }
 
-      // TODO #821: Use Java stream
-      final List<Vector[]> newModels = retrieveModels(results);
+      final List<MLRModel> newModels = ThreadUtils.retrieveResults(futures);
       final Vector[] gradients = aggregateGradient(newModels);
 
       // push gradients
@@ -271,7 +288,7 @@ final class MLRTrainer implements Trainer {
     }
 
     LOG.log(Level.INFO, "Pull model to compute loss value");
-    final Vector[] model = pullModels();
+    final MLRModel model = pullModels();
 
     LOG.log(Level.INFO, "Start computing loss value");
     final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed, model);
@@ -288,32 +305,21 @@ final class MLRTrainer implements Trainer {
     sendMetrics(epochMetric);
   }
 
-  private List<Vector[]> retrieveModels(final List<Future<Vector[]>> results) {
-    try {
-      final List<Vector[]> newModels = new ArrayList<>(results.size());
-      for (final Future<Vector[]> future : results) {
-        newModels.add(future.get());
-      }
-      return newModels;
-    } catch (final InterruptedException | ExecutionException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   /**
    * Pull models one last time and perform validation.
    */
   @Override
   public void cleanup() {
+    executor.shutdown();
   }
 
-  private Vector[] pullModels() {
+  private MLRModel pullModels() {
     pullTracer.startTimer();
     final List<Vector> partitions = parameterWorker.pull(classPartitionIndices);
     pullTracer.recordTime(partitions.size());
 
     computeTracer.startTimer();
-    final Vector[] newModels = new Vector[numClasses];
+    final Vector[] newParams = new Vector[numClasses];
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       // 0 ~ (numPartitionsPerClass - 1) is for class 0
       // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
@@ -322,10 +328,11 @@ final class MLRTrainer implements Trainer {
           partitions.subList(classIndex * numPartitionsPerClass, (classIndex + 1) * numPartitionsPerClass);
 
       // concat partitions into one long vector
-      oldModels[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
-      newModels[classIndex] = oldModels[classIndex].copy();
+      oldParams[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
+      newParams[classIndex] = oldParams[classIndex].copy();
     }
-    final MLRModelHolder holder = new MLRModelHolder(newModels);
+
+    final ModelHolder<MLRModel> holder = new MLRModelHolder(newParams);
     computeTracer.recordTime(0);
 
     return holder.getModel();
@@ -334,13 +341,15 @@ final class MLRTrainer implements Trainer {
   /**
    * Processes one training data instance and update the intermediate model.
    * @param instance training data instance
+   * @param model up-to-date model
    */
-  private void updateModel(final MLRData instance, final Vector[] model) {
+  private void updateModel(final MLRData instance, final MLRModel model) {
     final Vector feature = instance.getFeature();
+    final Vector[] params = model.getParams();
     final int label = instance.getLabel();
 
     // compute h(x, w) = softmax(x dot w)
-    final Vector predictions = predict(feature, model);
+    final Vector predictions = predict(feature, params);
 
     // error = h(x, w) - y, where y_j = 1 (if positive for class j) or 0 (otherwise)
     // instead of allocating a new vector for the error,
@@ -350,31 +359,43 @@ final class MLRTrainer implements Trainer {
     // gradient_j = -stepSize * error_j * x
     if (lambda != 0) {
       for (int j = 0; j < numClasses; ++j) {
-        model[j].axpy(-predictions.get(j) * stepSize, feature);
-        model[j].axpy(-stepSize * lambda, model[j]);
+        params[j].axpy(-predictions.get(j) * stepSize, feature);
+        params[j].axpy(-stepSize * lambda, params[j]);
       }
     } else {
       for (int j = 0; j < numClasses; ++j) {
-        model[j].axpy(-predictions.get(j) * stepSize, feature);
+        params[j].axpy(-predictions.get(j) * stepSize, feature);
       }
     }
   }
 
-  private Vector[] aggregateGradient(final List<Vector[]> results) {
+  /**
+   * Aggregate the model computed by multiple threads, to get the gradients to push.
+   * gradient_j = avg(param_t) - param_0 for class j, where t is thread index and param_0 is the parameters pulled
+   * at the beginning.
+   * @param results list of results (model parameters) computed by trainer threads
+   * @return an array of vectors each of which is gradient in a class.
+   */
+  private Vector[] aggregateGradient(final List<MLRModel> results) {
     final Vector[] gradients = new Vector[numClasses];
     for (int classIdx = 0; classIdx < numClasses; classIdx++) {
-      gradients[classIdx] = oldModels[classIdx].scale(-1.0);
+      gradients[classIdx] = oldParams[classIdx].scale(-1.0);
     }
 
     final double coefficient = 1.0 / numTrainerThreads;
-    for (final Vector[] newModels : results) {
+    for (final MLRModel model : results) {
+      final Vector[] params = model.getParams();
       for (int classIdx = 0; classIdx < numClasses; classIdx++) {
-        gradients[classIdx].axpy(coefficient, newModels[classIdx]);
+        gradients[classIdx].axpy(coefficient, params[classIdx]);
       }
     }
     return gradients;
   }
 
+  /**
+   * Push the gradients to parameter server.
+   * @param gradients an array of vectors each of which is gradient in a class.
+   */
   private void pushAndResetGradients(final Vector[] gradients) {
     for (int classIndex = 0; classIndex < numClasses; classIndex++) {
       computeTracer.startTimer();
@@ -396,14 +417,15 @@ final class MLRTrainer implements Trainer {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Double> computeLoss(final List<MLRData> data, final Vector[] model) {
+  private Tuple3<Double, Double, Double> computeLoss(final List<MLRData> data, final MLRModel model) {
+    final Vector[] params = model.getParams();
+
     double loss = 0;
     int correctPredictions = 0;
 
     for (final MLRData entry : data) {
       final Vector feature = entry.getFeature();
-      final int label = entry.getLabel();
-      final Vector predictions = predict(feature, model);
+      final int label = entry.getLabel(); final Vector predictions = predict(feature, params);
       final int prediction = max(predictions).getFirst();
 
       if (label == prediction) {
@@ -423,10 +445,10 @@ final class MLRTrainer implements Trainer {
     if (lambda != 0) {
       // skip this part entirely if lambda is zero, to avoid regularization operation overheads
       for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
-        final Vector perClassModel = model[classIndex];
+        final Vector perClassParams = params[classIndex];
         double l2norm = 0;
-        for (int vectorIndex = 0; vectorIndex < perClassModel.length(); ++vectorIndex) {
-          l2norm += perClassModel.get(vectorIndex) * perClassModel.get(vectorIndex);
+        for (int vectorIndex = 0; vectorIndex < perClassParams.length(); ++vectorIndex) {
+          l2norm += perClassParams.get(vectorIndex) * perClassParams.get(vectorIndex);
         }
         regLoss += l2norm * lambda / 2;
       }
@@ -439,10 +461,10 @@ final class MLRTrainer implements Trainer {
   /**
    * Compute the probability vector of the given data instance, represented by {@code features}.
    */
-  private Vector predict(final Vector features, final Vector[] model) {
+  private Vector predict(final Vector features, final Vector[] params) {
     final double[] predict = new double[numClasses];
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
-      predict[classIndex] = model[classIndex].dot(features);
+      predict[classIndex] = params[classIndex].dot(features);
     }
     return softmax(vectorFactory.createDense(predict));
   }

@@ -16,27 +16,21 @@
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.ModelHolder;
-
-import javax.annotation.concurrent.ThreadSafe;
 
 /**
- * Provides a reference to model data used in MLR app.
- * This implementation allows multiple threads to update their model locally without any side-effect from others.
+ * Encapsulates the model data in MLR app.
  */
-@ThreadSafe
-final class MLRModelHolder implements ModelHolder<MLRModel> {
-  private final ThreadLocal<MLRModel> model;
+final class MLRModel {
+  private final Vector[] params;
 
-  MLRModelHolder(final Vector[] params) {
-    this.model = ThreadLocal.withInitial(() -> new MLRModel(params.clone()));
+  MLRModel(final Vector[] params) {
+    this.params = params;
   }
 
   /**
-   * Gets the up-to-date model locally assigned to this thread.
+   * @return a vector that consists of model parameters.
    */
-  @Override
-  public MLRModel getModel() {
-    return model.get();
+  Vector[] getParams() {
+    return params;
   }
 }
