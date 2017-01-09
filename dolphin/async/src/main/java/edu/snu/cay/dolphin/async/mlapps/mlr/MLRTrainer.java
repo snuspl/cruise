@@ -102,7 +102,7 @@ final class MLRTrainer implements Trainer {
   private final double decayRate;
 
   /**
-   * The step size drops after {@code decayPeriod} iterations pass.
+   * The step size drops after every {@code decayPeriod} iterations pass.
    */
   private final int decayPeriod;
 
@@ -143,7 +143,13 @@ final class MLRTrainer implements Trainer {
     this.oldModels = new Vector[numClasses];
     this.newModels = new Vector[numClasses];
     this.decayRate = decayRate;
+    if (decayRate <= 0.0 || decayRate > 1.0) {
+      throw new IllegalArgumentException("decay_rate must be larger than 0 and less than or equal to 1");
+    }
     this.decayPeriod = decayPeriod;
+    if (decayPeriod <= 0) {
+      throw new IllegalArgumentException("decay_period must be a positive value");
+    }
     this.metricsMsgSender = metricsMsgSender;
     this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
@@ -222,7 +228,7 @@ final class MLRTrainer implements Trainer {
       miniBatchIdx++;
     }
 
-    if (iteration % decayPeriod == 0) {
+    if (!(decayRate == 1) && iteration % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
