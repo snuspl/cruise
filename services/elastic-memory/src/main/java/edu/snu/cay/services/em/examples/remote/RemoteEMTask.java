@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
+import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
@@ -64,7 +65,9 @@ final class RemoteEMTask implements Task {
   /**
    * A router that is an internal component of EM. Here we use it in user code for testing purpose.
    */
-  private final OperationRouter<Long> router;
+  private final OperationRouter router;
+
+  private final BlockResolver<Long> blockResolver;
 
   private final int numInitialEvals;
   private final int localMemoryStoreId;
@@ -86,7 +89,8 @@ final class RemoteEMTask implements Task {
 
   @Inject
   private RemoteEMTask(final MemoryStore<Long> memoryStore,
-                       final OperationRouter<Long> router,
+                       final OperationRouter router,
+                       final BlockResolver<Long> blockResolver,
                        final AggregationSlave aggregationSlave,
                        final EvalSideMsgHandler msgHandler,
                        final SerializableCodec<String> codec,
@@ -98,6 +102,7 @@ final class RemoteEMTask implements Task {
       throws InjectionException {
     this.memoryStore = memoryStore;
     this.router = router;
+    this.blockResolver = blockResolver;
     this.aggregationSlave = aggregationSlave;
     this.msgHandler = msgHandler;
     this.codec = codec;
@@ -263,7 +268,7 @@ final class RemoteEMTask implements Task {
       // check that the total number of objects equal the expected number
       final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
-      LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
+      LOG.log(Level.INFO, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != numItems) {
         throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
@@ -280,7 +285,7 @@ final class RemoteEMTask implements Task {
 
       // check that the total number of objects equal the expected number
       outputMap = memoryStore.getRange(0L, maxDataKey);
-      LOG.log(Level.FINE, "outputMap.size: {0}", outputMap.size());
+      LOG.log(Level.INFO, "outputMap.size: {0}", outputMap.size());
       if (outputMap.size() != 0) {
         throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
@@ -984,7 +989,18 @@ final class RemoteEMTask implements Task {
 
       final List<Pair<Long, Long>> rangeList = new ArrayList<>(1);
       rangeList.add(new Pair<>(0L, 1L));
-      final boolean isLocalKey = !router.route(rangeList).getFirst().isEmpty();
+
+      boolean isLocalKey = false;
+      for (final Pair<Long, Long> keyRange : rangeList) {
+        final Set<Integer> blockIds =
+            blockResolver.resolveBlocksForOrderedKeys(keyRange.getFirst(), keyRange.getSecond()).keySet();
+        for (final int blockId : blockIds) {
+          if (!router.resolveEval(blockId).isPresent()) {
+            isLocalKey = true;
+            break;
+          }
+        }
+      }
 
       // 1. INITIAL STATE: check that the store does not contain DATA
       outputMap = memoryStore.getRange(dataKey0, dataKey1);
