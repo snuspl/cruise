@@ -106,11 +106,11 @@ final class NMFTrainer implements Trainer {
     this.lambda = lambda;
     this.decayRate = decayRate;
     if (decayRate < 0.0 || decayRate > 1.0) {
-      throw new RuntimeException("decay_rate must be the value between 0 and 1");
+      throw new RuntimeException("decay_rate must be a value between 0 and 1");
     }
     this.decayPeriod = decayPeriod;
     if (decayPeriod < 0) {
-      throw new RuntimeException("decay_period must be non-negative value");
+      throw new RuntimeException("decay_period must a non-negative value");
     }
     this.miniBatchSize = miniBatchSize;
     this.printMatrices = printMatrices;
