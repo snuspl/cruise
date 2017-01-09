@@ -41,6 +41,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * The purpose of this example app is to test remote access of EM, overcoming the limitation of unit testing.
@@ -994,12 +995,10 @@ final class RemoteEMTask implements Task {
       for (final Pair<Long, Long> keyRange : rangeList) {
         final Set<Integer> blockIds =
             blockResolver.resolveBlocksForOrderedKeys(keyRange.getFirst(), keyRange.getSecond()).keySet();
-        for (final int blockId : blockIds) {
-          if (!router.resolveEval(blockId).isPresent()) {
-            isLocalKey = true;
-            break;
-          }
-        }
+
+        // assumes that both keys belong to the same store
+        final int blockId = blockIds.iterator().next();
+        isLocalKey = !router.resolveEval(blockId).isPresent();
       }
 
       // 1. INITIAL STATE: check that the store does not contain DATA

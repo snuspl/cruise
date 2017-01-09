@@ -224,8 +224,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
           submitLocalResult(operation, Collections.emptyMap(), failedRanges);
         }
       } finally {
-        final Lock routerLock = remoteEvalIdWithLock.getValue();
-        routerLock.unlock();
+        final Lock readLock = remoteEvalIdWithLock.getValue();
+        readLock.unlock();
       }
     }
   }
@@ -486,16 +486,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
     // first execute a head range to reuse the returned map object for a return map
     if (blockToSubKeyRangesIterator.hasNext()) {
       final Map.Entry<Integer, List<Pair<Long, Long>>> blockToSubKeyRanges = blockToSubKeyRangesIterator.next();
-      final int blockId = blockToSubKeyRanges.getKey();
-      final Lock readLock = router.resolveEvalWithLock(blockId).getValue();
-      try {
-        final Block<V> block = blocks.get(blockId);
-        final List<Pair<Long, Long>> subKeyRanges = blockToSubKeyRanges.getValue();
 
-        outputData = block.executeSubOperation(operation, subKeyRanges);
-      } finally {
-        readLock.unlock();
-      }
+      final int blockId = blockToSubKeyRanges.getKey();
+      final List<Pair<Long, Long>> subKeyRanges = blockToSubKeyRanges.getValue();
+      outputData = executeLocalSubOperation(operation, blockId, subKeyRanges);
     } else {
       return Collections.emptyMap();
     }
@@ -504,19 +498,27 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
     while (blockToSubKeyRangesIterator.hasNext()) {
       final Map<Long, V> partialOutput;
       final Map.Entry<Integer, List<Pair<Long, Long>>> blockToSubKeyRanges = blockToSubKeyRangesIterator.next();
-      final int blockId = blockToSubKeyRanges.getKey();
-      final Lock readLock = router.resolveEvalWithLock(blockId).getValue();
-      try {
-        final Block<V> block = blocks.get(blockId);
-        final List<Pair<Long, Long>> subKeyRanges = blockToSubKeyRanges.getValue();
 
-        partialOutput = block.executeSubOperation(operation, subKeyRanges);
-      } finally {
-        readLock.unlock();
-      }
+      final int blockId = blockToSubKeyRanges.getKey();
+      final List<Pair<Long, Long>> subKeyRanges = blockToSubKeyRanges.getValue();
+      partialOutput = executeLocalSubOperation(operation, blockId, subKeyRanges);
+
       outputData.putAll(partialOutput);
     }
 
+    return outputData;
+  }
+
+  private <V> Map<Long, V> executeLocalSubOperation(final RangeKeyOperation<Long, V> operation,
+                              final int blockId, final List<Pair<Long, Long>> subKeyRanges) {
+    final Map<Long, V> outputData;
+    final Lock readLock = router.resolveEvalWithLock(blockId).getValue();
+    try {
+      final Block<V> block = blocks.get(blockId);
+      outputData = block.executeSubOperation(operation, subKeyRanges);
+    } finally {
+      readLock.unlock();
+    }
     return outputData;
   }
 
