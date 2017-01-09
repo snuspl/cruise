@@ -50,7 +50,7 @@ final class MLRParameters {
   static final class ModelGaussian implements Name<Double> {
   }
 
-  @NamedParameter(doc = "number of iterations to wait until learning wait decreases (periodic)",
+  @NamedParameter(doc = "number of iterations to wait until learning rate decreases (periodic)",
       short_name = "decay_period")
   static final class DecayPeriod implements Name<Integer> {
   }

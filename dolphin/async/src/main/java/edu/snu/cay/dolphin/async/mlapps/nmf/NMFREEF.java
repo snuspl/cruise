@@ -46,6 +46,8 @@ public final class NMFREEF {
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
         .addParameterClass(PrintMatrices.class)
+        .addParameterClass(DecayPeriod.class)
+        .addParameterClass(DecayRate.class)
         .build());
   }
 }
