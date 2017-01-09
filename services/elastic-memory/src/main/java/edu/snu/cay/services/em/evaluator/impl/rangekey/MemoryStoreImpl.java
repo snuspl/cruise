@@ -437,18 +437,22 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long>,
     final Map<Integer, List<Pair<Long, Long>>> localBlockToSubKeyRangesMap = new HashMap<>();
     final Map<String, List<Pair<Long, Long>>> remoteEvalToSubKeyRangesMap = new HashMap<>();
 
+    // classify sub-ranges into remote and local
     for (final Map.Entry<Integer, List<Pair<Long, Long>>> entry : blockToSubKeyRangesMap.entrySet()) {
       final int blockId = entry.getKey();
       final List<Pair<Long, Long>> rangeList = entry.getValue();
       final Optional<String> remoteEvalIdOptional = router.resolveEval(blockId);
-      if (remoteEvalIdOptional.isPresent()) {
+
+      if (remoteEvalIdOptional.isPresent()) { // remote blocks
+        // aggregate sub key ranges per evaluator
         final String remoteEvalId = remoteEvalIdOptional.get();
         if (remoteEvalToSubKeyRangesMap.containsKey(remoteEvalId)) {
           remoteEvalToSubKeyRangesMap.get(remoteEvalId).addAll(rangeList);
         } else {
           remoteEvalToSubKeyRangesMap.put(remoteEvalId, rangeList);
         }
-      } else {
+      } else { // local blocks
+        // aggregate sub key ranges per block
         if (localBlockToSubKeyRangesMap.containsKey(blockId)) {
           localBlockToSubKeyRangesMap.get(blockId).addAll(rangeList);
         }
