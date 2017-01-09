@@ -19,7 +19,10 @@ import edu.snu.cay.services.em.evaluator.api.Block;
 import edu.snu.cay.services.em.evaluator.api.BlockFactory;
 import edu.snu.cay.services.em.evaluator.api.BlockHandler;
 import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
+import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.annotations.audience.Private;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.Collections;
 import java.util.Map;
@@ -30,6 +33,9 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * A store that contains all local blocks.
  */
+@Private
+@ThreadSafe
+@EvaluatorSide
 public final class BlockStore<K, V> implements BlockHandler<K, V> {
   /**
    * Maintains blocks associated with blockIds.

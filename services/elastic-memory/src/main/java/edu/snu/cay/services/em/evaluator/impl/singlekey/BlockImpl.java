@@ -82,7 +82,7 @@ final class BlockImpl<K, V> implements Block<K, V> {
   }
 
   @Override
-  public int getNumUnits() {
+  public int getNumPairs() {
     return subDataMap.size();
   }
 }

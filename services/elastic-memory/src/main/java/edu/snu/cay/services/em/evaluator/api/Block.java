@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
+import org.apache.reef.annotations.audience.Private;
+
 import java.util.Map;
 
 /**
@@ -23,6 +25,7 @@ import java.util.Map;
  * @param <K> a type of key
  * @param <V> a type of value
  */
+@Private
 public interface Block<K, V> {
 
   /**
@@ -44,7 +47,6 @@ public interface Block<K, V> {
 
   /**
    * Returns the number of data in a block.
-   * It is for supporting getNumUnits method of MemoryStore.
    */
-  int getNumUnits();
+  int getNumPairs();
 }

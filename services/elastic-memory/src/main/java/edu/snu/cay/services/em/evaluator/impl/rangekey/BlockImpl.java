@@ -109,7 +109,7 @@ final class BlockImpl<Long, V> implements Block<Long, V> {
   public Map<Long, V> getAll() {
     rwLock.readLock().lock();
     try {
-      return (Map<Long, V>) ((TreeMap) subDataMap).clone();
+      return (Map<Long, V>) ((TreeMap<Long, V>) subDataMap).clone();
     } finally {
       rwLock.readLock().unlock();
     }
@@ -130,7 +130,7 @@ final class BlockImpl<Long, V> implements Block<Long, V> {
     final Map<Long, V> result;
     rwLock.writeLock().lock();
     try {
-      result = (Map<Long, V>) ((TreeMap) subDataMap).clone();
+      result = (Map<Long, V>) ((TreeMap<Long, V>) subDataMap).clone();
       subDataMap.clear();
     } finally {
       rwLock.writeLock().unlock();
@@ -140,7 +140,7 @@ final class BlockImpl<Long, V> implements Block<Long, V> {
   }
 
   @Override
-  public int getNumUnits() {
+  public int getNumPairs() {
     return subDataMap.size();
   }
 }

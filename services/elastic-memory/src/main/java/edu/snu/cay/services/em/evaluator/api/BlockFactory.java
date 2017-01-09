@@ -15,9 +15,12 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
+import org.apache.reef.annotations.audience.Private;
+
 /**
  * A factory class that produces a new block instance.
  */
+@Private
 public interface BlockFactory {
 
   /**
