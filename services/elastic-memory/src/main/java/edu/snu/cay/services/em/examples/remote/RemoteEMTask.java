@@ -41,7 +41,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * The purpose of this example app is to test remote access of EM, overcoming the limitation of unit testing.
