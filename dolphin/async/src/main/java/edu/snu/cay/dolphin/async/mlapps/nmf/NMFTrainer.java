@@ -52,7 +52,7 @@ final class NMFTrainer implements Trainer {
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
   private final VectorFactory vectorFactory;
   private final int rank;
-  private final double stepSize;
+  private double stepSize;
   private final double lambda;
 
   /**
@@ -64,6 +64,16 @@ final class NMFTrainer implements Trainer {
   private final NMFModelGenerator modelGenerator;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
+
+  /**
+   * The step size drops by this rate.
+   */
+  private final double decayRate;
+
+  /**
+   * The step size drops after every {@code decayPeriod} iterations pass.
+   */
+  private final int decayPeriod;
 
   private final MemoryStore<Long> memoryStore;
   private final TrainingDataProvider<Long, NMFData> trainingDataProvider;
@@ -81,6 +91,8 @@ final class NMFTrainer implements Trainer {
                      @Parameter(Rank.class) final int rank,
                      @Parameter(StepSize.class) final double stepSize,
                      @Parameter(Lambda.class) final double lambda,
+                     @Parameter(DecayRate.class) final double decayRate,
+                     @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      final NMFModelGenerator modelGenerator,
@@ -92,6 +104,14 @@ final class NMFTrainer implements Trainer {
     this.rank = rank;
     this.stepSize = stepSize;
     this.lambda = lambda;
+    this.decayRate = decayRate;
+    if (decayRate <= 0.0 || decayRate > 1.0) {
+      throw new IllegalArgumentException("decay_rate must be larger than 0 and less than or equal to 1");
+    }
+    this.decayPeriod = decayPeriod;
+    if (decayPeriod <= 0) {
+      throw new IllegalArgumentException("decay_period must be a positive value");
+    }
     this.miniBatchSize = miniBatchSize;
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
@@ -166,6 +186,13 @@ final class NMFTrainer implements Trainer {
       workload = nextTrainingData.values();
       numInstancesToProcess = workload.size();
       miniBatchIdx++;
+    }
+
+    if (!(decayRate == 1) && iteration % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+          new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
     LOG.log(Level.INFO, "Pull model to compute loss value");
