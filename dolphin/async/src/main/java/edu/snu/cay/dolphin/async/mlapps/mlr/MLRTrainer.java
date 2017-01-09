@@ -102,7 +102,7 @@ final class MLRTrainer implements Trainer {
   private final double decayRate;
 
   /**
-   * The step size drops after {@code decayPeriod} iterations pass.
+   * The step size drops after every {@code decayPeriod} iterations pass.
    */
   private final int decayPeriod;
 
