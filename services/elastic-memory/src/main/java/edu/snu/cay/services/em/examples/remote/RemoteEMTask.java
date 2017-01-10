@@ -987,18 +987,11 @@ final class RemoteEMTask implements Task {
       Pair<Long, Integer> outputPair;
       Map<Long, Integer> outputMap;
 
-      final List<Pair<Long, Long>> rangeList = new ArrayList<>(1);
-      rangeList.add(new Pair<>(0L, 1L));
+      final Set<Integer> blockIds = blockResolver.resolveBlocksForOrderedKeys(dataKey0, dataKey1).keySet();
 
-      boolean isLocalKey = false;
-      for (final Pair<Long, Long> keyRange : rangeList) {
-        final Set<Integer> blockIds =
-            blockResolver.resolveBlocksForOrderedKeys(keyRange.getFirst(), keyRange.getSecond()).keySet();
-
-        // assumes that both keys belong to the same store
-        final int blockId = blockIds.iterator().next();
-        isLocalKey = !router.resolveEval(blockId).isPresent();
-      }
+      // assumes that both keys belong to the same store
+      final int blockId = blockIds.iterator().next();
+      final boolean isLocalKey = !router.resolveEval(blockId).isPresent();
 
       // 1. INITIAL STATE: check that the store does not contain DATA
       outputMap = memoryStore.getRange(dataKey0, dataKey1);
