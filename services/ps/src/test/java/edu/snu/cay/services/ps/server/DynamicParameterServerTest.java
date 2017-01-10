@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.singlekey.BlockFactoryImpl;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
@@ -91,6 +92,7 @@ public final class DynamicParameterServerTest {
         .bindNamedParameter(PSParameters.PreValueCodecName.class, IntegerCodec.class)
         .bindNamedParameter(ServerQueueSize.class, Integer.toString(SERVER_QUEUE_SIZE))
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindImplementation(BlockFactory.class, BlockFactoryImpl.class)
         .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionForPS.class)
         .bindImplementation(BlockResolver.class, HashBlockResolver.class)
         .bindNamedParameter(KeyCodecName.class, IntegerCodec.class)

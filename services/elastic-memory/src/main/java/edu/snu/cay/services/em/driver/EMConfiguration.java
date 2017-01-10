@@ -160,6 +160,10 @@ public final class EMConfiguration {
         edu.snu.cay.services.em.evaluator.impl.rangekey.RemoteOpHandlerImpl.class :
         edu.snu.cay.services.em.evaluator.impl.singlekey.RemoteOpHandlerImpl.class;
 
+    final Class blockFactoryClass = rangeSupport ?
+        edu.snu.cay.services.em.evaluator.impl.rangekey.BlockFactoryImpl.class :
+        edu.snu.cay.services.em.evaluator.impl.singlekey.BlockFactoryImpl.class;
+
     final Class migrationExecutorClass = consistencyPreserved ?
         OwnershipFirstMigrationExecutor.class :
         DataFirstMigrationExecutor.class;
@@ -179,7 +183,7 @@ public final class EMConfiguration {
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, memoryStoreClass)
         .bindImplementation(RemoteAccessibleMemoryStore.class, memoryStoreClass)
-        .bindImplementation(BlockHandler.class, memoryStoreClass)
+        .bindImplementation(BlockFactory.class, blockFactoryClass)
         .bindImplementation(RemoteOpHandler.class, remoteOpHandlerClass)
         .bindImplementation(MigrationExecutor.class, migrationExecutorClass)
         .bindNamedParameter(DriverIdentifier.class, driverId)
