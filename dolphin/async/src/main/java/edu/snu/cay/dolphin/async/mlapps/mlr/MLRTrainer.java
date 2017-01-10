@@ -117,16 +117,6 @@ final class MLRTrainer implements Trainer {
   private final ExecutorService executor;
 
   /**
-   * Barrier to wait until all threads finish their batch.
-   */
-  private final CyclicBarrier barrier;
-
-  /**
-   * A queue that keeps the training data instances to process.
-   */
-  private final ConcurrentLinkedQueue<MLRData> instances;
-
-  /**
    * Number of Trainer threads that train concurrently.
    */
   private final int numTrainerThreads;
@@ -186,8 +176,6 @@ final class MLRTrainer implements Trainer {
 
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
-    this.barrier = new CyclicBarrier(numTrainerThreads + 1);
-    this.instances = new ConcurrentLinkedQueue<>();
 
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
@@ -228,9 +216,13 @@ final class MLRTrainer implements Trainer {
     final List<MLRData> totalInstancesProcessed = new LinkedList<>();
 
     Map<Long, MLRData> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    instances.addAll(nextTrainingData.values());
+
     while (!nextTrainingData.isEmpty()) {
+      final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
+
+      final Queue<MLRData> instances = new ConcurrentLinkedQueue<>(nextTrainingData.values());
       final int numInstancesToProcess = instances.size();
+
       resetTracers();
       final long miniBatchStartTime = System.currentTimeMillis();
 
@@ -246,21 +238,25 @@ final class MLRTrainer implements Trainer {
             final MLRModel model = modelAccessor.getModel()
                 .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
             int count = 0;
-            while (!instances.isEmpty()) {
+            while (true) {
               final MLRData instance = instances.poll();
+              if (instance == null) {
+                break;
+              }
+
               updateModel(instance, model);
               count++;
             }
-            barrier.await();
+            latch.countDown();
             LOG.log(Level.INFO, "{0} has computed {1} instances",
                 new Object[] {Thread.currentThread().getName(), count});
             return model;
           });
           futures.add(future);
         }
-        barrier.await();
+        latch.await();
         computeTracer.recordTime(numInstancesToProcess);
-      } catch (final InterruptedException | BrokenBarrierException e) {
+      } catch (final InterruptedException e) {
         LOG.log(Level.SEVERE, "Exception occurred.", e);
         throw new RuntimeException(e);
       }
@@ -284,8 +280,6 @@ final class MLRTrainer implements Trainer {
       LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
       sendMetrics(miniBatchMetric);
 
-      assert instances.isEmpty();
-      instances.addAll(nextTrainingData.values());
       miniBatchIdx++;
     }
 
