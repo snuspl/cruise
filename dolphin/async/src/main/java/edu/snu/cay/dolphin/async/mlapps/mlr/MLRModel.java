@@ -37,6 +37,10 @@ final class MLRModel implements Copyable<MLRModel> {
 
   @Override
   public MLRModel copyOf() {
-    return new MLRModel(params.clone());
+    final Vector[] copied = new Vector[params.length];
+    for (int idx = 0; idx < params.length; idx++) {
+      copied[idx] = params[idx].copy();
+    }
+    return new MLRModel(copied);
   }
 }

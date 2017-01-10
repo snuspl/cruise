@@ -21,7 +21,7 @@ package edu.snu.cay.utils;
  */
 public interface Copyable<T> {
   /**
-   * @return Copied instance
+   * @return Copied instance of the given object (deep copy).
    */
   T copyOf();
 }
