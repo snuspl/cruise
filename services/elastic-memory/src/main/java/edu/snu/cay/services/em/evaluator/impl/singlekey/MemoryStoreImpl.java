@@ -46,7 +46,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   private static final int QUEUE_SIZE = 1024;
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
-  private final OperationRouter<K> router;
+  private final OperationRouter router;
   private final BlockResolver<K> blockResolver;
   private final RemoteOpHandlerImpl<K> remoteOpHandlerImpl;
   private final BlockStore blockStore;
@@ -58,7 +58,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
-                          final OperationRouter<K> router,
+                          final OperationRouter router,
                           final BlockResolver<K> blockResolver,
                           final RemoteOpHandlerImpl<K> remoteOpHandlerImpl,
                           final BlockStore blockStore,

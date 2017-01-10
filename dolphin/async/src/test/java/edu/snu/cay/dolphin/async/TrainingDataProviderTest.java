@@ -54,7 +54,7 @@ public class TrainingDataProviderTest {
   private static final int MIN_BLOCK_ID = 0;
 
   private MemoryStore<Long> memoryStore;
-  private OperationRouter<Long> operationRouter;
+  private OperationRouter operationRouter;
   private TrainingDataProvider<Long, Integer> trainingDataProvider;
   private BlockHandler<Long, Integer> blockHandler;
 

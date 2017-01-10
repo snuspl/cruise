@@ -126,7 +126,7 @@ public final class DynamicParameterServerTest {
     });
 
     // EM's router should be initialized explicitly
-    final OperationRouter<Integer> router = injector.getInstance(OperationRouter.class);
+    final OperationRouter router = injector.getInstance(OperationRouter.class);
     router.triggerInitialization();
 
     memoryStore = injector.getInstance(MemoryStore.class);

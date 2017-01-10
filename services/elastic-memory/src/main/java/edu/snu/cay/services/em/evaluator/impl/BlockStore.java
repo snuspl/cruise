@@ -48,11 +48,11 @@ public final class BlockStore<K, V> implements BlockHandler<K, V> {
   private final Set<BlockUpdateListener<K>> blockUpdateListeners
       = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-  private final OperationRouter<K> router;
+  private final OperationRouter router;
   private final BlockFactory blockFactory;
 
   @Inject
-  private BlockStore(final OperationRouter<K> router,
+  private BlockStore(final OperationRouter router,
                      final BlockFactory blockFactory) {
     this.router = router;
     this.blockFactory = blockFactory;

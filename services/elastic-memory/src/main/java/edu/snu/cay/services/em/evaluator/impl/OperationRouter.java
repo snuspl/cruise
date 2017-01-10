@@ -19,12 +19,9 @@ import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
-import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
-import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.Tuple;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
@@ -44,13 +41,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * OperationRouter that redirects incoming operations on specific data ids to corresponding blocks and evaluators.
- * Note that this class is not thread-safe, which means client of this class must synchronize explicitly.
- * @param <K> type of data key
+ * OperationRouter that maintains ownership info, which is a mapping between blocks and owning evaluators.
+ * In addition, it locks and unlocks block upon migration, which should be excluded from block access.
  */
 @Private
 @NotThreadSafe
-public final class OperationRouter<K> {
+public final class OperationRouter {
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 
   private static final long INIT_WAIT_TIMEOUT_MS = 5000;
@@ -73,8 +69,6 @@ public final class OperationRouter<K> {
   private volatile String evalPrefix;
 
   private final int localStoreId;
-
-  private final BlockResolver<K> blockResolver;
 
   private final InjectionFuture<EMMsgSender> msgSender;
 
@@ -99,13 +93,11 @@ public final class OperationRouter<K> {
   private final Map<Integer, CountDownLatch> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
 
   @Inject
-  private OperationRouter(final BlockResolver<K> blockResolver,
-                          final InjectionFuture<EMMsgSender> msgSender,
+  private OperationRouter(final InjectionFuture<EMMsgSender> msgSender,
                           @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                           @Parameter(NumInitialEvals.class) final int numInitialEvals,
                           @Parameter(MemoryStoreId.class) final int memoryStoreId,
                           @Parameter(AddedEval.class) final boolean addedEval) {
-    this.blockResolver = blockResolver;
     this.msgSender = msgSender;
     this.localStoreId = memoryStoreId;
     this.numTotalBlocks = numTotalBlocks;
@@ -241,58 +233,6 @@ public final class OperationRouter<K> {
         throw new RuntimeException("Fail to initialize the router");
       }
     });
-  }
-
-  /**
-   * Routes the data key range of the operation. Note that this method must be synchronized to prevent other threads
-   * from updating the routing information while reading it.
-   *
-   * This method does not work with Ownership-first migration protocol.
-   * @param dataKeyRanges a range of data keys
-   * @return a pair of a map between a block id and a corresponding sub key range,
-   * and a map between evaluator id and corresponding sub key ranges.
-   */
-  public Tuple3<Map<Integer, List<Pair<K, K>>>, Map<String, List<Pair<K, K>>>, Lock> route(
-      final List<Pair<K, K>> dataKeyRanges) {
-    checkInitialization();
-
-    final Map<Integer, List<Pair<K, K>>> localBlockToSubKeyRangesMap = new HashMap<>();
-    final Map<String, List<Pair<K, K>>> remoteEvalToSubKeyRangesMap = new HashMap<>();
-
-    final Lock readLock = routerLock.readLock();
-    readLock.lock();
-
-    // dataKeyRanges has at least one element
-    // In most cases, there are only one range in dataKeyRanges
-    for (final Pair<K, K> keyRange : dataKeyRanges) {
-
-      final Map<Integer, Pair<K, K>> blockToSubKeyRangeMap =
-          blockResolver.resolveBlocksForOrderedKeys(keyRange.getFirst(), keyRange.getSecond());
-      for (final Map.Entry<Integer, Pair<K, K>> blockToSubKeyRange : blockToSubKeyRangeMap.entrySet()) {
-        final int blockId = blockToSubKeyRange.getKey();
-        final Pair<K, K> minMaxKeyPair = blockToSubKeyRange.getValue();
-
-        final int memoryStoreId = blockLocations.get(blockId);
-
-        // aggregate sub ranges
-        if (memoryStoreId != localStoreId) {
-          final String remoteEvalId = getEvalId(memoryStoreId);
-          if (!remoteEvalToSubKeyRangesMap.containsKey(remoteEvalId)) {
-            remoteEvalToSubKeyRangesMap.put(remoteEvalId, new LinkedList<Pair<K, K>>());
-          }
-          final List<Pair<K, K>> remoteRangeList = remoteEvalToSubKeyRangesMap.get(remoteEvalId);
-          remoteRangeList.add(minMaxKeyPair);
-        } else {
-          if (!localBlockToSubKeyRangesMap.containsKey(blockId)) {
-            localBlockToSubKeyRangesMap.put(blockId, new LinkedList<Pair<K, K>>());
-          }
-          final List<Pair<K, K>> localRangeList = localBlockToSubKeyRangesMap.get(blockId);
-          localRangeList.add(minMaxKeyPair);
-        }
-      }
-    }
-
-    return new Tuple3<>(localBlockToSubKeyRangesMap, remoteEvalToSubKeyRangesMap, readLock);
   }
 
   /**

@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
+import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
@@ -64,7 +65,9 @@ final class RemoteEMTask implements Task {
   /**
    * A router that is an internal component of EM. Here we use it in user code for testing purpose.
    */
-  private final OperationRouter<Long> router;
+  private final OperationRouter router;
+
+  private final BlockResolver<Long> blockResolver;
 
   private final int numInitialEvals;
   private final int localMemoryStoreId;
@@ -86,7 +89,8 @@ final class RemoteEMTask implements Task {
 
   @Inject
   private RemoteEMTask(final MemoryStore<Long> memoryStore,
-                       final OperationRouter<Long> router,
+                       final OperationRouter router,
+                       final BlockResolver<Long> blockResolver,
                        final AggregationSlave aggregationSlave,
                        final EvalSideMsgHandler msgHandler,
                        final SerializableCodec<String> codec,
@@ -98,6 +102,7 @@ final class RemoteEMTask implements Task {
       throws InjectionException {
     this.memoryStore = memoryStore;
     this.router = router;
+    this.blockResolver = blockResolver;
     this.aggregationSlave = aggregationSlave;
     this.msgHandler = msgHandler;
     this.codec = codec;
@@ -982,9 +987,11 @@ final class RemoteEMTask implements Task {
       Pair<Long, Integer> outputPair;
       Map<Long, Integer> outputMap;
 
-      final List<Pair<Long, Long>> rangeList = new ArrayList<>(1);
-      rangeList.add(new Pair<>(0L, 1L));
-      final boolean isLocalKey = !router.route(rangeList).getFirst().isEmpty();
+      final Set<Integer> blockIds = blockResolver.resolveBlocksForOrderedKeys(dataKey0, dataKey1).keySet();
+
+      // assumes that both keys belong to the same store
+      final int blockId = blockIds.iterator().next();
+      final boolean isLocalKey = !router.resolveEval(blockId).isPresent();
 
       // 1. INITIAL STATE: check that the store does not contain DATA
       outputMap = memoryStore.getRange(dataKey0, dataKey1);
