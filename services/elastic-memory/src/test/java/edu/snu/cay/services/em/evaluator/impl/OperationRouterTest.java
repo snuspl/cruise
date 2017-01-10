@@ -58,7 +58,6 @@ public class OperationRouterTest {
   // TODO #509: EM assumes that the eval prefix has "-" at the end
   private static final String EVAL_ID_PREFIX = "EVAL-";
 
-  private EMMsgSender evalMsgSender;
   private CountDownLatch initLatch;
 
   /**
@@ -83,7 +82,7 @@ public class OperationRouterTest {
         .build();
     final Injector evalInjector = Tang.Factory.getTang().newInjector(evalConf);
 
-    evalMsgSender = mock(EMMsgSender.class);
+    final EMMsgSender evalMsgSender = mock(EMMsgSender.class);
     evalInjector.bindVolatileInstance(EMMsgSender.class, evalMsgSender);
     final OperationRouter router = evalInjector.getInstance(OperationRouter.class);
 
@@ -176,7 +175,7 @@ public class OperationRouterTest {
     final Set<Integer> totalBlocks = new HashSet<>(numTotalBlocks);
 
     for (int localStoreId = 0; localStoreId < numMemoryStores; localStoreId++) {
-      final OperationRouter<?> operationRouter =
+      final OperationRouter operationRouter =
           newOperationRouter(numMemoryStores, numTotalBlocks, localStoreId, false);
 
       final List<Integer> localBlockIds = operationRouter.getInitialLocalBlockIds();
@@ -200,7 +199,7 @@ public class OperationRouterTest {
     final int numTotalBlocks = 1024;
     final int numMemoryStores = 4;
 
-    final OperationRouter<?>[] routers = new OperationRouter[numMemoryStores];
+    final OperationRouter[] routers = new OperationRouter[numMemoryStores];
     for (int storeId = 0; storeId < numMemoryStores; storeId++) {
       routers[storeId] = newOperationRouter(numMemoryStores, numTotalBlocks, storeId, false);
     }
@@ -248,7 +247,7 @@ public class OperationRouterTest {
     final int numInitialMemoryStores = 4;
 
     final int srcStoreId = 0;
-    final OperationRouter<?> srcRouter = newOperationRouter(numInitialMemoryStores, numTotalBlocks, srcStoreId, false);
+    final OperationRouter srcRouter = newOperationRouter(numInitialMemoryStores, numTotalBlocks, srcStoreId, false);
 
     final List<Integer> srcInitialBlocks = srcRouter.getInitialLocalBlockIds();
     List<Integer> srcCurrentBlocks = srcRouter.getCurrentLocalBlockIds();
@@ -257,7 +256,7 @@ public class OperationRouterTest {
     assertTrue("Router is initialized incorrectly", srcInitialBlocks.containsAll(srcCurrentBlocks));
 
     final int destStoreId = 1;
-    final OperationRouter<?> destRouter =
+    final OperationRouter destRouter =
         newOperationRouter(numInitialMemoryStores, numTotalBlocks, destStoreId, false);
 
     // move the half of blocks between two evaluators by updating routers
@@ -301,7 +300,7 @@ public class OperationRouterTest {
     final int numBlocksToMove = 2; // should be smaller than (numTotalBlocks/numInitialMemoryStores)
 
     final int storeId = 0;
-    final OperationRouter<?> router = newOperationRouter(numInitialMemoryStores, numTotalBlocks, storeId, false);
+    final OperationRouter router = newOperationRouter(numInitialMemoryStores, numTotalBlocks, storeId, false);
 
     final List<Integer> initialBlocks = router.getInitialLocalBlockIds();
     final List<Integer> blocksToMove = initialBlocks.subList(0, numBlocksToMove);
@@ -358,10 +357,10 @@ public class OperationRouterTest {
     final int addedStoreId = 4; // It should be larger than the largest index of initial stores
 
     // router in initStore will be initialized statically
-    final OperationRouter<?> routerInInitStore
+    final OperationRouter routerInInitStore
         = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId, false);
     // router in addedStore will be initialized dynamically
-    final OperationRouter<?> routerInAddedStore
+    final OperationRouter routerInAddedStore
         = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId, true);
 
     // we assume that store ids are assigned in the increasing order,
@@ -428,10 +427,10 @@ public class OperationRouterTest {
     final int addedStoreId = 4; // It should be larger than the largest index of initial stores
 
     // router in initStore will be initialized statically
-    final OperationRouter<?> routerInInitStore
+    final OperationRouter routerInInitStore
         = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId, false);
     // router in addedStore will be initialized dynamically
-    final OperationRouter<?> routerInAddedStore
+    final OperationRouter routerInAddedStore
         = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId, true);
 
     // we assume that store ids are assigned in the increasing order,
