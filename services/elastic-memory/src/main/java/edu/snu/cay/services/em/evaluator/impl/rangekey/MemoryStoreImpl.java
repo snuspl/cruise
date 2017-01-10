@@ -220,9 +220,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         final int blockId = blockToSubKeyRange.getKey();
         final Pair<Long, Long> subKeyRange = blockToSubKeyRange.getValue();
 
-        if (!blockToSubKeyRangesMap.containsKey(blockId)) {
-          blockToSubKeyRangesMap.put(blockId, new LinkedList<>());
-        }
+        blockToSubKeyRangesMap.computeIfAbsent(blockId, integer -> new LinkedList<>());
+
         final List<Pair<Long, Long>> subKeyRangeList = blockToSubKeyRangesMap.get(blockId);
         subKeyRangeList.add(subKeyRange);
       }
