@@ -20,7 +20,7 @@ import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.ModelHolder;
+import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.metric.Tracer;
@@ -131,6 +131,7 @@ final class MLRTrainer implements Trainer {
    */
   private final int numTrainerThreads;
 
+  private final ModelAccessor<MLRModel> modelAccessor;
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final Tracer pushTracer;
@@ -148,6 +149,7 @@ final class MLRTrainer implements Trainer {
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads,
+                     final ModelAccessor<MLRModel> modelAccessor,
                      final MemoryStore<Long> memoryStore,
                      final TrainingDataProvider<Long, MLRData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
@@ -174,6 +176,7 @@ final class MLRTrainer implements Trainer {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
     this.metricsMsgSender = metricsMsgSender;
+    this.modelAccessor = modelAccessor;
     this.memoryStore = memoryStore;
     this.trainingDataProvider = trainingDataProvider;
 
@@ -332,10 +335,10 @@ final class MLRTrainer implements Trainer {
       newParams[classIndex] = oldParams[classIndex].copy();
     }
 
-    final ModelHolder<MLRModel> holder = new MLRModelHolder(newParams);
+    modelAccessor.resetModel(new MLRModel(newParams));
     computeTracer.recordTime(0);
 
-    return holder.getModel();
+    return modelAccessor.getModel().orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
   }
 
   /**

@@ -13,30 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.mlr;
+package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.utils.Copyable;
+import org.apache.reef.tang.annotations.DefaultImplementation;
+
+import java.util.Optional;
 
 /**
- * Encapsulates the model data in MLR app.
+ * Provides a way for Trainer threads to access model.
+ * @param <M> Type of the app-specific model.
  */
-final class MLRModel implements Copyable<MLRModel> {
-  private final Vector[] params;
-
-  MLRModel(final Vector[] params) {
-    this.params = params;
-  }
+@DefaultImplementation(ThreadLocalModelAccessor.class)
+public interface ModelAccessor<M extends Copyable<M>> {
 
   /**
-   * @return a vector that consists of model parameters.
+   * Updates the model to the latest one.
    */
-  Vector[] getParams() {
-    return params;
-  }
+  void resetModel(M model);
 
-  @Override
-  public MLRModel copyOf() {
-    return new MLRModel(params.clone());
-  }
+  /**
+   * @return the up-to-date model if set through {@link #resetModel}. Otherwise {@link Optional#empty()} is returned.
+   */
+  Optional<M> getModel();
 }

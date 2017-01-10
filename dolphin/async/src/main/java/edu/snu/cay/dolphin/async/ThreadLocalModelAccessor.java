@@ -13,30 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.mlr;
+package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.ModelHolder;
+import edu.snu.cay.utils.Copyable;
 
 import javax.annotation.concurrent.ThreadSafe;
+import javax.inject.Inject;
+import java.util.Optional;
 
 /**
- * Provides a reference to model data used in MLR app.
- * This implementation allows multiple threads to update their model locally without any side-effect from others.
+ * ModelAccessor that provides model assigned to Trainer threads locally.
  */
 @ThreadSafe
-final class MLRModelHolder implements ModelHolder<MLRModel> {
-  private final ThreadLocal<MLRModel> model;
+public final class ThreadLocalModelAccessor<M extends Copyable<M>> implements ModelAccessor<M> {
+  private ThreadLocal<M> model = ThreadLocal.withInitial(() -> null);
 
-  MLRModelHolder(final Vector[] params) {
-    this.model = ThreadLocal.withInitial(() -> new MLRModel(params.clone()));
+  @Inject
+  private ThreadLocalModelAccessor() {
   }
 
-  /**
-   * Gets the up-to-date model locally assigned to this thread.
-   */
   @Override
-  public MLRModel getModel() {
-    return model.get();
+  public void resetModel(final M newModel) {
+    model.set(newModel.copyOf());
+  }
+
+  @Override
+  public Optional<M> getModel() {
+    return Optional.ofNullable(model.get());
   }
 }

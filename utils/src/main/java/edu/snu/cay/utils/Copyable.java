@@ -13,30 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.mlr;
-
-import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.utils.Copyable;
+package edu.snu.cay.utils;
 
 /**
- * Encapsulates the model data in MLR app.
+ * Classes implementing this interface allow to copy an object's instance.
+ * @param <T> the type of the object to copy
  */
-final class MLRModel implements Copyable<MLRModel> {
-  private final Vector[] params;
-
-  MLRModel(final Vector[] params) {
-    this.params = params;
-  }
-
+public interface Copyable<T> {
   /**
-   * @return a vector that consists of model parameters.
+   * @return Copied instance
    */
-  Vector[] getParams() {
-    return params;
-  }
-
-  @Override
-  public MLRModel copyOf() {
-    return new MLRModel(params.clone());
-  }
+  T copyOf();
 }
