@@ -131,7 +131,11 @@ final class MLRTrainer implements Trainer {
    */
   private final int numTrainerThreads;
 
+  /**
+   * Allows to access and update the latest model.
+   */
   private final ModelAccessor<MLRModel> modelAccessor;
+
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final Tracer pushTracer;
