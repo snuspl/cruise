@@ -15,32 +15,33 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
+import edu.snu.cay.services.em.evaluator.impl.BlockStore;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Map;
 
 /**
- * Interface for getting/putting data from/to the MemoryStore.
- * Methods in this class manage the data in the MemoryStore in block-level,
- * contrary to public APIs where the data is accessed in key-level.
+ * Interface for getting/putting block data.
  */
 @EvaluatorSide
 @Private
-public interface BlockHandler<K> {
+@DefaultImplementation(BlockStore.class)
+public interface BlockHandler<K, V> {
   /**
    * Sends the data in the blocks to another MemoryStore.
    * @param blockId the identifier of block to send
    * @param data the data to put
    */
-  void putBlock(int blockId, Map<K, Object> data);
+  void putBlock(int blockId, Map<K, V> data);
 
   /**
    * Gets the data in the block.
    * @param blockId id of the block to get
    * @return the data in the requested block.
    */
-  Map<K, Object> getBlock(int blockId);
+  Map<K, V> getBlock(int blockId);
 
   /**
    * Removes the data from the MemoryStore.
