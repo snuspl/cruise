@@ -235,7 +235,7 @@ final class MLRTrainer implements Trainer {
       final long miniBatchStartTime = System.currentTimeMillis();
 
       // pull data when mini-batch is started
-      final MLRModel model = pullModels();
+      pullModels();
 
       // collects the results
       final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
@@ -243,6 +243,8 @@ final class MLRTrainer implements Trainer {
         computeTracer.startTimer();
         for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
           final Future<MLRModel> future = executor.submit(() -> {
+            final MLRModel model = modelAccessor.getModel()
+                .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
             int count = 0;
             while (!instances.isEmpty()) {
               final MLRData instance = instances.poll();
@@ -295,7 +297,10 @@ final class MLRTrainer implements Trainer {
     }
 
     LOG.log(Level.INFO, "Pull model to compute loss value");
-    final MLRModel model = pullModels();
+    pullModels();
+
+    final MLRModel model = modelAccessor.getModel()
+        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
     final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed, model);
@@ -320,7 +325,10 @@ final class MLRTrainer implements Trainer {
     executor.shutdown();
   }
 
-  private MLRModel pullModels() {
+  /**
+   * Pull up-to-date model parameters from server, which become accessible via {@link ModelAccessor#getModel()}.
+   */
+  private void pullModels() {
     pullTracer.startTimer();
     final List<Vector> partitions = parameterWorker.pull(classPartitionIndices);
     pullTracer.recordTime(partitions.size());
@@ -341,8 +349,6 @@ final class MLRTrainer implements Trainer {
 
     modelAccessor.resetModel(new MLRModel(newParams));
     computeTracer.recordTime(0);
-
-    return modelAccessor.getModel().orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
   }
 
   /**
