@@ -65,7 +65,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private static final int NUM_DATA_MSG_HANDLER_THREADS = 2;
   private static final int NUM_OWNERSHIP_MSG_HANDLER_THREADS = 2;
 
-  private final BlockHandler<K> blockHandler;
+  private final BlockHandler blockHandler;
   private final OperationRouter router;
   private final InjectionFuture<EMMsgSender> sender;
 
@@ -91,7 +91,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private final Serializer serializer;
 
   @Inject
-  private OwnershipFirstMigrationExecutor(final BlockHandler<K> blockHandler,
+  private OwnershipFirstMigrationExecutor(final BlockHandler blockHandler,
                                           final OperationRouter router,
                                           final InjectionFuture<EMMsgSender> sender,
                                           @Parameter(KeyCodecName.class)final Codec<K> keyCodec,
