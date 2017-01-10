@@ -26,7 +26,7 @@ import java.util.Optional;
  */
 @ThreadSafe
 public final class ThreadLocalModelAccessor<M extends Copyable<M>> implements ModelAccessor<M> {
-  private ThreadLocal<M> model = ThreadLocal.withInitial(() -> null);
+  private ThreadLocal<M> model;
 
   @Inject
   private ThreadLocalModelAccessor() {
@@ -34,11 +34,15 @@ public final class ThreadLocalModelAccessor<M extends Copyable<M>> implements Mo
 
   @Override
   public void resetModel(final M newModel) {
-    model.set(newModel.copyOf());
+    model = ThreadLocal.withInitial(newModel::copyOf);
   }
 
   @Override
   public Optional<M> getModel() {
-    return Optional.ofNullable(model.get());
+    if (model == null) {
+      return Optional.empty();
+    } else {
+      return Optional.ofNullable(model.get());
+    }
   }
 }
