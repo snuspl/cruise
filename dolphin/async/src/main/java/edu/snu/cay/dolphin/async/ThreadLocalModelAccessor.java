@@ -34,7 +34,8 @@ public final class ThreadLocalModelAccessor<M extends Copyable<M>> implements Mo
 
   @Override
   public void resetModel(final M newModel) {
-    model = ThreadLocal.withInitial(newModel::copyOf);
+    final M copied = newModel.copyOf(); // we keep the model's copy to discard the changes made outside.
+    model = ThreadLocal.withInitial(copied::copyOf);
   }
 
   @Override
