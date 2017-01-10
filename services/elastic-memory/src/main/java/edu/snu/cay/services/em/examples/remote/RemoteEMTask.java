@@ -268,7 +268,7 @@ final class RemoteEMTask implements Task {
       // check that the total number of objects equal the expected number
       final int numLocalData = memoryStore.getAll().size();
       final long numGlobalData = syncGlobalCount(numLocalData);
-      LOG.log(Level.INFO, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
+      LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != numItems) {
         throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
@@ -285,7 +285,7 @@ final class RemoteEMTask implements Task {
 
       // check that the total number of objects equal the expected number
       outputMap = memoryStore.getRange(0L, maxDataKey);
-      LOG.log(Level.INFO, "outputMap.size: {0}", outputMap.size());
+      LOG.log(Level.FINE, "outputMap.size: {0}", outputMap.size());
       if (outputMap.size() != 0) {
         throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
