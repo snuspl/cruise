@@ -18,9 +18,9 @@ package edu.snu.cay.services.em.evaluator.impl.singlekey;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.*;
+import edu.snu.cay.services.em.evaluator.impl.BlockStore;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.utils.trace.HTrace;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -36,29 +36,20 @@ import java.util.logging.Logger;
 
 /**
  * A {@code MemoryStore} implementation for a key of generic type, non-supporting range operations.
- * All data is stored in multiple Blocks embedding a {@code ConcurrentHashMap}.
+ * It routes operations to local {@link BlockStore} or remote through {@link RemoteOpHandler}
+ * based on the routing result from {@link OperationRouter}.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
-public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>, BlockHandler<K> {
+public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> {
   private static final Logger LOG = Logger.getLogger(MemoryStore.class.getName());
 
   private static final int QUEUE_SIZE = 1024;
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
-  /**
-   * Maintains blocks associated with blockIds.
-   */
-  private final ConcurrentMap<Integer, Block> blocks = new ConcurrentHashMap<>();
-
   private final OperationRouter router;
   private final BlockResolver<K> blockResolver;
   private final RemoteOpHandlerImpl<K> remoteOpHandlerImpl;
-
-  /**
-   * An update function to be used in {@link Block#update}.
-   * We assume that there's only one function for the store.
-   */
-  private final EMUpdateFunction<K, ?> updateFunction;
+  private final BlockStore blockStore;
 
   /**
    * A queue for operations requested from remote clients.
@@ -70,24 +61,14 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
                           final OperationRouter router,
                           final BlockResolver<K> blockResolver,
                           final RemoteOpHandlerImpl<K> remoteOpHandlerImpl,
-                          final EMUpdateFunction<K, ?> updateFunction,
+                          final BlockStore blockStore,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
     this.blockResolver = blockResolver;
     this.remoteOpHandlerImpl = remoteOpHandlerImpl;
-    this.updateFunction = updateFunction;
-    initBlocks();
+    this.blockStore = blockStore;
     initExecutor(numStoreThreads);
-  }
-
-  /**
-   * Initialize the blocks in the local MemoryStore.
-   */
-  private void initBlocks() {
-    for (final int blockId : router.getInitialLocalBlockIds()) {
-      blocks.put(blockId, new Block());
-    }
   }
 
   /**
@@ -102,37 +83,8 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
   }
 
   @Override
-  public void putBlock(final int blockId, final Map<K, Object> data) {
-    final Block block = new Block();
-    block.putAll(data);
-
-    if (blocks.putIfAbsent(blockId, block) != null) {
-      throw new RuntimeException("Block with id " + blockId + " already exists.");
-    }
-    LOG.info("Put block " + blockId);
-  }
-
-  @Override
-  public Map<K, Object> getBlock(final int blockId) {
-    final Block block = blocks.get(blockId);
-    if (null == block) {
-      throw new RuntimeException("Block with id " + blockId + "does not exist.");
-    }
-
-    return block.getAll();
-  }
-
-  @Override
-  public void removeBlock(final int blockId) {
-    final Block block = blocks.remove(blockId);
-    if (null == block) {
-      throw new RuntimeException("Block with id " + blockId + "does not exist.");
-    }
-  }
-
-  @Override
   public boolean registerBlockUpdateListener(final BlockUpdateListener listener) {
-    throw new NotImplementedException();
+    return blockStore.registerBlockUpdateListener(listener);
   }
 
   /**
@@ -171,7 +123,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
         final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
         final boolean isLocal = !remoteEvalIdOptional.isPresent();
         if (isLocal) {
-          final Block<V> block = blocks.get(blockId);
+          final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
 
           final V output;
           boolean isSuccess = true;
@@ -213,75 +165,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
     }
   }
 
-  /**
-   * Block class that has a {@code subDataMap}, which is an unit of EM's move.
-   */
-  private final class Block<V> {
-    /**
-     * The map serves as a collection of data in a Block.
-     * Its implementation is {@code ConcurrentHashMap} to
-     * maximize the performance of concurrent single-key operations.
-     */
-    private final ConcurrentMap<K, V> subDataMap = new ConcurrentHashMap<>();
-    private final EMUpdateFunction<K, V> emUpdateFunction = (EMUpdateFunction<K, V>) updateFunction;
-
-    private void put(final K key, final V value) {
-      subDataMap.put(key, value);
-    }
-
-    private V get(final K key) {
-      return subDataMap.get(key);
-    }
-
-    private V remove(final K key) {
-      return subDataMap.remove(key);
-    }
-
-    /**
-     * Returns all data in a block.
-     * It is for supporting getAll method of MemoryStore.
-     */
-    private Map<K, V> getAll() {
-      return new HashMap<>(subDataMap);
-    }
-
-    /**
-     * Puts all data from the given Map to the block.
-     */
-    private void putAll(final Map<K, V> toPut) {
-      subDataMap.putAll(toPut);
-    }
-
-    /**
-     * Removes all data in a block.
-     * It is for supporting removeAll method of MemoryStore.
-     */
-    private Map<K, V> removeAll() {
-      final Map<K, V> output = new HashMap<>(subDataMap);
-      subDataMap.clear();
-      return output;
-    }
-
-    /**
-     * Updates the value associated with the given {@code key} using {@code deltaValue}.
-     */
-    private V update(final K key, final V deltaValue) {
-      return subDataMap.compute(key, (k, v) -> {
-        final V oldValue = (v == null) ? emUpdateFunction.getInitValue(k) : v;
-        return emUpdateFunction.getUpdateValue(oldValue, deltaValue);
-      });
-    }
-
-    /**
-     * Returns the number of data in a block.
-     * It is for supporting getNumUnits method of MemoryStore.
-     */
-    private int getNumUnits() {
-      return subDataMap.size();
-    }
-  }
-
-  /**
+ /**
    * Handles operations requested from a remote client.
    */
   @Override
@@ -307,7 +191,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
 
       // execute operation in local, holding routerLock
       if (!remoteEvalIdOptional.isPresent()) {
-        final Block<V> block = blocks.get(blockId);
+        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         block.put(id, value);
         return new Pair<>(id, true);
       }
@@ -339,7 +223,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
 
       // execute operation in local, holding routerLock
       if (!remoteEvalIdOptional.isPresent()) {
-        final Block<V> block = blocks.get(blockId); //TODO #00: block may not be put yet...
+        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         final V output = block.get(id);
         return output == null ? null : new Pair<>(id, output);
       }
@@ -365,7 +249,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIdIterator.hasNext()) {
-      final Block<V> block = blocks.get(blockIdIterator.next());
+      final Block<K, V> block = blockStore.get(blockIdIterator.next());
       result = block.getAll();
     } else {
       return Collections.emptyMap();
@@ -373,7 +257,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
 
     // execute on remaining blocks if exist
     while (blockIdIterator.hasNext()) {
-      final Block<V> block = blocks.get(blockIdIterator.next());
+      final Block<K, V> block = blockStore.get(blockIdIterator.next());
       // huge memory pressure may happen here
       result.putAll(block.getAll());
     }
@@ -397,7 +281,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
 
       // execute operation in local, holding routerLock
       if (!remoteEvalIdOptional.isPresent()) {
-        final Block<V> block = blocks.get(blockId);
+        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         final V output = block.update(id, deltaValue);
         return new Pair<>(id, output);
       }
@@ -426,7 +310,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
 
       // execute operation in local, holding routerLock
       if (!remoteEvalIdOptional.isPresent()) {
-        final Block<V> block = blocks.get(blockId);
+        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         final V output = block.remove(id);
         return output == null ? null : new Pair<>(id, output);
       }
@@ -452,7 +336,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIdIterator.hasNext()) {
-      final Block<V> block = blocks.get(blockIdIterator.next());
+      final Block<K, V> block = blockStore.get(blockIdIterator.next());
       result = block.removeAll();
     } else {
       return Collections.emptyMap();
@@ -460,7 +344,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
 
     // execute on remaining blocks if exist
     while (blockIdIterator.hasNext()) {
-      final Block<V> block = blocks.get(blockIdIterator.next());
+      final Block<K, V> block = blockStore.get(blockIdIterator.next());
       // huge memory pressure may happen here
       result.putAll(block.removeAll());
     }
@@ -478,7 +362,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K>,
    */
   @Override
   public int getNumBlocks() {
-    return blocks.size();
+    return blockStore.getNumBlocks();
   }
 
   @Override

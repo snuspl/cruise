@@ -19,10 +19,7 @@ import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.evaluator.api.BlockHandler;
-import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
@@ -55,7 +52,7 @@ public final class MemoryStoreTest {
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_REMOVE_ALL_ASSERTION = "getAll() after removeAll()";
 
-  private BlockHandler<Long> blockHandler;
+  private BlockHandler blockHandler;
   private MemoryStore<Long> memoryStore;
 
   @Before
@@ -63,7 +60,7 @@ public final class MemoryStoreTest {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
-        .bindImplementation(BlockHandler.class, MemoryStoreImpl.class)
+        .bindImplementation(BlockFactory.class, BlockFactoryImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(1))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))

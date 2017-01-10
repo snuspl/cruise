@@ -22,6 +22,7 @@ import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.rangekey.BlockFactoryImpl;
 import edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import org.apache.commons.lang.NotImplementedException;
@@ -55,14 +56,14 @@ public class TrainingDataProviderTest {
   private MemoryStore<Long> memoryStore;
   private OperationRouter operationRouter;
   private TrainingDataProvider<Long, Integer> trainingDataProvider;
-  private BlockHandler<Long> blockHandler;
+  private BlockHandler<Long, Integer> blockHandler;
 
   @Before
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
-        .bindImplementation(BlockHandler.class, MemoryStoreImpl.class)
+        .bindImplementation(BlockFactory.class, BlockFactoryImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(LOCAL_STORE_ID))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_MEMORY_STORES))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))

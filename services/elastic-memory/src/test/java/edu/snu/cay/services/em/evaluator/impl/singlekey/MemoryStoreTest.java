@@ -19,9 +19,7 @@ import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
@@ -63,6 +61,7 @@ public final class MemoryStoreTest {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindImplementation(BlockFactory.class, BlockFactoryImpl.class)
         .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(1))
