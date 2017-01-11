@@ -50,7 +50,7 @@ import javax.inject.Inject;
  * Configuration class for setting evaluator configurations of the Elastic Memory Service.
  */
 @DriverSide
-public final class EMConfiguration {
+public final class EMConfProvider {
 
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
@@ -63,15 +63,15 @@ public final class EMConfiguration {
   private final String identifier;
 
   @Inject
-  private EMConfiguration(final NameServer nameServer,
-                          final LocalAddressProvider localAddressProvider,
-                          @Parameter(DriverIdentifier.class) final String driverId,
-                          @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-                          @Parameter(NumStoreThreads.class) final int numStoreThreads,
-                          @Parameter(RangeSupport.class) final boolean rangeSupport,
-                          @Parameter(ConsistencyPreserved.class) final boolean consistencyPreserved,
-                          @Parameter(EMIdentifier.class) final String identifier,
-                          final BlockManager blockManager) {
+  private EMConfProvider(final NameServer nameServer,
+                         final LocalAddressProvider localAddressProvider,
+                         @Parameter(DriverIdentifier.class) final String driverId,
+                         @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
+                         @Parameter(NumStoreThreads.class) final int numStoreThreads,
+                         @Parameter(RangeSupport.class) final boolean rangeSupport,
+                         @Parameter(ConsistencyPreserved.class) final boolean consistencyPreserved,
+                         @Parameter(EMIdentifier.class) final String identifier,
+                         final BlockManager blockManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
@@ -98,7 +98,7 @@ public final class EMConfiguration {
 
   /**
    * Configuration for REEF driver when using Elastic Memory.
-   * Different from {@link EMConfiguration#getDriverConfiguration()},
+   * Different from {@link EMConfProvider#getDriverConfiguration()},
    * this version does not bind the RegisterDriverHandler.
    * The {@link edu.snu.cay.services.em.ns.EMNetworkSetup#registerConnectionFactory(org.apache.reef.wake.Identifier)}
    * should be called explicitly in {@link DriverStartHandler}.

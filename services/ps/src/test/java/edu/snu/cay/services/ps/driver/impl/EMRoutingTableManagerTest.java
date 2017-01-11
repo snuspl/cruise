@@ -262,7 +262,7 @@ public final class EMRoutingTableManagerTest {
    */
   private int getStoreId(final String evalId) {
     // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
-    // and EMConfiguration.getServiceConfigurationWithoutNameResolver()).
+    // and EMConfProvider.getServiceConfigurationWithoutNameResolver()).
     return Integer.valueOf(evalId.split("-")[1]);
   }
 }

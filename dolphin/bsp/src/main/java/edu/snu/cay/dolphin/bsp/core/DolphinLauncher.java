@@ -24,7 +24,7 @@ import edu.snu.cay.dolphin.bsp.core.sync.DriverSyncRegister;
 import edu.snu.cay.dolphin.bsp.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.bsp.groupcomm.conf.GroupCommParameters;
 import edu.snu.cay.services.em.common.parameters.EMParameters;
-import edu.snu.cay.services.em.driver.EMConfiguration;
+import edu.snu.cay.services.em.driver.EMConfProvider;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerParameters;
@@ -170,7 +170,7 @@ public final class DolphinLauncher {
         emParameters.getConfiguration(),
         SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
-        EMConfiguration.getDriverConfiguration(),
+        EMConfProvider.getDriverConfiguration(),
         aggregationConf.getDriverConfiguration(),
         idConf,
         NameServerConfiguration.CONF.build(),
