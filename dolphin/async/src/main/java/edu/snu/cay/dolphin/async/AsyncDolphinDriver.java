@@ -537,7 +537,8 @@ public final class AsyncDolphinDriver {
         final Configuration serviceConf = Configurations.merge(
             psDriver.getServerServiceConfiguration(contextId),
             Tang.Factory.getTang().newConfigurationBuilder(
-                serverEMWrapper.getConfProvider().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
+                serverEMWrapper.getConfProvider()
+                    .getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
                 .build(),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
