@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.examples.remote;
 
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
-import edu.snu.cay.services.em.driver.EMConfiguration;
+import edu.snu.cay.services.em.driver.EMConfProvider;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.EMUpdateFunction;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
@@ -63,7 +63,7 @@ final class RemoteEMDriver {
 
   private final AggregationManager aggregationManager;
 
-  private final EMConfiguration emConf;
+  private final EMConfProvider emConfProvider;
   private final HTraceParameters traceParameters;
 
   private final boolean rangeSupport;
@@ -71,12 +71,12 @@ final class RemoteEMDriver {
   @Inject
   private RemoteEMDriver(final EvaluatorRequestor requestor,
                          final AggregationManager aggregationManager,
-                         final EMConfiguration emConf,
+                         final EMConfProvider emConfProvider,
                          final HTraceParameters traceParameters,
                          @Parameter(RangeSupport.class) final boolean rangeSupport) throws InjectionException {
     this.requestor = requestor;
     this.aggregationManager = aggregationManager;
-    this.emConf = emConf;
+    this.emConfProvider = emConfProvider;
     this.traceParameters = traceParameters;
     this.rangeSupport = rangeSupport;
   }
@@ -117,10 +117,10 @@ final class RemoteEMDriver {
           .build();
 
       final Configuration contextConf = Configurations.merge(
-          partialContextConf, emConf.getContextConfiguration(), aggregationManager.getContextConfiguration());
+          partialContextConf, emConfProvider.getContextConfiguration(), aggregationManager.getContextConfiguration());
 
       final Configuration serviceConf = Configurations.merge(
-          emConf.getServiceConfiguration(contextId, EVAL_NUM),
+          emConfProvider.getServiceConfiguration(contextId, EVAL_NUM),
           aggregationManager.getServiceConfigurationWithoutNameResolver(),
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionImpl.class)

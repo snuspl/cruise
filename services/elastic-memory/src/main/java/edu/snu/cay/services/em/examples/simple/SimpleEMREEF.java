@@ -20,7 +20,7 @@ import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
-import edu.snu.cay.services.em.driver.EMConfiguration;
+import edu.snu.cay.services.em.driver.EMConfProvider;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.examples.simple.parameters.NumMoves;
@@ -137,7 +137,7 @@ public final class SimpleEMREEF {
 
     // spawn the name server at the driver
     return Configurations.merge(driverConfiguration,
-        EMConfiguration.getDriverConfiguration(),
+        EMConfProvider.getDriverConfiguration(),
         aggregationConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),

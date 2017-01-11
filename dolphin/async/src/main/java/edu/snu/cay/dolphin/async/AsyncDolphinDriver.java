@@ -532,12 +532,13 @@ public final class AsyncDolphinDriver {
                 .set(ContextConfiguration.IDENTIFIER, contextId)
                 .build(),
             psDriver.getServerContextConfiguration(),
-            serverEMWrapper.getConf().getContextConfiguration(),
+            serverEMWrapper.getConfProvider().getContextConfiguration(),
             aggregationManager.getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getServerServiceConfiguration(contextId),
             Tang.Factory.getTang().newConfigurationBuilder(
-                serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
+                serverEMWrapper.getConfProvider()
+                    .getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
                 .build(),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
@@ -591,7 +592,7 @@ public final class AsyncDolphinDriver {
                 .set(ContextConfiguration.IDENTIFIER, contextId)
                 .build(),
             psDriver.getWorkerContextConfiguration(),
-            workerEMWrapper.getConf().getContextConfiguration(),
+            workerEMWrapper.getConfProvider().getContextConfiguration(),
             aggregationManager.getContextConfiguration());
 
         final Configuration serviceConf = Configurations.merge(
@@ -638,13 +639,13 @@ public final class AsyncDolphinDriver {
   private Configuration getEMServiceConfForWorker(final String contextId, final boolean addedEval) {
     if (addedEval) {
       return Tang.Factory.getTang().newConfigurationBuilder(
-          workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount))
+          workerEMWrapper.getConfProvider().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount))
           .bindNamedParameter(AddedEval.class, Boolean.toString(true))
           .bindImplementation(DataSet.class, EmptyDataSet.class) // If not set, Tang fails while injecting Task.
           .build();
     } else {
       return Tang.Factory.getTang().newConfigurationBuilder(
-          workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount))
+          workerEMWrapper.getConfProvider().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount))
           .bindNamedParameter(AddedEval.class, Boolean.toString(false))
           .build();
     }

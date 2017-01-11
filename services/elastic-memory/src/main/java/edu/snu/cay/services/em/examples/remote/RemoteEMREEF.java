@@ -19,7 +19,7 @@ package edu.snu.cay.services.em.examples.remote;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.services.em.common.parameters.EMParameters;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
-import edu.snu.cay.services.em.driver.EMConfiguration;
+import edu.snu.cay.services.em.driver.EMConfProvider;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -106,7 +106,7 @@ public final class RemoteEMREEF {
 
     // spawn the name server at the driver
     return Configurations.merge(driverConfiguration,
-        EMConfiguration.getDriverConfiguration(),
+        EMConfProvider.getDriverConfiguration(),
         aggregationConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),

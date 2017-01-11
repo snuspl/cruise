@@ -35,7 +35,7 @@ import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.MigrationMsgType;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.driver.EMConfiguration;
+import edu.snu.cay.services.em.driver.EMConfProvider;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
@@ -168,7 +168,7 @@ public final class DolphinDriver {
   /**
    * Manager of the configuration of Elastic Memory service.
    */
-  private final EMConfiguration emConf;
+  private final EMConfProvider emConfProvider;
 
   /**
    * Job to execute.
@@ -238,7 +238,7 @@ public final class DolphinDriver {
    * @param dataLoadingService manager for Data Loading configurations
    * @param outputService
    * @param schedulabilityAnalyzer
-   * @param emConf manager for Elastic Memory configurations
+   * @param emConfProvider manager for Elastic Memory configurations
    * @param userJobInfo
    * @param userParameters
    */
@@ -256,7 +256,7 @@ public final class DolphinDriver {
                         final OptimizationOrchestrator optimizationOrchestrator,
                         final DriverSync driverSync,
                         final TaskTracker taskTracker,
-                        final EMConfiguration emConf,
+                        final EMConfProvider emConfProvider,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
                         final HTraceParameters traceParameters,
@@ -278,7 +278,7 @@ public final class DolphinDriver {
     this.optimizationOrchestrator = optimizationOrchestrator;
     this.driverSync = driverSync;
     this.taskTracker = taskTracker;
-    this.emConf = emConf;
+    this.emConfProvider = emConfProvider;
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
     this.commGroupDriverList = new LinkedList<>();
@@ -531,7 +531,7 @@ public final class DolphinDriver {
    */
   public Configuration getContextConfiguration() {
     final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
-    final Configuration emContextConf = emConf.getContextConfiguration();
+    final Configuration emContextConf = emConfProvider.getContextConfiguration();
     final Configuration aggregationContextConf = aggregationManager.getContextConfiguration();
     return Configurations.merge(groupCommContextConf, emContextConf, aggregationContextConf);
   }
@@ -549,7 +549,8 @@ public final class DolphinDriver {
     final Configuration metricCollectionServiceConf = getMetricsCollectionServiceConfiguration();
     final Configuration workloadServiceConf = WorkloadPartition.getServiceConfiguration();
     final Configuration emServiceConf =
-        emConf.getServiceConfigurationWithoutNameResolver(contextId, dataLoadingService.getNumberOfPartitions() + 1);
+        emConfProvider.getServiceConfigurationWithoutNameResolver(contextId,
+            dataLoadingService.getNumberOfPartitions() + 1);
     // +1 for the ControllerTask, as DataLoadingService.getNumberOfPartitions only returns the number of ComputeTasks.
     final Configuration idConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
