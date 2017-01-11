@@ -229,7 +229,7 @@ final class MLRTrainer implements Trainer {
       // pull data when mini-batch is started
       pullModels();
 
-      // collects the results
+      // collects the results (new models here) computed by multiple threads
       final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
       try {
         computeTracer.startTimer();
@@ -389,6 +389,7 @@ final class MLRTrainer implements Trainer {
       gradients[classIdx] = oldParams[classIdx].scale(-1.0);
     }
 
+    // Compute the sum of the model parameters multiplied by coefficient in order to get the average.
     final double coefficient = 1.0 / numTrainerThreads;
     for (final MLRModel model : results) {
       final Vector[] params = model.getParams();
