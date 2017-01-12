@@ -261,7 +261,7 @@ final class NMFTrainer implements Trainer {
     sendMetrics(epochMetric);
   }
 
-  private Map<Integer,Vector> aggregateGradient(final List<NMFModel> newModels) {
+  private Map<Integer, Vector> aggregateGradient(final List<NMFModel> newModels) {
     final Map<Integer, Vector> aggregated = new HashMap<>();
     newModels.forEach(nmfModel -> {
       final Map<Integer, Vector> gradient = nmfModel.getRGradient();
