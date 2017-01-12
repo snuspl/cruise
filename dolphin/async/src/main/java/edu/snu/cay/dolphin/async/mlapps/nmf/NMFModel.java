@@ -20,10 +20,9 @@ import edu.snu.cay.utils.Copyable;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiConsumer;
 
 /**
- * Created by yunseong on 1/10/17.
+ * Encapsulates the model data in NMF app.
  */
 final class NMFModel implements Copyable<NMFModel> {
   private final Map<Integer, Vector> rMatrix;
@@ -44,17 +43,26 @@ final class NMFModel implements Copyable<NMFModel> {
     return new NMFModel(copyMap(rMatrix), copyMap(rGradient));
   }
 
-  Map<Integer, Vector> getrMatrix() {
+  /**
+   * @return the R matrix
+   */
+  Map<Integer, Vector> getRMatrix() {
     return rMatrix;
   }
 
-  Map<Integer, Vector> getrGradient() {
+  /**
+   * @return the gradient of R matrix
+   */
+  Map<Integer, Vector> getRGradient() {
     return rGradient;
   }
 
-  private Map<Integer, Vector> copyMap(final Map<Integer, Vector> integerVectorMap) {
-    final Map<Integer, Vector> copied = new HashMap<>(integerVectorMap.size());
-    integerVectorMap.forEach((integer, vectorEntries) -> copied.put(integer, vectorEntries.copy()));
+  /**
+   * Creates a deep copy of a map. The types of entries are restricted to those we use in NMF app.
+   */
+  private Map<Integer, Vector> copyMap(final Map<Integer, Vector> toCopy) {
+    final Map<Integer, Vector> copied = new HashMap<>(toCopy.size());
+    toCopy.forEach((integer, vectorEntries) -> copied.put(integer, vectorEntries.copy()));
     return copied;
   }
 }

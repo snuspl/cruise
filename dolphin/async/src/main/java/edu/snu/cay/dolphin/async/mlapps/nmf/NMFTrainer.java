@@ -65,7 +65,6 @@ final class NMFTrainer implements Trainer {
 
   private final boolean printMatrices;
   private final NMFModelGenerator modelGenerator;
-  private final Map<Integer, Vector> rMatrix; // R matrix cache
 
   /**
    * The step size drops by this rate.
@@ -140,8 +139,6 @@ final class NMFTrainer implements Trainer {
     this.modelAccessor = modelAccessor;
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
-
-    this.rMatrix = Maps.newHashMap();
 
     this.metricsMsgSender = metricsMsgSender;
     this.pushTracer = new Tracer();
@@ -268,7 +265,7 @@ final class NMFTrainer implements Trainer {
   private Map<Integer,Vector> aggregateGradient(final List<NMFModel> newModels) {
     final Map<Integer, Vector> aggregated = new HashMap<>();
     newModels.forEach(nmfModel -> {
-      final Map<Integer, Vector> gradient = nmfModel.getrGradient();
+      final Map<Integer, Vector> gradient = nmfModel.getRGradient();
       gradient.forEach((k, v) -> {
         if (aggregated.containsKey(k)) {
           aggregated.get(k).addi(v);
@@ -303,8 +300,11 @@ final class NMFTrainer implements Trainer {
 
     // print transposed R matrix
     pullRMatrix(getKeys(workload));
+    final NMFModel model = modelAccessor.getModel()
+        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
+
     final StringBuilder rsb = new StringBuilder();
-    for (final Map.Entry<Integer, Vector> entry : rMatrix.entrySet()) {
+    for (final Map.Entry<Integer, Vector> entry : model.getRMatrix().entrySet()) {
       rsb.append(String.format("R(*, %d):", entry.getKey()));
       for (final VectorEntry valueEntry : entry.getValue()) {
         rsb.append(' ');
@@ -332,8 +332,6 @@ final class NMFTrainer implements Trainer {
    * @param datum training data instance
    */
   private void updateModel(final NMFData datum, final NMFModel model) {
-    final Map<Integer, Vector> rGradient = model.getrGradient();
-
     final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
     final Vector lGradSum;
     if (lambda != 0.0D) {
@@ -345,7 +343,7 @@ final class NMFTrainer implements Trainer {
 
     for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
       final int colIdx = column.getFirst();
-      final Vector rVec = model.getrMatrix().get(colIdx); // R_{*, j} : j-th column of R
+      final Vector rVec = model.getRMatrix().get(colIdx); // R_{*, j} : j-th column of R
       final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
 
       // compute gradients
@@ -386,7 +384,7 @@ final class NMFTrainer implements Trainer {
    * @return the loss value, computed by the sum of the errors.
    */
   private double computeLoss(final List<NMFData> instances, final NMFModel model) {
-    final Map<Integer, Vector> rMatrix = model.getrMatrix();
+    final Map<Integer, Vector> rMatrix = model.getRMatrix();
 
     double loss = 0.0;
     for (final NMFData datum : instances) {
@@ -425,8 +423,8 @@ final class NMFTrainer implements Trainer {
   }
 
   private void saveRMatrixGradient(final int key, final Vector newGrad, final NMFModel model) {
-    final Map<Integer, Vector> rMatrix = model.getrMatrix();
-    final Map<Integer, Vector> gradients = model.getrGradient();
+    final Map<Integer, Vector> rMatrix = model.getRMatrix();
+    final Map<Integer, Vector> gradients = model.getRGradient();
 
     final Vector grad = gradients.get(key);
     if (grad == null) {
