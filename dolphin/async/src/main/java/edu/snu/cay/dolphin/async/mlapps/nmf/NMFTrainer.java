@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.nmf;
 
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
