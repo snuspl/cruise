@@ -343,13 +343,7 @@ final class MLRTrainer implements Trainer {
         ++correctPredictions;
       }
 
-      for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
-        if (classIndex == label) {
-          loss += -Math.log(predictions.get(classIndex));
-        } else {
-          loss += -Math.log(1 - predictions.get(classIndex));
-        }
-      }
+      loss += -Math.log(predictions.get(label));
     }
 
     double regLoss = 0;
