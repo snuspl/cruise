@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-public class LassoParameters {
+class LassoParameters {
 
   @NamedParameter(doc = "input dimension", short_name = "features")
   static final class NumFeatures implements Name<Integer> {
@@ -29,8 +29,8 @@ public class LassoParameters {
   static final class NumFeaturesPerPartition implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "initial value of the step size", short_name = "init_step_size")
-  static final class InitialStepSize implements Name<Double> {
+  @NamedParameter(doc = "value of the step size", short_name = "step_size")
+  static final class StepSize implements Name<Double> {
   }
 
   @NamedParameter(doc = "regularization constant", short_name = "lambda")

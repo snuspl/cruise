@@ -19,6 +19,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.Lambda;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -94,7 +95,7 @@ final class LassoTrainer implements Trainer {
 
   @Inject
   private LassoTrainer(final LassoParser lassoParser,
-                       @Parameter(LassoREEF.Lambda.class) final double lambda,
+                       @Parameter(Lambda.class) final double lambda,
                        final ParameterWorker<Integer, Double, Double> parameterWorker) {
     final Pair<Vector[], Vector> pair = lassoParser.parse();
     this.vecXArray = pair.getFirst();

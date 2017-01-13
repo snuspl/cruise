@@ -54,7 +54,7 @@ final class LassoTrainerSGD implements Trainer {
 
 
   private final MemoryStore<Long> memoryStore;
-  private final TrainingDataProvider<Long, LassoData> trainingDataProvider;
+  private final TrainingDataProvider<Long, LassoDataSGD> trainingDataProvider;
   private final VectorFactory vectorFactory;
 
   private Vector oldModel;
@@ -66,11 +66,11 @@ final class LassoTrainerSGD implements Trainer {
   private LassoTrainerSGD(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                           @Parameter(NumFeatures.class) final int numFeatures,
                           @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                          @Parameter(InitialStepSize.class) final double initStepSize,
+                          @Parameter(StepSize.class) final double initStepSize,
                           @Parameter(Lambda.class) final double lambda,
                           @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                           final MemoryStore<Long> memoryStore,
-                          final TrainingDataProvider<Long, LassoData> trainingDataProvider,
+                          final TrainingDataProvider<Long, LassoDataSGD> trainingDataProvider,
                           final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
     this.numFeatures = numFeatures;
@@ -100,13 +100,13 @@ final class LassoTrainerSGD implements Trainer {
   @Override
   public void run(final int iteration) {
 
-    final List<LassoData> totalInstancesProcessed = new LinkedList<>();
+    final List<LassoDataSGD> totalInstancesProcessed = new LinkedList<>();
 
-    Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    final List<LassoData> instances = new ArrayList<>(nextTrainingData.values());
+    Map<Long, LassoDataSGD> nextTrainingData = trainingDataProvider.getNextTrainingData();
+    final List<LassoDataSGD> instances = new ArrayList<>(nextTrainingData.values());
     while (!nextTrainingData.isEmpty()) {
       pullModels();
-      for (final LassoData instance : instances) {
+      for (final LassoDataSGD instance : instances) {
         updateModel(instance);
       }
       pushAndResetGradients();
@@ -130,7 +130,7 @@ final class LassoTrainerSGD implements Trainer {
     newModel = oldModel.copy();
   }
 
-  private void updateModel(final LassoData instance) {
+  private void updateModel(final LassoDataSGD instance) {
     final Vector feature = instance.getFeature();
     final double value = instance.getValue();
     final double prediction = predict(feature);
@@ -171,11 +171,11 @@ final class LassoTrainerSGD implements Trainer {
     }
   }
 
-  private double computeLoss(final List<LassoData> data) {
+  private double computeLoss(final List<LassoDataSGD> data) {
     double loss = 0;
     double reg = 0;
 
-    for (final LassoData entry : data) {
+    for (final LassoDataSGD entry : data) {
       final Vector feature = entry.getFeature();
       final double value = entry.getValue();
       final double prediction = predict(feature);

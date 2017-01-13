@@ -18,26 +18,36 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.NullDataParser;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
 import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 
 /**
  * Application launching code for LassoREEF.
  */
-public final class LassoREEF {
+public final class LassoREEFSGD {
 
   /**
    * Should not be instantiated.
    */
-  private LassoREEF() {
+  private LassoREEFSGD() {
   }
 
   public static void main(final String[] args) {
-    AsyncDolphinLauncher.launch("LassoREEF", args, AsyncDolphinConfiguration.newBuilder()
-        .setTrainerClass(LassoTrainer.class)
+    AsyncDolphinLauncher.launch("LassoREEFSGD", args, AsyncDolphinConfiguration.newBuilder()
+        .setTrainerClass(LassoTrainerSGD.class)
         .setUpdaterClass(LassoUpdater.class)
-        .setParserClass(NullDataParser.class)
+        .setParserClass(LassoParserSGD.class)
+        .setPreValueCodecClass(DenseVectorCodec.class)
+        .setValueCodecClass(DenseVectorCodec.class)
+        .setServerSerializerClass(DenseVectorSerializer.class)
+        .setWorkerSerializerClass(LassoDataSerializer.class)
         .addParameterClass(NumFeatures.class)
+        .addParameterClass(NumFeaturesPerPartition.class)
+        .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
         .build());
   }
