@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
@@ -82,7 +83,7 @@ public final class BlockManager {
   /**
    * Register an evaluator and allocate blocks to the evaluator.
    * MemoryStore's identifier is assigned as the suffix of the Context id;
-   * {@link edu.snu.cay.services.em.evaluator.impl.OperationRouter} also routes requests based on this rule.
+   * {@link OwnershipCache} also routes requests based on this rule.
    *
    * @param contextId an id of context
    * @param numInitialEvals the number of initial evaluators
@@ -92,7 +93,7 @@ public final class BlockManager {
                                             final int numInitialEvals) {
     if (evalIdPrefix == null) {
       // TODO #509: remove the assumption on the format of contextId
-      // The same prefix is used in EMConfProvider and OperationRouter.
+      // The same prefix is used in EMConfProvider and OwnershipCache.
       evalIdPrefix = contextId.split("-")[0];
     }
 

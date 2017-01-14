@@ -41,13 +41,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * OperationRouter that maintains ownership info, which is a mapping between blocks and owning evaluators.
+ * OwnershipCache that maintains ownership info, which is a mapping between blocks and owning evaluators.
  * In addition, it locks and unlocks block upon migration, which should be excluded from block access.
  */
 @Private
 @NotThreadSafe
-public final class OperationRouter {
-  private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
+public final class OwnershipCache {
+  private static final Logger LOG = Logger.getLogger(OwnershipCache.class.getName());
 
   private static final long INIT_WAIT_TIMEOUT_MS = 5000;
   private static final int MAX_NUM_INIT_REQUESTS = 3;
@@ -93,11 +93,11 @@ public final class OperationRouter {
   private final Map<Integer, CountDownLatch> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
 
   @Inject
-  private OperationRouter(final InjectionFuture<EMMsgSender> msgSender,
-                          @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-                          @Parameter(NumInitialEvals.class) final int numInitialEvals,
-                          @Parameter(MemoryStoreId.class) final int memoryStoreId,
-                          @Parameter(AddedEval.class) final boolean addedEval) {
+  private OwnershipCache(final InjectionFuture<EMMsgSender> msgSender,
+                         @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
+                         @Parameter(NumInitialEvals.class) final int numInitialEvals,
+                         @Parameter(MemoryStoreId.class) final int memoryStoreId,
+                         @Parameter(AddedEval.class) final boolean addedEval) {
     this.msgSender = msgSender;
     this.localStoreId = memoryStoreId;
     this.numTotalBlocks = numTotalBlocks;

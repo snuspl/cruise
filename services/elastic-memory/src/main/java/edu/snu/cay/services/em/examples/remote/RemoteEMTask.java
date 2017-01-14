@@ -23,7 +23,7 @@ import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.utils.ThreadUtils;
@@ -63,9 +63,9 @@ final class RemoteEMTask implements Task {
   private final DataIdFactory<Long> localDataIdFactory;
 
   /**
-   * A router that is an internal component of EM. Here we use it in user code for testing purpose.
+   * An OwnershipCache that is an internal component of EM. Here we use it in user code for testing purpose.
    */
-  private final OperationRouter router;
+  private final OwnershipCache ownershipCache;
 
   private final BlockResolver<Long> blockResolver;
 
@@ -89,7 +89,7 @@ final class RemoteEMTask implements Task {
 
   @Inject
   private RemoteEMTask(final MemoryStore<Long> memoryStore,
-                       final OperationRouter router,
+                       final OwnershipCache ownershipCache,
                        final BlockResolver<Long> blockResolver,
                        final AggregationSlave aggregationSlave,
                        final EvalSideMsgHandler msgHandler,
@@ -101,7 +101,7 @@ final class RemoteEMTask implements Task {
                        @Parameter(RangeSupport.class) final boolean rangeSupport)
       throws InjectionException {
     this.memoryStore = memoryStore;
-    this.router = router;
+    this.ownershipCache = ownershipCache;
     this.blockResolver = blockResolver;
     this.aggregationSlave = aggregationSlave;
     this.msgHandler = msgHandler;
@@ -991,7 +991,7 @@ final class RemoteEMTask implements Task {
 
       // assumes that both keys belong to the same store
       final int blockId = blockIds.iterator().next();
-      final boolean isLocalKey = !router.resolveEval(blockId).isPresent();
+      final boolean isLocalKey = !ownershipCache.resolveEval(blockId).isPresent();
 
       // 1. INITIAL STATE: check that the store does not contain DATA
       outputMap = memoryStore.getRange(dataKey0, dataKey1);

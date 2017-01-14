@@ -21,7 +21,7 @@ import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.evaluator.api.*;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.em.evaluator.impl.rangekey.BlockFactoryImpl;
 import edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
@@ -54,7 +54,7 @@ public class TrainingDataProviderTest {
   private static final int MIN_BLOCK_ID = 0;
 
   private MemoryStore<Long> memoryStore;
-  private OperationRouter operationRouter;
+  private OwnershipCache ownershipCache;
   private TrainingDataProvider<Long, Integer> trainingDataProvider;
   private BlockHandler<Long, Integer> blockHandler;
 
@@ -95,7 +95,7 @@ public class TrainingDataProviderTest {
     }).when(mockBlockResolver).resolveBlocksForOrderedKeys(anyLong(), anyLong());
 
     memoryStore = injector.getInstance(MemoryStore.class);
-    operationRouter = injector.getInstance(OperationRouter.class);
+    ownershipCache = injector.getInstance(OwnershipCache.class);
     trainingDataProvider = injector.getInstance(TrainingDataProvider.class);
     blockHandler = injector.getInstance(BlockHandler.class);
   }
@@ -193,7 +193,7 @@ public class TrainingDataProviderTest {
    */
   private void putBlockToMemoryStore(final int blockId, final Map<Long, Integer> dataSet) {
     blockHandler.putBlock(blockId, (Map) dataSet);
-    operationRouter.updateOwnership(blockId, REMOTE_STORE_ID, LOCAL_STORE_ID);
+    ownershipCache.updateOwnership(blockId, REMOTE_STORE_ID, LOCAL_STORE_ID);
   }
 
   /**
@@ -202,7 +202,7 @@ public class TrainingDataProviderTest {
    */
   private void removeBlockFromMemoryStore(final int blockId) {
     blockHandler.removeBlock(blockId);
-    operationRouter.updateOwnership(blockId, LOCAL_STORE_ID, REMOTE_STORE_ID);
+    ownershipCache.updateOwnership(blockId, LOCAL_STORE_ID, REMOTE_STORE_ID);
   }
 
   /**
@@ -396,7 +396,7 @@ public class TrainingDataProviderTest {
    * @return a list of block ids not belonging in the local store
    */
   private List<Integer> generateBlockIdNotInLocalStore() {
-    final List<Integer> blockIdsInLocalStore = operationRouter.getCurrentLocalBlockIds();
+    final List<Integer> blockIdsInLocalStore = ownershipCache.getCurrentLocalBlockIds();
     final List<Integer> blockIdList = new ArrayList<>();
     final int minBlockId = MIN_BLOCK_ID;
     final int maxBlockId = MIN_BLOCK_ID + NUM_TOTAL_BLOCKS - 1;
