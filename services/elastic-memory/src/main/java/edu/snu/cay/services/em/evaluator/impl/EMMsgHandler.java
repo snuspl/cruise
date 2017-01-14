@@ -45,14 +45,14 @@ import java.util.logging.Logger;
 @Private
 public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
   private static final Logger LOG = Logger.getLogger(EMMsgHandler.class.getName());
-  private static final int NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS = 2;
+  private static final int NUM_OWNERSHIP_CACHE_UPDATE_MSG_RECEIVER_THREADS = 2;
 
   private final OwnershipCache ownershipCache;
   private final RemoteOpHandler remoteOpHandler;
   private final MigrationExecutor migrationExecutor;
 
-  private final ExecutorService routingTableUpdateMsgHandlerExecutor
-      = Executors.newFixedThreadPool(NUM_ROUTING_TABLE_UPDATE_MSG_RECEIVER_THREADS);
+  private final ExecutorService ownershipCacheUpdateMsgHandlerExecutor
+      = Executors.newFixedThreadPool(NUM_OWNERSHIP_CACHE_UPDATE_MSG_RECEIVER_THREADS);
 
   @Inject
   private EMMsgHandler(final OwnershipCache ownershipCache,
@@ -69,8 +69,8 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
 
     final EMMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-    case RoutingTableMsg:
-      onRoutingTableMsg(innerMsg.getRoutingTableMsg());
+    case OwnershipCacheMsg:
+      onOwnershipCacheMsg(innerMsg.getOwnershipCacheMsg());
       break;
 
     case RemoteOpMsg:
@@ -88,14 +88,14 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
     LOG.exiting(EMMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
-  private void onRoutingTableMsg(final RoutingTableMsg msg) {
+  private void onOwnershipCacheMsg(final OwnershipCacheMsg msg) {
     switch (msg.getType()) {
-    case RoutingTableInitMsg:
-      onRoutingTableInitMsg(msg);
+    case OwnershipCacheInitMsg:
+      onOwnershipCacheInitMsg(msg);
       break;
 
-    case RoutingTableUpdateMsg:
-      onRoutingTableUpdateMsg(msg);
+    case OwnershipCacheUpdateMsg:
+      onOwnershipCacheUpdateMsg(msg);
       break;
 
     default:
@@ -103,33 +103,33 @@ public final class EMMsgHandler implements EventHandler<Message<EMMsg>> {
     }
   }
 
-  private void onRoutingTableInitMsg(final RoutingTableMsg msg) {
-    ownershipCache.initRoutingTableWithDriver(msg.getRoutingTableInitMsg().getBlockLocations());
+  private void onOwnershipCacheInitMsg(final OwnershipCacheMsg msg) {
+    ownershipCache.initWithDriver(msg.getOwnershipCacheInitMsg().getBlockLocations());
   }
 
-  private void onRoutingTableUpdateMsg(final RoutingTableMsg msg) {
+  private void onOwnershipCacheUpdateMsg(final OwnershipCacheMsg msg) {
     // We should detach the span when we transit to another thread (local or remote),
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
     // for stitching the spans from other threads as its children
     Span detached = null;
 
     Trace.setProcessId("eval");
-    try (TraceScope onRoutingTableUpdateMsgScope = Trace.startSpan("on_table_update_msg",
+    try (TraceScope onOwnershipCacheUpdateMsgScope = Trace.startSpan("on_table_update_msg",
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      detached = onRoutingTableUpdateMsgScope.detach();
+      detached = onOwnershipCacheUpdateMsgScope.detach();
       final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
-      routingTableUpdateMsgHandlerExecutor.submit(new Runnable() {
+      ownershipCacheUpdateMsgHandlerExecutor.submit(new Runnable() {
         @Override
         public void run() {
-          final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
+          final OwnershipCacheUpdateMsg ownershipCacheUpdateMsg = msg.getOwnershipCacheUpdateMsg();
 
-          final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
-          final int newOwnerId = getStoreId(routingTableUpdateMsg.getNewEvalId().toString());
-          final int oldOwnerId = getStoreId(routingTableUpdateMsg.getOldEvalId().toString());
+          final List<Integer> blockIds = ownershipCacheUpdateMsg.getBlockIds();
+          final int newOwnerId = getStoreId(ownershipCacheUpdateMsg.getNewEvalId().toString());
+          final int oldOwnerId = getStoreId(ownershipCacheUpdateMsg.getOldEvalId().toString());
 
-          LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
+          LOG.log(Level.INFO, "Update ownership cache. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
               new Object[]{newOwnerId, oldOwnerId, blockIds});
 
           for (final int blockId : blockIds) {

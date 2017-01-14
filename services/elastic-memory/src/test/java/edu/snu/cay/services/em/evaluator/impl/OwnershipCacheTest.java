@@ -126,38 +126,38 @@ public class OwnershipCacheTest {
         public Object answer(final InvocationOnMock invocation) throws Throwable {
           Thread.sleep(1000); // delay for fetching the ownership info from driver
 
-          final RoutingTableInitReqMsg routingTableInitReqMsg = RoutingTableInitReqMsg.newBuilder()
+          final OwnershipCacheInitReqMsg ownershipCacheInitReqMsg = OwnershipCacheInitReqMsg.newBuilder()
               .setEvalId(evalId)
               .build();
 
-          final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
-              .setType(RoutingTableMsgType.RoutingTableInitReqMsg)
-              .setRoutingTableInitReqMsg(routingTableInitReqMsg)
+          final OwnershipCacheMsg ownershipCacheMsg = OwnershipCacheMsg.newBuilder()
+              .setType(OwnershipCacheMsgType.OwnershipCacheInitReqMsg)
+              .setOwnershipCacheInitReqMsg(ownershipCacheInitReqMsg)
               .build();
 
           final EMMsg msg = EMMsg.newBuilder()
-              .setType(EMMsgType.RoutingTableMsg)
-              .setRoutingTableMsg(routingTableMsg)
+              .setType(EMMsgType.OwnershipCacheMsg)
+              .setOwnershipCacheMsg(ownershipCacheMsg)
               .build();
 
           driverMsgHandler.onNext(new NSMessage<>(evalIdentifier, driverIdentifier, msg));
           return null;
         }
-      }).when(evalMsgSender).sendRoutingTableInitReqMsg(any(TraceInfo.class));
+      }).when(evalMsgSender).sendOwnershipCacheInitReqMsg(any(TraceInfo.class));
 
       // reset initLatch
       initLatch = new CountDownLatch(1);
 
-      // driverMsgHander.onNext will invoke driverMsgSender.sendRoutingTableInitMsg with the ownership info
+      // driverMsgHander.onNext will invoke driverMsgSender.sendOwnershipCacheInitMsg with the ownership info
       doAnswer(new Answer() {
         @Override
         public Object answer(final InvocationOnMock invocation) throws Throwable {
           final List<Integer> blockLocations = invocation.getArgumentAt(1, List.class);
-          ownershipCache.initRoutingTableWithDriver(blockLocations);
+          ownershipCache.initWithDriver(blockLocations);
           initLatch.countDown();
           return null;
         }
-      }).when(driverMsgSender).sendRoutingTableInitMsg(anyString(), anyList(), any(TraceInfo.class));
+      }).when(driverMsgSender).sendOwnershipCacheInitMsg(anyString(), anyList(), any(TraceInfo.class));
     }
 
     return ownershipCache;
@@ -327,7 +327,7 @@ public class OwnershipCacheTest {
         updateLatch.await(2000, TimeUnit.MILLISECONDS));
 
     final List<Integer> curBlocksBeforeUnlock = ownershipCache.getCurrentLocalBlockIds();
-    assertEquals("Routing table should not be updated", initialBlocks, curBlocksBeforeUnlock);
+    assertEquals("Ownership cache should not be updated", initialBlocks, curBlocksBeforeUnlock);
 
     // unlock ownershipCache to let threads update the ownershipCache
     ownershipLock.unlock();
@@ -336,7 +336,7 @@ public class OwnershipCacheTest {
 
     blocksToMove.forEach(curBlocksBeforeUnlock::remove);
     final List<Integer> curBlocksAfterUnlock = ownershipCache.getCurrentLocalBlockIds();
-    assertEquals("Routing table should be updated", curBlocksBeforeUnlock, curBlocksAfterUnlock);
+    assertEquals("Ownership cache should be updated", curBlocksBeforeUnlock, curBlocksAfterUnlock);
 
     ownershipUpdateExecutor.shutdown();
   }
