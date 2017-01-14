@@ -104,7 +104,6 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
     }
   }
 
-
   /**
    * A runnable that dequeues and executes operations requested from remote clients.
    * Several threads are initiated at the beginning and run as long-running background services.
@@ -140,8 +139,8 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
       final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
       try {
         final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
-        final boolean isLocal = !remoteEvalIdOptional.isPresent();
-        if (isLocal) {
+        final boolean isLocalBlock = !remoteEvalIdOptional.isPresent();
+        if (isLocalBlock) {
           final BlockImpl block = (BlockImpl) blockStore.get(blockId);
           final Map<K, Object> result = block.executeSubOperation(operation, subKeyRanges);
           submitLocalResult(operation, result, Collections.emptyList());
