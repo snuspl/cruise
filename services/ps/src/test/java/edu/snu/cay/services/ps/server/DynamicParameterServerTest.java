@@ -101,7 +101,6 @@ public final class DynamicParameterServerTest {
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_TOTAL_STORES))
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
-    injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
     injector.bindVolatileInstance(ServerSideMsgSender.class, mock(ServerSideMsgSender.class));
     injector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));

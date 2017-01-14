@@ -71,7 +71,6 @@ public final class MemoryStoreTest {
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     injector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
-    injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
     memoryStore = injector.getInstance(MemoryStore.class);
 
     // router should be initialized explicitly

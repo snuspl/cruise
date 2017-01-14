@@ -17,12 +17,16 @@ package edu.snu.cay.services.em.evaluator.impl.rangekey;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
+import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RangeKeyOperation;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
+import edu.snu.cay.services.em.evaluator.impl.BlockStore;
+import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
+import edu.snu.cay.utils.Tuple3;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
@@ -35,8 +39,8 @@ import org.htrace.TraceScope;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -48,6 +52,8 @@ import java.util.logging.Logger;
 public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   private static final Logger LOG = Logger.getLogger(RemoteOpHandlerImpl.class.getName());
   private static final long TIMEOUT_MS = 40000;
+  private static final int QUEUE_SIZE = 1024;
+  private static final int QUEUE_TIMEOUT_MS = 3000;
 
   /**
    * A map holding ongoing operations until they finish.
@@ -55,21 +61,108 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
    */
   private final ConcurrentMap<String, RangeKeyOperation<K, Object>> ongoingOp = new ConcurrentHashMap<>();
 
+  private final OperationRouter router;
+  private final BlockStore blockStore;
+  private final RangeSplitter<K> rangeSplitter;
+
   private Serializer serializer;
   private Codec<K> keyCodec;
   private final InjectionFuture<EMMsgSender> msgSender;
 
-  private final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore;
+  /**
+   * A queue for operations requested from remote clients.
+   * Its element is composed of a operation, sub key ranges, and a corresponding block id.
+   */
+  private final BlockingQueue<Tuple3<RangeKeyOperation, List<Pair<K, K>>, Integer>> subOperationQueue
+      = new ArrayBlockingQueue<>(QUEUE_SIZE);
 
   @Inject
-  private RemoteOpHandlerImpl(final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore,
+  private RemoteOpHandlerImpl(final OperationRouter router,
+                              final BlockStore blockStore,
+                              final RangeSplitter<K> rangeSplitter,
                               final Serializer serializer,
                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
+                              @Parameter(NumStoreThreads.class) final int numStoreThreads,
                               final InjectionFuture<EMMsgSender> msgSender) {
-    this.memoryStore = memoryStore;
+    this.router = router;
+    this.blockStore = blockStore;
+    this.rangeSplitter = rangeSplitter;
     this.serializer = serializer;
     this.keyCodec = keyCodec;
     this.msgSender = msgSender;
+    initExecutor(numStoreThreads);
+  }
+
+  /**
+   * Initialize threads that dequeue and execute operation from the {@code subOperationQueue}.
+   * That is, these threads serve operations requested from remote clients.
+   */
+  private void initExecutor(final int numStoreThreads) {
+    final ExecutorService executor = Executors.newFixedThreadPool(numStoreThreads);
+    for (int i = 0; i < numStoreThreads; i++) {
+      executor.submit(new OperationThread());
+    }
+  }
+
+
+  /**
+   * A runnable that dequeues and executes operations requested from remote clients.
+   * Several threads are initiated at the beginning and run as long-running background services.
+   */
+  private final class OperationThread implements Runnable {
+
+    @Override
+    public void run() {
+      while (true) {
+        // First, poll and execute a single operation.
+        // Poll with a timeout will prevent busy waiting, when the queue is empty.
+        try {
+          final Tuple3<RangeKeyOperation, List<Pair<K, K>>, Integer> subOperation =
+              subOperationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+          if (subOperation == null) {
+            continue;
+          }
+          handleSubOperation(subOperation);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+        }
+      }
+    }
+
+    private void handleSubOperation(final Tuple3<RangeKeyOperation, List<Pair<K, K>>, Integer> subOperation) {
+      final RangeKeyOperation operation = subOperation.getFirst();
+      final List<Pair<K, K>> subKeyRanges = subOperation.getSecond();
+      final int blockId = subOperation.getThird();
+
+      LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, block: {2}]]",
+          new Object[]{operation.getOpId(), operation.getOrigEvalId().get(), blockId});
+
+      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+      try {
+        final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
+        final boolean isLocal = !remoteEvalIdOptional.isPresent();
+        if (isLocal) {
+          final BlockImpl block = (BlockImpl) blockStore.get(blockId);
+          final Map<K, Object> result = block.executeSubOperation(operation, subKeyRanges);
+          submitLocalResult(operation, result, Collections.emptyList());
+        } else {
+          LOG.log(Level.WARNING,
+              "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
+                  " of block {1} by store {2}, but the local router assumes store {3} is the owner",
+              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalIdOptional.get()});
+
+          // treat remote ranges as failed ranges, because we do not allow more than one hop in remote access
+          final List<Pair<K, K>> failedRanges = new ArrayList<>(1);
+          for (final Pair<K, K> subKeyRange : subKeyRanges) {
+            failedRanges.add(new Pair<>(subKeyRange.getFirst(), subKeyRange.getSecond()));
+          }
+          submitLocalResult(operation, Collections.emptyMap(), failedRanges);
+        }
+      } finally {
+        final Lock readLock = remoteEvalIdWithLock.getValue();
+        readLock.unlock();
+      }
+    }
   }
 
   /**
@@ -206,8 +299,68 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
     final DataOperation operation = new RangeKeyOperationImpl<>(Optional.of(origEvalId),
         operationId, operationType, dataKeyRanges, dataKeyValueMap);
 
-    // enqueue operation into memory store
-    memoryStore.get().onNext(operation);
+    handleRemoteOp(operation);
+  }
+
+  /**
+   * Handles operations requested from a remote client.
+   */
+  private void handleRemoteOp(final DataOperation dataOperation) {
+    final RangeKeyOperation<K, Object> operation = (RangeKeyOperation<K, Object>) dataOperation;
+
+    final Map<Integer, List<Pair<K, K>>> blockToSubKeyRangesMap =
+        rangeSplitter.splitIntoSubKeyRanges(operation.getDataKeyRanges());
+
+    // cannot resolve any block. invalid data keys
+    if (blockToSubKeyRangesMap.isEmpty()) {
+      // TODO #421: should handle fail case different from empty case
+      submitLocalResult(operation, Collections.emptyMap(), operation.getDataKeyRanges());
+      LOG.log(Level.SEVERE, "Failed Op [Id: {0}, origId: {1}]",
+          new Object[]{operation.getOpId(), operation.getOrigEvalId().get()});
+      return;
+    }
+
+    enqueueOperation(operation, blockToSubKeyRangesMap);
+  }
+
+  /**
+   * Enqueues sub operations requested from a remote client to {@code subOperationQueue}.
+   * The enqueued operations are executed by {@code OperationThread}s.
+   */
+  private void enqueueOperation(final RangeKeyOperation operation,
+                                final Map<Integer, List<Pair<K, K>>> blockToKeyRangesMap) {
+    final int numSubOps = blockToKeyRangesMap.size();
+    operation.setNumSubOps(numSubOps);
+
+    for (final Map.Entry<Integer, List<Pair<K, K>>> blockToSubKeyRanges : blockToKeyRangesMap.entrySet()) {
+      final int blockId = blockToSubKeyRanges.getKey();
+      final List<Pair<K, K>> keyRanges = blockToSubKeyRanges.getValue();
+
+      try {
+        subOperationQueue.put(new Tuple3<>(operation, keyRanges, blockId));
+      } catch (final InterruptedException e) {
+        LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
+      }
+
+      LOG.log(Level.FINEST, "Enqueue Op [Id: {0}, block: {1}]",
+          new Object[]{operation.getOpId(), blockId});
+    }
+  }
+
+  /**
+   * Handles the result of data operation processed by local memory store.
+   * It waits until all sub operations are finished and their outputs are fully aggregated.
+   */
+  private <V> void submitLocalResult(final RangeKeyOperation<K, V> operation, final Map<K, V> localOutput,
+                                     final List<Pair<K, K>> failedRanges) {
+    final int numRemainingSubOps = operation.commitResult(localOutput, failedRanges);
+
+    LOG.log(Level.FINE, "Local sub operation is finished. OpId: {0}, numRemainingSubOps: {1}",
+        new Object[]{operation.getOpId(), numRemainingSubOps});
+
+    if (numRemainingSubOps == 0) {
+      sendResultToOrigin(operation);
+    }
   }
 
   /**
@@ -271,7 +424,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   /**
    * Sends the result to the original store.
    */
-  <V> void sendResultToOrigin(final RangeKeyOperation<K, V> operation) {
+  private <V> void sendResultToOrigin(final RangeKeyOperation<K, V> operation) {
 
     LOG.log(Level.FINEST, "Send result to origin. OpId: {0}, OrigId: {1}",
         new Object[]{operation.getOpId(), operation.getOrigEvalId()});

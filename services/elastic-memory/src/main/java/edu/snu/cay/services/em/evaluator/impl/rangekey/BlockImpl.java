@@ -53,7 +53,7 @@ final class BlockImpl<Long, V> implements Block<Long, V> {
    * All operations both from remote and local clients are executed via this method.
    */
   Map<Long, V> executeSubOperation(final RangeKeyOperation<Long, V> operation,
-                                           final List<Pair<Long, Long>> keyRanges) {
+                                   final List<Pair<Long, Long>> keyRanges) {
     final DataOpType operationType = operation.getOpType();
 
     final Map<Long, V> outputData = new HashMap<>();
