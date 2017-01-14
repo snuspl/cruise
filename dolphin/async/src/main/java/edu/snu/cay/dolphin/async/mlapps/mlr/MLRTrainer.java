@@ -378,23 +378,24 @@ final class MLRTrainer implements Trainer {
 
   /**
    * Aggregate the model computed by multiple threads, to get the gradients to push.
-   * gradient_j = avg(param_t) - param_0 for class j, where t is thread index and param_0 is the parameters pulled
-   * at the beginning.
+   * gradient[j] = sum(param_t[j] - param_0[j]) = sum(param_t[j]) - t * param_0[j],
+   * where j is the class index, t is the thread index and param_0 is the parameters pulled at the beginning.
    * @param results list of results (model parameters) computed by trainer threads
    * @return an array of vectors each of which is gradient in a class.
    */
   private Vector[] aggregateGradient(final List<MLRModel> results) {
     final Vector[] gradients = new Vector[numClasses];
+
+    // Multiply the number of threads (t) to weight the old model parameters when getting difference.
     for (int classIdx = 0; classIdx < numClasses; classIdx++) {
-      gradients[classIdx] = oldParams[classIdx].scale(-1.0);
+      gradients[classIdx] = oldParams[classIdx].scale(-numTrainerThreads);
     }
 
-    // Compute the sum of the model parameters multiplied by coefficient in order to get the average.
-    final double coefficient = 1.0 / numTrainerThreads;
+    // Compute the sum of the model parameters computed by training threads
     for (final MLRModel model : results) {
       final Vector[] params = model.getParams();
       for (int classIdx = 0; classIdx < numClasses; classIdx++) {
-        gradients[classIdx].axpy(coefficient, params[classIdx]);
+        gradients[classIdx].addi(params[classIdx]);
       }
     }
     return gradients;
