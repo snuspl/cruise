@@ -346,8 +346,8 @@ final class NMFTrainer implements Trainer {
       // aggregate L matrix gradients
       lGradSum.addi(lGrad);
 
-      // save R matrix gradients
-      saveRMatrixGradient(colIdx, rGrad, model);
+      // accumulate R matrix's gradient
+      accumulateRMatrixGradient(colIdx, rGrad, model);
     }
 
     // update L matrix
@@ -436,12 +436,12 @@ final class NMFTrainer implements Trainer {
   }
 
   /**
-   * Saves a new gradient into the model.
+   * Accumulates a new gradient into the R Matrix's gradient.
    * @param colIdx index of the column that the gradient is associated with
-   * @param newGrad new gradient vector to save.
-   * @param model current model parameters of a row.
+   * @param newGrad new gradient vector to accumulate
+   * @param model current model parameters that contain R Matrix and its gradient
    */
-  private void saveRMatrixGradient(final int colIdx, final Vector newGrad, final NMFModel model) {
+  private void accumulateRMatrixGradient(final int colIdx, final Vector newGrad, final NMFModel model) {
     final Map<Integer, Vector> rMatrix = model.getRMatrix();
     final Map<Integer, Vector> gradients = model.getRGradient();
 

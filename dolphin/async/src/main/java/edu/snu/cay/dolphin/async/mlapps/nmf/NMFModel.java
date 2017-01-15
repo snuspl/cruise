@@ -62,7 +62,7 @@ final class NMFModel implements Copyable<NMFModel> {
    */
   private Map<Integer, Vector> copyMap(final Map<Integer, Vector> toCopy) {
     final Map<Integer, Vector> copied = new HashMap<>(toCopy.size());
-    toCopy.forEach((integer, vectorEntries) -> copied.put(integer, vectorEntries.copy()));
+    toCopy.forEach((integer, vector) -> copied.put(integer, vector.copy()));
     return copied;
   }
 }
