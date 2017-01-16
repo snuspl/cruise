@@ -103,7 +103,7 @@ final class LassoTrainerSGD implements Trainer {
     final List<LassoDataSGD> totalInstancesProcessed = new LinkedList<>();
 
     Map<Long, LassoDataSGD> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    final List<LassoDataSGD> instances = new ArrayList<>(nextTrainingData.values());
+    List<LassoDataSGD> instances = new ArrayList<>(nextTrainingData.values());
     while (!nextTrainingData.isEmpty()) {
       pullModels();
       for (final LassoDataSGD instance : instances) {
@@ -112,10 +112,16 @@ final class LassoTrainerSGD implements Trainer {
       pushAndResetGradients();
       totalInstancesProcessed.addAll(instances);
       nextTrainingData = trainingDataProvider.getNextTrainingData();
+      instances = new ArrayList<>(nextTrainingData.values());
     }
 
     pullModels();
     final double loss = computeLoss(totalInstancesProcessed);
+    if (iteration % 50 == 0) {
+      for (int i = 0; i < numFeatures; i++) {
+        LOG.log(Level.INFO, "model value: {0}", newModel.get(i));
+      }
+    }
     LOG.log(Level.INFO, "Loss value: {0}", loss);
 
   }

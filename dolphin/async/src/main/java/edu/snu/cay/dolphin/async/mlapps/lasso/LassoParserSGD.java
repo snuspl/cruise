@@ -60,7 +60,7 @@ final class LassoParserSGD implements DataParser<LassoDataSGD> {
     final List<LassoDataSGD> retList = new LinkedList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
-            final String text = keyValue.getSecond().toString().trim();
+      final String text = keyValue.getSecond().toString().trim();
       if (text.startsWith("#") || text.length() == 0) {
         // comments and empty lines
         continue;
