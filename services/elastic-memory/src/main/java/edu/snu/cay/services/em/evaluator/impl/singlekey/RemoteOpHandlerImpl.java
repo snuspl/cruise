@@ -17,12 +17,15 @@ package edu.snu.cay.services.em.evaluator.impl.singlekey;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
-import edu.snu.cay.services.em.evaluator.api.DataOperation;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
+import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
 import edu.snu.cay.services.em.evaluator.api.SingleKeyOperation;
+import edu.snu.cay.services.em.evaluator.impl.BlockStore;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -33,9 +36,9 @@ import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -47,6 +50,13 @@ import java.util.logging.Logger;
 public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   private static final Logger LOG = Logger.getLogger(RemoteOpHandlerImpl.class.getName());
   private static final long TIMEOUT_MS = 40000;
+  private static final int QUEUE_SIZE = 1024;
+  private static final int QUEUE_TIMEOUT_MS = 3000;
+
+  /**
+   * A queue for operations requested from remote clients.
+   */
+  private final BlockingQueue<SingleKeyOperation<K, Object>> operationQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
 
   /**
    * A counter for issuing ids for operations sent to remote stores.
@@ -63,17 +73,113 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   private Codec<K> keyCodec;
   private final InjectionFuture<EMMsgSender> msgSender;
 
-  private final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore;
+  private final BlockResolver blockResolver;
+  private final BlockStore blockStore;
+  private final OwnershipCache ownershipCache;
 
   @Inject
-  private RemoteOpHandlerImpl(final InjectionFuture<RemoteAccessibleMemoryStore<K>> memoryStore,
+  private RemoteOpHandlerImpl(final BlockResolver blockResolver,
+                              final BlockStore blockStore,
+                              final OwnershipCache ownershipCache,
                               final Serializer serializer,
                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
+                              @Parameter(NumStoreThreads.class) final int numStoreThreads,
                               final InjectionFuture<EMMsgSender> msgSender) {
-    this.memoryStore = memoryStore;
+    this.blockResolver = blockResolver;
+    this.blockStore = blockStore;
+    this.ownershipCache = ownershipCache;
     this.serializer = serializer;
     this.keyCodec = keyCodec;
     this.msgSender = msgSender;
+    initExecutor(numStoreThreads);
+  }
+
+  /**
+   * Initialize threads that dequeue and execute operation from the {@code operationQueue}.
+   * That is, these threads serve operations requested from remote clients.
+   */
+  private void initExecutor(final int numStoreThreads) {
+    final ExecutorService executor = Executors.newFixedThreadPool(numStoreThreads);
+    for (int i = 0; i < numStoreThreads; i++) {
+      executor.submit(new OperationThread());
+    }
+  }
+
+  /**
+   * A runnable that dequeues and executes operations requested from remote clients.
+   * Several threads are initiated at the beginning and run as long-running background services.
+   */
+  private final class OperationThread implements Runnable {
+    @Override
+    public void run() {
+      while (true) {
+        // First, poll and execute a single operation.
+        // Poll with a timeout will prevent busy waiting, when the queue is empty.
+        try {
+          final SingleKeyOperation<K, Object> operation =
+              operationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+          if (operation == null) {
+            continue;
+          }
+
+          handleOperation(operation);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+        }
+      }
+    }
+
+    private <V> void handleOperation(final SingleKeyOperation<K, V> operation) {
+      final int blockId = blockResolver.resolveBlock(operation.getKey());
+
+      LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, block: {2}]]",
+          new Object[]{operation.getOpId(), operation.getOrigEvalId().get(), blockId});
+
+      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveEvalWithLock(blockId);
+      try {
+        final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
+        final boolean isLocal = !remoteEvalIdOptional.isPresent();
+        if (isLocal) {
+          final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+
+          final V output;
+          boolean isSuccess = true;
+          final DataOpType opType = operation.getOpType();
+          switch (opType) {
+          case PUT:
+            block.put(operation.getKey(), operation.getValue().get());
+            output = null;
+            break;
+          case GET:
+            output = block.get(operation.getKey());
+            break;
+          case REMOVE:
+            output = block.remove(operation.getKey());
+            break;
+          case UPDATE:
+            output = block.update(operation.getKey(), operation.getValue().get());
+            break;
+          default:
+            LOG.log(Level.WARNING, "Undefined type of operation.");
+            output = null;
+            isSuccess = false;
+          }
+
+          sendResultToOrigin(operation, Optional.ofNullable(output), isSuccess);
+        } else {
+          LOG.log(Level.WARNING,
+              "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
+                  " of block {1} by store {2}, but the local ownership cache assumes store {3} is the owner",
+              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalIdOptional.get()});
+
+          // send the failed result
+          sendResultToOrigin(operation, Optional.<V>empty(), false);
+        }
+      } finally {
+        final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+        ownershipLock.unlock();
+      }
+    }
   }
 
   /**
@@ -177,11 +283,15 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
       decodedValue = Optional.empty();
     }
 
-    final DataOperation operation = new SingleKeyOperationImpl<>(Optional.of(origEvalId),
+    final SingleKeyOperation<K, Object> operation = new SingleKeyOperationImpl<>(Optional.of(origEvalId),
         operationId, operationType, decodedKey, decodedValue);
 
-    // enqueue operation into memory store
-    memoryStore.get().onNext(operation);
+    LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}", operation.getOpId());
+    try {
+      operationQueue.put(operation);
+    } catch (final InterruptedException e) {
+      LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
+    }
   }
 
   private void onRemoteOpResultMsg(final RemoteOpMsg msg) {
@@ -232,7 +342,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
   /**
    * Sends the result to the original store.
    */
-  <V> void sendResultToOrigin(final SingleKeyOperation<K, V> operation, final Optional<V> localOutput,
+  private <V> void sendResultToOrigin(final SingleKeyOperation<K, V> operation, final Optional<V> localOutput,
                               final boolean isSuccess) {
 
     LOG.log(Level.FINEST, "Send result to origin. OpId: {0}, OrigId: {1}",

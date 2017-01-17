@@ -73,7 +73,6 @@ public class TrainingDataProviderTest {
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
     injector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
-    injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
 
     final BlockResolver<Long> mockBlockResolver = mock(BlockResolver.class);
     injector.bindVolatileInstance(BlockResolver.class, mockBlockResolver);

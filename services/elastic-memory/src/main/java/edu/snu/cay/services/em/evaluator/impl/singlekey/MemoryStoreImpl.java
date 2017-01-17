@@ -16,23 +16,18 @@
 package edu.snu.cay.services.em.evaluator.impl.singlekey;
 
 import edu.snu.cay.services.em.avro.DataOpType;
-import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.BlockStore;
 import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * A {@code MemoryStore} implementation for a key of generic type, non-supporting range operations.
@@ -40,143 +35,28 @@ import java.util.logging.Logger;
  * based on the routing result from {@link OwnershipCache}.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
-public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> {
-  private static final Logger LOG = Logger.getLogger(MemoryStore.class.getName());
-
-  private static final int QUEUE_SIZE = 1024;
-  private static final int QUEUE_TIMEOUT_MS = 3000;
-
+public final class MemoryStoreImpl<K> implements MemoryStore<K> {
   private final OwnershipCache ownershipCache;
   private final BlockResolver<K> blockResolver;
   private final RemoteOpHandlerImpl<K> remoteOpHandlerImpl;
   private final BlockStore blockStore;
-
-  /**
-   * A queue for operations requested from remote clients.
-   */
-  private final BlockingQueue<SingleKeyOperation<K, Object>> operationQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
                           final OwnershipCache ownershipCache,
                           final BlockResolver<K> blockResolver,
                           final RemoteOpHandlerImpl<K> remoteOpHandlerImpl,
-                          final BlockStore blockStore,
-                          @Parameter(NumStoreThreads.class) final int numStoreThreads) {
+                          final BlockStore blockStore) {
     hTrace.initialize();
     this.ownershipCache = ownershipCache;
     this.blockResolver = blockResolver;
     this.remoteOpHandlerImpl = remoteOpHandlerImpl;
     this.blockStore = blockStore;
-    initExecutor(numStoreThreads);
-  }
-
-  /**
-   * Initialize threads that dequeue and execute operation from the {@code operationQueue}.
-   * That is, these threads serve operations requested from remote clients.
-   */
-  private void initExecutor(final int numStoreThreads) {
-    final ExecutorService executor = Executors.newFixedThreadPool(numStoreThreads);
-    for (int i = 0; i < numStoreThreads; i++) {
-      executor.submit(new OperationThread());
-    }
   }
 
   @Override
   public boolean registerBlockUpdateListener(final BlockUpdateListener listener) {
     return blockStore.registerBlockUpdateListener(listener);
-  }
-
-  /**
-   * A runnable that dequeues and executes operations requested from remote clients.
-   * Several threads are initiated at the beginning and run as long-running background services.
-   */
-  private final class OperationThread implements Runnable {
-
-    @Override
-    public void run() {
-      while (true) {
-        // First, poll and execute a single operation.
-        // Poll with a timeout will prevent busy waiting, when the queue is empty.
-        try {
-          final SingleKeyOperation<K, Object> operation =
-              operationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-          if (operation == null) {
-            continue;
-          }
-
-          handleOperation(operation);
-        } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
-        }
-      }
-    }
-
-    private <V> void handleOperation(final SingleKeyOperation<K, V> operation) {
-      final int blockId = blockResolver.resolveBlock(operation.getKey());
-
-      LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, block: {2}]]",
-          new Object[]{operation.getOpId(), operation.getOrigEvalId().get(), blockId});
-
-      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveEvalWithLock(blockId);
-      try {
-        final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
-        final boolean isLocal = !remoteEvalIdOptional.isPresent();
-        if (isLocal) {
-          final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
-
-          final V output;
-          boolean isSuccess = true;
-          final DataOpType opType = operation.getOpType();
-          switch (opType) {
-          case PUT:
-            block.put(operation.getKey(), operation.getValue().get());
-            output = null;
-            break;
-          case GET:
-            output = block.get(operation.getKey());
-            break;
-          case REMOVE:
-            output = block.remove(operation.getKey());
-            break;
-          case UPDATE:
-            output = block.update(operation.getKey(), operation.getValue().get());
-            break;
-          default:
-            LOG.log(Level.WARNING, "Undefined type of operation.");
-            output = null;
-            isSuccess = false;
-          }
-
-          remoteOpHandlerImpl.sendResultToOrigin(operation, Optional.ofNullable(output), isSuccess);
-        } else {
-          LOG.log(Level.WARNING,
-              "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
-                  " of block {1} by store {2}, but the local ownershipCache assumes store {3} is the owner",
-              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalIdOptional.get()});
-
-          // send the failed result
-          remoteOpHandlerImpl.sendResultToOrigin(operation, Optional.<V>empty(), false);
-        }
-      } finally {
-        final Lock ownershipLock = remoteEvalIdWithLock.getValue();
-        ownershipLock.unlock();
-      }
-    }
-  }
-
- /**
-   * Handles operations requested from a remote client.
-   */
-  @Override
-  public void onNext(final DataOperation dataOperation) {
-    final SingleKeyOperation<K, Object> operation = (SingleKeyOperation<K, Object>) dataOperation;
-    LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}", operation.getOpId());
-    try {
-      operationQueue.put(operation);
-    } catch (final InterruptedException e) {
-      LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
-    }
   }
 
   @Override
