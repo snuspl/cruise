@@ -24,8 +24,8 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-#ALG=edu.snu.cay.dolphin.async.mlapps.lasso.LassoREEF
-ALG=edu.snu.cay.dolphin.async.mlapps.lasso.LassoREEFSGD
+ALG=edu.snu.cay.dolphin.async.mlapps.lasso.LassoREEF
+#ALG=edu.snu.cay.dolphin.async.mlapps.lasso.LassoREEFSGD
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD
