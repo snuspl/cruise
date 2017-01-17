@@ -52,28 +52,28 @@ import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 
 /**
- * Tests to check whether OperationRouter is initialized correctly, and routes operations to the correct target.
+ * Tests to check whether OwnershipCache is initialized correctly, and give correct answer to route operations.
  */
-public class OperationRouterTest {
+public class OwnershipCacheTest {
   // TODO #509: EM assumes that the eval prefix has "-" at the end
   private static final String EVAL_ID_PREFIX = "EVAL-";
 
   private CountDownLatch initLatch;
 
   /**
-   * Creates an instance of OperationRouter based on the input parameters.
+   * Creates an instance of OwnershipCache based on the input parameters.
    * @param numInitialEvals the number of initial evaluators
    * @param numTotalBlocks the number of total blocks
    * @param memoryStoreId the local memory store id
    * @param addedEval a boolean representing whether or not an evaluator is added by EM.add()
-   * @return an instance of OperationRouter
+   * @return an instance of OwnershipCache
    * @throws InjectionException
    */
-  private OperationRouter newOperationRouter(final int numInitialEvals,
-                                             final int numTotalBlocks,
-                                             final int memoryStoreId,
-                                             final boolean addedEval) throws InjectionException {
-    // 1. setup eval-side components that is common for all routers
+  private OwnershipCache newOwnershipCache(final int numInitialEvals,
+                                           final int numTotalBlocks,
+                                           final int memoryStoreId,
+                                           final boolean addedEval) throws InjectionException {
+    // 1. setup eval-side components that is common for all ownership caches
     final Configuration evalConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(numInitialEvals))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
@@ -84,9 +84,9 @@ public class OperationRouterTest {
 
     final EMMsgSender evalMsgSender = mock(EMMsgSender.class);
     evalInjector.bindVolatileInstance(EMMsgSender.class, evalMsgSender);
-    final OperationRouter router = evalInjector.getInstance(OperationRouter.class);
+    final OwnershipCache ownershipCache = evalInjector.getInstance(OwnershipCache.class);
 
-    // 2. If it is a router for a newly added evaluator,
+    // 2. If it is a ownershipCache for a newly added evaluator,
     // setup eval-side msg sender and driver-side msg sender/handler and block manager.
     // By mocking msg sender and handler in both side, we can simulate more realistic system behaviors.
     if (addedEval) {
@@ -99,7 +99,7 @@ public class OperationRouterTest {
       final Injector driverInjector = Tang.Factory.getTang().newInjector(driverConf);
       final BlockManager blockManager = driverInjector.getInstance(BlockManager.class);
 
-      // Register all eval to block manager, now this router can obtain the complete routing table
+      // Register all eval to block manager, now this ownershipCache can obtain the complete ownership info
       for (int evalIdx = 0; evalIdx < numInitialEvals; evalIdx++) {
         final String endpointId = EVAL_ID_PREFIX + evalIdx;
 
@@ -124,66 +124,66 @@ public class OperationRouterTest {
       doAnswer(new Answer() {
         @Override
         public Object answer(final InvocationOnMock invocation) throws Throwable {
-          Thread.sleep(1000); // delay for fetching the routing table from driver
+          Thread.sleep(1000); // delay for fetching the ownership info from driver
 
-          final RoutingTableInitReqMsg routingTableInitReqMsg = RoutingTableInitReqMsg.newBuilder()
+          final OwnershipCacheInitReqMsg ownershipCacheInitReqMsg = OwnershipCacheInitReqMsg.newBuilder()
               .setEvalId(evalId)
               .build();
 
-          final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
-              .setType(RoutingTableMsgType.RoutingTableInitReqMsg)
-              .setRoutingTableInitReqMsg(routingTableInitReqMsg)
+          final OwnershipCacheMsg ownershipCacheMsg = OwnershipCacheMsg.newBuilder()
+              .setType(OwnershipCacheMsgType.OwnershipCacheInitReqMsg)
+              .setOwnershipCacheInitReqMsg(ownershipCacheInitReqMsg)
               .build();
 
           final EMMsg msg = EMMsg.newBuilder()
-              .setType(EMMsgType.RoutingTableMsg)
-              .setRoutingTableMsg(routingTableMsg)
+              .setType(EMMsgType.OwnershipCacheMsg)
+              .setOwnershipCacheMsg(ownershipCacheMsg)
               .build();
 
           driverMsgHandler.onNext(new NSMessage<>(evalIdentifier, driverIdentifier, msg));
           return null;
         }
-      }).when(evalMsgSender).sendRoutingTableInitReqMsg(any(TraceInfo.class));
+      }).when(evalMsgSender).sendOwnershipCacheInitReqMsg(any(TraceInfo.class));
 
       // reset initLatch
       initLatch = new CountDownLatch(1);
 
-      // driverMsgHander.onNext will invoke driverMsgSender.sendRoutingTableInitMsg with the routine table
+      // driverMsgHander.onNext will invoke driverMsgSender.sendOwnershipCacheInitMsg with the ownership info
       doAnswer(new Answer() {
         @Override
         public Object answer(final InvocationOnMock invocation) throws Throwable {
           final List<Integer> blockLocations = invocation.getArgumentAt(1, List.class);
-          router.initRoutingTableWithDriver(blockLocations);
+          ownershipCache.initWithDriver(blockLocations);
           initLatch.countDown();
           return null;
         }
-      }).when(driverMsgSender).sendRoutingTableInitMsg(anyString(), anyList(), any(TraceInfo.class));
+      }).when(driverMsgSender).sendOwnershipCacheInitMsg(anyString(), anyList(), any(TraceInfo.class));
     }
 
-    return router;
+    return ownershipCache;
   }
 
   /**
    * Checks whether blocks assigned to each MemoryStore have its unique owner (MemoryStore),
-   * and the local blocks acquired from getInitialLocalBlockIds() are routed to the local MemoryStore.
+   * and the local blocks acquired from getInitialLocalBlockIds() belong to the local MemoryStore.
    */
   @Test
-  public void testRoutingLocalBlocks() throws InjectionException {
+  public void testLocalBlocks() throws InjectionException {
     final int numTotalBlocks = 1024;
     final int numMemoryStores = 4;
 
     final Set<Integer> totalBlocks = new HashSet<>(numTotalBlocks);
 
     for (int localStoreId = 0; localStoreId < numMemoryStores; localStoreId++) {
-      final OperationRouter operationRouter =
-          newOperationRouter(numMemoryStores, numTotalBlocks, localStoreId, false);
+      final OwnershipCache ownershipCache =
+          newOwnershipCache(numMemoryStores, numTotalBlocks, localStoreId, false);
 
-      final List<Integer> localBlockIds = operationRouter.getInitialLocalBlockIds();
+      final List<Integer> localBlockIds = ownershipCache.getInitialLocalBlockIds();
 
       for (final int blockId : localBlockIds) {
-        // OperationRouter.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
-        assertFalse("Router fails to classify local blocks",
-            operationRouter.resolveEval(blockId).isPresent());
+        // OwnershipCache.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
+        assertFalse("Ownership cache fails to classify local blocks",
+            ownershipCache.resolveEval(blockId).isPresent());
         assertTrue("The same block is owned by multiple stores", totalBlocks.add(blockId));
       }
     }
@@ -192,33 +192,33 @@ public class OperationRouterTest {
   }
 
   /**
-   * Checks whether MemoryStores share the same routing table initially.
+   * Checks whether MemoryStores share the same ownership info initially.
    */
   @Test
-  public void testMultipleRouters() throws InjectionException {
+  public void testMultipleOwnershipCaches() throws InjectionException {
     final int numTotalBlocks = 1024;
     final int numMemoryStores = 4;
 
-    final OperationRouter[] routers = new OperationRouter[numMemoryStores];
+    final OwnershipCache[] ownershipCaches = new OwnershipCache[numMemoryStores];
     for (int storeId = 0; storeId < numMemoryStores; storeId++) {
-      routers[storeId] = newOperationRouter(numMemoryStores, numTotalBlocks, storeId, false);
+      ownershipCaches[storeId] = newOwnershipCache(numMemoryStores, numTotalBlocks, storeId, false);
     }
 
     for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
 
       // This is the memory store id that is answered at the first time.
-      // It is for checking all routers give the same answer.
+      // It is for checking all ownershipCaches give the same answer.
       // -1 means that memory store id for the block has not been found yet
       int firstAnswer = -1;
 
       boolean localStoreFound = false;
 
-      // check all routers give same answer
+      // check all ownershipCaches give same answer
       for (int storeId = 0; storeId < numMemoryStores; storeId++) {
-        final Optional<String> evalId = routers[storeId].resolveEval(blockId);
+        final Optional<String> evalId = ownershipCaches[storeId].resolveEval(blockId);
 
         final int targetStoreId;
-        // OperationRouter.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
+        // OwnershipCache.resolveEval(blockId) returns empty when the MemoryStore owns the block locally
         if (!evalId.isPresent()) {
           assertFalse("Block should belong to only one store", localStoreFound);
           localStoreFound = true;
@@ -230,16 +230,17 @@ public class OperationRouterTest {
         }
 
         if (firstAnswer == -1) {
-          firstAnswer = targetStoreId; // it's set by the first router's answer
+          firstAnswer = targetStoreId; // it's set by the first OwnershipCache's answer
         } else {
-          assertEquals("Routers should give the same memory store id for the same block", firstAnswer, targetStoreId);
+          assertEquals("Ownership caches should give the same memory store id for the same block",
+              firstAnswer, targetStoreId);
         }
       }
     }
   }
 
   /**
-   * Tests whether routers are correctly updated by {@link OperationRouter#updateOwnership(int, int, int)}.
+   * Tests whether ownership caches are correctly updated by {@link OwnershipCache#updateOwnership(int, int, int)}.
    */
   @Test
   public void testUpdatingOwnership() throws InjectionException {
@@ -247,66 +248,69 @@ public class OperationRouterTest {
     final int numInitialMemoryStores = 4;
 
     final int srcStoreId = 0;
-    final OperationRouter srcRouter = newOperationRouter(numInitialMemoryStores, numTotalBlocks, srcStoreId, false);
+    final OwnershipCache srcOwnershipCache =
+        newOwnershipCache(numInitialMemoryStores, numTotalBlocks, srcStoreId, false);
 
-    final List<Integer> srcInitialBlocks = srcRouter.getInitialLocalBlockIds();
-    List<Integer> srcCurrentBlocks = srcRouter.getCurrentLocalBlockIds();
+    final List<Integer> srcInitialBlocks = srcOwnershipCache.getInitialLocalBlockIds();
+    List<Integer> srcCurrentBlocks = srcOwnershipCache.getCurrentLocalBlockIds();
 
-    assertEquals("Router is initialized incorrectly", srcInitialBlocks.size(), srcCurrentBlocks.size());
-    assertTrue("Router is initialized incorrectly", srcInitialBlocks.containsAll(srcCurrentBlocks));
+    assertEquals("Ownership cache is initialized incorrectly", srcInitialBlocks.size(), srcCurrentBlocks.size());
+    assertTrue("Owenership cache is initialized incorrectly", srcInitialBlocks.containsAll(srcCurrentBlocks));
 
     final int destStoreId = 1;
-    final OperationRouter destRouter =
-        newOperationRouter(numInitialMemoryStores, numTotalBlocks, destStoreId, false);
+    final OwnershipCache dstOwnershipCache =
+        newOwnershipCache(numInitialMemoryStores, numTotalBlocks, destStoreId, false);
 
-    // move the half of blocks between two evaluators by updating routers
+    // move the half of blocks between two evaluators by updating OwnershipCaches
     final int numBlocksToMove = srcInitialBlocks.size() / 2;
     final List<Integer> movedBlocks = new ArrayList<>(numBlocksToMove);
     for (int i = 0; i < numBlocksToMove; i++) {
       final int movingBlockId = srcInitialBlocks.get(i);
-      srcRouter.updateOwnership(movingBlockId, srcStoreId, destStoreId);
-      destRouter.updateOwnership(movingBlockId, srcStoreId, destStoreId);
+      srcOwnershipCache.updateOwnership(movingBlockId, srcStoreId, destStoreId);
+      dstOwnershipCache.updateOwnership(movingBlockId, srcStoreId, destStoreId);
       movedBlocks.add(movingBlockId);
     }
 
-    // check that the router is correctly updated as expected
-    srcCurrentBlocks = srcRouter.getCurrentLocalBlockIds();
-    final List<Integer> destCurrentBlocks = destRouter.getCurrentLocalBlockIds();
-    final List<Integer> destInitialBlocks = destRouter.getInitialLocalBlockIds();
+    // check that the OwnsershipCache is correctly updated as expected
+    srcCurrentBlocks = srcOwnershipCache.getCurrentLocalBlockIds();
+    final List<Integer> destCurrentBlocks = dstOwnershipCache.getCurrentLocalBlockIds();
+    final List<Integer> destInitialBlocks = dstOwnershipCache.getInitialLocalBlockIds();
 
-    assertEquals("The number of current blocks in source router has not been updated correctly",
+    assertEquals("The number of current blocks in source ownership cache has not been updated correctly",
         srcInitialBlocks.size() - numBlocksToMove, srcCurrentBlocks.size());
-    assertEquals("The number of current blocks in destination router has not been updated correctly",
+    assertEquals("The number of current blocks in destination ownership cache has not been updated correctly",
         destInitialBlocks.size() + numBlocksToMove, destCurrentBlocks.size());
-    assertTrue("Current blocks in source router have not been updated correctly",
+    assertTrue("Current blocks in source ownership cache have not been updated correctly",
         srcInitialBlocks.containsAll(srcCurrentBlocks));
-    assertTrue("Current blocks in destination router have not been updated correctly",
+    assertTrue("Current blocks in destination ownership cache have not been updated correctly",
         destCurrentBlocks.containsAll(destInitialBlocks));
 
     for (final int blockId : movedBlocks) {
-      assertFalse("This block should have been moved out from source router", srcCurrentBlocks.contains(blockId));
-      assertTrue("This block should have been moved into destination router", destCurrentBlocks.contains(blockId));
+      assertFalse("This block should have been moved out from source ownership cache",
+          srcCurrentBlocks.contains(blockId));
+      assertTrue("This block should have been moved into destination ownership cache",
+          destCurrentBlocks.contains(blockId));
     }
   }
 
   /**
-   * Tests whether routers are correctly locked by {@link OperationRouter#resolveEvalWithLock}
-   * to prevent themselves from being updated by {@link OperationRouter#updateOwnership}.
+   * Tests whether OwnershipCaches are correctly locked by {@link OwnershipCache#resolveEvalWithLock}
+   * to prevent themselves from being updated by {@link OwnershipCache#updateOwnership}.
    */
   @Test
-  public void testLockingRouterFromUpdate() throws InjectionException, InterruptedException {
+  public void testLockingOwnershipCacheFromUpdate() throws InjectionException, InterruptedException {
     final int numTotalBlocks = 1024;
     final int numInitialMemoryStores = 4;
     final int numBlocksToMove = 2; // should be smaller than (numTotalBlocks/numInitialMemoryStores)
 
     final int storeId = 0;
-    final OperationRouter router = newOperationRouter(numInitialMemoryStores, numTotalBlocks, storeId, false);
+    final OwnershipCache ownershipCache = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, storeId, false);
 
-    final List<Integer> initialBlocks = router.getInitialLocalBlockIds();
+    final List<Integer> initialBlocks = ownershipCache.getInitialLocalBlockIds();
     final List<Integer> blocksToMove = initialBlocks.subList(0, numBlocksToMove);
 
-    // Resolving a single block locks the whole routing table
-    final Lock routerLock = router.resolveEvalWithLock(blocksToMove.get(0)).getValue();
+    // Resolving a single block locks the whole ownership cache
+    final Lock ownershipLock = ownershipCache.resolveEvalWithLock(blocksToMove.get(0)).getValue();
 
     final int destStoreId = 1;
 
@@ -314,87 +318,89 @@ public class OperationRouterTest {
     final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(numBlocksToMove);
     for (final int blockId : blocksToMove) {
       ownershipUpdateExecutor.submit(() -> {
-        router.updateOwnership(blockId, storeId, destStoreId);
+        ownershipCache.updateOwnership(blockId, storeId, destStoreId);
         updateLatch.countDown();
       });
     }
 
-    assertFalse("Thread should not be finished before unlock router", updateLatch.await(2000, TimeUnit.MILLISECONDS));
+    assertFalse("Thread should not be finished before unlock ownershipCache",
+        updateLatch.await(2000, TimeUnit.MILLISECONDS));
 
-    final List<Integer> curBlocksBeforeUnlock = router.getCurrentLocalBlockIds();
-    assertEquals("Routing table should not be updated", initialBlocks, curBlocksBeforeUnlock);
+    final List<Integer> curBlocksBeforeUnlock = ownershipCache.getCurrentLocalBlockIds();
+    assertEquals("Ownership cache should not be updated", initialBlocks, curBlocksBeforeUnlock);
 
-    // unlock router to let threads update the router
-    routerLock.unlock();
+    // unlock ownershipCache to let threads update the ownershipCache
+    ownershipLock.unlock();
 
     assertTrue("Thread should be finished after unlock", updateLatch.await(2000, TimeUnit.MILLISECONDS));
 
     blocksToMove.forEach(curBlocksBeforeUnlock::remove);
-    final List<Integer> curBlocksAfterUnlock = router.getCurrentLocalBlockIds();
-    assertEquals("Routing table should be updated", curBlocksBeforeUnlock, curBlocksAfterUnlock);
+    final List<Integer> curBlocksAfterUnlock = ownershipCache.getCurrentLocalBlockIds();
+    assertEquals("Ownership cache should be updated", curBlocksBeforeUnlock, curBlocksAfterUnlock);
 
     ownershipUpdateExecutor.shutdown();
   }
 
   /**
-   * Tests router after initializing the routing table.
+   * Tests OwnershipCache after initialization.
    * Stores in added evaluators are initialized by communicating with the driver,
    * and stores in initial evaluators are initialized by itself without any communication.
    * The test checks whether initialization is performed, and
    * runs multiple threads using resolver to check whether the correct result is given.
    */
   @Test
-  public void testRouterInAddedEvalAfterInit() throws InjectionException, InterruptedException {
+  public void testOwnershipCacheInAddedEvalAfterInit() throws InjectionException, InterruptedException {
     final int numTotalBlocks = 1024;
     final int numInitialMemoryStores = 4;
     final int numThreads = 8;
 
     final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
-    // because we compare the whole set of routers in other tests,
-    // this test focus on comparing only two routers initialized in different ways
+    // because we compare the whole set of ownership caches in other tests,
+    // this test focus on comparing only two ownership caches initialized in different ways
     final int initStoreId = 0;
     final int addedStoreId = 4; // It should be larger than the largest index of initial stores
 
-    // router in initStore will be initialized statically
-    final OperationRouter routerInInitStore
-        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId, false);
-    // router in addedStore will be initialized dynamically
-    final OperationRouter routerInAddedStore
-        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId, true);
+    // ownership cache in initStore will be initialized statically
+    final OwnershipCache ownershipCacheInInitStore
+        = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, initStoreId, false);
+    // ownership cache in addedStore will be initialized dynamically
+    final OwnershipCache ownershipCacheInAddedStore
+        = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, addedStoreId, true);
 
     // we assume that store ids are assigned in the increasing order,
     // so the index of evaluator endpoint is equal to the store id
     final String endpointIdForInitEval = EVAL_ID_PREFIX + initStoreId;
     final String endpointIdForAddedEval = EVAL_ID_PREFIX + addedStoreId;
 
-    routerInInitStore.setEndpointIdPrefix(endpointIdForInitEval);
-    routerInInitStore.triggerInitialization();
-    routerInAddedStore.setEndpointIdPrefix(endpointIdForAddedEval);
-    routerInAddedStore.triggerInitialization();
+    ownershipCacheInInitStore.setEndpointIdPrefix(endpointIdForInitEval);
+    ownershipCacheInInitStore.triggerInitialization();
+    ownershipCacheInAddedStore.setEndpointIdPrefix(endpointIdForAddedEval);
+    ownershipCacheInAddedStore.triggerInitialization();
 
-    // confirm that the router is initialized
+    // confirm that the ownership cache is initialized
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
 
-    // While multiple threads use router, the initialization never be triggered because it's already initialized.
+    // While multiple threads use ownership cache,
+    // the initialization never be triggered because it's already initialized.
     final Runnable[] threads = new Runnable[numThreads];
 
-    // though init router is statically initialized and added router is dynamically initialized,
-    // because there were no changes in the routing table their views should be equal
+    // though init ownership cache is statically initialized and added ownership cache is dynamically initialized,
+    // because there were no changes in the ownership info their views should be equal
     for (int idx = 0; idx < numThreads; idx++) {
       threads[idx] = new Runnable() {
         @Override
         public void run() {
           for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-            final Optional<String> evalIdFromInitRouter = routerInInitStore.resolveEval(blockId);
-            final Optional<String> evalIdFromAddedRouter = routerInAddedStore.resolveEval(blockId);
+            final Optional<String> evalIdFromInitOwnershipCache = ownershipCacheInInitStore.resolveEval(blockId);
+            final Optional<String> evalIdFromAddedOwnershipCache = ownershipCacheInAddedStore.resolveEval(blockId);
 
-            if (!evalIdFromInitRouter.isPresent()) { // routerInInitStore is local
-              assertEquals(endpointIdForInitEval, evalIdFromAddedRouter.get());
-            } else if (!evalIdFromAddedRouter.isPresent()) { // routerInAddedStore is local
-              assertEquals(endpointIdForAddedEval, evalIdFromInitRouter.get());
+            if (!evalIdFromInitOwnershipCache.isPresent()) { // ownershipCacheInInitStore is local
+              assertEquals(endpointIdForInitEval, evalIdFromAddedOwnershipCache.get());
+            } else if (!evalIdFromAddedOwnershipCache.isPresent()) { // ownershipCacheInAddedStore is local
+              assertEquals(endpointIdForAddedEval, evalIdFromInitOwnershipCache.get());
             } else {
-              assertEquals(evalIdFromInitRouter.get(), evalIdFromAddedRouter.get());
+              assertEquals(evalIdFromInitOwnershipCache.get(), evalIdFromAddedOwnershipCache.get());
             }
           }
           threadLatch.countDown();
@@ -407,56 +413,56 @@ public class OperationRouterTest {
   }
 
   /**
-   * Tests router without explicit initialization of the routing table.
+   * Tests OwnershipCache without explicit initialization.
    * Stores in added evaluators are initialized by communicating with the driver,
    * and stores in initial evaluators are initialized by itself without any communication.
    * The test runs multiple threads using resolver to check
    * whether the threads are blocked until the initialization and the correct result is given.
    */
   @Test
-  public void testRouterInAddedEvalBeforeInit() throws InjectionException, InterruptedException {
+  public void testOwnershipCacheInAddedEvalBeforeInit() throws InjectionException, InterruptedException {
     final int numTotalBlocks = 1024;
     final int numInitialMemoryStores = 4;
     final int numThreads = 8;
 
     final CountDownLatch threadLatch = new CountDownLatch(numThreads);
 
-    // because we compare the whole set of routers in other tests,
-    // this test focus on comparing only two routers initialized in different ways
+    // because we compare the whole set of ownership caches in other tests,
+    // this test focus on comparing only two ownership caches initialized in different ways
     final int initStoreId = 0;
     final int addedStoreId = 4; // It should be larger than the largest index of initial stores
 
-    // router in initStore will be initialized statically
-    final OperationRouter routerInInitStore
-        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, initStoreId, false);
-    // router in addedStore will be initialized dynamically
-    final OperationRouter routerInAddedStore
-        = newOperationRouter(numInitialMemoryStores, numTotalBlocks, addedStoreId, true);
+    // ownership cache in initStore will be initialized statically
+    final OwnershipCache ownershipCacheInInitStore
+        = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, initStoreId, false);
+    // ownership cache in addedStore will be initialized dynamically
+    final OwnershipCache ownershipCacheInAddedStore
+        = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, addedStoreId, true);
 
     // we assume that store ids are assigned in the increasing order,
     // so the index of evaluator endpoint is equal to the store id
     final String endpointIdForInitEval = EVAL_ID_PREFIX + initStoreId;
     final String endpointIdForAddedEval = EVAL_ID_PREFIX + addedStoreId;
 
-    // While multiple threads use router, they will wait until the initialization is done.
+    // While multiple threads use ownership cache, they will wait until the initialization is done.
     final Runnable[] threads = new Runnable[numThreads];
 
-    // though init router is statically initialized and added router is dynamically initialized,
-    // because there were no changes in the routing table their views should be equal
+    // though init ownership cache is statically initialized and added ownership cache is dynamically initialized,
+    // because there were no changes in the ownership info their views should be equal
     for (int idx = 0; idx < numThreads; idx++) {
       threads[idx] = new Runnable() {
         @Override
         public void run() {
           for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
-            final Optional<String> evalIdFromInitRouter = routerInInitStore.resolveEval(blockId);
-            final Optional<String> evalIdFromAddedRouter = routerInAddedStore.resolveEval(blockId);
+            final Optional<String> evalIdFromInitOwnershipCache = ownershipCacheInInitStore.resolveEval(blockId);
+            final Optional<String> evalIdFromAddedOwnershipCache = ownershipCacheInAddedStore.resolveEval(blockId);
 
-            if (!evalIdFromInitRouter.isPresent()) { // routerInInitStore is local
-              assertEquals(endpointIdForInitEval, evalIdFromAddedRouter.get());
-            } else if (!evalIdFromAddedRouter.isPresent()) { // routerInAddedStore is local
-              assertEquals(endpointIdForAddedEval, evalIdFromInitRouter.get());
+            if (!evalIdFromInitOwnershipCache.isPresent()) { // ownershipCacheInInitStore is local
+              assertEquals(endpointIdForInitEval, evalIdFromAddedOwnershipCache.get());
+            } else if (!evalIdFromAddedOwnershipCache.isPresent()) { // ownershipCacheInAddedStore is local
+              assertEquals(endpointIdForAddedEval, evalIdFromInitOwnershipCache.get());
             } else {
-              assertEquals(evalIdFromInitRouter.get(), evalIdFromAddedRouter.get());
+              assertEquals(evalIdFromInitOwnershipCache.get(), evalIdFromAddedOwnershipCache.get());
             }
           }
           threadLatch.countDown();
@@ -470,15 +476,15 @@ public class OperationRouterTest {
     Thread.sleep(5000);
     assertEquals("Threads should not progress before initialization", numThreads, threadLatch.getCount());
 
-    // confirm that the router is not initialized yet
+    // confirm that the ownership cache is not initialized yet
     assertEquals(1, initLatch.getCount());
 
-    routerInInitStore.setEndpointIdPrefix(endpointIdForInitEval);
-    routerInInitStore.triggerInitialization();
-    routerInAddedStore.setEndpointIdPrefix(endpointIdForAddedEval);
-    routerInAddedStore.triggerInitialization();
+    ownershipCacheInInitStore.setEndpointIdPrefix(endpointIdForInitEval);
+    ownershipCacheInInitStore.triggerInitialization();
+    ownershipCacheInAddedStore.setEndpointIdPrefix(endpointIdForAddedEval);
+    ownershipCacheInAddedStore.triggerInitialization();
 
-    // confirm that the router is initialized now
+    // confirm that the ownership cache is initialized now
     assertTrue(initLatch.await(10, TimeUnit.SECONDS));
 
     assertTrue(threadLatch.await(30, TimeUnit.SECONDS));

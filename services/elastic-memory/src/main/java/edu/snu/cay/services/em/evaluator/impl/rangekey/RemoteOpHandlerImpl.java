@@ -22,7 +22,7 @@ import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RangeKeyOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteOpHandler;
 import edu.snu.cay.services.em.evaluator.impl.BlockStore;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.utils.Tuple3;
@@ -61,7 +61,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
    */
   private final ConcurrentMap<String, RangeKeyOperation<K, Object>> ongoingOp = new ConcurrentHashMap<>();
 
-  private final OperationRouter router;
+  private final OwnershipCache ownershipCache;
   private final BlockStore blockStore;
   private final RangeSplitter<K> rangeSplitter;
 
@@ -77,14 +77,14 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
       = new ArrayBlockingQueue<>(QUEUE_SIZE);
 
   @Inject
-  private RemoteOpHandlerImpl(final OperationRouter router,
+  private RemoteOpHandlerImpl(final OwnershipCache ownershipCache,
                               final BlockStore blockStore,
                               final RangeSplitter<K> rangeSplitter,
                               final Serializer serializer,
                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                               @Parameter(NumStoreThreads.class) final int numStoreThreads,
                               final InjectionFuture<EMMsgSender> msgSender) {
-    this.router = router;
+    this.ownershipCache = ownershipCache;
     this.blockStore = blockStore;
     this.rangeSplitter = rangeSplitter;
     this.serializer = serializer;
@@ -136,7 +136,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
       LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, block: {2}]]",
           new Object[]{operation.getOpId(), operation.getOrigEvalId().get(), blockId});
 
-      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveEvalWithLock(blockId);
       try {
         final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
         final boolean isLocalBlock = !remoteEvalIdOptional.isPresent();
@@ -147,7 +147,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
         } else {
           LOG.log(Level.WARNING,
               "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
-                  " of block {1} by store {2}, but the local router assumes store {3} is the owner",
+                  " of block {1} by store {2}, but the local ownership cache assumes store {3} is the owner",
               new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalIdOptional.get()});
 
           // treat remote ranges as failed ranges, because we do not allow more than one hop in remote access
@@ -158,8 +158,8 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
           submitLocalResult(operation, Collections.emptyMap(), failedRanges);
         }
       } finally {
-        final Lock readLock = remoteEvalIdWithLock.getValue();
-        readLock.unlock();
+        final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+        ownershipLock.unlock();
       }
     }
   }

@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.evaluator.impl.singlekey;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.BlockStore;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
@@ -32,23 +32,23 @@ import java.util.concurrent.locks.Lock;
 /**
  * A {@code MemoryStore} implementation for a key of generic type, non-supporting range operations.
  * It routes operations to local {@link BlockStore} or remote through {@link RemoteOpHandler}
- * based on the routing result from {@link OperationRouter}.
+ * based on the routing result from {@link OwnershipCache}.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
 public final class MemoryStoreImpl<K> implements MemoryStore<K> {
-  private final OperationRouter router;
+  private final OwnershipCache ownershipCache;
   private final BlockResolver<K> blockResolver;
   private final RemoteOpHandlerImpl<K> remoteOpHandlerImpl;
   private final BlockStore blockStore;
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
-                          final OperationRouter router,
+                          final OwnershipCache ownershipCache,
                           final BlockResolver<K> blockResolver,
                           final RemoteOpHandlerImpl<K> remoteOpHandlerImpl,
                           final BlockStore blockStore) {
     hTrace.initialize();
-    this.router = router;
+    this.ownershipCache = ownershipCache;
     this.blockResolver = blockResolver;
     this.remoteOpHandlerImpl = remoteOpHandlerImpl;
     this.blockStore = blockStore;
@@ -65,19 +65,19 @@ public final class MemoryStoreImpl<K> implements MemoryStore<K> {
     final int blockId = blockResolver.resolveBlock(id);
     final Optional<String> remoteEvalIdOptional;
 
-    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveEvalWithLock(blockId);
     try {
       remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      // execute operation in local, holding routerLock
+      // execute operation in local, holding ownershipLock
       if (!remoteEvalIdOptional.isPresent()) {
         final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         block.put(id, value);
         return new Pair<>(id, true);
       }
     } finally {
-      final Lock routerLock = remoteEvalIdWithLock.getValue();
-      routerLock.unlock();
+      final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+      ownershipLock.unlock();
     }
 
     // send operation to remote and wait until operation is finished
@@ -97,19 +97,19 @@ public final class MemoryStoreImpl<K> implements MemoryStore<K> {
     final int blockId = blockResolver.resolveBlock(id);
     final Optional<String> remoteEvalIdOptional;
 
-    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveEvalWithLock(blockId);
     try {
       remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      // execute operation in local, holding routerLock
+      // execute operation in local, holding ownershipLock
       if (!remoteEvalIdOptional.isPresent()) {
         final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         final V output = block.get(id);
         return output == null ? null : new Pair<>(id, output);
       }
     } finally {
-      final Lock routerLock = remoteEvalIdWithLock.getValue();
-      routerLock.unlock();
+      final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+      ownershipLock.unlock();
     }
 
     // send operation to remote and wait until operation is finished
@@ -124,7 +124,7 @@ public final class MemoryStoreImpl<K> implements MemoryStore<K> {
   public <V> Map<K, V> getAll() {
     final Map<K, V> result;
 
-    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
     final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
@@ -155,19 +155,19 @@ public final class MemoryStoreImpl<K> implements MemoryStore<K> {
     final int blockId = blockResolver.resolveBlock(id);
     final Optional<String> remoteEvalIdOptional;
 
-    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveEvalWithLock(blockId);
     try {
       remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      // execute operation in local, holding routerLock
+      // execute operation in local, holding ownershipLock
       if (!remoteEvalIdOptional.isPresent()) {
         final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         final V output = block.update(id, deltaValue);
         return new Pair<>(id, output);
       }
     } finally {
-      final Lock routerLock = remoteEvalIdWithLock.getValue();
-      routerLock.unlock();
+      final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+      ownershipLock.unlock();
     }
 
     // send operation to remote and wait until operation is finished
@@ -184,19 +184,19 @@ public final class MemoryStoreImpl<K> implements MemoryStore<K> {
     final int blockId = blockResolver.resolveBlock(id);
     final Optional<String> remoteEvalIdOptional;
 
-    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
+    final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveEvalWithLock(blockId);
     try {
       remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      // execute operation in local, holding routerLock
+      // execute operation in local, holding ownershipLock
       if (!remoteEvalIdOptional.isPresent()) {
         final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         final V output = block.remove(id);
         return output == null ? null : new Pair<>(id, output);
       }
     } finally {
-      final Lock routerLock = remoteEvalIdWithLock.getValue();
-      routerLock.unlock();
+      final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+      ownershipLock.unlock();
     }
 
     // send operation to remote and wait until operation is finished
@@ -211,7 +211,7 @@ public final class MemoryStoreImpl<K> implements MemoryStore<K> {
   public <V> Map<K, V> removeAll() {
     final Map<K, V> result;
 
-    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
     final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
@@ -248,6 +248,6 @@ public final class MemoryStoreImpl<K> implements MemoryStore<K> {
   @Override
   public Optional<String> resolveEval(final K key) {
     final int blockId = blockResolver.resolveBlock(key);
-    return router.resolveEval(blockId);
+    return ownershipCache.resolveEval(blockId);
   }
 }

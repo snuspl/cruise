@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.evaluator.impl.rangekey;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.BlockStore;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.math.LongRange;
@@ -38,7 +38,7 @@ import java.util.logging.Logger;
 /**
  * A {@code MemoryStore} implementation for a key of long type, supporting range operations.
  * It routes operations to local {@link BlockStore} or remote through {@link RemoteOpHandler}
- * based on the routing result from {@link OperationRouter}.
+ * based on the routing result from {@link OwnershipCache}.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
 @EvaluatorSide
@@ -46,7 +46,7 @@ import java.util.logging.Logger;
 public final class MemoryStoreImpl implements MemoryStore<Long> {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
-  private final OperationRouter router;
+  private final OwnershipCache ownershipCache;
   private final BlockResolver<Long> blockResolver;
   private final RangeSplitter<Long> rangeSplitter;
   private final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl;
@@ -59,13 +59,13 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
-                          final OperationRouter router,
+                          final OwnershipCache ownershipCache,
                           final BlockResolver<Long> blockResolver,
                           final RangeSplitter<Long> rangeSplitter,
                           final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl,
                           final BlockStore blockStore) {
     hTrace.initialize();
-    this.router = router;
+    this.ownershipCache = ownershipCache;
     this.blockResolver = blockResolver;
     this.rangeSplitter = rangeSplitter;
     this.remoteOpHandlerImpl = remoteOpHandlerImpl;
@@ -76,7 +76,6 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
   public boolean registerBlockUpdateListener(final BlockUpdateListener listener) {
     return blockStore.registerBlockUpdateListener(listener);
   }
-
   /**
    * Executes an operation requested from a local client.
    */
@@ -92,7 +91,7 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
     for (final Map.Entry<Integer, List<Pair<Long, Long>>> entry : blockToSubKeyRangesMap.entrySet()) {
       final int blockId = entry.getKey();
       final List<Pair<Long, Long>> rangeList = entry.getValue();
-      final Optional<String> remoteEvalIdOptional = router.resolveEval(blockId);
+      final Optional<String> remoteEvalIdOptional = ownershipCache.resolveEval(blockId);
 
       if (remoteEvalIdOptional.isPresent()) { // remote blocks
         // aggregate sub key ranges per evaluator
@@ -168,7 +167,7 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
   private <V> Map<Long, V> executeLocalSubOperation(final RangeKeyOperation<Long, V> operation,
                                                     final int blockId, final List<Pair<Long, Long>> subKeyRanges) {
     final Map<Long, V> outputData;
-    final Lock readLock = router.resolveEvalWithLock(blockId).getValue();
+    final Lock readLock = ownershipCache.resolveEvalWithLock(blockId).getValue();
     try {
       final BlockImpl block = (BlockImpl) blockStore.get(blockId);
       outputData = block.executeSubOperation(operation, subKeyRanges);
@@ -296,7 +295,7 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
   public <V> Map<Long, V> getAll() {
     final Map<Long, V> result;
 
-    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
     final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
@@ -353,7 +352,7 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
   public <V> Map<Long, V> removeAll() {
     final Map<Long, V> result;
 
-    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
     final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
@@ -395,6 +394,6 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
   @Override
   public Optional<String> resolveEval(final Long key) {
     final int blockId = blockResolver.resolveBlock(key);
-    return router.resolveEval(blockId);
+    return ownershipCache.resolveEval(blockId);
   }
 }
