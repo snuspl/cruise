@@ -66,7 +66,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private static final int NUM_OWNERSHIP_MSG_HANDLER_THREADS = 2;
 
   private final BlockHandler blockHandler;
-  private final OperationRouter router;
+  private final OwnershipCache ownershipCache;
   private final InjectionFuture<EMMsgSender> sender;
 
   // Thread pools to handle the messages in separate threads to prevent NCS threads' overhead.
@@ -92,12 +92,12 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
   @Inject
   private OwnershipFirstMigrationExecutor(final BlockHandler blockHandler,
-                                          final OperationRouter router,
+                                          final OwnershipCache ownershipCache,
                                           final InjectionFuture<EMMsgSender> sender,
                                           @Parameter(KeyCodecName.class)final Codec<K> keyCodec,
                                           final Serializer serializer) {
     this.blockHandler = blockHandler;
-    this.router = router;
+    this.ownershipCache = ownershipCache;
     this.sender = sender;
     this.keyCodec = keyCodec;
     this.serializer = serializer;
@@ -181,12 +181,12 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       detached = onOwnershipMsgScope.detach();
       final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
-      // should run asynchronously to prevent deadlock in router.updateOwnership()
+      // should run asynchronously to prevent deadlock in ownershipCache.updateOwnership()
       ownershipMsgHandlerExecutor.submit(new Runnable() {
         @Override
         public void run() {
           // clients should wait until DataMsg arrives
-          router.markBlockAsMigrating(blockId);
+          ownershipCache.markBlockAsMigrating(blockId);
 
           // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
           // However, DataMsg should be handled after updating ownership by OwnershipAckMsg.
@@ -203,8 +203,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           }
 
           // Update the owner of the block to the new one.
-          // It waits until all operations release a read-lock on router and acquires write-lock
-          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+          // It waits until all operations release a read-lock on ownershipCache and acquires write-lock
+          ownershipCache.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
           sender.get().sendOwnershipAckMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId,
                   traceInfo);
@@ -239,17 +239,17 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       detached = onOwnershipAckMsgScope.detach();
       final TraceInfo traceInfo = TraceInfo.fromSpan(detached);
 
-      // should run asynchronously to prevent deadlock in router.updateOwnership()
+      // should run asynchronously to prevent deadlock in ownershipCache.updateOwnership()
       ownershipMsgHandlerExecutor.submit(new Runnable() {
         @Override
         public void run() {
           // Update the owner of the block to the new one.
-          // Operations being executed keep a read lock on router while being executed.
-          router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+          // Operations being executed keep a read lock on ownershipCache while being executed.
+          ownershipCache.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
           // Release block that was marked in Migration.startMigratingBlock()
           // It wakes up awaiting client threads to access emigrated data via remote access
-          router.releaseMigratedBlock(blockId);
+          ownershipCache.releaseMigratedBlock(blockId);
 
           sender.get().sendOwnershipAckMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
         }
@@ -316,7 +316,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
     // Unmark block marked in onOwnershipMsg.
     // It wakes up waiting client threads to access immigrated data.
-    router.releaseMigratedBlock(blockId);
+    ownershipCache.releaseMigratedBlock(blockId);
 
     sender.get().sendDataAckMsg(senderId, blockId, operationId, traceInfo);
   }
@@ -403,7 +403,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           final TraceInfo traceInfo = TraceInfo.fromSpan(sendingBlockScope.getSpan());
 
           // stop clients's access before starting migration
-          router.markBlockAsMigrating(blockIdToMigrate);
+          ownershipCache.markBlockAsMigrating(blockIdToMigrate);
 
           final Map<K, Object> blockData = blockHandler.getBlock(blockIdToMigrate);
           final List<KeyValuePair> keyValuePairs;

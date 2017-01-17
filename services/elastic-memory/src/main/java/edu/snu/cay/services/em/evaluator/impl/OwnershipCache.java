@@ -41,13 +41,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * OperationRouter that maintains ownership info, which is a mapping between blocks and owning evaluators.
+ * OwnershipCache that maintains ownership info, which is a mapping between blocks and owning evaluators.
  * In addition, it locks and unlocks block upon migration, which should be excluded from block access.
  */
 @Private
 @NotThreadSafe
-public final class OperationRouter {
-  private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
+public final class OwnershipCache {
+  private static final Logger LOG = Logger.getLogger(OwnershipCache.class.getName());
 
   private static final long INIT_WAIT_TIMEOUT_MS = 5000;
   private static final int MAX_NUM_INIT_REQUESTS = 3;
@@ -89,15 +89,15 @@ public final class OperationRouter {
   private final AtomicIntegerArray blockLocations;
   private final List<Integer> initialLocalBlocks;
 
-  private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
+  private final ReadWriteLock ownershipLock = new ReentrantReadWriteLock(true);
   private final Map<Integer, CountDownLatch> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
 
   @Inject
-  private OperationRouter(final InjectionFuture<EMMsgSender> msgSender,
-                          @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-                          @Parameter(NumInitialEvals.class) final int numInitialEvals,
-                          @Parameter(MemoryStoreId.class) final int memoryStoreId,
-                          @Parameter(AddedEval.class) final boolean addedEval) {
+  private OwnershipCache(final InjectionFuture<EMMsgSender> msgSender,
+                         @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
+                         @Parameter(NumInitialEvals.class) final int numInitialEvals,
+                         @Parameter(MemoryStoreId.class) final int memoryStoreId,
+                         @Parameter(AddedEval.class) final boolean addedEval) {
     this.msgSender = msgSender;
     this.localStoreId = memoryStoreId;
     this.numTotalBlocks = numTotalBlocks;
@@ -108,19 +108,19 @@ public final class OperationRouter {
     if (!addedEval) {
       final int numInitialLocalBlocks = numTotalBlocks / numInitialEvals + 1; // +1 for remainders
       this.initialLocalBlocks = new ArrayList<>(numInitialLocalBlocks);
-      initRoutingTableWithoutDriver();
+      initWithoutDriver();
     } else {
       this.initialLocalBlocks = Collections.emptyList();
     }
   }
 
   /**
-   * Initializes routing table of this MemoryStore with its local blocks, which are determined statically.
+   * Initializes with its local blocks, which are determined statically.
    * Note that if the MemoryStore is created by EM.add(), this method should not be called
    * because the block location might have been updated by EM.move() calls before this add() is called.
    */
-  private void initRoutingTableWithoutDriver() {
-    // initial evaluators can initialize the routing table by itself
+  private void initWithoutDriver() {
+    // initial evaluators can initialize the ownership cache by itself
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
       initialLocalBlocks.add(blockId);
     }
@@ -140,33 +140,33 @@ public final class OperationRouter {
   public void setEndpointIdPrefix(final String endpointId) {
     // TODO #509: Remove assumption on the format of context id
     this.evalPrefix = endpointId.split("-")[0];
-    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
+    LOG.log(Level.INFO, "Initialize ownership cache with localEndPointId: {0}", endpointId);
   }
 
   /**
-   * Requests a routing table to driver.
+   * Requests an ownership info to driver.
    */
-  private void requestRoutingTable() {
-    LOG.log(Level.FINE, "Sends a request for the routing table");
-    try (TraceScope traceScope = Trace.startSpan("ROUTING_TABLE_REQUEST")) {
+  private void requestOwnershipInfo() {
+    LOG.log(Level.FINE, "Sends a request for the ownership info");
+    try (TraceScope traceScope = Trace.startSpan("OWNERSHIP_INFO_REQUEST")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      msgSender.get().sendRoutingTableInitReqMsg(traceInfo);
+      msgSender.get().sendOwnershipCacheInitReqMsg(traceInfo);
     }
   }
 
   /**
-   * Initializes the routing table with the info received from the driver.
+   * Initializes the ownership cache with the info received from the driver.
    * This method is only for evaluators added by EM.add(),
-   * whose routing table should be initiated from the existing information.
-   * It'd be invoked by the network response of {@link #requestRoutingTable()}.
+   * whose ownership cache should be initiated from the existing information.
+   * It'd be invoked by the network response of {@link #requestOwnershipInfo()}.
    */
-  public synchronized void initRoutingTableWithDriver(final List<Integer> initBlockLocations) {
+  public synchronized void initWithDriver(final List<Integer> initBlockLocations) {
     if (!addedEval || initLatch.getCount() == 0) {
       return;
     }
 
     if (initBlockLocations.size() != numTotalBlocks) {
-      throw new RuntimeException("Imperfect routing table");
+      throw new RuntimeException("Imperfect ownership info");
     }
 
     for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
@@ -174,7 +174,7 @@ public final class OperationRouter {
 
       // the evaluators initiated though this evaluators should not have any stores at the beginning
       if (storeId == localStoreId) {
-        throw new RuntimeException("Wrong initial routing table");
+        throw new RuntimeException("Wrong initial ownership info");
       }
       this.blockLocations.set(blockId, storeId);
     }
@@ -183,8 +183,8 @@ public final class OperationRouter {
   }
 
   /**
-   * Checks the initialization of the routing table.
-   * It returns if the routing table has been initialized,
+   * Checks the initialization of the ownership cache.
+   * It returns if the ownership cache has been initialized,
    * otherwise waits the initialization within a bounded time.
    */
   private void checkInitialization() {
@@ -197,13 +197,13 @@ public final class OperationRouter {
         initLatch.await();
         break;
       } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "Interrupted while waiting for routing table initialization from driver", e);
+        LOG.log(Level.WARNING, "Interrupted while waiting for initialization by driver", e);
       }
     }
   }
 
   /**
-   * Triggers initialization by requesting initial routing table to driver and waits within a bounded time.
+   * Triggers initialization by requesting initial ownership info to driver and waits within a bounded time.
    * It throws RuntimeException, if the table is not initialized til the end.
    * For evaluators not added by EM, it does not trigger initialization.
    * @return a future of initialization thread, a completed future for evaluators not added by EM
@@ -218,19 +218,19 @@ public final class OperationRouter {
       public void run() {
         // sends init request and waits for several times
         for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
-          requestRoutingTable();
+          requestOwnershipInfo();
 
-          LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
+          LOG.log(Level.INFO, "Waiting {0} ms for ownership cache to be initialized", INIT_WAIT_TIMEOUT_MS);
           try {
             if (initLatch.await(INIT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-              LOG.log(Level.INFO, "Operation router is initialized");
+              LOG.log(Level.INFO, "Ownership cache is initialized");
               return;
             }
           } catch (final InterruptedException e) {
-            LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+            LOG.log(Level.WARNING, "Interrupted while waiting for ownership cache to be initialized", e);
           }
         }
-        throw new RuntimeException("Fail to initialize the router");
+        throw new RuntimeException("Fail to initialize the ownership cache");
       }
     });
   }
@@ -254,18 +254,18 @@ public final class OperationRouter {
 
   /**
    * Resolves an evaluator id for a block id.
-   * Note that this method guarantees that the state of routing table does not change
+   * Note that this method guarantees that the state of ownership cache does not change
    * before an user unlocks the returned lock.
    * @param blockId an id of block
    * @return a Tuple of an Optional with an evaluator id, which is empty when the block belong to the local MemoryStore,
-   *        and a lock that prevents updates to routing table
+   *        and a lock that prevents updates to ownership cache
    */
   public Tuple<Optional<String>, Lock> resolveEvalWithLock(final int blockId) {
     checkInitialization();
 
     waitBlockMigrationToEnd(blockId);
 
-    final Lock readLock = routerLock.readLock();
+    final Lock readLock = ownershipLock.readLock();
     readLock.lock();
     final int memoryStoreId = blockLocations.get(blockId);
     if (memoryStoreId == localStoreId) {
@@ -311,7 +311,7 @@ public final class OperationRouter {
 
   /**
    * Updates the owner of the block. Note that this method must be synchronized
-   * to prevent other threads from reading the routing information while updating it.
+   * to prevent other threads from reading the ownership information while updating it.
    * @param blockId id of the block to update its ownership.
    * @param oldOwnerId id of the MemoryStore that was owner.
    * @param newOwnerId id of the MemoryStore that will be new owner.
@@ -319,17 +319,17 @@ public final class OperationRouter {
   public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
     checkInitialization();
 
-    routerLock.writeLock().lock();
+    ownershipLock.writeLock().lock();
     try {
       final int localOldOwnerId = blockLocations.getAndSet(blockId, newOwnerId);
       if (localOldOwnerId != oldOwnerId) {
-        LOG.log(Level.WARNING, "Local routing table thought block {0} was in store {1}, but it was actually in {2}",
+        LOG.log(Level.WARNING, "Local ownership cache thought block {0} was in store {1}, but it was actually in {2}",
             new Object[]{blockId, oldOwnerId, newOwnerId});
       }
       LOG.log(Level.FINE, "Ownership of block {0} is updated from store {1} to store {2}",
           new Object[]{blockId, oldOwnerId, newOwnerId});
     } finally {
-      routerLock.writeLock().unlock();
+      ownershipLock.writeLock().unlock();
     }
   }
 

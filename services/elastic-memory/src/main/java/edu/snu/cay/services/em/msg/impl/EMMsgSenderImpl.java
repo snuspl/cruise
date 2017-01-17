@@ -238,83 +238,44 @@ public final class EMMsgSenderImpl implements EMMsgSender {
   }
 
   @Override
-  public void sendRoutingTableInitReqMsg(@Nullable final TraceInfo parentTraceInfo) {
+  public void sendOwnershipCacheInitReqMsg(@Nullable final TraceInfo parentTraceInfo) {
 
     // We should detach the span when we transit to another thread (local or remote),
     // and the detached span should call Trace.continueSpan(detached).close() explicitly
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (TraceScope sendRoutingInitReqMsgScope =
-             Trace.startSpan("send_routing_table_init_req_msg", parentTraceInfo)) {
+    try (TraceScope sendOwnershipCacheInitReqMsgScope =
+             Trace.startSpan("send_ownership_cache_init_req_msg", parentTraceInfo)) {
 
-      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendOwnershipCacheInitReqMsg");
 
-      detached = sendRoutingInitReqMsgScope.detach();
+      detached = sendOwnershipCacheInitReqMsgScope.detach();
 
-      final RoutingTableInitReqMsg routingTableInitReqMsg = RoutingTableInitReqMsg.newBuilder()
+      final OwnershipCacheInitReqMsg ownershipCacheInitReqMsg = OwnershipCacheInitReqMsg.newBuilder()
           .setEvalId(emNetworkSetup.getMyId().toString())
           .build();
 
-      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
-          .setType(RoutingTableMsgType.RoutingTableInitReqMsg)
-          .setRoutingTableInitReqMsg(routingTableInitReqMsg)
+      final OwnershipCacheMsg ownershipCacheMsg = OwnershipCacheMsg.newBuilder()
+          .setType(OwnershipCacheMsgType.OwnershipCacheInitReqMsg)
+          .setOwnershipCacheInitReqMsg(ownershipCacheInitReqMsg)
           .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
           .build();
 
       send(driverId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.RoutingTableMsg)
-              .setRoutingTableMsg(routingTableMsg)
+              .setType(EMMsgType.OwnershipCacheMsg)
+              .setOwnershipCacheMsg(ownershipCacheMsg)
               .build());
 
-      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendOwnershipCacheInitReqMsg");
     } finally {
       Trace.continueSpan(detached).close();
     }
   }
 
   @Override
-  public void sendRoutingTableInitMsg(final String destId, final List<Integer> blockLocations,
-                                      @Nullable final TraceInfo parentTraceInfo) {
-
-    // We should detach the span when we transit to another thread (local or remote),
-    // and the detached span should call Trace.continueSpan(detached).close() explicitly
-    // for stitching the spans from other threads as its children
-    Span detached = null;
-
-    try (TraceScope sendRoutingTableInitMsgScope =
-             Trace.startSpan("send_routing_table_init_msg", parentTraceInfo)) {
-
-      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
-
-      detached = sendRoutingTableInitMsgScope.detach();
-
-      final RoutingTableInitMsg routingTableInitMsg = RoutingTableInitMsg.newBuilder()
-          .setBlockLocations(blockLocations)
-          .build();
-
-      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
-          .setType(RoutingTableMsgType.RoutingTableInitMsg)
-          .setRoutingTableInitMsg(routingTableInitMsg)
-          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
-          .build();
-
-      send(destId,
-          EMMsg.newBuilder()
-              .setType(EMMsgType.RoutingTableMsg)
-              .setRoutingTableMsg(routingTableMsg)
-              .build());
-
-      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
-    } finally {
-      Trace.continueSpan(detached).close();
-    }
-  }
-
-  @Override
-  public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
-                                        final String oldEvalId, final String newEvalId,
+  public void sendOwnershipCacheInitMsg(final String destId, final List<Integer> blockLocations,
                                         @Nullable final TraceInfo parentTraceInfo) {
 
     // We should detach the span when we transit to another thread (local or remote),
@@ -322,32 +283,71 @@ public final class EMMsgSenderImpl implements EMMsgSender {
     // for stitching the spans from other threads as its children
     Span detached = null;
 
-    try (TraceScope sendRoutingTableUpdateMsgScope =
-             Trace.startSpan(String.format("send_routing_table_update_msg. destId: %s", destId), parentTraceInfo)) {
+    try (TraceScope sendOwnershipCacheInitMsgScope =
+             Trace.startSpan("send_ownership_cache_init_msg", parentTraceInfo)) {
 
-      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendOwnershipCacheInitMsg");
 
-      detached = sendRoutingTableUpdateMsgScope.detach();
+      detached = sendOwnershipCacheInitMsgScope.detach();
 
-      final RoutingTableUpdateMsg routingTableUpdateMsg = RoutingTableUpdateMsg.newBuilder()
-          .setOldEvalId(oldEvalId)
-          .setNewEvalId(newEvalId)
-          .setBlockIds(blocks)
+      final OwnershipCacheInitMsg ownershipCacheInitMsg = OwnershipCacheInitMsg.newBuilder()
+          .setBlockLocations(blockLocations)
           .build();
 
-      final RoutingTableMsg routingTableMsg = RoutingTableMsg.newBuilder()
-          .setType(RoutingTableMsgType.RoutingTableUpdateMsg)
-          .setRoutingTableUpdateMsg(routingTableUpdateMsg)
+      final OwnershipCacheMsg ownershipCacheMsg = OwnershipCacheMsg.newBuilder()
+          .setType(OwnershipCacheMsgType.OwnershipCacheInitMsg)
+          .setOwnershipCacheInitMsg(ownershipCacheInitMsg)
           .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
           .build();
 
       send(destId,
           EMMsg.newBuilder()
-              .setType(EMMsgType.RoutingTableMsg)
-              .setRoutingTableMsg(routingTableMsg)
+              .setType(EMMsgType.OwnershipCacheMsg)
+              .setOwnershipCacheMsg(ownershipCacheMsg)
               .build());
 
-      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendOwnershipCacheInitMsg");
+    } finally {
+      Trace.continueSpan(detached).close();
+    }
+  }
+
+  @Override
+  public void sendOwnershipCacheUpdateMsg(final String destId, final List<Integer> blocks,
+                                          final String oldEvalId, final String newEvalId,
+                                          @Nullable final TraceInfo parentTraceInfo) {
+
+    // We should detach the span when we transit to another thread (local or remote),
+    // and the detached span should call Trace.continueSpan(detached).close() explicitly
+    // for stitching the spans from other threads as its children
+    Span detached = null;
+
+    try (TraceScope sendOwnershipCacheUpdateMsgScope =
+             Trace.startSpan(String.format("send_ownership_cache_update_msg. destId: %s", destId), parentTraceInfo)) {
+
+      LOG.entering(EMMsgSenderImpl.class.getSimpleName(), "sendOwnershipCacheUpdateMsg");
+
+      detached = sendOwnershipCacheUpdateMsgScope.detach();
+
+      final OwnershipCacheUpdateMsg ownershipCacheUpdateMsg = OwnershipCacheUpdateMsg.newBuilder()
+          .setOldEvalId(oldEvalId)
+          .setNewEvalId(newEvalId)
+          .setBlockIds(blocks)
+          .build();
+
+      final OwnershipCacheMsg ownershipCacheMsg = OwnershipCacheMsg.newBuilder()
+          .setType(OwnershipCacheMsgType.OwnershipCacheUpdateMsg)
+          .setOwnershipCacheUpdateMsg(ownershipCacheUpdateMsg)
+          .setTraceInfo(HTraceUtils.toAvro(TraceInfo.fromSpan(detached)))
+          .build();
+
+      send(destId,
+          EMMsg.newBuilder()
+              .setType(EMMsgType.OwnershipCacheMsg)
+              .setOwnershipCacheMsg(ownershipCacheMsg)
+              .build());
+
+      LOG.exiting(EMMsgSenderImpl.class.getSimpleName(), "sendOwnershipCacheUpdateMsg");
 
     } finally {
       Trace.continueSpan(detached).close();
