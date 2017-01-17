@@ -25,17 +25,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * A manager class of Tables, which creates and manages materialized tables.
- * Table init is done through two stages: {@link RawTable}, {@link MaterializedTable}.
+ * A manager class of Tables, which creates and manages allocated tables.
+ * Table init is done through two stages: {@link RawTable}, {@link AllocatedTable}.
  *
  * At first, by calling {@link #createTable(TableConfiguration)}, users can obtain {@link RawTable}
- * through which users can make containers subscribe or associate to the table.
+ * through which users can make executors subscribe or associate to the table.
  *
- * The table can become a {@link MaterializedTable} by calling {@link RawTable#materialize()},
- * which will be actually allocated to the containers that subscribe or associate with the table.
- * Once materialized, {@link MaterializedTable} will be registered into {@link TableManager}
- * using {@link #onMaterializedTable(MaterializedTable)}.
- * Containers can associate or subscribe to containers in any state of table.
+ * The table can become a {@link AllocatedTable} by calling {@link RawTable#allocate()},
+ * which will be actually allocated to the executors that associate with the table.
+ * Once allocated, {@link AllocatedTable} will be registered into {@link TableManager}
+ * using {@link #onAllocatedTable(AllocatedTable)}.
+ * Executors can associate or subscribe to tables in any state.
  */
 @Private
 @DriverSide
@@ -43,7 +43,7 @@ final class TableManager {
   private final MigrationManager migrationManager;
   private final TableInitializer tableInitializer;
 
-  private final Map<String, MaterializedTable> materializedTableMap = new ConcurrentHashMap<>();
+  private final Map<String, AllocatedTable> allocatedTableMap = new ConcurrentHashMap<>();
 
   @Inject
   private TableManager(final MigrationManager migrationManager,
@@ -55,7 +55,7 @@ final class TableManager {
   /**
    * Creates a {@link RawTable} based on the given table configuration.
    * @param tableConf a configuration of table (See {@link edu.snu.cay.services.et.configuration.TableConfiguration})
-   * @return a {@link RawTable}, which is for associating and allocating table to containers
+   * @return a {@link RawTable}, which is for associating and allocating table to executors
    * @throws InjectionException when the given configuration is incomplete
    */
   RawTable createTable(final TableConfiguration tableConf) throws InjectionException {
@@ -63,18 +63,18 @@ final class TableManager {
   }
 
   /**
-   * Registers a materialized table to be accessed by {@link #getMaterializedTable(String)}.
-   * @param materializedTable an allocated table
+   * Registers an allocated table to be accessed by {@link #getAllocatedTable(String)}.
+   * @param allocatedTable an allocated table
    */
-  void onMaterializedTable(final MaterializedTable materializedTable) {
-    materializedTableMap.putIfAbsent(materializedTable.getTableConfiguration().getId(), materializedTable);
+  void onAllocatedTable(final AllocatedTable allocatedTable) {
+    allocatedTableMap.putIfAbsent(allocatedTable.getTableConfiguration().getId(), allocatedTable);
   }
 
   /**
-   * @return {@link MaterializedTable} whose id is {@code tableId}, or
+   * @return {@link AllocatedTable} whose id is {@code tableId}, or
    *         {@code null} if it has no table for the id
    */
-  MaterializedTable getMaterializedTable(final String tableId) {
-    return materializedTableMap.get(tableId);
+  AllocatedTable getAllocatedTable(final String tableId) {
+    return allocatedTableMap.get(tableId);
   }
 }

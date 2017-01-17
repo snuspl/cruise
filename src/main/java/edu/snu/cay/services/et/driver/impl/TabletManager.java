@@ -21,39 +21,39 @@ import org.apache.reef.annotations.audience.Private;
 import java.util.*;
 
 /**
- * A manager class for tracking table partitions, which consist of multiple blocks, across associated executors.
- * Note that each table has own PartitionManager instance.
+ * A manager class for tracking tablets, which consist of multiple blocks, across associated executors.
+ * Note that each table has own TabletManager instance.
  *
  * At initialization, associated executors are assigned with the evenly partitioned number of blocks.
- * After then, it manages addition and deletion of partitions and change in block distribution between partitions.
- * TODO #12: implement PartitionManager
+ * After then, it manages addition and deletion of tablets and change in block distribution between tablets.
+ * TODO #12: implement TabletManager
  */
 @Private
 @DriverSide
-final class PartitionManager {
+final class TabletManager {
 
   /**
-   * One PartitionManager is instantiated for each Table when a table is allocated to executors.
+   * One TabletManager is instantiated for each Table when a table is allocated to executors.
    * @param numTotalBlocks the number of total blocks
    * @param associatedExecutorIdSet the set of ids of initially associated executors
    */
-  PartitionManager(final int numTotalBlocks, final Set<String> associatedExecutorIdSet) {
+  TabletManager(final int numTotalBlocks, final Set<String> associatedExecutorIdSet) {
 
   }
 
   /**
-   * Allocates a new partition to a new associator.
+   * Allocates a new tablet to a newly associated executor.
    * @param executorId id of Executor
    */
-  synchronized boolean addPartition(final String executorId) {
+  synchronized boolean addTablet(final String executorId) {
     return true;
   }
 
   /**
-   * Deallocates a partition of a Executor, which was an associator.
+   * Deallocates a partition of a Executor, which was an associated executor.
    * @param executorId id of Executor
    */
-  synchronized boolean deletePartition(final String executorId) {
+  synchronized boolean deleteTablet(final String executorId) {
     return true;
   }
 

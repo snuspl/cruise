@@ -16,7 +16,7 @@
 package edu.snu.cay.services.et.exceptions;
 
 /**
- * An exception that a table has not associated with any containers.
+ * An exception that a table has not associated with any executors.
  */
 public class NotAssociatedTableException extends Exception {
 }

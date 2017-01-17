@@ -47,8 +47,8 @@ final class TableInitializer {
   }
 
   /**
-   * Initializes a table for associators by providing each allocated blocks.
-   * It's a blocking call so that waits until all executors setup corresponding partitions.
+   * Initializes a table for associated executors by providing each allocated blocks.
+   * It's a blocking call so that waits until all executors setup corresponding tablets.
    * @param tableConf a configuration of table
    * @param executorIdSet a set of executor ids
    * @param executorIdToBlockIdSet allocated block id set for executors
@@ -76,7 +76,7 @@ final class TableInitializer {
 //        }
       } else {
 
-        // send init msg (tableConf) and wait until all table partitions are initialized
+        // send init msg (tableConf) and wait until all tablets are initialized
       }
     }
 

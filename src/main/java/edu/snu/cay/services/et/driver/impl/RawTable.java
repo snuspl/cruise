@@ -27,11 +27,11 @@ import java.util.stream.Collectors;
 /**
  * Represents a Table, which only exists in the master-side logically.
  *
- * Containers can subscribe and associate with the table, but there is no effect until the table is materialized.
- * {@link #materialize()} partitions the table and physically allocates the partitions to associated executors.
+ * Executors can subscribe and associate with the table, but there is no effect until the table is allocated.
+ * {@link #allocate()} partitions the table and physically allocates the tablets to associated executors.
  *
  *  Note that if any executor has not associated with the table yet, it fails with {@link NotAssociatedTableException}
- *  because no one can take its partition.
+ *  because no one can take its tablet.
  */
 public final class RawTable {
   private final TableConfiguration tableConf;
@@ -39,8 +39,8 @@ public final class RawTable {
   private final MigrationManager migrationManager;
   private final TableInitializer tableInitializer;
 
-  private final Set<String> associatedContainerIds = ConcurrentHashMap.newKeySet();
-  private final Set<String> subscribedContainerIds = ConcurrentHashMap.newKeySet();
+  private final Set<String> associatedExecutorIds = ConcurrentHashMap.newKeySet();
+  private final Set<String> subscribedExecutorIds = ConcurrentHashMap.newKeySet();
 
   RawTable(final TableConfiguration tableConf,
            final TableManager tableManager,
@@ -53,59 +53,59 @@ public final class RawTable {
   }
 
   /**
-   * Subscribe the table. The Containers will receive the updates in ownership information for this table.
-   * Note that the Containers do not receive the updates until {@link #materialize()} is called.
+   * Subscribe the table. The executors will receive the updates in ownership information for this table.
+   * Note that the executors do not receive the updates until {@link #allocate()} is called.
    * @param executors a list of executors
    * @return this
    */
   public synchronized RawTable subscribe(final List<AllocatedExecutor> executors) {
-    subscribedContainerIds.addAll(executors.stream()
+    subscribedExecutorIds.addAll(executors.stream()
         .map(AllocatedExecutor::getId).collect(Collectors.toList()));
     return this;
   }
 
   /**
-   * Associate with the table. The Containers will take some portion of this table into its partition.
-   * Note that the Containers do not receive the partition until {@link #materialize()} is called.
+   * Associate with the table. The executors will take some portion of this table into its tablet.
+   * Note that the executors do not receive the tablet until {@link #allocate()} is called.
    * @param executors a list of executors
    * @return this
    */
   public synchronized RawTable associate(final List<AllocatedExecutor> executors) {
-    associatedContainerIds.addAll(executors.stream()
+    associatedExecutorIds.addAll(executors.stream()
         .map(AllocatedExecutor::getId).collect(Collectors.toList()));
     return this;
   }
 
 
   /**
-   * Materializes the table to associated executors and also initializes table in subscribers.
-   * @return an {@link MaterializedTable}
+   * Allocate the table to associated executors and also initializes table in subscribers.
+   * @return an {@link AllocatedTable}
    * @throws NotAssociatedTableException when no executor has associated with the table.
    */
-  public synchronized MaterializedTable materialize() throws NotAssociatedTableException {
-    if (associatedContainerIds.isEmpty()) {
+  public synchronized AllocatedTable allocate() throws NotAssociatedTableException {
+    if (associatedExecutorIds.isEmpty()) {
       throw new NotAssociatedTableException();
     }
 
     // partition table into associators
-    final PartitionManager partitionManager =
-        new PartitionManager(tableConf.getNumTotalBlocks(), associatedContainerIds);
+    final TabletManager tabletManager =
+        new TabletManager(tableConf.getNumTotalBlocks(), associatedExecutorIds);
     // register subscribers to MigrationManager, which will broadcast ownership update
-    for (final String executorId : subscribedContainerIds) {
+    for (final String executorId : subscribedExecutorIds) {
       migrationManager.registerSubscription(tableConf.getId(), executorId);
     }
 
-    // initialize table partitions in associators and subscribers
-    tableInitializer.initTableInAssociators(tableConf, associatedContainerIds,
-        partitionManager.getExecutorIdToBlockIdSet());
-    tableInitializer.initTableInSubscribers(tableConf, subscribedContainerIds,
-        partitionManager.getBlockLocations());
+    // initialize tablets in associators and subscribers
+    tableInitializer.initTableInAssociators(tableConf, associatedExecutorIds,
+        tabletManager.getExecutorIdToBlockIdSet());
+    tableInitializer.initTableInSubscribers(tableConf, subscribedExecutorIds,
+        tabletManager.getBlockLocations());
 
-    final MaterializedTable materializedTable =
-        new MaterializedTable(tableConf, partitionManager, migrationManager, tableInitializer);
+    final AllocatedTable allocatedTable =
+        new AllocatedTable(tableConf, tabletManager, migrationManager, tableInitializer);
 
-    // register MaterializedTable to TableManager
-    tableManager.onMaterializedTable(materializedTable);
-    return materializedTable;
+    // register AllocatedTable to TableManager
+    tableManager.onAllocatedTable(allocatedTable);
+    return allocatedTable;
   }
 }

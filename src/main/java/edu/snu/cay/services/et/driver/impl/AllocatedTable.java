@@ -23,70 +23,70 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Represents a state where the table is created both logically and physically.
- * Now the Containers that associate this table have the actual reference of it, and the Containers subscribing it
+ * Represents a state where the table is completely allocated into executors.
+ * Now the executors that associate this table have the actual reference of it, and the executors subscribing it
  * receive the ownership information whenever there is any change.
  *
- * Even the table is distributed to Containers already, more executors are allowed to subscribe or associate with it,
- * then the changes will be applied to Containers immediately.
+ * Even the table is distributed to executors already, more executors are allowed to subscribe or associate with it,
+ * then the changes will be applied to executors immediately.
  */
-public final class MaterializedTable {
+public final class AllocatedTable {
   private final TableConfiguration tableConf;
-  private final PartitionManager partitionManager;
+  private final TabletManager tabletManager;
   private final MigrationManager migrationManager;
   private final TableInitializer tableInitializer;
 
-  MaterializedTable(final TableConfiguration tableConf,
-                    final PartitionManager partitionManager,
-                    final MigrationManager migrationManager,
-                    final TableInitializer tableInitializer) {
+  AllocatedTable(final TableConfiguration tableConf,
+                 final TabletManager tabletManager,
+                 final MigrationManager migrationManager,
+                 final TableInitializer tableInitializer) {
     this.tableConf = tableConf;
-    this.partitionManager = partitionManager;
+    this.tabletManager = tabletManager;
     this.migrationManager = migrationManager;
     this.tableInitializer = tableInitializer;
   }
 
   /**
-   * Subscribes the table. The Containers will receive the updates in ownership information for this table.
+   * Subscribes the table. The executors will receive the updates in ownership information for this table.
    * @param executors a list of executors
    * @return this
    */
-  public synchronized MaterializedTable subscribe(final List<AllocatedExecutor> executors) {
+  public synchronized AllocatedTable subscribe(final List<AllocatedExecutor> executors) {
     final Set<String> executorIdSet = new HashSet<>();
     for (final AllocatedExecutor executor : executors) {
       migrationManager.registerSubscription(tableConf.getId(), executor.getId());
       executorIdSet.add(executor.getId());
     }
     tableInitializer.initTableInSubscribers(tableConf, executorIdSet,
-        partitionManager.getBlockLocations());
+        tabletManager.getBlockLocations());
     return this;
   }
 
   /**
-   * Associates with the table. The Containers will take some portion of this table into its partition.
+   * Associates with the table. The executors will take some portion of this table into its tablet.
    * @param executors a list of executors
    * @return this
    */
-  public synchronized MaterializedTable associate(final List<AllocatedExecutor> executors) {
+  public synchronized AllocatedTable associate(final List<AllocatedExecutor> executors) {
     final Set<String> executorIdSet = new HashSet<>();
     for (final AllocatedExecutor executor : executors) {
-      partitionManager.addPartition(executor.getId());
+      tabletManager.addTablet(executor.getId());
     }
     tableInitializer.initTableInAssociators(tableConf, executorIdSet,
-        partitionManager.getExecutorIdToBlockIdSet());
+        tabletManager.getExecutorIdToBlockIdSet());
     return this;
   }
 
   /**
    * Moves the {@code numBlocks} number of blocks from src executor to dst executor.
-   * @param srcContainerId an id of src executor
-   * @param dstContainerId an id of dst executor
+   * @param srcExecutorId an id of src executor
+   * @param dstExecutorId an id of dst executor
    * @param numBlocks the number of blocks to move
    */
-  public synchronized void moveBlocks(final String srcContainerId,
-                                      final String dstContainerId,
+  public synchronized void moveBlocks(final String srcExecutorId,
+                                      final String dstExecutorId,
                                       final int numBlocks) {
-    migrationManager.moveBlocks(partitionManager, srcContainerId, dstContainerId, numBlocks);
+    migrationManager.moveBlocks(tabletManager, srcExecutorId, dstExecutorId, numBlocks);
   }
 
   /**
@@ -99,7 +99,7 @@ public final class MaterializedTable {
   /**
    * @return a list of executors associated with the table
    */
-  List<String> getAssociatedContainerIds() {
-    return partitionManager.getAssociatedExecutorIds();
+  List<String> getAssociatedExecutorIds() {
+    return tabletManager.getAssociatedExecutorIds();
   }
 }

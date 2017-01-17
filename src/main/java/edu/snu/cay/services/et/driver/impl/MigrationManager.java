@@ -44,18 +44,18 @@ final class MigrationManager {
   }
 
   /**
-   * Moves the {@code numBlocks} number of blocks of {@code partitionManager} from src executor to dst executor.
-   * @param partitionManager a {@link PartitionManager} of a table to be moved
+   * Moves the {@code numBlocks} number of blocks of {@code tabletManager} from src executor to dst executor.
+   * @param tabletManager a {@link TabletManager} of a table to be moved
    * @param srcExecutorId an id of src executor
    * @param dstExecutorId an id of dst executor
    * @param numBlocks the number of blocks to move
    */
-  void moveBlocks(final PartitionManager partitionManager,
+  void moveBlocks(final TabletManager tabletManager,
                   final String srcExecutorId, final String dstExecutorId, final int numBlocks) {
     // use following methods to update driver-side block partitioning
-    // partitionManager.chooseBlocksToMove()
-    // partitionManager.updateOwner()
-    // partitionManager.releaseBlockFromMove()
+    // tabletManager.chooseBlocksToMove()
+    // tabletManager.updateOwner()
+    // tabletManager.releaseBlockFromMove()
   }
 
   // other methods would be added more

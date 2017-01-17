@@ -19,7 +19,7 @@ import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
-import edu.snu.cay.services.et.driver.impl.MaterializedTable;
+import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.evaluator.impl.HashPartitionFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.services.et.exceptions.NotAssociatedTableException;
@@ -40,7 +40,7 @@ import java.util.List;
 final class SimpleETDriver {
   private static final String TASK_ID = "Simple-task";
 
-  private static final int NUM_CONTAINERS = 1;
+  private static final int NUM_EXECUTORS = 1;
   private static final ResourceConfiguration RES_CONF = ResourceConfiguration.newBuilder()
       .setNumCores(1)
       .setMemSizeInMB(128)
@@ -72,15 +72,15 @@ final class SimpleETDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> executors0 = etMaster.addExecutors(NUM_CONTAINERS, RES_CONF);
-      final MaterializedTable table;
+      final List<AllocatedExecutor> executors0 = etMaster.addExecutors(NUM_EXECUTORS, RES_CONF);
+      final AllocatedTable table;
       try {
-        table = etMaster.createTable(TABLE_CONF).associate(executors0).materialize();
+        table = etMaster.createTable(TABLE_CONF).associate(executors0).allocate();
       } catch (final NotAssociatedTableException e) {
-        throw new RuntimeException("Table is not associated. It's not ready to be materialized.", e);
+        throw new RuntimeException("Table is not associated. It's not ready to be allocated.", e);
       }
 
-      final List<AllocatedExecutor> executors1 = etMaster.addExecutors(NUM_CONTAINERS, RES_CONF);
+      final List<AllocatedExecutor> executors1 = etMaster.addExecutors(NUM_EXECUTORS, RES_CONF);
       table.subscribe(executors0).subscribe(executors1);
 
       for (final AllocatedExecutor executor : executors0) {

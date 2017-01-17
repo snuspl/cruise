@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.driver.api;
 
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.ETMasterImpl;
 import edu.snu.cay.services.et.driver.impl.RawTable;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -32,8 +33,8 @@ import java.util.List;
 public interface ETMaster {
 
   /**
-   * Allocates new {@code num} containers of the equal resource specification.
-   * @param num the number of containers
+   * Allocates new {@code num} executors of the equal resource specification.
+   * @param num the number of executors
    * @param resConf resource configuration
    * @return a list of {@link AllocatedExecutor}s
    */
@@ -43,8 +44,8 @@ public interface ETMaster {
    * Creates a Table using the given table configuration.
    * @param tableConf a configuration of table (See {@link TableConfiguration})
    * @return a logical representation of Table ({@link RawTable}),
-   *   which will be converted to a {@link edu.snu.cay.services.et.driver.impl.MaterializedTable}
-   *   at the associated Containers.
+   *   which will be converted to a {@link AllocatedTable}
+   *   at the associated executors.
    */
   RawTable createTable(TableConfiguration tableConf);
 }

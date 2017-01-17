@@ -45,7 +45,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A manager class of Containers.
+ * A manager class of executors.
  * It allocates new executors and manages existing executors.
  */
 @Private
