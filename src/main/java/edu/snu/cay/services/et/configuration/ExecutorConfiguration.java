@@ -30,10 +30,10 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 
 /**
- * A builder for configuration required for launching Container.
+ * A builder for configuration required for launching executor.
  */
 @Private
-public final class ContainerConfiguration extends ConfigurationModuleBuilder {
+public final class ExecutorConfiguration extends ConfigurationModuleBuilder {
   /**
    * Parameters required for NameResolverConfiguration.
    */
@@ -54,7 +54,7 @@ public final class ContainerConfiguration extends ConfigurationModuleBuilder {
   /**
    * ConfigurationModule.
    */
-  public static final ConfigurationModule CONF = new ContainerConfiguration()
+  public static final ConfigurationModule CONF = new ExecutorConfiguration()
       .bindNamedParameter(NameResolverNameServerAddr.class, NAME_SERVICE_HOST)
       .bindNamedParameter(NameResolverNameServerPort.class, NAME_SERVICE_PORT)
       .bindImplementation(IdentifierFactory.class, IDENTIFIER_FACTORY)

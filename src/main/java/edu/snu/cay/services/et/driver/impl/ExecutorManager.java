@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
-import edu.snu.cay.services.et.configuration.ContainerConfiguration;
+import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
-import edu.snu.cay.services.et.driver.api.AllocatedContainer;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
@@ -35,21 +35,23 @@ import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * A manager class of Containers.
- * It allocates new containers and manages existing containers.
+ * It allocates new executors and manages existing executors.
  */
 @Private
 @DriverSide
-final class ContainerManager {
-  private static final Logger LOG = Logger.getLogger(ContainerManager.class.getName());
+final class ExecutorManager {
+  private static final Logger LOG = Logger.getLogger(ExecutorManager.class.getName());
   private static final String CONTEXT_PREFIX = "ET-";
 
   private final EvaluatorManager evaluatorManager;
@@ -60,14 +62,14 @@ final class ContainerManager {
 
   private final AtomicInteger contextIdCounter = new AtomicInteger(0);
 
-  private final Map<String, AllocatedContainer> containers = new ConcurrentHashMap<>();
+  private final Map<String, AllocatedExecutor> executors = new ConcurrentHashMap<>();
 
   @Inject
-  private ContainerManager(final EvaluatorManager evaluatorManager,
-                           final NameServer nameServer,
-                           final LocalAddressProvider localAddressProvider,
-                           final IdentifierFactory identifierFactory,
-                           @Parameter(DriverIdentifier.class) final String driverIdentifier) {
+  private ExecutorManager(final EvaluatorManager evaluatorManager,
+                          final NameServer nameServer,
+                          final LocalAddressProvider localAddressProvider,
+                          final IdentifierFactory identifierFactory,
+                          @Parameter(DriverIdentifier.class) final String driverIdentifier) {
     this.evaluatorManager = evaluatorManager;
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
@@ -76,35 +78,53 @@ final class ContainerManager {
   }
 
   /**
-   * Allocates new {@code num} containers of the equal resource specification.
-   * {@code callback} will be invoked when requested containers are allocated.
-   * @param num the number of containers
+   * Allocates new {@code num} executors of the equal resource specification.
+   * It returns when requested executors are allocated.
+   * @param num the number of executors
    * @param resConf resource configuration
-   * @param callback callback to invoke when allocating is done
+   * @return a list of allocated executors
    */
-  void addContainers(final int num, final ResourceConfiguration resConf,
-                     final EventHandler<AllocatedContainer> callback) {
+  List<AllocatedExecutor> addExecutors(final int num, final ResourceConfiguration resConf) {
     final int numCores = resConf.getNumCores();
     final int memSizeInMB = resConf.getMemSizeInMB();
 
+    final List<AllocatedExecutor> executorList = Collections.synchronizedList(new ArrayList<>(num));
+    final CountDownLatch latch = new CountDownLatch(num);
+
     final List<EventHandler<ActiveContext>> activeCtxHandlers = new ArrayList<>(1);
-    activeCtxHandlers.add(new ActiveContextHandler(callback));
+    activeCtxHandlers.add(activeContext -> {
+      final AllocatedExecutor allocatedExecutor = new AllocatedExecutorImpl(activeContext);
+      LOG.log(Level.INFO, "Allocated executor: {0}", allocatedExecutor.getId());
+      synchronized (executorList) {
+        executorList.add(allocatedExecutor);
+        LOG.log(Level.INFO, "A new Executor is allocated ({0}/{1}).", new Object[]{executorList.size(), num});
+      }
+      executors.put(allocatedExecutor.getId(), allocatedExecutor);
+      latch.countDown();
+    });
 
     evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores,
         allocatedEvalHandler, activeCtxHandlers);
 
-    LOG.log(Level.INFO, "Requested {0} containers", num);
+    // wait until all requested executors are allocated.
+    try {
+      latch.await();
+    } catch (final InterruptedException e) {
+      throw new RuntimeException("Interrupted while waiting for executors to be allocated.", e);
+    }
+
+    return executorList;
   }
 
   /**
-   * @return AllocatedContainer whose id is {@code containerId}
+   * @return AllocatedExecutor whose id is {@code executorId}
    */
-  AllocatedContainer getContainer(final String containerId) {
-    return containers.get(containerId);
+  AllocatedExecutor getExecutor(final String executorId) {
+    return executors.get(executorId);
   }
 
   /**
-   * Submits ET context when evaluator is allocated.
+   * Submits ET context, which will setup executor when evaluator is allocated.
    */
   private final EventHandler<AllocatedEvaluator> allocatedEvalHandler = new EventHandler<AllocatedEvaluator>() {
     @Override
@@ -112,33 +132,14 @@ final class ContainerManager {
       final Configuration contextConfiguration = ContextConfiguration.CONF
           .set(ContextConfiguration.IDENTIFIER, CONTEXT_PREFIX + contextIdCounter.getAndIncrement())
           .build();
-      final Configuration containerConfiguration = ContainerConfiguration.CONF
-          .set(ContainerConfiguration.NAME_SERVICE_HOST, localAddressProvider.getLocalAddress())
-          .set(ContainerConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
-          .set(ContainerConfiguration.IDENTIFIER_FACTORY, identifierFactory.getClass())
-          .set(ContainerConfiguration.DRIVER_IDENTIFIER, driverIdentifier)
+      final Configuration executorConfiguration = ExecutorConfiguration.CONF
+          .set(ExecutorConfiguration.NAME_SERVICE_HOST, localAddressProvider.getLocalAddress())
+          .set(ExecutorConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
+          .set(ExecutorConfiguration.IDENTIFIER_FACTORY, identifierFactory.getClass())
+          .set(ExecutorConfiguration.DRIVER_IDENTIFIER, driverIdentifier)
           .build();
-      allocatedEvaluator.submitContext(Configurations.merge(contextConfiguration, containerConfiguration));
+      allocatedEvaluator.submitContext(Configurations.merge(contextConfiguration, executorConfiguration));
       LOG.log(Level.FINE, "Submitted context to evaluator {0}", allocatedEvaluator.getId());
     }
   };
-
-  /**
-   * Generates AllocatedContainer and invokes when ET context becomes active.
-   */
-  private final class ActiveContextHandler implements EventHandler<ActiveContext> {
-    private final EventHandler<AllocatedContainer> callback;
-
-    private ActiveContextHandler(final EventHandler<AllocatedContainer> callback) {
-      this.callback = callback;
-    }
-
-    @Override
-    public void onNext(final ActiveContext activeContext) {
-      final AllocatedContainer allocatedContainer = new AllocatedContainerImpl(activeContext);
-      LOG.log(Level.INFO, "Allocated container: {0}", allocatedContainer.getId());
-      containers.put(allocatedContainer.getId(), allocatedContainer);
-      callback.onNext(allocatedContainer);
-    }
-  }
 }

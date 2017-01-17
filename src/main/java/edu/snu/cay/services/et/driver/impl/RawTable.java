@@ -16,7 +16,7 @@
 package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.configuration.TableConfiguration;
-import edu.snu.cay.services.et.driver.api.AllocatedContainer;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.exceptions.NotAssociatedTableException;
 
 import java.util.List;
@@ -28,9 +28,9 @@ import java.util.stream.Collectors;
  * Represents a Table, which only exists in the master-side logically.
  *
  * Containers can subscribe and associate with the table, but there is no effect until the table is materialized.
- * {@link #materialize()} partitions the table and physically allocates the partitions to associated containers.
+ * {@link #materialize()} partitions the table and physically allocates the partitions to associated executors.
  *
- *  Note that if any container has not associated with the table yet, it fails with {@link NotAssociatedTableException}
+ *  Note that if any executor has not associated with the table yet, it fails with {@link NotAssociatedTableException}
  *  because no one can take its partition.
  */
 public final class RawTable {
@@ -55,32 +55,32 @@ public final class RawTable {
   /**
    * Subscribe the table. The Containers will receive the updates in ownership information for this table.
    * Note that the Containers do not receive the updates until {@link #materialize()} is called.
-   * @param containers a list of containers
+   * @param executors a list of executors
    * @return this
    */
-  public synchronized RawTable subscribe(final List<AllocatedContainer> containers) {
-    subscribedContainerIds.addAll(containers.stream()
-        .map(AllocatedContainer::getId).collect(Collectors.toList()));
+  public synchronized RawTable subscribe(final List<AllocatedExecutor> executors) {
+    subscribedContainerIds.addAll(executors.stream()
+        .map(AllocatedExecutor::getId).collect(Collectors.toList()));
     return this;
   }
 
   /**
    * Associate with the table. The Containers will take some portion of this table into its partition.
    * Note that the Containers do not receive the partition until {@link #materialize()} is called.
-   * @param containers a list of containers
+   * @param executors a list of executors
    * @return this
    */
-  public synchronized RawTable associate(final List<AllocatedContainer> containers) {
-    associatedContainerIds.addAll(containers.stream()
-        .map(AllocatedContainer::getId).collect(Collectors.toList()));
+  public synchronized RawTable associate(final List<AllocatedExecutor> executors) {
+    associatedContainerIds.addAll(executors.stream()
+        .map(AllocatedExecutor::getId).collect(Collectors.toList()));
     return this;
   }
 
 
   /**
-   * Materializes the table to associated containers and also initializes table in subscribers.
+   * Materializes the table to associated executors and also initializes table in subscribers.
    * @return an {@link MaterializedTable}
-   * @throws NotAssociatedTableException when no container has associated with the table.
+   * @throws NotAssociatedTableException when no executor has associated with the table.
    */
   public synchronized MaterializedTable materialize() throws NotAssociatedTableException {
     if (associatedContainerIds.isEmpty()) {
@@ -91,13 +91,13 @@ public final class RawTable {
     final PartitionManager partitionManager =
         new PartitionManager(tableConf.getNumTotalBlocks(), associatedContainerIds);
     // register subscribers to MigrationManager, which will broadcast ownership update
-    for (final String containerId : subscribedContainerIds) {
-      migrationManager.registerSubscription(tableConf.getId(), containerId);
+    for (final String executorId : subscribedContainerIds) {
+      migrationManager.registerSubscription(tableConf.getId(), executorId);
     }
 
     // initialize table partitions in associators and subscribers
     tableInitializer.initTableInAssociators(tableConf, associatedContainerIds,
-        partitionManager.getContainerIdToBlockIdSet());
+        partitionManager.getExecutorIdToBlockIdSet());
     tableInitializer.initTableInSubscribers(tableConf, subscribedContainerIds,
         partitionManager.getBlockLocations());
 

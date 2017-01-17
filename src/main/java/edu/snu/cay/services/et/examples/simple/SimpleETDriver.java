@@ -17,7 +17,7 @@ package edu.snu.cay.services.et.examples.simple;
 
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
-import edu.snu.cay.services.et.driver.api.AllocatedContainer;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.MaterializedTable;
 import edu.snu.cay.services.et.evaluator.impl.HashPartitionFunction;
@@ -67,28 +67,28 @@ final class SimpleETDriver {
   }
 
   /**
-   * A driver start handler for requesting containers.
+   * A driver start handler for requesting executors.
    */
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedContainer> containers0 = etMaster.addContainers(NUM_CONTAINERS, RES_CONF);
+      final List<AllocatedExecutor> executors0 = etMaster.addExecutors(NUM_CONTAINERS, RES_CONF);
       final MaterializedTable table;
       try {
-        table = etMaster.createTable(TABLE_CONF).associate(containers0).materialize();
+        table = etMaster.createTable(TABLE_CONF).associate(executors0).materialize();
       } catch (final NotAssociatedTableException e) {
         throw new RuntimeException("Table is not associated. It's not ready to be materialized.", e);
       }
 
-      final List<AllocatedContainer> containers1 = etMaster.addContainers(NUM_CONTAINERS, RES_CONF);
-      table.subscribe(containers0).subscribe(containers1);
+      final List<AllocatedExecutor> executors1 = etMaster.addExecutors(NUM_CONTAINERS, RES_CONF);
+      table.subscribe(executors0).subscribe(executors1);
 
-      for (final AllocatedContainer container : containers0) {
-        container.submitTask(TASK_CONF);
+      for (final AllocatedExecutor executor : executors0) {
+        executor.submitTask(TASK_CONF);
       }
 
-      for (final AllocatedContainer container : containers1) {
-        container.submitTask(TASK_CONF);
+      for (final AllocatedExecutor executor : executors1) {
+        executor.submitTask(TASK_CONF);
       }
     }
   }

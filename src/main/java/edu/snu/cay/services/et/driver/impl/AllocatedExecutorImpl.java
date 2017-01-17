@@ -15,20 +15,20 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
-import edu.snu.cay.services.et.driver.api.AllocatedContainer;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Configuration;
 
 /**
- * Implementation for {@link AllocatedContainer}.
+ * Implementation for {@link AllocatedExecutor}.
  */
 @DriverSide
-final class AllocatedContainerImpl implements AllocatedContainer {
+final class AllocatedExecutorImpl implements AllocatedExecutor {
   private final ActiveContext rootContext;
   private final String identifier;
 
-  AllocatedContainerImpl(final ActiveContext rootContext) {
+  AllocatedExecutorImpl(final ActiveContext rootContext) {
     this.rootContext = rootContext;
     this.identifier = rootContext.getEvaluatorId();
   }
@@ -47,7 +47,7 @@ final class AllocatedContainerImpl implements AllocatedContainer {
   public void close() {
 
     // simply close the context, which is a root context of evaluator.
-    // so evaluator(==container) will be released
+    // so evaluator(==executor) will be released
     rootContext.close();
   }
 }

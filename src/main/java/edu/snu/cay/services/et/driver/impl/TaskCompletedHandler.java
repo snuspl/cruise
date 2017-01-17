@@ -31,19 +31,19 @@ import java.util.logging.Logger;
 @DriverSide
 public final class TaskCompletedHandler implements EventHandler<CompletedTask> {
   private static final Logger LOG = Logger.getLogger(TaskCompletedHandler.class.getName());
-  private final ContainerManager containerManager;
+  private final ExecutorManager executorManager;
 
   @Inject
-  private TaskCompletedHandler(final ContainerManager containerManager) {
-    this.containerManager = containerManager;
+  private TaskCompletedHandler(final ExecutorManager executorManager) {
+    this.executorManager = executorManager;
   }
 
   @Override
   public void onNext(final CompletedTask completedTask) {
 
-    final String containerId = completedTask.getActiveContext().getEvaluatorId();
-    LOG.log(Level.INFO, "Task completed in container {0}", containerId);
+    final String executorId = completedTask.getActiveContext().getEvaluatorId();
+    LOG.log(Level.INFO, "Task completed in executor {0}", executorId);
 
-    containerManager.getContainer(containerId).close();
+    executorManager.getExecutor(executorId).close();
   }
 }

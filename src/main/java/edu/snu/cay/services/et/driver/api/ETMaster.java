@@ -35,9 +35,9 @@ public interface ETMaster {
    * Allocates new {@code num} containers of the equal resource specification.
    * @param num the number of containers
    * @param resConf resource configuration
-   * @return a list of {@link AllocatedContainer}s
+   * @return a list of {@link AllocatedExecutor}s
    */
-  List<AllocatedContainer> addContainers(int num, ResourceConfiguration resConf);
+  List<AllocatedExecutor> addExecutors(int num, ResourceConfiguration resConf);
 
   /**
    * Creates a Table using the given table configuration.

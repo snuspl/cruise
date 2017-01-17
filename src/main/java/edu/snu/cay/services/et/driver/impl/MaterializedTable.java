@@ -16,7 +16,7 @@
 package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.configuration.TableConfiguration;
-import edu.snu.cay.services.et.driver.api.AllocatedContainer;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 
 import java.util.HashSet;
 import java.util.List;
@@ -27,7 +27,7 @@ import java.util.Set;
  * Now the Containers that associate this table have the actual reference of it, and the Containers subscribing it
  * receive the ownership information whenever there is any change.
  *
- * Even the table is distributed to Containers already, more containers are allowed to subscribe or associate with it,
+ * Even the table is distributed to Containers already, more executors are allowed to subscribe or associate with it,
  * then the changes will be applied to Containers immediately.
  */
 public final class MaterializedTable {
@@ -48,39 +48,39 @@ public final class MaterializedTable {
 
   /**
    * Subscribes the table. The Containers will receive the updates in ownership information for this table.
-   * @param containers a list of containers
+   * @param executors a list of executors
    * @return this
    */
-  public synchronized MaterializedTable subscribe(final List<AllocatedContainer> containers) {
-    final Set<String> containerIdSet = new HashSet<>();
-    for (final AllocatedContainer container : containers) {
-      migrationManager.registerSubscription(tableConf.getId(), container.getId());
-      containerIdSet.add(container.getId());
+  public synchronized MaterializedTable subscribe(final List<AllocatedExecutor> executors) {
+    final Set<String> executorIdSet = new HashSet<>();
+    for (final AllocatedExecutor executor : executors) {
+      migrationManager.registerSubscription(tableConf.getId(), executor.getId());
+      executorIdSet.add(executor.getId());
     }
-    tableInitializer.initTableInSubscribers(tableConf, containerIdSet,
+    tableInitializer.initTableInSubscribers(tableConf, executorIdSet,
         partitionManager.getBlockLocations());
     return this;
   }
 
   /**
    * Associates with the table. The Containers will take some portion of this table into its partition.
-   * @param containers a list of containers
+   * @param executors a list of executors
    * @return this
    */
-  public synchronized MaterializedTable associate(final List<AllocatedContainer> containers) {
-    final Set<String> containerIdSet = new HashSet<>();
-    for (final AllocatedContainer container : containers) {
-      partitionManager.addPartition(container.getId());
+  public synchronized MaterializedTable associate(final List<AllocatedExecutor> executors) {
+    final Set<String> executorIdSet = new HashSet<>();
+    for (final AllocatedExecutor executor : executors) {
+      partitionManager.addPartition(executor.getId());
     }
-    tableInitializer.initTableInAssociators(tableConf, containerIdSet,
-        partitionManager.getContainerIdToBlockIdSet());
+    tableInitializer.initTableInAssociators(tableConf, executorIdSet,
+        partitionManager.getExecutorIdToBlockIdSet());
     return this;
   }
 
   /**
-   * Moves the {@code numBlocks} number of blocks from src container to dst container.
-   * @param srcContainerId an id of src container
-   * @param dstContainerId an id of dst container
+   * Moves the {@code numBlocks} number of blocks from src executor to dst executor.
+   * @param srcContainerId an id of src executor
+   * @param dstContainerId an id of dst executor
    * @param numBlocks the number of blocks to move
    */
   public synchronized void moveBlocks(final String srcContainerId,
@@ -97,9 +97,9 @@ public final class MaterializedTable {
   }
 
   /**
-   * @return a list of containers associated with the table
+   * @return a list of executors associated with the table
    */
   List<String> getAssociatedContainerIds() {
-    return partitionManager.getAssociatedContainerIds();
+    return partitionManager.getAssociatedExecutorIds();
   }
 }

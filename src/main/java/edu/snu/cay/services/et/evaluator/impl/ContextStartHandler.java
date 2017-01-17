@@ -28,7 +28,7 @@ import org.apache.reef.wake.IdentifierFactory;
 import javax.inject.Inject;
 
 /**
- * Handles initial setup of container.
+ * Handles initial setup of executor.
  */
 @Private
 @EvaluatorSide

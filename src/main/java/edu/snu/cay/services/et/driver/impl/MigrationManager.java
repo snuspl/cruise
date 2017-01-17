@@ -21,7 +21,7 @@ import org.apache.reef.annotations.audience.Private;
 import javax.inject.Inject;
 
 /**
- * A manager class administrates migration of blocks between containers.
+ * A manager class administrates migration of blocks between executors.
  * Note that tables share one instance of {@link MigrationManager}.
  * TODO #13: implement migration manager
  */
@@ -35,23 +35,23 @@ final class MigrationManager {
 
   /**
    * Registers subscribers for the update of partition status of a table whose id is {@code tableId}.
-   * Whenever a block has been moved, the container with {@code containerId} will be notified.
+   * Whenever a block has been moved, the executor with {@code executorId} will be notified.
    * @param tableId a table id
-   * @param containerId a container id
+   * @param executorId a executor id
    */
-  void registerSubscription(final String tableId, final String containerId) {
+  void registerSubscription(final String tableId, final String executorId) {
 
   }
 
   /**
-   * Moves the {@code numBlocks} number of blocks of {@code partitionManager} from src container to dst container.
+   * Moves the {@code numBlocks} number of blocks of {@code partitionManager} from src executor to dst executor.
    * @param partitionManager a {@link PartitionManager} of a table to be moved
-   * @param srcContainerId an id of src container
-   * @param dstContainerId an id of dst container
+   * @param srcExecutorId an id of src executor
+   * @param dstExecutorId an id of dst executor
    * @param numBlocks the number of blocks to move
    */
   void moveBlocks(final PartitionManager partitionManager,
-                  final String srcContainerId, final String dstContainerId, final int numBlocks) {
+                  final String srcExecutorId, final String dstExecutorId, final int numBlocks) {
     // use following methods to update driver-side block partitioning
     // partitionManager.chooseBlocksToMove()
     // partitionManager.updateOwner()

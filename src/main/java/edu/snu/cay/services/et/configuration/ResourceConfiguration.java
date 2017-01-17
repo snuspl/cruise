@@ -18,7 +18,7 @@ package edu.snu.cay.services.et.configuration;
 import org.apache.reef.util.BuilderUtils;
 
 /**
- * Resource configuration of container.
+ * Resource configuration of executor.
  */
 public final class ResourceConfiguration {
   private final int numCores;
@@ -30,14 +30,14 @@ public final class ResourceConfiguration {
   }
 
   /**
-   * @return the number of cores for each containers to use
+   * @return the number of cores for each executors to use
    */
   public int getNumCores() {
     return numCores;
   }
 
   /**
-   * @return the size of memory for each containers to use
+   * @return the size of memory for each executors to use
    */
   public int getMemSizeInMB() {
     return memSizeInMB;

@@ -19,23 +19,23 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
 
 /**
- * Represents an allocated container.
+ * Represents an allocated executor.
  */
 @DriverSide
-public interface AllocatedContainer {
+public interface AllocatedExecutor {
   /**
-   * @return the identifier of the allocated container.
+   * @return the identifier of the allocated executor.
    */
   String getId();
 
   /**
-   * Assign task to container.
+   * Assign task to executor.
    * @param taskConf task configuration.
    */
   void submitTask(Configuration taskConf);
 
   /**
-   * Closes the container.
+   * Closes the executor.
    */
   void close();
 }

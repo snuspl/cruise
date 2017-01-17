@@ -24,17 +24,17 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A table initializer class that initializes table at containers in different ways corresponding to their roles:
- * associators, subscribers, containers with no-relationship.
+ * A table initializer class that initializes table at executors in different ways corresponding to their roles:
+ * associators, subscribers, executors with no-relationship.
  * 1) {@link #initTableInAssociators} : It initializes a table in associators with information of allocated blocks
- *   and src file, if it exists. Dynamically associated containers do not have any blocks.
- * 2) {@link #initTableInSubscribers}: Table in subscriber containers are initialized by receiving
+ *   and src file, if it exists. Dynamically associated executors do not have any blocks.
+ * 2) {@link #initTableInSubscribers}: Table in subscriber executors are initialized by receiving
  *   up-to-date global ownership info that will be cached and updated automatically.
- * 3) {@link #initVoidTable}: Our system provides a way (lookup) for containers to access a table,
- *   even they are not associator nor subscriber. This method initializes a table in those containers
+ * 3) {@link #initVoidTable}: Our system provides a way (lookup) for executors to access a table,
+ *   even they are not associator nor subscriber. This method initializes a table in those executors
  *   that have no assigned blocks and do not need global ownership table.
  *
- * For all types of containers, initialization info includes basic immutable table configurations
+ * For all types of executors, initialization info includes basic immutable table configurations
  * (e.g., key/value codec, partition function, num total blocks).
  *
  * TODO #10: implement TableInitializer
@@ -48,26 +48,26 @@ final class TableInitializer {
 
   /**
    * Initializes a table for associators by providing each allocated blocks.
-   * It's a blocking call so that waits until all containers setup corresponding partitions.
+   * It's a blocking call so that waits until all executors setup corresponding partitions.
    * @param tableConf a configuration of table
-   * @param containerIdSet a set of container ids
-   * @param containerIdToBlockIdSet allocated block id set for containers
+   * @param executorIdSet a set of executor ids
+   * @param executorIdToBlockIdSet allocated block id set for executors
    */
   void initTableInAssociators(final TableConfiguration tableConf,
-                              final Set<String> containerIdSet,
-                              final Map<String, Set<Long>> containerIdToBlockIdSet) {
-    // final Map<String, InputSplit> containerIdToInputSplit;
+                              final Set<String> executorIdSet,
+                              final Map<String, Set<Long>> executorIdToBlockIdSet) {
+    // final Map<String, InputSplit> executorIdToInputSplit;
     if (tableConf.getFilePath().isPresent()) { // if FilePath has been configured
-      // obtain InputSplits using hdfs library and assign it to containers
-      // and then bind InputFormat impl and bind a serialized InputSplit for each container
+      // obtain InputSplits using hdfs library and assign it to executors
+      // and then bind InputFormat impl and bind a serialized InputSplit for each executor
 
-      // containerIdToInputSplit = ;
+      // executorIdToInputSplit = ;
     }
 
-    for (final String containerId : containerIdSet) {
-      final Set<Long> localBlockSet = containerIdToBlockIdSet.get(containerId);
+    for (final String executorId : executorIdSet) {
+      final Set<Long> localBlockSet = executorIdToBlockIdSet.get(executorId);
       if (localBlockSet != null) {
-        //final InputSplit localSplit = containerIdToInputSplit.get(containerId);
+        //final InputSplit localSplit = executorIdToInputSplit.get(executorId);
 
 //        if (localSplit != null) {
 //          // send init msg (tableConf + fileInfo + localBlockSet)
@@ -86,26 +86,26 @@ final class TableInitializer {
   /**
    * Initializes a table for subscribers by providing global ownership information.
    * @param tableConf a configuration of table
-   * @param containerIdSet a set of container ids
+   * @param executorIdSet a set of executor ids
    */
   void initTableInSubscribers(final TableConfiguration tableConf,
-                              final Set<String> containerIdSet,
+                              final Set<String> executorIdSet,
                               final List<String> blockLocations) {
     // TODO #19: implement subscription mechanism
-    for (final String containerId : containerIdSet) {
-      // send table init (tableConf + blockLocations) msg to containers
+    for (final String executorId : executorIdSet) {
+      // send table init (tableConf + blockLocations) msg to executors
     }
 
     // subscribers should be registered into MigrationManager so as to retrieve up-to-date ownership info
   }
 
   /**
-   * Initializes the table info in a container that is not associator nor subscriber.
-   * It is for the case when that kind of containers try to access the table first time.
+   * Initializes the table info in a executor that is not associator nor subscriber.
+   * It is for the case when that kind of executors try to access the table first time.
    * @param tableConf
    */
   void initVoidTable(final TableConfiguration tableConf,
-                     final String containerId) {
+                     final String executorId) {
 
     // send init msg (tableConf) and wait response
   }
