@@ -109,7 +109,6 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
    * Several threads are initiated at the beginning and run as long-running background services.
    */
   private final class OperationThread implements Runnable {
-
     @Override
     public void run() {
       while (true) {
@@ -331,10 +330,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
     final int numSubOps = blockToKeyRangesMap.size();
     operation.setNumSubOps(numSubOps);
 
-    for (final Map.Entry<Integer, List<Pair<K, K>>> blockToSubKeyRanges : blockToKeyRangesMap.entrySet()) {
-      final int blockId = blockToSubKeyRanges.getKey();
-      final List<Pair<K, K>> keyRanges = blockToSubKeyRanges.getValue();
-
+    blockToKeyRangesMap.forEach((blockId, keyRanges) -> {
       try {
         subOperationQueue.put(new Tuple3<>(operation, keyRanges, blockId));
       } catch (final InterruptedException e) {
@@ -343,7 +339,7 @@ public final class RemoteOpHandlerImpl<K> implements RemoteOpHandler {
 
       LOG.log(Level.FINEST, "Enqueue Op [Id: {0}, block: {1}]",
           new Object[]{operation.getOpId(), blockId});
-    }
+    });
   }
 
   /**

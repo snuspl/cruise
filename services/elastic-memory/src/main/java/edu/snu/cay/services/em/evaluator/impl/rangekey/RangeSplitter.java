@@ -32,7 +32,7 @@ final class RangeSplitter<K> {
   private final BlockResolver<K> blockResolver;
 
   @Inject
-  RangeSplitter(final BlockResolver<K> blockResolver) {
+  private RangeSplitter(final BlockResolver<K> blockResolver) {
     this.blockResolver = blockResolver;
   }
 
@@ -46,20 +46,13 @@ final class RangeSplitter<K> {
     // split into ranges per block
     final Map<Integer, List<Pair<K, K>>> blockToSubKeyRangesMap = new HashMap<>();
 
-    for (final Pair<K, K> keyRange : dataKeyRanges) {
+    dataKeyRanges.forEach(keyRange -> {
       final Map<Integer, Pair<K, K>> blockToSubKeyRangeMap =
           blockResolver.resolveBlocksForOrderedKeys(keyRange.getFirst(), keyRange.getSecond());
 
-      for (final Map.Entry<Integer, Pair<K, K>> blockToSubKeyRange : blockToSubKeyRangeMap.entrySet()) {
-        final int blockId = blockToSubKeyRange.getKey();
-        final Pair<K, K> subKeyRange = blockToSubKeyRange.getValue();
-
-        blockToSubKeyRangesMap.computeIfAbsent(blockId, integer -> new LinkedList<>());
-
-        final List<Pair<K, K>> subKeyRangeList = blockToSubKeyRangesMap.get(blockId);
-        subKeyRangeList.add(subKeyRange);
-      }
-    }
+      blockToSubKeyRangeMap.forEach((blockId, subKeyRange) ->
+          blockToSubKeyRangesMap.computeIfAbsent(blockId, integer -> new LinkedList<>()).add(subKeyRange));
+    });
 
     return blockToSubKeyRangesMap;
   }
