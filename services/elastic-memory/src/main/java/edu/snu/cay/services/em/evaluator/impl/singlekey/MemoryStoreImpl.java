@@ -159,8 +159,8 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
           remoteOpHandlerImpl.sendResultToOrigin(operation, Optional.<V>empty(), false);
         }
       } finally {
-        final Lock routerLock = remoteEvalIdWithLock.getValue();
-        routerLock.unlock();
+        final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+        ownershipLock.unlock();
       }
     }
   }
@@ -189,15 +189,15 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     try {
       remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      // execute operation in local, holding routerLock
+      // execute operation in local, holding ownershipLock
       if (!remoteEvalIdOptional.isPresent()) {
         final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         block.put(id, value);
         return new Pair<>(id, true);
       }
     } finally {
-      final Lock routerLock = remoteEvalIdWithLock.getValue();
-      routerLock.unlock();
+      final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+      ownershipLock.unlock();
     }
 
     // send operation to remote and wait until operation is finished
@@ -221,15 +221,15 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     try {
       remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      // execute operation in local, holding routerLock
+      // execute operation in local, holding ownershipLock
       if (!remoteEvalIdOptional.isPresent()) {
         final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         final V output = block.get(id);
         return output == null ? null : new Pair<>(id, output);
       }
     } finally {
-      final Lock routerLock = remoteEvalIdWithLock.getValue();
-      routerLock.unlock();
+      final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+      ownershipLock.unlock();
     }
 
     // send operation to remote and wait until operation is finished
@@ -279,15 +279,15 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     try {
       remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      // execute operation in local, holding routerLock
+      // execute operation in local, holding ownershipLock
       if (!remoteEvalIdOptional.isPresent()) {
         final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         final V output = block.update(id, deltaValue);
         return new Pair<>(id, output);
       }
     } finally {
-      final Lock routerLock = remoteEvalIdWithLock.getValue();
-      routerLock.unlock();
+      final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+      ownershipLock.unlock();
     }
 
     // send operation to remote and wait until operation is finished
@@ -308,15 +308,15 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     try {
       remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
 
-      // execute operation in local, holding routerLock
+      // execute operation in local, holding ownershipLock
       if (!remoteEvalIdOptional.isPresent()) {
         final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
         final V output = block.remove(id);
         return output == null ? null : new Pair<>(id, output);
       }
     } finally {
-      final Lock routerLock = remoteEvalIdWithLock.getValue();
-      routerLock.unlock();
+      final Lock ownershipLock = remoteEvalIdWithLock.getValue();
+      ownershipLock.unlock();
     }
 
     // send operation to remote and wait until operation is finished
