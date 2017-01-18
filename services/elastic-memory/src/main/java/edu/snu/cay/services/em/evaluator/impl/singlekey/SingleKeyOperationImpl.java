@@ -68,11 +68,6 @@ final class SingleKeyOperationImpl<K, V> implements SingleKeyOperation<K, V> {
   }
 
   @Override
-  public boolean isFromLocalClient() {
-    return !origEvalId.isPresent();
-  }
-
-  @Override
   public Optional<String> getOrigEvalId() {
     return origEvalId;
   }

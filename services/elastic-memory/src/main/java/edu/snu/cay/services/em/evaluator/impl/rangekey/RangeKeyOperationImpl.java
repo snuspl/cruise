@@ -130,8 +130,7 @@ final class RangeKeyOperationImpl<K, V> implements RangeKeyOperation<K, V> {
     }
   }
 
-  @Override
-  public boolean isFromLocalClient() {
+  private boolean isFromLocalClient() {
     return !origEvalId.isPresent();
   }
 

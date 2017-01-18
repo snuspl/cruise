@@ -41,11 +41,6 @@ public interface DataOperation {
   DataOpType getOpType();
 
   /**
-   * @return true if the operation is requested from the local client
-   */
-  boolean isFromLocalClient();
-
-  /**
    * Starts waiting for the completion of the operation within a bounded time.
    * Sub classes should provide a way to wake it up.
    * @param timeout a maximum waiting time in the milliseconds

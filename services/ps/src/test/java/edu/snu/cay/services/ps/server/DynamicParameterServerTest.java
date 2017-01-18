@@ -20,7 +20,7 @@ import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.BlockFactoryImpl;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -101,7 +101,6 @@ public final class DynamicParameterServerTest {
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_TOTAL_STORES))
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
-    injector.bindVolatileInstance(RemoteAccessibleMemoryStore.class, mock(RemoteAccessibleMemoryStore.class));
     injector.bindVolatileInstance(ServerSideMsgSender.class, mock(ServerSideMsgSender.class));
     injector.bindVolatileInstance(EMMsgSender.class, mock(EMMsgSender.class));
     injector.bindVolatileInstance(SpanReceiver.class, mock(SpanReceiver.class));
@@ -125,9 +124,9 @@ public final class DynamicParameterServerTest {
       }
     });
 
-    // EM's router should be initialized explicitly
-    final OperationRouter router = injector.getInstance(OperationRouter.class);
-    router.triggerInitialization();
+    // ownershipCache should be initialized explicitly
+    final OwnershipCache ownershipCache = injector.getInstance(OwnershipCache.class);
+    ownershipCache.triggerInitialization();
 
     memoryStore = injector.getInstance(MemoryStore.class);
     mockSender = injector.getInstance(ServerSideMsgSender.class);
