@@ -46,7 +46,7 @@ final class LassoTrainerSGD implements Trainer {
   private final int numFeaturesPerPartition;
   private final int numPartitions;
 
-  private final double stepSize;
+  private double stepSize;
 
   private final double lambda;
 
@@ -62,6 +62,9 @@ final class LassoTrainerSGD implements Trainer {
 
   private List<Integer> partitionIndices;
 
+  private final double decayRate;
+  private final int decayPeriod;
+
   @Inject
   private LassoTrainerSGD(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                           @Parameter(NumFeatures.class) final int numFeatures,
@@ -69,6 +72,8 @@ final class LassoTrainerSGD implements Trainer {
                           @Parameter(StepSize.class) final double initStepSize,
                           @Parameter(Lambda.class) final double lambda,
                           @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                          @Parameter(DecayRate.class) final double decayRate,
+                          @Parameter(DecayPeriod.class) final int decayPeriod,
                           final MemoryStore<Long> memoryStore,
                           final TrainingDataProvider<Long, LassoDataSGD> trainingDataProvider,
                           final VectorFactory vectorFactory) {
@@ -87,6 +92,8 @@ final class LassoTrainerSGD implements Trainer {
     this.vectorFactory = vectorFactory;
     oldModel = vectorFactory.createDenseZeros(numFeatures);
     newModel = vectorFactory.createDenseZeros(numFeatures);
+    this.decayRate = decayRate;
+    this.decayPeriod = decayPeriod;
   }
 
   @Override
@@ -115,13 +122,15 @@ final class LassoTrainerSGD implements Trainer {
       instances = new ArrayList<>(nextTrainingData.values());
     }
 
+    if (!(decayRate == 1) && iteration % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+          new Object[]{decayPeriod, prevStepSize, stepSize});
+    }
+
     pullModels();
     final double loss = computeLoss(totalInstancesProcessed);
-    if (iteration % 50 == 0) {
-      for (int i = 0; i < numFeatures; i++) {
-        LOG.log(Level.INFO, "model value: {0}", new Object[]{newModel.get(i)});
-      }
-    }
     LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
     if ((iteration + 1) % 50 == 0) {
       for (int i = 0; i < numFeatures; i++) {

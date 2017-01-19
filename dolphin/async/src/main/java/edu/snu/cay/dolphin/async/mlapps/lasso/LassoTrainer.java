@@ -50,7 +50,7 @@ final class LassoTrainer implements Trainer {
   private final int numFeatures;
   private final int numPartitions;
   private final double lambda;
-  private final double stepSize;
+  private double stepSize;
 
   private final TrainingDataProvider<Long, LassoDataSGD> trainingDataProvider;
 
@@ -65,12 +65,17 @@ final class LassoTrainer implements Trainer {
    */
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
 
+  private final double decayRate;
+  private final int decayPeriod;
+
   @Inject
   private LassoTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                        @Parameter(Lambda.class) final double lambda,
                        @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
+                       @Parameter(DecayRate.class) final double decayRate,
+                       @Parameter(DecayPeriod.class) final int decayPeriod,
                        final TrainingDataProvider<Long, LassoDataSGD> trainingDataProvider,
                        final VectorFactory vectorFactory,
                        final MatrixFactory matrixFactory) {
@@ -86,6 +91,8 @@ final class LassoTrainer implements Trainer {
     this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
+    this.decayRate = decayRate;
+    this.decayPeriod = decayPeriod;
   }
 
   /**
@@ -136,6 +143,9 @@ final class LassoTrainer implements Trainer {
       for (int i = 0; i < numFeatures; i++) {
         final Vector getColumn = featureMatrix.sliceColumn(i);
         final double getColumnNorm = getColumn.dot(getColumn);
+        if (getColumnNorm == 0) {
+          continue;
+        }
         semiPredict.subi(vectorFactory.createDenseZeros(instances.size()).axpy(newModel.get(i), getColumn));
         newModel.set(i, sthresh((getColumn.dot(yValue.sub(semiPredict))) / getColumnNorm, lambda, getColumnNorm));
         semiPredict.addi(vectorFactory.createDenseZeros(instances.size()).axpy(newModel.get(i), getColumn));
@@ -146,6 +156,13 @@ final class LassoTrainer implements Trainer {
       totalInstancesProcessed.addAll(instances);
       nextTrainingData = trainingDataProvider.getNextTrainingData();
       instances = new ArrayList<>(nextTrainingData.values());
+    }
+
+    if (!(decayRate == 1) && iteration % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+          new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
     pullModels();

@@ -46,6 +46,8 @@ public final class LassoREEF {
         .addParameterClass(NumFeaturesPerPartition.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
+        .addParameterClass(DecayRate.class)
+        .addParameterClass(DecayPeriod.class)
         .build());
   }
 }
