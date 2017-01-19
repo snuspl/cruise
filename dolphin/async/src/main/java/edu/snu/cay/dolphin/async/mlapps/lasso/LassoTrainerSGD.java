@@ -93,7 +93,13 @@ final class LassoTrainerSGD implements Trainer {
     oldModel = vectorFactory.createDenseZeros(numFeatures);
     newModel = vectorFactory.createDenseZeros(numFeatures);
     this.decayRate = decayRate;
+    if (decayRate <= 0.0 || decayRate > 1.0) {
+      throw new IllegalArgumentException("decay_rate must be larger than 0 and less than or equal to 1");
+    }
     this.decayPeriod = decayPeriod;
+    if (decayPeriod <= 0) {
+      throw new IllegalArgumentException("decay_period must be a positive value");
+    }
   }
 
   @Override
