@@ -150,10 +150,10 @@ final class LassoTrainer implements Trainer {
 
     pullModels();
     final double loss = computeLoss(totalInstancesProcessed);
-    LOG.log(Level.INFO, "Loss value: {0}", loss);
+    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
     if ((iteration + 1) % 50 == 0) {
       for (int i = 0; i < numFeatures; i++) {
-        LOG.log(Level.INFO, "model : {0}", newModel.get(i));
+        LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
     }
 
@@ -215,7 +215,6 @@ final class LassoTrainer implements Trainer {
     }
 
     loss = 1.0 / (2 * data.size()) * loss + lambda * reg;
-
     return loss;
   }
 }

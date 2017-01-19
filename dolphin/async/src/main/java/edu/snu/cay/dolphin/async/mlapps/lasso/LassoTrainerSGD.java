@@ -119,10 +119,15 @@ final class LassoTrainerSGD implements Trainer {
     final double loss = computeLoss(totalInstancesProcessed);
     if (iteration % 50 == 0) {
       for (int i = 0; i < numFeatures; i++) {
-        LOG.log(Level.INFO, "model value: {0}", newModel.get(i));
+        LOG.log(Level.INFO, "model value: {0}", new Object[]{newModel.get(i)});
       }
     }
-    LOG.log(Level.INFO, "Loss value: {0}", loss);
+    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
+    if ((iteration + 1) % 50 == 0) {
+      for (int i = 0; i < numFeatures; i++) {
+        LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
+      }
+    }
 
   }
 
@@ -177,7 +182,7 @@ final class LassoTrainerSGD implements Trainer {
     }
   }
 
-  private double computeLoss(final List<LassoDataSGD> data) {
+  private Double computeLoss(final List<LassoDataSGD> data) {
     double loss = 0;
     double reg = 0;
 

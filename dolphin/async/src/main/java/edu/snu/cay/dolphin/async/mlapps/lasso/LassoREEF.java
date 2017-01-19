@@ -44,8 +44,8 @@ public final class LassoREEF {
         .setWorkerSerializerClass(LassoDataSerializer.class)
         .addParameterClass(NumFeatures.class)
         .addParameterClass(NumFeaturesPerPartition.class)
-        .addParameterClass(Lambda.class)
         .addParameterClass(StepSize.class)
+        .addParameterClass(Lambda.class)
         .build());
   }
 }
