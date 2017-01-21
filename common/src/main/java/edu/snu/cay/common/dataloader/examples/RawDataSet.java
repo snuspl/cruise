@@ -38,6 +38,12 @@ public final class RawDataSet<K, V> implements DataSet<K, V> {
     this.recordIter = HdfsSplitFetcher.fetchData(hdfsSplitInfo);
   }
 
+  public RawDataSet(final byte[] serializedHdfsSplitInfo) throws IOException {
+    final HdfsSplitInfoSerializer.HdfsSplitInfoCodec codec = new HdfsSplitInfoSerializer.HdfsSplitInfoCodec();
+    final HdfsSplitInfo hdfsSplitInfo = codec.decode(serializedHdfsSplitInfo);
+    this.recordIter = HdfsSplitFetcher.fetchData(hdfsSplitInfo);
+  }
+
   @Override
   public Iterator<Pair<K, V>> iterator() {
     return recordIter;

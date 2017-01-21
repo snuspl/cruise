@@ -32,6 +32,7 @@ import org.apache.reef.util.EnvironmentUtils;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -62,21 +63,24 @@ public final class LineCountingClient {
     final Configuration commandLineConf = parseCommandLine(args);
     final Injector commandLineInjector = Tang.Factory.getTang().newInjector(commandLineConf);
 
+    final Set<String> inputs = commandLineInjector.getNamedInstance(LineCountingDriver.Inputs.class);
     final boolean onLocal = commandLineInjector.getNamedInstance(Parameters.OnLocal.class);
-    final String inputDir = processInputDir(commandLineInjector.getNamedInstance(Parameters.InputDir.class), onLocal);
     final int splits = commandLineInjector.getNamedInstance(Parameters.Splits.class);
 
-    final Configuration paramConf = Tang.Factory.getTang().newConfigurationBuilder()
+    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(Parameters.OnLocal.class, Boolean.toString(onLocal))
-        .bindNamedParameter(Parameters.InputDir.class, inputDir)
-        .bindNamedParameter(Parameters.Splits.class, Integer.toString(splits))
-        .build();
+        .bindNamedParameter(Parameters.Splits.class, Integer.toString(splits));
+
+    inputs.forEach(input -> jcb.bindSetEntry(LineCountingDriver.Inputs.class, processInputDir(input, onLocal)));
+
+    final Configuration paramConf = jcb.build();
+
+    final Configuration driverConf = getDriverConfiguration(paramConf);
 
     final Configuration runTimeConf = onLocal ?
         getLocalRuntimeConfiguration(splits) :
         getYarnRuntimeConfiguration();
 
-    final Configuration driverConf = getDriverConfiguration(paramConf);
     final int timeout = commandLineInjector.getNamedInstance(Parameters.Timeout.class);
 
     return DriverLauncher.getLauncher(runTimeConf).run(driverConf, timeout);
@@ -96,7 +100,8 @@ public final class LineCountingClient {
         .set(DriverConfiguration.DRIVER_IDENTIFIER, DRIVER_ID)
         .set(DriverConfiguration.ON_DRIVER_STARTED, LineCountingDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, LineCountingDriver.EvaluatorAllocatedHandler.class)
-        .set(DriverConfiguration.ON_TASK_COMPLETED, LineCountingDriver.TaskCompletedHandler.class)
+        .set(DriverConfiguration.ON_TASK_RUNNING, LineCountingDriver.RunningTaskHandler.class)
+        .set(DriverConfiguration.ON_TASK_MESSAGE, LineCountingDriver.TaskMsgHandler.class)
         .build();
 
     return Configurations.merge(driverConf, paramConf,
@@ -108,7 +113,7 @@ public final class LineCountingClient {
     final CommandLine cl = new CommandLine(cb);
     // add all basic parameters
     cl.registerShortNameOfClass(Parameters.OnLocal.class);
-    cl.registerShortNameOfClass(Parameters.InputDir.class);
+    cl.registerShortNameOfClass(LineCountingDriver.Inputs.class);
     cl.registerShortNameOfClass(Parameters.Splits.class);
     cl.registerShortNameOfClass(Parameters.Timeout.class);
 

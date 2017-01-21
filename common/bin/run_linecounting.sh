@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_linecounting.sh -local true -input sample_linecounting -split 4 -timeout 100000
+# ./run_linecounting.sh -local true -inputs sample_linecounting/sample0 -inputs sample_linecounting/sample1 -split 4 -timeout 100000
 
 SELF_JAR=`echo ../target/cay-common-*-shaded.jar`
 
