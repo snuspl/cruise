@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.common.dataloader.examples;
 
-import edu.snu.cay.common.dataloader.HdfsSplitFetcher;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.annotations.audience.TaskSide;
