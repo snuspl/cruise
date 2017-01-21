@@ -39,12 +39,12 @@ import java.util.logging.Logger;
  * Client for the data loading app.
  */
 @ClientSide
-public final class DataLoadingREEF {
-  private static final Logger LOG = Logger.getLogger(DataLoadingREEF.class.getName());
-  private static final String DRIVER_ID = "DataLoading";
+public final class LineCountingClient {
+  private static final Logger LOG = Logger.getLogger(LineCountingClient.class.getName());
+  private static final String DRIVER_ID = "LineCounting";
 
   @Inject
-  private DataLoadingREEF() {
+  private LineCountingClient() {
   }
 
   public static void main(final String[] args) {

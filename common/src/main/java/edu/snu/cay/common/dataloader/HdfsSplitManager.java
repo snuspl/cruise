@@ -18,8 +18,10 @@ package edu.snu.cay.common.dataloader;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.data.loading.impl.JobConfExternalConstructor;
-import org.apache.reef.tang.ExternalConstructor;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -29,12 +31,12 @@ import java.util.logging.Logger;
 /**
  * Used in Driver to get splits of a HDFS directory/file.
  */
+@DriverSide
 public final class HdfsSplitManager {
   private static final Logger LOG = Logger.getLogger(HdfsSplitManager.class.getName());
 
   // utility class should not be instantiated
   private HdfsSplitManager() {
-
   }
 
   /**
@@ -44,16 +46,26 @@ public final class HdfsSplitManager {
    * @return an array of HDFS split representations
    */
   public static HdfsSplitInfo[] getSplits(final String path, final String inputFormatClassName, final int numOfSplits) {
-    final ExternalConstructor<JobConf> jobConfExternalConstructor =
-        new JobConfExternalConstructor(inputFormatClassName, path);
+    final JobConf jobConf;
+    try {
+      final Tang tang = Tang.Factory.getTang();
+      jobConf = tang.newInjector(
+          tang.newConfigurationBuilder()
+              .bindNamedParameter(JobConfExternalConstructor.InputFormatClass.class, inputFormatClassName)
+              .bindNamedParameter(JobConfExternalConstructor.InputPath.class, path)
+              .bindConstructor(JobConf.class, JobConfExternalConstructor.class)
+              .build())
+          .getInstance(JobConf.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException("Exception while injecting JobConf", e);
+    }
 
     final InputSplit[] inputSplits;
     try {
-      final JobConf jobConf = jobConfExternalConstructor.newInstance();
       final InputFormat inputFormat = jobConf.getInputFormat();
       inputSplits = inputFormat.getSplits(jobConf, numOfSplits);
       if (LOG.isLoggable(Level.FINEST)) {
-        LOG.log(Level.FINEST, "Splits: {0} {1}", new Object[] {Arrays.toString(inputSplits)});
+        LOG.log(Level.FINEST, "Splits: {0}", Arrays.toString(inputSplits));
       }
     } catch (final IOException e) {
       throw new RuntimeException("Unable to get InputSplits using the specified InputFormat", e);
@@ -61,7 +73,11 @@ public final class HdfsSplitManager {
 
     final HdfsSplitInfo[] hdfsSplitInfos = new HdfsSplitInfo[inputSplits.length];
     for (int idx = 0; idx < inputSplits.length; idx++) {
-      hdfsSplitInfos[idx] = new HdfsSplitInfo(path, inputSplits[idx], inputFormatClassName);
+      hdfsSplitInfos[idx] = HdfsSplitInfo.newBuilder()
+          .setInputPath(path)
+          .setInputSplit(inputSplits[idx])
+          .setInputFormatClassName(inputFormatClassName)
+          .build();
     }
 
     LOG.log(Level.FINE, "The number of splits: {0}", hdfsSplitInfos.length);

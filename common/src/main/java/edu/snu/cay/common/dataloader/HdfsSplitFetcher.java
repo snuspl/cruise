@@ -20,9 +20,11 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.data.loading.impl.JobConfExternalConstructor;
 import org.apache.reef.io.network.util.Pair;
-import org.apache.reef.tang.ExternalConstructor;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,13 +33,12 @@ import java.util.List;
 /**
  * Used in Evaluator to fetch a split data from HDFS.
  */
+@EvaluatorSide
 public final class HdfsSplitFetcher {
-
   private static final Reporter DUMMY_REPORTER = new DummyReporter();
 
   // utility class should not be instantiated
   private HdfsSplitFetcher() {
-
   }
 
   /**
@@ -47,13 +48,22 @@ public final class HdfsSplitFetcher {
    * @return the split data
    */
   public static <K, V> List<Pair<K, V>> fetchData(final HdfsSplitInfo hdfsSplitInfo) throws IOException {
-    final ExternalConstructor<JobConf> jobConfExternalConstructor =
-        new JobConfExternalConstructor(hdfsSplitInfo.getInputFormatClassName(), hdfsSplitInfo.getInputPath());
+    final JobConf jobConf;
+    try {
+      final Tang tang = Tang.Factory.getTang();
+      jobConf = tang.newInjector(tang.newConfigurationBuilder()
+              .bindNamedParameter(JobConfExternalConstructor.InputFormatClass.class,
+                  hdfsSplitInfo.getInputFormatClassName())
+              .bindNamedParameter(JobConfExternalConstructor.InputPath.class, hdfsSplitInfo.getInputPath())
+              .bindConstructor(JobConf.class, JobConfExternalConstructor.class)
+              .build())
+          .getInstance(JobConf.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException("Exception while injecting JobConf", e);
+    }
 
-    final JobConf jobConf = jobConfExternalConstructor.newInstance();
-
-    final RecordReader<K, V> newRecordReader = jobConf.getInputFormat().getRecordReader(
-        hdfsSplitInfo.getInputSplit(), jobConfExternalConstructor.newInstance(), DUMMY_REPORTER);
+    final RecordReader<K, V> newRecordReader = jobConf.getInputFormat()
+        .getRecordReader(hdfsSplitInfo.getInputSplit(), jobConf, DUMMY_REPORTER);
 
     // fetch records into a list
     final List<Pair<K, V>> recordList = new ArrayList<>();

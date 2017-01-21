@@ -26,7 +26,7 @@ public final class HdfsSplitInfo {
   private final InputSplit inputSplit;
   private final String inputFormatClassName;
 
-  public HdfsSplitInfo(final String inputPath, final InputSplit inputSplit, final String inputFormatClassName) {
+  private HdfsSplitInfo(final String inputPath, final InputSplit inputSplit, final String inputFormatClassName) {
     this.inputPath = inputPath;
     this.inputSplit = inputSplit;
     this.inputFormatClassName = inputFormatClassName;
@@ -51,5 +51,39 @@ public final class HdfsSplitInfo {
    */
   public String getInputFormatClassName() {
     return inputFormatClassName;
+  }
+
+  public static Builder newBuilder() {
+    return new Builder();
+  }
+
+  public static final class Builder implements org.apache.reef.util.Builder<HdfsSplitInfo> {
+    private String inputPath;
+    private InputSplit inputSplit;
+    private String inputFormatClassName;
+
+    private Builder() {
+    }
+
+    public Builder setInputPath(final String inputPath) {
+      this.inputPath = inputPath;
+      return this;
+    }
+
+    public Builder setInputSplit(final InputSplit inputSplit) {
+      this.inputSplit = inputSplit;
+      return this;
+    }
+
+    public Builder setInputFormatClassName(final String inputFormatClassName) {
+      this.inputFormatClassName = inputFormatClassName;
+      return this;
+    }
+
+    @Override
+    public HdfsSplitInfo build() {
+      assert (inputPath != null && inputSplit != null && inputFormatClassName != null);
+      return new HdfsSplitInfo(inputPath, inputSplit, inputFormatClassName);
+    }
   }
 }

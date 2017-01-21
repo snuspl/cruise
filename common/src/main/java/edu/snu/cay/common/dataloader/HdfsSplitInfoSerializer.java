@@ -21,7 +21,8 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.reef.io.data.loading.impl.JobConfExternalConstructor;
 import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.tang.ExternalConstructor;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.io.*;
 
@@ -30,12 +31,10 @@ import java.io.*;
  * using the below {@link HdfsSplitInfoCodec} that encodes and decodes {@link HdfsSplitInfo}s.
  */
 public final class HdfsSplitInfoSerializer {
-
   private static final HdfsSplitInfoCodec CODEC = new HdfsSplitInfoCodec();
 
   // utility class should not be instantiated
   private HdfsSplitInfoSerializer() {
-
   }
 
   public static String serialize(final HdfsSplitInfo hdfsSplitInfo) {
@@ -71,14 +70,28 @@ public final class HdfsSplitInfoSerializer {
         final String inputPath = dais.readUTF();
         final String inputFormatClassName = dais.readUTF();
 
-        final ExternalConstructor<JobConf> jobConfExternalConstructor =
-            new JobConfExternalConstructor(inputFormatClassName, inputPath);
+        final JobConf jobConf;
+        try {
+          final Tang tang = Tang.Factory.getTang();
+          jobConf = tang.newInjector(
+              tang.newConfigurationBuilder()
+                  .bindNamedParameter(JobConfExternalConstructor.InputFormatClass.class, inputFormatClassName)
+                  .bindNamedParameter(JobConfExternalConstructor.InputPath.class, inputPath)
+                  .bindConstructor(JobConf.class, JobConfExternalConstructor.class)
+                  .build())
+              .getInstance(JobConf.class);
+        } catch (final InjectionException e) {
+          throw new RuntimeException("Exception while injecting JobConf", e);
+        }
 
-        final FileSplit inputSplit = ReflectionUtils.newInstance(FileSplit.class,
-            jobConfExternalConstructor.newInstance());
+        final FileSplit inputSplit = ReflectionUtils.newInstance(FileSplit.class, jobConf);
         inputSplit.readFields(dais);
 
-        return new HdfsSplitInfo(inputPath, inputSplit, inputFormatClassName);
+        return HdfsSplitInfo.newBuilder()
+            .setInputPath(inputPath)
+            .setInputSplit(inputSplit)
+            .setInputFormatClassName(inputFormatClassName)
+            .build();
       } catch (final IOException e) {
         throw new RuntimeException("Could not de-serialize JobConf", e);
       }
