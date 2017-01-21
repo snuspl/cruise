@@ -84,7 +84,7 @@ final class LineCountingTask implements Task, TaskMessageSource {
 
       final DataSet<LongWritable, Text> dataSet;
       try {
-        dataSet = new RawDataSet<>(bytes.get());
+        dataSet = RawDataSet.from(bytes.get());
       } catch (final IOException e) {
         throw new RuntimeException("Exception while instantiating a RawDataSet", e);
       }

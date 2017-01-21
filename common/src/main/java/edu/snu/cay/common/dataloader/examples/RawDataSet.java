@@ -31,17 +31,35 @@ import java.util.Iterator;
  * @param <V> a type of value
  */
 public final class RawDataSet<K, V> implements DataSet<K, V> {
+  private static final HdfsSplitInfoSerializer.HdfsSplitInfoCodec CODEC =
+      new HdfsSplitInfoSerializer.HdfsSplitInfoCodec();
+
   private final Iterator<Pair<K, V>> recordIter;
 
-  public RawDataSet(final String serializedHdfsSplitInfo) throws IOException {
-    final HdfsSplitInfo hdfsSplitInfo = HdfsSplitInfoSerializer.deserialize(serializedHdfsSplitInfo);
+  private RawDataSet(final HdfsSplitInfo hdfsSplitInfo) throws IOException {
     this.recordIter = HdfsSplitFetcher.fetchData(hdfsSplitInfo);
   }
 
-  public RawDataSet(final byte[] serializedHdfsSplitInfo) throws IOException {
-    final HdfsSplitInfoSerializer.HdfsSplitInfoCodec codec = new HdfsSplitInfoSerializer.HdfsSplitInfoCodec();
-    final HdfsSplitInfo hdfsSplitInfo = codec.decode(serializedHdfsSplitInfo);
-    this.recordIter = HdfsSplitFetcher.fetchData(hdfsSplitInfo);
+  /**
+   * Instantiates a RawDataSet from a serialized HdfsSplitInfo.
+   * @param serializedHdfsSplitInfo a string form of serialized HdfsSplitInfo
+   * @return RawDataSet
+   * @throws IOException
+   */
+  public static RawDataSet from(final String serializedHdfsSplitInfo) throws IOException {
+    final HdfsSplitInfo hdfsSplitInfo = HdfsSplitInfoSerializer.deserialize(serializedHdfsSplitInfo);
+    return new RawDataSet<>(hdfsSplitInfo);
+  }
+
+  /**
+   * Instantiates a RawDataSet from a serialized HdfsSplitInfo.
+   * @param serializedHdfsSplitInfo a byte array form of serialized HdfsSplitInfo
+   * @return RawDataSet
+   * @throws IOException
+   */
+  public static RawDataSet from(final byte[] serializedHdfsSplitInfo) throws IOException {
+    final HdfsSplitInfo hdfsSplitInfo = CODEC.decode(serializedHdfsSplitInfo);
+    return new RawDataSet(hdfsSplitInfo);
   }
 
   @Override
