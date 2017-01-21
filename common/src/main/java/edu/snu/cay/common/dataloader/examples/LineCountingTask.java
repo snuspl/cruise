@@ -15,12 +15,11 @@
  */
 package edu.snu.cay.common.dataloader.examples;
 
-import edu.snu.cay.common.dataloader.HdfsSplitInfoSerializer;
 import edu.snu.cay.common.dataloader.HdfsSplitFetcher;
-import edu.snu.cay.common.dataloader.HdfsSplitInfo;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.annotations.audience.TaskSide;
+import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
@@ -28,7 +27,6 @@ import org.apache.reef.task.Task;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,24 +38,27 @@ import java.util.logging.Logger;
 final class LineCountingTask implements Task {
   private static final Logger LOG = Logger.getLogger(LineCountingTask.class.getName());
 
-  private final List<Pair<LongWritable, Text>> recordList;
+  private final DataSet<LongWritable, Text> dataSet;
 
   @Inject
   private LineCountingTask(@Parameter(LineCountingDriver.SerializedSplitInfo.class) final String serializedSplitInfo)
       throws IOException {
 
-    final HdfsSplitInfo hdfsSplitInfo = HdfsSplitInfoSerializer.deserialize(serializedSplitInfo);
-    this.recordList = HdfsSplitFetcher.fetchData(hdfsSplitInfo);
+    dataSet = new RawDataSet<>(serializedSplitInfo);
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.FINER, "LineCounting task started");
 
-    for (final Pair<LongWritable, Text> recordPair : recordList) {
+    int count = 0;
+
+    for (final Pair<LongWritable, Text> recordPair : dataSet) {
       LOG.log(Level.FINEST, "Read line: {0}", recordPair);
+      count++;
     }
-    LOG.log(Level.FINER, "LineCounting task finished: read {0} lines", recordList.size());
-    return Integer.toString(recordList.size()).getBytes(StandardCharsets.UTF_8);
+
+    LOG.log(Level.FINER, "LineCounting task finished: read {0} lines", count);
+    return Integer.toString(count).getBytes(StandardCharsets.UTF_8);
   }
 }

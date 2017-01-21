@@ -15,11 +15,8 @@
  */
 package edu.snu.cay.common.dataloader;
 
+import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.mapred.Counters.Counter;
-import org.apache.hadoop.mapred.InputSplit;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.RecordReader;
-import org.apache.hadoop.mapred.Reporter;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.data.loading.impl.JobConfExternalConstructor;
 import org.apache.reef.io.network.util.Pair;
@@ -27,8 +24,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Iterator;
 
 /**
  * Used in Evaluator to fetch a split data from HDFS.
@@ -43,11 +39,11 @@ public final class HdfsSplitFetcher {
 
   /**
    * @param hdfsSplitInfo information of a split
-   * @param <K> type of the split
-   * @param <V> type of the split
-   * @return the split data
+   * @param <K> a type of key
+   * @param <V> a type of value
+   * @return an iterator of split
    */
-  public static <K, V> List<Pair<K, V>> fetchData(final HdfsSplitInfo hdfsSplitInfo) throws IOException {
+  public static <K, V> Iterator<Pair<K, V>> fetchData(final HdfsSplitInfo hdfsSplitInfo) throws IOException {
     final JobConf jobConf;
     try {
       final Tang tang = Tang.Factory.getTang();
@@ -62,21 +58,43 @@ public final class HdfsSplitFetcher {
       throw new RuntimeException("Exception while injecting JobConf", e);
     }
 
-    final RecordReader<K, V> newRecordReader = jobConf.getInputFormat()
-        .getRecordReader(hdfsSplitInfo.getInputSplit(), jobConf, DUMMY_REPORTER);
+    final InputFormat<K, V> inputFormat = jobConf.getInputFormat();
+    final RecordReader<K, V> recordReader = inputFormat.getRecordReader(
+        hdfsSplitInfo.getInputSplit(), jobConf, DUMMY_REPORTER);
 
-    // fetch records into a list
-    final List<Pair<K, V>> recordList = new ArrayList<>();
-    while (true) {
-      final Pair<K, V> record = new Pair<>(newRecordReader.createKey(), newRecordReader.createValue());
-      if (newRecordReader.next(record.getFirst(), record.getSecond())) {
-        recordList.add(record);
-      } else {
-        break;
+    final class RecordReaderIterator implements Iterator<Pair<K, V>> {
+      private final RecordReader<K, V> recordReader;
+      private Pair<K, V> recordPair;
+      private boolean hasNext;
+
+      private RecordReaderIterator(final RecordReader<K, V> recordReader) {
+        this.recordReader = recordReader;
+        fetchRecord();
+      }
+
+      @Override
+      public boolean hasNext() {
+        return this.hasNext;
+      }
+
+      @Override
+      public Pair<K, V> next() {
+        final Pair<K, V> prevRecordPair = this.recordPair;
+        fetchRecord();
+        return prevRecordPair;
+      }
+
+      private void fetchRecord() {
+        this.recordPair = new Pair<>(this.recordReader.createKey(), this.recordReader.createValue());
+        try {
+          this.hasNext = this.recordReader.next(this.recordPair.getFirst(), this.recordPair.getSecond());
+        } catch (final IOException ex) {
+          throw new RuntimeException("Unable to get InputSplits using the specified InputFormat", ex);
+        }
       }
     }
 
-    return recordList;
+    return new RecordReaderIterator(recordReader);
   }
 
   private static final class DummyReporter implements Reporter {
