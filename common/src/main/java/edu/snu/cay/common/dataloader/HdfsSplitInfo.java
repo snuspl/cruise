@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,78 @@
  */
 package edu.snu.cay.common.dataloader;
 
-import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.annotations.audience.EvaluatorSide;
-
-import java.io.Serializable;
+import org.apache.hadoop.mapred.InputSplit;
+import org.apache.reef.util.BuilderUtils;
 
 /**
  * Contains information to fetch a split from HDFS.
  * It should be created in Driver and used in Evaluator.
- * @param <T> type of the split
  */
-@DriverSide
-@EvaluatorSide
-interface HdfsSplitInfo<T> extends Serializable {
+public final class HdfsSplitInfo {
+  private final String inputPath;
+  private final InputSplit inputSplit;
+  private final String inputFormatClassName;
+
+  private HdfsSplitInfo(final String inputPath, final InputSplit inputSplit, final String inputFormatClassName) {
+    this.inputPath = inputPath;
+    this.inputSplit = inputSplit;
+    this.inputFormatClassName = inputFormatClassName;
+  }
+
+  /**
+   * @return input path
+   */
+  public String getInputPath() {
+    return inputPath;
+  }
+
+  /**
+   * @return {@link InputSplit}
+   */
+  public InputSplit getInputSplit() {
+    return inputSplit;
+  }
+
+  /**
+   * @return the name of InputFormat class
+   */
+  public String getInputFormatClassName() {
+    return inputFormatClassName;
+  }
+
+  public static Builder newBuilder() {
+    return new Builder();
+  }
+
+  public static final class Builder implements org.apache.reef.util.Builder<HdfsSplitInfo> {
+    private String inputPath;
+    private InputSplit inputSplit;
+    private String inputFormatClassName;
+
+    private Builder() {
+    }
+
+    public Builder setInputPath(final String inputPath) {
+      this.inputPath = inputPath;
+      return this;
+    }
+
+    public Builder setInputSplit(final InputSplit inputSplit) {
+      this.inputSplit = inputSplit;
+      return this;
+    }
+
+    public Builder setInputFormatClassName(final String inputFormatClassName) {
+      this.inputFormatClassName = inputFormatClassName;
+      return this;
+    }
+
+    @Override
+    public HdfsSplitInfo build() {
+      BuilderUtils.notNull(inputPath);
+      BuilderUtils.notNull(inputSplit);
+      BuilderUtils.notNull(inputFormatClassName);
+      return new HdfsSplitInfo(inputPath, inputSplit, inputFormatClassName);
+    }
+  }
 }
