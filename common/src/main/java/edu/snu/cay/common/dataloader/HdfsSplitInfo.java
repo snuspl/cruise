@@ -16,6 +16,7 @@
 package edu.snu.cay.common.dataloader;
 
 import org.apache.hadoop.mapred.InputSplit;
+import org.apache.reef.util.BuilderUtils;
 
 /**
  * Contains information to fetch a split from HDFS.
@@ -82,7 +83,9 @@ public final class HdfsSplitInfo {
 
     @Override
     public HdfsSplitInfo build() {
-      assert (inputPath != null && inputSplit != null && inputFormatClassName != null);
+      BuilderUtils.notNull(inputPath);
+      BuilderUtils.notNull(inputSplit);
+      BuilderUtils.notNull(inputFormatClassName);
       return new HdfsSplitInfo(inputPath, inputSplit, inputFormatClassName);
     }
   }

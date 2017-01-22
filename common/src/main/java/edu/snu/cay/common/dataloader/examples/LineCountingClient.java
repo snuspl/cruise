@@ -77,19 +77,27 @@ public final class LineCountingClient {
 
     final Configuration driverConf = getDriverConfiguration(paramConf);
 
-    final Configuration runTimeConf = onLocal ?
+    final Configuration runtimeConf = onLocal ?
         getLocalRuntimeConfiguration(splits) :
         getYarnRuntimeConfiguration();
 
     final int timeout = commandLineInjector.getNamedInstance(Parameters.Timeout.class);
 
-    return DriverLauncher.getLauncher(runTimeConf).run(driverConf, timeout);
+    return DriverLauncher.getLauncher(runtimeConf).run(driverConf, timeout);
   }
 
+  /**
+   * Returns the absolute pathname string of this abstract pathname {@code inputDir},
+   * when the path is for local file system.
+   * @param inputDir the abstract pathname
+   * @param onLocal True if the file exist on the local filesystem
+   * @return the absolute pathname
+   */
   private static String processInputDir(final String inputDir, final boolean onLocal) {
-    if (!onLocal) {
+    if (!onLocal) { // do not need to process
       return inputDir;
     }
+
     final File inputFile = new File(inputDir);
     return "file:///" + inputFile.getAbsolutePath();
   }

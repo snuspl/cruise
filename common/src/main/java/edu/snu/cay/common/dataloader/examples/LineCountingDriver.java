@@ -145,12 +145,13 @@ public final class LineCountingDriver {
       final String taskId = taskMessage.getId();
 
       final byte[] retBytes = taskMessage.get();
-      final String retStr = retBytes == null ? "No RetVal" : new String(retBytes, StandardCharsets.UTF_8);
-      LOG.log(Level.FINE, "Line count from {0} : {1}", new String[]{taskId, retStr});
-
       if (retBytes == null) {
+        LOG.log(Level.FINE, "No line was read by {0}", taskId);
         return;
       }
+
+      final String retStr = new String(retBytes, StandardCharsets.UTF_8);
+      LOG.log(Level.FINE, "Line count from {0} : {1}", new String[]{taskId, retStr});
 
       lineCnt.addAndGet(Integer.parseInt(retStr));
 

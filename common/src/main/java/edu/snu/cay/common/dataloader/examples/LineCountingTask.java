@@ -15,11 +15,11 @@
  */
 package edu.snu.cay.common.dataloader.examples;
 
+import edu.snu.cay.common.dataloader.HdfsDataSet;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.annotations.audience.TaskSide;
-import org.apache.reef.io.data.loading.api.DataSet;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.task.Task;
 import org.apache.reef.task.TaskMessage;
@@ -82,11 +82,11 @@ final class LineCountingTask implements Task, TaskMessageSource {
     public void onNext(final DriverMessage driverMessage) {
       final Optional<byte[]> bytes = driverMessage.get();
 
-      final DataSet<LongWritable, Text> dataSet;
+      final HdfsDataSet<LongWritable, Text> dataSet;
       try {
-        dataSet = RawDataSet.from(bytes.get());
+        dataSet = HdfsDataSet.from(bytes.get());
       } catch (final IOException e) {
-        throw new RuntimeException("Exception while instantiating a RawDataSet", e);
+        throw new RuntimeException("Exception while instantiating a HdfsDataSet", e);
       }
 
       LOG.log(Level.FINER, "LineCounting task started");

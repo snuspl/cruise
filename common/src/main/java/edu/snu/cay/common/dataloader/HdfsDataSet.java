@@ -13,53 +13,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.dataloader.examples;
+package edu.snu.cay.common.dataloader;
 
-import edu.snu.cay.common.dataloader.HdfsSplitFetcher;
-import edu.snu.cay.common.dataloader.HdfsSplitInfo;
-import edu.snu.cay.common.dataloader.HdfsSplitInfoSerializer;
-import org.apache.reef.io.data.loading.api.DataSet;
-import org.apache.reef.io.network.util.Pair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.IOException;
 import java.util.Iterator;
 
 /**
- * An implementation of {@link DataSet} that loads data from a serialized {@link HdfsSplitInfo},
+ * A view of the data set to be loaded at an evaluator as an iterable of key value pairs.
+ * It loads data in HDFS from a serialized {@link HdfsSplitInfo},
  * using {@link HdfsSplitInfoSerializer#deserialize(String)} and {@link HdfsSplitFetcher#fetchData(HdfsSplitInfo)}.
  * @param <K> a type of key
  * @param <V> a type of value
  */
-public final class RawDataSet<K, V> implements DataSet<K, V> {
+public final class HdfsDataSet<K, V> implements Iterable<Pair<K, V>> {
   private static final HdfsSplitInfoSerializer.HdfsSplitInfoCodec CODEC =
       new HdfsSplitInfoSerializer.HdfsSplitInfoCodec();
 
   private final Iterator<Pair<K, V>> recordIter;
 
-  private RawDataSet(final HdfsSplitInfo hdfsSplitInfo) throws IOException {
+  private HdfsDataSet(final HdfsSplitInfo hdfsSplitInfo) throws IOException {
     this.recordIter = HdfsSplitFetcher.fetchData(hdfsSplitInfo);
   }
 
   /**
-   * Instantiates a RawDataSet from a serialized HdfsSplitInfo.
+   * Instantiates a HdfsDataSet from a serialized HdfsSplitInfo.
    * @param serializedHdfsSplitInfo a string form of serialized HdfsSplitInfo
-   * @return RawDataSet
+   * @return HdfsDataSet
    * @throws IOException
    */
-  public static RawDataSet from(final String serializedHdfsSplitInfo) throws IOException {
+  public static HdfsDataSet from(final String serializedHdfsSplitInfo) throws IOException {
     final HdfsSplitInfo hdfsSplitInfo = HdfsSplitInfoSerializer.deserialize(serializedHdfsSplitInfo);
-    return new RawDataSet<>(hdfsSplitInfo);
+    return new HdfsDataSet<>(hdfsSplitInfo);
   }
 
   /**
-   * Instantiates a RawDataSet from a serialized HdfsSplitInfo.
+   * Instantiates a HdfsDataSet from a serialized HdfsSplitInfo.
    * @param serializedHdfsSplitInfo a byte array form of serialized HdfsSplitInfo
-   * @return RawDataSet
+   * @return HdfsDataSet
    * @throws IOException
    */
-  public static RawDataSet from(final byte[] serializedHdfsSplitInfo) throws IOException {
+  public static HdfsDataSet from(final byte[] serializedHdfsSplitInfo) throws IOException {
     final HdfsSplitInfo hdfsSplitInfo = CODEC.decode(serializedHdfsSplitInfo);
-    return new RawDataSet(hdfsSplitInfo);
+    return new HdfsDataSet(hdfsSplitInfo);
   }
 
   @Override

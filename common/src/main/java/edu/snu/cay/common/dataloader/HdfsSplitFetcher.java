@@ -15,11 +15,11 @@
  */
 package edu.snu.cay.common.dataloader;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.mapred.Counters.Counter;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.data.loading.impl.JobConfExternalConstructor;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 
@@ -85,9 +85,9 @@ public final class HdfsSplitFetcher {
       }
 
       private void fetchRecord() {
-        this.recordPair = new Pair<>(this.recordReader.createKey(), this.recordReader.createValue());
+        this.recordPair = Pair.of(this.recordReader.createKey(), this.recordReader.createValue());
         try {
-          this.hasNext = this.recordReader.next(this.recordPair.getFirst(), this.recordPair.getSecond());
+          this.hasNext = this.recordReader.next(this.recordPair.getKey(), this.recordPair.getValue());
         } catch (final IOException ex) {
           throw new RuntimeException("Unable to get InputSplits using the specified InputFormat", ex);
         }
