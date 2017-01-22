@@ -37,7 +37,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Client for the data loading app.
+ * Client for the line counting app.
  */
 @ClientSide
 public final class LineCountingClient {

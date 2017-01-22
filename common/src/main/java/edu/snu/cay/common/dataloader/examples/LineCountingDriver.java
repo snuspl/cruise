@@ -66,11 +66,13 @@ public final class LineCountingDriver {
   @Inject
   private LineCountingDriver(final EvaluatorRequestor evalRequestor,
                              @Parameter(Inputs.class) final Set<String> inputs,
-                             @Parameter(Parameters.Splits.class) final int numEvals) {
+                             @Parameter(Parameters.Splits.class) final int numSplits) {
     this.evalRequestor = evalRequestor;
     this.inputPathList = new ArrayList<>(inputs);
-    this.numEvals = numEvals;
-    this.runningTaskList = Collections.synchronizedList(new ArrayList<>(numEvals));
+
+    // launch evaluators as many as the number of splits and then every evaluator loads one split
+    this.numEvals = numSplits;
+    this.runningTaskList = Collections.synchronizedList(new ArrayList<>(numSplits));
   }
 
   final class StartHandler implements EventHandler<StartTime> {
@@ -107,6 +109,7 @@ public final class LineCountingDriver {
     public void onNext(final RunningTask runningTask) {
       runningTaskList.add(runningTask);
 
+      // start loading a file when all tasks are ready
       if (runningTaskList.size() == numEvals) {
         if (!loadNextFileInEvals()) {
           throw new RuntimeException("Has no file to load");
@@ -117,6 +120,7 @@ public final class LineCountingDriver {
 
   /**
    * Load a next file in evaluators.
+   * It assigns one split to each evaluator.
    * @return True when succeed to load a file and False if there's no file to load
    */
   private boolean loadNextFileInEvals() {

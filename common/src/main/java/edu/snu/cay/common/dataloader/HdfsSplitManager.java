@@ -64,9 +64,7 @@ public final class HdfsSplitManager {
     try {
       final InputFormat inputFormat = jobConf.getInputFormat();
       inputSplits = inputFormat.getSplits(jobConf, numOfSplits);
-      if (LOG.isLoggable(Level.FINEST)) {
-        LOG.log(Level.FINEST, "Splits: {0}", Arrays.toString(inputSplits));
-      }
+      LOG.log(Level.FINEST, "Splits: {0}", Arrays.toString(inputSplits));
     } catch (final IOException e) {
       throw new RuntimeException("Unable to get InputSplits using the specified InputFormat", e);
     }
