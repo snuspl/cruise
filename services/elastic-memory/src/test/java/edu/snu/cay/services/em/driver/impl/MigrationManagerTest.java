@@ -453,20 +453,20 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendRoutingTableInitReqMsg(@Nullable final TraceInfo parentTraceInfo) {
+    public void sendOwnershipCacheInitReqMsg(@Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendRoutingTableInitMsg(final String destId, final List<Integer> blockLocations,
-                                        @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
-                                          final String oldOwnerId, final String newOwnerId,
+    public void sendOwnershipCacheInitMsg(final String destId, final List<Integer> blockLocations,
                                           @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendOwnershipCacheUpdateMsg(final String destId, final List<Integer> blocks,
+                                            final String oldOwnerId, final String newOwnerId,
+                                            @Nullable final TraceInfo parentTraceInfo) {
       // called when move is finished, so as to broadcast the change of the routing table
       broadcastCounter.getAndIncrement();
     }

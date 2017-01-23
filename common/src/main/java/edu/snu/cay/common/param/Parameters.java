@@ -91,6 +91,11 @@ public final class Parameters {
   public final class MiniBatchSize implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "Number of threads to run Trainer with",
+      short_name = "num_trainer_threads", default_value = "1")
+  public final class NumTrainerThreads implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "The minimum cost benefit (in a ratio) for which system optimization occurs. " +
       "0 = optimization occurs for any benefit greater than 0.",
       short_name = "opt_benefit_threshold",

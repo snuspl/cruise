@@ -57,7 +57,7 @@ public final class EMRoutingTableManager {
   /**
    * A mapping between store id and endpoint id of server-side evaluators.
    */
-  private final BiMap<Integer, String> storeIdToEndpointId = HashBiMap.create();;
+  private final BiMap<Integer, String> storeIdToEndpointId = HashBiMap.create();
 
   /**
    * Server-side EMMaster instance.

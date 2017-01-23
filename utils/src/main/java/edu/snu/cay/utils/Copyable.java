@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,16 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.api;
-
-import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.wake.EventHandler;
+package edu.snu.cay.utils;
 
 /**
- * Non-user side interface of memory store including APIs for handling operations from remote request.
+ * Classes implementing this interface allow to copy an object's instance.
+ * @param <T> the type of the object to copy
  */
-@EvaluatorSide
-@Private
-public interface RemoteAccessibleMemoryStore<K> extends MemoryStore<K>, EventHandler<DataOperation> {
+public interface Copyable<T> {
+  /**
+   * @return Copied instance of the given object (deep copy).
+   */
+  T copyOf();
 }

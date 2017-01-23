@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 2016 Seoul National University
+# Copyright (C) 2017 Seoul National University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_nmf.sh -max_iter 500 -local true -split 4 -max_num_eval_local 5 -input sample_nmf -mini_batch_size 4 -rank 30 -step_size 0.01 -print_mat true -timeout 300000 -decay_period 5 -decay_rate 0.9 -dynamic true -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000 -num_trainer_threads 1
+# ./run_linecounting.sh -local true -inputs sample_linecounting/sample0 -inputs sample_linecounting/sample1 -split 4 -timeout 100000
 
-SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
+SELF_JAR=`echo ../target/cay-common-*-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
 
@@ -24,8 +24,8 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.dolphin.async.mlapps.nmf.NMFREEF
+JOB=edu.snu.cay.common.dataloader.examples.LineCountingClient
 
-CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
+CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $JOB $*"
 echo $CMD
 $CMD
