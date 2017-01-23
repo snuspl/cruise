@@ -23,21 +23,21 @@ import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
 import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 
 /**
- * Application launching code for LassoREEF.
+ * Application launching code for LassoCDREEF.
  */
-public final class LassoREEFSGD {
+public final class LassoCDREEF {
 
   /**
    * Should not be instantiated.
    */
-  private LassoREEFSGD() {
+  private LassoCDREEF() {
   }
 
   public static void main(final String[] args) {
-    AsyncDolphinLauncher.launch("LassoREEFSGD", args, AsyncDolphinConfiguration.newBuilder()
-        .setTrainerClass(LassoTrainerSGD.class)
+    AsyncDolphinLauncher.launch("LassoCDREEF", args, AsyncDolphinConfiguration.newBuilder()
+        .setTrainerClass(LassoCDTrainer.class)
         .setUpdaterClass(LassoUpdater.class)
-        .setParserClass(LassoParserSGD.class)
+        .setParserClass(LassoParser.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)

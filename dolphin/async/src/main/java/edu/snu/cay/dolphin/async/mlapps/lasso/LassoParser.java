@@ -15,9 +15,10 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lasso;
 
-import com.google.common.primitives.Doubles;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.dolphin.async.DataParser;
+import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.NumFeatures;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.io.data.loading.api.DataSet;
@@ -25,14 +26,11 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.lang.reflect.Array;
 import java.util.LinkedList;
 import java.util.List;
 
-import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
-
 /**
- * Parser class for the LassoREEF application.
+ * Parser class for the LassoCDREEF application.
  * Input files should be in the following form:
  *
  * <p>
@@ -42,7 +40,7 @@ import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
  *   x_m1 x_m2 x_m3 x_m4 ... x_mn y_m <br>
  * </p>
  */
-final class LassoParser {
+final class LassoParser implements DataParser<LassoData> {
 
   private final DataSet<LongWritable, Text> dataSet;
   private final VectorFactory vectorFactory;
@@ -57,39 +55,26 @@ final class LassoParser {
     this.numFeatures = numFeatures;
   }
 
-  @SuppressWarnings("unchecked")
-  Pair<Vector[], Vector> parse() {
-
-    // we use this type because each line is not simply mapped to a vector
-    // rather, each column is mapped to a vector
-    final List<Double>[] dataX = (List<Double>[]) Array.newInstance(LinkedList.class, numFeatures);
-    for (int index = 0; index < numFeatures; index++) {
-      dataX[index] = new LinkedList<>();
-    }
-    final List<Double> dataY = new LinkedList<>();
+  @Override
+  public List<LassoData> parse() {
+    final List<LassoData> retList = new LinkedList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
-      final String line = keyValue.getSecond().toString().trim();
-      if (line.startsWith("#") || line.length() == 0) {
-        // skip comments and blank lines
+      final String text = keyValue.getSecond().toString().trim();
+      if (text.startsWith("#") || text.length() == 0) {
+        // comments and empty lines
         continue;
       }
 
-      final String[] split = line.split("\\s+");
+      final String[] split = text.split("\\s+");
+      final double[] xValues = new double[numFeatures];
       for (int index = 0; index < numFeatures; index++) {
-        dataX[index].add(Double.parseDouble(split[index]));
+        xValues[index] = Double.parseDouble(split[index]);
       }
-      dataY.add(Double.parseDouble(split[numFeatures]));
+      final double yValue = Double.parseDouble(split[numFeatures]);
+      final Vector feature = vectorFactory.createDense(xValues);
+      retList.add(new LassoData(feature, yValue));
     }
-
-    // transform List<Double> into double[], and then Vector
-    final Vector[] vecX = new Vector[numFeatures];
-    for (int index = 0; index < numFeatures; index++) {
-      vecX[index] = vectorFactory.createDense(Doubles.toArray(dataX[index]));
-    }
-
-    final Vector vecY = vectorFactory.createDense(Doubles.toArray(dataY));
-
-    return new Pair<>(vecX, vecY);
+    return retList;
   }
 }

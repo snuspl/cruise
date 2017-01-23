@@ -31,19 +31,18 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * {@link Trainer} class for the LassoREEF application.
+ * {@link Trainer} class for the LassoCDREEF application.
  * Based on lasso regression via stochastic coordinate descent, proposed in
  * S. Shalev-Shwartz and A. Tewari, Stochastic Methods for l1-regularized Loss Minimization, 2011.
  *
  * For each iteration, the trainer pulls the whole model from the server,
- * and then randomly picks a dimension to update.
+ * and for each feature, update it's model value(used cyclic version of stochastic coordinate descent).
  * The trainer computes and pushes the optimal model value for that particular dimension to
  * minimize the objective function - square loss with l1 regularization.
  *
- * All inner product values are cached in member fields.
  */
-final class LassoTrainer implements Trainer {
-  private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
+final class LassoCDTrainer implements Trainer {
+  private static final Logger LOG = Logger.getLogger(LassoCDTrainer.class.getName());
 
   private List<Integer> partitionIndices;
   private final int numFeaturesPerPartition;
@@ -52,7 +51,7 @@ final class LassoTrainer implements Trainer {
   private final double lambda;
   private double stepSize;
 
-  private final TrainingDataProvider<Long, LassoDataSGD> trainingDataProvider;
+  private final TrainingDataProvider<Long, LassoData> trainingDataProvider;
 
   private Vector oldModel;
   private Vector newModel;
@@ -60,25 +59,22 @@ final class LassoTrainer implements Trainer {
   private final VectorFactory vectorFactory;
   private final MatrixFactory matrixFactory;
 
-  /**
-   * ParameterWorker object for interacting with the parameter server.
-   */
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
 
   private final double decayRate;
   private final int decayPeriod;
 
   @Inject
-  private LassoTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
-                       @Parameter(Lambda.class) final double lambda,
-                       @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                       @Parameter(NumFeatures.class) final int numFeatures,
-                       @Parameter(StepSize.class) final double stepSize,
-                       @Parameter(DecayRate.class) final double decayRate,
-                       @Parameter(DecayPeriod.class) final int decayPeriod,
-                       final TrainingDataProvider<Long, LassoDataSGD> trainingDataProvider,
-                       final VectorFactory vectorFactory,
-                       final MatrixFactory matrixFactory) {
+  private LassoCDTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+                         @Parameter(Lambda.class) final double lambda,
+                         @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
+                         @Parameter(NumFeatures.class) final int numFeatures,
+                         @Parameter(StepSize.class) final double stepSize,
+                         @Parameter(DecayRate.class) final double decayRate,
+                         @Parameter(DecayPeriod.class) final int decayPeriod,
+                         final TrainingDataProvider<Long, LassoData> trainingDataProvider,
+                         final VectorFactory vectorFactory,
+                         final MatrixFactory matrixFactory) {
     this.parameterWorker = parameterWorker;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     this.numFeatures = numFeatures;
@@ -103,9 +99,7 @@ final class LassoTrainer implements Trainer {
 
   /**
    * {@inheritDoc}
-   * Standardize input vectors w.r.t. each feature dimension, as well as the target vector,
-   * to have mean 0 and variance 1.
-   * Also pre-calculate inner products of input vectors and the target vector, for later use.
+   * Initialize partition indices which will be a key list of a model in EM.
    */
   @Override
   public void initialize() {
@@ -116,22 +110,21 @@ final class LassoTrainer implements Trainer {
   }
 
   /**
-   * {@inheritDoc} <br>
-   * 1) Pull model from server. <br>
-   * 2) Pick dimension to update. <br>
-   * 3) Compute the optimal value, (dot(x_i, y) - Sigma_{i != j} (x_i, x_j) * model(j)) / N, where
-   *   N equals the number of instances, i.e. the length of y. <br>
-   * - When computing the optimal value, only compute (x_i, x_j) * model(j) if model(j) != 0, for performance. <br>
-   * - Reuse (x_i, x_j) when possible, from {@code x2x}. <br>
+   * {@inheritDoc}
+   * 1) Pull model from server.
+   * 2) For each feature, do 3).
+   * 3) Compute the optimal value as follow,
+   *    (soft-thresholding function)_(lambda / columnNorm) (getColumn(i)*(y-A_(-i)*x_(-i))/columnNorm)
+   *    You can refer more details from Ryan Tibshirani(associate professor of CMU)'s lecture.
    * 4) Push value to server.
    */
   @Override
   public void run(final int iteration) {
 
-    final List<LassoDataSGD> totalInstancesProcessed = new LinkedList<>();
+    final List<LassoData> totalInstancesProcessed = new LinkedList<>();
 
-    Map<Long, LassoDataSGD> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    List<LassoDataSGD> instances = new ArrayList<>(nextTrainingData.values());
+    Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
+    List<LassoData> instances = new ArrayList<>(nextTrainingData.values());
 
     while (!nextTrainingData.isEmpty()) {
       pullModels();
@@ -139,7 +132,7 @@ final class LassoTrainer implements Trainer {
       final List<Vector> features = new LinkedList<>();
       final Vector yValue = vectorFactory.createDenseZeros(instances.size());
       int iter = 0;
-      for (final LassoDataSGD instance : instances) {
+      for (final LassoData instance : instances) {
         features.add(instance.getFeature());
         yValue.set(iter++, instance.getValue());
       }
@@ -222,11 +215,11 @@ final class LassoTrainer implements Trainer {
     return newModel.dot(feature);
   }
 
-  private double computeLoss(final List<LassoDataSGD> data) {
+  private double computeLoss(final List<LassoData> data) {
     double loss = 0;
     double reg = 0;
 
-    for (final LassoDataSGD entry : data) {
+    for (final LassoData entry : data) {
       final Vector feature = entry.getFeature();
       final double value = entry.getValue();
       final double prediction = predict(feature);

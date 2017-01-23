@@ -46,7 +46,7 @@ class LassoParameters {
   @NamedParameter(doc = "ratio which learning rate decreases by (multiplicative). this value must be larger than 0 " +
       "and less than or equal to 1. if decay_rate=1.0, decaying process is turned off.",
       short_name = "decay_rate",
-      default_value = "0.9")
+      default_value = "0.95")
   static final class DecayRate implements Name<Double> {
   }
 

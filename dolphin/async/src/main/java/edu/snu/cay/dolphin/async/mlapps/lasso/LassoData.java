@@ -20,11 +20,11 @@ import edu.snu.cay.common.math.linalg.Vector;
 /**
  * Abstraction for training data used in Lasso, consisting of feature vector and value (Double).
  */
-class LassoDataSGD {
+class LassoData {
   private final Vector feature;
   private final double value;
 
-  LassoDataSGD(final Vector feature, final double value) {
+  LassoData(final Vector feature, final double value) {
     this.feature = feature;
     this.value = value;
   }

@@ -41,13 +41,13 @@ final class LassoDataSerializer implements Serializer {
     return lassoDataSGDCodec;
   }
 
-  private final class LassoDataSGDCodec implements Codec<LassoDataSGD>, StreamingCodec<LassoDataSGD> {
+  private final class LassoDataSGDCodec implements Codec<LassoData>, StreamingCodec<LassoData> {
     @Override
-    public byte[] encode(final LassoDataSGD lassoDataSGD) {
-      final int numBytes = denseVectorCodec.getNumBytes(lassoDataSGD.getFeature()) + Integer.BYTES;
+    public byte[] encode(final LassoData lassoData) {
+      final int numBytes = denseVectorCodec.getNumBytes(lassoData.getFeature()) + Integer.BYTES;
       try (ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
            DataOutputStream daos = new DataOutputStream(baos)) {
-        encodeToStream(lassoDataSGD, daos);
+        encodeToStream(lassoData, daos);
         return baos.toByteArray();
       } catch (final IOException e) {
         throw new RuntimeException(e.getCause());
@@ -55,7 +55,7 @@ final class LassoDataSerializer implements Serializer {
     }
 
     @Override
-    public LassoDataSGD decode(final byte[] bytes) {
+    public LassoData decode(final byte[] bytes) {
       try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
         return decodeFromStream(dis);
       } catch (final IOException e) {
@@ -64,21 +64,21 @@ final class LassoDataSerializer implements Serializer {
     }
 
     @Override
-    public void encodeToStream(final LassoDataSGD lassoDataSGD, final DataOutputStream daos) {
+    public void encodeToStream(final LassoData lassoData, final DataOutputStream daos) {
       try {
-        denseVectorCodec.encodeToStream(lassoDataSGD.getFeature(), daos);
-        daos.writeDouble(lassoDataSGD.getValue());
+        denseVectorCodec.encodeToStream(lassoData.getFeature(), daos);
+        daos.writeDouble(lassoData.getValue());
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
     }
 
     @Override
-    public LassoDataSGD decodeFromStream(final DataInputStream dais) {
+    public LassoData decodeFromStream(final DataInputStream dais) {
       try {
         final Vector featureVector = denseVectorCodec.decodeFromStream(dais);
         final double value = dais.readDouble();
-        return new LassoDataSGD(featureVector, value);
+        return new LassoData(featureVector, value);
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }

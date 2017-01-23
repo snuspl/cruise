@@ -27,7 +27,7 @@ import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.ModelGaussi
 import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.NumFeaturesPerPartition;
 
 /**
- * {@link ParameterUpdater} for the LassoREEF application.
+ * {@link ParameterUpdater} for the LassoCDREEF application.
  * Simply adds delta vectors to the old vectors stored in this server.
  * Vectors are initialized with values drawn from the normal distribution.
  */
