@@ -176,6 +176,8 @@ public final class AsyncDolphinLauncher {
               Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
           .bindNamedParameter(MiniBatchSize.class,
               Integer.toString(basicParameterInjector.getNamedInstance(MiniBatchSize.class)))
+          .bindNamedParameter(NumTrainerThreads.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(NumTrainerThreads.class)))
           .build();
       final Configuration workerConf = Configurations.merge(basicWorkerConf,
           asyncDolphinConfiguration.getWorkerConfiguration());
@@ -262,6 +264,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(JVMHeapSlack.class);
     basicParameterClassList.add(MiniBatchSize.class);
     basicParameterClassList.add(OptimizationBenefitThreshold.class);
+    basicParameterClassList.add(NumTrainerThreads.class);
 
     // add ps parameters
     basicParameterClassList.add(NumServers.class);

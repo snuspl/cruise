@@ -182,7 +182,6 @@ public final class EMConfProvider {
 
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, memoryStoreClass)
-        .bindImplementation(RemoteAccessibleMemoryStore.class, memoryStoreClass)
         .bindImplementation(BlockFactory.class, blockFactoryClass)
         .bindImplementation(RemoteOpHandler.class, remoteOpHandlerClass)
         .bindImplementation(MigrationExecutor.class, migrationExecutorClass)

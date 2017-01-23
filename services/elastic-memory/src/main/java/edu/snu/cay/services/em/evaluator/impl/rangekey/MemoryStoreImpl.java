@@ -16,25 +16,20 @@
 package edu.snu.cay.services.em.evaluator.impl.rangekey;
 
 import edu.snu.cay.services.em.avro.DataOpType;
-import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.*;
 import edu.snu.cay.services.em.evaluator.impl.BlockStore;
-import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.utils.LongRangeUtils;
-import edu.snu.cay.utils.Tuple3;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
@@ -43,19 +38,17 @@ import java.util.logging.Logger;
 /**
  * A {@code MemoryStore} implementation for a key of long type, supporting range operations.
  * It routes operations to local {@link BlockStore} or remote through {@link RemoteOpHandler}
- * based on the routing result from {@link OperationRouter}.
+ * based on the routing result from {@link OwnershipCache}.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
 @EvaluatorSide
 @Private
-public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> {
+public final class MemoryStoreImpl implements MemoryStore<Long> {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
-  private static final int QUEUE_SIZE = 1024;
-  private static final int QUEUE_TIMEOUT_MS = 3000;
-
-  private final OperationRouter router;
+  private final OwnershipCache ownershipCache;
   private final BlockResolver<Long> blockResolver;
+  private final RangeSplitter<Long> rangeSplitter;
   private final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl;
   private final BlockStore blockStore;
 
@@ -64,179 +57,32 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    */
   private final AtomicLong operationIdCounter = new AtomicLong(0);
 
-  /**
-   * A queue for operations requested from remote clients.
-   * Its element is composed of a operation, sub key ranges, and a corresponding block id.
-   */
-  private final BlockingQueue<Tuple3<RangeKeyOperation, List<Pair<Long, Long>>, Integer>> subOperationQueue
-      = new ArrayBlockingQueue<>(QUEUE_SIZE);
-
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
-                          final OperationRouter router,
+                          final OwnershipCache ownershipCache,
                           final BlockResolver<Long> blockResolver,
+                          final RangeSplitter<Long> rangeSplitter,
                           final RemoteOpHandlerImpl<Long> remoteOpHandlerImpl,
-                          final BlockStore blockStore,
-                          @Parameter(NumStoreThreads.class) final int numStoreThreads) {
+                          final BlockStore blockStore) {
     hTrace.initialize();
-    this.router = router;
+    this.ownershipCache = ownershipCache;
     this.blockResolver = blockResolver;
+    this.rangeSplitter = rangeSplitter;
     this.remoteOpHandlerImpl = remoteOpHandlerImpl;
     this.blockStore = blockStore;
-    initExecutor(numStoreThreads);
-  }
-
-  /**
-   * Initialize threads that dequeue and execute operation from the {@code subOperationQueue}.
-   * That is, these threads serve operations requested from remote clients.
-   */
-  private void initExecutor(final int numStoreThreads) {
-    final ExecutorService executor = Executors.newFixedThreadPool(numStoreThreads);
-    for (int i = 0; i < numStoreThreads; i++) {
-      executor.submit(new OperationThread());
-    }
   }
 
   @Override
   public boolean registerBlockUpdateListener(final BlockUpdateListener listener) {
     return blockStore.registerBlockUpdateListener(listener);
   }
-
-  /**
-   * A runnable that dequeues and executes operations requested from remote clients.
-   * Several threads are initiated at the beginning and run as long-running background services.
-   */
-  private final class OperationThread implements Runnable {
-
-    @Override
-    public void run() {
-      while (true) {
-        // First, poll and execute a single operation.
-        // Poll with a timeout will prevent busy waiting, when the queue is empty.
-        try {
-          final Tuple3<RangeKeyOperation, List<Pair<Long, Long>>, Integer> subOperation =
-              subOperationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-          if (subOperation == null) {
-            continue;
-          }
-          handleSubOperation(subOperation);
-        } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
-        }
-      }
-    }
-
-    private void handleSubOperation(final Tuple3<RangeKeyOperation, List<Pair<Long, Long>>, Integer> subOperation) {
-      final RangeKeyOperation operation = subOperation.getFirst();
-      final List<Pair<Long, Long>> subKeyRanges = subOperation.getSecond();
-      final int blockId = subOperation.getThird();
-
-      LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, block: {2}]]",
-          new Object[]{operation.getOpId(), operation.getOrigEvalId().get(), blockId});
-
-      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = router.resolveEvalWithLock(blockId);
-      try {
-        final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
-        final boolean isLocal = !remoteEvalIdOptional.isPresent();
-        if (isLocal) {
-          final BlockImpl block = (BlockImpl) blockStore.get(blockId);
-          final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRanges);
-          submitLocalResult(operation, result, Collections.emptyList());
-        } else {
-          LOG.log(Level.WARNING,
-              "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
-                  " of block {1} by store {2}, but the local router assumes store {3} is the owner",
-              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalIdOptional.get()});
-
-          // treat remote ranges as failed ranges, because we do not allow more than one hop in remote access
-          final List<Pair<Long, Long>> failedRanges = new ArrayList<>(1);
-          for (final Pair<Long, Long> subKeyRange : subKeyRanges) {
-            failedRanges.add(new Pair<>(subKeyRange.getFirst(), subKeyRange.getSecond()));
-          }
-          submitLocalResult(operation, Collections.emptyMap(), failedRanges);
-        }
-      } finally {
-        final Lock readLock = remoteEvalIdWithLock.getValue();
-        readLock.unlock();
-      }
-    }
-  }
-
-  /**
-   * Handles operations requested from a remote client.
-   */
-  @Override
-  public void onNext(final DataOperation dataOperation) {
-    final RangeKeyOperation<Long, Object> operation = (RangeKeyOperation<Long, Object>) dataOperation;
-
-    final Map<Integer, List<Pair<Long, Long>>> blockToSubKeyRangesMap =
-        splitIntoSubKeyRanges(operation.getDataKeyRanges());
-
-    // cannot resolve any block. invalid data keys
-    if (blockToSubKeyRangesMap.isEmpty()) {
-      // TODO #421: should handle fail case different from empty case
-      submitLocalResult(operation, Collections.emptyMap(), operation.getDataKeyRanges());
-      LOG.log(Level.SEVERE, "Failed Op [Id: {0}, origId: {1}]",
-          new Object[]{operation.getOpId(), operation.getOrigEvalId().get()});
-      return;
-    }
-
-    enqueueOperation(operation, blockToSubKeyRangesMap);
-  }
-
-  /**
-   * Enqueues sub operations requested from a remote client to {@code subOperationQueue}.
-   * The enqueued operations are executed by {@code OperationThread}s.
-   */
-  private void enqueueOperation(final RangeKeyOperation operation,
-                                final Map<Integer, List<Pair<Long, Long>>> blockToKeyRangesMap) {
-    final int numSubOps = blockToKeyRangesMap.size();
-    operation.setNumSubOps(numSubOps);
-
-    for (final Map.Entry<Integer, List<Pair<Long, Long>>> blockToSubKeyRanges : blockToKeyRangesMap.entrySet()) {
-      final int blockId = blockToSubKeyRanges.getKey();
-      final List<Pair<Long, Long>> keyRanges = blockToSubKeyRanges.getValue();
-
-      try {
-        subOperationQueue.put(new Tuple3<>(operation, keyRanges, blockId));
-      } catch (final InterruptedException e) {
-        LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
-      }
-
-      LOG.log(Level.FINEST, "Enqueue Op [Id: {0}, block: {1}]",
-          new Object[]{operation.getOpId(), blockId});
-    }
-  }
-
-  private Map<Integer, List<Pair<Long, Long>>> splitIntoSubKeyRanges(final List<Pair<Long, Long>> dataKeyRanges) {
-    // split into ranges per block
-    final Map<Integer, List<Pair<Long, Long>>> blockToSubKeyRangesMap = new HashMap<>();
-
-    for (final Pair<Long, Long> keyRange : dataKeyRanges) {
-      final Map<Integer, Pair<Long, Long>> blockToSubKeyRangeMap =
-          blockResolver.resolveBlocksForOrderedKeys(keyRange.getFirst(), keyRange.getSecond());
-
-      for (final Map.Entry<Integer, Pair<Long, Long>> blockToSubKeyRange : blockToSubKeyRangeMap.entrySet()) {
-        final int blockId = blockToSubKeyRange.getKey();
-        final Pair<Long, Long> subKeyRange = blockToSubKeyRange.getValue();
-
-        blockToSubKeyRangesMap.computeIfAbsent(blockId, integer -> new LinkedList<>());
-
-        final List<Pair<Long, Long>> subKeyRangeList = blockToSubKeyRangesMap.get(blockId);
-        subKeyRangeList.add(subKeyRange);
-      }
-    }
-
-    return blockToSubKeyRangesMap;
-  }
-
   /**
    * Executes an operation requested from a local client.
    */
   private <V> void executeOperation(final RangeKeyOperation<Long, V> operation) {
 
     final Map<Integer, List<Pair<Long, Long>>> blockToSubKeyRangesMap =
-        splitIntoSubKeyRanges(operation.getDataKeyRanges());
+        rangeSplitter.splitIntoSubKeyRanges(operation.getDataKeyRanges());
 
     final Map<Integer, List<Pair<Long, Long>>> localBlockToSubKeyRangesMap = new HashMap<>();
     final Map<String, List<Pair<Long, Long>>> remoteEvalToSubKeyRangesMap = new HashMap<>();
@@ -245,7 +91,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     for (final Map.Entry<Integer, List<Pair<Long, Long>>> entry : blockToSubKeyRangesMap.entrySet()) {
       final int blockId = entry.getKey();
       final List<Pair<Long, Long>> rangeList = entry.getValue();
-      final Optional<String> remoteEvalIdOptional = router.resolveEval(blockId);
+      final Optional<String> remoteEvalIdOptional = ownershipCache.resolveEval(blockId);
 
       if (remoteEvalIdOptional.isPresent()) { // remote blocks
         // aggregate sub key ranges per evaluator
@@ -271,18 +117,18 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         new Object[]{operation.getOpId(), operation.getOpType(), numSubOps});
 
     // execute local operation and submit the result
-    final Map<Long, V> localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangesMap);
-    submitLocalResult(operation, localOutputData, Collections.emptyList());
+    final Map<Long, V> localOutputData = executeSubOperation(operation, localBlockToSubKeyRangesMap);
+    operation.commitResult(localOutputData, Collections.emptyList());
 
     // send remote operations and wait until all remote operations complete
     remoteOpHandlerImpl.sendOpToRemoteStores(operation, remoteEvalToSubKeyRangesMap);
   }
 
   /**
-   * Executes sub local operations directly, not via queueing.
+   * Executes sub operations directly, not via queueing.
    */
-  private <V> Map<Long, V> executeLocalOperation(final RangeKeyOperation<Long, V> operation,
-                                                 final Map<Integer, List<Pair<Long, Long>>> blockToSubKeyRangesMap) {
+  private <V> Map<Long, V> executeSubOperation(final RangeKeyOperation<Long, V> operation,
+                                               final Map<Integer, List<Pair<Long, Long>>> blockToSubKeyRangesMap) {
     if (blockToSubKeyRangesMap.isEmpty()) {
       return Collections.emptyMap();
     }
@@ -321,7 +167,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private <V> Map<Long, V> executeLocalSubOperation(final RangeKeyOperation<Long, V> operation,
                                                     final int blockId, final List<Pair<Long, Long>> subKeyRanges) {
     final Map<Long, V> outputData;
-    final Lock readLock = router.resolveEvalWithLock(blockId).getValue();
+    final Lock readLock = ownershipCache.resolveEvalWithLock(blockId).getValue();
     try {
       final BlockImpl block = (BlockImpl) blockStore.get(blockId);
       outputData = block.executeSubOperation(operation, subKeyRanges);
@@ -329,22 +175,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       readLock.unlock();
     }
     return outputData;
-  }
-
-  /**
-   * Handles the result of data operation processed by local memory store.
-   * It waits until all sub operations are finished and their outputs are fully aggregated.
-   */
-  private <V> void submitLocalResult(final RangeKeyOperation<Long, V> operation, final Map<Long, V> localOutput,
-                                     final List<Pair<Long, Long>> failedRanges) {
-    final int numRemainingSubOps = operation.commitResult(localOutput, failedRanges);
-
-    LOG.log(Level.FINE, "Local sub operation is finished. OpId: {0}, numRemainingSubOps: {1}",
-        new Object[]{operation.getOpId(), numRemainingSubOps});
-
-    if (!operation.isFromLocalClient() && numRemainingSubOps == 0) {
-      remoteOpHandlerImpl.sendResultToOrigin(operation);
-    }
   }
 
   @Override
@@ -465,7 +295,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public <V> Map<Long, V> getAll() {
     final Map<Long, V> result;
 
-    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
     final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
@@ -522,7 +352,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public <V> Map<Long, V> removeAll() {
     final Map<Long, V> result;
 
-    final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
     final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
@@ -564,6 +394,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   @Override
   public Optional<String> resolveEval(final Long key) {
     final int blockId = blockResolver.resolveBlock(key);
-    return router.resolveEval(blockId);
+    return ownershipCache.resolveEval(blockId);
   }
 }

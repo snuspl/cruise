@@ -48,13 +48,13 @@ public final class BlockStore<K, V> implements BlockHandler<K, V> {
   private final Set<BlockUpdateListener<K>> blockUpdateListeners
       = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-  private final OperationRouter router;
+  private final OwnershipCache ownershipCache;
   private final BlockFactory blockFactory;
 
   @Inject
-  private BlockStore(final OperationRouter router,
+  private BlockStore(final OwnershipCache ownershipCache,
                      final BlockFactory blockFactory) {
-    this.router = router;
+    this.ownershipCache = ownershipCache;
     this.blockFactory = blockFactory;
     initBlocks();
   }
@@ -63,7 +63,7 @@ public final class BlockStore<K, V> implements BlockHandler<K, V> {
    * Initialize local blocks.
    */
   private void initBlocks() {
-    for (final int blockId : router.getInitialLocalBlockIds()) {
+    for (final int blockId : ownershipCache.getInitialLocalBlockIds()) {
       blocks.put(blockId, blockFactory.newBlock());
     }
   }

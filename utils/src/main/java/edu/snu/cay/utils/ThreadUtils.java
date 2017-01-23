@@ -17,10 +17,8 @@ package edu.snu.cay.utils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public final class ThreadUtils {
 
@@ -65,5 +63,21 @@ public final class ThreadUtils {
     }
     pool.shutdown();
     return futures;
+  }
+
+  /**
+   * Retrieves the actual values from a list of futures.
+   * @param futures list of futures returned from the concurrent execution
+   * @param <T> type of the actual result
+   * @return a list of actual values of results.
+   */
+  public static <T> List<T> retrieveResults(final List<Future<T>> futures) {
+    return futures.stream().map((Future<T> x) -> {
+      try {
+        return x.get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+    }).collect(Collectors.toList());
   }
 }
