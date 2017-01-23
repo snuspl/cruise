@@ -15,8 +15,10 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import com.google.common.collect.Table;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
@@ -40,17 +42,21 @@ import java.util.logging.Logger;
 final class LDATrainer implements Trainer {
 
   private static final Logger LOG = Logger.getLogger(LDATrainer.class.getName());
+  private static final String MSG_FAILED = "Model is not set via ModelAccessor.resetModel()";
 
-  private final LDABatchParameterWorker batchParameterWorker;
   private final SparseLDASampler sampler;
   private final LDAStatCalculator statCalculator;
   private final int numVocabs;
+  private final int numTopics;
+
   private final List<Integer> vocabList;
 
   private final MemoryStore<Long> memoryStore;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
   private final TrainingDataProvider<Long, Document> trainingDataProvider;
+
+  private final ModelAccessor<LDAModel> modelAccessor;
 
   /**
    * Number of training data instances to be processed per mini-batch.
@@ -64,16 +70,16 @@ final class LDATrainer implements Trainer {
   private final Tracer computeTracer;
 
   @Inject
-  private LDATrainer(final LDABatchParameterWorker batchParameterWorker,
-                     final SparseLDASampler sampler,
+  private LDATrainer(final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
                      final TrainingDataProvider<Long, Document> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
+                     final ModelAccessor<LDAModel> modelAccessor,
                      @Parameter(NumVocabs.class) final int numVocabs,
+                     @Parameter(NumTopics.class) final int numTopics,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize) {
-    this.batchParameterWorker = batchParameterWorker;
     this.sampler = sampler;
     this.statCalculator = statCalculator;
     this.memoryStore = memoryStore;
@@ -87,6 +93,9 @@ final class LDATrainer implements Trainer {
     for (int i = 0; i < numVocabs + 1; i++) {
       vocabList.add(i);
     }
+    this.numTopics = numTopics;
+
+    this.modelAccessor = modelAccessor;
 
     this.metricsMsgSender = metricsMsgSender;
     this.pushTracer = new Tracer();
@@ -96,17 +105,21 @@ final class LDATrainer implements Trainer {
 
   @Override
   public void initialize() {
+    final ChangedTopicCounts changedTopicCounts = new ChangedTopicCounts();
+
     // In LDA, topic counts should be initialized by pushing values before running.
     final Map<Long, Document> data = memoryStore.getAll();
     for (final Document document : data.values()) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
-        batchParameterWorker.addTopicChange(word, document.getAssignment(i), 1);
+        changedTopicCounts.addTopicChange(word, document.getAssignment(i), 1);
         // numVocabs-th row represents the total word-topic assignment count vector
-        batchParameterWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
+        changedTopicCounts.addTopicChange(numVocabs, document.getAssignment(i), 1);
       }
     }
-    batchParameterWorker.pushAndClear(computeTracer, pushTracer);
+    final List<Table<Integer, Integer, Integer>> results = new LinkedList<>();
+    results.add(changedTopicCounts.get());
+    pushAndResetGradients(results);
 
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "All random topic assignments are updated");
@@ -131,7 +144,16 @@ final class LDATrainer implements Trainer {
       resetTracers();
       final long miniBatchStartTime = System.currentTimeMillis();
 
-      sampler.sample(documents, computeTracer, pushTracer, pullTracer);
+      final List<Integer> words = getKeys(documents);
+
+      pullModels(words);
+
+      computeTracer.startTimer();
+      final List<Table<Integer, Integer, Integer>> results = sampler.sample(documents);
+      computeTracer.recordTime(1);
+
+      // push gradients
+      pushAndResetGradients(results); // Would be the topicChangedVectors.
 
       // update the documents processed so far
       numDocumentsSampled += numInstancesToProcess;
@@ -154,14 +176,12 @@ final class LDATrainer implements Trainer {
     }
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
-    final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
-    // numVocabs'th element of wordTopicCounts is a summary vector of word-topic distribution,
-    // in a form of numTopics-dimensional vector
-    final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
+    pullModels(vocabList);
+    final LDAModel model = modelAccessor.getModel().orElseThrow(() -> new RuntimeException(MSG_FAILED));
 
     LOG.log(Level.INFO, "Start computing log likelihood");
     final double docLLH = statCalculator.computeDocLLH(totalDocumentsSampled);
-    final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
+    final double wordLLH = statCalculator.computeWordLLH(model);
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
     final WorkerMetrics epochMetric =
@@ -170,8 +190,75 @@ final class LDATrainer implements Trainer {
     sendMetrics(epochMetric);
   }
 
+  private void pullModels(final List<Integer> words) {
+      pullTracer.startTimer();
+      final List<int[]> topicVectors = parameterWorker.pull(words);
+      pullTracer.recordTime(words.size());
+
+      final int[] sparseTopicSummaryVector = topicVectors.remove(words.size() - 1);
+      // i-th element of topicSummaryVector represents total number of assignments of i-th topic
+      final int[] topicSummaryVector = new int[numTopics];
+      for (int i = 0; i < sparseTopicSummaryVector.length; i++) {
+        final int topic = sparseTopicSummaryVector[i++];
+        final int count = sparseTopicSummaryVector[i];
+        topicSummaryVector[topic] = count;
+      }
+
+      final Map<Integer, int[]> wordTopicVectors = new HashMap<>(topicVectors.size());
+      for (int i = 0; i < topicVectors.size(); ++i) {
+        wordTopicVectors.put(words.get(i), topicVectors.get(i));
+      }
+
+      modelAccessor.resetModel(new LDAModel(topicSummaryVector, wordTopicVectors));
+  }
+
+  private void pushAndResetGradients(final List<Table<Integer, Integer, Integer>> results) {
+    // This only works with only one element -> to work with multiple elements, we need to aggregate them to a single table.
+    results.forEach(
+        changedTopicCounts -> {
+          for (final int changedWord : changedTopicCounts.rowKeySet()) {
+            computeTracer.startTimer();
+            final Map<Integer, Integer> changedTopicCountsForWord = changedTopicCounts.row(changedWord);
+            final int numChangedTopics = changedTopicCountsForWord.size();
+
+            // Given a word, an even index represents a changed topic index and a corresponding odd index represents
+            // a changed value for the topic index.
+            final int[] parameters = new int[2 * numChangedTopics];
+            int i = 0;
+            for (final Map.Entry<Integer, Integer> entry : changedTopicCountsForWord.entrySet()) {
+              parameters[2 * i] = entry.getKey();
+              parameters[2 * i + 1] = entry.getValue();
+              i++;
+            }
+            computeTracer.recordTime(0);
+
+            pushTracer.startTimer();
+            parameterWorker.push(changedWord, parameters);
+            pushTracer.recordTime(1);
+          }
+          changedTopicCounts.clear();
+        });
+  }
+
   @Override
   public void cleanup() {
+  }
+
+  private List<Integer> getKeys(final Collection<Document> documents) {
+
+    computeTracer.startTimer();
+    final Set<Integer> keys = new TreeSet<>();
+    for (final Document document : documents) {
+      keys.addAll(document.getWords());
+    }
+
+    final List<Integer> result = new ArrayList<>(keys.size() + 1);
+    result.addAll(keys);
+    // numVocabs-th row represents the total word-topic assignment count vector
+    result.add(numVocabs);
+
+    computeTracer.recordTime(0);
+    return result;
   }
 
   private void resetTracers() {

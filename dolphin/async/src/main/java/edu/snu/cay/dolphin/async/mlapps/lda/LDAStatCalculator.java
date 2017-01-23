@@ -21,6 +21,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * Compute log likelihoods of the model.
@@ -87,11 +88,15 @@ final class LDAStatCalculator {
    *   <li>W: {@code numVocabs}</li>
    *   <li>n(j, w): <i>j</i>th topic's number of assignments to <i>w</i>th vocabulary</li>
    * </ul>
-   * @param wordTopicCounts a collection of word-topic vectors
-   * @param wordTopicCountsSummary a vector which summaries entire word-topic distribution
+
    * @return a portion of log likelihood computed from the given word-topic vectors
    */
-  double computeWordLLH(final Collection<int[]> wordTopicCounts, final int[] wordTopicCountsSummary) {
+  double computeWordLLH(final LDAModel model) {
+    // wordTopicCountsSummary a vector which summaries entire word-topic distribution
+    final int[] wordTopicCountsSummary = model.getTopicSummaryVector();
+    // wordTopicCounts a collection of word-topic vectors
+    final Collection<int[]> wordTopicCounts = model.getWordTopicVectors().values();
+
     double result = numTopics * (Gamma.logGamma(numVocabs * beta) - numVocabs * Gamma.logGamma(beta));
     for (final int[] wordTopicCount : wordTopicCounts) {
       // For computing log-likelihood, we need only the values. Please refer to SparseArrayCodec.
