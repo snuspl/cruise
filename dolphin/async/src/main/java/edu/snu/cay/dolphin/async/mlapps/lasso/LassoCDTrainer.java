@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ import java.util.logging.Logger;
  * and for each feature, update it's model value(used cyclic version of stochastic coordinate descent).
  * The trainer computes and pushes the optimal model value for that particular dimension to
  * minimize the objective function - square loss with l1 regularization.
- *
  */
 final class LassoCDTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(LassoCDTrainer.class.getName());
@@ -157,7 +156,7 @@ final class LassoCDTrainer implements Trainer {
       instances = new ArrayList<>(nextTrainingData.values());
     }
 
-    if (!(decayRate == 1) && iteration % decayPeriod == 0) {
+    if (decayRate != 1 && iteration % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
@@ -172,7 +171,6 @@ final class LassoCDTrainer implements Trainer {
         LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
     }
-
   }
 
   /**
@@ -211,6 +209,7 @@ final class LassoCDTrainer implements Trainer {
       return x + lambda / columnNorm;
     }
   }
+
   private double predict(final Vector feature) {
     return newModel.dot(feature);
   }

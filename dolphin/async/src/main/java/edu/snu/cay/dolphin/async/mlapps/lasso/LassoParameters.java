@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,10 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-class LassoParameters {
+/**
+ * Parameters used for lasso.
+ */
+final class LassoParameters {
 
   @NamedParameter(doc = "input dimension", short_name = "features")
   static final class NumFeatures implements Name<Integer> {

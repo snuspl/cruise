@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import java.io.*;
  */
 final class LassoDataSerializer implements Serializer {
   private final DenseVectorCodec denseVectorCodec;
-  private final LassoDataSGDCodec lassoDataSGDCodec = new LassoDataSGDCodec();
+  private final LassoDataCodec lassoDataCodec = new LassoDataCodec();
 
   @Inject
   private LassoDataSerializer(final DenseVectorCodec denseVectorCodec) {
@@ -38,10 +38,10 @@ final class LassoDataSerializer implements Serializer {
 
   @Override
   public Codec getCodec() {
-    return lassoDataSGDCodec;
+    return lassoDataCodec;
   }
 
-  private final class LassoDataSGDCodec implements Codec<LassoData>, StreamingCodec<LassoData> {
+  private final class LassoDataCodec implements Codec<LassoData>, StreamingCodec<LassoData> {
     @Override
     public byte[] encode(final LassoData lassoData) {
       final int numBytes = denseVectorCodec.getNumBytes(lassoData.getFeature()) + Integer.BYTES;

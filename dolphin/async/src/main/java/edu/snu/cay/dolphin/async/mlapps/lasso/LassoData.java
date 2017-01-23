@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 /**
  * Abstraction for training data used in Lasso, consisting of feature vector and value (Double).
  */
-class LassoData {
+final class LassoData {
   private final Vector feature;
   private final double value;
 
