@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import javax.inject.Inject;
 import java.io.*;
 
 /**
- * Serializer that provides codec for (de-)serializing data used in MLR.
+ * Serializer that provides codec for (de-)serializing data used in Lasso.
  */
 final class LassoDataSerializer implements Serializer {
   private final DenseVectorCodec denseVectorCodec;
