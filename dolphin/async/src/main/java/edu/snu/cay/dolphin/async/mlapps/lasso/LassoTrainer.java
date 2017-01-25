@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
@@ -59,7 +58,6 @@ final class LassoTrainer implements Trainer {
   private Vector newModel;
 
   private final VectorFactory vectorFactory;
-  private final MatrixFactory matrixFactory;
 
   /**
    * ParameterWorker object for interacting with the parameter server.
@@ -75,8 +73,7 @@ final class LassoTrainer implements Trainer {
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
                        final TrainingDataProvider<Long, LassoData> trainingDataProvider,
-                       final VectorFactory vectorFactory,
-                       final MatrixFactory matrixFactory) {
+                       final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     this.numFeatures = numFeatures;
@@ -88,7 +85,6 @@ final class LassoTrainer implements Trainer {
     this.stepSize = stepSize;
     this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
-    this.matrixFactory = matrixFactory;
     this.random = new Random();
   }
 
@@ -110,10 +106,9 @@ final class LassoTrainer implements Trainer {
    * {@inheritDoc} <br>
    * 1) Pull model from server. <br>
    * 2) Pick dimension to update. <br>
-   * 3) Compute the optimal value, (dot(x_i, y) - Sigma_{i != j} (x_i, x_j) * model(j)) / N, where
-   *   N equals the number of instances, i.e. the length of y. <br>
-   * - When computing the optimal value, only compute (x_i, x_j) * model(j) if model(j) != 0, for performance. <br>
-   * - Reuse (x_i, x_j) when possible, from {@code x2x}. <br>
+   * 3) Compute the optimal value, (dot(x_i, y) - Sigma_{i != j} (x_i, x_j) * model(j)) / dot(x_i, x_i), where
+   *   When computing the optimal value, only compute (x_i, x_j) * model(j) if model(j) != 0, for performance. <br>
+   *   Reuse (x_i, x_j) when possible, from {@code x2x}. <br>
    * 4) Push value to server.
    */
   @Override
