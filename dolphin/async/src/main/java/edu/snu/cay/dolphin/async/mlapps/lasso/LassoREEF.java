@@ -17,8 +17,6 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
-import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
-import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
 
 import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 
@@ -38,12 +36,8 @@ public final class LassoREEF {
         .setTrainerClass(LassoTrainer.class)
         .setUpdaterClass(LassoUpdater.class)
         .setParserClass(LassoParser.class)
-        .setPreValueCodecClass(DenseVectorCodec.class)
-        .setValueCodecClass(DenseVectorCodec.class)
-        .setServerSerializerClass(DenseVectorSerializer.class)
         .setWorkerSerializerClass(LassoDataSerializer.class)
         .addParameterClass(NumFeatures.class)
-        .addParameterClass(NumFeaturesPerPartition.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
         .build());

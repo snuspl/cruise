@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_lasso.sh -split 4 -max_iter 300 -mini_batch_size 50 -features 10 -max_num_eval_local 5 -input sample_lasso -local true -lambda 0.5 -eval_size 1024 -timeout 200000 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000 -step_size 0.01 -features_per_partition 2
+# ./run_lasso.sh -split 4 -max_iter 300 -mini_batch_size 50 -features 10 -max_num_eval_local 5 -input sample_lasso -local true -lambda 0.5 -eval_size 1024 -timeout 200000 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -worker_log_period_ms 0 -server_log_period_ms 0 -server_metrics_window_ms 1000 -step_size 0.1
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

@@ -21,15 +21,10 @@ import org.apache.reef.tang.annotations.NamedParameter;
 /**
  * Parameters used for Lasso.
  */
-class LassoParameters {
+final class LassoParameters {
 
   @NamedParameter(doc = "input dimension", short_name = "features")
   static final class NumFeatures implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "number of features for each model partition",
-      short_name = "features_per_partition")
-  static final class NumFeaturesPerPartition implements Name<Integer> {
   }
 
   @NamedParameter(doc = "value of the step size", short_name = "step_size")

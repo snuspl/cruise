@@ -15,8 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lasso;
 
-import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -24,46 +22,35 @@ import javax.inject.Inject;
 import java.util.Random;
 
 import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.ModelGaussian;
-import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.NumFeaturesPerPartition;
 
 /**
  * {@link ParameterUpdater} for the LassoREEF application.
  * Simply adds delta vectors to the old vectors stored in this server.
  * Vectors are initialized with values drawn from the normal distribution.
  */
-final class LassoUpdater implements ParameterUpdater<Integer, Vector, Vector> {
+final class LassoUpdater implements ParameterUpdater<Integer, Double, Double> {
 
-  private final int numFeaturesPerPartition;
   private final double modelGaussian;
-  private final VectorFactory vectorFactory;
   private final Random random;
 
   @Inject
-  private LassoUpdater(@Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                       @Parameter(ModelGaussian.class) final double modelGaussian,
-                       final VectorFactory vectorFactory) {
-    this.numFeaturesPerPartition = numFeaturesPerPartition;
+  private LassoUpdater(@Parameter(ModelGaussian.class) final double modelGaussian) {
     this.modelGaussian = modelGaussian;
-    this.vectorFactory = vectorFactory;
     this.random = new Random();
   }
 
   @Override
-  public Vector process(final Integer key, final Vector preValue) {
+  public Double process(final Integer key, final Double preValue) {
     return preValue;
   }
 
   @Override
-  public Vector update(final Vector oldValue, final Vector deltaValue) {
-    return oldValue.addi(deltaValue);
+  public Double update(final Double oldValue, final Double deltaValue) {
+    return oldValue + deltaValue;
   }
 
   @Override
-  public Vector initValue(final Integer key) {
-    final double[] features = new double[numFeaturesPerPartition];
-    for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
-      features[featureIndex] = random.nextGaussian() * modelGaussian;
-    }
-    return vectorFactory.createDense(features);
+  public Double initValue(final Integer key) {
+    return random.nextGaussian() * modelGaussian;
   }
 }

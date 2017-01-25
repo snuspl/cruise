@@ -23,6 +23,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -45,16 +46,13 @@ import java.util.logging.Logger;
 final class LassoTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
 
-  private List<Integer> partitionIndices;
-  private final int numFeaturesPerPartition;
   private final int numFeatures;
-  private final int numPartitions;
   private final double lambda;
   private double stepSize;
 
   private final TrainingDataProvider<Long, LassoData> trainingDataProvider;
 
-  private Vector oldModel;
+  private final Vector oldModel;
   private Vector newModel;
 
   private final VectorFactory vectorFactory;
@@ -62,30 +60,27 @@ final class LassoTrainer implements Trainer {
   /**
    * ParameterWorker object for interacting with the parameter server.
    */
-  private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
+  private final ParameterWorker<Integer, Double, Double> parameterWorker;
 
   private final Random random;
+  private final int printModelPeriod;
 
   @Inject
-  private LassoTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+  private LassoTrainer(final ParameterWorker<Integer, Double, Double> parameterWorker,
                        @Parameter(Lambda.class) final double lambda,
-                       @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
                        final TrainingDataProvider<Long, LassoData> trainingDataProvider,
                        final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
-    this.numFeaturesPerPartition = numFeaturesPerPartition;
     this.numFeatures = numFeatures;
-    if (numFeatures % numFeaturesPerPartition != 0) {
-      throw new RuntimeException("Uneven model partitions");
-    }
-    this.numPartitions =  numFeatures / numFeaturesPerPartition;
     this.lambda = lambda;
     this.stepSize = stepSize;
     this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
     this.random = new Random();
+    this.printModelPeriod = 50;
+    this.oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
   /**
@@ -96,10 +91,6 @@ final class LassoTrainer implements Trainer {
    */
   @Override
   public void initialize() {
-    partitionIndices = new ArrayList<>(numPartitions);
-    for (int partitionIndex = 0; partitionIndex < numPartitions; ++partitionIndex) {
-      partitionIndices.add(partitionIndex);
-    }
   }
 
   /**
@@ -132,23 +123,13 @@ final class LassoTrainer implements Trainer {
        * Transform the instances from LassoData type to the Vector for each feature.
        * Pre-calculate x2y values before we use it.
        */
-      final Vector[] vecXArray = new Vector[numFeatures];
-      for (int i = 0; i < numFeatures; i++) {
-        vecXArray[i] = vectorFactory.createDenseZeros(instances.size());
-      }
-      final Vector vecY = vectorFactory.createDenseZeros(instances.size());
       final double[] x2y = new double[numFeatures];
       final Table<Integer, Integer, Double> x2x = HashBasedTable.create();
       final int index = random.nextInt(numFeatures);
 
-      for (int i = 0; i < instances.size(); i++) {
-        final Vector feature = instances.get(i).getFeature();
-        final double value = instances.get(i).getValue();
-        for (int j = 0; j < numFeatures; j++) {
-          vecXArray[j].set(i, feature.get(j));
-        }
-        vecY.set(i, value);
-      }
+      final Pair<Vector[], Vector> convertedData = convertDataInFeatureOrder(instances);
+      final Vector[] vecXArray = convertedData.getFirst();
+      final Vector vecY = convertedData.getSecond();
 
       for (int i = 0; i < vecXArray.length; i++) {
         x2y[i] = vecXArray[i].dot(vecY);
@@ -194,7 +175,7 @@ final class LassoTrainer implements Trainer {
     pullModels();
     final double loss = computeLoss(totalInstancesProcessed);
     LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
-    if ((iteration + 1) % 50 == 0) {
+    if ((iteration + 1) % printModelPeriod == 0) {
       for (int i = 0; i < numFeatures; i++) {
         LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
@@ -202,27 +183,38 @@ final class LassoTrainer implements Trainer {
 
   }
 
-  /**
-   * {@inheritDoc}
-   * Pull and log the whole model.
-   */
   @Override
   public void cleanup() {
   }
 
   private void pullModels() {
-    final List<Vector> partialModels = parameterWorker.pull(partitionIndices);
-    oldModel = vectorFactory.concatDense(partialModels);
+    for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
+      oldModel.set(modelIndex, parameterWorker.pull(modelIndex));
+    }
     newModel = oldModel.copy();
+  }
+
+  private Pair<Vector[], Vector> convertDataInFeatureOrder(final List<LassoData> instances) {
+    final Vector[] vecXArray = new Vector[numFeatures];
+    for (int i = 0; i < numFeatures; i++) {
+      vecXArray[i] = vectorFactory.createDenseZeros(instances.size());
+    }
+    final Vector vecY = vectorFactory.createDenseZeros(instances.size());
+    for (int i = 0; i < instances.size(); i++) {
+      final Vector feature = instances.get(i).getFeature();
+      final double value = instances.get(i).getValue();
+      for (int j = 0; j < numFeatures; j++) {
+        vecXArray[j].set(i, feature.get(j));
+      }
+      vecY.set(i, value);
+    }
+    return new Pair<Vector[], Vector>(vecXArray, vecY);
   }
 
   private void pushAndResetGradients() {
     final Vector gradient = newModel.sub(oldModel);
-    for (int partitionIndex = 0; partitionIndex < numPartitions; ++partitionIndex) {
-      final int partitionStart = partitionIndex * numFeaturesPerPartition;
-      final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
-      parameterWorker.push(partitionIndex, vectorFactory.createDenseZeros(numFeaturesPerPartition)
-          .axpy(stepSize, gradient.slice(partitionStart, partitionEnd)));
+    for (int modelIndex = 0; modelIndex < numFeatures; ++modelIndex) {
+      parameterWorker.push(modelIndex, stepSize * gradient.get(modelIndex));
     }
   }
 
