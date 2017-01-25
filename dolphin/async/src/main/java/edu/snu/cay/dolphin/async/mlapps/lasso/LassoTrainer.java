@@ -119,9 +119,19 @@ final class LassoTrainer implements Trainer {
     Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
     List<LassoData> instances = new ArrayList<>(nextTrainingData.values());
 
+    /**
+     * Model is trained by each mini-batch training data.
+     */
     while (!nextTrainingData.isEmpty()) {
+      /**
+       * Pull the old model which should be trained in this while loop.
+       */
       pullModels();
 
+      /**
+       * Transform the instances from LassoData type to the Vector for each feature.
+       * Pre-calculate x2y values before we use it.
+       */
       final Vector[] vecXArray = new Vector[numFeatures];
       for (int i = 0; i < numFeatures; i++) {
         vecXArray[i] = vectorFactory.createDenseZeros(instances.size());
@@ -144,6 +154,9 @@ final class LassoTrainer implements Trainer {
         x2y[i] = vecXArray[i].dot(vecY);
       }
 
+      /**
+       * Calculate dotValue(new model[index] value) which will be updated in this mini-batch.
+       */
       double dotValue = x2y[index];
       for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
         if (newModel.get(modelIndex) == 0 || index == modelIndex) {
@@ -165,6 +178,9 @@ final class LassoTrainer implements Trainer {
       dotValue /= x2x.get(index, index);
       newModel.set(index, sthresh(dotValue, lambda, x2x.get(index, index)));
 
+      /**
+       * Push the new model to the server.
+       */
       pushAndResetGradients();
 
       totalInstancesProcessed.addAll(instances);
@@ -172,6 +188,9 @@ final class LassoTrainer implements Trainer {
       instances = new ArrayList<>(nextTrainingData.values());
     }
 
+    /**
+     * Calculate the loss value.
+     */
     pullModels();
     final double loss = computeLoss(totalInstancesProcessed);
     LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
