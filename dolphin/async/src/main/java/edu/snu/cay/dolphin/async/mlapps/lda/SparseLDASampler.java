@@ -15,12 +15,17 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
+import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Sample a batch of documents using the word-topic assignment count matrix from parameter server and a local
@@ -30,11 +35,23 @@ import java.util.*;
  */
 final class SparseLDASampler {
   private static final String MSG_FAILED = "Model is not set via ModelAccessor.resetModel()";
+  private static final Logger LOG = Logger.getLogger(SparseLDASampler.class.getName());
 
   private final double alpha;
   private final double beta;
   private final int numTopics;
   private final int numVocabs;
+
+  /**
+   * Executes the Trainer threads.
+   */
+  private final ExecutorService executor;
+
+  /**
+   * Number of Trainer threads that train concurrently.
+   */
+  private final int numTrainerThreads;
+
   private final ModelAccessor<LDAModel> modelAccessor;
 
   @Inject
@@ -42,23 +59,53 @@ final class SparseLDASampler {
                            @Parameter(Beta.class) final double beta,
                            @Parameter(NumTopics.class) final int numTopics,
                            @Parameter(NumVocabs.class) final int numVocabs,
+                           @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads,
                            final ModelAccessor<LDAModel> modelAccessor) {
     this.alpha = alpha;
     this.beta = beta;
     this.numTopics = numTopics;
     this.numVocabs = numVocabs;
     this.modelAccessor = modelAccessor;
+
+    this.numTrainerThreads = numTrainerThreads;
+    this.executor = Executors.newFixedThreadPool(numTrainerThreads);
   }
 
   List<TopicChanges> sample(final Collection<Document> documents) {
-    final List<TopicChanges> results = new LinkedList<>();
-    final LDAModel model = modelAccessor.getModel()
-            .orElseThrow(() -> new RuntimeException(MSG_FAILED));
-    for (final Document document : documents) {
-      processOneDoc(document, model);
+    final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
+    final Queue<Document> instances = new ConcurrentLinkedQueue<>(documents);
+
+    final List<Future<TopicChanges>> futures = new ArrayList<>(numTrainerThreads);
+    try {
+      for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
+        final Future<TopicChanges> future = executor.submit(() -> {
+          final LDAModel model = modelAccessor.getModel()
+              .orElseThrow(() -> new RuntimeException(MSG_FAILED));
+
+          int count = 0;
+          while (true) {
+            final Document document = instances.poll();
+            if (document == null) {
+              break;
+            }
+
+            processOneDoc(document, model);
+            count++;
+          }
+          latch.countDown();
+          LOG.log(Level.INFO, "{0} has computed {1} instances",
+              new Object[]{Thread.currentThread().getName(), count});
+          return model.getTopicChanges();
+        });
+        futures.add(future);
+      }
+      latch.await();
+    } catch (final InterruptedException e) {
+      LOG.log(Level.SEVERE, "Exception occurred.", e);
+      throw new RuntimeException(e);
     }
-    results.add(model.getTopicChanges());
-    return results;
+
+    return ThreadUtils.retrieveResults(futures);
   }
 
   private void processOneDoc(final Document document, final LDAModel model) {
