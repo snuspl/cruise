@@ -67,7 +67,7 @@ final class SparseLDASampler {
 
     double sumS = 0.0;
     double sumR = 0.0;
-    double sumQ = 0.0;
+
     final double[] sTerms = new double[numTopics];
     final double[] rTerms = new double[numTopics];
     final List<Integer> nonZeroRTermIndices = new ArrayList<>(numTopics);
@@ -122,7 +122,7 @@ final class SparseLDASampler {
 
       // Calculate q terms
       nonZeroQTermIndices.clear();
-      sumQ = 0.0;
+      double sumQ = 0.0;
 
       for (int i = 0; i < wordTopicCount.length; i++) {
         final int topic = wordTopicCount[i++];
