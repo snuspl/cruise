@@ -105,21 +105,19 @@ final class LDATrainer implements Trainer {
 
   @Override
   public void initialize() {
-    final ChangedTopicCounts changedTopicCounts = new ChangedTopicCounts();
+    final TopicChanges topicChanges = new TopicChanges();
 
     // In LDA, topic counts should be initialized by pushing values before running.
     final Map<Long, Document> data = memoryStore.getAll();
     for (final Document document : data.values()) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
-        changedTopicCounts.addTopicChange(word, document.getAssignment(i), 1);
+        topicChanges.increment(word, document.getAssignment(i), 1);
         // numVocabs-th row represents the total word-topic assignment count vector
-        changedTopicCounts.addTopicChange(numVocabs, document.getAssignment(i), 1);
+        topicChanges.increment(numVocabs, document.getAssignment(i), 1);
       }
     }
-    final List<ChangedTopicCounts> results = new LinkedList<>();
-    results.add(changedTopicCounts);
-    pushAndResetGradients(results);
+    pushAndResetGradients(topicChanges);
 
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "All random topic assignments are updated");
@@ -149,11 +147,13 @@ final class LDATrainer implements Trainer {
       pullModels(words);
 
       computeTracer.startTimer();
-      final List<ChangedTopicCounts> results = sampler.sample(documents);
+      final List<TopicChanges> results = sampler.sample(documents);
       computeTracer.recordTime(1);
 
+      final TopicChanges aggregated = aggregateChanges(results);
+
       // push gradients
-      pushAndResetGradients(results); // Would be the topicChangedVectors.
+      pushAndResetGradients(aggregated);
 
       // update the documents processed so far
       numDocumentsSampled += numInstancesToProcess;
@@ -212,33 +212,46 @@ final class LDATrainer implements Trainer {
       modelAccessor.resetModel(new LDAModel(topicSummaryVector, wordTopicVectors));
   }
 
-  private void pushAndResetGradients(final List<ChangedTopicCounts> results) {
-    // This only works with only one element -> to work with multiple elements, we need to aggregate them to a single table.
+  /**
+   * Aggregates the changed topics computed by each thread.
+   * @param results a list of the number of changes per topic.
+   * @return Sum of the number of changes per topic.
+   */
+  private TopicChanges aggregateChanges(final List<TopicChanges> results) {
+    final TopicChanges aggregated = new TopicChanges();
     results.forEach(
         result -> {
-          final Table<Integer, Integer, Integer> changedTopicCounts = result.get();
-          for (final int changedWord : changedTopicCounts.rowKeySet()) {
-            computeTracer.startTimer();
-            final Map<Integer, Integer> changedTopicCountsForWord = changedTopicCounts.row(changedWord);
-            final int numChangedTopics = changedTopicCountsForWord.size();
-
-            // Given a word, an even index represents a changed topic index and a corresponding odd index represents
-            // a changed value for the topic index.
-            final int[] parameters = new int[2 * numChangedTopics];
-            int i = 0;
-            for (final Map.Entry<Integer, Integer> entry : changedTopicCountsForWord.entrySet()) {
-              parameters[2 * i] = entry.getKey();
-              parameters[2 * i + 1] = entry.getValue();
-              i++;
-            }
-            computeTracer.recordTime(0);
-
-            pushTracer.startTimer();
-            parameterWorker.push(changedWord, parameters);
-            pushTracer.recordTime(1);
-          }
-          changedTopicCounts.clear();
+          final Table<Integer, Integer, Integer> changedTopicCounts = result.getTable();
+          changedTopicCounts.cellSet().forEach(
+              cell ->
+                  aggregated.increment(cell.getRowKey(), cell.getColumnKey(), cell.getValue()));
         });
+    return aggregated;
+  }
+
+  private void pushAndResetGradients(final TopicChanges topicChanges) {
+    final Table<Integer, Integer, Integer> changedTopicCount = topicChanges.getTable();
+    for (final int changedWord : changedTopicCount.rowKeySet()) {
+      computeTracer.startTimer();
+      final Map<Integer, Integer> changedTopicCountsForWord = changedTopicCount.row(changedWord);
+      final int numChangedTopics = changedTopicCountsForWord.size();
+
+      // Given a word, an even index represents a changed topic index and a corresponding odd index represents
+      // a changed value for the topic index.
+      final int[] parameters = new int[2 * numChangedTopics];
+      int i = 0;
+      for (final Map.Entry<Integer, Integer> entry : changedTopicCountsForWord.entrySet()) {
+        parameters[2 * i] = entry.getKey();
+        parameters[2 * i + 1] = entry.getValue();
+        i++;
+      }
+      computeTracer.recordTime(0);
+
+      pushTracer.startTimer();
+      parameterWorker.push(changedWord, parameters);
+      pushTracer.recordTime(1);
+    }
+    changedTopicCount.clear();
   }
 
   @Override

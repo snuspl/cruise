@@ -22,26 +22,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by yunseong on 1/18/17.
+ * Encapsulates the model data in LDA app.
  */
 public final class LDAModel implements Copyable<LDAModel> {
   private final int[] topicSummaryVector;
   private final Map<Integer, int[]> wordTopicVectors;
-  private final ChangedTopicCounts changedTopicCounts;
+  private final TopicChanges topicChanges;
 
   LDAModel(final int[] topicSummaryVector,
            final Map<Integer, int[]> wordTopicVectors) {
     this.topicSummaryVector = topicSummaryVector;
     this.wordTopicVectors = wordTopicVectors;
-    this.changedTopicCounts = new ChangedTopicCounts();
+    this.topicChanges = new TopicChanges();
   }
 
   private LDAModel(final int[] topicSummaryVector,
                    final Map<Integer, int[]> wordTopicVectors,
-                   final ChangedTopicCounts changedTopicCounts) {
+                   final TopicChanges topicChanges) {
     this.topicSummaryVector = topicSummaryVector;
     this.wordTopicVectors = wordTopicVectors;
-    this.changedTopicCounts = changedTopicCounts;
+    this.topicChanges = topicChanges;
   }
 
   int[] getTopicSummaryVector() {
@@ -52,8 +52,8 @@ public final class LDAModel implements Copyable<LDAModel> {
     return wordTopicVectors;
   }
 
-  ChangedTopicCounts getChangedTopicCounts() {
-    return changedTopicCounts;
+  TopicChanges getTopicChanges() {
+    return topicChanges;
   }
 
   @Override
@@ -61,6 +61,6 @@ public final class LDAModel implements Copyable<LDAModel> {
     final int[] topicSummaryVectorCopy = Arrays.copyOf(topicSummaryVector, topicSummaryVector.length);
     final Map<Integer, int[]> wordTopicVectorsCopy = new HashMap<>(wordTopicVectors.size());
     wordTopicVectors.forEach((k, v) -> wordTopicVectorsCopy.put(k, v.clone()));
-    return new LDAModel(topicSummaryVectorCopy, wordTopicVectorsCopy, changedTopicCounts.copyOf());
+    return new LDAModel(topicSummaryVectorCopy, wordTopicVectorsCopy, topicChanges.copyOf());
   }
 }

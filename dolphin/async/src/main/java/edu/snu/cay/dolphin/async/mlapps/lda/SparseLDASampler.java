@@ -15,9 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
-import com.google.common.collect.Table;
 import edu.snu.cay.dolphin.async.ModelAccessor;
-import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -52,14 +50,14 @@ final class SparseLDASampler {
     this.modelAccessor = modelAccessor;
   }
 
-  List<ChangedTopicCounts> sample(final Collection<Document> documents) {
-    final List<ChangedTopicCounts> results = new LinkedList<>();
+  List<TopicChanges> sample(final Collection<Document> documents) {
+    final List<TopicChanges> results = new LinkedList<>();
     final LDAModel model = modelAccessor.getModel()
             .orElseThrow(() -> new RuntimeException(MSG_FAILED));
     for (final Document document : documents) {
       processOneDoc(document, model);
     }
-    results.add(model.getChangedTopicCounts());
+    results.add(model.getTopicChanges());
     return results;
   }
 
@@ -173,14 +171,11 @@ final class SparseLDASampler {
 
       // Get Model -> update (T_old => T_new)
       if (newTopic != oldTopic) {
-        // Push the changes to the parameter servers
-        // Fix the comment
-        final ChangedTopicCounts changedTopicCounts = model.getChangedTopicCounts();
-        changedTopicCounts.addTopicChange(word, oldTopic, -1);
-        changedTopicCounts.addTopicChange(word, newTopic, 1);
+        final TopicChanges topicChanges = model.getTopicChanges();
+        topicChanges.replace(word, oldTopic, newTopic, 1);
+
         // numVocabs-th row represents the total word-topic assignment count vector
-        changedTopicCounts.addTopicChange(numVocabs, oldTopic, -1);
-        changedTopicCounts.addTopicChange(numVocabs, newTopic, 1);
+        topicChanges.replace(numVocabs, oldTopic, newTopic, 1);
       }
     }
 
