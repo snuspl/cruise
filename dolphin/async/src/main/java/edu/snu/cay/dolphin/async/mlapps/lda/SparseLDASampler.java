@@ -52,21 +52,18 @@ final class SparseLDASampler {
     this.modelAccessor = modelAccessor;
   }
 
-  List<Table<Integer, Integer, Integer>> sample(final Collection<Document> documents) {
-    final List<Table<Integer, Integer, Integer>> results = new LinkedList<>();
+  List<ChangedTopicCounts> sample(final Collection<Document> documents) {
+    final List<ChangedTopicCounts> results = new LinkedList<>();
+    final LDAModel model = modelAccessor.getModel()
+            .orElseThrow(() -> new RuntimeException(MSG_FAILED));
     for (final Document document : documents) {
-      processOneDoc(document);
-      results.add(
-          modelAccessor.getModel()
-              .orElseThrow(() -> new RuntimeException(MSG_FAILED))
-              .getChangedTopicCounts().get());
+      processOneDoc(document, model);
     }
+    results.add(model.getChangedTopicCounts());
     return results;
   }
 
-  private void processOneDoc(final Document document) {
-    final LDAModel model = modelAccessor.getModel().orElseThrow(() -> new RuntimeException(MSG_FAILED));
-
+  private void processOneDoc(final Document document, final LDAModel model) {
     final int[] topicSummaryVector = model.getTopicSummaryVector();
     final Map<Integer, int[]> wordTopicVectors = model.getWordTopicVectors();
 

@@ -117,8 +117,8 @@ final class LDATrainer implements Trainer {
         changedTopicCounts.addTopicChange(numVocabs, document.getAssignment(i), 1);
       }
     }
-    final List<Table<Integer, Integer, Integer>> results = new LinkedList<>();
-    results.add(changedTopicCounts.get());
+    final List<ChangedTopicCounts> results = new LinkedList<>();
+    results.add(changedTopicCounts);
     pushAndResetGradients(results);
 
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
@@ -149,7 +149,7 @@ final class LDATrainer implements Trainer {
       pullModels(words);
 
       computeTracer.startTimer();
-      final List<Table<Integer, Integer, Integer>> results = sampler.sample(documents);
+      final List<ChangedTopicCounts> results = sampler.sample(documents);
       computeTracer.recordTime(1);
 
       // push gradients
@@ -212,10 +212,11 @@ final class LDATrainer implements Trainer {
       modelAccessor.resetModel(new LDAModel(topicSummaryVector, wordTopicVectors));
   }
 
-  private void pushAndResetGradients(final List<Table<Integer, Integer, Integer>> results) {
+  private void pushAndResetGradients(final List<ChangedTopicCounts> results) {
     // This only works with only one element -> to work with multiple elements, we need to aggregate them to a single table.
     results.forEach(
-        changedTopicCounts -> {
+        result -> {
+          final Table<Integer, Integer, Integer> changedTopicCounts = result.get();
           for (final int changedWord : changedTopicCounts.rowKeySet()) {
             computeTracer.startTimer();
             final Map<Integer, Integer> changedTopicCountsForWord = changedTopicCounts.row(changedWord);
