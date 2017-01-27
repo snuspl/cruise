@@ -21,7 +21,6 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Collection;
-import java.util.Map;
 
 /**
  * Compute log likelihoods of the model.

@@ -201,25 +201,25 @@ final class LDATrainer implements Trainer {
   }
 
   private void pullModels(final List<Integer> words) {
-      pullTracer.startTimer();
-      final List<int[]> topicVectors = parameterWorker.pull(words);
-      pullTracer.recordTime(words.size());
+    pullTracer.startTimer();
+    final List<int[]> topicVectors = parameterWorker.pull(words);
+    pullTracer.recordTime(words.size());
 
-      final int[] sparseTopicSummaryVector = topicVectors.remove(words.size() - 1);
-      // i-th element of topicSummaryVector represents total number of assignments of i-th topic
-      final int[] topicSummaryVector = new int[numTopics];
-      for (int i = 0; i < sparseTopicSummaryVector.length; i++) {
-        final int topic = sparseTopicSummaryVector[i++];
-        final int count = sparseTopicSummaryVector[i];
-        topicSummaryVector[topic] = count;
-      }
+    final int[] sparseTopicSummaryVector = topicVectors.remove(words.size() - 1);
+    // i-th element of topicSummaryVector represents total number of assignments of i-th topic
+    final int[] topicSummaryVector = new int[numTopics];
+    for (int i = 0; i < sparseTopicSummaryVector.length; i++) {
+      final int topic = sparseTopicSummaryVector[i++];
+      final int count = sparseTopicSummaryVector[i];
+      topicSummaryVector[topic] = count;
+    }
 
-      final Map<Integer, int[]> wordTopicVectors = new HashMap<>(topicVectors.size());
-      for (int i = 0; i < topicVectors.size(); ++i) {
-        wordTopicVectors.put(words.get(i), topicVectors.get(i));
-      }
+    final Map<Integer, int[]> wordTopicVectors = new HashMap<>(topicVectors.size());
+    for (int i = 0; i < topicVectors.size(); ++i) {
+      wordTopicVectors.put(words.get(i), topicVectors.get(i));
+    }
 
-      modelAccessor.resetModel(new LDAModel(topicSummaryVector, wordTopicVectors));
+    modelAccessor.resetModel(new LDAModel(topicSummaryVector, wordTopicVectors));
   }
 
   /**

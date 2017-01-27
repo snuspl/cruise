@@ -44,7 +44,7 @@ final class TopicChanges implements Copyable<TopicChanges> {
   }
 
   /**
-   * Increments the number of assignment of a word to a topic
+   * Increments the number of assignment of a word to a topic.
    *
    * @param word a word
    * @param topicIndex a topic index
