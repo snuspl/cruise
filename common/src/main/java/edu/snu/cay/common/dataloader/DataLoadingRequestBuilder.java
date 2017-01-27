@@ -36,7 +36,11 @@ import org.apache.reef.tang.formats.ConfigurationModule;
  * Builder to create a request to the DataLoadingService.
  * It's resembled from {@link org.apache.reef.io.data.loading.api.DataLoadingRequestBuilder}
  * to separate out its resource request and management part.
+ *
+ * @deprecated Use {@link HdfsSplitManager} and {@link HdfsSplitFetcher} instead.
+ * TODO #980: Remove this class and use the new data loader in dolphin
  */
+@Deprecated
 public final class DataLoadingRequestBuilder
     implements org.apache.reef.util.Builder<Configuration> {
 
