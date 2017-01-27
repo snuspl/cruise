@@ -146,9 +146,10 @@ final class LDATrainer implements Trainer {
     final List<Document> totalDocumentsSampled = new LinkedList<>();
 
     Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    Collection<Document> documents = nextTrainingData.values();
-    int numInstancesToProcess = documents.size();
     while (!nextTrainingData.isEmpty()) {
+      final Collection<Document> documents = nextTrainingData.values();
+      final int numInstancesToProcess = documents.size();
+
       resetTracers();
       final long miniBatchStartTime = System.currentTimeMillis();
 
@@ -158,7 +159,7 @@ final class LDATrainer implements Trainer {
 
       computeTracer.startTimer();
       final List<TopicChanges> results = sampler.sample(documents);
-      computeTracer.recordTime(1);
+      computeTracer.recordTime(numInstancesToProcess);
 
       final TopicChanges aggregated = aggregateChanges(results);
 
@@ -180,8 +181,6 @@ final class LDATrainer implements Trainer {
       LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
       sendMetrics(miniBatchMetric);
 
-      documents = nextTrainingData.values();
-      numInstancesToProcess = documents.size();
       miniBatchIdx++;
     }
 

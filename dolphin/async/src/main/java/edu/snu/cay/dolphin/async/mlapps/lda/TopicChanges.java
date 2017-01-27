@@ -24,6 +24,9 @@ import edu.snu.cay.utils.Copyable;
  * Note that this is not thread-safe for performance reason.
  */
 final class TopicChanges implements Copyable<TopicChanges> {
+  /**
+   * A table each of which element at (row: WordIdx, column: TopicIdx) is the number of changes for a word to a topic.
+   */
   private final Table<Integer, Integer, Integer> changedTopicCounts;
 
   TopicChanges() {
@@ -47,14 +50,17 @@ final class TopicChanges implements Copyable<TopicChanges> {
    * Increments the number of assignment of a word to a topic.
    *
    * @param word a word
-   * @param topicIndex a topic index
+   * @param topicIdx a topic index
    * @param delta a number of changes to make
    */
-  void increment(final int word, final int topicIndex, final int delta) {
-    if (!changedTopicCounts.contains(word, topicIndex)) {
-      changedTopicCounts.put(word, topicIndex, 0);
+  void increment(final int word, final int topicIdx, final int delta) {
+    final Integer count = changedTopicCounts.get(word, topicIdx);
+    if (count == null) {
+      changedTopicCounts.put(word, topicIdx, delta); // If the table entry does not exist, initialize it with delta.
+    } else {
+      changedTopicCounts.put(word, topicIdx, count + delta);
     }
-    changedTopicCounts.put(word, topicIndex, delta + changedTopicCounts.get(word, topicIndex));
+
   }
 
   /**

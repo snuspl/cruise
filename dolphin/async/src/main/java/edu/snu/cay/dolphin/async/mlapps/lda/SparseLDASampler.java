@@ -92,7 +92,7 @@ final class SparseLDASampler {
               break;
             }
 
-            processOneDoc(document, model);
+            updateModel(document, model);
             count++;
           }
           latch.countDown();
@@ -111,7 +111,12 @@ final class SparseLDASampler {
     return ThreadUtils.retrieveResults(futures);
   }
 
-  private void processOneDoc(final Document document, final LDAModel model) {
+  /**
+   * Processes one training data instance and update the intermediate model.
+   * @param document training data instance
+   * @param model the latest model
+   */
+  private void updateModel(final Document document, final LDAModel model) {
     final int[] topicSummaryVector = model.getTopicSummaryVector();
     final Map<Integer, int[]> wordTopicVectors = model.getWordTopicVectors();
 
@@ -227,7 +232,6 @@ final class SparseLDASampler {
         topicChanges.replace(numVocabs, oldTopic, newTopic, 1);
       }
     }
-
   }
 
   private int sampleFromTerms(final double randomVar, final double[] terms) {
