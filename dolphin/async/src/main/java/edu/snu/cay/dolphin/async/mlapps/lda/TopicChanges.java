@@ -60,7 +60,6 @@ final class TopicChanges implements Copyable<TopicChanges> {
     } else {
       changedTopicCounts.put(word, topicIdx, count + delta);
     }
-
   }
 
   /**
@@ -71,15 +70,19 @@ final class TopicChanges implements Copyable<TopicChanges> {
    * @param delta a number of changes to make
    */
   void replace(final int word, final int oldTopicIdx, final int newTopicIdx, final int delta) {
-    if (!changedTopicCounts.contains(word, oldTopicIdx)) {
-      changedTopicCounts.put(word, oldTopicIdx, 0);
+    final Integer countOldTopic = changedTopicCounts.get(word, oldTopicIdx);
+    if (countOldTopic == null) {
+      changedTopicCounts.put(word, oldTopicIdx, - delta);
+    } else {
+      changedTopicCounts.put(word, oldTopicIdx, countOldTopic - delta);
     }
-    changedTopicCounts.put(word, oldTopicIdx, changedTopicCounts.get(word, oldTopicIdx) - delta);
 
-    if (!changedTopicCounts.contains(word, newTopicIdx)) {
-      changedTopicCounts.put(word, newTopicIdx, 0);
+    final Integer countNewTopic = changedTopicCounts.get(word, newTopicIdx);
+    if (countNewTopic == null) {
+      changedTopicCounts.put(word, newTopicIdx, delta);
+    } else {
+      changedTopicCounts.put(word, newTopicIdx, countNewTopic + delta);
     }
-    changedTopicCounts.put(word, newTopicIdx, changedTopicCounts.get(word, newTopicIdx) + delta);
   }
 
   /**
