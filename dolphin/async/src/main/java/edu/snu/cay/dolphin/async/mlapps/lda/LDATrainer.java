@@ -42,7 +42,7 @@ import java.util.logging.Logger;
 final class LDATrainer implements Trainer {
 
   private static final Logger LOG = Logger.getLogger(LDATrainer.class.getName());
-  private static final String MSG_FAILED = "Model is not set via ModelAccessor.resetModel()";
+  private static final String MSG_GET_MODEL_FAILED = "Model is not set via ModelAccessor.resetModel()";
 
   private final SparseLDASampler sampler;
   private final LDAStatCalculator statCalculator;
@@ -56,6 +56,15 @@ final class LDATrainer implements Trainer {
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
   private final TrainingDataProvider<Long, Document> trainingDataProvider;
 
+
+  /**
+   * Number of Trainer threads that train concurrently.
+   */
+  private final int numTrainerThreads;
+
+  /**
+   * Allows to access and update the latest model.
+   */
   private final ModelAccessor<LDAModel> modelAccessor;
 
   /**
@@ -79,7 +88,8 @@ final class LDATrainer implements Trainer {
                      final ModelAccessor<LDAModel> modelAccessor,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(NumTopics.class) final int numTopics,
-                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize) {
+                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                     @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads) {
     this.sampler = sampler;
     this.statCalculator = statCalculator;
     this.memoryStore = memoryStore;
@@ -87,6 +97,7 @@ final class LDATrainer implements Trainer {
     this.trainingDataProvider = trainingDataProvider;
     this.numVocabs = numVocabs;
     this.miniBatchSize = miniBatchSize;
+    this.numTrainerThreads = numTrainerThreads;
 
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
@@ -96,7 +107,6 @@ final class LDATrainer implements Trainer {
     this.numTopics = numTopics;
 
     this.modelAccessor = modelAccessor;
-
     this.metricsMsgSender = metricsMsgSender;
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
@@ -105,9 +115,8 @@ final class LDATrainer implements Trainer {
 
   @Override
   public void initialize() {
-    final TopicChanges topicChanges = new TopicChanges();
-
     // In LDA, topic counts should be initialized by pushing values before running.
+    final TopicChanges topicChanges = new TopicChanges();
     final Map<Long, Document> data = memoryStore.getAll();
     for (final Document document : data.values()) {
       for (int i = 0; i < document.size(); i++) {
@@ -119,6 +128,7 @@ final class LDATrainer implements Trainer {
     }
     pushAndResetGradients(topicChanges);
 
+    LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "All random topic assignments are updated");
   }
@@ -177,7 +187,7 @@ final class LDATrainer implements Trainer {
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
     pullModels(vocabList);
-    final LDAModel model = modelAccessor.getModel().orElseThrow(() -> new RuntimeException(MSG_FAILED));
+    final LDAModel model = modelAccessor.getModel().orElseThrow(() -> new RuntimeException(MSG_GET_MODEL_FAILED));
 
     LOG.log(Level.INFO, "Start computing log likelihood");
     final double docLLH = statCalculator.computeDocLLH(totalDocumentsSampled);
@@ -259,8 +269,8 @@ final class LDATrainer implements Trainer {
   }
 
   private List<Integer> getKeys(final Collection<Document> documents) {
-
     computeTracer.startTimer();
+
     final Set<Integer> keys = new TreeSet<>();
     for (final Document document : documents) {
       keys.addAll(document.getWords());
@@ -272,6 +282,7 @@ final class LDATrainer implements Trainer {
     result.add(numVocabs);
 
     computeTracer.recordTime(0);
+
     return result;
   }
 

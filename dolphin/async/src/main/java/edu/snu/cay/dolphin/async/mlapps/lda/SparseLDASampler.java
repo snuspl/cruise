@@ -34,7 +34,7 @@ import java.util.logging.Logger;
  * 15th ACM SIGKDD international conference on Knowledge discovery and data mining, pages 937–946. ACM, 2009.
  */
 final class SparseLDASampler {
-  private static final String MSG_FAILED = "Model is not set via ModelAccessor.resetModel()";
+  private static final String MSG_GET_MODEL_FAILED = "Model is not set via ModelAccessor.resetModel()";
   private static final Logger LOG = Logger.getLogger(SparseLDASampler.class.getName());
 
   private final double alpha;
@@ -52,6 +52,9 @@ final class SparseLDASampler {
    */
   private final int numTrainerThreads;
 
+  /**
+   * Allows to access and update the latest model.
+   */
   private final ModelAccessor<LDAModel> modelAccessor;
 
   @Inject
@@ -80,7 +83,7 @@ final class SparseLDASampler {
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
         final Future<TopicChanges> future = executor.submit(() -> {
           final LDAModel model = modelAccessor.getModel()
-              .orElseThrow(() -> new RuntimeException(MSG_FAILED));
+              .orElseThrow(() -> new RuntimeException(MSG_GET_MODEL_FAILED));
 
           int count = 0;
           while (true) {
@@ -215,8 +218,7 @@ final class SparseLDASampler {
 
       document.addWordAtIndex(wordIndex, newTopic);
 
-
-      // Get Model -> update (T_old => T_new)
+      // Accumulate the changes to TopicChanges
       if (newTopic != oldTopic) {
         final TopicChanges topicChanges = model.getTopicChanges();
         topicChanges.replace(word, oldTopic, newTopic, 1);
