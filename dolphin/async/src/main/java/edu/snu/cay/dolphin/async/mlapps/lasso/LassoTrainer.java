@@ -62,7 +62,14 @@ final class LassoTrainer implements Trainer {
    */
   private final ParameterWorker<Integer, Double, Double> parameterWorker;
 
+  /**
+   * Random object to randomly choose an index of the updating feature.
+   */
   private final Random random;
+
+  /**
+   * Period(iterations) of the printing log of models to check whether the training is working or not.
+   */
   private final int printModelPeriod;
 
   @Inject
@@ -108,12 +115,12 @@ final class LassoTrainer implements Trainer {
     final List<LassoData> totalInstancesProcessed = new LinkedList<>();
 
     Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    List<LassoData> instances = new ArrayList<>(nextTrainingData.values());
 
     /**
      * Model is trained by each mini-batch training data.
      */
     while (!nextTrainingData.isEmpty()) {
+      final List<LassoData> instances = new ArrayList<>(nextTrainingData.values());
       /**
        * Pull the old model which should be trained in this while loop.
        */
@@ -122,6 +129,8 @@ final class LassoTrainer implements Trainer {
       /**
        * Transform the instances from LassoData type to the Vector for each feature.
        * Pre-calculate x2y values before we use it.
+       * vecXArray is a converted form of training data in the feature order.
+       * Save vecXArray[i].dot(vecXArray[j]) values in x2x table for caching.
        */
       final double[] x2y = new double[numFeatures];
       final Table<Integer, Integer, Double> x2x = HashBasedTable.create();
@@ -166,7 +175,6 @@ final class LassoTrainer implements Trainer {
 
       totalInstancesProcessed.addAll(instances);
       nextTrainingData = trainingDataProvider.getNextTrainingData();
-      instances = new ArrayList<>(nextTrainingData.values());
     }
 
     /**
