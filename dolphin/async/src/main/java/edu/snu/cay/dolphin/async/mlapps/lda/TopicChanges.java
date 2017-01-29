@@ -72,7 +72,7 @@ final class TopicChanges implements Copyable<TopicChanges> {
   void replace(final int word, final int oldTopicIdx, final int newTopicIdx, final int delta) {
     final Integer countOldTopic = changedTopicCounts.get(word, oldTopicIdx);
     if (countOldTopic == null) {
-      changedTopicCounts.put(word, oldTopicIdx, - delta);
+      changedTopicCounts.put(word, oldTopicIdx, -delta);
     } else {
       changedTopicCounts.put(word, oldTopicIdx, countOldTopic - delta);
     }
