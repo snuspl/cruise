@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,32 +15,55 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lasso;
 
+import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.Random;
+
+import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.ModelGaussian;
+import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.NumFeaturesPerPartition;
 
 /**
- * {@link ParameterUpdater} for the LassoREEF application.
- * Simply replace old values with new values.
+ * {@link ParameterUpdater} for the LassoCDREEF application.
+ * Simply adds delta vectors to the old vectors stored in this server.
+ * Vectors are initialized with values drawn from the normal distribution.
  */
-final class LassoUpdater implements ParameterUpdater<Integer, Double, Double> {
+final class LassoUpdater implements ParameterUpdater<Integer, Vector, Vector> {
+
+  private final int numFeaturesPerPartition;
+  private final double modelGaussian;
+  private final VectorFactory vectorFactory;
+  private final Random random;
 
   @Inject
-  private LassoUpdater() {
+  private LassoUpdater(@Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
+                       @Parameter(ModelGaussian.class) final double modelGaussian,
+                       final VectorFactory vectorFactory) {
+    this.numFeaturesPerPartition = numFeaturesPerPartition;
+    this.modelGaussian = modelGaussian;
+    this.vectorFactory = vectorFactory;
+    this.random = new Random();
   }
 
   @Override
-  public Double process(final Integer key, final Double preValue) {
+  public Vector process(final Integer key, final Vector preValue) {
     return preValue;
   }
 
   @Override
-  public Double update(final Double oldValue, final Double newValue) {
-    return newValue;
+  public Vector update(final Vector oldValue, final Vector deltaValue) {
+    return oldValue.addi(deltaValue);
   }
 
   @Override
-  public Double initValue(final Integer key) {
-    return 0D;
+  public Vector initValue(final Integer key) {
+    final double[] features = new double[numFeaturesPerPartition];
+    for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
+      features[featureIndex] = random.nextGaussian() * modelGaussian;
+    }
+    return vectorFactory.createDense(features);
   }
 }
