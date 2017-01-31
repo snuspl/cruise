@@ -58,7 +58,7 @@ final class LassoTrainer implements Trainer {
   /**
    * Save vecXArray[i].dot(vecXArray[j]) values in x2x table for caching.
    */
-  final Table<Integer, Integer, Double> x2x = HashBasedTable.create();
+  private final Table<Integer, Integer, Double> x2x = HashBasedTable.create();
 
   private final VectorFactory vectorFactory;
 
@@ -170,6 +170,7 @@ final class LassoTrainer implements Trainer {
 
       totalInstancesProcessed.addAll(instances);
       nextTrainingData = trainingDataProvider.getNextTrainingData();
+      x2x.clear();
     }
 
     // Calculate the loss value.
@@ -181,8 +182,6 @@ final class LassoTrainer implements Trainer {
         LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
     }
-
-    x2x.clear();
   }
 
   @Override
