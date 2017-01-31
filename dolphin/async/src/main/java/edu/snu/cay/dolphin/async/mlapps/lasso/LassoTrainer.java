@@ -17,14 +17,17 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
+import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.dolphin.async.TrainingDataProvider;
+import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Random;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,67 +46,53 @@ import java.util.logging.Logger;
 final class LassoTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
 
-  /**
-   * Array of vectors containing the features of the input data.
-   * Vector {@code j} represents the {@code j}-th feature of all input instances,
-   * not the {@code j}-th instance.
-   * Thus, the {@code i}-th instance can be formed by
-   * concatenating the {@code i}-th elements of each vector.
-   */
-  private final Vector[] vecXArray;
-
-  /**
-   * Vector containing the target values of the input data.
-   * The {@code i}-th element corresponds to the {@code i}-th input instance,
-   * which can be found by concatenating the {@code i}-th element of each Vector in {@code vecXArray}.
-   */
-  private final Vector vecY;
-
-  /**
-   * Regularization constant.
-   */
+  private final int numFeatures;
   private final double lambda;
+  private double stepSize;
+
+  private final TrainingDataProvider<Long, LassoData> trainingDataProvider;
+
+  private final Vector oldModel;
+  private Vector newModel;
 
   /**
-   * The inner product values of each feature vector ({@code vecXArray}) and the target vector ({@code vecY}).
-   * Specifically, {@code x2y[i] := vecXArray[i].dot(vecY)}.
+   * Save vecXArray[i].dot(vecXArray[j]) values in x2x table for caching.
    */
-  private final double[] x2y;
+  private final Table<Integer, Integer, Double> x2x = HashBasedTable.create();
 
-  /**
-   * The inner product values of the feature vectors ({@code vecXArray}).
-   * Specifically, {@code x2x.get(i, j) := vecXArray[i].dot(vecXArray[j])}.
-   * To reduce the size of this table, the smaller index (between {@code i} and {@code j})
-   * should be used as the row key and the bigger index as the column key.
-   *
-   * The reason for using a table and not a 2-D array is because there are cases where
-   * we never use the inner product of {@code x2y[i]} and {@code x2y[j]}, and thus
-   * allocating a double value for those cases would be a waste of space.
-   */
-  private final Table<Integer, Integer, Double> x2x;
-
-  /**
-   * Random number generator.
-   */
-  private final Random random;
+  private final VectorFactory vectorFactory;
 
   /**
    * ParameterWorker object for interacting with the parameter server.
    */
   private final ParameterWorker<Integer, Double, Double> parameterWorker;
 
+  /**
+   * Random object to randomly choose an index of the updating feature.
+   */
+  private final Random random;
+
+  /**
+   * Period(iterations) of the printing log of models to check whether the training is working or not.
+   */
+  private final int printModelPeriod;
+
   @Inject
-  private LassoTrainer(final LassoParser lassoParser,
-                       @Parameter(LassoREEF.Lambda.class) final double lambda,
-                       final ParameterWorker<Integer, Double, Double> parameterWorker) {
-    final Pair<Vector[], Vector> pair = lassoParser.parse();
-    this.vecXArray = pair.getFirst();
-    this.vecY = pair.getSecond();
-    this.lambda = lambda;
-    this.x2y = new double[vecXArray.length];
-    this.x2x = HashBasedTable.create();
-    this.random = new Random();
+  private LassoTrainer(final ParameterWorker<Integer, Double, Double> parameterWorker,
+                       @Parameter(Lambda.class) final double lambda,
+                       @Parameter(NumFeatures.class) final int numFeatures,
+                       @Parameter(StepSize.class) final double stepSize,
+                       final TrainingDataProvider<Long, LassoData> trainingDataProvider,
+                       final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
+    this.numFeatures = numFeatures;
+    this.lambda = lambda;
+    this.stepSize = stepSize;
+    this.trainingDataProvider = trainingDataProvider;
+    this.vectorFactory = vectorFactory;
+    this.random = new Random();
+    this.printModelPeriod = 50;
+    this.oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
   /**
@@ -114,99 +103,164 @@ final class LassoTrainer implements Trainer {
    */
   @Override
   public void initialize() {
-
-    // TODO #396: We could skip feature scaling, since
-    // it might negatively affect the algorithm for distributed environments.
-    for (final Vector vecX : vecXArray) {
-      standardize(vecX);
-    }
-    standardize(vecY);
-
-    for (int index = 0; index < vecXArray.length; index++) {
-      x2y[index] = vecXArray[index].dot(vecY);
-    }
   }
 
   /**
    * {@inheritDoc} <br>
    * 1) Pull model from server. <br>
    * 2) Pick dimension to update. <br>
-   * 3) Compute the optimal value, (dot(x_i, y) - Sigma_{i != j} (x_i, x_j) * model(j)) / N, where
-   *   N equals the number of instances, i.e. the length of y. <br>
-   * - When computing the optimal value, only compute (x_i, x_j) * model(j) if model(j) != 0, for performance. <br>
-   * - Reuse (x_i, x_j) when possible, from {@code x2x}. <br>
+   * 3) Compute the optimal value, (dot(x_i, y) - Sigma_{i != j} (x_i, x_j) * model(j)) / dot(x_i, x_i), where
+   *   When computing the optimal value, only compute (x_i, x_j) * model(j) if model(j) != 0, for performance. <br>
+   *   Reuse (x_i, x_j) when possible, from {@code x2x}. <br>
    * 4) Push value to server.
    */
   @Override
   public void run(final int iteration) {
-    final double[] vecModel = new double[vecXArray.length];
-    for (int index = 0; index < vecModel.length; index++) {
-      vecModel[index] = parameterWorker.pull(index);
-    }
+    final List<LassoData> totalInstancesProcessed = new LinkedList<>();
+    Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
 
-    final int index = random.nextInt(vecModel.length);
-    double dotValue = x2y[index];
-    for (int modelIndex = 0; modelIndex < vecModel.length; modelIndex++) {
-      if (vecModel[modelIndex] == 0 || index == modelIndex) {
-        continue;
+    // Model is trained by each mini-batch training data.
+    while (!nextTrainingData.isEmpty()) {
+      final List<LassoData> instances = new ArrayList<>(nextTrainingData.values());
+
+      // Pull the old model which should be trained in this while loop.
+      pullModels();
+
+      /*
+       * Transform the instances from LassoData type to the Vector for each feature.
+       * Pre-calculate x2y values before we use it.
+       * vecXArray is a converted form of training data in the feature order.
+       */
+      final double[] x2y = new double[numFeatures];
+      final int index = random.nextInt(numFeatures);
+
+      final Pair<Vector[], Vector> convertedData = convertDataInFeatureOrder(instances);
+      final Vector[] vecXArray = convertedData.getFirst();
+      final Vector vecY = convertedData.getSecond();
+
+      for (int i = 0; i < vecXArray.length; i++) {
+        x2y[i] = vecXArray[i].dot(vecY);
       }
 
-      final int min = Math.min(index, modelIndex);
-      final int max = Math.max(index, modelIndex);
-      if (!x2x.contains(min, max)) {
-        x2x.put(min, max, vecXArray[index].dot(vecXArray[modelIndex]));
+
+      // Calculate dotValue(new model[index] value) which will be updated in this mini-batch.
+      double dotValue = x2y[index];
+      for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
+        if (newModel.get(modelIndex) == 0 || index == modelIndex) {
+          continue;
+        }
+
+        final int min = Math.min(index, modelIndex);
+        final int max = Math.max(index, modelIndex);
+        if (!x2x.contains(min, max)) {
+          x2x.put(min, max, vecXArray[index].dot(vecXArray[modelIndex]));
+        }
+
+        dotValue -= x2x.get(min, max) * newModel.get(modelIndex);
+      }
+      if (!x2x.contains(index, index)) {
+        x2x.put(index, index, vecXArray[index].dot(vecXArray[index]));
       }
 
-      dotValue -= x2x.get(min, max) * vecModel[modelIndex];
+      dotValue /= x2x.get(index, index);
+      newModel.set(index, sthresh(dotValue, lambda, x2x.get(index, index)));
+
+      // Push the new model to the server.
+      pushAndResetGradients();
+
+      totalInstancesProcessed.addAll(instances);
+      nextTrainingData = trainingDataProvider.getNextTrainingData();
+      x2x.clear();
     }
 
-    dotValue /= vecY.length();
-    parameterWorker.push(index, sthresh(dotValue, lambda));
+    // Calculate the loss value.
+    pullModels();
+    final double loss = computeLoss(totalInstancesProcessed);
+    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
+    if ((iteration + 1) % printModelPeriod == 0) {
+      for (int i = 0; i < numFeatures; i++) {
+        LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
+      }
+    }
+  }
+
+  @Override
+  public void cleanup() {
   }
 
   /**
-   * {@inheritDoc}
-   * Pull and log the whole model.
+   * Pull up-to-date model parameters from server.
    */
-  @Override
-  public void cleanup() {
-    final double[] vecModel = new double[vecXArray.length];
-    for (int index = 0; index < vecModel.length; index++) {
-      vecModel[index] = parameterWorker.pull(index);
-      if (vecModel[index] != 0) {
-        LOG.log(Level.INFO, "Index {0}: value {1}", new Object[]{index, vecModel[index]});
+  private void pullModels() {
+    for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
+      oldModel.set(modelIndex, parameterWorker.pull(modelIndex));
+    }
+    newModel = oldModel.copy();
+  }
+
+  /**
+   * Convert data from data order to feature order.
+   */
+  private Pair<Vector[], Vector> convertDataInFeatureOrder(final List<LassoData> instances) {
+    final Vector[] vecXArray = new Vector[numFeatures];
+    for (int i = 0; i < numFeatures; i++) {
+      vecXArray[i] = vectorFactory.createDenseZeros(instances.size());
+    }
+    final Vector vecY = vectorFactory.createDenseZeros(instances.size());
+    for (int i = 0; i < instances.size(); i++) {
+      final Vector feature = instances.get(i).getFeature();
+      final double value = instances.get(i).getValue();
+      for (int j = 0; j < numFeatures; j++) {
+        vecXArray[j].set(i, feature.get(j));
       }
+      vecY.set(i, value);
+    }
+    return new Pair<>(vecXArray, vecY);
+  }
+
+  /**
+   * Push the gradients to parameter server.
+   */
+  private void pushAndResetGradients() {
+    final Vector gradient = newModel.sub(oldModel);
+    for (int modelIndex = 0; modelIndex < numFeatures; ++modelIndex) {
+      parameterWorker.push(modelIndex, stepSize * gradient.get(modelIndex));
     }
   }
 
   /**
    * Soft thresholding function, widely used with l1 regularization.
    */
-  private static double sthresh(final double x, final double lambda) {
-    if (Math.abs(x) <= lambda) {
+  private static double sthresh(final double x, final double lambda, final double columnNorm) {
+    if (Math.abs(x) <= lambda / columnNorm) {
       return 0;
     } else if (x >= 0) {
-      return x - lambda;
+      return x - lambda / columnNorm;
     } else {
-      return x + lambda;
+      return x + lambda / columnNorm;
     }
   }
 
-  /**
-   * Standardize vector {@code v} to have a mean of zero and a variation of one.
-   */
-  private static void standardize(final Vector v) {
-    double sum = 0;
-    for (int i = 0; i < v.length(); i++) {
-      sum += v.get(i);
-    }
-    final double mean = sum / v.length();
-    v.subi(mean);
+  private double predict(final Vector feature) {
+    return newModel.dot(feature);
+  }
 
-    double sqrsum = 0;
-    for (int i = 0; i < v.length(); i++) {
-      sqrsum += v.get(i) * v.get(i);
+  private double computeLoss(final List<LassoData> data) {
+    double squaredErrorSum = 0;
+    double reg = 0;
+
+    for (final LassoData entry : data) {
+      final Vector feature = entry.getFeature();
+      final double value = entry.getValue();
+      final double prediction = predict(feature);
+      squaredErrorSum += (value - prediction) * (value - prediction);
     }
-    v.scalei(Math.sqrt(v.length() / sqrsum));
+
+    for (int i = 0; i < numFeatures; ++i) {
+      reg += newModel.get(i);
+    }
+
+    final double loss = 1.0 / (2 * data.size()) * squaredErrorSum + lambda * reg;
+    return loss;
   }
 }

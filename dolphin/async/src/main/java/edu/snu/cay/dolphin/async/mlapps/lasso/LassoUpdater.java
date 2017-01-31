@@ -16,17 +16,27 @@
 package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.Random;
+
+import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.ModelGaussian;
 
 /**
  * {@link ParameterUpdater} for the LassoREEF application.
- * Simply replace old values with new values.
+ * Simply adds delta vectors to the old vectors stored in this server.
+ * Vectors are initialized with values drawn from the normal distribution.
  */
 final class LassoUpdater implements ParameterUpdater<Integer, Double, Double> {
 
+  private final double modelGaussian;
+  private final Random random;
+
   @Inject
-  private LassoUpdater() {
+  private LassoUpdater(@Parameter(ModelGaussian.class) final double modelGaussian) {
+    this.modelGaussian = modelGaussian;
+    this.random = new Random();
   }
 
   @Override
@@ -35,12 +45,12 @@ final class LassoUpdater implements ParameterUpdater<Integer, Double, Double> {
   }
 
   @Override
-  public Double update(final Double oldValue, final Double newValue) {
-    return newValue;
+  public Double update(final Double oldValue, final Double deltaValue) {
+    return oldValue + deltaValue;
   }
 
   @Override
   public Double initValue(final Integer key) {
-    return 0D;
+    return random.nextGaussian() * modelGaussian;
   }
 }
