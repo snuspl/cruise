@@ -43,7 +43,7 @@ public final class TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
 
   @GuardedBy("this")
-  private final List<K> trainingDataKeys = new LinkedList<>();
+  private List<K> trainingDataKeys = new LinkedList<>();
 
   private final int miniBatchSize;
 
@@ -101,9 +101,10 @@ public final class TrainingDataProvider<K, V> {
         return Collections.emptyMap();
       }
 
-      nextTrainingDataKeyList = new ArrayList<>(
-          trainingDataKeys.subList(0, Math.min(miniBatchSize, trainingDataKeys.size())));
-      trainingDataKeys.removeAll(nextTrainingDataKeyList);
+      final int numRemainingKeys = trainingDataKeys.size();
+      final int nextBatchSize = Math.min(miniBatchSize, numRemainingKeys);
+      nextTrainingDataKeyList = new ArrayList<>(trainingDataKeys.subList(0, nextBatchSize));
+      trainingDataKeys = trainingDataKeys.subList(nextBatchSize, numRemainingKeys);
     }
 
     final Map<K, V> nextTrainingData = new HashMap<>();
