@@ -25,12 +25,12 @@ import org.apache.reef.tang.Configuration;
  */
 @DriverSide
 final class AllocatedExecutorImpl implements AllocatedExecutor {
-  private final ActiveContext rootContext;
+  private final ActiveContext etContext;
   private final String identifier;
 
-  AllocatedExecutorImpl(final ActiveContext rootContext) {
-    this.rootContext = rootContext;
-    this.identifier = rootContext.getEvaluatorId();
+  AllocatedExecutorImpl(final ActiveContext etContext) {
+    this.etContext = etContext;
+    this.identifier = etContext.getEvaluatorId();
   }
 
   @Override
@@ -40,14 +40,14 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
 
   @Override
   public void submitTask(final Configuration taskConf) {
-    rootContext.submitTask(taskConf);
+    etContext.submitTask(taskConf);
   }
 
   @Override
   public void close() {
 
-    // simply close the context, which is a root context of evaluator.
+    // simply close the et context, which is a root context of evaluator.
     // so evaluator(==executor) will be released
-    rootContext.close();
+    etContext.close();
   }
 }

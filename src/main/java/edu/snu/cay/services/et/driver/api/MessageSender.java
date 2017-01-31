@@ -17,7 +17,9 @@ package edu.snu.cay.services.et.driver.api;
 
 import edu.snu.cay.common.dataloader.HdfsSplitInfo;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.driver.impl.MessageSenderImpl;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +28,7 @@ import java.util.Optional;
  * Interface for master to send messages to executors.
  */
 @DriverSide
+@DefaultImplementation(MessageSenderImpl.class)
 public interface MessageSender {
 
   /**

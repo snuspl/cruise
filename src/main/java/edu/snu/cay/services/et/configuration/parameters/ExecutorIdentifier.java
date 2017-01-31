@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,6 @@ package edu.snu.cay.services.et.configuration.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Input path of file to be loaded into a table." +
-    " If EMPTY has been configured, the table will be initialized without file loading")
-public final class FilePath implements Name<String> {
-  public static final String EMPTY = "";
-
-  // should not be instantiated
-  private FilePath() {
-  }
+@NamedParameter(doc = "Identifier of Executor.")
+public final class ExecutorIdentifier implements Name<String> {
 }

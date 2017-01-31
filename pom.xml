@@ -90,6 +90,17 @@
       <version>${reef.version}</version>
     </dependency>
     <!-- End of REEF -->
+    <!-- HADOOP -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!-- End of HADOOP -->
     <!-- CAY -->
     <dependency>
       <groupId>edu.snu.cay.services</groupId>

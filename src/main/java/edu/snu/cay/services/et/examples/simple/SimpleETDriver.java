@@ -39,6 +39,7 @@ import java.util.List;
 @Unit
 final class SimpleETDriver {
   private static final String TASK_ID = "Simple-task";
+  static final String TABLE_ID = "Table";
 
   private static final int NUM_EXECUTORS = 1;
   private static final ResourceConfiguration RES_CONF = ResourceConfiguration.newBuilder()
@@ -47,11 +48,12 @@ final class SimpleETDriver {
       .build();
 
   private static final TableConfiguration TABLE_CONF = TableConfiguration.newBuilder()
-      .setId("table")
+      .setId(TABLE_ID)
       .setKeyCodecClass(SerializableCodec.class)
       .setValueCodecClass(SerializableCodec.class)
       .setUpdateFunctionClass(VoidUpdateFunction.class)
       .setPartitionFunctionClass(HashPartitionFunction.class)
+      .setFilePath(ClassLoader.getSystemResource("data").getPath() + "/empty_file")
       .build();
 
   private static final Configuration TASK_CONF = TaskConfiguration.CONF
@@ -81,7 +83,7 @@ final class SimpleETDriver {
       }
 
       final List<AllocatedExecutor> executors1 = etMaster.addExecutors(NUM_EXECUTORS, RES_CONF);
-      table.subscribe(executors0).subscribe(executors1);
+      table.subscribe(executors1);
 
       for (final AllocatedExecutor executor : executors0) {
         executor.submitTask(TASK_CONF);

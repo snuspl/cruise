@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.common.impl;
 
+import edu.snu.cay.services.et.avro.ETMsg;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.remote.transport.LinkListener;
@@ -25,10 +26,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Network event handler implementation.
+ * Network link listener implementation.
  */
 @Private
-final class NetworkLinkListener implements LinkListener<Message<String>> {
+final class NetworkLinkListener implements LinkListener<Message<ETMsg>> {
   private static final Logger LOG = Logger.getLogger(NetworkLinkListener.class.getName());
 
   @Inject
@@ -36,16 +37,16 @@ final class NetworkLinkListener implements LinkListener<Message<String>> {
   }
 
   @Override
-  public void onSuccess(final Message<String> stringMessage) {
-    for (final String msg : stringMessage.getData()) {
+  public void onSuccess(final Message<ETMsg> stringMessage) {
+    for (final ETMsg msg : stringMessage.getData()) {
       LOG.log(Level.INFO, "Success on sending message: {0}", msg);
     }
   }
 
   @Override
   public void onException(final Throwable throwable, final SocketAddress socketAddress,
-                          final Message<String> stringMessage) {
-    for (final String msg : stringMessage.getData()) {
+                          final Message<ETMsg> stringMessage) {
+    for (final ETMsg msg : stringMessage.getData()) {
       LOG.log(Level.WARNING, "Failure on sending message: " + msg + " to SockAddr: " + socketAddress, throwable);
     }
   }

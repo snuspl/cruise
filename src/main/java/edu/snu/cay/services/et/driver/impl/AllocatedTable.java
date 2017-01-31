@@ -57,8 +57,7 @@ public final class AllocatedTable {
       migrationManager.registerSubscription(tableConf.getId(), executor.getId());
       executorIdSet.add(executor.getId());
     }
-    tableInitializer.initTableInSubscribers(tableConf, executorIdSet,
-        tabletManager.getBlockLocations());
+    tableInitializer.initTable(tableConf, executorIdSet, tabletManager.getOwnershipStatus(), false);
     return this;
   }
 
@@ -72,8 +71,9 @@ public final class AllocatedTable {
     for (final AllocatedExecutor executor : executors) {
       tabletManager.addTablet(executor.getId());
     }
-    tableInitializer.initTableInAssociators(tableConf, executorIdSet,
-        tabletManager.getExecutorIdToBlockIdSet());
+
+    tableInitializer.initTable(tableConf, executorIdSet, tabletManager.getOwnershipStatus(), true);
+
     return this;
   }
 

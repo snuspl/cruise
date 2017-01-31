@@ -19,7 +19,9 @@ import edu.snu.cay.services.et.avro.AccessType;
 import edu.snu.cay.services.et.avro.DataKey;
 import edu.snu.cay.services.et.avro.DataValue;
 import edu.snu.cay.services.et.avro.KVPair;
+import edu.snu.cay.services.et.evaluator.impl.MessageSenderImpl;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.List;
 
@@ -27,6 +29,7 @@ import java.util.List;
  * Interface for executors to send messages to the master and other executors.
  */
 @EvaluatorSide
+@DefaultImplementation(MessageSenderImpl.class)
 public interface MessageSender {
 
   /**

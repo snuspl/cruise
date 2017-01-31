@@ -133,6 +133,7 @@ final class ExecutorManager {
           .set(ContextConfiguration.IDENTIFIER, CONTEXT_PREFIX + contextIdCounter.getAndIncrement())
           .build();
       final Configuration executorConfiguration = ExecutorConfiguration.CONF
+          .set(ExecutorConfiguration.IDENTIFIER, allocatedEvaluator.getId()) // use evaluatorId as executorId
           .set(ExecutorConfiguration.NAME_SERVICE_HOST, localAddressProvider.getLocalAddress())
           .set(ExecutorConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
           .set(ExecutorConfiguration.IDENTIFIER_FACTORY, identifierFactory.getClass())

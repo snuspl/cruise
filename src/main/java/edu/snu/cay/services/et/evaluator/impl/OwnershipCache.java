@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.configuration.parameters;
+package edu.snu.cay.services.et.evaluator.impl;
 
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
+import javax.inject.Inject;
+import java.util.List;
 
-@NamedParameter(doc = "Input path of file to be loaded into a table." +
-    " If EMPTY has been configured, the table will be initialized without file loading")
-public final class FilePath implements Name<String> {
-  public static final String EMPTY = "";
+/**
+ * A class that maintains cache of ownership within a table.
+ * TODO #8: Implement OwnerhsipCache
+ */
+public final class OwnershipCache {
 
-  // should not be instantiated
-  private FilePath() {
+  @Inject
+  private OwnershipCache() {
+
+  }
+
+  void init(final List<String> blockOwnerList, final int revision) {
+
   }
 }

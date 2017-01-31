@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
 
@@ -65,18 +66,11 @@ final class TabletManager {
   }
 
   /**
-   * @return a map contains a set of allocated blocks per associated executors
-   */
-  synchronized Map<String, Set<Long>> getExecutorIdToBlockIdSet() {
-    return Collections.emptyMap();
-  }
-
-  /**
    * Returns the current locations of Blocks.
-   * @return a list of executor ids, whose index is an block id.
+   * @return a pair of revision number and a list of executor ids, whose index is an block id.
    */
-  synchronized List<String> getBlockLocations() {
-    return Collections.emptyList();
+  synchronized Pair<Integer, List<String>> getOwnershipStatus() {
+    return Pair.of(0, Collections.emptyList());
   }
 
   /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,29 +15,29 @@
  */
 package edu.snu.cay.services.et.common.impl;
 
-import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.io.network.Message;
-import org.apache.reef.wake.EventHandler;
+import edu.snu.cay.services.et.avro.ETMsg;
+import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
- * Network event handler implementation.
+ * Codec for ETMsgs.
+ * Simply uses AvroUtils to encode and decode messages.
  */
-@Private
-final class NetworkEventHandler implements EventHandler<Message<String>> {
-  private static final Logger LOG = Logger.getLogger(NetworkEventHandler.class.getName());
+public final class ETMsgCodec implements Codec<ETMsg> {
 
   @Inject
-  private NetworkEventHandler() {
+  private ETMsgCodec() {
   }
 
   @Override
-  public void onNext(final Message<String> stringMessage) {
-    for (final String s : stringMessage.getData()) {
-      LOG.log(Level.INFO, "Got message: {0}", s);
-    }
+  public byte[] encode(final ETMsg msg) {
+    return AvroUtils.toBytes(msg, ETMsg.class);
+  }
+
+  @Override
+  public ETMsg decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, ETMsg.class);
   }
 }

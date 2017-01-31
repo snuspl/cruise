@@ -40,7 +40,6 @@ public final class TaskCompletedHandler implements EventHandler<CompletedTask> {
 
   @Override
   public void onNext(final CompletedTask completedTask) {
-
     final String executorId = completedTask.getActiveContext().getEvaluatorId();
     LOG.log(Level.INFO, "Task completed in executor {0}", executorId);
 

@@ -15,98 +15,94 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.common.dataloader.HdfsSplitInfo;
+import edu.snu.cay.common.dataloader.HdfsSplitManager;
+import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.driver.api.MessageSender;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * A table initializer class that initializes table at executors in different ways corresponding to their roles:
- * associators, subscribers, executors with no-relationship.
- * 1) {@link #initTableInAssociators} : It initializes a table in associators with information of allocated blocks
- *   and src file, if it exists. Dynamically associated executors do not have any blocks.
- * 2) {@link #initTableInSubscribers}: Table in subscriber executors are initialized by receiving
- *   up-to-date global ownership info that will be cached and updated automatically.
- * 3) {@link #initVoidTable}: Our system provides a way (lookup) for executors to access a table,
- *   even they are not associator nor subscriber. This method initializes a table in those executors
- *   that have no assigned blocks and do not need global ownership table.
- *
- * For all types of executors, initialization info includes basic immutable table configurations
- * (e.g., key/value codec, partition function, num total blocks).
- *
- * TODO #10: implement TableInitializer
+ * A table initializer class that initializes table at executors.
+ * Initialization info includes basic immutable table configurations
+ * (e.g., key/value codec, partition function, num total blocks) and mutable ownership status.
  */
 @DriverSide
 final class TableInitializer {
+  private static final Logger LOG = Logger.getLogger(TableInitializer.class.getName());
+
+  private final MessageSender msgSender;
+
+  private final Map<String, CountDownLatch> pendingInit = new ConcurrentHashMap<>();
 
   @Inject
-  private TableInitializer() {
+  private TableInitializer(final MessageSender msgSender) {
+    this.msgSender = msgSender;
   }
 
   /**
-   * Initializes a table for associated executors by providing each allocated blocks.
+   * Initializes a table in executors by providing table metadata.
+   * For initial associators of a table, setting {@code loadFile} as true will load a file into executors
+   * by assigning a split for each executor.
    * It's a blocking call so that waits until all executors setup corresponding tablets.
    * @param tableConf a configuration of table
    * @param executorIdSet a set of executor ids
-   * @param executorIdToBlockIdSet allocated block id set for executors
+   * @param ownershipStatus a pair of revision number and a list of owner of each block
+   * @param loadFile a boolean indicating whether to load a file whose path is specified in tableConf
    */
-  void initTableInAssociators(final TableConfiguration tableConf,
-                              final Set<String> executorIdSet,
-                              final Map<String, Set<Long>> executorIdToBlockIdSet) {
-    // final Map<String, InputSplit> executorIdToInputSplit;
-    if (tableConf.getFilePath().isPresent()) { // if FilePath has been configured
-      // obtain InputSplits using hdfs library and assign it to executors
-      // and then bind InputFormat impl and bind a serialized InputSplit for each executor
+  void initTable(final TableConfiguration tableConf,
+                 final Set<String> executorIdSet,
+                 final Pair<Integer, List<String>> ownershipStatus,
+                 final boolean loadFile) {
+    LOG.log(Level.INFO, "Initialize table {0} in executors: {1}", new Object[]{tableConf.getId(), executorIdSet});
 
-      // executorIdToInputSplit = ;
+    final Iterator<HdfsSplitInfo> splitIterator;
+
+    if (loadFile && tableConf.getFilePath().isPresent()) {
+      final String filePath = tableConf.getFilePath().get();
+
+      // let's assume that tables always use this TextInputFormat class
+      final HdfsSplitInfo[] fileSplits = HdfsSplitManager.getSplits(filePath,
+          TextInputFormat.class.getName(), executorIdSet.size());
+
+      splitIterator = Arrays.asList(fileSplits).iterator();
+    } else {
+      splitIterator = Collections.emptyIterator();
     }
 
-    for (final String executorId : executorIdSet) {
-      final Set<Long> localBlockSet = executorIdToBlockIdSet.get(executorId);
-      if (localBlockSet != null) {
-        //final InputSplit localSplit = executorIdToInputSplit.get(executorId);
+    final CountDownLatch initLatch = new CountDownLatch(executorIdSet.size());
+    pendingInit.put(tableConf.getId(), initLatch);
 
-//        if (localSplit != null) {
-//          // send init msg (tableConf + fileInfo + localBlockSet)
-//        } else {
-//          // send init msg (tableConf + localBlockSet)
-//        }
-      } else {
+    executorIdSet.forEach(executorId ->
+        msgSender.sendTableInitMsg(executorId, tableConf, ownershipStatus.getRight(), ownershipStatus.getLeft(),
+            splitIterator.hasNext() ? Optional.of(splitIterator.next()) : Optional.empty()));
 
-        // send init msg (tableConf) and wait until all tablets are initialized
-      }
+    try {
+      initLatch.await();
+    } catch (final InterruptedException e) {
+      throw new RuntimeException("Interrupted while waiting for table to be initialized.", e);
     }
-
-    // wait until all table partitions are initialized
   }
 
   /**
-   * Initializes a table for subscribers by providing global ownership information.
-   * @param tableConf a configuration of table
-   * @param executorIdSet a set of executor ids
+   * Marks that a table initialization started by {@link #initTable} has been done in an executor.
+   * @param tableId a table id
+   * @param executorId an executor id
    */
-  void initTableInSubscribers(final TableConfiguration tableConf,
-                              final Set<String> executorIdSet,
-                              final List<String> blockLocations) {
-    // TODO #19: implement subscription mechanism
-    for (final String executorId : executorIdSet) {
-      // send table init (tableConf + blockLocations) msg to executors
+  synchronized void onTableInitAck(final String tableId, final String executorId) {
+    LOG.log(Level.INFO, "Table {0} in executor {1} is initialized.", new Object[]{tableId, executorId});
+    final CountDownLatch initLatch = pendingInit.get(tableId);
+    if (initLatch == null || initLatch.getCount() == 0) {
+      throw new RuntimeException("There's no ongoing init for table. tableId: " + tableId);
     }
-
-    // subscribers should be registered into MigrationManager so as to retrieve up-to-date ownership info
-  }
-
-  /**
-   * Initializes the table info in a executor that is not associator nor subscriber.
-   * It is for the case when that kind of executors try to access the table first time.
-   * @param tableConf
-   */
-  void initVoidTable(final TableConfiguration tableConf,
-                     final String executorId) {
-
-    // send init msg (tableConf) and wait response
+    initLatch.countDown();
   }
 }

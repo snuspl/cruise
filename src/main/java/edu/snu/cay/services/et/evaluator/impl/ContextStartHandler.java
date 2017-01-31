@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.avro.ETMsg;
 import edu.snu.cay.services.et.common.api.NetworkConnection;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
@@ -22,8 +23,6 @@ import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.runtime.common.evaluator.parameters.EvaluatorIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.Identifier;
-import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 
@@ -33,19 +32,18 @@ import javax.inject.Inject;
 @Private
 @EvaluatorSide
 public final class ContextStartHandler implements EventHandler<ContextStart> {
-  private final NetworkConnection networkConnection;
-  private final Identifier evaluatorIdentifier;
+  private final NetworkConnection<ETMsg> networkConnection;
+  private final String evaluatorId;
 
   @Inject
-  private ContextStartHandler(final NetworkConnection networkConnection,
-                              final IdentifierFactory identifierFactory,
-                              @Parameter(EvaluatorIdentifier.class) final String evaluatorIdentifier) {
+  private ContextStartHandler(final NetworkConnection<ETMsg> networkConnection,
+                              @Parameter(EvaluatorIdentifier.class) final String evaluatorId) {
     this.networkConnection = networkConnection;
-    this.evaluatorIdentifier = identifierFactory.getNewInstance(evaluatorIdentifier);
+    this.evaluatorId = evaluatorId;
   }
 
   @Override
   public void onNext(final ContextStart contextStart) {
-    networkConnection.setup(evaluatorIdentifier);
+    networkConnection.setup(evaluatorId);
   }
 }

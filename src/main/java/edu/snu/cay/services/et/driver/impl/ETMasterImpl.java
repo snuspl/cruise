@@ -24,7 +24,6 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -41,11 +40,10 @@ public final class ETMasterImpl implements ETMaster {
   private ETMasterImpl(final ExecutorManager executorManager,
                        final TableManager tableManager,
                        final NetworkConnection networkConnection,
-                       final IdentifierFactory idFactory,
                        @Parameter(DriverIdentifier.class) final String driverId) {
     this.executorManager = executorManager;
     this.tableManager = tableManager;
-    networkConnection.setup(idFactory.getNewInstance(driverId));
+    networkConnection.setup(driverId);
   }
 
   @Override

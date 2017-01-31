@@ -15,12 +15,16 @@
  */
 package edu.snu.cay.services.et.evaluator.api;
 
+import edu.snu.cay.services.et.evaluator.impl.TableImpl;
+import org.apache.reef.tang.annotations.DefaultImplementation;
+
 /**
  * Abstraction for access to collection of key-value pairs.
  *
  * @param <K> type of the key for this table.
  * @param <V> type of the value for this table.
  */
+@DefaultImplementation(TableImpl.class)
 public interface Table<K, V> {
   /**
    * Associates the specified value with the specified key.

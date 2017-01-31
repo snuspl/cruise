@@ -15,9 +15,11 @@
  */
 package edu.snu.cay.services.et.configuration;
 
+import edu.snu.cay.services.et.common.api.MessageHandler;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.driver.impl.ContextActiveHandler;
 import edu.snu.cay.services.et.driver.impl.EvaluatorAllocatedHandler;
+import edu.snu.cay.services.et.driver.impl.MessageHandlerImpl;
 import edu.snu.cay.services.et.driver.impl.TaskCompletedHandler;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -25,10 +27,7 @@ import org.apache.reef.driver.parameters.ContextActiveHandlers;
 import org.apache.reef.driver.parameters.EvaluatorAllocatedHandlers;
 import org.apache.reef.driver.parameters.TaskCompletedHandlers;
 import org.apache.reef.driver.task.CompletedTask;
-import org.apache.reef.tang.formats.ConfigurationModule;
-import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
-import org.apache.reef.tang.formats.OptionalParameter;
-import org.apache.reef.tang.formats.RequiredImpl;
+import org.apache.reef.tang.formats.*;
 import org.apache.reef.wake.EventHandler;
 
 /**
@@ -44,6 +43,7 @@ public final class ETDriverConfiguration extends ConfigurationModuleBuilder {
       .bindSetEntry(EvaluatorAllocatedHandlers.class, ON_EVALUATOR_ALLOCATED)
       .bindSetEntry(ContextActiveHandlers.class, ON_CONTEXT_ACTIVE)
       .bindSetEntry(TaskCompletedHandlers.class, ON_TASK_COMPLETED)
+      .bindImplementation(MessageHandler.class, MessageHandlerImpl.class)
       .bindNamedParameter(ETIdentifier.class, ET_IDENTIFIER)
       .build()
       .set(ON_EVALUATOR_ALLOCATED, EvaluatorAllocatedHandler.class)

@@ -15,7 +15,10 @@
  */
 package edu.snu.cay.services.et.configuration;
 
+import edu.snu.cay.services.et.common.api.MessageHandler;
+import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.impl.ContextStartHandler;
+import edu.snu.cay.services.et.evaluator.impl.MessageHandlerImpl;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.evaluator.context.events.ContextStart;
@@ -34,6 +37,9 @@ import org.apache.reef.wake.IdentifierFactory;
  */
 @Private
 public final class ExecutorConfiguration extends ConfigurationModuleBuilder {
+
+  public static final RequiredParameter<String> IDENTIFIER = new RequiredParameter<>();
+
   /**
    * Parameters required for NameResolverConfiguration.
    */
@@ -55,9 +61,11 @@ public final class ExecutorConfiguration extends ConfigurationModuleBuilder {
    * ConfigurationModule.
    */
   public static final ConfigurationModule CONF = new ExecutorConfiguration()
+      .bindNamedParameter(ExecutorIdentifier.class, IDENTIFIER)
       .bindNamedParameter(NameResolverNameServerAddr.class, NAME_SERVICE_HOST)
       .bindNamedParameter(NameResolverNameServerPort.class, NAME_SERVICE_PORT)
       .bindImplementation(IdentifierFactory.class, IDENTIFIER_FACTORY)
+      .bindImplementation(MessageHandler.class, MessageHandlerImpl.class)
       .bindNamedParameter(DriverIdentifier.class, DRIVER_IDENTIFIER)
       .bindSetEntry(ContextStartHandlers.class, ON_CONTEXT_STARTED)
       .build()

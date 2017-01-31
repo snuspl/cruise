@@ -15,17 +15,18 @@
  */
 package edu.snu.cay.services.et.examples.simple;
 
-import edu.snu.cay.services.et.common.api.NetworkConnection;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
-import org.apache.reef.driver.parameters.DriverIdentifier;
+import edu.snu.cay.services.et.evaluator.api.Table;
+import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.impl.LocalKeyGenerator;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
-import org.apache.reef.wake.Identifier;
-import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.TABLE_ID;
 
 /**
  * Task code for simple example.
@@ -34,23 +35,23 @@ final class SimpleETTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleETTask.class.getName());
 
   private final String elasticTableId;
-  private final Identifier driverId;
-  private final NetworkConnection networkConnection;
+
+  private final TableAccessor tableAccessor;
 
   @Inject
   private SimpleETTask(@Parameter(ETIdentifier.class) final String elasticTableId,
-                       @Parameter(DriverIdentifier.class) final String driverIdStr,
-                       final IdentifierFactory idFactory,
-                       final NetworkConnection networkConnection) {
+                       final TableAccessor tableAccessor) {
     this.elasticTableId = elasticTableId;
-    this.driverId = idFactory.getNewInstance(driverIdStr);
-    this.networkConnection = networkConnection;
+    this.tableAccessor = tableAccessor;
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Hello, {0}!", elasticTableId);
-    networkConnection.send(driverId, "Hello driver!");
+    final Table<Long, String> table = tableAccessor.get(TABLE_ID);
+
+    // TODO #27: Need to provide a way to access locally assigned keys
+    LOG.log(Level.INFO, "value in a table: {0}", table.get(LocalKeyGenerator.SAMPLE_KEY));
     return null;
   }
 }

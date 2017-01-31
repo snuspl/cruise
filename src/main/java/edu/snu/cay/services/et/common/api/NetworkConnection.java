@@ -20,18 +20,18 @@ import edu.snu.cay.services.et.exceptions.AlreadyConnectedException;
 import edu.snu.cay.services.et.exceptions.NotConnectedException;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.DefaultImplementation;
-import org.apache.reef.wake.Identifier;
 
 /**
  * Network connection for evaluators and the driver.
+ * @param <T> message type
  */
 @DefaultImplementation(NetworkConnectionImpl.class)
-public interface NetworkConnection {
+public interface NetworkConnection<T> {
   /**
    * Establish a connection to ET network layer.
    * @throws AlreadyConnectedException when a network connection already exists
    */
-  void setup(Identifier localEndpointId) throws AlreadyConnectedException;
+  void setup(String localEndpointId) throws AlreadyConnectedException;
 
   /**
    * TODO #8: Implement and use msg protocol for Elastic-Tables
@@ -41,5 +41,5 @@ public interface NetworkConnection {
    * @throws NotConnectedException when network connection is not established
    * @throws NetworkException when fail to send a msg
    */
-  void send(Identifier destId, String msg) throws NotConnectedException, NetworkException;
+  void send(String destId, T msg) throws NotConnectedException, NetworkException;
 }

@@ -41,7 +41,7 @@ public final class SimpleET {
 
   private static final String DRIVER_IDENTIFIER = "Simple";
   private static final int MAX_NUMBER_OF_EVALUATORS = 3;
-  private static final int JOB_TIMEOUT = 10000; // 10 sec.
+  private static final int JOB_TIMEOUT = 30000; // 10 sec.
 
   /**
    * Should not be instantiated.
@@ -67,14 +67,14 @@ public final class SimpleET {
         .set(DriverConfiguration.DRIVER_IDENTIFIER, DRIVER_IDENTIFIER)
         .set(DriverConfiguration.ON_DRIVER_STARTED, SimpleETDriver.StartHandler.class)
         .build();
-    final Configuration etDriverConfiguration = ETDriverConfiguration.CONF.build();
+    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
     final Configuration nameServerConfiguration = NameServerConfiguration.CONF.build();
     final Configuration nameClientConfiguration = LocalNameResolverConfiguration.CONF.build();
     final Configuration implConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
     return DriverLauncher.getLauncher(runtimeConfiguration)
-        .run(Configurations.merge(driverConfiguration, etDriverConfiguration, nameServerConfiguration,
+        .run(Configurations.merge(driverConfiguration, etMasterConfiguration, nameServerConfiguration,
             nameClientConfiguration, implConfiguration), JOB_TIMEOUT);
   }
 }

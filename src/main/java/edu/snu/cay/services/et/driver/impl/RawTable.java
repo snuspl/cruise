@@ -96,10 +96,8 @@ public final class RawTable {
     }
 
     // initialize tablets in associators and subscribers
-    tableInitializer.initTableInAssociators(tableConf, associatedExecutorIds,
-        tabletManager.getExecutorIdToBlockIdSet());
-    tableInitializer.initTableInSubscribers(tableConf, subscribedExecutorIds,
-        tabletManager.getBlockLocations());
+    tableInitializer.initTable(tableConf, associatedExecutorIds, tabletManager.getOwnershipStatus(), true);
+    tableInitializer.initTable(tableConf, subscribedExecutorIds, tabletManager.getOwnershipStatus(), false);
 
     final AllocatedTable allocatedTable =
         new AllocatedTable(tableConf, tabletManager, migrationManager, tableInitializer);

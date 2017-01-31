@@ -15,11 +15,13 @@
  */
 package edu.snu.cay.services.et.configuration;
 
-import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
+import edu.snu.cay.services.et.configuration.parameters.*;
 import edu.snu.cay.services.et.evaluator.api.PartitionFunction;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.util.BuilderUtils;
 
 import javax.annotation.Nullable;
@@ -30,13 +32,14 @@ import java.util.Optional;
  */
 @Private
 public final class TableConfiguration {
-  private String id;
-  private Class<? extends Codec> keyCodecClass;
-  private Class<? extends Codec> valueCodecClass;
-  private Class<? extends UpdateFunction> updateFunctionClass;
-  private Class<? extends PartitionFunction> partitionFunctionClass;
-  private int numTotalBlocks;
-  private Optional<String> filePath;
+  private final String id;
+  private final Class<? extends Codec> keyCodecClass;
+  private final Class<? extends Codec> valueCodecClass;
+  private final Class<? extends UpdateFunction> updateFunctionClass;
+  private final Class<? extends PartitionFunction> partitionFunctionClass;
+  private final int numTotalBlocks;
+  private final Optional<String> filePath;
+  private Configuration configuration = null;
 
   private TableConfiguration(final String id,
                              final Class<? extends Codec> keyCodecClass, final Class<? extends Codec> valueCodecClass,
@@ -99,6 +102,24 @@ public final class TableConfiguration {
    */
   public Optional<String> getFilePath() {
     return filePath;
+  }
+
+  /**
+   * @return a tang {@link Configuration} that includes all metadata of table
+   */
+  public Configuration getConfiguration() {
+    if (configuration == null) {
+      configuration = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(TableIdentifier.class, id)
+          .bindNamedParameter(KeyCodec.class, keyCodecClass)
+          .bindNamedParameter(ValueCodec.class, valueCodecClass)
+          .bindImplementation(UpdateFunction.class, updateFunctionClass)
+          .bindImplementation(PartitionFunction.class, partitionFunctionClass)
+          .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
+          .bindNamedParameter(FilePath.class, filePath.isPresent() ? filePath.get() : FilePath.EMPTY)
+          .build();
+    }
+    return configuration;
   }
 
   /**
