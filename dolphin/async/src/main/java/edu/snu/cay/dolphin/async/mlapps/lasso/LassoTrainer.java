@@ -55,6 +55,11 @@ final class LassoTrainer implements Trainer {
   private final Vector oldModel;
   private Vector newModel;
 
+  /**
+   * Save vecXArray[i].dot(vecXArray[j]) values in x2x table for caching.
+   */
+  final Table<Integer, Integer, Double> x2x = HashBasedTable.create();
+
   private final VectorFactory vectorFactory;
 
   /**
@@ -111,29 +116,22 @@ final class LassoTrainer implements Trainer {
    */
   @Override
   public void run(final int iteration) {
-
     final List<LassoData> totalInstancesProcessed = new LinkedList<>();
-
     Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
 
-    /**
-     * Model is trained by each mini-batch training data.
-     */
+    // Model is trained by each mini-batch training data.
     while (!nextTrainingData.isEmpty()) {
       final List<LassoData> instances = new ArrayList<>(nextTrainingData.values());
-      /**
-       * Pull the old model which should be trained in this while loop.
-       */
+
+      // Pull the old model which should be trained in this while loop.
       pullModels();
 
-      /**
+      /*
        * Transform the instances from LassoData type to the Vector for each feature.
        * Pre-calculate x2y values before we use it.
        * vecXArray is a converted form of training data in the feature order.
-       * Save vecXArray[i].dot(vecXArray[j]) values in x2x table for caching.
        */
       final double[] x2y = new double[numFeatures];
-      final Table<Integer, Integer, Double> x2x = HashBasedTable.create();
       final int index = random.nextInt(numFeatures);
 
       final Pair<Vector[], Vector> convertedData = convertDataInFeatureOrder(instances);
@@ -144,9 +142,8 @@ final class LassoTrainer implements Trainer {
         x2y[i] = vecXArray[i].dot(vecY);
       }
 
-      /**
-       * Calculate dotValue(new model[index] value) which will be updated in this mini-batch.
-       */
+
+      // Calculate dotValue(new model[index] value) which will be updated in this mini-batch.
       double dotValue = x2y[index];
       for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
         if (newModel.get(modelIndex) == 0 || index == modelIndex) {
@@ -168,18 +165,14 @@ final class LassoTrainer implements Trainer {
       dotValue /= x2x.get(index, index);
       newModel.set(index, sthresh(dotValue, lambda, x2x.get(index, index)));
 
-      /**
-       * Push the new model to the server.
-       */
+      // Push the new model to the server.
       pushAndResetGradients();
 
       totalInstancesProcessed.addAll(instances);
       nextTrainingData = trainingDataProvider.getNextTrainingData();
     }
 
-    /**
-     * Calculate the loss value.
-     */
+    // Calculate the loss value.
     pullModels();
     final double loss = computeLoss(totalInstancesProcessed);
     LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
@@ -189,12 +182,16 @@ final class LassoTrainer implements Trainer {
       }
     }
 
+    x2x.clear();
   }
 
   @Override
   public void cleanup() {
   }
 
+  /**
+   * Pull up-to-date model parameters from server.
+   */
   private void pullModels() {
     for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
       oldModel.set(modelIndex, parameterWorker.pull(modelIndex));
@@ -202,6 +199,9 @@ final class LassoTrainer implements Trainer {
     newModel = oldModel.copy();
   }
 
+  /**
+   * Convert data from data order to feature order.
+   */
   private Pair<Vector[], Vector> convertDataInFeatureOrder(final List<LassoData> instances) {
     final Vector[] vecXArray = new Vector[numFeatures];
     for (int i = 0; i < numFeatures; i++) {
@@ -216,9 +216,12 @@ final class LassoTrainer implements Trainer {
       }
       vecY.set(i, value);
     }
-    return new Pair<Vector[], Vector>(vecXArray, vecY);
+    return new Pair<>(vecXArray, vecY);
   }
 
+  /**
+   * Push the gradients to parameter server.
+   */
   private void pushAndResetGradients() {
     final Vector gradient = newModel.sub(oldModel);
     for (int modelIndex = 0; modelIndex < numFeatures; ++modelIndex) {
@@ -238,26 +241,27 @@ final class LassoTrainer implements Trainer {
       return x + lambda / columnNorm;
     }
   }
+
   private double predict(final Vector feature) {
     return newModel.dot(feature);
   }
 
   private double computeLoss(final List<LassoData> data) {
-    double loss = 0;
+    double squaredErrorSum = 0;
     double reg = 0;
 
     for (final LassoData entry : data) {
       final Vector feature = entry.getFeature();
       final double value = entry.getValue();
       final double prediction = predict(feature);
-      loss += (value - prediction) * (value - prediction);
+      squaredErrorSum += (value - prediction) * (value - prediction);
     }
 
     for (int i = 0; i < numFeatures; ++i) {
       reg += newModel.get(i);
     }
 
-    loss = 1.0 / (2 * data.size()) * loss + lambda * reg;
+    final double loss = 1.0 / (2 * data.size()) * squaredErrorSum + lambda * reg;
     return loss;
   }
 }
