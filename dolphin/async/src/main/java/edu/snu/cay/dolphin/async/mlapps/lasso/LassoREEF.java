@@ -17,9 +17,8 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
-import edu.snu.cay.dolphin.async.NullDataParser;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
+
+import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 
 /**
  * Application launching code for LassoREEF.
@@ -36,17 +35,11 @@ public final class LassoREEF {
     AsyncDolphinLauncher.launch("LassoREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(LassoTrainer.class)
         .setUpdaterClass(LassoUpdater.class)
-        .setParserClass(NullDataParser.class)
+        .setParserClass(LassoParser.class)
+        .setWorkerSerializerClass(LassoDataSerializer.class)
         .addParameterClass(NumFeatures.class)
+        .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
         .build());
-  }
-
-  @NamedParameter(doc = "input dimension", short_name = "features")
-  final class NumFeatures implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "regularization constant", short_name = "lambda")
-  final class Lambda implements Name<Double> {
   }
 }
