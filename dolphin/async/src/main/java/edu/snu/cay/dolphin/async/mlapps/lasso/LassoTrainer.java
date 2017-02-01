@@ -15,15 +15,14 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lasso;
 
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
+import edu.snu.cay.common.math.linalg.Matrix;
+import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -52,25 +51,16 @@ final class LassoTrainer implements Trainer {
 
   private final TrainingDataProvider<Long, LassoData> trainingDataProvider;
 
-  private final Vector oldModel;
+  private Vector oldModel;
   private Vector newModel;
 
-  /**
-   * Save vecXArray[i].dot(vecXArray[j]) values in x2x table for caching.
-   */
-  private final Table<Integer, Integer, Double> x2x = HashBasedTable.create();
-
   private final VectorFactory vectorFactory;
+  private final MatrixFactory matrixFactory;
 
   /**
    * ParameterWorker object for interacting with the parameter server.
    */
   private final ParameterWorker<Integer, Double, Double> parameterWorker;
-
-  /**
-   * Random object to randomly choose an index of the updating feature.
-   */
-  private final Random random;
 
   /**
    * Period(iterations) of the printing log of models to check whether the training is working or not.
@@ -83,16 +73,16 @@ final class LassoTrainer implements Trainer {
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
                        final TrainingDataProvider<Long, LassoData> trainingDataProvider,
-                       final VectorFactory vectorFactory) {
+                       final VectorFactory vectorFactory,
+                       final MatrixFactory matrixFactory) {
     this.parameterWorker = parameterWorker;
     this.numFeatures = numFeatures;
     this.lambda = lambda;
     this.stepSize = stepSize;
     this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
-    this.random = new Random();
+    this.matrixFactory = matrixFactory;
     this.printModelPeriod = 50;
-    this.oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
   /**
@@ -116,6 +106,7 @@ final class LassoTrainer implements Trainer {
    */
   @Override
   public void run(final int iteration) {
+    final long startTime = System.currentTimeMillis();
     final List<LassoData> totalInstancesProcessed = new LinkedList<>();
     Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
 
@@ -126,51 +117,31 @@ final class LassoTrainer implements Trainer {
       // Pull the old model which should be trained in this while loop.
       pullModels();
 
-      /*
-       * Transform the instances from LassoData type to the Vector for each feature.
-       * Pre-calculate x2y values before we use it.
-       * vecXArray is a converted form of training data in the feature order.
-       */
-      final double[] x2y = new double[numFeatures];
-      final int index = random.nextInt(numFeatures);
-
-      final Pair<Vector[], Vector> convertedData = convertDataInFeatureOrder(instances);
-      final Vector[] vecXArray = convertedData.getFirst();
-      final Vector vecY = convertedData.getSecond();
-
-      for (int i = 0; i < vecXArray.length; i++) {
-        x2y[i] = vecXArray[i].dot(vecY);
+      final List<Vector> features = new LinkedList<>();
+      final Vector yValue = vectorFactory.createDenseZeros(instances.size());
+      int iter = 0;
+      for (final LassoData instance : instances) {
+        features.add(instance.getFeature());
+        yValue.set(iter++, instance.getValue());
       }
+      final Matrix featureMatrix = matrixFactory.horzcatVecDense(features).transpose();
+      final Vector precalculate = featureMatrix.mmul(newModel);
 
-
-      // Calculate dotValue(new model[index] value) which will be updated in this mini-batch.
-      double dotValue = x2y[index];
-      for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
-        if (newModel.get(modelIndex) == 0 || index == modelIndex) {
+      for (int i = 0; i < numFeatures; i++) {
+        final Vector getColumn = featureMatrix.sliceColumn(i);
+        final double getColumnNorm = getColumn.dot(getColumn);
+        if (getColumnNorm == 0) {
           continue;
         }
-
-        final int min = Math.min(index, modelIndex);
-        final int max = Math.max(index, modelIndex);
-        if (!x2x.contains(min, max)) {
-          x2x.put(min, max, vecXArray[index].dot(vecXArray[modelIndex]));
-        }
-
-        dotValue -= x2x.get(min, max) * newModel.get(modelIndex);
+        final Vector subOneFeature = precalculate.sub(getColumn.scale(newModel.get(i)));
+        newModel.set(i, sthresh((getColumn.dot(yValue.sub(subOneFeature))) / getColumnNorm, lambda, getColumnNorm));
       }
-      if (!x2x.contains(index, index)) {
-        x2x.put(index, index, vecXArray[index].dot(vecXArray[index]));
-      }
-
-      dotValue /= x2x.get(index, index);
-      newModel.set(index, sthresh(dotValue, lambda, x2x.get(index, index)));
 
       // Push the new model to the server.
       pushAndResetGradients();
 
       totalInstancesProcessed.addAll(instances);
       nextTrainingData = trainingDataProvider.getNextTrainingData();
-      x2x.clear();
     }
 
     // Calculate the loss value.
@@ -182,6 +153,7 @@ final class LassoTrainer implements Trainer {
         LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
     }
+    LOG.log(Level.INFO, "running time : {0}", System.currentTimeMillis() - startTime);
   }
 
   @Override
@@ -192,30 +164,11 @@ final class LassoTrainer implements Trainer {
    * Pull up-to-date model parameters from server.
    */
   private void pullModels() {
+    oldModel = vectorFactory.createDenseZeros(numFeatures);
     for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
       oldModel.set(modelIndex, parameterWorker.pull(modelIndex));
     }
     newModel = oldModel.copy();
-  }
-
-  /**
-   * Convert data from data order to feature order.
-   */
-  private Pair<Vector[], Vector> convertDataInFeatureOrder(final List<LassoData> instances) {
-    final Vector[] vecXArray = new Vector[numFeatures];
-    for (int i = 0; i < numFeatures; i++) {
-      vecXArray[i] = vectorFactory.createDenseZeros(instances.size());
-    }
-    final Vector vecY = vectorFactory.createDenseZeros(instances.size());
-    for (int i = 0; i < instances.size(); i++) {
-      final Vector feature = instances.get(i).getFeature();
-      final double value = instances.get(i).getValue();
-      for (int j = 0; j < numFeatures; j++) {
-        vecXArray[j].set(i, feature.get(j));
-      }
-      vecY.set(i, value);
-    }
-    return new Pair<>(vecXArray, vecY);
   }
 
   /**
