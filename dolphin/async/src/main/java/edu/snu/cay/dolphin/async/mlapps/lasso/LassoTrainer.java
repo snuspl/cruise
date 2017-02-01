@@ -36,11 +36,9 @@ import java.util.logging.Logger;
  * S. Shalev-Shwartz and A. Tewari, Stochastic Methods for l1-regularized Loss Minimization, 2011.
  *
  * For each iteration, the trainer pulls the whole model from the server,
- * and then randomly picks a dimension to update.
- * The trainer computes and pushes the optimal model value for that particular dimension to
+ * and then update all the model values.
+ * The trainer computes and pushes the optimal model value for all the dimensions to
  * minimize the objective function - square loss with l1 regularization.
- *
- * All inner product values are cached in member fields.
  */
 final class LassoTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
@@ -85,12 +83,6 @@ final class LassoTrainer implements Trainer {
     this.printModelPeriod = 50;
   }
 
-  /**
-   * {@inheritDoc}
-   * Standardize input vectors w.r.t. each feature dimension, as well as the target vector,
-   * to have mean 0 and variance 1.
-   * Also pre-calculate inner products of input vectors and the target vector, for later use.
-   */
   @Override
   public void initialize() {
   }
@@ -98,15 +90,14 @@ final class LassoTrainer implements Trainer {
   /**
    * {@inheritDoc} <br>
    * 1) Pull model from server. <br>
-   * 2) Pick dimension to update. <br>
-   * 3) Compute the optimal value, (dot(x_i, y) - Sigma_{i != j} (x_i, x_j) * model(j)) / dot(x_i, x_i), where
-   *   When computing the optimal value, only compute (x_i, x_j) * model(j) if model(j) != 0, for performance. <br>
-   *   Reuse (x_i, x_j) when possible, from {@code x2x}. <br>
-   * 4) Push value to server.
+   * 2) Compute the optimal value, dot(x_i, y - Sigma_{j != i} x_j * model(j)) / dot(x_i, x_i) for each dimension
+   *    (in cyclic).
+   *    When computing the optimal value, precalculate sigma_{all j} x_j * model(j) and calculate
+   *    Sigma_{j != i} x_j * model(j) fast by just subtracting x_i * model(i)
+   * 3) Push value to server.
    */
   @Override
   public void run(final int iteration) {
-    final long startTime = System.currentTimeMillis();
     final List<LassoData> totalInstancesProcessed = new LinkedList<>();
     Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
 
@@ -117,6 +108,8 @@ final class LassoTrainer implements Trainer {
       // Pull the old model which should be trained in this while loop.
       pullModels();
 
+      // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
+      // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
       final List<Vector> features = new LinkedList<>();
       final Vector yValue = vectorFactory.createDenseZeros(instances.size());
       int iter = 0;
@@ -127,6 +120,7 @@ final class LassoTrainer implements Trainer {
       final Matrix featureMatrix = matrixFactory.horzcatVecDense(features).transpose();
       final Vector precalculate = featureMatrix.mmul(newModel);
 
+      // For each dimension, compute the optimal value.
       for (int i = 0; i < numFeatures; i++) {
         final Vector getColumn = featureMatrix.sliceColumn(i);
         final double getColumnNorm = getColumn.dot(getColumn);
@@ -153,7 +147,6 @@ final class LassoTrainer implements Trainer {
         LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
     }
-    LOG.log(Level.INFO, "running time : {0}", System.currentTimeMillis() - startTime);
   }
 
   @Override
@@ -194,10 +187,16 @@ final class LassoTrainer implements Trainer {
     }
   }
 
+  /**
+   * Predict the y value for the feature value.
+   */
   private double predict(final Vector feature) {
     return newModel.dot(feature);
   }
 
+  /**
+   * Compute the loss value for the data.
+   */
   private double computeLoss(final List<LassoData> data) {
     double squaredErrorSum = 0;
     double reg = 0;
