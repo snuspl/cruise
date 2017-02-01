@@ -127,8 +127,9 @@ final class LassoTrainer implements Trainer {
         if (getColumnNorm == 0) {
           continue;
         }
-        final Vector subOneFeature = precalculate.sub(getColumn.scale(newModel.get(i)));
-        newModel.set(i, sthresh((getColumn.dot(yValue.sub(subOneFeature))) / getColumnNorm, lambda, getColumnNorm));
+        precalculate.subi(getColumn.scale(newModel.get(i)));
+        newModel.set(i, sthresh((getColumn.dot(yValue.sub(precalculate))) / getColumnNorm, lambda, getColumnNorm));
+        precalculate.addi(getColumn.scale(newModel.get(i)));
       }
 
       // Push the new model to the server.
