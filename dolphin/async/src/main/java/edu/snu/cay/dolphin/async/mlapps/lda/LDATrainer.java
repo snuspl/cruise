@@ -232,8 +232,12 @@ final class LDATrainer implements Trainer {
         result -> {
           final Table<Integer, Integer, Integer> changedTopicCounts = result.getTable();
           changedTopicCounts.cellSet().forEach(
-              cell ->
-                  aggregated.increment(cell.getRowKey(), cell.getColumnKey(), cell.getValue()));
+              cell -> {
+                if (cell.getValue() != 0) {
+                  aggregated.increment(cell.getRowKey(), cell.getColumnKey(), cell.getValue());
+                }
+              }
+          );
         });
     return aggregated;
   }
