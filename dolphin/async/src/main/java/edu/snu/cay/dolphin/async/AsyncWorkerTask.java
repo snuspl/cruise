@@ -25,6 +25,7 @@ import org.apache.reef.task.events.CloseEvent;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -47,7 +48,7 @@ final class AsyncWorkerTask implements Task {
    * A boolean flag shared among all trainer threads.
    * Trainer threads end when this flag becomes true by {@link CloseEventHandler#onNext(CloseEvent)}.
    */
-  private volatile boolean aborted = false;
+  private AtomicBoolean abortFlag = new AtomicBoolean(false);
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
@@ -87,16 +88,17 @@ final class AsyncWorkerTask implements Task {
     // it prevents workers added by EM from starting from iteration 0 and deferring job completion.
     // More specifically, added workers start from the minimum iteration of other existing workers.
     for (int iteration = initialClock; iteration < maxIterations; ++iteration) {
-      if (aborted) {
-        LOG.log(Level.INFO, "Abort a thread to completely close the task");
-        // record total network waiting time of worker clock when the task is aborted
-        workerClock.recordClockNetworkWaitingTime();
-        return null;
-      }
       trainingDataProvider.prepareDataForEpoch();
 
       LOG.log(Level.INFO, "Starting iteration {0}", iteration);
-      trainer.run(iteration);
+      trainer.run(iteration, abortFlag);
+
+      if (abortFlag.get()) {
+        LOG.log(Level.INFO, "Stop task");
+        // record total network waiting time of worker clock when the task is abortFlag
+        workerClock.recordClockNetworkWaitingTime();
+        return null;
+      }
 
       workerClock.clock();
     }
@@ -114,7 +116,7 @@ final class AsyncWorkerTask implements Task {
   final class CloseEventHandler implements EventHandler<CloseEvent> {
     @Override
     public void onNext(final CloseEvent closeEvent) {
-      aborted = true;
+      abortFlag.set(true);
     }
   }
 }

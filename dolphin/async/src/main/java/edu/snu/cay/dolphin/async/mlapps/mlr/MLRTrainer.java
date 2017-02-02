@@ -35,6 +35,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -204,7 +205,7 @@ final class MLRTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration) {
+  public void run(final int iteration, final AtomicBoolean abortFlag) {
     final long epochStartTime = System.currentTimeMillis();
 
     // Record the number of EM data blocks at the beginning of this iteration
@@ -218,6 +219,11 @@ final class MLRTrainer implements Trainer {
     Map<Long, MLRData> nextTrainingData = trainingDataProvider.getNextTrainingData();
 
     while (!nextTrainingData.isEmpty()) {
+      if (abortFlag.get()) {
+        LOG.log(Level.INFO, "Abort a thread to completely close the task");
+        return;
+      }
+
       final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
       final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchSize);
