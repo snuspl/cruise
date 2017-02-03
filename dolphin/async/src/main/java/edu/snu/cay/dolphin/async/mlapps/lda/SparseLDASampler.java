@@ -47,8 +47,6 @@ final class SparseLDASampler {
    */
   private final ExecutorService executor;
 
-  private final int miniBatchSize;
-
   /**
    * Number of Trainer threads that train concurrently.
    */
@@ -65,7 +63,6 @@ final class SparseLDASampler {
                            @Parameter(NumTopics.class) final int numTopics,
                            @Parameter(NumVocabs.class) final int numVocabs,
                            @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads,
-                           @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                            final ModelAccessor<LDAModel> modelAccessor) {
     this.alpha = alpha;
     this.beta = beta;
@@ -73,14 +70,13 @@ final class SparseLDASampler {
     this.numVocabs = numVocabs;
     this.modelAccessor = modelAccessor;
 
-    this.miniBatchSize = miniBatchSize;
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
   }
 
   List<TopicChanges> sample(final Collection<Document> documents) {
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
-    final BlockingQueue<Document> instances = new ArrayBlockingQueue<>(miniBatchSize);
+    final BlockingQueue<Document> instances = new ArrayBlockingQueue<>(documents.size());
     instances.addAll(documents);
 
     final List<Future<TopicChanges>> futures = new ArrayList<>(numTrainerThreads);
