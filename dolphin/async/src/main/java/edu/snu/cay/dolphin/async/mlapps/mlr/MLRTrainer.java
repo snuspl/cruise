@@ -252,6 +252,7 @@ final class MLRTrainer implements Trainer {
               }
 
               drainedInstances.forEach(instance -> updateModel(instance, model));
+              drainedInstances.clear();
               count += numDrained;
             }
             latch.countDown();

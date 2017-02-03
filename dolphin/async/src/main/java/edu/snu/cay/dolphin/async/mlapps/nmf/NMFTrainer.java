@@ -203,6 +203,7 @@ final class NMFTrainer implements Trainer {
               }
 
               drainedInstances.forEach(instance -> updateModel(instance, model));
+              drainedInstances.clear();
               count += numDrained;
             }
             latch.countDown();
