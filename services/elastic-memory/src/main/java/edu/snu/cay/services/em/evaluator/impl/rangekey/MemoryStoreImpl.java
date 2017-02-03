@@ -24,6 +24,7 @@ import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.util.Optional;
 
@@ -293,27 +294,28 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
 
   @Override
   public <V> Map<Long, V> getAll() {
-    final Map<Long, V> result;
+    Map<Long, V> result = null;
 
+    // will not care blocks migrated in after this call
     final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
-    final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
-    // first execute on a head block to reuse the returned map object for a return map
-    if (blockIdIterator.hasNext()) {
-      final Block block = blockStore.get(blockIdIterator.next());
-      result = block.getAll();
-    } else {
-      return Collections.emptyMap();
+    for (final Integer blockId : localBlockIds) {
+      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveEvalWithLock(blockId);
+      if (!remoteEvalIdWithLock.getKey().isPresent()) { // scan block if it still remains in local
+        final Block block = blockStore.get(blockId);
+
+        if (result == null) {
+          // reuse the first returned map object
+          result = block.getAll();
+        } else {
+          // huge memory pressure may happen here
+          result.putAll(block.getAll());
+        }
+      }
+      remoteEvalIdWithLock.getValue().unlock();
     }
 
-    // execute on remaining blocks if exist
-    while (blockIdIterator.hasNext()) {
-      final Block block = blockStore.get(blockIdIterator.next());
-      // huge memory pressure may happen here
-      result.putAll(block.getAll());
-    }
-
-    return result;
+    return result == null ? Collections.emptyMap() : result;
   }
 
   @Override
@@ -350,27 +352,28 @@ public final class MemoryStoreImpl implements MemoryStore<Long> {
 
   @Override
   public <V> Map<Long, V> removeAll() {
-    final Map<Long, V> result;
+    Map<Long, V> result = null;
 
+    // will not care blocks migrated in after this call
     final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
-    final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
 
-    // first execute on a head block to reuse the returned map object for a return map
-    if (blockIdIterator.hasNext()) {
-      final Block block = blockStore.get(blockIdIterator.next());
-      result = block.removeAll();
-    } else {
-      return Collections.emptyMap();
+    for (final Integer blockId : localBlockIds) {
+      final Tuple<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveEvalWithLock(blockId);
+      if (!remoteEvalIdWithLock.getKey().isPresent()) { // scan block if it still remains in local
+        final Block block = blockStore.get(blockId);
+
+        if (result == null) {
+          // reuse the first returned map object
+          result = block.removeAll();
+        } else {
+          // huge memory pressure may happen here
+          result.putAll(block.removeAll());
+        }
+      }
+      remoteEvalIdWithLock.getValue().unlock();
     }
 
-    // execute on remaining blocks if exist
-    while (blockIdIterator.hasNext()) {
-      final Block block = blockStore.get(blockIdIterator.next());
-      // huge memory pressure may happen here
-      result.putAll(block.removeAll());
-    }
-
-    return result;
+    return result == null ? Collections.emptyMap() : result;
   }
 
   @Override
