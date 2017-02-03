@@ -81,15 +81,16 @@ final class SparseLDASampler {
 
     final List<Future<TopicChanges>> futures = new ArrayList<>(numTrainerThreads);
     try {
+      // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
+      // This way we can mitigate the slowdown from straggler threads.
+      final int drainSize = Math.min(documents.size() / numTrainerThreads / numTrainerThreads, 1);
+
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
         final Future<TopicChanges> future = executor.submit(() -> {
+          final List<Document> drainedInstances = new ArrayList<>(drainSize);
           final LDAModel model = modelAccessor.getModel()
               .orElseThrow(() -> new RuntimeException(MSG_GET_MODEL_FAILED));
 
-          // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
-          // This way we can mitigate the slowdown from straggler threads.
-          final int drainSize = Math.min(documents.size() / numTrainerThreads / numTrainerThreads, 1);
-          final List<Document> drainedInstances = new ArrayList<>(drainSize);
           int count = 0;
           while (true) {
             final int numDrained = instances.drainTo(drainedInstances, drainSize);
