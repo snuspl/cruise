@@ -240,7 +240,7 @@ final class MLRTrainer implements Trainer {
                 .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
             int count = 0;
             while (true) {
-              final int numInstancesPerThread = miniBatchSize / numTrainerThreads;
+              final int numInstancesPerThread = Math.min(miniBatchSize, instances.size()) / numTrainerThreads + 1;
               final List<MLRData> instancesPerThread = new ArrayList<>(numInstancesPerThread);
               final int numDrained = instances.drainTo(instancesPerThread, numInstancesPerThread);
               if (numDrained == 0) {

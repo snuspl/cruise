@@ -92,14 +92,14 @@ final class SparseLDASampler {
 
           int count = 0;
           while (true) {
-            final int numLocalInstances = miniBatchSize / numTrainerThreads;
-            final List<Document> localInstances = new ArrayList<>(numLocalInstances);
-            final int numDrained = instances.drainTo(localInstances, numLocalInstances);
+            final int numInstancesPerThread = Math.min(miniBatchSize, documents.size()) / numTrainerThreads + 1;
+            final List<Document> instancesPerThread = new ArrayList<>(numInstancesPerThread);
+            final int numDrained = instances.drainTo(instancesPerThread, numInstancesPerThread);
             if (numDrained == 0) {
               break;
             }
 
-            localInstances.forEach(instance -> updateModel(instance, model));
+            instancesPerThread.forEach(instance -> updateModel(instance, model));
             count += numDrained;
           }
           latch.countDown();
