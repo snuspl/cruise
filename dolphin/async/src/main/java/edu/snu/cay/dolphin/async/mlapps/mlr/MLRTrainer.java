@@ -237,9 +237,8 @@ final class MLRTrainer implements Trainer {
 
         // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
         // This way we can mitigate the slowdown from straggler threads.
-        final int numInstancesPerThread =
-            Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
-        final List<MLRData> instancesPerThread = new ArrayList<>(numInstancesPerThread);
+        final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
+        final List<MLRData> drainedInstances = new ArrayList<>(drainSize);
 
         for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
           final Future<MLRModel> future = executor.submit(() -> {
@@ -247,12 +246,12 @@ final class MLRTrainer implements Trainer {
                 .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
             int count = 0;
             while (true) {
-              final int numDrained = instances.drainTo(instancesPerThread, numInstancesPerThread);
+              final int numDrained = instances.drainTo(drainedInstances, drainSize);
               if (numDrained == 0) {
                 break;
               }
 
-              instancesPerThread.forEach(instance -> updateModel(instance, model));
+              drainedInstances.forEach(instance -> updateModel(instance, model));
               count += numDrained;
             }
             latch.countDown();
