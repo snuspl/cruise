@@ -103,8 +103,10 @@ public final class TrainingDataProvider<K, V> {
 
       final int numRemainingKeys = trainingDataKeys.size();
       final int nextBatchSize = Math.min(miniBatchSize, numRemainingKeys);
-      nextTrainingDataKeyList = new ArrayList<>(trainingDataKeys.subList(0, nextBatchSize));
-      trainingDataKeys = trainingDataKeys.subList(nextBatchSize, numRemainingKeys);
+      nextTrainingDataKeyList = new ArrayList<>();
+      for (int i = 0; i < nextBatchSize; i++) {
+        nextTrainingDataKeyList.add(trainingDataKeys.remove(0));
+      }
     }
 
     final Map<K, V> nextTrainingData = new HashMap<>();
