@@ -102,9 +102,9 @@ public final class TrainingDataProvider<K, V> {
       }
 
       final int nextBatchSize = Math.min(miniBatchSize, trainingDataKeys.size());
-      nextTrainingDataKeyList = new ArrayList<>();
+      nextTrainingDataKeyList = new ArrayList<>(trainingDataKeys.subList(0, nextBatchSize));
       for (int i = 0; i < nextBatchSize; i++) {
-        nextTrainingDataKeyList.add(trainingDataKeys.remove(0));
+        trainingDataKeys.remove(0);
       }
     }
 
