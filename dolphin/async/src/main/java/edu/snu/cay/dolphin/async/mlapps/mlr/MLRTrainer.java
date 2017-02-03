@@ -220,7 +220,8 @@ final class MLRTrainer implements Trainer {
     while (!nextTrainingData.isEmpty()) {
       final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-      final Queue<MLRData> instances = new ConcurrentLinkedQueue<>(nextTrainingData.values());
+      final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchSize);
+      instances.addAll(nextTrainingData.values());
       final int numInstancesToProcess = instances.size();
 
       resetTracers();
@@ -239,13 +240,15 @@ final class MLRTrainer implements Trainer {
                 .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
             int count = 0;
             while (true) {
-              final MLRData instance = instances.poll();
-              if (instance == null) {
+              final int numInstancesPerThread = miniBatchSize / numTrainerThreads;
+              final List<MLRData> instancesPerThread = new ArrayList<>(numInstancesPerThread);
+              final int numDrained = instances.drainTo(instancesPerThread, numInstancesPerThread);
+              if (numDrained == 0) {
                 break;
               }
 
-              updateModel(instance, model);
-              count++;
+              instancesPerThread.forEach(instance -> updateModel(instance, model));
+              count += numDrained;
             }
             latch.countDown();
             LOG.log(Level.INFO, "{0} has computed {1} instances",
