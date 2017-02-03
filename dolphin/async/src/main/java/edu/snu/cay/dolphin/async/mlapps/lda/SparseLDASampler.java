@@ -90,11 +90,14 @@ final class SparseLDASampler {
           final LDAModel model = modelAccessor.getModel()
               .orElseThrow(() -> new RuntimeException(MSG_GET_MODEL_FAILED));
 
+          // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
+          // This way we can mitigate the slowdown from straggler threads.
+          final int numInstancesPerDrain =
+              Math.min(documents.size() / numTrainerThreads / numTrainerThreads, 1);
+          final List<Document> instancesPerThread = new ArrayList<>(numInstancesPerDrain);
           int count = 0;
           while (true) {
-            final int numInstancesPerThread = Math.min(miniBatchSize, documents.size()) / numTrainerThreads + 1;
-            final List<Document> instancesPerThread = new ArrayList<>(numInstancesPerThread);
-            final int numDrained = instances.drainTo(instancesPerThread, numInstancesPerThread);
+            final int numDrained = instances.drainTo(instancesPerThread, numInstancesPerDrain);
             if (numDrained == 0) {
               break;
             }
