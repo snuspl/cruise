@@ -344,7 +344,7 @@ public final class OwnershipCache {
   }
 
   /**
-   * Allows access to block.
+   * Allows access to a block when it comes into local.
    * Release the block that was marked by {@link #updateOwnership}
    * and allow clients access the migrated block, which can be either in local or remote MemoryStore.
    * @param blockId id of the block
