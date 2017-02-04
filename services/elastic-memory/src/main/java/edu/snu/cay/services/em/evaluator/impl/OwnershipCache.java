@@ -266,10 +266,12 @@ public final class OwnershipCache {
   public Tuple<Optional<String>, Lock> resolveEvalWithLock(final int blockId) {
     checkInitialization();
 
-    waitBlockMigrationToEnd(blockId);
-
     final Lock readLock = ownershipLocks.get(blockId).readLock();
     readLock.lock();
+
+    // it should be done while holding a read-lock
+    waitBlockMigrationToEnd(blockId);
+
     final int memoryStoreId = blockLocations.get(blockId);
     if (memoryStoreId == localStoreId) {
       return new Tuple<>(Optional.empty(), readLock);
@@ -278,6 +280,10 @@ public final class OwnershipCache {
     }
   }
 
+  /**
+   * Wait until {@link #allowAccessToBlock} is called for a block if it's blocked by {@link #blockAccessToBlock}.
+   * @param blockId an id of the block
+   */
   private void waitBlockMigrationToEnd(final int blockId) {
     final CountDownLatch blockMigratingLatch = incomingBlocks.get(blockId);
     if (blockMigratingLatch != null) {
@@ -335,13 +341,21 @@ public final class OwnershipCache {
       LOG.log(Level.FINE, "Ownership of block {0} is updated from store {1} to store {2}",
           new Object[]{blockId, oldOwnerId, newOwnerId});
 
-      // better to be specific
       if (localStoreId == newOwnerId) {
-        incomingBlocks.put(blockId, new CountDownLatch(1));
+        // it should be done while holding a write-lock
+        blockAccessToBlock(blockId);
       }
     } finally {
       ownershipLocks.get(blockId).writeLock().unlock();
     }
+  }
+
+  /**
+   * Blocks access to a block until {@link #allowAccessToBlock} is called.
+   * @param blockId if of the block
+   */
+  private void blockAccessToBlock(final int blockId) {
+    incomingBlocks.put(blockId, new CountDownLatch(1));
   }
 
   /**
