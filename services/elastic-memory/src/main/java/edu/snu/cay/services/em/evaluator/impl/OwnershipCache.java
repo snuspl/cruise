@@ -346,7 +346,7 @@ public final class OwnershipCache {
    * and allow clients access the migrated block, which can be either in local or remote MemoryStore.
    * @param blockId id of the block
    */
-  void releaseMigratedBlock(final int blockId) {
+  void allowAccessToBlock(final int blockId) {
     if (!incomingBlocks.containsKey(blockId)) {
       throw new RuntimeException("Block " + blockId + " is not in migrating state");
     }

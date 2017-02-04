@@ -375,7 +375,7 @@ public class OwnershipCacheTest {
     assertTrue("Other blocks should not be accessed", resolvedLatch0.await(2000, TimeUnit.MILLISECONDS));
 
     // unlock ownershipCache to let threads update the ownershipCache
-    ownershipCache.releaseMigratedBlock(blockId1);
+    ownershipCache.allowAccessToBlock(blockId1);
 
     assertTrue("Thread should be finished after unlock", resolvedLatch1.await(2000, TimeUnit.MILLISECONDS));
 

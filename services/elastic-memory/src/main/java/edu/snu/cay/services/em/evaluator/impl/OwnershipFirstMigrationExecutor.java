@@ -256,7 +256,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
           // Unmark block marked in onOwnershipMsg.
           // It wakes up waiting client threads to access immigrated data.
-          ownershipCache.releaseMigratedBlock(blockId);
+          ownershipCache.allowAccessToBlock(blockId);
 
           sender.get().sendDataAckMsg(senderId, blockId, operationId, traceInfo);
         }
