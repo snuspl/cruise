@@ -76,24 +76,31 @@ final class SparseLDASampler {
 
   List<TopicChanges> sample(final Collection<Document> documents) {
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
-    final Queue<Document> instances = new ConcurrentLinkedQueue<>(documents);
+    final BlockingQueue<Document> instances = new ArrayBlockingQueue<>(documents.size());
+    instances.addAll(documents);
 
     final List<Future<TopicChanges>> futures = new ArrayList<>(numTrainerThreads);
     try {
+      // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
+      // This way we can mitigate the slowdown from straggler threads.
+      final int drainSize = Math.min(documents.size() / numTrainerThreads / numTrainerThreads, 1);
+
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
         final Future<TopicChanges> future = executor.submit(() -> {
+          final List<Document> drainedInstances = new ArrayList<>(drainSize);
           final LDAModel model = modelAccessor.getModel()
               .orElseThrow(() -> new RuntimeException(MSG_GET_MODEL_FAILED));
 
           int count = 0;
           while (true) {
-            final Document document = instances.poll();
-            if (document == null) {
+            final int numDrained = instances.drainTo(drainedInstances, drainSize);
+            if (numDrained == 0) {
               break;
             }
 
-            updateModel(document, model);
-            count++;
+            drainedInstances.forEach(instance -> updateModel(instance, model));
+            drainedInstances.clear();
+            count += numDrained;
           }
           latch.countDown();
           LOG.log(Level.INFO, "{0} has computed {1} instances",

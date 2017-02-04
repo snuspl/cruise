@@ -220,7 +220,8 @@ final class MLRTrainer implements Trainer {
     while (!nextTrainingData.isEmpty()) {
       final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-      final Queue<MLRData> instances = new ConcurrentLinkedQueue<>(nextTrainingData.values());
+      final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchSize);
+      instances.addAll(nextTrainingData.values());
       final int numInstancesToProcess = instances.size();
 
       resetTracers();
@@ -233,19 +234,27 @@ final class MLRTrainer implements Trainer {
       final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
       try {
         computeTracer.startTimer();
+
+        // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
+        // This way we can mitigate the slowdown from straggler threads.
+        final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
+
         for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
           final Future<MLRModel> future = executor.submit(() -> {
+            final List<MLRData> drainedInstances = new ArrayList<>(drainSize);
             final MLRModel model = modelAccessor.getModel()
                 .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
+
             int count = 0;
             while (true) {
-              final MLRData instance = instances.poll();
-              if (instance == null) {
+              final int numDrained = instances.drainTo(drainedInstances, drainSize);
+              if (numDrained == 0) {
                 break;
               }
 
-              updateModel(instance, model);
-              count++;
+              drainedInstances.forEach(instance -> updateModel(instance, model));
+              drainedInstances.clear();
+              count += numDrained;
             }
             latch.countDown();
             LOG.log(Level.INFO, "{0} has computed {1} instances",

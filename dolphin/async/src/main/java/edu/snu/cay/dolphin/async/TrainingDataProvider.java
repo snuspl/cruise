@@ -24,7 +24,6 @@ import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
-import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
@@ -42,8 +41,7 @@ import java.util.logging.Logger;
 public final class TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
 
-  @GuardedBy("this")
-  private final List<K> trainingDataKeys = new LinkedList<>();
+  private final List<K> trainingDataKeys = Collections.synchronizedList(new LinkedList<>());
 
   private final int miniBatchSize;
 
@@ -83,10 +81,12 @@ public final class TrainingDataProvider<K, V> {
   /**
    * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
    */
-  synchronized void prepareDataForEpoch() {
-    trainingDataKeys.addAll(memoryStore.getAll().keySet());
-    Collections.shuffle(trainingDataKeys);
-    LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
+  void prepareDataForEpoch() {
+    synchronized (trainingDataKeys) {
+      trainingDataKeys.addAll(memoryStore.getAll().keySet());
+      Collections.shuffle(trainingDataKeys);
+      LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
+    }
   }
 
   /**
@@ -95,7 +95,7 @@ public final class TrainingDataProvider<K, V> {
    */
   public Map<K, V> getNextTrainingData() {
     final List<K> nextTrainingDataKeyList;
-    synchronized (this) {
+    synchronized (trainingDataKeys) {
       if (trainingDataKeys.isEmpty()) {
         LOG.log(Level.INFO, "no more training data for current epoch");
         return Collections.emptyMap();
@@ -135,7 +135,7 @@ public final class TrainingDataProvider<K, V> {
 
     @Override
     public void onAddedBlock(final int blockId, final Set<K> addedKeys) {
-      synchronized (TrainingDataProvider.this) {
+      synchronized (trainingDataKeys) {
         trainingDataKeys.addAll(addedKeys);
         LOG.log(Level.INFO, "Added key set size = " + addedKeys.size()
             + ", changed training data key set size = " + trainingDataKeys.size());
@@ -144,7 +144,7 @@ public final class TrainingDataProvider<K, V> {
 
     @Override
     public void onRemovedBlock(final int blockId, final Set<K> removedKeys) {
-      synchronized (TrainingDataProvider.this) {
+      synchronized (trainingDataKeys) {
         trainingDataKeys.removeAll(removedKeys);
         LOG.log(Level.INFO, "Removed key set size = " + removedKeys.size()
             + ", changed training data key set size = " + trainingDataKeys.size());
