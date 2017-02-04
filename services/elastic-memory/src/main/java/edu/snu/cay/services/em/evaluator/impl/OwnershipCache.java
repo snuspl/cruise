@@ -313,9 +313,10 @@ public final class OwnershipCache {
   }
 
   /**
-   * Updates the owner of the block. Note that this method must be synchronized
+   * Updates the owner of the block.
+   * This method takes a exclusive lock on a block against {@link #resolveEvalWithLock(int)}
    * to prevent other threads from reading the ownership information while updating it.
-   * In receiver evaluators, it makes {@link #resolveEvalWithLock} wait
+   * In addition, in receiver evaluators, it makes {@link #resolveEvalWithLock} wait
    * until {@link #allowAccessToBlock} for the block to access is called.
    * @param blockId id of the block to update its ownership.
    * @param oldOwnerId id of the MemoryStore that was owner.
@@ -344,9 +345,7 @@ public final class OwnershipCache {
   }
 
   /**
-   * Allows access to a block when it comes into local.
-   * Release the block that was marked by {@link #updateOwnership}
-   * and allow clients access the migrated block, which can be either in local or remote MemoryStore.
+   * Allows access to a block when it completely migrates into local store.
    * @param blockId id of the block
    */
   public void allowAccessToBlock(final int blockId) {
