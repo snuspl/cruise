@@ -309,8 +309,12 @@ public class OwnershipCacheTest {
     final List<Integer> initialBlocks = ownershipCache.getInitialLocalBlockIds();
     final List<Integer> blocksToMove = initialBlocks.subList(0, numBlocksToMove);
 
-    // Resolving a single block locks the whole ownership cache
-    final Lock ownershipLock = ownershipCache.resolveEvalWithLock(blocksToMove.get(0)).getValue();
+    final List<Lock> locks = new ArrayList<>(numBlocksToMove);
+    // Resolving a single block locks the whole routing table
+    for (final int blockId : blocksToMove) {
+      final Lock blockLock = ownershipCache.resolveEvalWithLock(blockId).getValue();
+      locks.add(blockLock);
+    }
 
     final int destStoreId = 1;
 
@@ -330,7 +334,7 @@ public class OwnershipCacheTest {
     assertEquals("Ownership cache should not be updated", initialBlocks, curBlocksBeforeUnlock);
 
     // unlock ownershipCache to let threads update the ownershipCache
-    ownershipLock.unlock();
+    locks.forEach(Lock::unlock);
 
     assertTrue("Thread should be finished after unlock", updateLatch.await(2000, TimeUnit.MILLISECONDS));
 
@@ -339,6 +343,43 @@ public class OwnershipCacheTest {
     assertEquals("Ownership cache should be updated", curBlocksBeforeUnlock, curBlocksAfterUnlock);
 
     ownershipUpdateExecutor.shutdown();
+  }
+
+  @Test
+  public void testPerBlockLocking() throws InjectionException, InterruptedException {
+    final int numTotalBlocks = 1024;
+    final int numInitialMemoryStores = 4;
+    final int blockId0 = 0;
+    final int blockId1 = 1;
+
+    final int storeId = 0;
+    final OwnershipCache ownershipCache = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, storeId, false);
+
+    // Resolving a single block locks the whole routing table
+    ownershipCache.updateOwnership(blockId1, 1, storeId);
+    final ExecutorService blockResolvingExecutor = Executors.newFixedThreadPool(2);
+
+    final CountDownLatch resolvedLatch1 = new CountDownLatch(1);
+    blockResolvingExecutor.submit(() -> {
+      ownershipCache.resolveEvalWithLock(blockId1);
+      resolvedLatch1.countDown();
+    });
+
+    final CountDownLatch resolvedLatch0 = new CountDownLatch(1);
+    blockResolvingExecutor.submit(() -> {
+      ownershipCache.resolveEvalWithLock(blockId0);
+      resolvedLatch0.countDown();
+    });
+
+    assertFalse("Thread should not be finished before unlock", resolvedLatch1.await(2000, TimeUnit.MILLISECONDS));
+    assertTrue("Other blocks should not be accessed", resolvedLatch0.await(2000, TimeUnit.MILLISECONDS));
+
+    // unlock ownershipCache to let threads update the ownershipCache
+    ownershipCache.releaseMigratedBlock(blockId1);
+
+    assertTrue("Thread should be finished after unlock", resolvedLatch1.await(2000, TimeUnit.MILLISECONDS));
+
+    blockResolvingExecutor.shutdown();
   }
 
   /**

@@ -22,7 +22,6 @@ import edu.snu.cay.services.em.evaluator.api.MigrationExecutor;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.utils.trace.HTraceUtils;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -75,17 +74,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
   private final ExecutorService ownershipMsgHandlerExecutor =
       Executors.newFixedThreadPool(NUM_OWNERSHIP_MSG_HANDLER_THREADS);
 
+  // ongoing migrations in sender-side
   private final Map<String, Migration> ongoingMigrations = new ConcurrentHashMap<>();
-
-  /**
-   * A map for maintaining state of incoming blocks in receiver.
-   * It's for ownership-first migration in which the order of {@link OwnershipMsg} and {@link DataMsg} can be reversed.
-   * Using this map, handlers of both msgs can judge whether it arrives first or not.
-   * A later message will call {@link #processDataMsg} to put a received block into MemoryStore and
-   * release client threads that were blocked by {@link #onOwnershipMsg(MigrationMsg)}.
-   * A value is {@link Optional#empty()} when an entry is put by OwnershipMsg.
-   */
-  private final Map<Integer, Optional<Pair<Map<K, Object>, TraceInfo>>> msgArrivedBlocks = new ConcurrentHashMap<>();
 
   private final Codec<K> keyCodec;
   private final Serializer serializer;
@@ -154,7 +144,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       ongoingMigrations.put(operationId, migration);
 
       for (int i = 0; i < NUM_BLOCK_SENDER_THREADS; i++) {
-        blockSenderExecutor.submit(migration::startMigratingBlock);
+        blockSenderExecutor.submit(migration::startMigratingBlocks);
       }
     } finally {
       Trace.continueSpan(detached).close();
@@ -185,34 +175,12 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       ownershipMsgHandlerExecutor.submit(new Runnable() {
         @Override
         public void run() {
-          // clients should wait until DataMsg arrives
-          ownershipCache.markBlockAsMigrating(blockId);
-
-          // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
-          // However, DataMsg should be handled after updating ownership by OwnershipAckMsg.
-          // So if DataMsg for the same block has been already arrived, handle that msg now.
-          final boolean ownershipMsgArrivedFirst;
-          Pair<Map<K, Object>, TraceInfo> dataMsgInfo = null;
-          synchronized (msgArrivedBlocks) {
-            ownershipMsgArrivedFirst = !msgArrivedBlocks.containsKey(blockId);
-            if (ownershipMsgArrivedFirst) {
-              msgArrivedBlocks.put(blockId, Optional.empty());
-            } else {
-              dataMsgInfo = msgArrivedBlocks.remove(blockId).get();
-            }
-          }
-
           // Update the owner of the block to the new one.
           // It waits until all operations release a read-lock on ownershipCache and acquires write-lock
           ownershipCache.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
           sender.get().sendOwnershipAckMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId,
                   traceInfo);
-
-          // If the messages have arrived out of order, there should be an awaiting DataMsg to be processed.
-          if (!ownershipMsgArrivedFirst) {
-            processDataMsg(operationId, senderId, blockId, dataMsgInfo.getFirst(), dataMsgInfo.getSecond());
-          }
         }
       });
     } finally {
@@ -249,8 +217,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
           // Release block that was marked in Migration.startMigratingBlock()
           // It wakes up awaiting client threads to access emigrated data via remote access
-          ownershipCache.releaseMigratedBlock(blockId);
-
+          ongoingMigrations.get(operationId).sendBlockData(blockId);
           sender.get().sendOwnershipAckMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
         }
       });
@@ -285,40 +252,18 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
             dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
           }
 
-          // In ownership-first migration, the order of OwnershipMsg and DataMsg is not fixed.
-          // However, DataMsg should be handled after updating ownership by OwnershipMsg.
-          // So handle DataMsg now, if OwnershipMsg for the same block has been already arrived.
-          // Otherwise handle it in future when corresponding OwnershipMsg arrives
-          final boolean ownershipMsgArrivedFirst;
-          synchronized (msgArrivedBlocks) {
-            ownershipMsgArrivedFirst = msgArrivedBlocks.containsKey(blockId);
-            if (ownershipMsgArrivedFirst) {
-              msgArrivedBlocks.remove(blockId);
-            } else {
-              msgArrivedBlocks.put(blockId, Optional.of(new Pair<>(dataMap, traceInfo)));
-            }
-          }
+          blockHandler.putBlock(blockId, dataMap);
 
-          // If the messages have arrived in order, DataMsg should be processed here.
-          if (ownershipMsgArrivedFirst) {
-            processDataMsg(operationId, senderId, blockId, dataMap, traceInfo);
-          }
+          // Unmark block marked in onOwnershipMsg.
+          // It wakes up waiting client threads to access immigrated data.
+          ownershipCache.releaseMigratedBlock(blockId);
+
+          sender.get().sendDataAckMsg(senderId, blockId, operationId, traceInfo);
         }
       });
     } finally {
       Trace.continueSpan(detached).close();
     }
-  }
-
-  private void processDataMsg(final String operationId, final String senderId,
-                              final int blockId, final Map<K, Object> dataMap, final TraceInfo traceInfo) {
-    blockHandler.putBlock(blockId, dataMap);
-
-    // Unmark block marked in onOwnershipMsg.
-    // It wakes up waiting client threads to access immigrated data.
-    ownershipCache.releaseMigratedBlock(blockId);
-
-    sender.get().sendDataAckMsg(senderId, blockId, operationId, traceInfo);
   }
 
   private void onDataAckMsg(final MigrationMsg msg) {
@@ -367,6 +312,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     private final String senderId;
     private final String receiverId;
     private final List<Integer> blockIds;
+
     private final TraceInfo parentTraceInfo;
 
     // state of migration
@@ -381,47 +327,39 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
       this.operationId = operationId;
       this.senderId = senderId;
       this.receiverId = receiverId;
-      this.blockIds = Collections.unmodifiableList(blockIds);
+      this.blockIds = blockIds;
+
       this.parentTraceInfo = parentTraceInfo;
     }
 
-    private void startMigratingBlock() {
+    private void startMigratingBlocks() {
       int blockIdxToSend = blockIdxCounter.getAndIncrement();
-
       while (blockIdxToSend < blockIds.size()) {
         // can progress after acquiring a permit
         semaphore.acquireUninterruptibly();
 
         final int blockIdToMigrate = blockIds.get(blockIdxToSend);
 
-        LOG.log(Level.FINE, "Start migrating a block. numTotalBlocksToSend: {0}, numSentBlocks: {1}," +
-            " senderId: {2}, receiverId: {3}, blockId: {4}",
+        LOG.log(Level.INFO, "Start migrating a block. numTotalBlocksToSend: {0}, numSentBlocks: {1}," +
+                " senderId: {2}, receiverId: {3}, blockId: {4}",
             new Object[]{blockIds.size(), blockIdxToSend, senderId, receiverId, blockIdToMigrate});
 
-        try (TraceScope sendingBlockScope = Trace.startSpan(
-            String.format("send_block. blockId: %d", blockIdToMigrate), parentTraceInfo)) {
-          final TraceInfo traceInfo = TraceInfo.fromSpan(sendingBlockScope.getSpan());
+        final int oldOwnerId = getStoreId(senderId);
+        final int newOwnerId = getStoreId(receiverId);
 
-          // stop clients's access before starting migration
-          ownershipCache.markBlockAsMigrating(blockIdToMigrate);
+        // send ownership msg and data msg at once
+        sender.get().sendOwnershipMsg(Optional.of(receiverId), senderId, operationId,
+            blockIdToMigrate, oldOwnerId, newOwnerId, null);
 
-          final Map<K, Object> blockData = blockHandler.getBlock(blockIdToMigrate);
-          final List<KeyValuePair> keyValuePairs;
-          try (TraceScope decodeDataScope = Trace.startSpan("encode_data", traceInfo)) {
-            keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
-          }
-
-          final int oldOwnerId = getStoreId(senderId);
-          final int newOwnerId = getStoreId(receiverId);
-
-          // send ownership msg and data msg at once
-          sender.get().sendOwnershipMsg(Optional.of(receiverId), senderId, operationId,
-              blockIdToMigrate, oldOwnerId, newOwnerId, traceInfo);
-          sender.get().sendDataMsg(receiverId, keyValuePairs, blockIdToMigrate, operationId, traceInfo);
-
-          blockIdxToSend = blockIdxCounter.getAndIncrement();
-        }
+        blockIdxToSend = blockIdxCounter.getAndIncrement();
       }
+    }
+
+    private void sendBlockData(final int blockId) {
+      final Map<K, Object> blockData = blockHandler.getBlock(blockId);
+      final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
+
+      sender.get().sendDataMsg(receiverId, keyValuePairs, blockId, operationId, null);
     }
 
     /**

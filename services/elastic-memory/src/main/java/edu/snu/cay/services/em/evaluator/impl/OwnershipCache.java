@@ -89,8 +89,8 @@ public final class OwnershipCache {
   private final AtomicIntegerArray blockLocations;
   private final List<Integer> initialLocalBlocks;
 
-  private final ReadWriteLock ownershipLock = new ReentrantReadWriteLock(true);
-  private final Map<Integer, CountDownLatch> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
+  private final Map<Integer, CountDownLatch> incomingBlocks = new ConcurrentHashMap<>();
+  private final Map<Integer, ReadWriteLock> ownershipLocks = new HashMap<>();
 
   @Inject
   private OwnershipCache(final InjectionFuture<EMMsgSender> msgSender,
@@ -104,6 +104,10 @@ public final class OwnershipCache {
     this.numInitialEvals = numInitialEvals;
     this.addedEval = addedEval;
     this.blockLocations = new AtomicIntegerArray(numTotalBlocks);
+
+    for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
+      ownershipLocks.put(blockId, new ReentrantReadWriteLock(true));
+    }
 
     if (!addedEval) {
       final int numInitialLocalBlocks = numTotalBlocks / numInitialEvals + 1; // +1 for remainders
@@ -131,7 +135,6 @@ public final class OwnershipCache {
       blockLocations.set(blockId, storeId);
     }
   }
-
 
   /**
    * Sets a prefix of evaluator that will be used to resolve remote evaluators.
@@ -265,7 +268,7 @@ public final class OwnershipCache {
 
     waitBlockMigrationToEnd(blockId);
 
-    final Lock readLock = ownershipLock.readLock();
+    final Lock readLock = ownershipLocks.get(blockId).readLock();
     readLock.lock();
     final int memoryStoreId = blockLocations.get(blockId);
     if (memoryStoreId == localStoreId) {
@@ -276,7 +279,7 @@ public final class OwnershipCache {
   }
 
   private void waitBlockMigrationToEnd(final int blockId) {
-    final CountDownLatch blockMigratingLatch = migratingBlocks.get(blockId);
+    final CountDownLatch blockMigratingLatch = incomingBlocks.get(blockId);
     if (blockMigratingLatch != null) {
       try {
         blockMigratingLatch.await();
@@ -319,7 +322,7 @@ public final class OwnershipCache {
   public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
     checkInitialization();
 
-    ownershipLock.writeLock().lock();
+    ownershipLocks.get(blockId).writeLock().lock();
     try {
       final int localOldOwnerId = blockLocations.getAndSet(blockId, newOwnerId);
       if (localOldOwnerId != oldOwnerId) {
@@ -328,39 +331,28 @@ public final class OwnershipCache {
       }
       LOG.log(Level.FINE, "Ownership of block {0} is updated from store {1} to store {2}",
           new Object[]{blockId, oldOwnerId, newOwnerId});
-    } finally {
-      ownershipLock.writeLock().unlock();
-    }
-  }
 
-  /**
-   * Mark a block as migrating and stop client's access on the migrating block.
-   * @param blockId id of the block
-   */
-  void markBlockAsMigrating(final int blockId) {
-    synchronized (migratingBlocks) {
-      if (migratingBlocks.containsKey(blockId)) {
-        throw new RuntimeException("Block" + blockId + " is already in migrating state");
+      // better to be specific
+      if (localStoreId == newOwnerId) {
+        incomingBlocks.put(blockId, new CountDownLatch(1));
       }
-
-      migratingBlocks.put(blockId, new CountDownLatch(1));
+    } finally {
+      ownershipLocks.get(blockId).writeLock().unlock();
     }
   }
 
   /**
-   * Release the block that was marked by {@link #markBlockAsMigrating(int)}
+   * Release the block that was marked by {@link #updateOwnership}
    * and allow clients access the migrated block, which can be either in local or remote MemoryStore.
    * @param blockId id of the block
    */
   void releaseMigratedBlock(final int blockId) {
-    synchronized (migratingBlocks) {
-      if (!migratingBlocks.containsKey(blockId)) {
-        throw new RuntimeException("Block " + blockId + " is not in migrating state");
-      }
-
-      final CountDownLatch blockMigratingLatch = migratingBlocks.remove(blockId);
-      blockMigratingLatch.countDown();
+    if (!incomingBlocks.containsKey(blockId)) {
+      throw new RuntimeException("Block " + blockId + " is not in migrating state");
     }
+
+    final CountDownLatch blockMigratingLatch = incomingBlocks.remove(blockId);
+    blockMigratingLatch.countDown();
   }
 
   /**
