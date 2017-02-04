@@ -163,7 +163,9 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     // 5) Calculate the total number of data instances distributed across workers,
     // as this is used by the optimization model in AsyncDolphinOptimizer.
     final int numTotalDataInstances = getTotalNumDataInstances(currentWorkerEpochMetrics);
+    final double numAvgPullSize = getAvgPullSizePerMiniBatch(currentWorkerMiniBatchMetrics);
     optimizerModelParams.put(Constants.TOTAL_DATA_INSTANCES, (double) numTotalDataInstances);
+    optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MINI_BATCH, numAvgPullSize);
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
@@ -267,6 +269,26 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       numDataInstances += firstWorkerEpochMetric.getMetrics().getProcessedDataItemCount();
     }
     return numDataInstances;
+  }
+
+  /**
+   * Calculates the average nubmer of bytes of pull data per mini-batch across workers.
+   * @param evalParams a mapping of each worker's ID to the list of {@link EvaluatorParameters}.
+   * @return the average number of bytes of pull data per mini-batch across workers.
+   */
+  private double getAvgPullSizePerMiniBatch(final Map<String, List<EvaluatorParameters>> evalParams) {
+    double totalPullData = 0D;
+    int count = 0;
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
+      for (final EvaluatorParameters<WorkerMetrics> param : entry.getValue()) {
+        // do not include mini-batches which processed data less than mini-batch size
+        if ((int) param.getMetrics().getMiniBatchSize() == param.getMetrics().getProcessedDataItemCount()) {
+          totalPullData += param.getMetrics().getParameterWorkerMetrics().getTotalReceivedBytes();
+          count++;
+        }
+      }
+    }
+    return totalPullData / count;
   }
 
   /**
