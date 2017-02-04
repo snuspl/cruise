@@ -309,8 +309,9 @@ public class OwnershipCacheTest {
     final List<Integer> initialBlocks = ownershipCache.getInitialLocalBlockIds();
     final List<Integer> blocksToMove = initialBlocks.subList(0, numBlocksToMove);
 
+    // hold read-locks on blocks to move
     final List<Lock> locks = new ArrayList<>(numBlocksToMove);
-    // Resolving a single block locks the whole routing table
+
     for (final int blockId : blocksToMove) {
       final Lock blockLock = ownershipCache.resolveEvalWithLock(blockId).getValue();
       locks.add(blockLock);

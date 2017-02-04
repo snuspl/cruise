@@ -87,9 +87,17 @@ public final class OwnershipCache {
    * Its index is the blockId and value is the storeId.
    */
   private final AtomicIntegerArray blockLocations;
+
   private final List<Integer> initialLocalBlocks;
 
+  /**
+   * A map maintaining incoming blocks in receiver evaluator.
+   */
   private final Map<Integer, CountDownLatch> incomingBlocks = new ConcurrentHashMap<>();
+
+  /**
+   * A map that holds a read-write lock for each block.
+   */
   private final Map<Integer, ReadWriteLock> ownershipLocks = new HashMap<>();
 
   @Inject

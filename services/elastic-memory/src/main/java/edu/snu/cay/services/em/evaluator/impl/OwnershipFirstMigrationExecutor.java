@@ -215,9 +215,10 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
           // Operations being executed keep a read lock on ownershipCache while being executed.
           ownershipCache.updateOwnership(blockId, oldOwnerId, newOwnerId);
 
-          // Release block that was marked in Migration.startMigratingBlock()
-          // It wakes up awaiting client threads to access emigrated data via remote access
-          ongoingMigrations.get(operationId).sendBlockData(blockId);
+          // send block data to receiver
+          ongoingMigrations.get(operationId).sendBlockData(blockId, traceInfo);
+
+          // send ownership ack msg to driver
           sender.get().sendOwnershipAckMsg(Optional.empty(), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
         }
       });
@@ -252,10 +253,8 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
             dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
           }
 
+          // after putting block and allow access
           blockHandler.putBlock(blockId, dataMap);
-
-          // Unmark block marked in onOwnershipMsg.
-          // It wakes up waiting client threads to access immigrated data.
           ownershipCache.allowAccessToBlock(blockId);
 
           sender.get().sendDataAckMsg(senderId, blockId, operationId, traceInfo);
@@ -312,7 +311,6 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
     private final String senderId;
     private final String receiverId;
     private final List<Integer> blockIds;
-
     private final TraceInfo parentTraceInfo;
 
     // state of migration
@@ -340,26 +338,30 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
 
         final int blockIdToMigrate = blockIds.get(blockIdxToSend);
 
-        LOG.log(Level.INFO, "Start migrating a block. numTotalBlocksToSend: {0}, numSentBlocks: {1}," +
+        LOG.log(Level.FINE, "Start migrating a block. numTotalBlocksToSend: {0}, numSentBlocks: {1}," +
                 " senderId: {2}, receiverId: {3}, blockId: {4}",
             new Object[]{blockIds.size(), blockIdxToSend, senderId, receiverId, blockIdToMigrate});
 
         final int oldOwnerId = getStoreId(senderId);
         final int newOwnerId = getStoreId(receiverId);
 
-        // send ownership msg and data msg at once
-        sender.get().sendOwnershipMsg(Optional.of(receiverId), senderId, operationId,
-            blockIdToMigrate, oldOwnerId, newOwnerId, null);
+        try (TraceScope sendingBlockScope = Trace.startSpan(
+            String.format("send_block. blockId: %d", blockIdToMigrate), parentTraceInfo)) {
+          final TraceInfo traceInfo = TraceInfo.fromSpan(sendingBlockScope.getSpan());
 
-        blockIdxToSend = blockIdxCounter.getAndIncrement();
+          sender.get().sendOwnershipMsg(Optional.of(receiverId), senderId, operationId,
+              blockIdToMigrate, oldOwnerId, newOwnerId, traceInfo);
+
+          blockIdxToSend = blockIdxCounter.getAndIncrement();
+        }
       }
     }
 
-    private void sendBlockData(final int blockId) {
+    private void sendBlockData(final int blockId, final TraceInfo traceInfo) {
       final Map<K, Object> blockData = blockHandler.getBlock(blockId);
       final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, serializer.getCodec());
 
-      sender.get().sendDataMsg(receiverId, keyValuePairs, blockId, operationId, null);
+      sender.get().sendDataMsg(receiverId, keyValuePairs, blockId, operationId, traceInfo);
     }
 
     /**
