@@ -27,7 +27,6 @@ import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
-import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
