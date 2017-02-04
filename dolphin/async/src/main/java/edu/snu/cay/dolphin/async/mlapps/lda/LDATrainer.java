@@ -31,6 +31,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -134,7 +135,7 @@ final class LDATrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration) {
+  public void run(final int iteration, final AtomicBoolean abortFlag) {
     final long epochStartTime = System.currentTimeMillis();
 
     // Record the number of EM data blocks at the beginning of this iteration
@@ -147,6 +148,11 @@ final class LDATrainer implements Trainer {
 
     Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
     while (!nextTrainingData.isEmpty()) {
+      if (abortFlag.get()) {
+        LOG.log(Level.INFO, "Abort a thread to completely close the task");
+        return;
+      }
+
       final Collection<Document> documents = nextTrainingData.values();
       final int numInstancesToProcess = documents.size();
 

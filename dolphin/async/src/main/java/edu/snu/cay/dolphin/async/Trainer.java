@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async;
 
 import org.apache.reef.annotations.audience.TaskSide;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * A trainer of a {@code dolphin-async} application.
  *
@@ -49,8 +51,9 @@ public interface Trainer {
    * {@link edu.snu.cay.common.param.Parameters.Iterations}.
    *
    * @param iteration the index of current iteration
+   * @param abortFlag a flag indicating trainer to abort
    */
-  void run(int iteration);
+  void run(int iteration, AtomicBoolean abortFlag);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.
