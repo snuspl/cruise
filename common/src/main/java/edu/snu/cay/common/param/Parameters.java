@@ -102,4 +102,10 @@ public final class Parameters {
       default_value = "0")
   public final class OptimizationBenefitThreshold implements Name<Double> {
   }
+
+  @NamedParameter(doc = "Network bandwidth of machines, bits per second",
+      short_name = "bandwidth",
+      default_value = "1e9")
+  public final class NetworkBandwidth implements Name<Double> {
+  }
 }
