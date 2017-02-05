@@ -395,6 +395,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
           continue; // skip if it's already submitted
         }
 
+        LOG.log(Level.INFO, "StartOp: {0}", operation);
+
         switch (operation.getOpType()) {
         case ADD_OP:
           executeAddOperation(operation);
