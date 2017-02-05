@@ -330,8 +330,8 @@ public final class OwnershipCache {
    * Updates the owner of the block.
    * This method takes a exclusive lock on a block against {@link #resolveEvalWithLock(int)}
    * to prevent other threads from reading the ownership information while updating it.
-   * In addition, in receiver evaluators, it makes {@link #resolveEvalWithLock} wait
-   * until {@link #allowAccessToBlock} for the block to access is called.
+   * In addition, in receiver evaluators, it invokes {@link #blockAccessToBlock} to
+   * make {@link #resolveEvalWithLock} wait until {@link #allowAccessToBlock} for the block to access is called.
    * @param blockId id of the block to update its ownership.
    * @param oldOwnerId id of the MemoryStore that was owner.
    * @param newOwnerId id of the MemoryStore that will be new owner.
@@ -360,7 +360,7 @@ public final class OwnershipCache {
 
   /**
    * Blocks access to a block until {@link #allowAccessToBlock} is called.
-   * @param blockId if of the block
+   * @param blockId id of the block
    */
   private void blockAccessToBlock(final int blockId) {
     incomingBlocks.put(blockId, new CountDownLatch(1));
