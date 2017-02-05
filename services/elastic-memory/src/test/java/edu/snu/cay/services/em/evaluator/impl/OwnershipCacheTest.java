@@ -346,8 +346,12 @@ public class OwnershipCacheTest {
     ownershipUpdateExecutor.shutdown();
   }
 
+  /**
+   * Tests that resolving a newly incoming block cannot be done
+   * before explicit allowance with {@link OwnershipCache#allowAccessToBlock}.
+   */
   @Test
-  public void testPerBlockLocking() throws InjectionException, InterruptedException {
+  public void testBlockingAccessBeforeAllow() throws InjectionException, InterruptedException {
     final int numTotalBlocks = 1024;
     final int numInitialMemoryStores = 4;
     final int blockId0 = 0;
@@ -356,7 +360,6 @@ public class OwnershipCacheTest {
     final int storeId = 0;
     final OwnershipCache ownershipCache = newOwnershipCache(numInitialMemoryStores, numTotalBlocks, storeId, false);
 
-    // Resolving a single block locks the whole routing table
     ownershipCache.updateOwnership(blockId1, 1, storeId);
     final ExecutorService blockResolvingExecutor = Executors.newFixedThreadPool(2);
 

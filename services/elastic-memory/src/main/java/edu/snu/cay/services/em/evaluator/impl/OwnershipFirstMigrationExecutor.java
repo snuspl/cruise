@@ -253,7 +253,7 @@ public final class OwnershipFirstMigrationExecutor<K> implements MigrationExecut
             dataMap = toDataMap(dataMsg.getKeyValuePairs(), serializer.getCodec());
           }
 
-          // after putting block and allow access
+          // should allow access after putting a block
           blockHandler.putBlock(blockId, dataMap);
           ownershipCache.allowAccessToBlock(blockId);
 
