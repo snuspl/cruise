@@ -131,16 +131,15 @@ public final class HomogeneousOptimizer implements Optimizer {
      */
     final StringBuilder sb = new StringBuilder();
     sb.append("[");
-    final Pair<Integer, Pair<Double, Double>> optimalNumWorkersCostPair =
-        IntStream.range(1, availableEvaluators)
-            .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
-            .mapToObj(numWorkers ->
-                new Pair<>(numWorkers,
-                    totalCost(numWorkers, numTotalDataInstances, avgPullSize,
-                        availableEvaluators, workerSummaries, serverSummaries, sb)))
-            .reduce((p1, p2) -> {
-              final double cost1 = p1.getSecond().getFirst() + p1.getSecond().getSecond();
-              final double cost2 = p2.getSecond().getFirst() + p2.getSecond().getSecond();
+    final Pair<Integer, Pair<Double, Double>> optimalNumWorkersCostPair = IntStream.range(1, availableEvaluators)
+        .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
+        .mapToObj(numWorkers ->
+            new Pair<>(numWorkers,
+                totalCost(numWorkers, numTotalDataInstances, avgPullSize,
+                    availableEvaluators, workerSummaries, serverSummaries, sb)))
+        .reduce((p1, p2) -> {
+          final double cost1 = p1.getSecond().getFirst() + p1.getSecond().getSecond();
+          final double cost2 = p2.getSecond().getFirst() + p2.getSecond().getSecond();
           return cost1 > cost2 ? p2 : p1;
         })
         .get();
