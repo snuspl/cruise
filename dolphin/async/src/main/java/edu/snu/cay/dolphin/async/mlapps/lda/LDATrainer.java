@@ -191,12 +191,12 @@ final class LDATrainer implements Trainer {
     }
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
-    pullModels(vocabList);
-    final LDAModel model = modelAccessor.getModel().orElseThrow(() -> new RuntimeException(MSG_GET_MODEL_FAILED));
+    final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
+    final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
 
     LOG.log(Level.INFO, "Start computing log likelihood");
     final double docLLH = statCalculator.computeDocLLH(totalDocumentsSampled);
-    final double wordLLH = statCalculator.computeWordLLH(model);
+    final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
     final WorkerMetrics epochMetric =
