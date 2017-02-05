@@ -181,9 +181,9 @@ public final class DataFirstMigrationExecutor<K> implements MigrationExecutor {
           final int newOwnerId = getStoreId(dataMsg.getReceiverId().toString());
           final int oldOwnerId = getStoreId(senderId);
 
-          blockHandler.putBlock(blockId, dataMap);
-
           ownershipCache.updateOwnership(blockId, oldOwnerId, newOwnerId);
+          blockHandler.putBlock(blockId, dataMap);
+          ownershipCache.allowAccessToBlock(blockId);
 
           // Notify the driver that the ownership has been updated by setting empty destination id.
           sender.get().sendOwnershipMsg(Optional.empty(), senderId, operationId,
