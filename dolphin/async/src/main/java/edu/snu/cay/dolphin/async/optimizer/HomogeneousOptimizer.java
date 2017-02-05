@@ -32,7 +32,6 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.function.BinaryOperator;
 import java.util.function.ToDoubleFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -74,16 +73,13 @@ public final class HomogeneousOptimizer implements Optimizer {
    * are put at the front (descending order).
    */
   private static final Comparator<EvaluatorSummary> THROUGHPUT_COMPARATOR =
-      new Comparator<EvaluatorSummary>() {
-        @Override
-        public int compare(final EvaluatorSummary o1, final EvaluatorSummary o2) {
-          if (o1.getThroughput() < o2.getThroughput()) {
-            return 1;
-          } else if (o1.getThroughput() > o2.getThroughput()) {
-            return -1;
-          } else {
-            return 0;
-          }
+      (o1, o2) -> {
+        if (o1.getThroughput() < o2.getThroughput()) {
+          return 1;
+        } else if (o1.getThroughput() > o2.getThroughput()) {
+          return -1;
+        } else {
+          return 0;
         }
       };
 
@@ -92,13 +88,10 @@ public final class HomogeneousOptimizer implements Optimizer {
    * {@link EvaluatorSummary}s with more blocks to move are put at the front (descending order).
    */
   private static final Comparator<EvaluatorSummary> NUM_BLOCKS_TO_MOVE_COMPARATOR =
-      new Comparator<EvaluatorSummary>() {
-        @Override
-        public int compare(final EvaluatorSummary o1, final EvaluatorSummary o2) {
-          final int numBlocksToMove1 = Math.abs(o1.getNumBlocks() - o1.getNumOptimalBlocks());
-          final int numBlocksToMove2 = Math.abs(o2.getNumBlocks() - o2.getNumOptimalBlocks());
-          return numBlocksToMove2 - numBlocksToMove1;
-        }
+      (o1, o2) -> {
+        final int numBlocksToMove1 = Math.abs(o1.getNumBlocks() - o1.getNumOptimalBlocks());
+        final int numBlocksToMove2 = Math.abs(o2.getNumBlocks() - o2.getNumOptimalBlocks());
+        return numBlocksToMove2 - numBlocksToMove1;
       };
 
   @Override
@@ -136,23 +129,25 @@ public final class HomogeneousOptimizer implements Optimizer {
      * 3. compare the total costs for each possible number of workers
      * 4. set optimalNumWorkers to be one that has the minimum total cost
      */
-    final Pair<Integer, Pair<Double, Double>> optimalNumWorkersCostPair = IntStream.range(1, availableEvaluators)
-        .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
-        .mapToObj(numWorkers ->
-            new Pair<>(numWorkers,
-                totalCost(numWorkers, numTotalDataInstances, avgPullSize,
-                    availableEvaluators, workerSummaries, serverSummaries)))
-        .reduce(new BinaryOperator<Pair<Integer, Pair<Double, Double>>>() {
-          @Override
-          public Pair<Integer, Pair<Double, Double>> apply(final Pair<Integer, Pair<Double, Double>> p1,
-                                                           final Pair<Integer, Pair<Double, Double>> p2) {
-            final double cost1 = p1.getSecond().getFirst() + p1.getSecond().getSecond();
-            final double cost2 = p2.getSecond().getFirst() + p2.getSecond().getSecond();
-
-            return cost1 > cost2 ? p2 : p1;
-          }
+    final StringBuilder sb = new StringBuilder();
+    sb.append("[");
+    final Pair<Integer, Pair<Double, Double>> optimalNumWorkersCostPair =
+        IntStream.range(1, availableEvaluators)
+            .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
+            .mapToObj(numWorkers ->
+                new Pair<>(numWorkers,
+                    totalCost(numWorkers, numTotalDataInstances, avgPullSize,
+                        availableEvaluators, workerSummaries, serverSummaries, sb)))
+            .reduce((p1, p2) -> {
+              final double cost1 = p1.getSecond().getFirst() + p1.getSecond().getSecond();
+              final double cost2 = p2.getSecond().getFirst() + p2.getSecond().getSecond();
+          return cost1 > cost2 ? p2 : p1;
         })
         .get();
+    sb.delete(sb.length() - 2, sb.length()); // Remove trailing ', '
+    sb.append("]");
+
+    LOG.log(Level.INFO, "CostInfo {0}", sb.toString());
     final int currentNumWorkers = workerParams.size();
     final int currentNumServers = serverParams.size();
 
@@ -310,6 +305,7 @@ public final class HomogeneousOptimizer implements Optimizer {
    * @param availableEvaluators number of evaluators available
    * @param workers list of worker {@link EvaluatorSummary}
    * @param servers list of server {@link EvaluatorSummary}
+   * @param sb String builder to write cost information in JSON format.
    * @return total cost for a given number of workers using the current metrics of the system
    */
   private Pair<Double, Double> totalCost(final int numWorker,
@@ -317,7 +313,8 @@ public final class HomogeneousOptimizer implements Optimizer {
                                          final double avgPullSize,
                                          final int availableEvaluators,
                                          final List<EvaluatorSummary> workers,
-                                         final List<EvaluatorSummary> servers) {
+                                         final List<EvaluatorSummary> servers,
+                                         final StringBuilder sb) {
     // Calculating compCost based on avg: (avgNumDataInstancesPerWorker / avgThroughput)
     final double workerThroughputSum = workers.subList(0, numWorker).stream()
         .mapToDouble(worker -> worker.throughput)
@@ -331,9 +328,8 @@ public final class HomogeneousOptimizer implements Optimizer {
         * 8 / networkBandwidth * numTotalDataInstances / numWorker / miniBatchSize;
 
     final double totalCost = compCost + commCost;
-    final String costInfo = String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +
-        "\"compCost\": %f, \"commCost\": %f}", numServer, numWorker, totalCost, compCost, commCost);
-    LOG.log(Level.INFO, "CostInfo {0} {1}", new Object[]{System.currentTimeMillis(), costInfo});
+    sb.append(String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +
+        "\"compCost\": %f, \"commCost\": %f}, ", numServer, numWorker, totalCost, compCost, commCost));
     return new Pair<>(compCost, commCost);
   }
 
