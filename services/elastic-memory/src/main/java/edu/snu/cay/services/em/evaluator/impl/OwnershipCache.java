@@ -87,10 +87,18 @@ public final class OwnershipCache {
    * Its index is the blockId and value is the storeId.
    */
   private final AtomicIntegerArray blockLocations;
+
   private final List<Integer> initialLocalBlocks;
 
-  private final ReadWriteLock ownershipLock = new ReentrantReadWriteLock(true);
-  private final Map<Integer, CountDownLatch> migratingBlocks = Collections.synchronizedMap(new HashMap<>());
+  /**
+   * A map maintaining incoming blocks in receiver evaluator.
+   */
+  private final Map<Integer, CountDownLatch> incomingBlocks = new ConcurrentHashMap<>();
+
+  /**
+   * A map that holds a read-write lock for each block.
+   */
+  private final Map<Integer, ReadWriteLock> ownershipLocks = new HashMap<>();
 
   @Inject
   private OwnershipCache(final InjectionFuture<EMMsgSender> msgSender,
@@ -104,6 +112,10 @@ public final class OwnershipCache {
     this.numInitialEvals = numInitialEvals;
     this.addedEval = addedEval;
     this.blockLocations = new AtomicIntegerArray(numTotalBlocks);
+
+    for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
+      ownershipLocks.put(blockId, new ReentrantReadWriteLock(true));
+    }
 
     if (!addedEval) {
       final int numInitialLocalBlocks = numTotalBlocks / numInitialEvals + 1; // +1 for remainders
@@ -131,7 +143,6 @@ public final class OwnershipCache {
       blockLocations.set(blockId, storeId);
     }
   }
-
 
   /**
    * Sets a prefix of evaluator that will be used to resolve remote evaluators.
@@ -263,10 +274,12 @@ public final class OwnershipCache {
   public Tuple<Optional<String>, Lock> resolveEvalWithLock(final int blockId) {
     checkInitialization();
 
+    final Lock readLock = ownershipLocks.get(blockId).readLock();
+    readLock.lock();
+
+    // it should be done while holding a read-lock
     waitBlockMigrationToEnd(blockId);
 
-    final Lock readLock = ownershipLock.readLock();
-    readLock.lock();
     final int memoryStoreId = blockLocations.get(blockId);
     if (memoryStoreId == localStoreId) {
       return new Tuple<>(Optional.empty(), readLock);
@@ -275,8 +288,12 @@ public final class OwnershipCache {
     }
   }
 
+  /**
+   * Wait until {@link #allowAccessToBlock} is called for a block if it's blocked by {@link #blockAccessToBlock}.
+   * @param blockId an id of the block
+   */
   private void waitBlockMigrationToEnd(final int blockId) {
-    final CountDownLatch blockMigratingLatch = migratingBlocks.get(blockId);
+    final CountDownLatch blockMigratingLatch = incomingBlocks.get(blockId);
     if (blockMigratingLatch != null) {
       try {
         blockMigratingLatch.await();
@@ -310,8 +327,11 @@ public final class OwnershipCache {
   }
 
   /**
-   * Updates the owner of the block. Note that this method must be synchronized
+   * Updates the owner of the block.
+   * This method takes a exclusive lock on a block against {@link #resolveEvalWithLock(int)}
    * to prevent other threads from reading the ownership information while updating it.
+   * In addition, in receiver evaluators, it invokes {@link #blockAccessToBlock} to
+   * make {@link #resolveEvalWithLock} wait until {@link #allowAccessToBlock} for the block to access is called.
    * @param blockId id of the block to update its ownership.
    * @param oldOwnerId id of the MemoryStore that was owner.
    * @param newOwnerId id of the MemoryStore that will be new owner.
@@ -319,7 +339,7 @@ public final class OwnershipCache {
   public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
     checkInitialization();
 
-    ownershipLock.writeLock().lock();
+    ownershipLocks.get(blockId).writeLock().lock();
     try {
       final int localOldOwnerId = blockLocations.getAndSet(blockId, newOwnerId);
       if (localOldOwnerId != oldOwnerId) {
@@ -328,39 +348,35 @@ public final class OwnershipCache {
       }
       LOG.log(Level.FINE, "Ownership of block {0} is updated from store {1} to store {2}",
           new Object[]{blockId, oldOwnerId, newOwnerId});
+
+      if (localStoreId == newOwnerId) {
+        // it should be done while holding a write-lock
+        blockAccessToBlock(blockId);
+      }
     } finally {
-      ownershipLock.writeLock().unlock();
+      ownershipLocks.get(blockId).writeLock().unlock();
     }
   }
 
   /**
-   * Mark a block as migrating and stop client's access on the migrating block.
+   * Blocks access to a block until {@link #allowAccessToBlock} is called.
    * @param blockId id of the block
    */
-  void markBlockAsMigrating(final int blockId) {
-    synchronized (migratingBlocks) {
-      if (migratingBlocks.containsKey(blockId)) {
-        throw new RuntimeException("Block" + blockId + " is already in migrating state");
-      }
-
-      migratingBlocks.put(blockId, new CountDownLatch(1));
-    }
+  private void blockAccessToBlock(final int blockId) {
+    incomingBlocks.put(blockId, new CountDownLatch(1));
   }
 
   /**
-   * Release the block that was marked by {@link #markBlockAsMigrating(int)}
-   * and allow clients access the migrated block, which can be either in local or remote MemoryStore.
+   * Allows access to a block when it completely migrates into local store.
    * @param blockId id of the block
    */
-  void releaseMigratedBlock(final int blockId) {
-    synchronized (migratingBlocks) {
-      if (!migratingBlocks.containsKey(blockId)) {
-        throw new RuntimeException("Block " + blockId + " is not in migrating state");
-      }
-
-      final CountDownLatch blockMigratingLatch = migratingBlocks.remove(blockId);
-      blockMigratingLatch.countDown();
+  public void allowAccessToBlock(final int blockId) {
+    if (!incomingBlocks.containsKey(blockId)) {
+      throw new RuntimeException("Block " + blockId + " is not in migrating state");
     }
+
+    final CountDownLatch blockMigratingLatch = incomingBlocks.remove(blockId);
+    blockMigratingLatch.countDown();
   }
 
   /**
