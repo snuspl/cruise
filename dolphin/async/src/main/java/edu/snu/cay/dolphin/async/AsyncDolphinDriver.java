@@ -205,6 +205,11 @@ public final class AsyncDolphinDriver {
   private final Set<String> deletedServerContextIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
+   * Bookkeeping of evaluator ids deleted by EM's delete.
+   */
+  private final Map<String, CountDownLatch> deletedEvaluatorIds = new ConcurrentHashMap<>();
+
+  /**
    * Configuration that should be passed to each parameter server.
    */
   private final Configuration serverConf;
@@ -718,6 +723,12 @@ public final class AsyncDolphinDriver {
   final class CompletedEvaluatorHandler implements EventHandler<CompletedEvaluator> {
     @Override
     public void onNext(final CompletedEvaluator completedEvaluator) {
+      final CountDownLatch closedLatch = deletedEvaluatorIds.get(completedEvaluator.getId());
+      if (closedLatch != null) {
+        LOG.log(Level.INFO, "Evaluator has been deleted by EM: {0}", completedEvaluator);
+        closedLatch.countDown();
+      }
+
       LOG.log(Level.FINE, "CompletedEvaluator: {0}", completedEvaluator); // just for logging
     }
   }
@@ -1020,7 +1031,17 @@ public final class AsyncDolphinDriver {
       } else {
         deletedServerContextIds.add(activeContextId);
 
+        final CountDownLatch closedLatch = new CountDownLatch(1);
+        deletedEvaluatorIds.put(activeContext.getEvaluatorId(), closedLatch);
+
         activeContext.close();
+        try {
+          // wait until evaluator will be closed
+          closedLatch.await();
+        } catch (final InterruptedException e) {
+          throw new RuntimeException("Interrupted while waiting for worker to be closed");
+        }
+
         LOG.log(Level.FINE, "Server has been deleted successfully. Remaining Servers: {0}",
             contextIdToServerContexts.size());
         isSuccess = true;
@@ -1067,7 +1088,17 @@ public final class AsyncDolphinDriver {
       } else {
         deletedWorkerContextIds.add(activeContextId);
 
+        final CountDownLatch closedLatch = new CountDownLatch(1);
+        deletedEvaluatorIds.put(activeContext.getEvaluatorId(), closedLatch);
+
         activeContext.close();
+        try {
+          // wait until evaluator will be closed
+          closedLatch.await();
+        } catch (final InterruptedException e) {
+          throw new RuntimeException("Interrupted while waiting for worker to be closed");
+        }
+
         LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}",
             contextIdToWorkerContexts.size());
         isSuccess = true;
