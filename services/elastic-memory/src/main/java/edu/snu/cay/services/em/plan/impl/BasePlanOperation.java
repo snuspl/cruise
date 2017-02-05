@@ -19,16 +19,22 @@ import edu.snu.cay.services.em.plan.api.PlanOperation;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import org.apache.reef.util.Optional;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * A base implementation of PlanOperation.
  */
 public class BasePlanOperation implements PlanOperation {
+  private static final AtomicLong OP_ID_COUNTER = new AtomicLong(0);
+
+  private final long opId;
   private final String opType;
   private final String namespace;
   private final Optional<String> evalId;
   private final Optional<TransferStep> transferStep;
 
   public BasePlanOperation(final String opType, final String namespace, final String evalId) {
+    this.opId = OP_ID_COUNTER.getAndIncrement();
     this.opType = opType;
     this.namespace = namespace;
     this.evalId = Optional.of(evalId);
@@ -36,6 +42,7 @@ public class BasePlanOperation implements PlanOperation {
   }
 
   public BasePlanOperation(final String opType, final String namespace, final TransferStep transferStep) {
+    this.opId = OP_ID_COUNTER.getAndIncrement();
     this.opType = opType;
     this.namespace = namespace;
     this.evalId = Optional.empty();
@@ -67,30 +74,25 @@ public class BasePlanOperation implements PlanOperation {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof BasePlanOperation)) {
       return false;
     }
 
     final BasePlanOperation that = (BasePlanOperation) o;
 
-    return opType.equals(that.opType) && namespace.equals(that.namespace)
-        && evalId.equals(that.evalId) && transferStep.equals(that.transferStep);
-
+    return opId == that.opId;
   }
 
   @Override
   public int hashCode() {
-    int result = opType.hashCode();
-    result = 31 * result + namespace.hashCode();
-    result = 31 * result + evalId.hashCode();
-    result = 31 * result + transferStep.hashCode();
-    return result;
+    return (int) (opId ^ (opId >>> 32));
   }
 
   @Override
   public String toString() {
     return "PlanOperation{" +
-        "opType='" + opType + '\'' +
+        "opId='" + opId + '\'' +
+        ", opType='" + opType + '\'' +
         ", namespace='" + namespace + '\'' +
         ", evalId=" + evalId +
         ", transferStep=" + transferStep +
