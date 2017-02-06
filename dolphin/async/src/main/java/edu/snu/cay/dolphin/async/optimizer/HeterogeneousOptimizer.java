@@ -116,7 +116,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
             param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime() /
                 (double) ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount(),
             param -> hostnameToBandwidth
-                .getOrDefault(((ServerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
+                .getOrDefault(((WorkerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
             NEW_WORKER_ID_PREFIX);
     final List<EvaluatorSummary> workerSummaries = workerPair.getFirst();
     final int numDataBlocks = workerPair.getSecond();
