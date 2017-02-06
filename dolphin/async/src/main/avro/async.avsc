@@ -67,7 +67,10 @@
     {"name": "avgPushTime", "type": ["null", "double"], "default": null},
 
     // average pull time per trace/element for this epoch (seconds), only used for mini-batch metrics
-    {"name": "avgPullTime", "type": ["null", "double"], "default": null}
+    {"name": "avgPullTime", "type": ["null", "double"], "default": null},
+
+    // hostname
+    {"name": "hostname", "type": "string", "default": ""}
   ]
 }
 ]

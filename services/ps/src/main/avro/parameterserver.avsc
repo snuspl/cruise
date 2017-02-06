@@ -193,7 +193,8 @@
     {"name": "totalPushProcessingTimeSec", "type": "double", "default":0.0},
     {"name": "totalPullWaitingTimeSec", "type": "double", "default":0.0},
     {"name": "totalPushWaitingTimeSec", "type": "double", "default":0.0},
-    {"name": "totalReqWaitingTimeSec", "type": "double", "default":0.0}
+    {"name": "totalReqWaitingTimeSec", "type": "double", "default":0.0},
+    {"name": "hostname", "type": "string", "default": ""}
   ]
 },
 
