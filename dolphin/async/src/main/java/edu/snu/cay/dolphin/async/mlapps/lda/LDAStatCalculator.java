@@ -73,7 +73,10 @@ final class LDAStatCalculator {
     for (final Document doc : workload) {
       for (int j = 0; j < numTopics; j++) {
         final int topicCount = doc.getTopicCount(j);
-        result += topicCount == 0 ? logGammaAlpha : Gamma.logGamma(topicCount + alpha);
+        if (topicCount < 0) {
+          doc.setTopicCount(j, 0);
+        }
+        result += topicCount <= 0 ? logGammaAlpha : Gamma.logGamma(topicCount + alpha);
       }
       result -= Gamma.logGamma(doc.size() + numTopics * alpha);
     }

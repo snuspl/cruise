@@ -103,6 +103,10 @@ final class Document {
     topicCounts[newTopic]++;
   }
 
+  void setTopicCount(final int topicIdx, final int value) {
+    topicCounts[topicIdx] = value;
+  }
+
   /**
    * @param topicIndex Index of a topic
    * @return Number of words that are assigned to the topic
