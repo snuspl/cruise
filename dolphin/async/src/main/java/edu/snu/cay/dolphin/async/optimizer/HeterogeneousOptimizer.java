@@ -60,7 +60,8 @@ public final class HeterogeneousOptimizer implements Optimizer {
                                  @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                  final double optBenefitThreshold) {
     this.miniBatchSize = miniBatchSize;
-    this.defaultNetworkBandwidth = defaultNetworkBandwidth;
+    // convert bits per second to bytes per second
+    this.defaultNetworkBandwidth = defaultNetworkBandwidth / 8D;
     this.optBenefitThreshold = optBenefitThreshold;
     this.hostnameToBandwidth = new HashMap<>();
   }
