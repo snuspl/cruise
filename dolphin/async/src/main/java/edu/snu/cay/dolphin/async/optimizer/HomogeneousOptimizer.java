@@ -131,18 +131,23 @@ public final class HomogeneousOptimizer implements Optimizer {
      */
     final StringBuilder sb = new StringBuilder();
     sb.append("[");
-    final Pair<Integer, Pair<Double, Double>> optimalNumWorkersCostPair = IntStream.range(1, availableEvaluators)
+    final Map<Integer, Pair<Double, Double>> numWorkersCostMap = new HashMap<>();
+    final double[] optimalCostArr = {Double.MAX_VALUE};
+    final int[] optimalNumWorkersArr = {-1};
+
+    IntStream.range(1, availableEvaluators)
         .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
-        .mapToObj(numWorkers ->
-            new Pair<>(numWorkers,
-                totalCost(numWorkers, numTotalDataInstances, avgPullSize,
-                    availableEvaluators, workerSummaries, serverSummaries, sb)))
-        .reduce((p1, p2) -> {
-          final double cost1 = p1.getSecond().getFirst() + p1.getSecond().getSecond();
-          final double cost2 = p2.getSecond().getFirst() + p2.getSecond().getSecond();
-          return cost1 > cost2 ? p2 : p1;
-        })
-        .get();
+        .forEach(numWorkers -> {
+          final Pair<Double, Double> costPair = totalCost(numWorkers, numTotalDataInstances, avgPullSize,
+              availableEvaluators, workerSummaries, serverSummaries, sb);
+          final double cost = costPair.getFirst() + costPair.getSecond();
+          if (optimalCostArr[0] > cost) {
+            optimalCostArr[0] = cost;
+            optimalNumWorkersArr[0] = numWorkers;
+          }
+          numWorkersCostMap.put(numWorkers, costPair);
+        });
+
     sb.delete(sb.length() - 2, sb.length()); // Remove trailing ', '
     sb.append("]");
 
@@ -150,31 +155,43 @@ public final class HomogeneousOptimizer implements Optimizer {
     final int currentNumWorkers = workerParams.size();
     final int currentNumServers = serverParams.size();
 
-    final int optimalNumWorkers = optimalNumWorkersCostPair.getFirst();
+    if (optimalNumWorkersArr[0] == -1) {
+      // if there is no optimal found
+      throw new RuntimeException("Failed to find the optimal configuration");
+    }
+
+    final int optimalNumWorkers = optimalNumWorkersArr[0];
     final int optimalNumServers = availableEvaluators - optimalNumWorkers;
 
-    final double optimalCompCost = optimalNumWorkersCostPair.getSecond().getFirst();
-    final double optimalCommCost = optimalNumWorkersCostPair.getSecond().getSecond();
+    final Pair<Double, Double> optimalCostPair = numWorkersCostMap.get(optimalNumWorkers);
+    final double optimalCompCost = optimalCostPair.getFirst();
+    final double optimalCommCost = optimalCostPair.getSecond();
 
     final double avgNumMiniBatchesPerWorker =
         Math.ceil((double) numTotalDataInstances / currentNumWorkers / miniBatchSize);
 
     // we must apply the costs in metrics by avgNumMiniBatchesPerWorker since these are mini-batch metrics
-    final double currentCompCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
+    final double currMeasuredCompCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().orElse(0D));
-    final double currentCommCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
+    final double currMeasuredCommCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
         .mapToDouble(param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().orElse(0D));
+
+    final Pair<Double, Double> currEstimatedCostPair = numWorkersCostMap.get(currentNumWorkers);
+    final double currEstimatedCompCost = currEstimatedCostPair.getFirst();
+    final double currEstimatedCommCost = currEstimatedCostPair.getSecond();
 
     final String optimizationInfo = String.format("{\"numAvailEval\":%d, " +
             "\"optNumWorker\":%d, \"currNumWorker\":%d, \"optNumServer\":%d, \"currNumServer\":%d, " +
-            "\"optCompCost\":%f, \"currCompCost\":%f, \"optCommCost\":%f, \"currCommCost\":%f," +
+            "\"optCompCost\":%f, \"currEstimatedCompCost\":%f, \"currMeasuredCompCost\":%f, " +
+            "\"optCommCost\":%f, \"currEstimatedCommCost\":%f, \"currMeasuredCommCost\":%f, " +
             "\"optBenefitThreshold\":%f}", availableEvaluators,
         optimalNumWorkers, currentNumWorkers, optimalNumServers, currentNumServers,
-        optimalCompCost, currentCompCost, optimalCommCost, currentCommCost, optBenefitThreshold);
+        optimalCompCost, currEstimatedCompCost, currMeasuredCompCost,
+        optimalCommCost, currEstimatedCommCost, currMeasuredCommCost, optBenefitThreshold);
 
     LOG.log(Level.INFO, "OptimizationInfo {0} {1}", new Object[]{System.currentTimeMillis(), optimizationInfo});
 
-    final double currentTotalCost = currentCompCost + currentCommCost;
+    final double currentTotalCost = currEstimatedCompCost + currEstimatedCommCost;
     final double optimalTotalCost = optimalCompCost + optimalCommCost;
     // A valid reconfiguration plan is generated only when optimizer determines that a reconfiguration should occur.
     if ((currentTotalCost - optimalTotalCost) / currentTotalCost < optBenefitThreshold) {
