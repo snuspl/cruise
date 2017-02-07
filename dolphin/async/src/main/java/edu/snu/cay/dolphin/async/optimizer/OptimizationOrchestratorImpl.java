@@ -164,8 +164,10 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     // as this is used by the optimization model in AsyncDolphinOptimizer.
     final int numTotalDataInstances = getTotalNumDataInstances(currentWorkerEpochMetrics);
     final double numAvgPullSize = getAvgPullSizePerMiniBatch(currentWorkerMiniBatchMetrics);
+    final double numAvgMiniBatch = getAvgNumMiniBatchPerEpoch(currentWorkerEpochMetrics);
     optimizerModelParams.put(Constants.TOTAL_DATA_INSTANCES, (double) numTotalDataInstances);
     optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MINI_BATCH, numAvgPullSize);
+    optimizerModelParams.put(Constants.AVG_NUM_MINI_BATCH_PER_EPOCH, numAvgMiniBatch);
 
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
@@ -289,6 +291,11 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
       }
     }
     return totalPullData / count;
+  }
+
+  private double getAvgNumMiniBatchPerEpoch(final Map<String, List<EvaluatorParameters>> evalParams) {
+    return evalParams.entrySet().stream().mapToDouble(entry ->
+        ((WorkerMetrics) entry.getValue().get(0).getMetrics()).getNumMiniBatchForEpoch()).average().orElse(0D);
   }
 
   /**
