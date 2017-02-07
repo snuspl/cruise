@@ -27,7 +27,6 @@ import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -93,63 +92,135 @@ public final class HeterogeneousOptimizer implements Optimizer {
         return numBlocksToMove2 - numBlocksToMove1;
       };
 
+  private final class OptimalResult {
+    private double optimalCost;
+    private int optimalNumWorkers;
+
+    private OptimalResult() {
+      this.optimalCost = Double.MAX_VALUE;
+      this.optimalNumWorkers = 0;
+    }
+
+    private void replaceIfBetter(final double cost, final int numWorkers) {
+      if (optimalCost > cost) {
+        optimalCost = cost;
+        optimalNumWorkers = numWorkers;
+      }
+    }
+  }
+
+  private OptimalResult chooseOptimal(final Map<Integer, Double> numWorkersCostMap) {
+    final OptimalResult optimalResult = new OptimalResult();
+
+    numWorkersCostMap.forEach((numWorkers, cost) -> {
+      optimalResult.replaceIfBetter(cost, numWorkers);
+    });
+    return optimalResult;
+  }
+
   @Override
   public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators,
                        final Map<String, Double> modelParamsMap) {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
     final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
 
-    final int numAvailableExtraEvals = availableEvaluators - (serverParams.size() + workerParams.size());
+    final int currUsedEvals = serverParams.size() + workerParams.size();
+    final int numAvailableExtraEvals = availableEvaluators - currUsedEvals;
 
-    final Pair<List<EvaluatorSummary>, Integer> serverPair =
+    final List<EvaluatorSummary> serverSummaries =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
             param -> 1D / hostnameToBandwidth
                 .getOrDefault(((ServerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
             param -> hostnameToBandwidth
                 .getOrDefault(((ServerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
             NEW_SERVER_ID_PREFIX);
-    final List<EvaluatorSummary> serverSummaries = serverPair.getFirst();
-    final int numModelBlocks = serverPair.getSecond();
 
-    final Pair<List<EvaluatorSummary>, Integer> workerPair =
+    final List<EvaluatorSummary> workerSummaries =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
             param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime() /
                 (double) ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount(),
             param -> hostnameToBandwidth
                 .getOrDefault(((WorkerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
             NEW_WORKER_ID_PREFIX);
-    final List<EvaluatorSummary> workerSummaries = workerPair.getFirst();
-    final int numDataBlocks = workerPair.getSecond();
 
-    final int numTotalDataInstances = modelParamsMap.get(Constants.TOTAL_DATA_INSTANCES).intValue();
-    final double avgPullSize = modelParamsMap.get(Constants.AVG_PULL_SIZE_PER_MINI_BATCH);
+    final double currEstmCost;
+    final double optimalCost;
+    final int optimalNumServers;
+    final int optimalNumWorkers;
+    final int numEvalsToUse;
+    final Map<Integer, Double> costMap;
 
-    /*
-     * 1. for each possible number of workers, check and filter:
-     * a) total number of data blocks on worker side should be greater than or equal to the number of workers
-     * b) total number of model blocks on server side should be greater than or equal to the number of servers
-     *
-     * 2. for each possible number of workers after 1, calculate cost with current metrics (avg) according to the model
-     * 3. compare the total costs for each possible number of workers
-     * 4. set optimalNumWorkers to be one that has the minimum total cost
-     */
+    if (numAvailableExtraEvals > 0) {
+      // build two models (availableEvaluators, currUsedEvals)
+      final Map<Integer, Double> costMapWithExtraEvals = calculateCost(serverSummaries,
+          workerSummaries, availableEvaluators, modelParamsMap);
+      final OptimalResult optimalResultWithExtraEvals = chooseOptimal(costMapWithExtraEvals);
+
+      final Map<Integer, Double> costMapWithCurrEvals = calculateCost(serverSummaries,
+          workerSummaries, currUsedEvals, modelParamsMap);
+      final OptimalResult optimalResultWithCurrEvals = chooseOptimal(costMapWithCurrEvals);
+
+      currEstmCost = costMapWithCurrEvals.get(workerParams.size());
+
+      // choose a configuration with extra evals only when its cost is smaller than the optimal one with current evals
+      if (optimalResultWithExtraEvals.optimalCost < optimalResultWithCurrEvals.optimalCost) {
+        optimalCost = optimalResultWithExtraEvals.optimalCost;
+        optimalNumServers = availableEvaluators - optimalResultWithExtraEvals.optimalNumWorkers;
+        optimalNumWorkers = optimalResultWithExtraEvals.optimalNumWorkers;
+        costMap = costMapWithExtraEvals;
+        numEvalsToUse = availableEvaluators;
+      } else {
+        optimalCost = optimalResultWithCurrEvals.optimalCost;
+        optimalNumServers = currUsedEvals - optimalResultWithCurrEvals.optimalNumWorkers;
+        optimalNumWorkers = optimalResultWithCurrEvals.optimalNumWorkers;
+        costMap = costMapWithCurrEvals;
+        numEvalsToUse = currUsedEvals;
+      }
+
+    } else {
+      // build one model (availableEvaluators)
+      costMap = calculateCost(serverSummaries,
+          workerSummaries, availableEvaluators, modelParamsMap);
+      final OptimalResult optimalResult = chooseOptimal(costMap);
+
+      if (numAvailableExtraEvals < 0) {
+        // must trigger optimization
+        currEstmCost = Double.MAX_VALUE;
+      } else {
+        currEstmCost = costMap.get(workerParams.size());
+      }
+      optimalCost = optimalResult.optimalCost;
+      optimalNumWorkers = optimalResult.optimalNumWorkers;
+      optimalNumServers = availableEvaluators - optimalResult.optimalNumWorkers;
+      numEvalsToUse = availableEvaluators;
+    }
+
+    printInfo(evalParamsMap, modelParamsMap, costMap, optimalNumWorkers, numEvalsToUse);
+
+    // A valid reconfiguration plan is generated only when optimizer determines that a reconfiguration should occur.
+    if ((currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold) {
+      return new EmptyPlan();
+    } else {
+      return generateOptimalPlan(serverSummaries, workerSummaries, optimalNumServers, optimalNumWorkers,
+          serverParams.size(), workerParams.size(), numAvailableExtraEvals, modelParamsMap);
+    }
+  }
+
+  private void printInfo(final Map<String, List<EvaluatorParameters>> evalParamsMap,
+                         final Map<String, Double> modelParamsMap,
+                         final Map<Integer, Double> numWorkersCostMap,
+                         final int optimalNumWorkers,
+                         final int numEvalsToUse) {
+    final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
+    final List<EvaluatorParameters> workerParams = evalParamsMap.get(Constants.NAMESPACE_WORKER);
+
     final StringBuilder sb = new StringBuilder();
     sb.append("[");
-    final Map<Integer, Double> numWorkersCostMap = new HashMap<>();
-    final double[] optimalCostArr = {Double.MAX_VALUE};
-    final int[] optimalNumWorkersArr = {-1};
 
-    IntStream.range(1, availableEvaluators)
-        .filter(x -> x <= numDataBlocks && (availableEvaluators - x) <= numModelBlocks)
-        .forEach(numWorkers -> {
-          final double cost = totalCost(numWorkers, numTotalDataInstances, avgPullSize,
-              availableEvaluators, workerSummaries, serverSummaries, sb);
-          if (optimalCostArr[0] > cost) {
-            optimalCostArr[0] = cost;
-            optimalNumWorkersArr[0] = numWorkers;
-          }
-          numWorkersCostMap.put(numWorkers, cost);
-        });
+    numWorkersCostMap.forEach((numWorkers, cost) -> {
+      sb.append(String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, ",
+          numEvalsToUse - numWorkers, numWorkers, cost));
+    });
 
     sb.delete(sb.length() - 2, sb.length()); // Remove trailing ', '
     sb.append("]");
@@ -158,16 +229,9 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final int currentNumWorkers = workerParams.size();
     final int currentNumServers = serverParams.size();
 
-    if (optimalNumWorkersArr[0] == -1) {
-      // if there is no optimal found
-      throw new RuntimeException("Failed to find the optimal configuration");
-    }
-
-    final int optimalNumWorkers = optimalNumWorkersArr[0];
-    final int optimalNumServers = availableEvaluators - optimalNumWorkers;
-
     final double optimalCost = numWorkersCostMap.get(optimalNumWorkers);
 
+    final int numTotalDataInstances = modelParamsMap.get(Constants.TOTAL_DATA_INSTANCES).intValue();
     final double avgNumMiniBatchesPerWorker =
         Math.ceil((double) numTotalDataInstances / currentNumWorkers / miniBatchSize);
 
@@ -183,38 +247,84 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final String optimizationInfo = String.format("{\"numAvailEval\":%d, " +
             "\"optNumWorker\":%d, \"currNumWorker\":%d, \"optNumServer\":%d, \"currNumServer\":%d, " +
             "\"optCost\":%f, \"currEstimatedCost\":%f, \"currMeasuredCost\":%f, " +
-            "\"optBenefitThreshold\":%f}", availableEvaluators,
-        optimalNumWorkers, currentNumWorkers, optimalNumServers, currentNumServers,
-        optimalCost, currEstimatedCost, currMeasuredCost, optBenefitThreshold);
+            "\"optBenefitThreshold\":%f}", numEvalsToUse,
+        optimalNumWorkers, currentNumWorkers, numEvalsToUse - optimalNumWorkers, currentNumServers,
+        optimalCost, currEstimatedCost, currMeasuredCost,
+        optBenefitThreshold);
 
     LOG.log(Level.INFO, "OptimizationInfo {0} {1}", new Object[]{System.currentTimeMillis(), optimizationInfo});
+  }
 
-    // A valid reconfiguration plan is generated only when optimizer determines that a reconfiguration should occur.
-    if ((currEstimatedCost - optimalCost) / currEstimatedCost < optBenefitThreshold) {
-      return new EmptyPlan();
-    } else {
-      final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
-      generateServerPlanForOptimalConfig(serverSummaries, optimalNumServers,
-          serverParams.size(), numModelBlocks, planBuilder);
-      generateWorkerPlanForOptimalConfig(avgPullSize, workerSummaries, optimalNumWorkers,
-          serverSummaries, optimalNumServers, workerParams.size(), numDataBlocks, planBuilder);
+  private Map<Integer, Double> calculateCost(final List<EvaluatorSummary> serverSummaries,
+                                                           final List<EvaluatorSummary> workerSummaries,
+                                                           final int numEvalsToUse,
+                                                           final Map<String, Double> modelParamsMap) {
+    final int numModelBlocks = serverSummaries.stream()
+        .mapToInt(EvaluatorSummary::getNumBlocks)
+        .sum();
+    final int numDataBlocks = serverSummaries.stream()
+        .mapToInt(EvaluatorSummary::getNumBlocks)
+        .sum();
 
-      planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals > 0 ? numAvailableExtraEvals : 0);
+    final int numTotalDataInstances = modelParamsMap.get(Constants.TOTAL_DATA_INSTANCES).intValue();
+    final double avgPullSize = modelParamsMap.get(Constants.AVG_PULL_SIZE_PER_MINI_BATCH);
 
-      return planBuilder.build();
-    }
+    /*
+     * 1. for each possible number of workers, check and filter:
+     * a) total number of data blocks on worker side should be greater than or equal to the number of workers
+     * b) total number of model blocks on server side should be greater than or equal to the number of servers
+     *
+     * 2. for each possible number of workers after 1, calculate cost with current metrics (avg) according to the model
+     * 3. compare the total costs for each possible number of workers
+     * 4. set optimalNumWorkers to be one that has the minimum total cost
+     */
+    final Map<Integer, Double> numWorkersCostMap = new HashMap<>();
+
+    IntStream.range(1, numEvalsToUse)
+        .filter(numWorkers -> numWorkers <= numDataBlocks && (numEvalsToUse - numWorkers) <= numModelBlocks)
+        .forEach(numWorkers -> {
+          final double totalCost = totalCost(numWorkers, numTotalDataInstances, avgPullSize,
+              numEvalsToUse, workerSummaries, serverSummaries);
+
+          numWorkersCostMap.put(numWorkers, totalCost);
+        });
+
+    return numWorkersCostMap;
+  }
+
+  private Plan generateOptimalPlan(final List<EvaluatorSummary> serverSummaries,
+                                   final List<EvaluatorSummary> workerSummaries,
+                                   final int optimalNumServers, final int optimalNumWorkers,
+                                   final int currNumServers, final int currNumWorkers,
+                                   final int numAvailableExtraEvals,
+                                   final Map<String, Double> modelParamsMap) {
+    final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
+    generateServerPlanForOptimalConfig(serverSummaries, optimalNumServers,
+        currNumServers, planBuilder);
+
+
+    final double avgPullSize = modelParamsMap.get(Constants.AVG_PULL_SIZE_PER_MINI_BATCH);
+    generateWorkerPlanForOptimalConfig(avgPullSize, workerSummaries, optimalNumWorkers,
+        serverSummaries, optimalNumServers, currNumWorkers, planBuilder);
+
+    planBuilder.setNumAvailableExtraEvaluators(numAvailableExtraEvals > 0 ? numAvailableExtraEvals : 0);
+
+    return planBuilder.build();
   }
 
   private void generateServerPlanForOptimalConfig(
       final List<EvaluatorSummary> serverSummaries,
       final int optimalNumServers,
       final int activeNumServers,
-      final int totalBlocksInServers,
       final PlanImpl.Builder planBuilder) {
-    double serverBandwidthSum = 0D;
-    for (int j = 0; j < optimalNumServers; j++) {
-      serverBandwidthSum += serverSummaries.get(j).bandwidth;
-    }
+
+    // assign optimal number of blocks for each server using bandwidth
+    final double serverBandwidthSum = serverSummaries.subList(0, optimalNumServers).stream()
+        .mapToDouble(EvaluatorSummary::getBandwidth)
+        .sum();
+    final int totalBlocksInServers = serverSummaries.stream()
+        .mapToInt(EvaluatorSummary::getNumBlocks)
+        .sum();
 
     int numAssignedBlocks = 0;
 
@@ -260,12 +370,14 @@ public final class HeterogeneousOptimizer implements Optimizer {
       final List<EvaluatorSummary> serverSummaries,
       final int optimalNumServers,
       final int activeNumWorkers,
-      final int totalBlocksInWorkers,
       final PlanImpl.Builder planBuilder) {
-    double serverBandwidthSum = 0D;
-    for (int j = 0; j < optimalNumServers; j++) {
-      serverBandwidthSum += serverSummaries.get(j).bandwidth;
-    }
+
+    final double serverBandwidthSum = serverSummaries.subList(0, optimalNumServers).stream()
+        .mapToDouble(EvaluatorSummary::getBandwidth)
+        .sum();
+    final int totalBlocksInWorkers = workerSummaries.stream()
+        .mapToInt(EvaluatorSummary::getNumBlocks)
+        .sum();
 
     final double[] inverseTerms = new double[optimalNumWorkers];
     double termInverseSum = 0D;
@@ -313,16 +425,12 @@ public final class HeterogeneousOptimizer implements Optimizer {
         planBuilder);
   }
 
-  private Pair<List<EvaluatorSummary>, Integer> sortEvaluatorsByThroughput(
+  private List<EvaluatorSummary> sortEvaluatorsByThroughput(
       final List<EvaluatorParameters> params,
       final int availableEvaluators,
       final ToDoubleFunction<EvaluatorParameters> unitCostFunc,
       final ToDoubleFunction<EvaluatorParameters> bandwidthFunc,
       final String newNodeIdPrefix) {
-
-    final int numBlocksTotal = params.stream()
-        .mapToInt(param -> param.getDataInfo().getNumBlocks())
-        .sum();
 
     final double unitCostSum = params.stream()
         .mapToDouble(unitCostFunc)
@@ -350,7 +458,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
       nodes.add(new EvaluatorSummary(newNodeIdPrefix + index, new DataInfoImpl(), throughput, bandwidth));
     }
 
-    return new Pair<>(nodes, numBlocksTotal);
+    return nodes;
   }
 
   private double totalCost(final int numWorker,
@@ -358,8 +466,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
                            final double avgPullSize,
                            final int availableEvaluators,
                            final List<EvaluatorSummary> workers,
-                           final List<EvaluatorSummary> servers,
-                           final StringBuilder sb) {
+                           final List<EvaluatorSummary> servers) {
     final int numServer = availableEvaluators - numWorker;
     double serverBandwidthSum = 0D;
     for (int j = 0; j < numServer; j++) {
@@ -374,11 +481,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
       termInverseSum += 1D / terms[i];
     }
 
-    final double totalCost = numTotalDataInstances / termInverseSum;
-    sb.append(String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f}, ",
-        numServer, numWorker, totalCost));
-
-    return totalCost;
+    return numTotalDataInstances / termInverseSum;
   }
 
   private static void generateTransferSteps(final String namespace,
@@ -460,6 +563,10 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     public double getThroughput() {
       return this.throughput;
+    }
+
+    public double getBandwidth() {
+      return this.bandwidth;
     }
 
     public int getNumOptimalBlocks() {
