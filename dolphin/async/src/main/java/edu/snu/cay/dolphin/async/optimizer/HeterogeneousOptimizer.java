@@ -149,6 +149,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final Map<Integer, Double> costMap;
 
     // 1. When there are extra resources to use
+    // choose the best among currCost (Estimated) vs optimalCostWithCurrResources vs vs optimalCostWithExtraResources
     if (numAvailableExtraEvals > 0) {
       // build two models with availableEvaluators and currUsedEvals
       final Map<Integer, Double> costMapWithExtraEvals = calculateCost(serverSummaries,
@@ -197,7 +198,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     printInfo(evalParamsMap, modelParamsMap, costMap, optimalNumWorkers, numEvalsToUse);
 
-    // A valid reconfiguration plan is generated only when benefit is above the threshold
+    // generate a plan only when benefit is above the threshold
     return (currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold ?
         new EmptyPlan() : generateOptimalPlan(serverSummaries, workerSummaries, optimalNumServers, optimalNumWorkers,
           serverParams.size(), workerParams.size(), numAvailableExtraEvals, modelParamsMap);
