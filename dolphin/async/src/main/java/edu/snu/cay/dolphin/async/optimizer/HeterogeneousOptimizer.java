@@ -196,7 +196,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
       numEvalsToUse = availableEvaluators;
     }
 
-    printInfo(evalParamsMap, costMap, optimalNumWorkers, numEvalsToUse);
+    printInfo(evalParamsMap, costMap, modelParamsMap, optimalNumWorkers, numEvalsToUse);
 
     // generate a plan only when benefit is above the threshold
     return (currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold ?
@@ -206,6 +206,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
   private void printInfo(final Map<String, List<EvaluatorParameters>> evalParamsMap,
                          final Map<Integer, Double> numWorkersCostMap,
+                         final Map<String, Double> modelParamsMap,
                          final int optimalNumWorkers,
                          final int numEvalsToUse) {
     final List<EvaluatorParameters> serverParams = evalParamsMap.get(Constants.NAMESPACE_SERVER);
@@ -227,8 +228,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     final double optimalCost = numWorkersCostMap.get(optimalNumWorkers);
 
-    final double avgNumMiniBatchesPerWorker = workerParams.stream()
-        .mapToInt(param -> ((WorkerMetrics) param.getMetrics()).getNumMiniBatchForEpoch()).average().orElse(0D);
+    final double avgNumMiniBatchesPerWorker = modelParamsMap.get(Constants.AVG_NUM_MINI_BATCH_PER_EPOCH);
 
     // we must apply the costs in metrics by avgNumMiniBatchesPerWorker since these are mini-batch metrics
     final double currMeasuredCompCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
