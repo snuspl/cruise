@@ -112,9 +112,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
   private OptimalResult chooseOptimal(final Map<Integer, Double> numWorkersCostMap) {
     final OptimalResult optimalResult = new OptimalResult();
 
-    numWorkersCostMap.forEach((numWorkers, cost) -> {
-      optimalResult.replaceIfBetter(cost, numWorkers);
-    });
+    numWorkersCostMap.forEach((numWorkers, cost) -> optimalResult.replaceIfBetter(cost, numWorkers));
     return optimalResult;
   }
 
@@ -150,8 +148,9 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final int numEvalsToUse;
     final Map<Integer, Double> costMap;
 
+    // 1. When there are extra resources to use
     if (numAvailableExtraEvals > 0) {
-      // build two models (availableEvaluators, currUsedEvals)
+      // build two models with availableEvaluators and currUsedEvals
       final Map<Integer, Double> costMapWithExtraEvals = calculateCost(serverSummaries,
           workerSummaries, availableEvaluators, modelParamsMap);
       final OptimalResult optimalResultWithExtraEvals = chooseOptimal(costMapWithExtraEvals);
@@ -165,24 +164,25 @@ public final class HeterogeneousOptimizer implements Optimizer {
       // choose a configuration with extra evals only when its cost is smaller than the optimal one with current evals
       if (optimalResultWithExtraEvals.optimalCost < optimalResultWithCurrEvals.optimalCost) {
         optimalCost = optimalResultWithExtraEvals.optimalCost;
-        optimalNumServers = availableEvaluators - optimalResultWithExtraEvals.optimalNumWorkers;
         optimalNumWorkers = optimalResultWithExtraEvals.optimalNumWorkers;
+        optimalNumServers = availableEvaluators - optimalResultWithExtraEvals.optimalNumWorkers;
         costMap = costMapWithExtraEvals;
         numEvalsToUse = availableEvaluators;
       } else {
         optimalCost = optimalResultWithCurrEvals.optimalCost;
-        optimalNumServers = currUsedEvals - optimalResultWithCurrEvals.optimalNumWorkers;
         optimalNumWorkers = optimalResultWithCurrEvals.optimalNumWorkers;
+        optimalNumServers = currUsedEvals - optimalResultWithCurrEvals.optimalNumWorkers;
         costMap = costMapWithCurrEvals;
         numEvalsToUse = currUsedEvals;
       }
 
     } else {
-      // build one model (availableEvaluators)
+      // build one model with availableEvaluators
       costMap = calculateCost(serverSummaries,
           workerSummaries, availableEvaluators, modelParamsMap);
       final OptimalResult optimalResult = chooseOptimal(costMap);
 
+      // 2. When a portion of currently used resources should be released
       if (numAvailableExtraEvals < 0) {
         // must trigger optimization
         currEstmCost = Double.MAX_VALUE;
@@ -197,13 +197,10 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     printInfo(evalParamsMap, modelParamsMap, costMap, optimalNumWorkers, numEvalsToUse);
 
-    // A valid reconfiguration plan is generated only when optimizer determines that a reconfiguration should occur.
-    if ((currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold) {
-      return new EmptyPlan();
-    } else {
-      return generateOptimalPlan(serverSummaries, workerSummaries, optimalNumServers, optimalNumWorkers,
+    // A valid reconfiguration plan is generated only when benefit is above the threshold
+    return (currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold ?
+        new EmptyPlan() : generateOptimalPlan(serverSummaries, workerSummaries, optimalNumServers, optimalNumWorkers,
           serverParams.size(), workerParams.size(), numAvailableExtraEvals, modelParamsMap);
-    }
   }
 
   private void printInfo(final Map<String, List<EvaluatorParameters>> evalParamsMap,
