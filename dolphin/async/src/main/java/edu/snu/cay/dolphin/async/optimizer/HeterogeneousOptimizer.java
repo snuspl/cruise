@@ -177,15 +177,15 @@ public final class HeterogeneousOptimizer implements Optimizer {
         numEvalsToUse = currUsedEvals;
       }
 
+      // 2. When the amount of resource 1) is not changed or 2) decreases
     } else {
       // build one model with availableEvaluators
       costMap = calculateCost(serverSummaries,
           workerSummaries, availableEvaluators, modelParamsMap);
       final OptimalResult optimalResult = chooseOptimal(costMap);
 
-      // 2. When a portion of currently used resources should be released
+      // 2) should release evaluators
       if (numAvailableExtraEvals < 0) {
-        // must trigger optimization
         currEstmCost = Double.MAX_VALUE;
       } else {
         currEstmCost = costMap.get(workerParams.size());
@@ -196,7 +196,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
       numEvalsToUse = availableEvaluators;
     }
 
-    printInfo(evalParamsMap, modelParamsMap, costMap, optimalNumWorkers, numEvalsToUse);
+    printInfo(evalParamsMap, costMap, optimalNumWorkers, numEvalsToUse);
 
     // generate a plan only when benefit is above the threshold
     return (currEstmCost - optimalCost) / currEstmCost < optBenefitThreshold ?
@@ -205,7 +205,6 @@ public final class HeterogeneousOptimizer implements Optimizer {
   }
 
   private void printInfo(final Map<String, List<EvaluatorParameters>> evalParamsMap,
-                         final Map<String, Double> modelParamsMap,
                          final Map<Integer, Double> numWorkersCostMap,
                          final int optimalNumWorkers,
                          final int numEvalsToUse) {
@@ -215,10 +214,9 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final StringBuilder sb = new StringBuilder();
     sb.append("[");
 
-    numWorkersCostMap.forEach((numWorkers, cost) -> {
-      sb.append(String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, ",
-          numEvalsToUse - numWorkers, numWorkers, cost));
-    });
+    numWorkersCostMap.forEach((numWorkers, cost) -> sb.append(String.format(
+        "{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, ",
+        numEvalsToUse - numWorkers, numWorkers, cost)));
 
     sb.delete(sb.length() - 2, sb.length()); // Remove trailing ', '
     sb.append("]");
@@ -229,9 +227,8 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     final double optimalCost = numWorkersCostMap.get(optimalNumWorkers);
 
-    final int numTotalDataInstances = modelParamsMap.get(Constants.TOTAL_DATA_INSTANCES).intValue();
-    final double avgNumMiniBatchesPerWorker =
-        Math.ceil((double) numTotalDataInstances / currentNumWorkers / miniBatchSize);
+    final double avgNumMiniBatchesPerWorker = workerParams.stream()
+        .mapToInt(param -> ((WorkerMetrics) param.getMetrics()).getNumMiniBatchForEpoch()).average().orElse(0D);
 
     // we must apply the costs in metrics by avgNumMiniBatchesPerWorker since these are mini-batch metrics
     final double currMeasuredCompCost = avgNumMiniBatchesPerWorker * (workerParams.stream()
@@ -254,13 +251,13 @@ public final class HeterogeneousOptimizer implements Optimizer {
   }
 
   private Map<Integer, Double> calculateCost(final List<EvaluatorSummary> serverSummaries,
-                                                           final List<EvaluatorSummary> workerSummaries,
-                                                           final int numEvalsToUse,
-                                                           final Map<String, Double> modelParamsMap) {
+                                             final List<EvaluatorSummary> workerSummaries,
+                                             final int numEvalsToUse,
+                                             final Map<String, Double> modelParamsMap) {
     final int numModelBlocks = serverSummaries.stream()
         .mapToInt(EvaluatorSummary::getNumBlocks)
         .sum();
-    final int numDataBlocks = serverSummaries.stream()
+    final int numDataBlocks = workerSummaries.stream()
         .mapToInt(EvaluatorSummary::getNumBlocks)
         .sum();
 
@@ -444,7 +441,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
         .collect(Collectors.toList());
 
     // sorted in the order of high "throughput"
-    Collections.sort(nodes, THROUGHPUT_COMPARATOR);
+    nodes.sort(THROUGHPUT_COMPARATOR);
 
     final double unitCostAvg = unitCostSum / params.size();
     final double throughput = 1 / unitCostAvg;
