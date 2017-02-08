@@ -26,6 +26,7 @@ import edu.snu.cay.services.et.exceptions.NotAssociatedTableException;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
@@ -47,15 +48,6 @@ final class SimpleETDriver {
       .setMemSizeInMB(128)
       .build();
 
-  private static final TableConfiguration TABLE_CONF = TableConfiguration.newBuilder()
-      .setId(TABLE_ID)
-      .setKeyCodecClass(SerializableCodec.class)
-      .setValueCodecClass(SerializableCodec.class)
-      .setUpdateFunctionClass(VoidUpdateFunction.class)
-      .setPartitionFunctionClass(HashPartitionFunction.class)
-      .setFilePath(ClassLoader.getSystemResource("data").getPath() + "/empty_file")
-      .build();
-
   private static final Configuration TASK_CONF = TaskConfiguration.CONF
       .set(TaskConfiguration.IDENTIFIER, TASK_ID)
       .set(TaskConfiguration.TASK, SimpleETTask.class)
@@ -63,9 +55,29 @@ final class SimpleETDriver {
 
   private final ETMaster etMaster;
 
+  private final TableConfiguration tableConf;
+
+
   @Inject
-  private SimpleETDriver(final ETMaster etMaster) {
+  private SimpleETDriver(final ETMaster etMaster,
+                         @Parameter(SimpleET.TableInputPath.class) final String tableInputPath) {
     this.etMaster = etMaster;
+    this.tableConf = buildTableConf(tableInputPath);
+  }
+
+  private TableConfiguration buildTableConf(final String tableInputPath) {
+    final TableConfiguration.Builder tableConfBuilder = TableConfiguration.newBuilder()
+        .setId(TABLE_ID)
+        .setKeyCodecClass(SerializableCodec.class)
+        .setValueCodecClass(SerializableCodec.class)
+        .setUpdateFunctionClass(VoidUpdateFunction.class)
+        .setPartitionFunctionClass(HashPartitionFunction.class);
+
+    if (!tableInputPath.equals(SimpleET.TableInputPath.EMPTY)) {
+      tableConfBuilder.setFilePath(tableInputPath);
+    }
+
+    return tableConfBuilder.build();
   }
 
   /**
@@ -77,7 +89,7 @@ final class SimpleETDriver {
       final List<AllocatedExecutor> executors0 = etMaster.addExecutors(NUM_EXECUTORS, RES_CONF);
       final AllocatedTable table;
       try {
-        table = etMaster.createTable(TABLE_CONF).associate(executors0).allocate();
+        table = etMaster.createTable(tableConf).associate(executors0).allocate();
       } catch (final NotAssociatedTableException e) {
         throw new RuntimeException("Table is not associated. It's not ready to be allocated.", e);
       }

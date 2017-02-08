@@ -20,7 +20,6 @@ import edu.snu.cay.common.dataloader.HdfsSplitManager;
 import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.MessageSender;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
@@ -55,19 +54,20 @@ final class TableInitializer {
    * It's a blocking call so that waits until all executors setup corresponding tablets.
    * @param tableConf a configuration of table
    * @param executorIdSet a set of executor ids
-   * @param ownershipStatus a pair of revision number and a list of owner of each block
+   * @param ownershipStatus a list of owner of each block
    * @param loadFile a boolean indicating whether to load a file whose path is specified in tableConf
    */
   void initTable(final TableConfiguration tableConf,
                  final Set<String> executorIdSet,
-                 final Pair<Integer, List<String>> ownershipStatus,
+                 final List<String> ownershipStatus,
                  final boolean loadFile) {
     LOG.log(Level.INFO, "Initialize table {0} in executors: {1}", new Object[]{tableConf.getId(), executorIdSet});
 
     final Iterator<HdfsSplitInfo> splitIterator;
 
-    if (loadFile && tableConf.getFilePath().isPresent()) {
-      final String filePath = tableConf.getFilePath().get();
+    final Optional<String> filePathOptional = tableConf.getFilePath();
+    if (loadFile && filePathOptional.isPresent()) {
+      final String filePath = filePathOptional.get();
 
       // let's assume that tables always use this TextInputFormat class
       final HdfsSplitInfo[] fileSplits = HdfsSplitManager.getSplits(filePath,
@@ -82,8 +82,8 @@ final class TableInitializer {
     pendingInit.put(tableConf.getId(), initLatch);
 
     executorIdSet.forEach(executorId ->
-        msgSender.sendTableInitMsg(executorId, tableConf, ownershipStatus.getRight(), ownershipStatus.getLeft(),
-            splitIterator.hasNext() ? Optional.of(splitIterator.next()) : Optional.empty()));
+        msgSender.sendTableInitMsg(executorId, tableConf, ownershipStatus,
+            splitIterator.hasNext() ? splitIterator.next() : null));
 
     try {
       initLatch.await();

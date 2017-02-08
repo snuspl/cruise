@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.evaluator.api;
+package edu.snu.cay.services.et.evaluator.impl;
 
-import edu.snu.cay.services.et.evaluator.impl.TableImpl;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import org.apache.reef.annotations.audience.Private;
+
+import java.util.Map;
 
 /**
- * Abstraction for access to collection of key-value pairs.
- *
- * @param <K> type of the key for this table.
- * @param <V> type of the value for this table.
+ * Interface for managing multiple key-value pairs with granularity of a block.
  */
-@DefaultImplementation(TableImpl.class)
-public interface Table<K, V> {
+@Private
+public interface Block<K, V> {
   /**
    * Associates the specified value with the specified key.
    * @param key key with which value is to be associated
@@ -48,8 +47,6 @@ public interface Table<K, V> {
    * Specifically, it processes the value associated with key with {@code deltaValue} by
    * {@link UpdateFunction#updateValue(K, V, V)}.
    * If there's no associated value, it uses the value from {@link UpdateFunction#initValue(K)} as oldValue.
-   * To use this update method, users should provide their own implementation of {@link UpdateFunction}
-   * and bind it to the interface.
    *
    * @param key global unique identifier of item
    * @param deltaValue value
@@ -63,4 +60,24 @@ public interface Table<K, V> {
    * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
    */
   V remove(K key);
+
+  /**
+   * Return all data in a block.
+   */
+  Map<K, V> getAll();
+
+  /**
+   * Put all data from the given map to a block.
+   */
+  void putAll(Map<K, V> data);
+
+  /**
+   * Remove all data in a block.
+   */
+  Map<K, V> removeAll();
+
+  /**
+   * Return the number of data in a block.
+   */
+  int getNumPairs();
 }

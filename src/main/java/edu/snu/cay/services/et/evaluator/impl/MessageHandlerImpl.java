@@ -24,7 +24,6 @@ import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
-import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -104,19 +103,13 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private void onTableInitMsg(final TableInitMsg msg) {
     try {
-      final Optional<String> serializedHdfsSplitInfo;
-      if (msg.getFileSplit() == null) {
-        serializedHdfsSplitInfo = Optional.empty();
-      } else {
-        serializedHdfsSplitInfo = Optional.of(msg.getFileSplit().toString());
-      }
-      final String tableId = tables.initTable(confSerializer.fromString(msg.getTableConf().toString()),
-          msg.getBlockOwners(), msg.getRevision(), serializedHdfsSplitInfo);
+      final String tableId = tables.initTable(confSerializer.fromString(msg.getTableConf()),
+          msg.getBlockOwners(), msg.getFileSplit());
 
       msgSenderFuture.get().sendTableInitAckMsg(tableId);
 
     } catch (final IOException e) {
-      throw new RuntimeException("IOException while initialize a table", e);
+      throw new RuntimeException("IOException while initializing a table", e);
     } catch (final InjectionException e) {
       throw new RuntimeException("Table configuration is incomplete to initialize a table", e);
     }

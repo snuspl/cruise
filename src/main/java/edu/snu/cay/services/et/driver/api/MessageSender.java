@@ -21,8 +21,8 @@ import edu.snu.cay.services.et.driver.impl.MessageSenderImpl;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Interface for master to send messages to executors.
@@ -38,16 +38,15 @@ public interface MessageSender {
    */
   void sendTableInitMsg(String executorId,
                         TableConfiguration tableConf,
-                        List<String> blockOwnerList, int revision,
-                        Optional<HdfsSplitInfo> fileSplit);
+                        List<String> blockOwnerList,
+                        @Nullable HdfsSplitInfo fileSplit);
 
   /**
    * Sends a OwnershipUpdateMsg that notifies ownership update in other executors.
    */
   void sendOwnershipUpdateMsg(String executorId,
                               String tableId, int blockId,
-                              String newOwnerId,
-                              int revision);
+                              String newOwnerId);
 
   /**
    * Sends a MoveInitMsg that initializes migration process between two executors.

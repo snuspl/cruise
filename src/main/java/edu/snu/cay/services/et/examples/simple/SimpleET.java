@@ -23,13 +23,16 @@ import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
-import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.*;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
 import org.apache.reef.wake.IdentifierFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -49,16 +52,32 @@ public final class SimpleET {
   private SimpleET() {
   }
 
-  public static void main(final String[] args) throws InjectionException {
-    final LauncherStatus status = runSimpleET();
+  public static void main(final String[] args) throws InjectionException, IOException {
+    final Configuration clConf = parseCommandLine(args);
+    final String tableInput = Tang.Factory.getTang().newInjector(clConf)
+        .getNamedInstance(TableInputPath.class);
+
+    final LauncherStatus status = runSimpleET(tableInput);
     LOG.log(Level.INFO, "ET job completed: {0}", status);
+  }
+
+  private static Configuration parseCommandLine(final String[] args) throws IOException {
+    final ConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
+    final CommandLine cl = new CommandLine(cb);
+    cl.registerShortNameOfClass(TableInputPath.class).processCommandLine(args);
+    return cb.build();
+  }
+
+  private static String processInputDir(final String inputDir) throws InjectionException {
+    final File inputFile = new File(inputDir);
+    return "file:///" + inputFile.getAbsolutePath();
   }
 
   /**
    * Runs SimpleET example app.
    * @throws InjectionException when fail to inject DriverLauncher
    */
-  public static LauncherStatus runSimpleET() throws InjectionException {
+  public static LauncherStatus runSimpleET(final String tableInputPath) throws InjectionException {
     final Configuration runtimeConfiguration = LocalRuntimeConfiguration.CONF
         .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, MAX_NUMBER_OF_EVALUATORS)
         .build();
@@ -73,8 +92,28 @@ public final class SimpleET {
     final Configuration implConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
+
+    final String processedTableInput = tableInputPath.equals(TableInputPath.EMPTY) ?
+        tableInputPath : processInputDir(tableInputPath);
+
+    final Configuration exampleConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(TableInputPath.class, processedTableInput)
+        .build();
+
     return DriverLauncher.getLauncher(runtimeConfiguration)
-        .run(Configurations.merge(driverConfiguration, etMasterConfiguration, nameServerConfiguration,
-            nameClientConfiguration, implConfiguration), JOB_TIMEOUT);
+        .run(Configurations.merge(driverConfiguration,
+        etMasterConfiguration, nameServerConfiguration, nameClientConfiguration,
+        implConfiguration, exampleConfiguration), JOB_TIMEOUT);
+  }
+
+  @NamedParameter(doc = "Path of a input file to load on a table",
+      short_name = "table_input", default_value = TableInputPath.EMPTY)
+  public final class TableInputPath implements Name<String> {
+    static final String EMPTY = "";
+
+    // should not be instantiated
+    private TableInputPath() {
+
+    }
   }
 }

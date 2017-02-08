@@ -69,7 +69,7 @@ public final class MessageHandlerImpl implements MessageHandler {
   }
 
   private void onTableInitAckMsg(final TableInitAckMsg msg) {
-    tableInitializerFuture.get().onTableInitAck(msg.getTableId().toString(), msg.getExecutorId().toString());
+    tableInitializerFuture.get().onTableInitAck(msg.getTableId(), msg.getExecutorId());
   }
 
   private void onMigrationMsg(final MigrationMsg msg) {

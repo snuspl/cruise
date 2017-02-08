@@ -15,8 +15,13 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
+import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,52 +30,85 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * A class that stores a tablet comprised of blocks assigned to an executor.
  */
+@EvaluatorSide
+@ThreadSafe
 @Private
 public final class BlockStore<K, V> {
+  /**
+   * A mapping with indices and corresponding blocks.
+   */
+  private final ConcurrentMap<Integer, Block<K, V>> blocks = new ConcurrentHashMap<>();
 
   /**
-   * Maintains blocks associated with blockIds.
+   * Update function for update operation.
    */
-  private final ConcurrentMap<Integer, Block> blocks = new ConcurrentHashMap<>();
+  private final UpdateFunction<K, V> updateFunction;
 
   @Inject
-  private BlockStore() {
-  }
-
-  public Block get(final int blockId) {
-    return blocks.get(blockId);
+  private BlockStore(final UpdateFunction<K, V> updateFunction) {
+    this.updateFunction = updateFunction;
   }
 
   /**
-   * Sends the data in the blocks to another MemoryStore.
-   *
-   * @param blockId the identifier of block to send
-   * @param data    the data to put
+   * Create an empty block.
+   * @param blockId index of the block
+   * @throws BlockAlreadyExistsException when the specified block already exists
    */
-  void putBlock(final int blockId, final Map<K, V> data) {
-
+  public void createEmptyBlock(final int blockId) throws BlockAlreadyExistsException {
+    if (blocks.putIfAbsent(blockId, new BlockImpl(updateFunction)) != null) {
+      throw new BlockAlreadyExistsException(blockId);
+    }
   }
 
   /**
-   * Gets the data in the block.
-   *
-   * @param blockId id of the block to get
-   * @return the data in the requested block.
+   * Import a block into BlockStore.
+   * @param blockId index of the block
+   * @param data content of the block
+   * @throws BlockAlreadyExistsException when the specified block already exists
    */
-  Map<K, V> getBlock(final int blockId) {
-    return null;
+  public void putBlock(final int blockId, final Map<K, V> data) throws BlockAlreadyExistsException {
+    final Block<K, V> block = new BlockImpl<>(updateFunction);
+    block.putAll(data);
+    if (blocks.putIfAbsent(blockId, block) != null) {
+      throw new BlockAlreadyExistsException(blockId);
+    }
   }
 
   /**
-   * Removes the data from the MemoryStore.
-   *
-   * @param blockId id of the block to remove
+   * Remove a block from BlockStore.
+   * @param blockId index of the block
+   * @return content of the block
+   * @throws BlockNotExistsException when the specified block does not exist
    */
-  void removeBlock(final int blockId) {
-
+  public Map<K, V> removeBlock(final int blockId) throws BlockNotExistsException {
+    final Block<K, V> block = blocks.remove(blockId);
+    if (block == null) {
+      throw new BlockNotExistsException(blockId);
+    }
+    return block.getAll();
   }
 
-  private final class Block {
+  /**
+   * Return contents of the specified block.
+   * @param blockId index of the block
+   * @return contents of the specified block
+   * @throws BlockNotExistsException when the block does not exist
+   */
+  public Map<K, V> getBlock(final int blockId) throws BlockNotExistsException {
+    return get(blockId).getAll();
+  }
 
+  /**
+   * Return the specified block.
+   * @param blockId index of the block
+   * @return block with the specified index
+   * @throws BlockNotExistsException when the block does not exist
+   */
+  public Block<K, V> get(final int blockId) throws BlockNotExistsException {
+    final Block<K, V> block = blocks.get(blockId);
+    if (block == null) {
+      throw new BlockNotExistsException(blockId);
+    }
+    return block;
   }
 }

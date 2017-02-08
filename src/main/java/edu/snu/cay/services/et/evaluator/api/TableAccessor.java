@@ -17,12 +17,14 @@ package edu.snu.cay.services.et.evaluator.api;
 
 import edu.snu.cay.services.et.evaluator.impl.Tables;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
  * An interface for tasks to access tables by specifying id.
  */
 @DefaultImplementation(Tables.class)
+@EvaluatorSide
 public interface TableAccessor {
 
   /**

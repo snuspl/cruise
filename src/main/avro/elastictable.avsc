@@ -104,7 +104,6 @@
   [
     {"name": "tableConf", "type": "string"},
     {"name": "blockOwners", "type": {"type": "array", "items": "string"}},
-    {"name": "revision", "type": "int"},
     {"name": "fileSplit", "type": ["null", "string"], "default": null}
   ]
 },
@@ -135,8 +134,7 @@
   [
     {"name": "tableId", "type" : "string"},
     {"name": "blockId", "type": "int"},
-    {"name": "newOwnerId", "type": "string"},
-    {"name": "revision", "type": "int"}
+    {"name": "newOwnerId", "type": "string"}
   ]
 },
 

@@ -15,47 +15,127 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
+import edu.snu.cay.services.et.evaluator.api.PartitionFunction;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableComponents;
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
+import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
- * An implementation class of table.
- * It should be injected based on {@link org.apache.reef.tang.Configuration} of a table.
- * @param <K>
- * @param <V>
+ * An implementation of {@link Table}.
  */
+@EvaluatorSide
+@ThreadSafe
 public final class TableImpl<K, V> implements Table<K, V>, TableComponents {
-
-  private final OwnershipCache ownershipCache;
-  private final BlockStore blockStore;
-
-  // currently simply store data into local map
+  // currently simply store data that does not belong to local into this map
   // TODO #25: need to implement distributed kv-store and route accesses
-  private final Map<K, V> dataMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<K, V> fakeRemoteDataMap = new ConcurrentHashMap<>();
+
+  /**
+   * Table identifier.
+   */
+  private final String tableId;
+
+  /**
+   * Local cache for ownership mapping.
+   */
+  private final OwnershipCache ownershipCache;
+
+  /**
+   * Local blocks which this executor owns.
+   */
+  private final BlockStore<K, V> blockStore;
+
+  /**
+   * Partition function that resolves key into block index.
+   */
+  private final PartitionFunction<K> partitionFunction;
+
+  /**
+   * Update function for update operation.
+   */
+  private final UpdateFunction<K, V> updateFunction;
 
   @Inject
-  private TableImpl(final OwnershipCache ownershipCache, final BlockStore blockStore) {
+  private TableImpl(@Parameter(TableIdentifier.class) final String tableId,
+                    final OwnershipCache ownershipCache,
+                    final BlockStore<K, V> blockStore,
+                    final PartitionFunction<K> partitionFunction,
+                    final UpdateFunction<K, V> updateFunction) {
+    this.tableId = tableId;
     this.ownershipCache = ownershipCache;
     this.blockStore = blockStore;
+    this.partitionFunction = partitionFunction;
+    this.updateFunction = updateFunction;
   }
 
   @Override
   public V put(final K key, final V value) {
-    return dataMap.put(key, value);
+    try {
+      return getBlock(key).put(key, value);
+    } catch (BlockNotExistsException e) {
+      // TODO #25: need to implement distributed kv-store and route accesses
+      return fakeRemoteDataMap.put(key, value);
+    }
   }
 
   @Override
   public V get(final K key) {
-    return dataMap.get(key);
+    try {
+      return getBlock(key).get(key);
+    } catch (BlockNotExistsException e) {
+      // TODO #25: need to implement distributed kv-store and route accesses
+      return fakeRemoteDataMap.get(key);
+    }
   }
 
   @Override
   public V update(final K key, final V deltaValue) {
-    return null;
+    try {
+      return getBlock(key).update(key, deltaValue);
+    } catch (BlockNotExistsException e) {
+      // TODO #25: need to implement distributed kv-store and route accesses
+      V oldValue = fakeRemoteDataMap.get(key);
+      if (oldValue == null) {
+        oldValue = updateFunction.initValue(key);
+      }
+      final V newValue = updateFunction.updateValue(key, oldValue, deltaValue);
+      fakeRemoteDataMap.put(key, newValue);
+      return newValue;
+    }
+  }
+
+  @Override
+  public V remove(final K key) {
+    try {
+      return getBlock(key).remove(key);
+    } catch (BlockNotExistsException e) {
+      // TODO #25: need to implement distributed kv-store and route accesses
+      return fakeRemoteDataMap.remove(key);
+    }
+  }
+
+  /**
+   * @return identifier of the corresponding table
+   */
+  public String getTableId() {
+    return tableId;
+  }
+
+  /**
+   * Get the block containing the specified key.
+   */
+  private Block<K, V> getBlock(final K key) throws BlockNotExistsException {
+    final int blockId = partitionFunction.getBlockId(key);
+    return blockStore.get(blockId);
   }
 
   @Override

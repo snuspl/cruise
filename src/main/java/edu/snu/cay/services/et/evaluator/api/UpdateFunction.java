@@ -25,7 +25,7 @@ package edu.snu.cay.services.et.evaluator.api;
 public interface UpdateFunction<K, V> {
 
   /**
-   * Gets an initial value to associate with given key in {@link Table#update},
+   * Gets an initial oldValue to associate with given key in {@link Table#update},
    * when no value has been associated in the MemoryStore.
    * @param key a key
    * @return an initial value
@@ -35,9 +35,10 @@ public interface UpdateFunction<K, V> {
   /**
    * Gets an update value by applying deltaValue to oldValue when {@link Table#update} is called.
    * Implementations should specify how to update the associated value with the given deltaValue.
+   * @param key a key
    * @param oldValue an old value
    * @param deltaValue a delta value
    * @return the update value
    */
-  V updateValue(V oldValue, V deltaValue);
+  V updateValue(K key, V oldValue, V deltaValue);
 }

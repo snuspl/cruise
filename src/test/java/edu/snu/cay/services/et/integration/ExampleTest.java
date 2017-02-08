@@ -29,6 +29,7 @@ public class ExampleTest {
 
   @Test
   public void testSimpleET() throws InjectionException {
-    assertEquals(LauncherStatus.COMPLETED, SimpleET.runSimpleET());
+    final String sampleInput = (ClassLoader.getSystemResource("data").getPath() + "/empty_file");
+    assertEquals(LauncherStatus.COMPLETED, SimpleET.runSimpleET(sampleInput));
   }
 }

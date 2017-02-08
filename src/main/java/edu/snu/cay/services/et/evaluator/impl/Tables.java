@@ -19,20 +19,20 @@ import edu.snu.cay.common.dataloader.HdfsDataSet;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.FilePath;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
-import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
-import edu.snu.cay.services.et.evaluator.api.TableComponents;
+import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.util.Optional;
 
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,17 +40,22 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A class for storing {@link Table}s that are associated with or subscribed by this executor.
+ * Executor-side component for managing initialized tables.
  */
+@EvaluatorSide
+@ThreadSafe
 @Private
 public final class Tables implements TableAccessor {
   private static final Logger LOG = Logger.getLogger(Tables.class.getName());
 
-  private Map<String, Table> tableMap = new ConcurrentHashMap<>();
-
   private final Injector tableBaseInjector;
   private final LocalKeyGenerator localKeyGenerator;
   private final String executorId;
+
+  /**
+   * A mapping with tableIds and the corresponding {@link TableImpl}s.
+   */
+  private final Map<String, TableImpl> tables = new ConcurrentHashMap<>();
 
   @Inject
   private Tables(final Injector tableBaseInjector,
@@ -61,69 +66,80 @@ public final class Tables implements TableAccessor {
     this.executorId = executorId;
   }
 
-  @Override
-  public synchronized Table get(final String tableId) throws TableNotExistException {
-    final Table table = tableMap.get(tableId);
+  /**
+   * Initialize a local table.
+   * @param tableConf Tang configuration for this table
+   * @param blockOwners a blockId-to-executorId map for remote operation routing
+   * @param serializedHdfsSplitInfo resource identifier for bulk-loading
+   * @return identifier of the initialized table
+   * @throws InjectionException
+   * @throws IOException
+   */
+  public synchronized String initTable(final Configuration tableConf,
+                                       final List<String> blockOwners,
+                                       @Nullable final String serializedHdfsSplitInfo)
+      throws InjectionException, IOException {
+    final Injector tableInjector = tableBaseInjector.forkInjector(tableConf);
+    final String tableId = tableInjector.getNamedInstance(TableIdentifier.class);
+    if (tables.containsKey(tableId)) {
+      throw new RuntimeException("Table has already been initialized. tableId: " + tableId);
+    }
 
+    // Initialize a table
+    LOG.log(Level.INFO, "Initializing a table. tableId: {0}", tableId);
+    final TableImpl table = tableInjector.getInstance(TableImpl.class);
+    tables.put(tableId, table);
+
+    // Initialize ownership cache
+    table.getOwnershipCache().init(blockOwners);
+
+    // Create local blocks if needed
+    try {
+      for (int blockId = 0; blockId < blockOwners.size(); blockId++) {
+        if (blockOwners.get(blockId).equals(executorId)) {
+          table.getBlockStore().createEmptyBlock(blockId);
+        }
+      }
+    } catch (BlockAlreadyExistsException e) {
+      throw new RuntimeException(e);
+    }
+
+    // Load a file into table
+    if (serializedHdfsSplitInfo != null) {
+      final String filePath = tableInjector.getNamedInstance(FilePath.class);
+      LOG.log(Level.INFO, "Load a file split into table. filePath: {0} tableId: {1}",
+          new Object[]{filePath, tableId});
+      final HdfsDataSet<?, ?> hdfsDataSet = HdfsDataSet.from(serializedHdfsSplitInfo);
+      hdfsDataSet.forEach(pair -> table.put(localKeyGenerator.get(), pair.getValue()));
+    }
+
+    return tableId;
+  }
+
+  /**
+   * Remove a local table.
+   * @param tableId the identifier of the the table
+   */
+  public synchronized void remove(final String tableId) {
+    if (!tables.containsKey(tableId)) {
+      throw new RuntimeException(tableId + " does not exist");
+    }
+    tables.remove(tableId);
+  }
+
+  /**
+   * Return an initialized local table.
+   * @param tableId the identifier of the table
+   * @return the corresponding {@link TableImpl} object
+   */
+  @Override
+  public synchronized TableImpl get(final String tableId) throws TableNotExistException {
+    final TableImpl table = tables.get(tableId);
     if (table == null) {
       // cannot access such table.
       // 1) table does not exist or 2) it's not associated or subscribed by this executor.
       throw new TableNotExistException();
     }
-
     return table;
-  }
-
-  /**
-   * Initialize a table with given metadata.
-   * @param tableConf a table configuration
-   * @param blockOwnerList a block ownership status
-   * @param revision a revision number of ownership status
-   * @param serializedHdfsSplitInfo an Optional with a serialized hdfsSplitInfo to load
-   * @return a table Id
-   * @throws InjectionException
-   * @throws IOException
-   */
-  public synchronized String initTable(final Configuration tableConf,
-                                     final List<CharSequence> blockOwnerList,
-                                     final int revision,
-                                     final Optional<String> serializedHdfsSplitInfo)
-      throws InjectionException, IOException {
-    final Injector tableInjector = tableBaseInjector.forkInjector(tableConf);
-    final String tableId = tableInjector.getNamedInstance(TableIdentifier.class);
-
-    if (tableMap.containsKey(tableId)) {
-      throw new RuntimeException("Table has already been initialized. tableId: " + tableId);
-    }
-
-    LOG.log(Level.INFO, "Initialize a table. tableId: {0}", new Object[]{tableConf});
-
-    final Table table = tableInjector.getInstance(Table.class);
-    final TableComponents tableComponents = tableInjector.getInstance(TableComponents.class);
-
-    final List<String> blockOwnerStringList = new ArrayList<>(blockOwnerList.size());
-    blockOwnerList.forEach(blockOwner -> blockOwnerStringList.add(blockOwner.toString()));
-    // setup ownership cache of a table
-    tableComponents.getOwnershipCache().init(blockOwnerStringList, revision);
-
-    // put new local blocks into blockstore of a table
-    for (int blockId = 0; blockId < blockOwnerList.size(); blockId++) {
-      if (blockOwnerList.get(blockId).equals(executorId)) { // it local block
-        tableComponents.getBlockStore().putBlock(blockId, new ConcurrentHashMap());
-      }
-    }
-
-    // load a file into table.
-    if (serializedHdfsSplitInfo.isPresent()) {
-      final String filePath = tableInjector.getNamedInstance(FilePath.class);
-      LOG.log(Level.INFO, "Load a file split into table. filePath: {0} tableId: {1}",
-          new Object[]{filePath, tableId});
-      final HdfsDataSet<?, ?> hdfsDataSet = HdfsDataSet.from(serializedHdfsSplitInfo.get());
-
-      hdfsDataSet.forEach(pair -> table.put(localKeyGenerator.get(), pair.getValue()));
-    }
-
-    tableMap.put(tableId, table);
-    return tableId;
   }
 }

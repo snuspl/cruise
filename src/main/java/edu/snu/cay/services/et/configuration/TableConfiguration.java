@@ -38,7 +38,7 @@ public final class TableConfiguration {
   private final Class<? extends UpdateFunction> updateFunctionClass;
   private final Class<? extends PartitionFunction> partitionFunctionClass;
   private final int numTotalBlocks;
-  private final Optional<String> filePath;
+  private final String filePath;
   private Configuration configuration = null;
 
   private TableConfiguration(final String id,
@@ -52,7 +52,7 @@ public final class TableConfiguration {
     this.updateFunctionClass = updateFunctionClass;
     this.partitionFunctionClass = partitionFunctionClass;
     this.numTotalBlocks = numTotalBlocks;
-    this.filePath = Optional.ofNullable(filePath);
+    this.filePath = filePath;
   }
 
   /**
@@ -101,7 +101,7 @@ public final class TableConfiguration {
    * @return a file path, which is optional
    */
   public Optional<String> getFilePath() {
-    return filePath;
+    return Optional.ofNullable(filePath);
   }
 
   /**
@@ -116,7 +116,7 @@ public final class TableConfiguration {
           .bindImplementation(UpdateFunction.class, updateFunctionClass)
           .bindImplementation(PartitionFunction.class, partitionFunctionClass)
           .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
-          .bindNamedParameter(FilePath.class, filePath.isPresent() ? filePath.get() : FilePath.EMPTY)
+          .bindNamedParameter(FilePath.class, filePath != null ? filePath : FilePath.EMPTY)
           .build();
     }
     return configuration;

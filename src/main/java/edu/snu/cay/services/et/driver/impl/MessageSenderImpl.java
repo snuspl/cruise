@@ -25,10 +25,9 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * A message sender implementation.
@@ -49,10 +48,7 @@ public final class MessageSenderImpl implements MessageSender {
   public void sendTableInitMsg(final String executorId,
                                final TableConfiguration tableConf,
                                final List<String> blockOwnerList,
-                               final int revision,
-                               final Optional<HdfsSplitInfo> fileSplit) {
-    final List<CharSequence> blockOwnerListToSend = new ArrayList<>(blockOwnerList);
-
+                               @Nullable final HdfsSplitInfo fileSplit) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
         .setTableControlMsg(
@@ -61,10 +57,9 @@ public final class MessageSenderImpl implements MessageSender {
                 .setTableInitMsg(
                     TableInitMsg.newBuilder()
                         .setTableConf(confSerializer.toString(tableConf.getConfiguration()))
-                        .setBlockOwners(blockOwnerListToSend)
-                        .setRevision(revision)
-                        .setFileSplit(fileSplit.isPresent() ?
-                            HdfsSplitInfoSerializer.serialize(fileSplit.get()) : null)
+                        .setBlockOwners(blockOwnerList)
+                        .setFileSplit(fileSplit == null ? null :
+                            HdfsSplitInfoSerializer.serialize(fileSplit))
                         .build()
                 ).build()
         ).build();
@@ -79,8 +74,7 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendOwnershipUpdateMsg(final String executorId,
                                      final String tableId, final int blockId,
-                                     final String newOwnerId,
-                                     final int revision) {
+                                     final String newOwnerId) {
 
   }
 
