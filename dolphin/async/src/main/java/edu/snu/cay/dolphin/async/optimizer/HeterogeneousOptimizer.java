@@ -216,7 +216,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     sb.append("[");
 
     numWorkersCostMap.forEach((numWorkers, cost) -> sb.append(String.format(
-        "{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, ",
+        "{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f}, ",
         numEvalsToUse - numWorkers, numWorkers, cost)));
 
     sb.delete(sb.length() - 2, sb.length()); // Remove trailing ', '
