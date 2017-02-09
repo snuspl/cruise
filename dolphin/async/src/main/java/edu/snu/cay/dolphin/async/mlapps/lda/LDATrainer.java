@@ -31,6 +31,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -134,7 +135,7 @@ final class LDATrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration) {
+  public void run(final int iteration, final AtomicBoolean abortFlag) {
     final long epochStartTime = System.currentTimeMillis();
 
     // Record the number of EM data blocks at the beginning of this iteration
@@ -147,6 +148,11 @@ final class LDATrainer implements Trainer {
 
     Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
     while (!nextTrainingData.isEmpty()) {
+      if (abortFlag.get()) {
+        LOG.log(Level.INFO, "Abort a thread to completely close the task");
+        return;
+      }
+
       final Collection<Document> documents = nextTrainingData.values();
       final int numInstancesToProcess = documents.size();
 
@@ -185,12 +191,12 @@ final class LDATrainer implements Trainer {
     }
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
-    pullModels(vocabList);
-    final LDAModel model = modelAccessor.getModel().orElseThrow(() -> new RuntimeException(MSG_GET_MODEL_FAILED));
+    final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
+    final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
 
     LOG.log(Level.INFO, "Start computing log likelihood");
     final double docLLH = statCalculator.computeDocLLH(totalDocumentsSampled);
-    final double wordLLH = statCalculator.computeWordLLH(model);
+    final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
     final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
     final WorkerMetrics epochMetric =

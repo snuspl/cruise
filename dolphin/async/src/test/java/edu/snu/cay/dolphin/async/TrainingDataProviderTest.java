@@ -191,8 +191,9 @@ public class TrainingDataProviderTest {
    * @param dataSet the data set which will be stored into the added block
    */
   private void putBlockToMemoryStore(final int blockId, final Map<Long, Integer> dataSet) {
-    blockHandler.putBlock(blockId, (Map) dataSet);
     ownershipCache.updateOwnership(blockId, REMOTE_STORE_ID, LOCAL_STORE_ID);
+    blockHandler.putBlock(blockId, dataSet);
+    ownershipCache.allowAccessToBlock(blockId);
   }
 
   /**
@@ -200,8 +201,8 @@ public class TrainingDataProviderTest {
    * @param blockId the id of the block to be removed
    */
   private void removeBlockFromMemoryStore(final int blockId) {
-    blockHandler.removeBlock(blockId);
     ownershipCache.updateOwnership(blockId, LOCAL_STORE_ID, REMOTE_STORE_ID);
+    blockHandler.removeBlock(blockId);
   }
 
   /**

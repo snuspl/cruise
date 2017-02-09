@@ -26,6 +26,7 @@ import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -112,7 +113,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration) {
+  public void run(final int iteration, final AtomicBoolean abortFlag) {
     // sleep to simulate computation
     computeTracer.startTimer();
     try {

@@ -73,7 +73,10 @@ final class LDAStatCalculator {
     for (final Document doc : workload) {
       for (int j = 0; j < numTopics; j++) {
         final int topicCount = doc.getTopicCount(j);
-        result += topicCount == 0 ? logGammaAlpha : Gamma.logGamma(topicCount + alpha);
+        if (topicCount < 0) {
+          doc.setTopicCount(j, 0);
+        }
+        result += topicCount <= 0 ? logGammaAlpha : Gamma.logGamma(topicCount + alpha);
       }
       result -= Gamma.logGamma(doc.size() + numTopics * alpha);
     }
@@ -90,12 +93,7 @@ final class LDAStatCalculator {
 
    * @return a portion of log likelihood computed from the given word-topic vectors
    */
-  double computeWordLLH(final LDAModel model) {
-    // wordTopicCountsSummary a vector which summaries entire word-topic distribution
-    final int[] wordTopicCountsSummary = model.getTopicSummaryVector();
-    // wordTopicCounts a collection of word-topic vectors
-    final Collection<int[]> wordTopicCounts = model.getWordTopicVectors().values();
-
+  double computeWordLLH(final Collection<int[]> wordTopicCounts, final int[] wordTopicCountsSummary) {
     double result = numTopics * (Gamma.logGamma(numVocabs * beta) - numVocabs * Gamma.logGamma(beta));
     for (final int[] wordTopicCount : wordTopicCounts) {
       // For computing log-likelihood, we need only the values. Please refer to SparseArrayCodec.

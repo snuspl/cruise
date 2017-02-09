@@ -27,6 +27,7 @@ import edu.snu.cay.services.em.exceptions.IdGenerationException;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -82,7 +83,7 @@ final class NeuralNetworkTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration) {
+  public void run(final int iteration, final AtomicBoolean abortFlag) {
     final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
     final Collection<NeuralNetworkData> workload = workloadMap.values();
 
