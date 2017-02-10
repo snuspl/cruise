@@ -23,6 +23,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -44,6 +45,11 @@ import java.util.logging.Logger;
 final class LassoTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
 
+  /**
+   * Period(iterations) to print model parameters to check whether the training is working or not.
+   */
+  private static final int PRINT_MODEL_PERIOD = 50;
+
   private final int numFeatures;
   private final double lambda;
   private double stepSize;
@@ -53,8 +59,6 @@ final class LassoTrainer implements Trainer {
   private Vector oldModel;
   private Vector newModel;
 
-  private Vector yValue;
-
   private final VectorFactory vectorFactory;
   private final MatrixFactory matrixFactory;
 
@@ -62,11 +66,6 @@ final class LassoTrainer implements Trainer {
    * ParameterWorker object for interacting with the parameter server.
    */
   private final ParameterWorker<Integer, Double, Double> parameterWorker;
-
-  /**
-   * Period(iterations) of the printing log of models to check whether the training is working or not.
-   */
-  private final int printModelPeriod;
 
   @Inject
   private LassoTrainer(final ParameterWorker<Integer, Double, Double> parameterWorker,
@@ -83,7 +82,6 @@ final class LassoTrainer implements Trainer {
     this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
-    this.printModelPeriod = 50;
   }
 
   @Override
@@ -114,7 +112,10 @@ final class LassoTrainer implements Trainer {
 
       // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
       // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
-      final Matrix featureMatrix = convertFeaturesToMatrix(instances);
+      final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(instances);
+      final Matrix featureMatrix = featureMatrixAndValues.getLeft();
+      final Vector yValues = featureMatrixAndValues.getRight();
+
       final Vector precalculate = featureMatrix.mmul(newModel);
 
       // For each dimension, compute the optimal value.
@@ -125,7 +126,7 @@ final class LassoTrainer implements Trainer {
           continue;
         }
         precalculate.subi(columnVector.scale(newModel.get(i)));
-        newModel.set(i, sthresh((columnVector.dot(yValue.sub(precalculate))) / columnNorm, lambda, columnNorm));
+        newModel.set(i, sthresh((columnVector.dot(yValues.sub(precalculate))) / columnNorm, lambda, columnNorm));
         precalculate.addi(columnVector.scale(newModel.get(i)));
       }
 
@@ -140,22 +141,27 @@ final class LassoTrainer implements Trainer {
     pullModels();
     final double loss = computeLoss(totalInstancesProcessed);
     LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
-    if ((iteration + 1) % printModelPeriod == 0) {
+    if ((iteration + 1) % PRINT_MODEL_PERIOD == 0) {
       for (int i = 0; i < numFeatures; i++) {
         LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
     }
   }
 
-  private Matrix convertFeaturesToMatrix(final List<LassoData> instances) {
+  /**
+   * Convert the training data examples into a form for more efficient computation.
+   * @param instances training data examples
+   * @return the pair of feature matrix and vector composed of y values.
+   */
+  private Pair<Matrix, Vector> convertToFeaturesAndValues(final List<LassoData> instances) {
     final List<Vector> features = new LinkedList<>();
-    yValue = vectorFactory.createDenseZeros(instances.size());
+    final Vector values = vectorFactory.createDenseZeros(instances.size());
     int iter = 0;
     for (final LassoData instance : instances) {
       features.add(instance.getFeature());
-      yValue.set(iter++, instance.getValue());
+      values.set(iter++, instance.getValue());
     }
-    return matrixFactory.horzcatVecDense(features).transpose();
+    return Pair.of(matrixFactory.horzcatVecDense(features).transpose(), values);
   }
 
   @Override
