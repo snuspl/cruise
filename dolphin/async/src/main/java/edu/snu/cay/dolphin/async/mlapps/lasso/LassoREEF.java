@@ -39,6 +39,8 @@ public final class LassoREEF {
         .setWorkerSerializerClass(LassoDataSerializer.class)
         .addParameterClass(NumFeatures.class)
         .addParameterClass(StepSize.class)
+        .addParameterClass(DecayRate.class)
+        .addParameterClass(DecayPeriod.class)
         .addParameterClass(Lambda.class)
         .build());
   }

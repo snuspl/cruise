@@ -53,6 +53,8 @@ final class LassoTrainer implements Trainer {
   private final int numFeatures;
   private final double lambda;
   private double stepSize;
+  private final double decayRate;
+  private final int decayPeriod;
 
   private final TrainingDataProvider<Long, LassoData> trainingDataProvider;
 
@@ -72,6 +74,8 @@ final class LassoTrainer implements Trainer {
                        @Parameter(Lambda.class) final double lambda,
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
+                       @Parameter(DecayRate.class) final double decayRate,
+                       @Parameter(DecayPeriod.class) final int decayPeriod,
                        final TrainingDataProvider<Long, LassoData> trainingDataProvider,
                        final VectorFactory vectorFactory,
                        final MatrixFactory matrixFactory) {
@@ -79,6 +83,14 @@ final class LassoTrainer implements Trainer {
     this.numFeatures = numFeatures;
     this.lambda = lambda;
     this.stepSize = stepSize;
+    this.decayRate = decayRate;
+    if (decayRate <= 0.0 || decayRate > 1.0) {
+      throw new IllegalArgumentException("decay_rate must be larger than 0 and less than or equal to 1");
+    }
+    this.decayPeriod = decayPeriod;
+    if (decayPeriod <= 0) {
+      throw new IllegalArgumentException("decay_period must be a positive value");
+    }
     this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
@@ -135,6 +147,13 @@ final class LassoTrainer implements Trainer {
 
       totalInstancesProcessed.addAll(instances);
       nextTrainingData = trainingDataProvider.getNextTrainingData();
+    }
+
+    if (decayRate != 1 && (iteration + 1) % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+              new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
     // Calculate the loss value.
