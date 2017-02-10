@@ -53,6 +53,8 @@ final class LassoTrainer implements Trainer {
   private Vector oldModel;
   private Vector newModel;
 
+  private Vector yValue;
+
   private final VectorFactory vectorFactory;
   private final MatrixFactory matrixFactory;
 
@@ -86,6 +88,7 @@ final class LassoTrainer implements Trainer {
 
   @Override
   public void initialize() {
+    oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
   /**
@@ -111,26 +114,19 @@ final class LassoTrainer implements Trainer {
 
       // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
       // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
-      final List<Vector> features = new LinkedList<>();
-      final Vector yValue = vectorFactory.createDenseZeros(instances.size());
-      int iter = 0;
-      for (final LassoData instance : instances) {
-        features.add(instance.getFeature());
-        yValue.set(iter++, instance.getValue());
-      }
-      final Matrix featureMatrix = matrixFactory.horzcatVecDense(features).transpose();
+      final Matrix featureMatrix = convertFeaturesToMatrix(instances);
       final Vector precalculate = featureMatrix.mmul(newModel);
 
       // For each dimension, compute the optimal value.
       for (int i = 0; i < numFeatures; i++) {
-        final Vector getColumn = featureMatrix.sliceColumn(i);
-        final double getColumnNorm = getColumn.dot(getColumn);
-        if (getColumnNorm == 0) {
+        final Vector columnVector = featureMatrix.sliceColumn(i);
+        final double columnNorm = columnVector.dot(columnVector);
+        if (columnNorm == 0 || newModel.get(i) == 0) {
           continue;
         }
-        precalculate.subi(getColumn.scale(newModel.get(i)));
-        newModel.set(i, sthresh((getColumn.dot(yValue.sub(precalculate))) / getColumnNorm, lambda, getColumnNorm));
-        precalculate.addi(getColumn.scale(newModel.get(i)));
+        precalculate.subi(columnVector.scale(newModel.get(i)));
+        newModel.set(i, sthresh((columnVector.dot(yValue.sub(precalculate))) / columnNorm, lambda, columnNorm));
+        precalculate.addi(columnVector.scale(newModel.get(i)));
       }
 
       // Push the new model to the server.
@@ -151,6 +147,17 @@ final class LassoTrainer implements Trainer {
     }
   }
 
+  private Matrix convertFeaturesToMatrix(final List<LassoData> instances) {
+    final List<Vector> features = new LinkedList<>();
+    yValue = vectorFactory.createDenseZeros(instances.size());
+    int iter = 0;
+    for (final LassoData instance : instances) {
+      features.add(instance.getFeature());
+      yValue.set(iter++, instance.getValue());
+    }
+    return matrixFactory.horzcatVecDense(features).transpose();
+  }
+
   @Override
   public void cleanup() {
   }
@@ -159,7 +166,6 @@ final class LassoTrainer implements Trainer {
    * Pull up-to-date model parameters from server.
    */
   private void pullModels() {
-    oldModel = vectorFactory.createDenseZeros(numFeatures);
     for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
       oldModel.set(modelIndex, parameterWorker.pull(modelIndex));
     }
