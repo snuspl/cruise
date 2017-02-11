@@ -174,7 +174,7 @@ public final class MetricManager {
   }
 
   private boolean isValidSource(final String srcId, final Map<String, Integer> validationInfo) {
-   return validationInfo != null && validationInfo.containsKey(srcId);
+    return validationInfo != null && validationInfo.containsKey(srcId);
   }
 
   public Map<String, List<EvaluatorParameters>> getWorkerMiniBatchMetrics() {
