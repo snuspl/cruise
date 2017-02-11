@@ -20,6 +20,7 @@ import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.MiniBatchTrainer;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
@@ -46,7 +47,7 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
  * Uses {@code numClasses} model vectors to determine which class each data instance belongs to.
  * The model vector that outputs the highest dot product value is declared as that data instance's prediction.
  */
-final class MLRTrainer implements Trainer {
+final class MLRTrainer implements MiniBatchTrainer<MLRData> {
   private static final Logger LOG = Logger.getLogger(MLRTrainer.class.getName());
 
   /**
@@ -224,63 +225,8 @@ final class MLRTrainer implements Trainer {
         return;
       }
 
-      final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-      final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchSize);
-      instances.addAll(nextTrainingData.values());
-      final int numInstancesToProcess = instances.size();
 
-      resetTracers();
-      final long miniBatchStartTime = System.currentTimeMillis();
-
-      // pull data when mini-batch is started
-      pullModels();
-
-      // collects the results (new models here) computed by multiple threads
-      final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
-      try {
-        computeTracer.startTimer();
-
-        // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
-        // This way we can mitigate the slowdown from straggler threads.
-        final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
-
-        for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
-          final Future<MLRModel> future = executor.submit(() -> {
-            final List<MLRData> drainedInstances = new ArrayList<>(drainSize);
-            final MLRModel model = modelAccessor.getModel()
-                .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
-            int count = 0;
-            while (true) {
-              final int numDrained = instances.drainTo(drainedInstances, drainSize);
-              if (numDrained == 0) {
-                break;
-              }
-
-              drainedInstances.forEach(instance -> updateModel(instance, model));
-              drainedInstances.clear();
-              count += numDrained;
-            }
-            latch.countDown();
-            LOG.log(Level.INFO, "{0} has computed {1} instances",
-                new Object[] {Thread.currentThread().getName(), count});
-            return model;
-          });
-          futures.add(future);
-        }
-        latch.await();
-        computeTracer.recordTime(numInstancesToProcess);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.SEVERE, "Exception occurred.", e);
-        throw new RuntimeException(e);
-      }
-
-      final List<MLRModel> newModels = ThreadUtils.retrieveResults(futures);
-      final Vector[] gradients = aggregateGradient(newModels);
-
-      // push gradients
-      pushAndResetGradients(gradients);
 
       // update the instances processed so far
       numTotalInstancesProcessed += numInstancesToProcess;
@@ -324,6 +270,81 @@ final class MLRTrainer implements Trainer {
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
+  }
+
+  @Override
+  public void runBatch(final Collection<MLRData> batchData) {
+    // pull data when mini-batch is started
+    pullModels();
+
+    final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
+
+    final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchSize);
+    instances.addAll(batchData);
+    final int numInstancesToProcess = instances.size();
+
+    resetTracers();
+    final long miniBatchStartTime = System.currentTimeMillis();
+
+
+    // collects the results (new models here) computed by multiple threads
+    final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
+    try {
+      computeTracer.startTimer();
+
+      // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
+      // This way we can mitigate the slowdown from straggler threads.
+      final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
+
+      for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
+        final Future<MLRModel> future = executor.submit(() -> {
+          final List<MLRData> drainedInstances = new ArrayList<>(drainSize);
+          final MLRModel model = modelAccessor.getModel()
+              .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
+
+          int count = 0;
+          while (true) {
+            final int numDrained = instances.drainTo(drainedInstances, drainSize);
+            if (numDrained == 0) {
+              break;
+            }
+
+            drainedInstances.forEach(instance -> updateModel(instance, model));
+            drainedInstances.clear();
+            count += numDrained;
+          }
+          latch.countDown();
+          LOG.log(Level.INFO, "{0} has computed {1} instances",
+              new Object[] {Thread.currentThread().getName(), count});
+          return model;
+        });
+        futures.add(future);
+      }
+      latch.await();
+      computeTracer.recordTime(numInstancesToProcess);
+    } catch (final InterruptedException e) {
+      LOG.log(Level.SEVERE, "Exception occurred.", e);
+      throw new RuntimeException(e);
+    }
+
+    final List<MLRModel> newModels = ThreadUtils.retrieveResults(futures);
+    final Vector[] gradients = aggregateGradient(newModels);
+
+    // push gradients
+    pushAndResetGradients(gradients);
+
+
+    final WorkerMetrics miniBatchMetric =
+        buildMiniBatchMetric(iteration, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+    sendMetrics(miniBatchMetric);
+
+
+  }
+
+  @Override
+  public void evaluateModel(final Collection<MLRData> epochData) {
+
   }
 
   /**

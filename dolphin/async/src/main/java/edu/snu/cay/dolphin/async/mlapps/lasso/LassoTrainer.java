@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.dolphin.async.MiniBatchTrainer;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
@@ -42,7 +43,7 @@ import java.util.logging.Logger;
  * The trainer computes and pushes the optimal model value for all the dimensions to
  * minimize the objective function - square loss with l1 regularization.
  */
-final class LassoTrainer implements Trainer {
+final class LassoTrainer implements MiniBatchTrainer<LassoData> {
   private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
 
   /**
@@ -61,6 +62,8 @@ final class LassoTrainer implements Trainer {
 
   private final VectorFactory vectorFactory;
   private final MatrixFactory matrixFactory;
+
+  private int iteration = 0;
 
   /**
    * ParameterWorker object for interacting with the parameter server.
@@ -89,63 +92,8 @@ final class LassoTrainer implements Trainer {
     oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
-  /**
-   * {@inheritDoc} <br>
-   * 1) Pull model from server. <br>
-   * 2) Compute the optimal value, dot(x_i, y - Sigma_{j != i} x_j * model(j)) / dot(x_i, x_i) for each dimension
-   *    (in cyclic).
-   *    When computing the optimal value, precalculate sigma_{all j} x_j * model(j) and calculate
-   *    Sigma_{j != i} x_j * model(j) fast by just subtracting x_i * model(i)
-   * 3) Push value to server.
-   */
   @Override
   public void run(final int iteration, final AtomicBoolean abortFlag) {
-    final List<LassoData> totalInstancesProcessed = new LinkedList<>();
-    Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
-
-    // Model is trained by each mini-batch training data.
-    while (!nextTrainingData.isEmpty()) {
-      final List<LassoData> instances = new ArrayList<>(nextTrainingData.values());
-
-      // Pull the old model which should be trained in this while loop.
-      pullModels();
-
-      // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
-      // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
-      final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(instances);
-      final Matrix featureMatrix = featureMatrixAndValues.getLeft();
-      final Vector yValues = featureMatrixAndValues.getRight();
-
-      final Vector precalculate = featureMatrix.mmul(newModel);
-
-      // For each dimension, compute the optimal value.
-      for (int i = 0; i < numFeatures; i++) {
-        final Vector columnVector = featureMatrix.sliceColumn(i);
-        final double columnNorm = columnVector.dot(columnVector);
-        if (columnNorm == 0 || newModel.get(i) == 0) {
-          continue;
-        }
-        precalculate.subi(columnVector.scale(newModel.get(i)));
-        newModel.set(i, sthresh((columnVector.dot(yValues.sub(precalculate))) / columnNorm, lambda, columnNorm));
-        precalculate.addi(columnVector.scale(newModel.get(i)));
-      }
-
-      // Push the new model to the server.
-      pushAndResetGradients();
-
-      totalInstancesProcessed.addAll(instances);
-      nextTrainingData = trainingDataProvider.getNextTrainingData();
-    }
-
-    // Calculate the loss value.
-    pullModels();
-    final double loss = computeLoss(totalInstancesProcessed);
-    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
-    if ((iteration + 1) % PRINT_MODEL_PERIOD == 0) {
-      for (int i = 0; i < numFeatures; i++) {
-        LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
-      }
-    }
   }
 
   /**
@@ -153,7 +101,7 @@ final class LassoTrainer implements Trainer {
    * @param instances training data examples
    * @return the pair of feature matrix and vector composed of y values.
    */
-  private Pair<Matrix, Vector> convertToFeaturesAndValues(final List<LassoData> instances) {
+  private Pair<Matrix, Vector> convertToFeaturesAndValues(final Collection<LassoData> instances) {
     final List<Vector> features = new LinkedList<>();
     final Vector values = vectorFactory.createDenseZeros(instances.size());
     int iter = 0;
@@ -166,6 +114,42 @@ final class LassoTrainer implements Trainer {
 
   @Override
   public void cleanup() {
+  }
+
+   /**
+   * {@inheritDoc} <br>
+   * 1) Pull model from server. <br>
+   * 2) Compute the optimal value, dot(x_i, y - Sigma_{j != i} x_j * model(j)) / dot(x_i, x_i) for each dimension
+   *    (in cyclic).
+   *    When computing the optimal value, precalculate sigma_{all j} x_j * model(j) and calculate
+   *    Sigma_{j != i} x_j * model(j) fast by just subtracting x_i * model(i)
+   * 3) Push value to server.
+   */
+  @Override
+  public void runBatch(final Collection<LassoData> instances) {
+    pullModels();
+
+    // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
+    // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
+    final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(instances);
+    final Matrix featureMatrix = featureMatrixAndValues.getLeft();
+    final Vector yValues = featureMatrixAndValues.getRight();
+
+    final Vector precalculate = featureMatrix.mmul(newModel);
+
+    // For each dimension, compute the optimal value.
+    for (int i = 0; i < numFeatures; i++) {
+      final Vector columnVector = featureMatrix.sliceColumn(i);
+      final double columnNorm = columnVector.dot(columnVector);
+      if (columnNorm == 0 || newModel.get(i) == 0) {
+        continue;
+      }
+      precalculate.subi(columnVector.scale(newModel.get(i)));
+      newModel.set(i, sthresh((columnVector.dot(yValues.sub(precalculate))) / columnNorm, lambda, columnNorm));
+      precalculate.addi(columnVector.scale(newModel.get(i)));
+    }
+
+    pushGradients();
   }
 
   /**
@@ -181,10 +165,23 @@ final class LassoTrainer implements Trainer {
   /**
    * Push the gradients to parameter server.
    */
-  private void pushAndResetGradients() {
+  private void pushGradients() {
     final Vector gradient = newModel.sub(oldModel);
     for (int modelIndex = 0; modelIndex < numFeatures; ++modelIndex) {
       parameterWorker.push(modelIndex, stepSize * gradient.get(modelIndex));
+    }
+  }
+
+  @Override
+  public void evaluateModel(final Collection<LassoData> epochData) {
+    // Calculate the loss value.
+    pullModels();
+    final double loss = computeLoss(epochData);
+    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
+    if ((iteration++) % PRINT_MODEL_PERIOD == 0) {
+      for (int i = 0; i < numFeatures; i++) {
+        LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
+      }
     }
   }
 
@@ -211,7 +208,7 @@ final class LassoTrainer implements Trainer {
   /**
    * Compute the loss value for the data.
    */
-  private double computeLoss(final List<LassoData> data) {
+  private double computeLoss(final Collection<LassoData> data) {
     double squaredErrorSum = 0;
     double reg = 0;
 

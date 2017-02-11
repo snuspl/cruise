@@ -18,13 +18,13 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 import com.google.common.collect.Table;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.dolphin.async.MiniBatchTrainer;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
-import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
@@ -40,7 +40,7 @@ import java.util.logging.Logger;
  * all workers update their initial topic assignments. For each iteration, sequentially sampling documents,
  * it immediately pushes the changed topic assignment whenever each word is sampled to a new topic.
  */
-final class LDATrainer implements Trainer {
+final class LDATrainer implements MiniBatchTrainer<Document> {
 
   private static final Logger LOG = Logger.getLogger(LDATrainer.class.getName());
   private static final String MSG_GET_MODEL_FAILED = "Model is not set via ModelAccessor.resetModel()";
@@ -159,18 +159,6 @@ final class LDATrainer implements Trainer {
       resetTracers();
       final long miniBatchStartTime = System.currentTimeMillis();
 
-      final List<Integer> words = getKeys(documents);
-
-      pullModels(words);
-
-      computeTracer.startTimer();
-      final List<TopicChanges> results = sampler.sample(documents);
-      computeTracer.recordTime(numInstancesToProcess);
-
-      final TopicChanges aggregated = aggregateChanges(results);
-
-      // push gradients
-      pushAndResetGradients(aggregated);
 
       // update the documents processed so far
       numDocumentsSampled += numInstancesToProcess;
@@ -203,6 +191,36 @@ final class LDATrainer implements Trainer {
         buildEpochMetric(iteration, miniBatchIdx, numEMBlocks, numDocumentsSampled, docLLH, wordLLH, epochElapsedTime);
     LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
+  }
+
+  @Override
+  public void runBatch(final Collection<Document> documents) {
+          final List<Integer> words = getKeys(documents);
+    final int numInstancesToProcess = documents.size();
+
+      pullModels(words);
+
+      computeTracer.startTimer();
+      final List<TopicChanges> results = sampler.sample(documents);
+      computeTracer.recordTime(numInstancesToProcess);
+
+      final TopicChanges aggregated = aggregateChanges(results);
+
+      // push gradients
+      pushAndResetGradients(aggregated);
+  }
+
+  @Override
+  public void evaluateModel(final Collection<Document> epochData) {
+    LOG.log(Level.INFO, "Pull model to compute log likelihood");
+    final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
+    final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
+
+    LOG.log(Level.INFO, "Start computing log likelihood");
+    final double docLLH = statCalculator.computeDocLLH(epochData);
+    final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
+//    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+
   }
 
   private void pullModels(final List<Integer> words) {
