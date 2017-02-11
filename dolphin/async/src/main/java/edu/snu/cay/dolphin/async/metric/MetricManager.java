@@ -19,40 +19,27 @@ import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.dashboard.DashboardConnector;
 import edu.snu.cay.dolphin.async.optimizer.ServerEvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.WorkerEvaluatorParameters;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.annotations.audience.DriverSide;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A temporary storage for holding worker and server metrics related to optimization.
- * After storing each metric, it also sends the metric to Dashboard,
+ * A manager class that handles metrics from workers and servers.
+ * It stores only valid metrics and provides them to optimization process.
+ * It also sends the metric to Dashboard,
  * which visualizes the received metrics, using {@link DashboardConnector}.
  */
 @DriverSide
+@ThreadSafe
 public final class MetricManager {
   private static final Logger LOG = Logger.getLogger(MetricManager.class.getName());
-
-  /**
-   * Worker-side metrics for epochs, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
-   */
-  private final Map<String, List<EvaluatorParameters>> workerEvalEpochParams;
-
-  /**
-   * Worker-side metrics for mini-batches, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
-   */
-  private final Map<String, List<EvaluatorParameters>> workerEvalMiniBatchParams;
-
-  /**
-   * Server-side metrics, each in the form of (serverId, {@link EvaluatorParameters}) mapping.
-   */
-  private final Map<String, List<EvaluatorParameters>> serverEvalParams;
 
   /**
    * A flag to enable/disable metric collection. It is disabled by default.
@@ -67,6 +54,11 @@ public final class MetricManager {
   private volatile Map<String, Integer> numBlockByEvalIdForServer;
 
   /**
+   * A class for storing metrics.
+   */
+  private final MetricStore metricStore;
+
+  /**
    * Connector for sending received metrics to Dashboard server.
    */
   private final DashboardConnector dashboardConnector;
@@ -76,12 +68,11 @@ public final class MetricManager {
    */
   @Inject
   private MetricManager(final DashboardConnector dashboardConnector) {
-    this.workerEvalEpochParams = Collections.synchronizedMap(new HashMap<>());
-    this.workerEvalMiniBatchParams = new HashMap<>();
-    this.serverEvalParams = new HashMap<>();
     this.metricCollectionEnabled = false;
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
+
+    this.metricStore = new MetricStore();
 
     this.dashboardConnector = dashboardConnector;
   }
@@ -93,36 +84,16 @@ public final class MetricManager {
    */
   void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
     if (metricCollectionEnabled) {
-      if (numBlockByEvalIdForWorker != null && numBlockByEvalIdForWorker.containsKey(workerId)) {
+      if (isValidSource(workerId, numBlockByEvalIdForWorker)) {
         final int numDataBlocks = numBlockByEvalIdForWorker.get(workerId);
 
-        final DataInfo dataInfo = new DataInfoImpl(numDataBlocks);
-        final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
+        final WorkerEvaluatorParameters evaluatorParameters =
+            new WorkerEvaluatorParameters(workerId, new DataInfoImpl(numDataBlocks), metrics);
 
         if (metrics.getMiniBatchIdx() == null) {
-          synchronized (workerEvalEpochParams) {
-            // skip the first epoch metric for the worker after metric collection has begun
-            if (!workerEvalEpochParams.containsKey(workerId)) {
-              workerEvalEpochParams.put(workerId, new ArrayList<>());
-            } else {
-              if (metrics.getNumDataBlocks() == numDataBlocks) {
-                workerEvalEpochParams.get(workerId).add(evaluatorParameters);
-              } else {
-                LOG.log(Level.SEVERE, "Inconsistent NumDataBlocks: driver = {0}, {1} = {2}",
-                    new Object[] {numDataBlocks, workerId, metrics.getNumDataBlocks()});
-              }
-            }
-          }
+          metricStore.storeWorkerEpochMetrics(workerId, evaluatorParameters);
         } else {
-          synchronized (workerEvalMiniBatchParams) {
-            // only collect the metric if the worker has completed its first epoch after metric collection has begun
-            if (workerEvalEpochParams.containsKey(workerId)) {
-              if (!workerEvalMiniBatchParams.containsKey(workerId)) {
-                workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
-              }
-              workerEvalMiniBatchParams.get(workerId).add(evaluatorParameters);
-            }
-          }
+          metricStore.storeWorkerMiniBatchMetrics(workerId, evaluatorParameters);
         }
       } else {
         LOG.log(Level.FINE, "No information about {0}. Dropping metric.", workerId);
@@ -141,25 +112,14 @@ public final class MetricManager {
    */
   void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
     if (metricCollectionEnabled) {
-      if (numBlockByEvalIdForServer != null && numBlockByEvalIdForServer.containsKey(serverId)) {
+      if (isValidSource(serverId, numBlockByEvalIdForServer)) {
         final int numModelBlocks = numBlockByEvalIdForServer.get(serverId);
 
-        final DataInfo dataInfo = new DataInfoImpl(numModelBlocks);
-        final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
-        synchronized (serverEvalParams) {
-          // only collect the metric all workers have sent at least one metric after metric collection has begun
-          if (workerEvalEpochParams.size() == numBlockByEvalIdForWorker.size()) {
-            if (!serverEvalParams.containsKey(serverId)) {
-              serverEvalParams.put(serverId, new ArrayList<>());
-            }
-            if (metrics.getNumModelBlocks() == numModelBlocks) {
-              serverEvalParams.get(serverId).add(evaluatorParameters);
-            } else {
-              LOG.log(Level.SEVERE, "Inconsistent NumModelBlocks: driver = {0}, {1} = {2}",
-                  new Object[] {numModelBlocks, serverId, metrics.getNumModelBlocks()});
-            }
-          }
-        }
+        final ServerEvaluatorParameters evaluatorParameters =
+            new ServerEvaluatorParameters(serverId, new DataInfoImpl(numModelBlocks), metrics);
+
+        metricStore.storeServerMetrics(serverId, evaluatorParameters);
+
       } else {
         LOG.log(Level.FINE, "No information about {0}. Dropping metric.", serverId);
       }
@@ -170,19 +130,30 @@ public final class MetricManager {
     dashboardConnector.sendServerMetric(serverId, metrics);
   }
 
+  /**
+   * Checks whether the source of the metrics exists in the {@link edu.snu.cay.services.em.driver.api.EMMaster}'s
+   * evaluator list.
+   * @param srcId id of the source evaluator that sent the metrics.
+   * @param validationInfo a map consists of evaluator ids as its keys
+   * @return {@code true} if the source exists in the {@link edu.snu.cay.services.em.driver.api.EMMaster}'s view.
+   */
+  private boolean isValidSource(final String srcId, final Map<String, Integer> validationInfo) {
+    return validationInfo != null && validationInfo.containsKey(srcId);
+  }
+
   public Map<String, List<EvaluatorParameters>> getWorkerMiniBatchMetrics() {
-    return getMetrics(workerEvalMiniBatchParams);
+    return copyMetrics(metricStore.getWorkerMiniBatchMetrics());
   }
 
   public Map<String, List<EvaluatorParameters>> getWorkerEpochMetrics() {
-    return getMetrics(workerEvalEpochParams);
+    return copyMetrics(metricStore.getWorkerEpochMetrics());
   }
 
   public Map<String, List<EvaluatorParameters>> getServerMetrics() {
-    return getMetrics(serverEvalParams);
+    return copyMetrics(metricStore.getServerMetrics());
   }
 
-  private Map<String, List<EvaluatorParameters>> getMetrics(final Map<String, List<EvaluatorParameters>> evalParams) {
+  private Map<String, List<EvaluatorParameters>> copyMetrics(final Map<String, List<EvaluatorParameters>> evalParams) {
     synchronized (evalParams) {
       final Map<String, List<EvaluatorParameters>> currServerMetrics = new HashMap<>();
 
@@ -199,8 +170,8 @@ public final class MetricManager {
   public void stopMetricCollection() {
     LOG.log(Level.INFO, "Metric collection stopped!");
     metricCollectionEnabled = false;
-    clearServerMetrics();
-    clearWorkerMetrics();
+    metricStore.clearServerMetrics();
+    metricStore.clearWorkerMetrics();
   }
 
   /**
@@ -224,22 +195,110 @@ public final class MetricManager {
   }
 
   /**
-   * Empty out the current set of worker metrics.
+   * A class that stores metrics from workers and servers.
    */
-  private void clearWorkerMetrics() {
-    synchronized (workerEvalMiniBatchParams) {
-      workerEvalMiniBatchParams.clear();
+  private final class MetricStore {
+
+    /**
+     * Worker-side metrics for epochs, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
+     */
+    private final Map<String, List<EvaluatorParameters>> workerEvalEpochParams;
+
+    /**
+     * Worker-side metrics for mini-batches, each in the form of (workerId, {@link EvaluatorParameters}) mapping.
+     */
+    private final Map<String, List<EvaluatorParameters>> workerEvalMiniBatchParams;
+
+    /**
+     * Server-side metrics, each in the form of (serverId, {@link EvaluatorParameters}) mapping.
+     */
+    private final Map<String, List<EvaluatorParameters>> serverEvalParams;
+
+    private MetricStore() {
+      this.workerEvalEpochParams = Collections.synchronizedMap(new HashMap<>());
+      this.workerEvalMiniBatchParams = Collections.synchronizedMap(new HashMap<>());
+      this.serverEvalParams = Collections.synchronizedMap(new HashMap<>());
     }
-    synchronized (workerEvalEpochParams) {
+
+    private void storeWorkerEpochMetrics(final String workerId, final WorkerEvaluatorParameters evalParams) {
+      synchronized (workerEvalEpochParams) {
+        // skip the first epoch metric for the worker after metric collection has begun
+        if (!workerEvalEpochParams.containsKey(workerId)) {
+          workerEvalEpochParams.put(workerId, new ArrayList<>());
+        } else {
+          if (isValidNumBlocks(evalParams.getMetrics().getNumDataBlocks(), evalParams)) {
+            workerEvalEpochParams.get(workerId).add(evalParams);
+          }
+        }
+      }
+    }
+
+    private void storeWorkerMiniBatchMetrics(final String workerId, final EvaluatorParameters evalParams) {
+      // only collect the metric if the worker has completed its first epoch after metric collection has begun
+      if (workerEvalEpochParams.containsKey(workerId)) {
+        synchronized (workerEvalMiniBatchParams) {
+          if (!workerEvalMiniBatchParams.containsKey(workerId)) {
+            workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
+          }
+          workerEvalMiniBatchParams.get(workerId).add(evalParams);
+        }
+      }
+    }
+
+    private void storeServerMetrics(final String serverId, final ServerEvaluatorParameters evalParams) {
+      if (workerEvalEpochParams.size() == numBlockByEvalIdForWorker.size()) {
+        synchronized (serverEvalParams) {
+          // only collect the metric all workers have sent at least one metric after metric collection has begun
+          if (!serverEvalParams.containsKey(serverId)) {
+            serverEvalParams.put(serverId, new ArrayList<>());
+          }
+          if (isValidNumBlocks(evalParams.getMetrics().getNumModelBlocks(), evalParams)) {
+            serverEvalParams.get(serverId).add(evalParams);
+          }
+        }
+      }
+    }
+
+    /**
+     * Check whether the number of blocks matches with {@link edu.snu.cay.services.em.driver.api.EMMaster}'s view.
+     * @param numDataBlocks the number of blocks that source evaluator is supposed to have.
+     * @param evalParams the Metric's information including the number of blocks.
+     * @return {@code true} if the number of blocks matches
+     */
+    private boolean isValidNumBlocks(final int numDataBlocks, final EvaluatorParameters evalParams) {
+      if (numDataBlocks == evalParams.getDataInfo().getNumBlocks()) {
+        return true;
+      } else {
+        LOG.log(Level.SEVERE, "Inconsistent NumModelBlocks: driver = {0}, {1} = {2}",
+            new Object[] {evalParams.getDataInfo().getNumBlocks(), evalParams.getId(), numDataBlocks});
+        return false;
+      }
+    }
+
+    private Map<String, List<EvaluatorParameters>> getWorkerEpochMetrics() {
+      return workerEvalEpochParams;
+    }
+
+    private Map<String, List<EvaluatorParameters>> getWorkerMiniBatchMetrics() {
+      return workerEvalMiniBatchParams;
+    }
+
+    private Map<String, List<EvaluatorParameters>> getServerMetrics() {
+      return serverEvalParams;
+    }
+
+    /**
+     * Empty out the current set of worker metrics.
+     */
+    private void clearWorkerMetrics() {
+      workerEvalMiniBatchParams.clear();
       workerEvalEpochParams.clear();
     }
-  }
 
-  /**
-   * Empty out the current set of server metrics.
-   */
-  private void clearServerMetrics() {
-    synchronized (serverEvalParams) {
+    /**
+     * Empty out the current set of server metrics.
+     */
+    private void clearServerMetrics() {
       serverEvalParams.clear();
     }
   }
