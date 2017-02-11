@@ -19,7 +19,6 @@ import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.dashboard.DashboardConnector;
 import edu.snu.cay.dolphin.async.optimizer.ServerEvaluatorParameters;
 import edu.snu.cay.dolphin.async.optimizer.WorkerEvaluatorParameters;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
@@ -54,6 +53,9 @@ public final class MetricManager {
   private volatile Map<String, Integer> numBlockByEvalIdForWorker;
   private volatile Map<String, Integer> numBlockByEvalIdForServer;
 
+  /**
+   * A class for storing metrics.
+   */
   private final MetricStore metricStore;
 
   /**
@@ -85,11 +87,11 @@ public final class MetricManager {
       if (isValidSource(workerId, numBlockByEvalIdForWorker)) {
         final int numDataBlocks = numBlockByEvalIdForWorker.get(workerId);
 
-        final DataInfo dataInfo = new DataInfoImpl(numDataBlocks);
-        final EvaluatorParameters evaluatorParameters = new WorkerEvaluatorParameters(workerId, dataInfo, metrics);
+        final WorkerEvaluatorParameters evaluatorParameters =
+            new WorkerEvaluatorParameters(workerId, new DataInfoImpl(numDataBlocks), metrics);
 
         if (metrics.getMiniBatchIdx() == null) {
-          metricStore.storeWorkerEpochMetrics(workerId, metrics, numDataBlocks, evaluatorParameters);
+          metricStore.storeWorkerEpochMetrics(workerId, evaluatorParameters);
         } else {
           metricStore.storeWorkerMiniBatchMetrics(workerId, evaluatorParameters);
         }
@@ -113,10 +115,10 @@ public final class MetricManager {
       if (isValidSource(serverId, numBlockByEvalIdForServer)) {
         final int numModelBlocks = numBlockByEvalIdForServer.get(serverId);
 
-        final DataInfo dataInfo = new DataInfoImpl(numModelBlocks);
-        final EvaluatorParameters evaluatorParameters = new ServerEvaluatorParameters(serverId, dataInfo, metrics);
+        final ServerEvaluatorParameters evaluatorParameters =
+            new ServerEvaluatorParameters(serverId, new DataInfoImpl(numModelBlocks), metrics);
 
-        metricStore.storeServerMetrics(serverId, metrics, numModelBlocks, evaluatorParameters);
+        metricStore.storeServerMetrics(serverId, evaluatorParameters);
 
       } else {
         LOG.log(Level.FINE, "No information about {0}. Dropping metric.", serverId);
@@ -211,18 +213,14 @@ public final class MetricManager {
       this.serverEvalParams = Collections.synchronizedMap(new HashMap<>());
     }
 
-    private void storeWorkerEpochMetrics(final String workerId, final WorkerMetrics metrics,
-                                         final int numDataBlocks, final EvaluatorParameters evalParams) {
+    private void storeWorkerEpochMetrics(final String workerId, final WorkerEvaluatorParameters evalParams) {
       synchronized (workerEvalEpochParams) {
         // skip the first epoch metric for the worker after metric collection has begun
         if (!workerEvalEpochParams.containsKey(workerId)) {
           workerEvalEpochParams.put(workerId, new ArrayList<>());
         } else {
-          if (metrics.getNumDataBlocks() == numDataBlocks) {
+          if (isValidNumBlocks(evalParams.getMetrics().getNumDataBlocks(), evalParams)) {
             workerEvalEpochParams.get(workerId).add(evalParams);
-          } else {
-            LOG.log(Level.SEVERE, "Inconsistent NumDataBlocks: driver = {0}, {1} = {2}",
-                new Object[] {numDataBlocks, workerId, metrics.getNumDataBlocks()});
           }
         }
       }
@@ -240,21 +238,27 @@ public final class MetricManager {
       }
     }
 
-    private void storeServerMetrics(final String serverId, final ServerMetrics metrics,
-                                    final int numModelBlocks, final EvaluatorParameters evalParams) {
-      synchronized (serverEvalParams) {
-        // only collect the metric all workers have sent at least one metric after metric collection has begun
-        if (workerEvalEpochParams.size() == numBlockByEvalIdForWorker.size()) {
+    private void storeServerMetrics(final String serverId, final ServerEvaluatorParameters evalParams) {
+      if (workerEvalEpochParams.size() == numBlockByEvalIdForWorker.size()) {
+        synchronized (serverEvalParams) {
+          // only collect the metric all workers have sent at least one metric after metric collection has begun
           if (!serverEvalParams.containsKey(serverId)) {
             serverEvalParams.put(serverId, new ArrayList<>());
           }
-          if (metrics.getNumModelBlocks() == numModelBlocks) {
+          if (isValidNumBlocks(evalParams.getMetrics().getNumModelBlocks(), evalParams)) {
             serverEvalParams.get(serverId).add(evalParams);
-          } else {
-            LOG.log(Level.SEVERE, "Inconsistent NumModelBlocks: driver = {0}, {1} = {2}",
-                new Object[] {numModelBlocks, serverId, metrics.getNumModelBlocks()});
           }
         }
+      }
+    }
+
+    private boolean isValidNumBlocks(final int numDataBlocks, final EvaluatorParameters evalParams) {
+      if (numDataBlocks == evalParams.getDataInfo().getNumBlocks()) {
+        return true;
+      } else {
+        LOG.log(Level.SEVERE, "Inconsistent NumModelBlocks: driver = {0}, {1} = {2}",
+          new Object[] {evalParams.getDataInfo().getNumBlocks(), evalParams.getId(), numDataBlocks});
+        return false;
       }
     }
 
