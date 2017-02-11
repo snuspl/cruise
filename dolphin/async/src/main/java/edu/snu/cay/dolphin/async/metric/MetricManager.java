@@ -130,6 +130,13 @@ public final class MetricManager {
     dashboardConnector.sendServerMetric(serverId, metrics);
   }
 
+  /**
+   * Checks whether the source of the metrics exists in the {@link edu.snu.cay.services.em.driver.api.EMMaster}'s
+   * evaluator list.
+   * @param srcId id of the source evaluator that sent the metrics.
+   * @param validationInfo a map consists of evaluator ids as its keys
+   * @return {@code true} if the source exists in the {@link edu.snu.cay.services.em.driver.api.EMMaster}'s view.
+   */
   private boolean isValidSource(final String srcId, final Map<String, Integer> validationInfo) {
     return validationInfo != null && validationInfo.containsKey(srcId);
   }
@@ -226,14 +233,14 @@ public final class MetricManager {
       }
     }
 
-    private void storeWorkerMiniBatchMetrics(final String workerId, final EvaluatorParameters evaluatorParameters) {
+    private void storeWorkerMiniBatchMetrics(final String workerId, final EvaluatorParameters evalParams) {
       // only collect the metric if the worker has completed its first epoch after metric collection has begun
       if (workerEvalEpochParams.containsKey(workerId)) {
         synchronized (workerEvalMiniBatchParams) {
           if (!workerEvalMiniBatchParams.containsKey(workerId)) {
             workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
           }
-          workerEvalMiniBatchParams.get(workerId).add(evaluatorParameters);
+          workerEvalMiniBatchParams.get(workerId).add(evalParams);
         }
       }
     }
@@ -252,12 +259,18 @@ public final class MetricManager {
       }
     }
 
+    /**
+     * Check whether the number of blocks matches with {@link edu.snu.cay.services.em.driver.api.EMMaster}'s view.
+     * @param numDataBlocks the number of blocks that source evaluator is supposed to have.
+     * @param evalParams the Metric's information including the number of blocks.
+     * @return {@code true} if the number of blocks matches
+     */
     private boolean isValidNumBlocks(final int numDataBlocks, final EvaluatorParameters evalParams) {
       if (numDataBlocks == evalParams.getDataInfo().getNumBlocks()) {
         return true;
       } else {
         LOG.log(Level.SEVERE, "Inconsistent NumModelBlocks: driver = {0}, {1} = {2}",
-          new Object[] {evalParams.getDataInfo().getNumBlocks(), evalParams.getId(), numDataBlocks});
+            new Object[] {evalParams.getDataInfo().getNumBlocks(), evalParams.getId(), numDataBlocks});
         return false;
       }
     }
