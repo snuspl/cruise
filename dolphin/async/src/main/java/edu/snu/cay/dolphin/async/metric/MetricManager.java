@@ -80,8 +80,8 @@ public final class MetricManager {
   @Inject
   private MetricManager(final DashboardConnector dashboardConnector) {
     this.workerEvalEpochParams = Collections.synchronizedMap(new HashMap<>());
-    this.workerEvalMiniBatchParams = new HashMap<>();
-    this.serverEvalParams = new HashMap<>();
+    this.workerEvalMiniBatchParams = Collections.synchronizedMap(new HashMap<>());
+    this.serverEvalParams = Collections.synchronizedMap(new HashMap<>());
     this.metricCollectionEnabled = false;
     this.numBlockByEvalIdForWorker = null;
     this.numBlockByEvalIdForServer = null;
@@ -117,9 +117,9 @@ public final class MetricManager {
             }
           }
         } else {
-          synchronized (workerEvalMiniBatchParams) {
-            // only collect the metric if the worker has completed its first epoch after metric collection has begun
-            if (workerEvalEpochParams.containsKey(workerId)) {
+          // only collect the metric if the worker has completed its first epoch after metric collection has begun
+          if (workerEvalEpochParams.containsKey(workerId)) {
+            synchronized (workerEvalMiniBatchParams) {
               if (!workerEvalMiniBatchParams.containsKey(workerId)) {
                 workerEvalMiniBatchParams.put(workerId, new ArrayList<>());
               }
@@ -234,20 +234,14 @@ public final class MetricManager {
    * Empty out the current set of worker metrics.
    */
   private void clearWorkerMetrics() {
-    synchronized (workerEvalMiniBatchParams) {
-      workerEvalMiniBatchParams.clear();
-    }
-    synchronized (workerEvalEpochParams) {
-      workerEvalEpochParams.clear();
-    }
+    workerEvalMiniBatchParams.clear();
+    workerEvalEpochParams.clear();
   }
 
   /**
    * Empty out the current set of server metrics.
    */
   private void clearServerMetrics() {
-    synchronized (serverEvalParams) {
-      serverEvalParams.clear();
-    }
+    serverEvalParams.clear();
   }
 }
