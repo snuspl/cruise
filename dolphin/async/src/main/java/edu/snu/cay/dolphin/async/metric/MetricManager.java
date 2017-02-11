@@ -25,17 +25,20 @@ import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.annotations.audience.DriverSide;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A temporary storage for holding worker and server metrics related to optimization.
- * After storing each metric, it also sends the metric to Dashboard,
+ * A manager class that handles metrics from workers and servers.
+ * It stores only valid metrics and provides them to optimization process.
+ * It also sends the metric to Dashboard,
  * which visualizes the received metrics, using {@link DashboardConnector}.
  */
 @DriverSide
+@ThreadSafe
 public final class MetricManager {
   private static final Logger LOG = Logger.getLogger(MetricManager.class.getName());
 
@@ -93,7 +96,7 @@ public final class MetricManager {
    */
   void storeWorkerMetrics(final String workerId, final WorkerMetrics metrics) {
     if (metricCollectionEnabled) {
-      if (numBlockByEvalIdForWorker != null && numBlockByEvalIdForWorker.containsKey(workerId)) {
+      if (isValidSource(workerId, numBlockByEvalIdForWorker)) {
         final int numDataBlocks = numBlockByEvalIdForWorker.get(workerId);
 
         final DataInfo dataInfo = new DataInfoImpl(numDataBlocks);
@@ -141,7 +144,7 @@ public final class MetricManager {
    */
   void storeServerMetrics(final String serverId, final ServerMetrics metrics) {
     if (metricCollectionEnabled) {
-      if (numBlockByEvalIdForServer != null && numBlockByEvalIdForServer.containsKey(serverId)) {
+      if (isValidSource(serverId, numBlockByEvalIdForServer)) {
         final int numModelBlocks = numBlockByEvalIdForServer.get(serverId);
 
         final DataInfo dataInfo = new DataInfoImpl(numModelBlocks);
@@ -168,6 +171,10 @@ public final class MetricManager {
     }
 
     dashboardConnector.sendServerMetric(serverId, metrics);
+  }
+
+  private boolean isValidSource(final String srcId, final Map<String, Integer> validationInfo) {
+   return validationInfo != null && validationInfo.containsKey(srcId);
   }
 
   public Map<String, List<EvaluatorParameters>> getWorkerMiniBatchMetrics() {
