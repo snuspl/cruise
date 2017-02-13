@@ -55,8 +55,6 @@ final class LassoTrainer implements MiniBatchTrainer<LassoData> {
   private final double lambda;
   private double stepSize;
 
-  private final TrainingDataProvider<Long, LassoData> trainingDataProvider;
-
   private Vector oldModel;
   private Vector newModel;
 
@@ -75,14 +73,12 @@ final class LassoTrainer implements MiniBatchTrainer<LassoData> {
                        @Parameter(Lambda.class) final double lambda,
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
-                       final TrainingDataProvider<Long, LassoData> trainingDataProvider,
                        final VectorFactory vectorFactory,
                        final MatrixFactory matrixFactory) {
     this.parameterWorker = parameterWorker;
     this.numFeatures = numFeatures;
     this.lambda = lambda;
     this.stepSize = stepSize;
-    this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
   }
@@ -126,7 +122,7 @@ final class LassoTrainer implements MiniBatchTrainer<LassoData> {
    * 3) Push value to server.
    */
   @Override
-  public void runBatch(final Collection<LassoData> instances) {
+  public void runBatch(final Collection<LassoData> instances, final int epochIdx, final int batchIdx) {
     pullModels();
 
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
@@ -152,6 +148,24 @@ final class LassoTrainer implements MiniBatchTrainer<LassoData> {
     pushGradients();
   }
 
+  @Override
+  public void onEpochFinished(final Collection<LassoData> epochData,
+                              final int epochIdx,
+                              final int numMiniBatches,
+                              final int numEMBlocks,
+                              final long epochStartTime) {
+    // Calculate the loss value.
+    pullModels();
+
+    final double loss = computeLoss(epochData);
+    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
+    if ((iteration++) % PRINT_MODEL_PERIOD == 0) {
+      for (int i = 0; i < numFeatures; i++) {
+        LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
+      }
+    }
+  }
+
   /**
    * Pull up-to-date model parameters from server.
    */
@@ -169,19 +183,6 @@ final class LassoTrainer implements MiniBatchTrainer<LassoData> {
     final Vector gradient = newModel.sub(oldModel);
     for (int modelIndex = 0; modelIndex < numFeatures; ++modelIndex) {
       parameterWorker.push(modelIndex, stepSize * gradient.get(modelIndex));
-    }
-  }
-
-  @Override
-  public void evaluateModel(final Collection<LassoData> epochData) {
-    // Calculate the loss value.
-    pullModels();
-    final double loss = computeLoss(epochData);
-    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
-    if ((iteration++) % PRINT_MODEL_PERIOD == 0) {
-      for (int i = 0; i < numFeatures; i++) {
-        LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
-      }
     }
   }
 

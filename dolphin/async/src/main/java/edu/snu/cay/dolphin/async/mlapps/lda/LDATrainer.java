@@ -194,24 +194,28 @@ final class LDATrainer implements MiniBatchTrainer<Document> {
   }
 
   @Override
-  public void runBatch(final Collection<Document> documents) {
-          final List<Integer> words = getKeys(documents);
-    final int numInstancesToProcess = documents.size();
+  public void runBatch(final Collection<Document> batchData, final int epochIdx, final int miniBatchIdx) {
+    final List<Integer> words = getKeys(batchData);
+    final int numInstancesToProcess = batchData.size();
 
-      pullModels(words);
+    pullModels(words);
 
-      computeTracer.startTimer();
-      final List<TopicChanges> results = sampler.sample(documents);
-      computeTracer.recordTime(numInstancesToProcess);
+    computeTracer.startTimer();
+    final List<TopicChanges> results = sampler.sample(batchData);
+    computeTracer.recordTime(numInstancesToProcess);
 
-      final TopicChanges aggregated = aggregateChanges(results);
+    final TopicChanges aggregated = aggregateChanges(results);
 
-      // push gradients
-      pushAndResetGradients(aggregated);
+    // push gradients
+    pushAndResetGradients(aggregated);
   }
 
   @Override
-  public void evaluateModel(final Collection<Document> epochData) {
+  public void onEpochFinished(final Collection<Document> epochData,
+                              final int epochIdx,
+                              final int numMiniBatches,
+                              final int numEMBlocks,
+                              final long epochStartTime) {
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
@@ -219,8 +223,12 @@ final class LDATrainer implements MiniBatchTrainer<Document> {
     LOG.log(Level.INFO, "Start computing log likelihood");
     final double docLLH = statCalculator.computeDocLLH(epochData);
     final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
-//    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
+    final WorkerMetrics epochMetric =
+        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochData.size(), docLLH, wordLLH, epochElapsedTime);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
   }
 
   private void pullModels(final List<Integer> words) {

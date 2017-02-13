@@ -110,9 +110,6 @@ final class MLRTrainer implements MiniBatchTrainer<MLRData> {
    */
   private final int decayPeriod;
 
-  private final MemoryStore<Long> memoryStore;
-  private final TrainingDataProvider<Long, MLRData> trainingDataProvider;
-
   /**
    * Executes the Trainer threads.
    */
@@ -146,8 +143,6 @@ final class MLRTrainer implements MiniBatchTrainer<MLRData> {
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final ModelAccessor<MLRModel> modelAccessor,
-                     final MemoryStore<Long> memoryStore,
-                     final TrainingDataProvider<Long, MLRData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
@@ -173,8 +168,6 @@ final class MLRTrainer implements MiniBatchTrainer<MLRData> {
     }
     this.metricsMsgSender = metricsMsgSender;
     this.modelAccessor = modelAccessor;
-    this.memoryStore = memoryStore;
-    this.trainingDataProvider = trainingDataProvider;
 
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
@@ -207,73 +200,14 @@ final class MLRTrainer implements MiniBatchTrainer<MLRData> {
 
   @Override
   public void run(final int iteration, final AtomicBoolean abortFlag) {
-    final long epochStartTime = System.currentTimeMillis();
-
-    // Record the number of EM data blocks at the beginning of this iteration
-    // to filter out stale metrics for optimization
-    final int numEMBlocks = memoryStore.getNumBlocks();
-
-    int miniBatchIdx = 0;
-    int numTotalInstancesProcessed = 0;
-    final List<MLRData> totalInstancesProcessed = new LinkedList<>();
-
-    Map<Long, MLRData> nextTrainingData = trainingDataProvider.getNextTrainingData();
-
-    while (!nextTrainingData.isEmpty()) {
-      if (abortFlag.get()) {
-        LOG.log(Level.INFO, "Abort a thread to completely close the task");
-        return;
-      }
-
-
-
-
-      // update the instances processed so far
-      numTotalInstancesProcessed += numInstancesToProcess;
-      totalInstancesProcessed.addAll(nextTrainingData.values());
-
-      // load the set of training data instances to process in the next mini-batch
-      nextTrainingData = trainingDataProvider.getNextTrainingData();
-
-      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-      final WorkerMetrics miniBatchMetric =
-          buildMiniBatchMetric(iteration, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
-      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
-      sendMetrics(miniBatchMetric);
-
-      miniBatchIdx++;
-    }
-
-    if (!(decayRate == 1) && iteration % decayPeriod == 0) {
-      final double prevStepSize = stepSize;
-      stepSize *= decayRate;
-      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
-          new Object[]{decayPeriod, prevStepSize, stepSize});
-    }
-
-    LOG.log(Level.INFO, "Pull model to compute loss value");
-    pullModels();
-
-    final MLRModel model = modelAccessor.getModel()
-        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
-    LOG.log(Level.INFO, "Start computing loss value");
-    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed, model);
-
-    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-    final double sampleLoss = lossRegLossAccuracy.getFirst();
-    final double regLoss = lossRegLossAccuracy.getSecond();
-    final double accuracy = lossRegLossAccuracy.getThird();
-    final WorkerMetrics epochMetric =
-        buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
-            numTotalInstancesProcessed, sampleLoss, regLoss, accuracy, epochElapsedTime);
-
-    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
-    sendMetrics(epochMetric);
   }
 
   @Override
-  public void runBatch(final Collection<MLRData> batchData) {
+  public void runBatch(final Collection<MLRData> batchData, final int epochIdx, final int miniBatchIdx) {
+    resetTracers();
+
+    final long miniBatchStartTime = System.currentTimeMillis();
+
     // pull data when mini-batch is started
     pullModels();
 
@@ -282,10 +216,6 @@ final class MLRTrainer implements MiniBatchTrainer<MLRData> {
     final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchSize);
     instances.addAll(batchData);
     final int numInstancesToProcess = instances.size();
-
-    resetTracers();
-    final long miniBatchStartTime = System.currentTimeMillis();
-
 
     // collects the results (new models here) computed by multiple threads
     final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
@@ -333,18 +263,46 @@ final class MLRTrainer implements MiniBatchTrainer<MLRData> {
     // push gradients
     pushAndResetGradients(gradients);
 
+    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
     final WorkerMetrics miniBatchMetric =
-        buildMiniBatchMetric(iteration, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
-    LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+        buildMiniBatchMetric(epochIdx, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
+    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
     sendMetrics(miniBatchMetric);
-
-
   }
 
   @Override
-  public void evaluateModel(final Collection<MLRData> epochData) {
+  public void onEpochFinished(final Collection<MLRData> epochData,
+                              final int epochIdx,
+                              final int numMiniBatches,
+                              final int numEMBlocks,
+                              final long epochStartTime) {
+    LOG.log(Level.INFO, "Pull model to compute loss value");
+    pullModels();
 
+    final MLRModel model = modelAccessor.getModel()
+        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
+
+    LOG.log(Level.INFO, "Start computing loss value");
+    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(epochData, model);
+
+    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+    final double sampleLoss = lossRegLossAccuracy.getFirst();
+    final double regLoss = lossRegLossAccuracy.getSecond();
+    final double accuracy = lossRegLossAccuracy.getThird();
+    final WorkerMetrics epochMetric =
+        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks,
+            epochData.size(), sampleLoss, regLoss, accuracy, epochElapsedTime);
+
+    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
+
+    if (!(decayRate == 1) && epochIdx % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+          new Object[]{decayPeriod, prevStepSize, stepSize});
+    }
   }
 
   /**
@@ -462,7 +420,7 @@ final class MLRTrainer implements MiniBatchTrainer<MLRData> {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Double> computeLoss(final List<MLRData> data, final MLRModel model) {
+  private Tuple3<Double, Double, Double> computeLoss(final Collection<MLRData> data, final MLRModel model) {
     final Vector[] params = model.getParams();
 
     double loss = 0;
