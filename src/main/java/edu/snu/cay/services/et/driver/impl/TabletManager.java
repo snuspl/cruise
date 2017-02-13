@@ -15,9 +15,11 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
 
+import javax.inject.Inject;
 import java.util.*;
 
 /**
@@ -32,12 +34,16 @@ import java.util.*;
 @DriverSide
 final class TabletManager {
 
+  @Inject
+  private TabletManager() {
+  }
+
   /**
-   * One TabletManager is instantiated for each Table when a table is allocated to executors.
-   * @param numTotalBlocks the number of total blocks
-   * @param associatedExecutorIdSet the set of ids of initially associated executors
+   * Initialize {@link this} by partitioning blocks evenly to {@code executors}.
+   * This method should be called once before other methods.
+   * @param initialExecutors a set of executors that the table is initially assigned to
    */
-  TabletManager(final int numTotalBlocks, final Set<String> associatedExecutorIdSet) {
+  synchronized void init(final List<AllocatedExecutor> initialExecutors) {
 
   }
 

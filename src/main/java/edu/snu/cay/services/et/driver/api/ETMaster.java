@@ -19,7 +19,6 @@ import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.ETMasterImpl;
-import edu.snu.cay.services.et.driver.impl.RawTable;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -41,11 +40,12 @@ public interface ETMaster {
   List<AllocatedExecutor> addExecutors(int num, ResourceConfiguration resConf);
 
   /**
-   * Creates a Table using the given table configuration.
+   * Creates a table using the given table configuration.
+   * It evenly partitions table blocks to {@code initialAssociators}.
+   * So it requires at least one executor to be associated with the table.
    * @param tableConf a configuration of table (See {@link TableConfiguration})
-   * @return a logical representation of Table ({@link RawTable}),
-   *   which will be converted to a {@link AllocatedTable}
-   *   at the associated executors.
+   * @param initialAssociators a list of executors to be associated to a table
+   * @return a {@link AllocatedTable}, master-side representation of Table allocated in the associated executors
    */
-  RawTable createTable(TableConfiguration tableConf);
+  AllocatedTable createTable(TableConfiguration tableConf, List<AllocatedExecutor> initialAssociators);
 }

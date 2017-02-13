@@ -19,6 +19,7 @@ import edu.snu.cay.common.dataloader.HdfsSplitInfo;
 import edu.snu.cay.common.dataloader.HdfsSplitManager;
 import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -53,15 +54,15 @@ final class TableInitializer {
    * by assigning a split for each executor.
    * It's a blocking call so that waits until all executors setup corresponding tablets.
    * @param tableConf a configuration of table
-   * @param executorIdSet a set of executor ids
+   * @param executors a set of executors
    * @param ownershipStatus a list of owner of each block
    * @param loadFile a boolean indicating whether to load a file whose path is specified in tableConf
    */
   void initTable(final TableConfiguration tableConf,
-                 final Set<String> executorIdSet,
+                 final List<AllocatedExecutor> executors,
                  final List<String> ownershipStatus,
                  final boolean loadFile) {
-    LOG.log(Level.INFO, "Initialize table {0} in executors: {1}", new Object[]{tableConf.getId(), executorIdSet});
+    LOG.log(Level.INFO, "Initialize table {0} in executors: {1}", new Object[]{tableConf.getId(), executors});
 
     final Iterator<HdfsSplitInfo> splitIterator;
 
@@ -71,18 +72,18 @@ final class TableInitializer {
 
       // let's assume that tables always use this TextInputFormat class
       final HdfsSplitInfo[] fileSplits = HdfsSplitManager.getSplits(filePath,
-          TextInputFormat.class.getName(), executorIdSet.size());
+          TextInputFormat.class.getName(), executors.size());
 
       splitIterator = Arrays.asList(fileSplits).iterator();
     } else {
       splitIterator = Collections.emptyIterator();
     }
 
-    final CountDownLatch initLatch = new CountDownLatch(executorIdSet.size());
+    final CountDownLatch initLatch = new CountDownLatch(executors.size());
     pendingInit.put(tableConf.getId(), initLatch);
 
-    executorIdSet.forEach(executorId ->
-        msgSender.sendTableInitMsg(executorId, tableConf, ownershipStatus,
+    executors.forEach(executor ->
+        msgSender.sendTableInitMsg(executor.getId(), tableConf, ownershipStatus,
             splitIterator.hasNext() ? splitIterator.next() : null));
 
     try {

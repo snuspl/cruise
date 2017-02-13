@@ -22,7 +22,6 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.evaluator.impl.HashPartitionFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
-import edu.snu.cay.services.et.exceptions.NotAssociatedTableException;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -57,7 +56,6 @@ final class SimpleETDriver {
 
   private final TableConfiguration tableConf;
 
-
   @Inject
   private SimpleETDriver(final ETMaster etMaster,
                          @Parameter(SimpleET.TableInputPath.class) final String tableInputPath) {
@@ -87,12 +85,7 @@ final class SimpleETDriver {
     @Override
     public void onNext(final StartTime startTime) {
       final List<AllocatedExecutor> executors0 = etMaster.addExecutors(NUM_EXECUTORS, RES_CONF);
-      final AllocatedTable table;
-      try {
-        table = etMaster.createTable(tableConf).associate(executors0).allocate();
-      } catch (final NotAssociatedTableException e) {
-        throw new RuntimeException("Table is not associated. It's not ready to be allocated.", e);
-      }
+      final AllocatedTable table = etMaster.createTable(tableConf, executors0);
 
       final List<AllocatedExecutor> executors1 = etMaster.addExecutors(NUM_EXECUTORS, RES_CONF);
       table.subscribe(executors1);

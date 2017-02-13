@@ -52,9 +52,10 @@ public final class ETMasterImpl implements ETMaster {
   }
 
   @Override
-  public RawTable createTable(final TableConfiguration tableConf) {
+  public AllocatedTable createTable(final TableConfiguration tableConf,
+                                    final List<AllocatedExecutor> initialAssociators) {
     try {
-      return tableManager.createTable(tableConf);
+      return tableManager.createTable(tableConf, initialAssociators);
     } catch (final InjectionException e) {
       throw new RuntimeException("The given table configuration is incomplete", e);
     }

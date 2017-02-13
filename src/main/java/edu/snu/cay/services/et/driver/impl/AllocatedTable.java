@@ -18,9 +18,8 @@ package edu.snu.cay.services.et.driver.impl;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 
-import java.util.HashSet;
+import javax.inject.Inject;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Represents a state where the table is completely allocated into executors.
@@ -31,50 +30,60 @@ import java.util.Set;
  * then the changes will be applied to executors immediately.
  */
 public final class AllocatedTable {
-  private final TableConfiguration tableConf;
   private final TabletManager tabletManager;
   private final MigrationManager migrationManager;
   private final TableInitializer tableInitializer;
 
-  AllocatedTable(final TableConfiguration tableConf,
-                 final TabletManager tabletManager,
-                 final MigrationManager migrationManager,
-                 final TableInitializer tableInitializer) {
-    this.tableConf = tableConf;
+  private TableConfiguration tableConf;
+
+  @Inject
+  private AllocatedTable(final TabletManager tabletManager,
+                         final MigrationManager migrationManager,
+                         final TableInitializer tableInitializer) {
     this.tabletManager = tabletManager;
     this.migrationManager = migrationManager;
     this.tableInitializer = tableInitializer;
   }
 
   /**
+   * Initializes {@link this} by allocating a table
+   * with a given {@code tableConfiguration} to {@code initialAssociators}.
+   * This method should be called once before other methods.
+   * @param tableConfiguration a table configuration
+   * @param initialAssociators a list of initial executors to be associated to a table
+   */
+  synchronized void init(final TableConfiguration tableConfiguration,
+                         final List<AllocatedExecutor> initialAssociators) {
+    tableConf = tableConfiguration;
+
+    // partition table into initialAssociators
+    tabletManager.init(initialAssociators);
+
+    // initialize tablets in initialAssociators
+    tableInitializer.initTable(tableConfiguration, initialAssociators, tabletManager.getOwnershipStatus(), true);
+  }
+
+  /**
    * Subscribes the table. The executors will receive the updates in ownership information for this table.
    * @param executors a list of executors
-   * @return this
    */
-  public synchronized AllocatedTable subscribe(final List<AllocatedExecutor> executors) {
-    final Set<String> executorIdSet = new HashSet<>();
+  public synchronized void subscribe(final List<AllocatedExecutor> executors) {
     for (final AllocatedExecutor executor : executors) {
       migrationManager.registerSubscription(tableConf.getId(), executor.getId());
-      executorIdSet.add(executor.getId());
     }
-    tableInitializer.initTable(tableConf, executorIdSet, tabletManager.getOwnershipStatus(), false);
-    return this;
+    tableInitializer.initTable(tableConf, executors, tabletManager.getOwnershipStatus(), false);
   }
 
   /**
    * Associates with the table. The executors will take some portion of this table into its tablet.
    * @param executors a list of executors
-   * @return this
    */
-  public synchronized AllocatedTable associate(final List<AllocatedExecutor> executors) {
-    final Set<String> executorIdSet = new HashSet<>();
+  public synchronized void associate(final List<AllocatedExecutor> executors) {
     for (final AllocatedExecutor executor : executors) {
       tabletManager.addTablet(executor.getId());
     }
 
-    tableInitializer.initTable(tableConf, executorIdSet, tabletManager.getOwnershipStatus(), true);
-
-    return this;
+    tableInitializer.initTable(tableConf, executors, tabletManager.getOwnershipStatus(), true);
   }
 
   /**

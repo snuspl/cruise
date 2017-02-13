@@ -16,65 +16,77 @@
 package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A manager class of Tables, which creates and manages allocated tables.
- * Table init is done through two stages: {@link RawTable}, {@link AllocatedTable}.
- *
- * At first, by calling {@link #createTable(TableConfiguration)}, users can obtain {@link RawTable}
- * through which users can make executors subscribe or associate to the table.
- *
- * The table can become a {@link AllocatedTable} by calling {@link RawTable#allocate()},
- * which will be actually allocated to the executors that associate with the table.
- * Once allocated, {@link AllocatedTable} will be registered into {@link TableManager}
- * using {@link #onAllocatedTable(AllocatedTable)}.
- * Executors can associate or subscribe to tables in any state.
+ * By calling {@link #createTable(TableConfiguration, List)},
+ * users can get an {@link AllocatedTable} that is partitioned into associated executors.
+ * More executors can associate with or subscribe to {@link AllocatedTable}.
  */
 @Private
 @DriverSide
 final class TableManager {
-  private final MigrationManager migrationManager;
-  private final TableInitializer tableInitializer;
+  private final Injector baseTableInjector;
 
   private final Map<String, AllocatedTable> allocatedTableMap = new ConcurrentHashMap<>();
 
+
   @Inject
-  private TableManager(final MigrationManager migrationManager,
+  private TableManager(final Injector baseTableInjector,
+                       final MigrationManager migrationManager,
                        final TableInitializer tableInitializer) throws InjectionException {
-    this.migrationManager = migrationManager;
-    this.tableInitializer = tableInitializer;
+    this.baseTableInjector = baseTableInjector;
+
+    // MigrationManager and TableInitializer should be instantiated although they are not actually accessed.
+    // This is intentional. Otherwise MigrationManager and TableInitializer are created per Table, which we want
+    // to keep singleton.
   }
 
   /**
-   * Creates a {@link RawTable} based on the given table configuration.
+   * Creates a table based on the given table configuration.
    * @param tableConf a configuration of table (See {@link edu.snu.cay.services.et.configuration.TableConfiguration})
-   * @return a {@link RawTable}, which is for associating and allocating table to executors
+   * @return an {@link AllocatedTable}, which represents table in driver-side
    * @throws InjectionException when the given configuration is incomplete
    */
-  RawTable createTable(final TableConfiguration tableConf) throws InjectionException {
-    return new RawTable(tableConf, this, migrationManager, tableInitializer);
+  synchronized AllocatedTable createTable(final TableConfiguration tableConf,
+                                          final List<AllocatedExecutor> initialAssociators) throws InjectionException {
+    if (initialAssociators.isEmpty()) {
+      throw new RuntimeException("Table requires at least one associator");
+    }
+
+    final String tableId = tableConf.getId();
+    if (allocatedTableMap.containsKey(tableId)) {
+      throw new RuntimeException(String.format("Table %s already exists", tableId));
+    }
+
+    final Injector tableInjector = baseTableInjector.forkInjector(tableConf.getConfiguration());
+    final AllocatedTable allocatedTable = tableInjector.getInstance(AllocatedTable.class);
+    allocatedTable.init(tableConf, initialAssociators);
+    allocatedTableMap.put(tableId, allocatedTable);
+    return allocatedTable;
   }
 
   /**
-   * Registers an allocated table to be accessed by {@link #getAllocatedTable(String)}.
-   * @param allocatedTable an allocated table
+   * @param tableId an identifier of a table
+   * @return {@link AllocatedTable} whose id is {@code tableId}
+   * @throws TableNotExistException
    */
-  void onAllocatedTable(final AllocatedTable allocatedTable) {
-    allocatedTableMap.putIfAbsent(allocatedTable.getTableConfiguration().getId(), allocatedTable);
-  }
-
-  /**
-   * @return {@link AllocatedTable} whose id is {@code tableId}, or
-   *         {@code null} if it has no table for the id
-   */
-  AllocatedTable getAllocatedTable(final String tableId) {
-    return allocatedTableMap.get(tableId);
+  synchronized AllocatedTable getAllocatedTable(final String tableId) throws TableNotExistException {
+    final AllocatedTable table = allocatedTableMap.get(tableId);
+    if (table == null) {
+      throw new TableNotExistException();
+    }
+    return table;
   }
 }
