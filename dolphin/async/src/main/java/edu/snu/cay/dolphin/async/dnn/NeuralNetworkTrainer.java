@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
+import edu.snu.cay.dolphin.async.MiniBatchTrainer;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
@@ -36,7 +37,7 @@ import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.generateIter
 /**
  * Trainer for the neural network job.
  */
-final class NeuralNetworkTrainer implements Trainer {
+final class NeuralNetworkTrainer implements MiniBatchTrainer<NeuralNetworkData> {
 
   private static final Logger LOG = Logger.getLogger(NeuralNetworkTrainer.class.getName());
 
@@ -84,10 +85,12 @@ final class NeuralNetworkTrainer implements Trainer {
 
   @Override
   public void run(final int iteration, final AtomicBoolean abortFlag) {
-    final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
-    final Collection<NeuralNetworkData> workload = workloadMap.values();
 
-    for (final NeuralNetworkData data : workload) {
+  }
+
+  @Override
+  public void runBatch(final Collection<NeuralNetworkData> batchData, final int epochIdx, final int miniBatchIdx) {
+    for (final NeuralNetworkData data : batchData) {
       if (data.isValidation()) {
         continue;
       }
@@ -102,11 +105,15 @@ final class NeuralNetworkTrainer implements Trainer {
       neuralNetwork.train(input, labels);
       MatrixUtils.free(input);
     }
-
-    // update parameters for model validation
+     // update parameters for model validation
     neuralNetwork.updateParameters();
 
-    for (final NeuralNetworkData data : workload) {
+  }
+
+  @Override
+  public void onEpochFinished(final Collection<NeuralNetworkData> epochData, final int epochIdx,
+                              final int numMiniBatches, final int numEMBlocks, final long epochStartTime) {
+    for (final NeuralNetworkData data : epochData) {
       final Matrix input = dataParser.asMatrix(data.getInstances());
       final int[] labels = data.getLabels();
 
@@ -120,7 +127,7 @@ final class NeuralNetworkTrainer implements Trainer {
     }
 
     LOG.log(Level.INFO, generateIterationLog(
-        trainingValidator.getValidationStats(), crossValidator.getValidationStats(), iteration));
+        trainingValidator.getValidationStats(), crossValidator.getValidationStats(), epochIdx));
 
     crossValidator.getValidationStats().reset();
     trainingValidator.getValidationStats().reset();

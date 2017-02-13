@@ -28,6 +28,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -99,7 +100,7 @@ final class AsyncWorkerTask implements Task {
         final int numEMBlocks = memoryStore.getNumBlocks();
         trainingDataProvider.prepareDataForEpoch();
 
-        final Collection epochData = Collections.emptyList();
+        final Collection epochData = new LinkedList();
         final Collection batchData = trainingDataProvider.getNextTrainingData().values();
         int batchIdx = 0;
         while (!batchData.isEmpty()) {
