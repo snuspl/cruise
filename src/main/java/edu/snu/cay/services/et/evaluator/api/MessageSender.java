@@ -47,7 +47,6 @@ public interface MessageSender {
    * Sends a RemoteOpResultMsg that contains the result of the data operation specified with {@code operationId}.
    */
   void sendTableAccessResMsg(String destId, String operationId,
-                             String tableId,
                              DataValue dataValue, boolean isSuccess);
 
   /**

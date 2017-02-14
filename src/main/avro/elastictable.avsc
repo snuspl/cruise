@@ -53,6 +53,7 @@
     {"name": "origId", "type": "string"},
     {"name": "accessType", "type": {"type": "enum",
         "name": "AccessType", "symbols": ["PUT", "GET", "REMOVE", "UPDATE"]}},
+    {"name": "tableId", "type": "string"},
     {"name": "dataKey", "type": "DataKey"},
     {"name": "dataValue", "type": ["null", "DataValue"]}
   ]
@@ -68,7 +69,6 @@
   "fields":
   [
     {"name": "isSuccess", "type": "boolean"},
-    {"name": "dataKey", "type": "DataKey"},
     {"name": "dataValue", "type": ["null", "DataValue"]}
   ]
 },

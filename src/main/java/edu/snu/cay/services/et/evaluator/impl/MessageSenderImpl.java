@@ -51,14 +51,52 @@ public final class MessageSenderImpl implements MessageSender {
                                     final String operationId, final String tableId,
                                     final AccessType accessType,
                                     final DataKey dataKey, final DataValue dataValue) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableAccessMsg)
+        .setTableAccessMsg(
+            TableAccessMsg.newBuilder()
+                .setType(TableAccessMsgType.TableAccessReqMsg)
+                .setOperationId(operationId)
+                .setTableAccessReqMsg(
+                    TableAccessReqMsg.newBuilder()
+                        .setOrigId(origId)
+                        .setTableId(tableId)
+                        .setAccessType(accessType)
+                        .setDataKey(dataKey)
+                        .setDataValue(dataValue)
+                        .build()
+                ).build()
+        ).build();
 
+    try {
+      networkConnection.send(destId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TableAccessReq message", e);
+    }
   }
 
   @Override
   public void sendTableAccessResMsg(final String destId, final String operationId,
-                                    final String tableId, final DataValue dataValue,
-                                    final boolean isSuccess) {
+                                    final DataValue dataValue, final boolean isSuccess) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableAccessMsg)
+        .setTableAccessMsg(
+            TableAccessMsg.newBuilder()
+                .setType(TableAccessMsgType.TableAccessResMsg)
+                .setOperationId(operationId)
+                .setTableAccessResMsg(
+                    TableAccessResMsg.newBuilder()
+                        .setIsSuccess(isSuccess)
+                        .setDataValue(dataValue)
+                        .build()
+                ).build()
+        ).build();
 
+    try {
+      networkConnection.send(destId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TableAccessReq message", e);
+    }
   }
 
   @Override
