@@ -25,6 +25,7 @@ import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
@@ -79,6 +80,8 @@ final class LDATrainer implements Trainer {
   private final Tracer pullTracer;
   private final Tracer computeTracer;
 
+  private final boolean addedEval;
+
   @Inject
   private LDATrainer(final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
@@ -87,6 +90,7 @@ final class LDATrainer implements Trainer {
                      final TrainingDataProvider<Long, Document> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final ModelAccessor<LDAModel> modelAccessor,
+                     @Parameter(AddedEval.class) final boolean addedEval,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(NumTopics.class) final int numTopics,
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
@@ -99,6 +103,7 @@ final class LDATrainer implements Trainer {
     this.numVocabs = numVocabs;
     this.miniBatchSize = miniBatchSize;
     this.numTrainerThreads = numTrainerThreads;
+    this.addedEval = addedEval;
 
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
@@ -116,18 +121,20 @@ final class LDATrainer implements Trainer {
 
   @Override
   public void initialize() {
-    // In LDA, topic counts should be initialized by pushing values before running.
-    final TopicChanges topicChanges = new TopicChanges();
-    final Map<Long, Document> data = memoryStore.getAll();
-    for (final Document document : data.values()) {
-      for (int i = 0; i < document.size(); i++) {
-        final int word = document.getWord(i);
-        topicChanges.increment(word, document.getAssignment(i), 1);
-        // numVocabs-th row represents the total word-topic assignment count vector
-        topicChanges.increment(numVocabs, document.getAssignment(i), 1);
+    if (!addedEval) {
+      // In LDA, topic counts should be initialized by pushing values before running.
+      final TopicChanges topicChanges = new TopicChanges();
+      final Map<Long, Document> data = memoryStore.getAll();
+      for (final Document document : data.values()) {
+        for (int i = 0; i < document.size(); i++) {
+          final int word = document.getWord(i);
+          topicChanges.increment(word, document.getAssignment(i), 1);
+          // numVocabs-th row represents the total word-topic assignment count vector
+          topicChanges.increment(numVocabs, document.getAssignment(i), 1);
+        }
       }
+      pushAndResetGradients(topicChanges);
     }
-    pushAndResetGradients(topicChanges);
 
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
