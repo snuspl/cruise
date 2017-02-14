@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * A class that stores a tablet comprised of blocks assigned to an executor.
+ * A class that stores blocks assigned to an executor.
  */
 @EvaluatorSide
 @ThreadSafe

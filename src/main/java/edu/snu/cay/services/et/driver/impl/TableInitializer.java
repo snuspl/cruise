@@ -19,7 +19,6 @@ import edu.snu.cay.common.dataloader.HdfsSplitInfo;
 import edu.snu.cay.common.dataloader.HdfsSplitManager;
 import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
-import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -52,17 +51,17 @@ final class TableInitializer {
    * Initializes a table in executors by providing table metadata.
    * For initial associators of a table, setting {@code loadFile} as true will load a file into executors
    * by assigning a split for each executor.
-   * It's a blocking call so that waits until all executors setup corresponding tablets.
+   * It's a blocking call so that waits until all executors setup the table.
    * @param tableConf a configuration of table
-   * @param executors a set of executors
+   * @param executorIds a set of executor ids
    * @param ownershipStatus a list of owner of each block
    * @param loadFile a boolean indicating whether to load a file whose path is specified in tableConf
    */
   void initTable(final TableConfiguration tableConf,
-                 final List<AllocatedExecutor> executors,
+                 final Set<String> executorIds,
                  final List<String> ownershipStatus,
                  final boolean loadFile) {
-    LOG.log(Level.INFO, "Initialize table {0} in executors: {1}", new Object[]{tableConf.getId(), executors});
+    LOG.log(Level.INFO, "Initialize table {0} in executors: {1}", new Object[]{tableConf.getId(), executorIds});
 
     final Iterator<HdfsSplitInfo> splitIterator;
 
@@ -72,18 +71,18 @@ final class TableInitializer {
 
       // let's assume that tables always use this TextInputFormat class
       final HdfsSplitInfo[] fileSplits = HdfsSplitManager.getSplits(filePath,
-          TextInputFormat.class.getName(), executors.size());
+          TextInputFormat.class.getName(), executorIds.size());
 
       splitIterator = Arrays.asList(fileSplits).iterator();
     } else {
       splitIterator = Collections.emptyIterator();
     }
 
-    final CountDownLatch initLatch = new CountDownLatch(executors.size());
+    final CountDownLatch initLatch = new CountDownLatch(executorIds.size());
     pendingInit.put(tableConf.getId(), initLatch);
 
-    executors.forEach(executor ->
-        msgSender.sendTableInitMsg(executor.getId(), tableConf, ownershipStatus,
+    executorIds.forEach(executorId ->
+        msgSender.sendTableInitMsg(executorId, tableConf, ownershipStatus,
             splitIterator.hasNext() ? splitIterator.next() : null));
 
     try {

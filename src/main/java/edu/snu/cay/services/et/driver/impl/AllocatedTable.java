@@ -17,9 +17,12 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Represents a state where the table is completely allocated into executors.
@@ -29,18 +32,19 @@ import java.util.List;
  * Even the table is distributed to executors already, more executors are allowed to subscribe or associate with it,
  * then the changes will be applied to executors immediately.
  */
+@DriverSide
 public final class AllocatedTable {
-  private final TabletManager tabletManager;
+  private final BlockManager blockManager;
   private final MigrationManager migrationManager;
   private final TableInitializer tableInitializer;
 
   private TableConfiguration tableConf;
 
   @Inject
-  private AllocatedTable(final TabletManager tabletManager,
+  private AllocatedTable(final BlockManager blockManager,
                          final MigrationManager migrationManager,
                          final TableInitializer tableInitializer) {
-    this.tabletManager = tabletManager;
+    this.blockManager = blockManager;
     this.migrationManager = migrationManager;
     this.tableInitializer = tableInitializer;
   }
@@ -56,11 +60,15 @@ public final class AllocatedTable {
                          final List<AllocatedExecutor> initialAssociators) {
     tableConf = tableConfiguration;
 
-    // partition table into initialAssociators
-    tabletManager.init(initialAssociators);
+    final Set<String> executorIds = new HashSet<>(initialAssociators.size());
+    initialAssociators.forEach(executor -> {
+      executorIds.add(executor.getId());
+      migrationManager.registerSubscription(tableConf.getId(), executor.getId());
+    });
 
-    // initialize tablets in initialAssociators
-    tableInitializer.initTable(tableConfiguration, initialAssociators, tabletManager.getOwnershipStatus(), true);
+    // partition table into blocks and initialize them in associators
+    blockManager.init(executorIds);
+    tableInitializer.initTable(tableConfiguration, executorIds, blockManager.getOwnershipStatus(), true);
   }
 
   /**
@@ -68,22 +76,28 @@ public final class AllocatedTable {
    * @param executors a list of executors
    */
   public synchronized void subscribe(final List<AllocatedExecutor> executors) {
-    for (final AllocatedExecutor executor : executors) {
+    final Set<String> executorIdSet = new HashSet<>(executors.size());
+    executors.forEach(executor -> {
       migrationManager.registerSubscription(tableConf.getId(), executor.getId());
-    }
-    tableInitializer.initTable(tableConf, executors, tabletManager.getOwnershipStatus(), false);
+      executorIdSet.add(executor.getId());
+    });
+
+    tableInitializer.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
   }
 
   /**
-   * Associates with the table. The executors will take some portion of this table into its tablet.
+   * Associates with the table. The executors will take some blocks of this table.
    * @param executors a list of executors
    */
   public synchronized void associate(final List<AllocatedExecutor> executors) {
-    for (final AllocatedExecutor executor : executors) {
-      tabletManager.addTablet(executor.getId());
-    }
+    final Set<String> executorIdSet = new HashSet<>(executors.size());
+    executors.forEach(executor -> {
+      blockManager.registerExecutor(executor.getId());
+      migrationManager.registerSubscription(tableConf.getId(), executor.getId());
+      executorIdSet.add(executor.getId());
+    });
 
-    tableInitializer.initTable(tableConf, executors, tabletManager.getOwnershipStatus(), true);
+    tableInitializer.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
   }
 
   /**
@@ -95,7 +109,7 @@ public final class AllocatedTable {
   public synchronized void moveBlocks(final String srcExecutorId,
                                       final String dstExecutorId,
                                       final int numBlocks) {
-    migrationManager.moveBlocks(tabletManager, srcExecutorId, dstExecutorId, numBlocks);
+    migrationManager.moveBlocks(blockManager, srcExecutorId, dstExecutorId, numBlocks);
   }
 
   /**
@@ -109,6 +123,6 @@ public final class AllocatedTable {
    * @return a list of executors associated with the table
    */
   List<String> getAssociatedExecutorIds() {
-    return tabletManager.getAssociatedExecutorIds();
+    return blockManager.getAssociatedExecutorIds();
   }
 }

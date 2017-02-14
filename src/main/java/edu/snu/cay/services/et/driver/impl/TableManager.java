@@ -41,7 +41,6 @@ final class TableManager {
 
   private final Map<String, AllocatedTable> allocatedTableMap = new ConcurrentHashMap<>();
 
-
   @Inject
   private TableManager(final Injector baseTableInjector,
                        final MigrationManager migrationManager,

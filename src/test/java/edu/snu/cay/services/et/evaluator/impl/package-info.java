@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Driver-side implementations.
+ * Evaluator-side test classes.
  */
-package edu.snu.cay.services.et.driver.impl;
+package edu.snu.cay.services.et.evaluator.impl;
