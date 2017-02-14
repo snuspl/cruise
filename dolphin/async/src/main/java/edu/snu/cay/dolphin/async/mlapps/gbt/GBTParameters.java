@@ -19,7 +19,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Parameters used for gradient boosting regression tree.
+ * Parameters used for gradient boosting tree.
  */
 final class GBTParameters {
 

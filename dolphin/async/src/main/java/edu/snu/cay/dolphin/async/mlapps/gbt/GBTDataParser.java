@@ -29,7 +29,7 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * Parser class for the GBRT application.
+ * Parser class for the GBT application.
  * Input files should be in the following form:
  *
  * <p>
