@@ -156,7 +156,7 @@ final class GBTTrainer implements Trainer {
   private final int leafMinSize;
 
   /**
-   * When pull all the trees from the server, save those trees into this forest.
+   * When pull all the trees from the server, save those trees in this forest.
    */
   private final List<GBTree> forest;
 
@@ -397,9 +397,6 @@ final class GBTTrainer implements Trainer {
       splitPreprocessedData(treeNode, position);
     } else {
       makeLeaf(treeNode);
-      for (int i = 0; i < numFeatures; i++) {
-        sortedByFeature.get(i).get(treeNode).clear();
-      }
     }
 
     // For the memory efficiency, clear thisNode since the node list will not be used anymore.
@@ -617,13 +614,14 @@ final class GBTTrainer implements Trainer {
             rightChildSorted.add(data);
           }
         }
-        sortedByFeature.get(i).get(treeNode).clear();
+        thisSortedFeature.clear();
       } else {
+        final List<Pair<Integer, Double>> thisGroupedLabel = groupedByLabel.get(i).get(treeNode);
+        final List<Pair<Integer, Double>> leftChild = groupedByLabel.get(i).leftChild(treeNode);
+        final List<Pair<Integer, Double>> rightChild = groupedByLabel.get(i).rightChild(treeNode);
         for (final int data : thisNode) {
           final int label = labelList.get(i).get(data);
           final double gValue = keyGPair.get(data).getRight();
-          final List<Pair<Integer, Double>> leftChild = groupedByLabel.get(i).leftChild(treeNode);
-          final List<Pair<Integer, Double>> rightChild = groupedByLabel.get(i).rightChild(treeNode);
           if (position[data] == 0) {
             final int oldNum = leftChild.get(label).getLeft();
             final double oldGValue = leftChild.get(label).getRight();
@@ -634,6 +632,7 @@ final class GBTTrainer implements Trainer {
             rightChild.set(label, Pair.of(oldNum + 1, oldGValue + gValue));
           }
         }
+        thisGroupedLabel.clear();
       }
     }
   }
@@ -930,6 +929,9 @@ final class GBTTrainer implements Trainer {
       gSum += keyGPair.get(leafMember).getRight();
     }
     gbTree.add(Pair.of(NodeState.LEAF.getValue(), -gSum / (2 * thisNode.size() + lambda)));
+    for (int i = 0; i < numFeatures; i++) {
+      sortedByFeature.get(i).get(treeNode).clear();
+    }
   }
 
   /**
