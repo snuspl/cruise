@@ -29,7 +29,7 @@ final class GBTree implements Tree<Pair<Integer, Double>> {
   private final List<Pair<Integer, Double>> gbTree;
 
   GBTree(final int treeMaxDepth) {
-    gbTree = new ArrayList<>(powerTwo(treeMaxDepth) - 1);
+    gbTree = new ArrayList<>((1 << treeMaxDepth) - 1);
   }
 
   @Override
@@ -55,13 +55,5 @@ final class GBTree implements Tree<Pair<Integer, Double>> {
   @Override
   public void clear() {
     gbTree.clear();
-  }
-
-  private int powerTwo(final int p) {
-    int ret = 1;
-    for (int i = 0; i < p; i++) {
-      ret *= 2;
-    }
-    return ret;
   }
 }

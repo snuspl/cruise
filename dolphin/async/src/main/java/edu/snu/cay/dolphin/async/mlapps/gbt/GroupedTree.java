@@ -35,7 +35,7 @@ final class GroupedTree implements Tree<List<Pair<Integer, Double>>> {
   private final List<List<Pair<Integer, Double>>> groupedTree;
 
   GroupedTree(final int treeMaxDepth) {
-    this.treeSize = powerTwo(treeMaxDepth) - 1;
+    this.treeSize = (1 << treeMaxDepth) - 1;
     this.groupedTree = new ArrayList<>(treeSize);
     for (int i = 0; i < treeSize; i++) {
       groupedTree.add(new ArrayList<>());
@@ -68,13 +68,5 @@ final class GroupedTree implements Tree<List<Pair<Integer, Double>>> {
       groupedTree.get(i).clear();
     }
     groupedTree.clear();
-  }
-
-  private int powerTwo(final int p) {
-    int ret = 1;
-    for (int i = 0; i < p; i++) {
-      ret *= 2;
-    }
-    return ret;
   }
 }

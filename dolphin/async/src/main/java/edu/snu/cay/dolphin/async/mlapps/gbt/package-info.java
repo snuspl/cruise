@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes for the GBDT example.
+ * Classes for the GBT example.
  */
 package edu.snu.cay.dolphin.async.mlapps.gbt;

@@ -30,7 +30,7 @@ final class DataTree implements Tree<List<Integer>> {
   private final List<List<Integer>> dataTree;
 
   DataTree(final int treeMaxDepth) {
-    this.treeSize = powerTwo(treeMaxDepth) - 1;
+    this.treeSize = (1 << treeMaxDepth) - 1;
     this.dataTree = new ArrayList<>(treeSize);
   }
 
@@ -60,13 +60,5 @@ final class DataTree implements Tree<List<Integer>> {
       dataTree.get(i).clear();
     }
     dataTree.clear();
-  }
-
-  private int powerTwo(final int p) {
-    int ret = 1;
-    for (int i = 0; i < p; i++) {
-      ret *= 2;
-    }
-    return ret;
   }
 }

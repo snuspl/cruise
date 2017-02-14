@@ -34,6 +34,9 @@ import static edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.NumFeatures;
  */
 final class GBTUpdater implements ParameterUpdater<Integer, List<Vector>, List<Vector>> {
 
+  // If the data that is pushed to the server contains information of feature types, first vector of the list
+  // is 0 vector.
+  private static final int TYPE = 0;
   private final int numFeatures;
   private final VectorFactory vectorFactory;
 
@@ -51,7 +54,7 @@ final class GBTUpdater implements ParameterUpdater<Integer, List<Vector>, List<V
 
   @Override
   public List<Vector> update(final List<Vector> oldValue, final List<Vector> deltaValue) {
-    if (deltaValue.get(0).get(0) == 0) {
+    if (deltaValue.get(0).get(0) == TYPE) {
       if (oldValue.size() == 0) {
         oldValue.add(vectorFactory.createDenseZeros(numFeatures + 1));
       }

@@ -151,6 +151,11 @@ final class GBTTrainer implements Trainer {
   private final int treeMaxDepth;
 
   /**
+   * Size of the tree.
+   */
+  private final int treeSize;
+
+  /**
    * Minimum size of leaf(for regularization).
    */
   private final int leafMinSize;
@@ -179,6 +184,7 @@ final class GBTTrainer implements Trainer {
     this.lambda = lambda;
     this.gamma = gamma;
     this.treeMaxDepth = treeMaxDepth;
+    this.treeSize = (1 << treeMaxDepth) - 1;
     this.leafMinSize = leafMinSize;
     this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
@@ -197,6 +203,7 @@ final class GBTTrainer implements Trainer {
   @Override
   public void initialize() {
     // If there is a feature type line in this worker's data set, push the feature type to the server.
+    trainingDataProvider.prepareDataForEpoch();
     final Map<Long, GBTData> nextTrainingData = trainingDataProvider.getNextTrainingData();
     final List<GBTData> instances = new ArrayList<>(nextTrainingData.values());
     for (final GBTData instance : instances) {
@@ -314,7 +321,6 @@ final class GBTTrainer implements Trainer {
    * change the node to a leaf.
    */
   private void buildTree(final int dataSize) {
-    final int treeSize = powerTwo(treeMaxDepth) - 1;
     for (int i = 0; i < treeSize; i++) {
       dataTree.add(new ArrayList<>());
     }
@@ -702,7 +708,7 @@ final class GBTTrainer implements Trainer {
     for (int feature = 0; feature < numFeatures; feature++) {
       if (featureType.get(feature) > 0) {
         final int existingLabelNum = groupedByLabel.get(feature).get(0).size();
-        for (int node = 1; node < powerTwo(treeMaxDepth) - 1; node++) {
+        for (int node = 1; node < treeSize; node++) {
           for (int i = 0; i < existingLabelNum; i++) {
             groupedByLabel.get(feature).get(node).add(Pair.of(0, 0.0));
           }
@@ -764,8 +770,8 @@ final class GBTTrainer implements Trainer {
   private void pushBestFeatures(final int label) {
     final List<Vector> pushBestFeatureList = new LinkedList<>();
     pushBestFeatureList.add(vectorFactory.createDenseOnes(1));
-    final Vector bestFeatures = vectorFactory.createDenseZeros(powerTwo(treeMaxDepth) - 1);
-    for (int treeNode = 0; treeNode < powerTwo(treeMaxDepth) - 1; treeNode++) {
+    final Vector bestFeatures = vectorFactory.createDenseZeros(treeSize);
+    for (int treeNode = 0; treeNode < treeSize; treeNode++) {
       bestFeatures.set(treeNode, gbTree.get(treeNode).getLeft());
     }
     pushBestFeatureList.add(bestFeatures);
@@ -779,8 +785,8 @@ final class GBTTrainer implements Trainer {
   private void pushBestSplitValues(final int label) {
     final List<Vector> pushBestSplitValueList = new LinkedList<>();
     pushBestSplitValueList.add(vectorFactory.createDenseOnes(1));
-    final Vector bestSplitValues = vectorFactory.createDenseZeros(powerTwo(treeMaxDepth) - 1);
-    for (int treeNode = 0; treeNode < powerTwo(treeMaxDepth) - 1; treeNode++) {
+    final Vector bestSplitValues = vectorFactory.createDenseZeros(treeSize);
+    for (int treeNode = 0; treeNode < treeSize; treeNode++) {
       bestSplitValues.set(treeNode, gbTree.get(treeNode).getRight());
     }
     pushBestSplitValueList.add(bestSplitValues);
@@ -796,7 +802,7 @@ final class GBTTrainer implements Trainer {
     final List<Vector> bestSplitValueList = parameterWorker.pull(2 * label + 2);
     for (int i = 0; i < Math.min(bestFeatureList.size(), bestSplitValueList.size()); i++) {
       final GBTree semiTree = new GBTree(treeMaxDepth);
-      for (int treeNode = 0; treeNode < powerTwo(treeMaxDepth) - 1; treeNode++) {
+      for (int treeNode = 0; treeNode < treeSize; treeNode++) {
         semiTree.add(Pair.of((int)bestFeatureList.get(i).get(treeNode), bestSplitValueList.get(i).get(treeNode)));
       }
       forest.add(semiTree);
@@ -1008,17 +1014,6 @@ final class GBTTrainer implements Trainer {
   }
 
   /**
-   * Calculate 2^p.
-   */
-  private int powerTwo(final int p) {
-    int ret = 1;
-    for (int i = 0; i < p; i++) {
-      ret *= 2;
-    }
-    return ret;
-  }
-
-  /**
    * Sort feature values in an ascending order.
    */
   private static final Comparator<Pair<Integer, Double>> FEATURE_COMPARATOR =
@@ -1031,4 +1026,24 @@ final class GBTTrainer implements Trainer {
           return 0;
         }
       };
+
+
+  /**
+   * This indicates each GBTree node's state.
+   * If the node is empty, the node's state is EMPTY(-2).
+   * If the node is leaf, the node's state is LEAF(-1).
+   */
+  private enum NodeState {
+    EMPTY(-2), LEAF(-1);
+
+    private final int value;
+
+    NodeState(final int value) {
+      this.value = value;
+    }
+
+    public int getValue() {
+      return value;
+    }
+  }
 }

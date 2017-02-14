@@ -45,47 +45,47 @@ public final class VectorListCodec implements Codec<List<Vector>> {
       totalLength += 32 + 64 * e.length();
     }
 
-    final ByteArrayOutputStream var20 = new ByteArrayOutputStream(32 + totalLength);
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream(32 + totalLength);
 
     try {
-      final DataOutputStream var21 = new DataOutputStream(var20);
-      Throwable var5 = null;
+      final DataOutputStream dos = new DataOutputStream(baos);
+      Throwable totalThrow = null;
 
       try {
-        var21.writeInt(list.size());
-        final Iterator var6 = list.iterator();
+        dos.writeInt(list.size());
+        final Iterator dataFromList = list.iterator();
 
-        while (var6.hasNext()) {
-          final Vector vector = (Vector)var6.next();
+        while (dataFromList.hasNext()) {
+          final Vector vector = (Vector)dataFromList.next();
           final int length = vector.length();
-          var21.writeInt(length);
+          dos.writeInt(length);
 
           for (int i = 0; i < length; ++i) {
-            var21.writeDouble(vector.get(i));
+            dos.writeDouble(vector.get(i));
           }
         }
-      } catch (Throwable var17) {
-        var5 = var17;
-        throw var17;
+      } catch (Throwable throw1) {
+        totalThrow = throw1;
+        throw throw1;
       } finally {
-        if (var21 != null) {
-          if (var5 != null) {
+        if (dos != null) {
+          if (totalThrow != null) {
             try {
-              var21.close();
-            } catch (Throwable var16) {
-              var5.addSuppressed(var16);
+              dos.close();
+            } catch (Throwable throw2) {
+              totalThrow.addSuppressed(throw2);
             }
           } else {
-            var21.close();
+            dos.close();
           }
         }
 
       }
-    } catch (IOException var19) {
-      throw new RuntimeException(var19.getCause());
+    } catch (IOException ioException) {
+      throw new RuntimeException(ioException.getCause());
     }
 
-    return var20.toByteArray();
+    return baos.toByteArray();
   }
 
   public List<Vector> decode(final byte[] data) {
@@ -94,7 +94,7 @@ public final class VectorListCodec implements Codec<List<Vector>> {
 
     try {
       final DataInputStream e = new DataInputStream(bais);
-      Throwable var5 = null;
+      Throwable totalThrow = null;
 
       try {
         final int listSize = e.readInt();
@@ -109,16 +109,16 @@ public final class VectorListCodec implements Codec<List<Vector>> {
 
           resultList.add(vector);
         }
-      } catch (Throwable var19) {
-        var5 = var19;
-        throw var19;
+      } catch (Throwable throw1) {
+        totalThrow = throw1;
+        throw throw1;
       } finally {
         if (e != null) {
-          if (var5 != null) {
+          if (totalThrow != null) {
             try {
               e.close();
-            } catch (Throwable var18) {
-              var5.addSuppressed(var18);
+            } catch (Throwable throw2) {
+              totalThrow.addSuppressed(throw2);
             }
           } else {
             e.close();
@@ -128,8 +128,8 @@ public final class VectorListCodec implements Codec<List<Vector>> {
       }
 
       return resultList;
-    } catch (IOException var21) {
-      throw new RuntimeException(var21.getCause());
+    } catch (IOException ioException) {
+      throw new RuntimeException(ioException.getCause());
     }
   }
 }

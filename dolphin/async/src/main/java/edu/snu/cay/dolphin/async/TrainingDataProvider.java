@@ -79,9 +79,9 @@ public final class TrainingDataProvider<K, V> {
   }
 
   /**
-   * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
+   * Prepares the data to process in the next epoch.
    */
-  void prepareDataForEpoch() {
+  public void prepareDataForEpoch() {
     synchronized (trainingDataKeys) {
       trainingDataKeys.clear();
       trainingDataKeys.addAll(memoryStore.getAll().keySet());
