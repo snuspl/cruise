@@ -71,6 +71,7 @@ final class AsyncWorkerTask implements Task {
 
     // Prepare the training data to be accessible via TrainingDataProvider.
     trainingDataProvider.initialize();
+    trainingDataProvider.prepareDataForEpoch();
 
     // TODO #681: Need to add numWorkerThreads concept after multi-thread trainer is enabled
     trainer.initialize();
