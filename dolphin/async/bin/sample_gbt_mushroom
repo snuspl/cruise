@@ -12,9 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# name: sample_gbrt3
-# description: school grade data for gbrt
+# This data is from https://archive.ics.uci.edu/ml/datasets/Mushroom
+# If you want more details, go to the website and check those features' meanings.
+# Some features are not included because they do not include any meaningful data.
+
+# name: sample_gbrt_mushroom
+# description: classify mushroom data
 # feature num : 19, data num : 5936
+
+# Features | 0   1  2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  Target
+#--------------------------------------------------------------------------------------------------
+# 0        | B	 F	n	t	a	a	c	b	k	e	b	f	f	n	n	n	c	a	g	edible
+# 1        | C	 G	b	f	l	d	w	n	n	t	c	y	y	b	b	o	e	c	l	poisonous
+# 2        | X	 Y	c		c	f	d		b		u	k	k	c	c	t	f	n	m	
+# 3        | F	 S	g		y	n			h		e	s	s	g	g		l	s	p	
+# 4        | K		r		f				g		z			o	o		n	v	u	
+# 5        | S		p		m				r		r			p	p		p	y	w	
+# 6        | 		u		n				o					e	e		s		d	
+# 7        | 		e		p				p					w	w		z			
+# 8        | 		w		s				o					y	y					
+# 9        | 		y						e											
+#   	   |     	    				    w											
+#	       |	            			    y											
 
 -1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2
 0 2 3 8 0 0 2 1 1 10 1 0 3 3 7 7 1 5 4 6 0
