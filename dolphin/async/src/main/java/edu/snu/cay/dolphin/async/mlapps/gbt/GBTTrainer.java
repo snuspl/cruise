@@ -44,6 +44,16 @@ final class GBTTrainer implements Trainer {
   private static final int LABEL_SIZE_THRESHOLD = 10;
 
   /**
+   * CONTINUOUS_FEATURE : features with real-number type.
+   * CATEGORICAL_FEATURE : features with label type.
+   */
+  private static final int CONTINUOUS_FEATURE = 0;
+  private static final int CATEGORICAL_FEATURE = 1;
+
+  private static final int LEFT_CHILD = 0;
+  private static final int RIGHT_CHILD = 1;
+
+  /**
    * Max iteration of run() method.
    */
   private final int maxIteration;
@@ -100,8 +110,8 @@ final class GBTTrainer implements Trainer {
   private final List<Pair<Integer, Double>> keyGPair;
 
   /**
-   * If featureType.get(i) == 0, i-th feature type is real number.
-   * If featureType.get(i) == 1, i-th feature type is label.
+   * If featureType.get(i) == CONTINUOUS_FEATURE(0), i-th feature type is real number.
+   * If featureType.get(i) == CATEGORICAL_FEATURE(1), i-th feature type is label.
    */
   private final List<Integer> featureType;
 
@@ -246,9 +256,9 @@ final class GBTTrainer implements Trainer {
     pullTypeVectors();
 
     // Divide into two cases : Regression / Classification
-    if (valueType == 0) {
+    if (valueType == CONTINUOUS_FEATURE) {
       // Calculate residual values for each data in this worker using all the trees.
-      calculateResidual(instances, 0);
+      calculateResidual(instances, CONTINUOUS_FEATURE);
 
       // Get data from instances list and fill the certain lists(keyGPair, sortedByFeature, labelList).
       initializePreProcessingLists();
@@ -375,7 +385,7 @@ final class GBTTrainer implements Trainer {
     // For each feature, find the best split point.
     // If the best split point in certain feature splits better than global best split point, then save the condition.
     for (int feature = 0; feature < numFeatures; feature++) {
-      if (featureType.get(feature) == 0) {
+      if (featureType.get(feature) == CONTINUOUS_FEATURE) {
         final Tuple3<Double, Integer, Double> bestChoice = bestSplitRealNumberFeature(treeNode, feature, gSum,
                                                            totalGain, bestGain, bestFeature, bestSplitValue);
         bestGain = bestChoice.getFirst();
@@ -510,13 +520,13 @@ final class GBTTrainer implements Trainer {
       double preGain = 0;
       final int[] position = new int[numLabel];
       for (int i = 0; i < numLabel; i++) {
-        position[i] = 0;
+        position[i] = LEFT_CHILD;
       }
       for (int i = 0; i < numLabel - 1; i++) {
         double bestDiff = -1;
         int changedLabel = -1;
         for (int label = 0; label < numLabel; label++) {
-          if (position[label] == 0) {
+          if (position[label] == LEFT_CHILD) {
             final int changedNum = thisGroupedNode.get(label).getLeft();
             final double changedG = thisGroupedNode.get(label).getRight();
             countLeft -= changedNum;
@@ -536,7 +546,7 @@ final class GBTTrainer implements Trainer {
           }
         }
         if (bestDiff > 0) {
-          position[changedLabel] = 1;
+          position[changedLabel] = RIGHT_CHILD;
           final int changedNum = thisGroupedNode.get(changedLabel).getLeft();
           final double changedG = thisGroupedNode.get(changedLabel).getRight();
           countLeft -= changedNum;
@@ -566,20 +576,20 @@ final class GBTTrainer implements Trainer {
     final List<Integer> leftChild = dataTree.leftChild(treeNode);
     final List<Integer> rightChild = dataTree.rightChild(treeNode);
 
-    if (featureType.get(bestFeature) == 0) {
+    if (featureType.get(bestFeature) == CONTINUOUS_FEATURE) {
       for (final Pair<Integer, Double> data : sortedByFeature.get(bestFeature).get(treeNode)) {
         if (data.getRight() <= bestSplitValue) {
           leftChild.add(data.getLeft());
-          position[data.getLeft()] = 0;
+          position[data.getLeft()] = LEFT_CHILD;
         } else {
           rightChild.add(data.getLeft());
-          position[data.getLeft()] = 1;
+          position[data.getLeft()] = RIGHT_CHILD;
         }
       }
     } else {
       final int[] classPosition = new int[groupedByLabel.get(bestFeature).get(treeNode).size()];
       for (int i = 0; i < classPosition.length; i++) {
-        classPosition[i] = 0;
+        classPosition[i] = LEFT_CHILD;
       }
       int tempBestSplitValue = (int)bestSplitValue;
       for (int i = 0; i < classPosition.length; i++) {
@@ -587,17 +597,17 @@ final class GBTTrainer implements Trainer {
           break;
         }
         if (tempBestSplitValue % 2 == 1) {
-          classPosition[i] = 1;
+          classPosition[i] = RIGHT_CHILD;
         }
         tempBestSplitValue /= 2;
       }
       for (final int dataName : thisNode) {
-        if (classPosition[labelList.get(bestFeature).get(dataName)] == 0) {
+        if (classPosition[labelList.get(bestFeature).get(dataName)] == LEFT_CHILD) {
           leftChild.add(dataName);
-          position[dataName] = 0;
+          position[dataName] = LEFT_CHILD;
         } else {
           rightChild.add(dataName);
-          position[dataName] = 1;
+          position[dataName] = RIGHT_CHILD;
         }
       }
     }
@@ -609,12 +619,12 @@ final class GBTTrainer implements Trainer {
   private void splitPreprocessedData(final int treeNode, final int[] position) {
     final List<Integer> thisNode = dataTree.get(treeNode);
     for (int i = 0; i < numFeatures; i++) {
-      if (featureType.get(i) == 0) {
+      if (featureType.get(i) == CONTINUOUS_FEATURE) {
         final List<Pair<Integer, Double>> thisSortedFeature = sortedByFeature.get(i).get(treeNode);
         final List<Pair<Integer, Double>> leftChildSorted = sortedByFeature.get(i).leftChild(treeNode);
         final List<Pair<Integer, Double>> rightChildSorted = sortedByFeature.get(i).rightChild(treeNode);
         for (final Pair<Integer, Double> data : thisSortedFeature) {
-          if (position[data.getLeft()] == 0) {
+          if (position[data.getLeft()] == LEFT_CHILD) {
             leftChildSorted.add(data);
           } else {
             rightChildSorted.add(data);
@@ -628,7 +638,7 @@ final class GBTTrainer implements Trainer {
         for (final int data : thisNode) {
           final int label = labelList.get(i).get(data);
           final double gValue = keyGPair.get(data).getRight();
-          if (position[data] == 0) {
+          if (position[data] == LEFT_CHILD) {
             final int oldNum = leftChild.get(label).getLeft();
             final double oldGValue = leftChild.get(label).getRight();
             leftChild.set(label, Pair.of(oldNum + 1, oldGValue + gValue));
@@ -668,7 +678,7 @@ final class GBTTrainer implements Trainer {
       }
       keyGPair.add(Pair.of(identity, -2.0 * residual.get(identity)));
       for (int feature = 0; feature < numFeatures; feature++) {
-        if (featureType.get(feature) == 0) {
+        if (featureType.get(feature) == CONTINUOUS_FEATURE) {
           sortedByFeature.get(feature).get(0).add(Pair.of(instanceSize, featureVector.get(feature)));
         } else {
           labelList.get(feature).add((int)featureVector.get(feature));
@@ -685,7 +695,7 @@ final class GBTTrainer implements Trainer {
    */
   private void preProcessLists() {
     for (int feature = 0; feature < numFeatures; feature++) {
-      if (featureType.get(feature) == 0) {
+      if (featureType.get(feature) == CONTINUOUS_FEATURE) {
         sortedByFeature.get(feature).get(0).sort(FEATURE_COMPARATOR);
       } else {
         final List<Pair<Integer, Double>> groupedByLabelRoot = groupedByLabel.get(feature).get(0);
@@ -706,7 +716,7 @@ final class GBTTrainer implements Trainer {
       }
     }
     for (int feature = 0; feature < numFeatures; feature++) {
-      if (featureType.get(feature) > 0) {
+      if (featureType.get(feature) == CATEGORICAL_FEATURE) {
         final int existingLabelNum = groupedByLabel.get(feature).get(0).size();
         for (int node = 1; node < treeSize; node++) {
           for (int i = 0; i < existingLabelNum; i++) {
@@ -740,7 +750,7 @@ final class GBTTrainer implements Trainer {
       if (identity != TYPE_LINE) {
         final double thisPredictedValue = predictedValue[identity];
         final double thisValue = instance.getValue();
-        if (valueType == 0) {
+        if (valueType == CONTINUOUS_FEATURE) {
           residual.set(identity, thisValue - thisPredictedValue);
         } else {
           if (Math.abs(thisValue - label) < 1e-9) {
@@ -813,7 +823,7 @@ final class GBTTrainer implements Trainer {
    * This method prints the expected y-value for each data based on the trees that are built.
    */
   private void testTrainingCode(final List<GBTData> instances) {
-    if (valueType == 0) {
+    if (valueType == CONTINUOUS_FEATURE) {
       pullAllTrees(0);
       final double[] predictedValue = new double[numData];
       for (int i = 0; i < numData; i++) {
@@ -872,7 +882,7 @@ final class GBTTrainer implements Trainer {
       if (nodeFeature == NodeState.LEAF.getValue()) {
         return node.getRight();
       }
-      if (featureType.get(nodeFeature) == 0) {
+      if (featureType.get(nodeFeature) == CONTINUOUS_FEATURE) {
         final double splitValue = node.getRight();
         if (feature.get(nodeFeature) <= splitValue) {
           treeNode = 2 * treeNode + 1;
@@ -988,7 +998,7 @@ final class GBTTrainer implements Trainer {
   private int createBinary(final int[] position, final int numLabel) {
     int ret = 0;
     for (int  i = 0; i < numLabel; i++) {
-      if (position[i] == 1) {
+      if (position[i] == RIGHT_CHILD) {
         ret += 1 << i;
       }
     }
