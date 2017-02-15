@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
-import edu.snu.cay.dolphin.async.MiniBatchTrainer;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
@@ -37,7 +36,7 @@ import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.generateIter
 /**
  * Trainer for the neural network job.
  */
-final class NeuralNetworkTrainer implements MiniBatchTrainer<NeuralNetworkData> {
+final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
 
   private static final Logger LOG = Logger.getLogger(NeuralNetworkTrainer.class.getName());
 

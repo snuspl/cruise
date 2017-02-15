@@ -18,8 +18,8 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 import com.google.common.collect.Table;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.dolphin.async.MiniBatchTrainer;
 import edu.snu.cay.dolphin.async.ModelAccessor;
+import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
@@ -40,7 +40,7 @@ import java.util.logging.Logger;
  * all workers update their initial topic assignments. For each iteration, sequentially sampling documents,
  * it immediately pushes the changed topic assignment whenever each word is sampled to a new topic.
  */
-final class LDATrainer implements MiniBatchTrainer<Document> {
+final class LDATrainer implements Trainer<Document> {
 
   private static final Logger LOG = Logger.getLogger(LDATrainer.class.getName());
   private static final String MSG_GET_MODEL_FAILED = "Model is not set via ModelAccessor.resetModel()";
@@ -136,65 +136,12 @@ final class LDATrainer implements MiniBatchTrainer<Document> {
 
   @Override
   public void run(final int iteration, final AtomicBoolean abortFlag) {
-    final long epochStartTime = System.currentTimeMillis();
-
-    // Record the number of EM data blocks at the beginning of this iteration
-    // to filter out stale metrics for optimization
-    final int numEMBlocks = memoryStore.getNumBlocks();
-
-    int miniBatchIdx = 0;
-    int numDocumentsSampled = 0;
-    final List<Document> totalDocumentsSampled = new LinkedList<>();
-
-    Map<Long, Document> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    while (!nextTrainingData.isEmpty()) {
-      if (abortFlag.get()) {
-        LOG.log(Level.INFO, "Abort a thread to completely close the task");
-        return;
-      }
-
-      final Collection<Document> documents = nextTrainingData.values();
-      final int numInstancesToProcess = documents.size();
-
-      resetTracers();
-      final long miniBatchStartTime = System.currentTimeMillis();
-
-
-      // update the documents processed so far
-      numDocumentsSampled += numInstancesToProcess;
-      totalDocumentsSampled.addAll(documents);
-      LOG.log(Level.INFO, "{0} documents have been sampled until mini-batch {1}",
-          new Object[]{numDocumentsSampled, miniBatchIdx});
-
-      // load the set of training data instances to process in the next mini-batch
-      nextTrainingData = trainingDataProvider.getNextTrainingData();
-
-      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-      final WorkerMetrics miniBatchMetric =
-          buildMiniBatchMetric(iteration, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
-      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
-      sendMetrics(miniBatchMetric);
-
-      miniBatchIdx++;
-    }
-
-    LOG.log(Level.INFO, "Pull model to compute log likelihood");
-    final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
-    final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
-
-    LOG.log(Level.INFO, "Start computing log likelihood");
-    final double docLLH = statCalculator.computeDocLLH(totalDocumentsSampled);
-    final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
-    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-
-    final WorkerMetrics epochMetric =
-        buildEpochMetric(iteration, miniBatchIdx, numEMBlocks, numDocumentsSampled, docLLH, wordLLH, epochElapsedTime);
-    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
-    sendMetrics(epochMetric);
   }
 
   @Override
   public void runBatch(final Collection<Document> batchData, final int epochIdx, final int miniBatchIdx) {
+    final long miniBatchStartTime = System.currentTimeMillis();
+
     final List<Integer> words = getKeys(batchData);
     final int numInstancesToProcess = batchData.size();
 
@@ -208,6 +155,12 @@ final class LDATrainer implements MiniBatchTrainer<Document> {
 
     // push gradients
     pushAndResetGradients(aggregated);
+
+    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+    final WorkerMetrics miniBatchMetric =
+        buildMiniBatchMetric(epochIdx, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+    sendMetrics(miniBatchMetric);
   }
 
   @Override

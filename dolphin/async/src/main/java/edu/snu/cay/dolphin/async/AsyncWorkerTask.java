@@ -27,7 +27,6 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -95,31 +94,23 @@ final class AsyncWorkerTask implements Task {
     // it prevents workers added by EM from starting from iteration 0 and deferring job completion.
     // More specifically, added workers start from the minimum iteration of other existing workers.
     for (int iteration = initialClock; iteration < maxIterations; ++iteration) {
-      if (trainer instanceof MiniBatchTrainer) {
-        final long epochStartTime = System.currentTimeMillis();
-        final int numEMBlocks = memoryStore.getNumBlocks();
-        trainingDataProvider.prepareDataForEpoch();
+      LOG.log(Level.INFO, "Starting iteration {0}", iteration);
+      final long epochStartTime = System.currentTimeMillis();
+      final int numEMBlocks = memoryStore.getNumBlocks();
+      trainingDataProvider.prepareDataForEpoch();
 
-        final Collection epochData = new LinkedList();
+      final Collection epochData = new LinkedList();
+
+      int batchIdx = 0;
+      while (true) {
         final Collection batchData = trainingDataProvider.getNextTrainingData().values();
-        int batchIdx = 0;
-        while (!batchData.isEmpty()) {
-          ((MiniBatchTrainer) trainer).runBatch(batchData, iteration, batchIdx);
-          epochData.addAll(batchData);
-          batchIdx++;
-
-          if (abortFlag.get()) {
-            LOG.log(Level.INFO, "Stop task");
-            // record total network waiting time of worker clock when the task is abortFlag
-            workerClock.recordClockNetworkWaitingTime();
-            return null;
-          }
-
+        if (batchData.isEmpty()) {
+          break;
         }
-        ((MiniBatchTrainer) trainer).onEpochFinished(epochData, iteration, batchIdx, numEMBlocks, epochStartTime);
-      } else { // Generic Trainer classes
-        LOG.log(Level.INFO, "Starting iteration {0}", iteration);
-        trainer.run(iteration, abortFlag);
+
+        trainer.runBatch(batchData, iteration, batchIdx);
+        epochData.addAll(batchData);
+        batchIdx++;
 
         if (abortFlag.get()) {
           LOG.log(Level.INFO, "Stop task");
@@ -127,10 +118,11 @@ final class AsyncWorkerTask implements Task {
           workerClock.recordClockNetworkWaitingTime();
           return null;
         }
+     }
+      trainer.onEpochFinished(epochData, iteration, batchIdx, numEMBlocks, epochStartTime);
 
-        // TODO #830: Clock should be a unit of iteration(mini-batch) instead of epoch
-        workerClock.clock();
-      }
+      // TODO #830: Clock should be a unit of iteration(mini-batch) instead of epoch
+      workerClock.clock();
     }
 
     // Synchronize all workers before cleanup for workers

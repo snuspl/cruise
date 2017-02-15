@@ -18,10 +18,8 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.dolphin.async.MiniBatchTrainer;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.commons.lang3.tuple.Pair;
@@ -43,7 +41,7 @@ import java.util.logging.Logger;
  * The trainer computes and pushes the optimal model value for all the dimensions to
  * minimize the objective function - square loss with l1 regularization.
  */
-final class LassoTrainer implements MiniBatchTrainer<LassoData> {
+final class LassoTrainer implements Trainer<LassoData> {
   private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
 
   /**
@@ -89,7 +87,7 @@ final class LassoTrainer implements MiniBatchTrainer<LassoData> {
   }
 
   @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
+  public void run(final int iterationi, final AtomicBoolean abortFlag) {
   }
 
   /**

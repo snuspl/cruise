@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async;
 
 import org.apache.reef.annotations.audience.TaskSide;
 
+import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -39,7 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@link org.apache.reef.tang.annotations.Parameter} and an actual value is given for the parameter via command line.
  */
 @TaskSide
-public interface Trainer {
+public interface Trainer<D> {
 
   /**
    * Pre-run method that is executed after the constructor but before {@code run}, exactly once.
@@ -59,4 +60,8 @@ public interface Trainer {
    * Post-run method executed after {@code run} but before task termination, exactly once.
    */
   void cleanup();
+
+  void runBatch(Collection<D> batchData, int epochIdx, int miniBatchIdx);
+
+  void onEpochFinished(Collection<D> epochData, int epochIdx, int numMiniBatches, int numEMBlocks, long epochStartTime);
 }

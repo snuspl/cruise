@@ -155,125 +155,6 @@ final class NMFTrainer implements Trainer {
 
   @Override
   public void run(final int iteration, final AtomicBoolean abortFlag) {
-    final long epochStartTime = System.currentTimeMillis();
-
-    // Record the number of EM data blocks at the beginning of this iteration
-    // to filter out stale metrics for optimization
-    final int numEMBlocks = memoryStore.getNumBlocks();
-
-    int miniBatchIdx = 0;
-    int numTotalInstancesProcessed = 0;
-    final List<NMFData> totalInstancesProcessed = new LinkedList<>();
-    final Set<Integer> totalKeysProcessed = Sets.newHashSet();
-
-    Map<Long, NMFData> nextTrainingData = trainingDataProvider.getNextTrainingData();
-
-    while (!nextTrainingData.isEmpty()) {
-      if (abortFlag.get()) {
-        LOG.log(Level.INFO, "Abort a thread to completely close the task");
-        return;
-      }
-
-      final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
-
-      final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchSize);
-      instances.addAll(nextTrainingData.values());
-      final int numInstancesToProcess = instances.size();
-
-      resetTracers();
-      final long miniBatchStartTime = System.currentTimeMillis();
-
-      // pull data when mini-batch is started
-      final List<Integer> keys = getKeys(instances);
-      LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
-      pullModels(keys);
-
-      final List<Future<NMFModel>> futures = new ArrayList<>(numTrainerThreads);
-      try {
-        computeTracer.startTimer();
-
-        // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
-        // This way we can mitigate the slowdown from straggler threads.
-        final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
-
-        for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
-          final Future<NMFModel> future = executor.submit(() -> {
-            final List<NMFData> drainedInstances = new ArrayList<>(drainSize);
-            final NMFModel model = modelAccessor.getModel()
-                .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
-            int count = 0;
-            while (true) {
-              final int numDrained = instances.drainTo(drainedInstances, drainSize);
-              if (numDrained == 0) {
-                break;
-              }
-
-              drainedInstances.forEach(instance -> updateModel(instance, model));
-              drainedInstances.clear();
-              count += numDrained;
-            }
-            latch.countDown();
-            LOG.log(Level.INFO, "{0} has computed {1} instances",
-                new Object[] {Thread.currentThread().getName(), count});
-            return model;
-          });
-          futures.add(future);
-        }
-        latch.await();
-        computeTracer.recordTime(numInstancesToProcess);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.SEVERE, "Exception occurred.", e);
-        throw new RuntimeException(e);
-      }
-
-      final List<NMFModel> newModels = ThreadUtils.retrieveResults(futures);
-      final Map<Integer, Vector> gradients = aggregateGradient(newModels);
-
-      // push gradients
-      pushAndResetGradients(gradients);
-
-      // update the keys and instances that have been processed so far
-      numTotalInstancesProcessed += numInstancesToProcess;
-      totalInstancesProcessed.addAll(nextTrainingData.values());
-      totalKeysProcessed.addAll(keys);
-
-      // load the set of training data instances to process in the next mini-batch
-      nextTrainingData = trainingDataProvider.getNextTrainingData();
-
-      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-      final WorkerMetrics miniBatchMetric =
-          buildMiniBatchMetric(iteration, miniBatchIdx,
-              numInstancesToProcess, miniBatchElapsedTime);
-      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
-      sendMetrics(miniBatchMetric);
-
-      miniBatchIdx++;
-    }
-
-    if (!(decayRate == 1) && iteration % decayPeriod == 0) {
-      final double prevStepSize = stepSize;
-      stepSize *= decayRate;
-      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
-          new Object[]{decayPeriod, prevStepSize, stepSize});
-    }
-
-    LOG.log(Level.INFO, "Pull model to compute loss value");
-    pullModels(new ArrayList<>(totalKeysProcessed));
-
-    final NMFModel model = modelAccessor.getModel()
-        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
-    LOG.log(Level.INFO, "Start computing loss value");
-    final double loss = computeLoss(totalInstancesProcessed, model);
-
-    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-    final WorkerMetrics epochMetric =
-        buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
-            numTotalInstancesProcessed, loss, epochElapsedTime);
-
-    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
-    sendMetrics(epochMetric);
   }
 
   @Override
@@ -312,6 +193,106 @@ final class NMFTrainer implements Trainer {
       rsb.append('\n');
     }
     LOG.log(Level.INFO, rsb.toString());
+  }
+
+  @Override
+  public void runBatch(final Collection batchData, final int epochIdx, final int miniBatchIdx) {
+    final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
+
+    final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchSize);
+    instances.addAll(batchData);
+    final int numInstancesToProcess = instances.size();
+
+    resetTracers();
+    final long miniBatchStartTime = System.currentTimeMillis();
+
+    // pull data when mini-batch is started
+    final List<Integer> keys = getKeys(instances);
+    LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
+    pullModels(keys);
+
+    final List<Future<NMFModel>> futures = new ArrayList<>(numTrainerThreads);
+    try {
+      computeTracer.startTimer();
+
+      // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
+      // This way we can mitigate the slowdown from straggler threads.
+      final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
+
+      for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
+        final Future<NMFModel> future = executor.submit(() -> {
+          final List<NMFData> drainedInstances = new ArrayList<>(drainSize);
+          final NMFModel model = modelAccessor.getModel()
+              .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
+
+          int count = 0;
+          while (true) {
+            final int numDrained = instances.drainTo(drainedInstances, drainSize);
+            if (numDrained == 0) {
+              break;
+            }
+
+            drainedInstances.forEach(instance -> updateModel(instance, model));
+            drainedInstances.clear();
+            count += numDrained;
+          }
+          latch.countDown();
+          LOG.log(Level.INFO, "{0} has computed {1} instances",
+              new Object[] {Thread.currentThread().getName(), count});
+          return model;
+        });
+        futures.add(future);
+      }
+      latch.await();
+      computeTracer.recordTime(numInstancesToProcess);
+    } catch (final InterruptedException e) {
+      LOG.log(Level.SEVERE, "Exception occurred.", e);
+      throw new RuntimeException(e);
+    }
+
+    final List<NMFModel> newModels = ThreadUtils.retrieveResults(futures);
+    final Map<Integer, Vector> gradients = aggregateGradient(newModels);
+
+    // push gradients
+    pushAndResetGradients(gradients);
+
+    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+    final WorkerMetrics miniBatchMetric =
+        buildMiniBatchMetric(epochIdx, miniBatchIdx,
+            numInstancesToProcess, miniBatchElapsedTime);
+    LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+    sendMetrics(miniBatchMetric);
+  }
+
+  @Override
+  public void onEpochFinished(final Collection epochData,
+                              final int epochIdx,
+                              final int numMiniBatches,
+                              final int numEMBlocks,
+                              final long epochStartTime) {
+    if (!(decayRate == 1) && epochIdx % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+          new Object[]{decayPeriod, prevStepSize, stepSize});
+    }
+
+    LOG.log(Level.INFO, "Pull model to compute loss value");
+    pullModels(getKeys(epochData));
+
+    final NMFModel model = modelAccessor.getModel()
+        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
+
+    LOG.log(Level.INFO, "Start computing loss value");
+    final double loss = computeLoss(epochData, model);
+
+    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+    final WorkerMetrics epochMetric =
+        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks,
+            epochData.size(), loss, epochElapsedTime);
+
+    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
   }
 
   /**
@@ -411,7 +392,7 @@ final class NMFTrainer implements Trainer {
    * @param instances The training data instances to evaluate training loss.
    * @return the loss value, computed by the sum of the errors.
    */
-  private double computeLoss(final List<NMFData> instances, final NMFModel model) {
+  private double computeLoss(final Collection<NMFData> instances, final NMFModel model) {
     final Map<Integer, Vector> rMatrix = model.getRMatrix();
 
     double loss = 0.0;

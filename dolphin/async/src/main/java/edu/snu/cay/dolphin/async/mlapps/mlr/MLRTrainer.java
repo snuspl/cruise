@@ -20,13 +20,10 @@ import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.MiniBatchTrainer;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
@@ -47,7 +44,7 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
  * Uses {@code numClasses} model vectors to determine which class each data instance belongs to.
  * The model vector that outputs the highest dot product value is declared as that data instance's prediction.
  */
-final class MLRTrainer implements MiniBatchTrainer<MLRData> {
+final class MLRTrainer implements Trainer<MLRData> {
   private static final Logger LOG = Logger.getLogger(MLRTrainer.class.getName());
 
   /**

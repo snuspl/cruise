@@ -38,4 +38,9 @@ public final class ExampleParameters {
       short_name = "compute_time_ms", default_value = "300")
   public final class ComputeTimeMs implements Name<Long> {
   }
+
+  @NamedParameter(doc = "The number of data instances to assign each worker",
+      short_name = "num_training_data_instance", default_value = "1")
+  public final class NumTrainingData implements Name<Integer> {
+  }
 }

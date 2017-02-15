@@ -26,6 +26,7 @@ import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -114,6 +115,10 @@ final class AddIntegerTrainer implements Trainer {
 
   @Override
   public void run(final int iteration, final AtomicBoolean abortFlag) {
+  }
+
+  @Override
+  public void runBatch(final Collection batchData, final int epochIdx, final int miniBatchIdx) {
     // sleep to simulate computation
     computeTracer.startTimer();
     try {
@@ -131,7 +136,14 @@ final class AddIntegerTrainer implements Trainer {
         LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{key, value});
       }
     }
+  }
 
+  @Override
+  public void onEpochFinished(final Collection epochData,
+                              final int epochIdx,
+                              final int numMiniBatches,
+                              final int numEMBlocks,
+                              final long epochStartTime) {
     // send empty metrics to trigger optimization
     final WorkerMetrics workerMetrics =
         buildMetricsMsg(memoryStore.getNumBlocks());
