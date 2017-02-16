@@ -153,7 +153,7 @@ final class LDATrainer implements Trainer<Document> {
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
     final WorkerMetrics miniBatchMetric =
         buildMiniBatchMetric(epochIdx, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
-    LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
     sendMetrics(miniBatchMetric);
   }
 
@@ -169,7 +169,6 @@ final class LDATrainer implements Trainer<Document> {
     final double docLLH = statCalculator.computeDocLLH(epochData);
     final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
 
-
     final int epochIdx = epochInfo.getEpochIdx();
     final int numMiniBatches = epochInfo.getNumMiniBatches();
     final int numEMBlocks = epochInfo.getNumEMBlocks();
@@ -177,7 +176,7 @@ final class LDATrainer implements Trainer<Document> {
 
     final WorkerMetrics epochMetric =
         buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochData.size(), docLLH, wordLLH, epochElapsedTime);
-    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
   }
 

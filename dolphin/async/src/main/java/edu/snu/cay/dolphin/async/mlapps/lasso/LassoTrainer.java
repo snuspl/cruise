@@ -22,6 +22,7 @@ import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.commons.lang3.tuple.Pair;
@@ -53,14 +54,14 @@ final class LassoTrainer implements Trainer<LassoData> {
   private final int numFeatures;
   private final double lambda;
   private double stepSize;
+  private final double decayRate;
+  private final int decayPeriod;
 
   private Vector oldModel;
   private Vector newModel;
 
   private final VectorFactory vectorFactory;
   private final MatrixFactory matrixFactory;
-
-  private int iteration = 0;
 
   /**
    * ParameterWorker object for interacting with the parameter server.
@@ -72,12 +73,22 @@ final class LassoTrainer implements Trainer<LassoData> {
                        @Parameter(Lambda.class) final double lambda,
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
+                       @Parameter(DecayRate.class) final double decayRate,
+                       @Parameter(DecayPeriod.class) final int decayPeriod,
                        final VectorFactory vectorFactory,
                        final MatrixFactory matrixFactory) {
     this.parameterWorker = parameterWorker;
     this.numFeatures = numFeatures;
     this.lambda = lambda;
     this.stepSize = stepSize;
+    this.decayRate = decayRate;
+    if (decayRate <= 0.0 || decayRate > 1.0) {
+      throw new IllegalArgumentException("decay_rate must be larger than 0 and less than or equal to 1");
+    }
+    this.decayPeriod = decayPeriod;
+    if (decayPeriod <= 0) {
+      throw new IllegalArgumentException("decay_period must be a positive value");
+    }
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
   }
@@ -146,15 +157,24 @@ final class LassoTrainer implements Trainer<LassoData> {
 
   @Override
   public void onEpochFinished(final Collection<LassoData> epochData, final EpochInfo epochInfo) {
+    final int epochIdx = epochInfo.getEpochIdx();
+
     // Calculate the loss value.
     pullModels();
 
     final double loss = computeLoss(epochData);
     LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
-    if ((iteration++) % PRINT_MODEL_PERIOD == 0) {
+    if ((epochIdx + 1) % PRINT_MODEL_PERIOD == 0) {
       for (int i = 0; i < numFeatures; i++) {
         LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
+    }
+
+    if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+          new Object[]{decayPeriod, prevStepSize, stepSize});
     }
   }
 

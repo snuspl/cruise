@@ -256,7 +256,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     final WorkerMetrics miniBatchMetric =
         buildMiniBatchMetric(epochIdx, miniBatchIdx,
             numInstancesToProcess, miniBatchElapsedTime);
-    LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
     sendMetrics(miniBatchMetric);
   }
 
@@ -280,7 +280,7 @@ final class NMFTrainer implements Trainer<NMFData> {
         buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks,
             epochData.size(), loss, epochElapsedTime);
 
-    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
 
     if (!(decayRate == 1) && epochIdx % decayPeriod == 0) {
