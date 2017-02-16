@@ -18,9 +18,10 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 import com.google.common.collect.Table;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
@@ -42,7 +43,6 @@ import java.util.logging.Logger;
 final class LDATrainer implements Trainer<Document> {
 
   private static final Logger LOG = Logger.getLogger(LDATrainer.class.getName());
-  private static final String MSG_GET_MODEL_FAILED = "Model is not set via ModelAccessor.resetModel()";
 
   private final SparseLDASampler sampler;
   private final LDAStatCalculator statCalculator;
@@ -54,7 +54,6 @@ final class LDATrainer implements Trainer<Document> {
   private final MemoryStore<Long> memoryStore;
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final TrainingDataProvider<Long, Document> trainingDataProvider;
 
 
   /**
@@ -83,7 +82,6 @@ final class LDATrainer implements Trainer<Document> {
                      final LDAStatCalculator statCalculator,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                     final TrainingDataProvider<Long, Document> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final ModelAccessor<LDAModel> modelAccessor,
                      @Parameter(NumVocabs.class) final int numVocabs,
@@ -94,7 +92,6 @@ final class LDATrainer implements Trainer<Document> {
     this.statCalculator = statCalculator;
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
-    this.trainingDataProvider = trainingDataProvider;
     this.numVocabs = numVocabs;
     this.miniBatchSize = miniBatchSize;
     this.numTrainerThreads = numTrainerThreads;
@@ -134,16 +131,18 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   @Override
-  public void runBatch(final Collection<Document> batchData, final int epochIdx, final int miniBatchIdx) {
+  public void runMiniBatch(final Collection<Document> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+    final int epochIdx = miniBatchInfo.getEpochIdx();
+    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
     final long miniBatchStartTime = System.currentTimeMillis();
 
-    final List<Integer> words = getKeys(batchData);
-    final int numInstancesToProcess = batchData.size();
+    final List<Integer> words = getKeys(miniBatchData);
+    final int numInstancesToProcess = miniBatchData.size();
 
     pullModels(words);
 
     computeTracer.startTimer();
-    final List<TopicChanges> results = sampler.sample(batchData);
+    final List<TopicChanges> results = sampler.sample(miniBatchData);
     computeTracer.recordTime(numInstancesToProcess);
 
     final TopicChanges aggregated = aggregateChanges(results);
@@ -160,10 +159,8 @@ final class LDATrainer implements Trainer<Document> {
 
   @Override
   public void onEpochFinished(final Collection<Document> epochData,
-                              final int epochIdx,
-                              final int numMiniBatches,
-                              final int numEMBlocks,
-                              final long epochStartTime) {
+                              final EpochInfo epochInfo) {
+
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
@@ -171,7 +168,12 @@ final class LDATrainer implements Trainer<Document> {
     LOG.log(Level.INFO, "Start computing log likelihood");
     final double docLLH = statCalculator.computeDocLLH(epochData);
     final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
-    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+
+
+    final int epochIdx = epochInfo.getEpochIdx();
+    final int numMiniBatches = epochInfo.getNumMiniBatches();
+    final int numEMBlocks = epochInfo.getNumEMBlocks();
+    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
 
     final WorkerMetrics epochMetric =
         buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochData.size(), docLLH, wordLLH, epochElapsedTime);

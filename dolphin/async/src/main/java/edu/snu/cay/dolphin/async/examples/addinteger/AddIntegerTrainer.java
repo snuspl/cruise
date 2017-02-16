@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
@@ -113,7 +115,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public void runBatch(final Collection batchData, final int epochIdx, final int miniBatchIdx) {
+  public void runMiniBatch(final Collection miniBatchData, final MiniBatchInfo miniBatchInfo) {
     // sleep to simulate computation
     computeTracer.startTimer();
     try {
@@ -134,11 +136,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public void onEpochFinished(final Collection epochData,
-                              final int epochIdx,
-                              final int numMiniBatches,
-                              final int numEMBlocks,
-                              final long epochStartTime) {
+  public void onEpochFinished(final Collection epochData, final EpochInfo epochInfo) {
     // send empty metrics to trigger optimization
     final WorkerMetrics workerMetrics =
         buildMetricsMsg(memoryStore.getNumBlocks());

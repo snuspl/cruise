@@ -18,6 +18,8 @@ package edu.snu.cay.dolphin.async.examples.addvector;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
@@ -127,7 +129,7 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public void runBatch(final Collection batchData, final int epochIdx, final int miniBatchIdx) {
+  public void runMiniBatch(final Collection miniBatchData, final MiniBatchInfo miniBatchInfo) {
     resetTracers();
     final long miniBatchStartTime = System.currentTimeMillis();
 
@@ -154,6 +156,8 @@ final class AddVectorTrainer implements Trainer {
     }
     pushTracer.recordTime(keyList.size());
 
+    final int epochIdx = miniBatchInfo.getEpochIdx();
+    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
     final WorkerMetrics miniBatchMetric = buildMiniBatchMetric(epochIdx, miniBatchIdx, miniBatchElapsedTime);
     LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
@@ -161,12 +165,12 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public void onEpochFinished(final Collection epochData,
-                              final int epochIdx,
-                              final int numMiniBatches,
-                              final int numEMBlocks,
-                              final long epochStartTime) {
-    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+  public void onEpochFinished(final Collection epochData, final EpochInfo epochInfo) {
+    final int epochIdx = epochInfo.getEpochIdx();
+    final int numMiniBatches = epochInfo.getNumMiniBatches();
+    final int numEMBlocks = epochInfo.getNumEMBlocks();
+    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
+
     final WorkerMetrics epochMetric = buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochElapsedTime);
     LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
     sendMetrics(epochMetric);

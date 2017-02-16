@@ -101,16 +101,21 @@ final class AsyncWorkerTask implements Task {
 
       final Collection epochData = new LinkedList();
 
-      int batchIdx = 0;
+      int miniBatchIdx = 0;
       while (true) {
-        final Collection batchData = trainingDataProvider.getNextTrainingData().values();
-        if (batchData.isEmpty()) {
+        final Collection miniBatchData = trainingDataProvider.getNextTrainingData().values();
+        if (miniBatchData.isEmpty()) {
           break;
         }
 
-        trainer.runBatch(batchData, iteration, batchIdx);
-        epochData.addAll(batchData);
-        batchIdx++;
+        final MiniBatchInfo miniBatchInfo = MiniBatchInfo.getBuilder()
+            .setEpochIdx(iteration)
+            .setMiniBatchIdx(miniBatchIdx)
+            .build();
+
+        trainer.runMiniBatch(miniBatchData, miniBatchInfo);
+        epochData.addAll(miniBatchData);
+        miniBatchIdx++;
 
         if (abortFlag.get()) {
           LOG.log(Level.INFO, "Stop task");
@@ -119,7 +124,15 @@ final class AsyncWorkerTask implements Task {
           return null;
         }
       }
-      trainer.onEpochFinished(epochData, iteration, batchIdx, numEMBlocks, epochStartTime);
+
+      final EpochInfo epochInfo = EpochInfo.getBuilder()
+              .setEpochIdx(iteration)
+              .setNumMiniBatches(miniBatchIdx)
+              .setNumEMBlocks(numEMBlocks)
+              .setEpochStartTime(epochStartTime)
+              .build();
+
+      trainer.onEpochFinished(epochData, epochInfo);
 
       // TODO #830: Clock should be a unit of iteration(mini-batch) instead of epoch
       workerClock.clock();

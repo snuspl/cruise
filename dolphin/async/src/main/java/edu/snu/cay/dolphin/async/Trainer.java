@@ -49,21 +49,15 @@ public interface Trainer<D> {
   /**
    * Main method of this trainer. This method is called every mini-batch with the training data to process
    * in the batch (at most {@link edu.snu.cay.common.param.Parameters.MiniBatchSize} instances).
-   *
-   * @param epochIdx the index of current epoch
-   * @param miniBatchIdx the index of current mini-batch
    */
-  void runBatch(Collection<D> batchData, int epochIdx, int miniBatchIdx);
+  void runMiniBatch(Collection<D> miniBatchData, MiniBatchInfo miniBatchInfo);
 
   /**
    * EventHandler that is called when an epoch is finished.
    * @param epochData the training data that has been processed in the epoch
-   * @param epochIdx
-   * @param numMiniBatches
-   * @param numEMBlocks
-   * @param epochStartTime
+   * @param epochInfo the metadata of the epoch (e.g., epochIdx, the number of mini-batches)
    */
-  void onEpochFinished(Collection<D> epochData, int epochIdx, int numMiniBatches, int numEMBlocks, long epochStartTime);
+  void onEpochFinished(Collection<D> epochData, EpochInfo epochInfo);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

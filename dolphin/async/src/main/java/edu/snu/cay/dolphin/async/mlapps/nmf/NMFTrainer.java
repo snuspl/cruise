@@ -19,6 +19,8 @@ import com.google.common.collect.Sets;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
@@ -46,7 +48,7 @@ import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
  *
  * Assumes that indices in {@link NMFData} are one-based.
  */
-final class NMFTrainer implements Trainer {
+final class NMFTrainer implements Trainer<NMFData> {
 
   private static final Logger LOG = Logger.getLogger(NMFTrainer.class.getName());
 
@@ -187,11 +189,11 @@ final class NMFTrainer implements Trainer {
   }
 
   @Override
-  public void runBatch(final Collection batchData, final int epochIdx, final int miniBatchIdx) {
+  public void runMiniBatch(final Collection<NMFData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
     final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchSize);
-    instances.addAll(batchData);
+    instances.addAll(miniBatchData);
     final int numInstancesToProcess = instances.size();
 
     resetTracers();
@@ -248,6 +250,9 @@ final class NMFTrainer implements Trainer {
     pushAndResetGradients(gradients);
 
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+    final int epochIdx = miniBatchInfo.getEpochIdx();
+    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
+
     final WorkerMetrics miniBatchMetric =
         buildMiniBatchMetric(epochIdx, miniBatchIdx,
             numInstancesToProcess, miniBatchElapsedTime);
@@ -256,18 +261,7 @@ final class NMFTrainer implements Trainer {
   }
 
   @Override
-  public void onEpochFinished(final Collection epochData,
-                              final int epochIdx,
-                              final int numMiniBatches,
-                              final int numEMBlocks,
-                              final long epochStartTime) {
-    if (!(decayRate == 1) && epochIdx % decayPeriod == 0) {
-      final double prevStepSize = stepSize;
-      stepSize *= decayRate;
-      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
-          new Object[]{decayPeriod, prevStepSize, stepSize});
-    }
-
+  public void onEpochFinished(final Collection<NMFData> epochData, final EpochInfo epochInfo) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels(getKeys(epochData));
 
@@ -277,13 +271,24 @@ final class NMFTrainer implements Trainer {
     LOG.log(Level.INFO, "Start computing loss value");
     final double loss = computeLoss(epochData, model);
 
-    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+    final int epochIdx = epochInfo.getEpochIdx();
+    final int numMiniBatches = epochInfo.getNumMiniBatches();
+    final int numEMBlocks = epochInfo.getNumEMBlocks();
+    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
+
     final WorkerMetrics epochMetric =
         buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks,
             epochData.size(), loss, epochElapsedTime);
 
     LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
+
+    if (!(decayRate == 1) && epochIdx % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+          new Object[]{decayPeriod, prevStepSize, stepSize});
+    }
   }
 
   /**

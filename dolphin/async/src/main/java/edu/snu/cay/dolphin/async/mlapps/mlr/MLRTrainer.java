@@ -20,6 +20,8 @@ import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.metric.Tracer;
@@ -195,7 +197,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public void runBatch(final Collection<MLRData> batchData, final int epochIdx, final int miniBatchIdx) {
+  public void runMiniBatch(final Collection<MLRData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
     resetTracers();
 
     final long miniBatchStartTime = System.currentTimeMillis();
@@ -206,7 +208,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
     final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchSize);
-    instances.addAll(batchData);
+    instances.addAll(miniBatchData);
     final int numInstancesToProcess = instances.size();
 
     // collects the results (new models here) computed by multiple threads
@@ -256,6 +258,8 @@ final class MLRTrainer implements Trainer<MLRData> {
     pushAndResetGradients(gradients);
 
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+    final int epochIdx = miniBatchInfo.getEpochIdx();
+    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
 
     final WorkerMetrics miniBatchMetric =
         buildMiniBatchMetric(epochIdx, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
@@ -264,11 +268,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public void onEpochFinished(final Collection<MLRData> epochData,
-                              final int epochIdx,
-                              final int numMiniBatches,
-                              final int numEMBlocks,
-                              final long epochStartTime) {
+  public void onEpochFinished(final Collection<MLRData> epochData, final EpochInfo epochInfo) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
 
@@ -277,11 +277,15 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     LOG.log(Level.INFO, "Start computing loss value");
     final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(epochData, model);
-
-    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
     final double sampleLoss = lossRegLossAccuracy.getFirst();
     final double regLoss = lossRegLossAccuracy.getSecond();
     final double accuracy = lossRegLossAccuracy.getThird();
+
+    final int epochIdx = epochInfo.getEpochIdx();
+    final int numMiniBatches = epochInfo.getNumMiniBatches();
+    final int numEMBlocks = epochInfo.getNumEMBlocks();
+    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
+
     final WorkerMetrics epochMetric =
         buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks,
             epochData.size(), sampleLoss, regLoss, accuracy, epochElapsedTime);

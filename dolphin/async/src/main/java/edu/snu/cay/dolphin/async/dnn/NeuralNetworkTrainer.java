@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
@@ -82,8 +84,8 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
   }
 
   @Override
-  public void runBatch(final Collection<NeuralNetworkData> batchData, final int epochIdx, final int miniBatchIdx) {
-    for (final NeuralNetworkData data : batchData) {
+  public void runMiniBatch(final Collection<NeuralNetworkData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+    for (final NeuralNetworkData data : miniBatchData) {
       if (data.isValidation()) {
         continue;
       }
@@ -104,8 +106,7 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
   }
 
   @Override
-  public void onEpochFinished(final Collection<NeuralNetworkData> epochData, final int epochIdx,
-                              final int numMiniBatches, final int numEMBlocks, final long epochStartTime) {
+  public void onEpochFinished(final Collection<NeuralNetworkData> epochData, final EpochInfo epochInfo) {
     for (final NeuralNetworkData data : epochData) {
       final Matrix input = dataParser.asMatrix(data.getInstances());
       final int[] labels = data.getLabels();
@@ -119,6 +120,7 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
       MatrixUtils.free(input);
     }
 
+    final int epochIdx = epochInfo.getEpochIdx();
     LOG.log(Level.INFO, generateIterationLog(
         trainingValidator.getValidationStats(), crossValidator.getValidationStats(), epochIdx));
 

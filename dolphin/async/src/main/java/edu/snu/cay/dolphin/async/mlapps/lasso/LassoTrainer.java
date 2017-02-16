@@ -18,6 +18,8 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
@@ -116,12 +118,13 @@ final class LassoTrainer implements Trainer<LassoData> {
    * 3) Push value to server.
    */
   @Override
-  public void runBatch(final Collection<LassoData> instances, final int epochIdx, final int batchIdx) {
+  public void runMiniBatch(final Collection<LassoData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+
     pullModels();
 
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
     // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
-    final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(instances);
+    final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchData);
     final Matrix featureMatrix = featureMatrixAndValues.getLeft();
     final Vector yValues = featureMatrixAndValues.getRight();
 
@@ -143,11 +146,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   @Override
-  public void onEpochFinished(final Collection<LassoData> epochData,
-                              final int epochIdx,
-                              final int numMiniBatches,
-                              final int numEMBlocks,
-                              final long epochStartTime) {
+  public void onEpochFinished(final Collection<LassoData> epochData, final EpochInfo epochInfo) {
     // Calculate the loss value.
     pullModels();
 
