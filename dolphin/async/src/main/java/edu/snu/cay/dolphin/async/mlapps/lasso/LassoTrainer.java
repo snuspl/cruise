@@ -22,7 +22,6 @@ import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.commons.lang3.tuple.Pair;
