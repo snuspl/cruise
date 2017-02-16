@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.examples.common;
 
 import edu.snu.cay.dolphin.async.DataParser;
-import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -27,12 +26,11 @@ import java.util.List;
  * Data parser that mimics data loading in Dolphin Async examples.
  * Initialize the data as many as {@link ExampleParameters.NumTrainingData}
  */
-public final class ExampleParser implements DataParser<Object> {
+public final class ExampleDataParser implements DataParser<Object> {
   private final int numTrainingDataInstance;
 
   @Inject
-  private ExampleParser(@Parameter(ExampleParameters.NumTrainingData.class)
-                          final int numTrainingDataInstances) {
+  private ExampleDataParser(@Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingDataInstances) {
     this.numTrainingDataInstance = numTrainingDataInstances;
   }
 

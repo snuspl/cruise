@@ -17,8 +17,8 @@ package edu.snu.cay.dolphin.async.examples.addvector;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
-import edu.snu.cay.dolphin.async.examples.common.ExampleParser;
-import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
+import edu.snu.cay.dolphin.async.examples.common.ExampleDataParser;
+import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
 import org.apache.reef.client.LauncherStatus;
@@ -45,7 +45,7 @@ public final class AddVectorREEF {
     return AsyncDolphinLauncher.launch("AddVectorREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(AddVectorTrainer.class)
         .setUpdaterClass(AddVectorUpdater.class)
-        .setParserClass(ExampleParser.class)
+        .setParserClass(ExampleDataParser.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)
         .addParameterClass(ExampleParameters.DeltaValue.class)

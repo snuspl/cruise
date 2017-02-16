@@ -20,7 +20,7 @@ import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
+import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -119,7 +119,7 @@ final class AddIntegerTrainer implements Trainer {
     // sleep to simulate computation
     computeTracer.startTimer();
     try {
-      Thread.sleep(computeTime);
+      Thread.sleep(computeTime * miniBatchData.size());
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     } finally {

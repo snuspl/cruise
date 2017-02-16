@@ -21,7 +21,7 @@ import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
+import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -142,7 +142,7 @@ final class AddVectorTrainer implements Trainer {
     // 2. sleep to simulate computation
     try {
       computeTracer.startTimer();
-      Thread.sleep(computeTime);
+      Thread.sleep(computeTime * miniBatchData.size());
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     } finally {
