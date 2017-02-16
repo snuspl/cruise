@@ -98,26 +98,6 @@ final class LassoTrainer implements Trainer<LassoData> {
     oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
-  /**
-   * Convert the training data examples into a form for more efficient computation.
-   * @param instances training data examples
-   * @return the pair of feature matrix and vector composed of y values.
-   */
-  private Pair<Matrix, Vector> convertToFeaturesAndValues(final Collection<LassoData> instances) {
-    final List<Vector> features = new LinkedList<>();
-    final Vector values = vectorFactory.createDenseZeros(instances.size());
-    int iter = 0;
-    for (final LassoData instance : instances) {
-      features.add(instance.getFeature());
-      values.set(iter++, instance.getValue());
-    }
-    return Pair.of(matrixFactory.horzcatVecDense(features).transpose(), values);
-  }
-
-  @Override
-  public void cleanup() {
-  }
-
    /**
    * {@inheritDoc} <br>
    * 1) Pull model from server. <br>
@@ -176,6 +156,26 @@ final class LassoTrainer implements Trainer<LassoData> {
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
+  }
+
+  /**
+   * Convert the training data examples into a form for more efficient computation.
+   * @param instances training data examples
+   * @return the pair of feature matrix and vector composed of y values.
+   */
+  private Pair<Matrix, Vector> convertToFeaturesAndValues(final Collection<LassoData> instances) {
+    final List<Vector> features = new LinkedList<>();
+    final Vector values = vectorFactory.createDenseZeros(instances.size());
+    int iter = 0;
+    for (final LassoData instance : instances) {
+      features.add(instance.getFeature());
+      values.set(iter++, instance.getValue());
+    }
+    return Pair.of(matrixFactory.horzcatVecDense(features).transpose(), values);
+  }
+
+  @Override
+  public void cleanup() {
   }
 
   /**

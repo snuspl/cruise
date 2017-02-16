@@ -25,7 +25,7 @@ import java.util.Random;
 
 /**
  * Data parser that mimics data loading in Dolphin Async examples.
- * Initialize the randomly generated integers as many as {@link ExampleParameters.NumTrainingData}.
+ * Random integers as many as {@link ExampleParameters.NumTrainingData} are assigned to each Worker.
  */
 public final class ExampleDataParser implements DataParser<Integer> {
   private static final Random RAND = new Random();

@@ -293,7 +293,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
 
-    if (!(decayRate == 1) && epochIdx % decayPeriod == 0) {
+    if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",

@@ -105,7 +105,7 @@ final class AsyncWorkerTask implements Task {
       while (true) {
         final Collection miniBatchData = trainingDataProvider.getNextTrainingData().values();
         if (miniBatchData.isEmpty()) {
-          break;
+          break; // Finish the epoch when there are no more data to process
         }
 
         final MiniBatchInfo miniBatchInfo = MiniBatchInfo.getBuilder()
