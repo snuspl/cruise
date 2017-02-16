@@ -86,10 +86,6 @@ final class LassoTrainer implements Trainer<LassoData> {
     oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
-  @Override
-  public void run(final int iterationi, final AtomicBoolean abortFlag) {
-  }
-
   /**
    * Convert the training data examples into a form for more efficient computation.
    * @param instances training data examples

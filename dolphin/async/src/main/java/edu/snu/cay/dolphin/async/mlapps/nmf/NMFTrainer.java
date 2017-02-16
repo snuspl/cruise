@@ -21,7 +21,6 @@ import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
@@ -36,7 +35,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -77,7 +75,6 @@ final class NMFTrainer implements Trainer {
   private final int decayPeriod;
 
   private final MemoryStore<Long> memoryStore;
-  private final TrainingDataProvider<Long, NMFData> trainingDataProvider;
 
   /**
    * Executes the Trainer threads.
@@ -115,7 +112,6 @@ final class NMFTrainer implements Trainer {
                      final ModelAccessor<NMFModel> modelAccessor,
                      final NMFModelGenerator modelGenerator,
                      final MemoryStore<Long> memoryStore,
-                     final TrainingDataProvider<Long, NMFData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.vectorFactory = vectorFactory;
@@ -134,7 +130,6 @@ final class NMFTrainer implements Trainer {
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
     this.memoryStore = memoryStore;
-    this.trainingDataProvider = trainingDataProvider;
 
     this.modelAccessor = modelAccessor;
     this.numTrainerThreads = numTrainerThreads;
@@ -151,10 +146,6 @@ final class NMFTrainer implements Trainer {
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
-  }
-
-  @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
   }
 
   @Override

@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async;
 import org.apache.reef.annotations.audience.TaskSide;
 
 import java.util.Collection;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A trainer of a {@code dolphin-async} application.
@@ -48,20 +47,26 @@ public interface Trainer<D> {
   void initialize();
 
   /**
-   * Main method of this trainer. The number of times this method is called can be adjusted with the parameter
-   * {@link edu.snu.cay.common.param.Parameters.Iterations}.
+   * Main method of this trainer. This method is called every mini-batch with the training data to process
+   * in the batch (at most {@link edu.snu.cay.common.param.Parameters.MiniBatchSize} instances).
    *
-   * @param iteration the index of current iteration
-   * @param abortFlag a flag indicating trainer to abort
+   * @param epochIdx the index of current epoch
+   * @param miniBatchIdx the index of current mini-batch
    */
-  void run(int iteration, AtomicBoolean abortFlag);
+  void runBatch(Collection<D> batchData, int epochIdx, int miniBatchIdx);
+
+  /**
+   * EventHandler that is called when an epoch is finished.
+   * @param epochData the training data that has been processed in the epoch
+   * @param epochIdx
+   * @param numMiniBatches
+   * @param numEMBlocks
+   * @param epochStartTime
+   */
+  void onEpochFinished(Collection<D> epochData, int epochIdx, int numMiniBatches, int numEMBlocks, long epochStartTime);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.
    */
   void cleanup();
-
-  void runBatch(Collection<D> batchData, int epochIdx, int miniBatchIdx);
-
-  void onEpochFinished(Collection<D> epochData, int epochIdx, int numMiniBatches, int numEMBlocks, long epochStartTime);
 }

@@ -27,7 +27,6 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Collection;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -111,10 +110,6 @@ final class AddIntegerTrainer implements Trainer {
 
   @Override
   public void initialize() {
-  }
-
-  @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
   }
 
   @Override

@@ -29,7 +29,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -128,10 +127,6 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
-  }
-
-  @Override
   public void runBatch(final Collection batchData, final int epochIdx, final int miniBatchIdx) {
     resetTracers();
     final long miniBatchStartTime = System.currentTimeMillis();
@@ -199,7 +194,8 @@ final class AddVectorTrainer implements Trainer {
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatches, final int numDataBlocks, final double elapsedTime) {
+  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatches,
+                                         final int numDataBlocks, final double elapsedTime) {
     return WorkerMetrics.newBuilder()
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)

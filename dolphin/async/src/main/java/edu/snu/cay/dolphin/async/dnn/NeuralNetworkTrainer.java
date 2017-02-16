@@ -27,7 +27,6 @@ import edu.snu.cay.services.em.exceptions.IdGenerationException;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -80,11 +79,6 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
     memoryStore.putList(dataKeys, dataValues);
 
     LOG.log(Level.INFO, "Number of input instances = {0}", dataValues.size());
-  }
-
-  @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
-
   }
 
   @Override

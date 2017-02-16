@@ -31,7 +31,6 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -132,10 +131,6 @@ final class LDATrainer implements Trainer<Document> {
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "All random topic assignments are updated");
-  }
-
-  @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
   }
 
   @Override

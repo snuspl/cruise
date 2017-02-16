@@ -118,7 +118,7 @@ final class AsyncWorkerTask implements Task {
           workerClock.recordClockNetworkWaitingTime();
           return null;
         }
-     }
+      }
       trainer.onEpochFinished(epochData, iteration, batchIdx, numEMBlocks, epochStartTime);
 
       // TODO #830: Clock should be a unit of iteration(mini-batch) instead of epoch
