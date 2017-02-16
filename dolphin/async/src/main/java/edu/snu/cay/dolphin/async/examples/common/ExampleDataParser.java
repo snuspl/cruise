@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.DataParser;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -38,7 +39,7 @@ public final class ExampleDataParser implements DataParser<Integer> {
 
   @Override
   public List<Integer> parse() {
-    final List<Integer> list = new LinkedList<>();
+    final List<Integer> list = new ArrayList<>(numTrainingDataInstance);
     for (int i = 0; i < numTrainingDataInstance; i++) {
       list.add(RAND.nextInt());
     }

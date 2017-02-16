@@ -100,13 +100,13 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
       neuralNetwork.train(input, labels);
       MatrixUtils.free(input);
     }
-     // update parameters for model validation
-    neuralNetwork.updateParameters();
-
   }
 
   @Override
   public void onEpochFinished(final Collection<NeuralNetworkData> epochData, final EpochInfo epochInfo) {
+    // update parameters for model validation
+    neuralNetwork.updateParameters();
+
     for (final NeuralNetworkData data : epochData) {
       final Matrix input = dataParser.asMatrix(data.getInstances());
       final int[] labels = data.getLabels();
