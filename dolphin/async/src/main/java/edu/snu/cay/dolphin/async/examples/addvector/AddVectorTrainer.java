@@ -52,12 +52,6 @@ final class AddVectorTrainer implements Trainer {
    */
   private static final int NUM_VALIDATE_RETRIES = 20;
 
-  /**
-   * The number of items to process. Currently AddVectorTrainer is assumed to process only 1 element at fixed cost.
-   * We can extend it by storing data to process in its MemoryStore.
-   */
-  private static final int NUM_DATA_ITEMS_TO_PROCESS = 1;
-
   private final ParameterWorker<Integer, Integer, Vector> parameterWorker;
 
   /**
@@ -99,8 +93,7 @@ final class AddVectorTrainer implements Trainer {
                            @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
                            @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                            @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
-                           @Parameter(ExampleParameters.NumTrainingData.class)
-                             final int numTrainingDataInstances,
+                           @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData,
                            final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
@@ -111,11 +104,12 @@ final class AddVectorTrainer implements Trainer {
 
     this.computeTime = computeTime;
     this.miniBatchSize = miniBatchSize;
+    final int numMiniBatches = (numTrainingData + miniBatchSize - 1) / miniBatchSize;
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
-    this.expectedResult = delta * numberOfWorkers * numIterations * (numTrainingDataInstances / miniBatchSize);
-    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numTrainingDataInstances:{3}",
-        new Object[]{delta, numberOfWorkers, numIterations, numTrainingDataInstances});
+    this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatches;
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numTrainingData:{3}, miniBatchSize:{4}",
+        new Object[]{delta, numberOfWorkers, numIterations, numTrainingData, miniBatchSize});
 
     this.metricsMsgSender = metricsMsgSender;
 
@@ -132,6 +126,7 @@ final class AddVectorTrainer implements Trainer {
   public void runMiniBatch(final Collection miniBatchData, final MiniBatchInfo miniBatchInfo) {
     resetTracers();
     final long miniBatchStartTime = System.currentTimeMillis();
+    final int numDataToProcess = miniBatchData.size();
 
     // 1. pull model to compute with
     pullTracer.startTimer();
@@ -142,11 +137,11 @@ final class AddVectorTrainer implements Trainer {
     // 2. sleep to simulate computation
     try {
       computeTracer.startTimer();
-      Thread.sleep(computeTime * miniBatchData.size());
+      Thread.sleep(computeTime * numDataToProcess);
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     } finally {
-      computeTracer.recordTime(NUM_DATA_ITEMS_TO_PROCESS);
+      computeTracer.recordTime(numDataToProcess);
     }
 
     // 3. push computed model
@@ -159,8 +154,9 @@ final class AddVectorTrainer implements Trainer {
     final int epochIdx = miniBatchInfo.getEpochIdx();
     final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-    final WorkerMetrics miniBatchMetric = buildMiniBatchMetric(epochIdx, miniBatchIdx, miniBatchElapsedTime);
-    LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
+    final WorkerMetrics miniBatchMetric =
+        buildMiniBatchMetric(epochIdx, miniBatchIdx, miniBatchElapsedTime, numDataToProcess);
+    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
     sendMetrics(miniBatchMetric);
   }
 
@@ -170,9 +166,11 @@ final class AddVectorTrainer implements Trainer {
     final int numMiniBatches = epochInfo.getNumMiniBatches();
     final int numEMBlocks = epochInfo.getNumEMBlocks();
     final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
+    final int numProcessedData = epochData.size();
 
-    final WorkerMetrics epochMetric = buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochElapsedTime);
-    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    final WorkerMetrics epochMetric =
+        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochElapsedTime, numProcessedData);
+    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
   }
 
@@ -182,12 +180,13 @@ final class AddVectorTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx, final double elapsedTime) {
+  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx, final double elapsedTime,
+                                             final int numProcessedItems) {
     return WorkerMetrics.newBuilder()
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
         .setMiniBatchIdx(miniBatchIdx)
-        .setProcessedDataItemCount(NUM_DATA_ITEMS_TO_PROCESS)
+        .setProcessedDataItemCount(numProcessedItems)
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
@@ -198,14 +197,14 @@ final class AddVectorTrainer implements Trainer {
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatches,
-                                         final int numDataBlocks, final double elapsedTime) {
+  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatches, final int numDataBlocks,
+                                         final double elapsedTime, final int numProcessedItems) {
     return WorkerMetrics.newBuilder()
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
         .setNumMiniBatchForEpoch(numMiniBatches)
         .setNumDataBlocks(numDataBlocks)
-        .setProcessedDataItemCount(numMiniBatches * NUM_DATA_ITEMS_TO_PROCESS)
+        .setProcessedDataItemCount(numProcessedItems)
         .setTotalTime(elapsedTime)
         .build();
   }

@@ -46,22 +46,17 @@ public final class AddIntegerREEF {
   public static LauncherStatus runAddInteger(final String[] args, final Configuration conf) {
     return AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(AddIntegerTrainer.class)
-        .setParserClass(ExampleDataParser.class)
         .setUpdaterClass(AddIntegerUpdater.class)
-        .setParserClass(NullDataParser.class)
+        .setParserClass(ExampleDataParser.class)
         .addParameterClass(ExampleParameters.DeltaValue.class)
         .addParameterClass(ExampleParameters.NumKeys.class)
-        .addParameterClass(NumUpdatesPerItr.class)
         .addParameterClass(ExampleParameters.NumWorkers.class)
         .addParameterClass(ExampleParameters.ComputeTimeMs.class)
+        .addParameterClass(ExampleParameters.NumTrainingData.class)
         .build(), conf);
   }
 
   public static void main(final String[] args) {
     runAddInteger(args, Tang.Factory.getTang().newConfigurationBuilder().build());
-  }
-
-  @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "num_updates")
-  final class NumUpdatesPerItr implements Name<Integer> {
   }
 }

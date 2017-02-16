@@ -21,12 +21,14 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Data parser that mimics data loading in Dolphin Async examples.
- * Initialize the data as many as {@link ExampleParameters.NumTrainingData}
+ * Initialize the randomly generated integers as many as {@link ExampleParameters.NumTrainingData}.
  */
-public final class ExampleDataParser implements DataParser<Object> {
+public final class ExampleDataParser implements DataParser<Integer> {
+  private static final Random RAND = new Random();
   private final int numTrainingDataInstance;
 
   @Inject
@@ -34,12 +36,11 @@ public final class ExampleDataParser implements DataParser<Object> {
     this.numTrainingDataInstance = numTrainingDataInstances;
   }
 
-
   @Override
-  public List<Object> parse() {
-    final List<Object> list = new LinkedList<>();
+  public List<Integer> parse() {
+    final List<Integer> list = new LinkedList<>();
     for (int i = 0; i < numTrainingDataInstance; i++) {
-      list.add(i);
+      list.add(RAND.nextInt());
     }
     return list;
   }

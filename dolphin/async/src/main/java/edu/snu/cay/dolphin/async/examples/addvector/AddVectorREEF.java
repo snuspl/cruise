@@ -52,6 +52,7 @@ public final class AddVectorREEF {
         .addParameterClass(ExampleParameters.NumKeys.class)
         .addParameterClass(ExampleParameters.NumWorkers.class)
         .addParameterClass(ExampleParameters.ComputeTimeMs.class)
+        .addParameterClass(ExampleParameters.NumTrainingData.class)
         .addParameterClass(VectorSize.class)
         .build());
   }
