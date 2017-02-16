@@ -97,7 +97,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
-   /**
+  /**
    * {@inheritDoc} <br>
    * 1) Pull model from server. <br>
    * 2) Compute the optimal value, dot(x_i, y - Sigma_{j != i} x_j * model(j)) / dot(x_i, x_i) for each dimension

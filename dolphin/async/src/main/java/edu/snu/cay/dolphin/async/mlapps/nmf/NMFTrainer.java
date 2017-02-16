@@ -151,44 +151,6 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public void cleanup() {
-    // print generated matrices
-    if (!printMatrices) {
-      return;
-    }
-    // print L matrix
-    final Map<Long, NMFData> workloadMap = memoryStore.getAll();
-    final Collection<NMFData> workload = workloadMap.values();
-
-    final StringBuilder lsb = new StringBuilder();
-    for (final NMFData datum : workload) {
-      lsb.append(String.format("L(%d, *):", datum.getRowIndex()));
-      for (final VectorEntry valueEntry : datum.getVector()) {
-        lsb.append(' ');
-        lsb.append(valueEntry.value());
-      }
-      lsb.append('\n');
-    }
-    LOG.log(Level.INFO, lsb.toString());
-
-    // print transposed R matrix
-    pullModels(getKeys(workload));
-    final NMFModel model = modelAccessor.getModel()
-        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
-    final StringBuilder rsb = new StringBuilder();
-    for (final Map.Entry<Integer, Vector> entry : model.getRMatrix().entrySet()) {
-      rsb.append(String.format("R(*, %d):", entry.getKey()));
-      for (final VectorEntry valueEntry : entry.getValue()) {
-        rsb.append(' ');
-        rsb.append(valueEntry.value());
-      }
-      rsb.append('\n');
-    }
-    LOG.log(Level.INFO, rsb.toString());
-  }
-
-  @Override
   public void runMiniBatch(final Collection<NMFData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
@@ -289,6 +251,44 @@ final class NMFTrainer implements Trainer<NMFData> {
       LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
+  }
+
+  @Override
+  public void cleanup() {
+    // print generated matrices
+    if (!printMatrices) {
+      return;
+    }
+    // print L matrix
+    final Map<Long, NMFData> workloadMap = memoryStore.getAll();
+    final Collection<NMFData> workload = workloadMap.values();
+
+    final StringBuilder lsb = new StringBuilder();
+    for (final NMFData datum : workload) {
+      lsb.append(String.format("L(%d, *):", datum.getRowIndex()));
+      for (final VectorEntry valueEntry : datum.getVector()) {
+        lsb.append(' ');
+        lsb.append(valueEntry.value());
+      }
+      lsb.append('\n');
+    }
+    LOG.log(Level.INFO, lsb.toString());
+
+    // print transposed R matrix
+    pullModels(getKeys(workload));
+    final NMFModel model = modelAccessor.getModel()
+        .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
+
+    final StringBuilder rsb = new StringBuilder();
+    for (final Map.Entry<Integer, Vector> entry : model.getRMatrix().entrySet()) {
+      rsb.append(String.format("R(*, %d):", entry.getKey()));
+      for (final VectorEntry valueEntry : entry.getValue()) {
+        rsb.append(' ');
+        rsb.append(valueEntry.value());
+      }
+      rsb.append('\n');
+    }
+    LOG.log(Level.INFO, rsb.toString());
   }
 
   /**
