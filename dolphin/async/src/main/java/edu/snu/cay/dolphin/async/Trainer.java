@@ -50,9 +50,6 @@ public interface Trainer<D> {
 
   /**
    * Main method of this trainer, which is called every mini-batch.
-   * with
-   * ).
-
    * @param miniBatchData the training data to process in the batch
    *                      (at most {@link edu.snu.cay.common.param.Parameters.MiniBatchSize} instances.
    * @param miniBatchInfo the metadata of the mini-batch (e.g., epochIdx, miniBatchIdx)

@@ -60,7 +60,7 @@ final class AsyncWorkerTask<K, V> implements Task {
                           final WorkerSynchronizer synchronizer,
                           final TrainingDataProvider<K, V> trainingDataProvider,
                           final MemoryStore<K> memoryStore,
-                          final Trainer<K> trainer,
+                          final Trainer<V> trainer,
                           final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
