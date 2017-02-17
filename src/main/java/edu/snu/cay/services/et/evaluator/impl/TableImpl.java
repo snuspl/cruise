@@ -15,30 +15,27 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.avro.OpType;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
 import edu.snu.cay.services.et.evaluator.api.PartitionFunction;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableComponents;
-import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Optional;
+import java.util.concurrent.locks.Lock;
 
 /**
  * An implementation of {@link Table}.
  */
 @EvaluatorSide
 @ThreadSafe
-public final class TableImpl<K, V> implements Table<K, V>, TableComponents {
-  // currently simply store data that does not belong to local into this map
-  // TODO #25: need to implement distributed kv-store and route accesses
-  private final ConcurrentMap<K, V> fakeRemoteDataMap = new ConcurrentHashMap<>();
-
+public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V> {
   /**
    * Table identifier.
    */
@@ -55,87 +52,147 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents {
   private final BlockStore<K, V> blockStore;
 
   /**
-   * Partition function that resolves key into block index.
+   * A serializer for both key and value of a table.
    */
-  private final PartitionFunction<K> partitionFunction;
+  private final KVSerializer<K, V> kvSerializer;
 
   /**
-   * Update function for update operation.
+   * A component for accessing remote blocks.
    */
-  private final UpdateFunction<K, V> updateFunction;
+  private final RemoteAccessOpHandler remoteAccessOpHandler;
+
+  /**
+   * Partition function that resolves key into block id.
+   */
+  private final PartitionFunction<K> partitionFunction;
 
   @Inject
   private TableImpl(@Parameter(TableIdentifier.class) final String tableId,
                     final OwnershipCache ownershipCache,
                     final BlockStore<K, V> blockStore,
-                    final PartitionFunction<K> partitionFunction,
-                    final UpdateFunction<K, V> updateFunction) {
+                    final KVSerializer<K, V> kvSerializer,
+                    final RemoteAccessOpHandler remoteAccessOpHandler,
+                    final PartitionFunction<K> partitionFunction) {
     this.tableId = tableId;
     this.ownershipCache = ownershipCache;
     this.blockStore = blockStore;
+    this.kvSerializer = kvSerializer;
+    this.remoteAccessOpHandler = remoteAccessOpHandler;
     this.partitionFunction = partitionFunction;
-    this.updateFunction = updateFunction;
   }
 
   @Override
   public V put(final K key, final V value) {
+
+    final int blockId = partitionFunction.getBlockId(key);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
     try {
-      return getBlock(key).put(key, value);
-    } catch (BlockNotExistsException e) {
-      // TODO #25: need to implement distributed kv-store and route accesses
-      return fakeRemoteDataMap.put(key, value);
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+        block.put(key, value);
+        return value;
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
     }
+
+    // send operation to remote and wait until operation is finished
+    final RemoteDataOp<K, V> operation = remoteAccessOpHandler.sendOpToRemote(
+        OpType.PUT, tableId, blockId, key, value, remoteIdOptional.get());
+
+    return operation.getOutputData();
   }
 
   @Override
   public V get(final K key) {
+    final int blockId = partitionFunction.getBlockId(key);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
     try {
-      return getBlock(key).get(key);
-    } catch (BlockNotExistsException e) {
-      // TODO #25: need to implement distributed kv-store and route accesses
-      return fakeRemoteDataMap.get(key);
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+        return block.get(key);
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
     }
+
+    // send operation to remote and wait until operation is finished
+    final RemoteDataOp<K, V> operation = remoteAccessOpHandler.sendOpToRemote(
+        OpType.GET, tableId, blockId, key, null, remoteIdOptional.get());
+
+    return operation.getOutputData();
   }
 
   @Override
   public V update(final K key, final V deltaValue) {
+    final int blockId = partitionFunction.getBlockId(key);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
     try {
-      return getBlock(key).update(key, deltaValue);
-    } catch (BlockNotExistsException e) {
-      // TODO #25: need to implement distributed kv-store and route accesses
-      V oldValue = fakeRemoteDataMap.get(key);
-      if (oldValue == null) {
-        oldValue = updateFunction.initValue(key);
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+        return block.update(key, deltaValue);
       }
-      final V newValue = updateFunction.updateValue(key, oldValue, deltaValue);
-      fakeRemoteDataMap.put(key, newValue);
-      return newValue;
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
     }
+
+    // send operation to remote and wait until operation is finished
+    final RemoteDataOp<K, V> operation = remoteAccessOpHandler.sendOpToRemote(
+        OpType.UPDATE, tableId, blockId, key, deltaValue, remoteIdOptional.get());
+
+    return operation.getOutputData();
   }
 
   @Override
   public V remove(final K key) {
-    try {
-      return getBlock(key).remove(key);
-    } catch (BlockNotExistsException e) {
-      // TODO #25: need to implement distributed kv-store and route accesses
-      return fakeRemoteDataMap.remove(key);
-    }
-  }
-
-  /**
-   * @return identifier of the corresponding table
-   */
-  public String getTableId() {
-    return tableId;
-  }
-
-  /**
-   * Get the block containing the specified key.
-   */
-  private Block<K, V> getBlock(final K key) throws BlockNotExistsException {
     final int blockId = partitionFunction.getBlockId(key);
-    return blockStore.get(blockId);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    try {
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+        return block.remove(key);
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
+    }
+
+    // send operation to remote and wait until operation is finished
+    final RemoteDataOp<K, V> operation = remoteAccessOpHandler.sendOpToRemote(
+        OpType.REMOVE, tableId, blockId, key, null, remoteIdOptional.get());
+
+    return operation.getOutputData();
   }
 
   @Override
@@ -144,7 +201,17 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents {
   }
 
   @Override
-  public BlockStore getBlockStore() {
+  public BlockStore<K, V> getBlockStore() {
     return blockStore;
+  }
+
+  @Override
+  public KVSerializer<K, V> getSerializer() {
+    return kvSerializer;
+  }
+
+  @Override
+  public PartitionFunction<K> getPartitionFunction() {
+    return partitionFunction;
   }
 }

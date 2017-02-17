@@ -29,7 +29,9 @@ public class ExampleTest {
 
   @Test
   public void testSimpleET() throws InjectionException {
-    final String sampleInput = (ClassLoader.getSystemResource("data").getPath() + "/empty_file");
+    // TODO #26: provide a way to load file contents into local blocks
+    // final String sampleInput = (ClassLoader.getSystemResource("data").getPath() + "/empty_file");
+    final String sampleInput = SimpleET.TableInputPath.EMPTY;
     assertEquals(LauncherStatus.COMPLETED, SimpleET.runSimpleET(sampleInput));
   }
 }

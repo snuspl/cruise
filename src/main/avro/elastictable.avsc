@@ -51,8 +51,8 @@
   "fields":
   [
     {"name": "origId", "type": "string"},
-    {"name": "accessType", "type": {"type": "enum",
-        "name": "AccessType", "symbols": ["PUT", "GET", "REMOVE", "UPDATE"]}},
+    {"name": "opType", "type": {"type": "enum",
+        "name": "OpType", "symbols": ["PUT", "GET", "REMOVE", "UPDATE"]}},
     {"name": "tableId", "type": "string"},
     {"name": "dataKey", "type": "DataKey"},
     {"name": "dataValue", "type": ["null", "DataValue"]}
@@ -86,7 +86,7 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "TableAccessMsgType",
         "symbols": ["TableAccessReqMsg", "TableAccessResMsg"]}},
-    {"name": "operationId", "type" : ["null", "string"], "default": null},
+    {"name": "operationId", "type": "string"},
     {"name": "tableAccessReqMsg", "type": ["null", "TableAccessReqMsg"], "default": null},
     {"name": "tableAccessResMsg", "type": ["null", "TableAccessResMsg"], "default": null}
   ]

@@ -55,7 +55,7 @@ public final class BlockStore<K, V> {
    * @throws BlockAlreadyExistsException when the specified block already exists
    */
   public void createEmptyBlock(final int blockId) throws BlockAlreadyExistsException {
-    if (blocks.putIfAbsent(blockId, new BlockImpl(updateFunction)) != null) {
+    if (blocks.putIfAbsent(blockId, new BlockImpl<>(updateFunction)) != null) {
       throw new BlockAlreadyExistsException(blockId);
     }
   }

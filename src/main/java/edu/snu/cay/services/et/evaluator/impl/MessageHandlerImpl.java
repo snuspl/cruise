@@ -38,14 +38,17 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private final ConfigurationSerializer confSerializer;
   private final InjectionFuture<MessageSender> msgSenderFuture;
+  private final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture;
 
   @Inject
   private MessageHandlerImpl(final Tables tables,
                              final ConfigurationSerializer confSerializer,
-                             final InjectionFuture<MessageSender> msgSenderFuture) {
+                             final InjectionFuture<MessageSender> msgSenderFuture,
+                             final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture) {
     this.tables = tables;
     this.confSerializer = confSerializer;
     this.msgSenderFuture = msgSenderFuture;
+    this.remoteAccessHandlerFuture = remoteAccessHandlerFuture;
   }
 
   @Override
@@ -54,7 +57,7 @@ public final class MessageHandlerImpl implements MessageHandler {
     final ETMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
     case TableAccessMsg:
-      onTableAccessMsg(innerMsg.getTableAccessMsg());
+      remoteAccessHandlerFuture.get().onNext(innerMsg.getTableAccessMsg());
       break;
 
     case TableControlMsg:
@@ -68,22 +71,6 @@ public final class MessageHandlerImpl implements MessageHandler {
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
-  }
-
-  private void onTableAccessMsg(final TableAccessMsg msg) {
-    switch (msg.getType()) {
-    case TableAccessReqMsg:
-      //onTableAccessReqMsg(msg);
-      break;
-
-    case TableAccessResMsg:
-      //onTableAccessResMsg(msg)
-      break;
-
-    default:
-      throw new RuntimeException("Unexpected message: " + msg);
-    }
-
   }
 
   private void onTableControlMsg(final TableControlMsg msg) {

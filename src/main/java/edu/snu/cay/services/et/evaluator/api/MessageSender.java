@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.et.evaluator.api;
 
-import edu.snu.cay.services.et.avro.AccessType;
+import edu.snu.cay.services.et.avro.OpType;
 import edu.snu.cay.services.et.avro.DataKey;
 import edu.snu.cay.services.et.avro.DataValue;
 import edu.snu.cay.services.et.avro.KVPair;
@@ -23,6 +23,7 @@ import edu.snu.cay.services.et.evaluator.impl.MessageSenderImpl;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -40,14 +41,13 @@ public interface MessageSender {
    * The operation should be given a unique {@code operationId}.
    */
   void sendTableAccessReqMsg(String origId, String destId, String operationId,
-                             String tableId, AccessType accessType,
-                             DataKey dataKey, DataValue dataValue);
+                             String tableId, OpType opType, DataKey dataKey, @Nullable DataValue dataValue);
 
   /**
    * Sends a RemoteOpResultMsg that contains the result of the data operation specified with {@code operationId}.
    */
   void sendTableAccessResMsg(String destId, String operationId,
-                             DataValue dataValue, boolean isSuccess);
+                             @Nullable DataValue dataValue, boolean isSuccess);
 
   /**
    * Sends a TableInitAckMsg that responds to TableInitMsg.

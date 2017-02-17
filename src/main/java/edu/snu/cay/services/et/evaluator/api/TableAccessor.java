@@ -30,8 +30,10 @@ public interface TableAccessor {
   /**
    * Gets a table that its id is {@code tableId}.
    * @param tableId a table Id
+   * @param <K> a key type of a table
+   * @param <V> a value type of a table
    * @return a table whose id is tableId
    * @throws TableNotExistException when there's no table with the specified id
    */
-  Table get(String tableId) throws TableNotExistException;
+  <K, V> Table<K, V> get(String tableId) throws TableNotExistException;
 }

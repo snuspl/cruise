@@ -24,6 +24,7 @@ import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.List;
 
@@ -49,8 +50,8 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendTableAccessReqMsg(final String origId, final String destId,
                                     final String operationId, final String tableId,
-                                    final AccessType accessType,
-                                    final DataKey dataKey, final DataValue dataValue) {
+                                    final OpType accessType,
+                                    final DataKey dataKey, @Nullable final DataValue dataValue) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
         .setTableAccessMsg(
@@ -61,7 +62,7 @@ public final class MessageSenderImpl implements MessageSender {
                     TableAccessReqMsg.newBuilder()
                         .setOrigId(origId)
                         .setTableId(tableId)
-                        .setAccessType(accessType)
+                        .setOpType(accessType)
                         .setDataKey(dataKey)
                         .setDataValue(dataValue)
                         .build()
@@ -77,7 +78,7 @@ public final class MessageSenderImpl implements MessageSender {
 
   @Override
   public void sendTableAccessResMsg(final String destId, final String operationId,
-                                    final DataValue dataValue, final boolean isSuccess) {
+                                    @Nullable final DataValue dataValue, final boolean isSuccess) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
         .setTableAccessMsg(
@@ -101,7 +102,6 @@ public final class MessageSenderImpl implements MessageSender {
 
   @Override
   public void sendTableInitAckMsg(final String tableId) {
-
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
         .setTableControlMsg(

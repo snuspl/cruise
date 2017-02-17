@@ -43,8 +43,8 @@ public final class SimpleET {
   private static final Logger LOG = Logger.getLogger(SimpleET.class.getName());
 
   private static final String DRIVER_IDENTIFIER = "Simple";
-  private static final int MAX_NUMBER_OF_EVALUATORS = 3;
-  private static final int JOB_TIMEOUT = 30000; // 10 sec.
+  private static final int MAX_NUMBER_OF_EVALUATORS = 4; // 1 driver + 2 associator + 1 subscriber
+  private static final int JOB_TIMEOUT = 30000; // 30 sec.
 
   /**
    * Should not be instantiated.
@@ -109,7 +109,7 @@ public final class SimpleET {
   @NamedParameter(doc = "Path of a input file to load on a table",
       short_name = "table_input", default_value = TableInputPath.EMPTY)
   public final class TableInputPath implements Name<String> {
-    static final String EMPTY = "";
+    public static final String EMPTY = "";
 
     // should not be instantiated
     private TableInputPath() {

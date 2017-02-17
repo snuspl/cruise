@@ -38,41 +38,47 @@ import java.util.List;
  */
 @Unit
 final class SimpleETDriver {
-  private static final String TASK_ID = "Simple-task";
-  static final String TABLE_ID = "Table";
+  private static final String ASSOCIATOR_TASK_ID = "Simple-associator-task";
+  private static final String SUBSCRIBER_TASK_ID = "Simple-subscriber-task";
+  static final String TABLE0_ID = "Table0";
+  static final String TABLE1_ID = "Table1";
 
-  private static final int NUM_EXECUTORS = 1;
   private static final ResourceConfiguration RES_CONF = ResourceConfiguration.newBuilder()
       .setNumCores(1)
       .setMemSizeInMB(128)
       .build();
 
-  private static final Configuration TASK_CONF = TaskConfiguration.CONF
-      .set(TaskConfiguration.IDENTIFIER, TASK_ID)
-      .set(TaskConfiguration.TASK, SimpleETTask.class)
+  private static final Configuration ASSOCIATOR_TASK_CONF = TaskConfiguration.CONF
+      .set(TaskConfiguration.IDENTIFIER, ASSOCIATOR_TASK_ID)
+      .set(TaskConfiguration.TASK, AssociatorTask.class)
+      .build();
+
+  private static final Configuration SUBSCRIBER_TASK_CONF = TaskConfiguration.CONF
+      .set(TaskConfiguration.IDENTIFIER, SUBSCRIBER_TASK_ID)
+      .set(TaskConfiguration.TASK, SubscriberTask.class)
       .build();
 
   private final ETMaster etMaster;
 
-  private final TableConfiguration tableConf;
+  private final String tableInputPath;
 
   @Inject
   private SimpleETDriver(final ETMaster etMaster,
                          @Parameter(SimpleET.TableInputPath.class) final String tableInputPath) {
     this.etMaster = etMaster;
-    this.tableConf = buildTableConf(tableInputPath);
+    this.tableInputPath = tableInputPath;
   }
 
-  private TableConfiguration buildTableConf(final String tableInputPath) {
+  private TableConfiguration buildTableConf(final String tableId, final String inputPath) {
     final TableConfiguration.Builder tableConfBuilder = TableConfiguration.newBuilder()
-        .setId(TABLE_ID)
+        .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setPartitionFunctionClass(HashPartitionFunction.class);
 
-    if (!tableInputPath.equals(SimpleET.TableInputPath.EMPTY)) {
-      tableConfBuilder.setFilePath(tableInputPath);
+    if (!inputPath.equals(SimpleET.TableInputPath.EMPTY)) {
+      tableConfBuilder.setFilePath(inputPath);
     }
 
     return tableConfBuilder.build();
@@ -84,18 +90,22 @@ final class SimpleETDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> executors0 = etMaster.addExecutors(NUM_EXECUTORS, RES_CONF);
-      final AllocatedTable table = etMaster.createTable(tableConf, executors0);
+      final List<AllocatedExecutor> associators = etMaster.addExecutors(2, RES_CONF);
 
-      final List<AllocatedExecutor> executors1 = etMaster.addExecutors(NUM_EXECUTORS, RES_CONF);
-      table.subscribe(executors1);
+      final AllocatedTable table0 = etMaster.createTable(buildTableConf(TABLE0_ID, tableInputPath), associators);
+      final AllocatedTable table1 =
+          etMaster.createTable(buildTableConf(TABLE1_ID, SimpleET.TableInputPath.EMPTY), associators);
 
-      for (final AllocatedExecutor executor : executors0) {
-        executor.submitTask(TASK_CONF);
+      final List<AllocatedExecutor> subscribers = etMaster.addExecutors(1, RES_CONF);
+      table0.subscribe(subscribers);
+      table1.subscribe(subscribers);
+
+      for (final AllocatedExecutor executor : associators) {
+        executor.submitTask(ASSOCIATOR_TASK_CONF);
       }
 
-      for (final AllocatedExecutor executor : executors1) {
-        executor.submitTask(TASK_CONF);
+      for (final AllocatedExecutor executor : subscribers) {
+        executor.submitTask(SUBSCRIBER_TASK_CONF);
       }
     }
   }

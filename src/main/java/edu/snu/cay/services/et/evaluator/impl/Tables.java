@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import org.apache.hadoop.io.Text;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.Configuration;
@@ -75,6 +76,7 @@ public final class Tables implements TableAccessor {
    * @throws InjectionException
    * @throws IOException
    */
+  @SuppressWarnings("unchecked")
   public synchronized String initTable(final Configuration tableConf,
                                        final List<String> blockOwners,
                                        @Nullable final String serializedHdfsSplitInfo)
@@ -109,8 +111,9 @@ public final class Tables implements TableAccessor {
       final String filePath = tableInjector.getNamedInstance(FilePath.class);
       LOG.log(Level.INFO, "Load a file split into table. filePath: {0} tableId: {1}",
           new Object[]{filePath, tableId});
-      final HdfsDataSet<?, ?> hdfsDataSet = HdfsDataSet.from(serializedHdfsSplitInfo);
-      hdfsDataSet.forEach(pair -> table.put(localKeyGenerator.get(), pair.getValue()));
+      final HdfsDataSet<?, Text> hdfsDataSet = HdfsDataSet.from(serializedHdfsSplitInfo);
+      // TODO #26: provide a way to load data into local blocks
+      hdfsDataSet.forEach(pair -> table.put(localKeyGenerator.get(), pair.getValue().toString()));
     }
 
     return tableId;
@@ -133,8 +136,9 @@ public final class Tables implements TableAccessor {
    * @return the corresponding {@link TableImpl} object
    */
   @Override
-  public synchronized TableImpl get(final String tableId) throws TableNotExistException {
-    final TableImpl table = tables.get(tableId);
+  public synchronized <K, V> TableImpl<K, V> get(final String tableId) throws TableNotExistException {
+    @SuppressWarnings("unchecked")
+    final TableImpl<K, V> table = tables.get(tableId);
     if (table == null) {
       // cannot access such table.
       // 1) table does not exist or 2) it's not associated or subscribed by this executor.

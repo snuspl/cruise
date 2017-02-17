@@ -62,7 +62,6 @@ public class OwnershipCacheTest {
     blockManager.init(executorIds);
     final List<String> blockOwners = blockManager.getOwnershipStatus();
 
-
     // 2. setup eval-side components that is common for all ownership caches
     final Map<String, OwnershipCache> ownershipCaches = new HashMap<>();
     for (int executorIdx = 0; executorIdx < numExecutors; executorIdx++) {
