@@ -20,7 +20,6 @@ import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
@@ -33,7 +32,6 @@ import java.util.logging.Logger;
 /**
  * REEF Task for a trainer thread of {@code dolphin-async} applications.
  */
-@Unit
 final class AsyncWorkerTask<K, V> implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
