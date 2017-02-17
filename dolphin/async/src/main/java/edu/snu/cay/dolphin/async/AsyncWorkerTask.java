@@ -36,16 +36,16 @@ import java.util.logging.Logger;
  * REEF Task for a trainer thread of {@code dolphin-async} applications.
  */
 @Unit
-final class AsyncWorkerTask<K, V> implements Task {
+final class AsyncWorkerTask implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
 
   private final String taskId;
   private final int maxIterations;
   private final WorkerSynchronizer synchronizer;
-  private final TrainingDataProvider<K, V> trainingDataProvider;
+  private final TrainingDataProvider trainingDataProvider;
   private final MemoryStore memoryStore;
-  private final Trainer<V> trainer;
+  private final Trainer trainer;
   private final WorkerClock workerClock;
 
   /**
@@ -58,9 +58,9 @@ final class AsyncWorkerTask<K, V> implements Task {
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
                           final WorkerSynchronizer synchronizer,
-                          final TrainingDataProvider<K, V> trainingDataProvider,
-                          final MemoryStore<K> memoryStore,
-                          final Trainer<V> trainer,
+                          final TrainingDataProvider trainingDataProvider,
+                          final MemoryStore memoryStore,
+                          final Trainer trainer,
                           final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
@@ -99,11 +99,11 @@ final class AsyncWorkerTask<K, V> implements Task {
       final int numEMBlocks = memoryStore.getNumBlocks();
       trainingDataProvider.prepareDataForEpoch();
 
-      final Collection<V> epochData = new LinkedList<>();
+      final Collection epochData = new LinkedList<>();
 
       int miniBatchIdx = 0;
       while (true) {
-        final Collection<V> miniBatchData = trainingDataProvider.getNextTrainingData().values();
+        final Collection miniBatchData = trainingDataProvider.getNextTrainingData().values();
         if (miniBatchData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
         }
