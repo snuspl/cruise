@@ -29,7 +29,7 @@ class DataOpMetadata<K, V> {
    * Metadata of the operation.
    */
   private final String origExecutorId;
-  private final String operationId;
+  private final long operationId;
   private final OpType operationType;
   private final String tableId;
   private final int blockId;
@@ -47,7 +47,7 @@ class DataOpMetadata<K, V> {
    * @param dataValue a value of data. It is null when the operation is one of GET or REMOVE.
    */
   DataOpMetadata(final String origExecutorId,
-                 final String operationId, final OpType operationType,
+                 final long operationId, final OpType operationType,
                  final String tableId, final int blockId,
                  final K dataKey, @Nullable final V dataValue) {
     this.origExecutorId = origExecutorId;
@@ -69,7 +69,7 @@ class DataOpMetadata<K, V> {
   /**
    * @return an id of operation, which is unique within an executor that is an origin of the operation
    */
-  String getOpId() {
+  long getOpId() {
     return operationId;
   }
 

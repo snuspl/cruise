@@ -86,7 +86,7 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "TableAccessMsgType",
         "symbols": ["TableAccessReqMsg", "TableAccessResMsg"]}},
-    {"name": "operationId", "type": "string"},
+    {"name": "operationId", "type": "long"},
     {"name": "tableAccessReqMsg", "type": ["null", "TableAccessReqMsg"], "default": null},
     {"name": "tableAccessResMsg", "type": ["null", "TableAccessResMsg"], "default": null}
   ]

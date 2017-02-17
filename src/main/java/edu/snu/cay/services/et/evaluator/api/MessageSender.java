@@ -40,13 +40,13 @@ public interface MessageSender {
    * the message retains {@code origId}, an id of the executor where the operation is generated at the beginning.
    * The operation should be given a unique {@code operationId}.
    */
-  void sendTableAccessReqMsg(String origId, String destId, String operationId,
+  void sendTableAccessReqMsg(String origId, String destId, long operationId,
                              String tableId, OpType opType, DataKey dataKey, @Nullable DataValue dataValue);
 
   /**
    * Sends a RemoteOpResultMsg that contains the result of the data operation specified with {@code operationId}.
    */
-  void sendTableAccessResMsg(String destId, String operationId,
+  void sendTableAccessResMsg(String destId, long operationId,
                              @Nullable DataValue dataValue, boolean isSuccess);
 
   /**

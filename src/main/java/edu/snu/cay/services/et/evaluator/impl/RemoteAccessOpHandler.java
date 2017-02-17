@@ -64,7 +64,7 @@ public final class RemoteAccessOpHandler implements EventHandler<TableAccessMsg>
    * A map holding ongoing operations until they finish.
    * It only maintains operations requested from local clients.
    */
-  private final ConcurrentMap<String, RemoteDataOp> ongoingOp = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Long, RemoteDataOp> ongoingOp = new ConcurrentHashMap<>();
 
   private volatile boolean closeFlag = false;
 
@@ -203,7 +203,7 @@ public final class RemoteAccessOpHandler implements EventHandler<TableAccessMsg>
                                            final String tableId, final int blockId,
                                            final K key, @Nullable final V value,
                                            final String targetEvalId) {
-    final String operationId = Long.toString(remoteOpIdCounter.getAndIncrement());
+    final long operationId = remoteOpIdCounter.getAndIncrement();
     final String origId = executorId;
     final RemoteDataOp<K, V> operation = new RemoteDataOp<>(origId, operationId, opType,
         tableId, blockId, key, value);
@@ -286,7 +286,7 @@ public final class RemoteAccessOpHandler implements EventHandler<TableAccessMsg>
     final String tableId = tableAccessReqMsg.getTableId();
     final DataKey dataKey = tableAccessReqMsg.getDataKey();
     final DataValue dataValue = tableAccessReqMsg.getDataValue();
-    final String operationId = msg.getOperationId();
+    final long operationId = msg.getOperationId();
 
     try {
       final TableComponents<K, V> tableComponents = tables.get(tableId);
@@ -319,7 +319,7 @@ public final class RemoteAccessOpHandler implements EventHandler<TableAccessMsg>
 
   private <K, V> void onTableAccessResMsg(final TableAccessMsg msg) {
     final TableAccessResMsg tableAccessResMsg = msg.getTableAccessResMsg();
-    final String operationId = msg.getOperationId();
+    final long operationId = msg.getOperationId();
     final DataValue remoteOutput = tableAccessResMsg.getDataValue();
     final boolean isSuccess = tableAccessResMsg.getIsSuccess();
 
@@ -361,7 +361,7 @@ public final class RemoteAccessOpHandler implements EventHandler<TableAccessMsg>
   /**
    * Deregisters an operation after its remote access is finished.
    */
-  private void deregisterOp(final String operationId) {
+  private void deregisterOp(final long operationId) {
     ongoingOp.remove(operationId);
   }
 
@@ -381,8 +381,6 @@ public final class RemoteAccessOpHandler implements EventHandler<TableAccessMsg>
       tableComponents = tables.get(tableId);
 
       final Codec<V> valueCodec = tableComponents.getSerializer().getValueCodec();
-
-
       final String origEvalId = operation.getOrigId();
 
       final DataValue dataValue;

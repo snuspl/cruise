@@ -53,7 +53,7 @@ final class RemoteDataOp<K, V> {
    * @param dataValue a value of data. It is null when the operation is one of GET or REMOVE.
    */
   RemoteDataOp(final String origExecutorId,
-               final String operationId, final OpType operationType,
+               final long operationId, final OpType operationType,
                final String tableId, final int blockId,
                final K dataKey, @Nullable final V dataValue) {
     this.dataOp = new DataOpMetadata<>(origExecutorId, operationId, operationType,
