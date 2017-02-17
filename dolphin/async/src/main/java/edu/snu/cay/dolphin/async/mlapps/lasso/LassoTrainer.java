@@ -18,9 +18,10 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.commons.lang3.tuple.Pair;
@@ -28,7 +29,6 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,7 +42,7 @@ import java.util.logging.Logger;
  * The trainer computes and pushes the optimal model value for all the dimensions to
  * minimize the objective function - square loss with l1 regularization.
  */
-final class LassoTrainer implements Trainer {
+final class LassoTrainer implements Trainer<LassoData> {
   private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
 
   /**
@@ -55,8 +55,6 @@ final class LassoTrainer implements Trainer {
   private double stepSize;
   private final double decayRate;
   private final int decayPeriod;
-
-  private final TrainingDataProvider<Long, LassoData> trainingDataProvider;
 
   private Vector oldModel;
   private Vector newModel;
@@ -76,7 +74,6 @@ final class LassoTrainer implements Trainer {
                        @Parameter(StepSize.class) final double stepSize,
                        @Parameter(DecayRate.class) final double decayRate,
                        @Parameter(DecayPeriod.class) final int decayPeriod,
-                       final TrainingDataProvider<Long, LassoData> trainingDataProvider,
                        final VectorFactory vectorFactory,
                        final MatrixFactory matrixFactory) {
     this.parameterWorker = parameterWorker;
@@ -91,7 +88,6 @@ final class LassoTrainer implements Trainer {
     if (decayPeriod <= 0) {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
-    this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
   }
@@ -111,59 +107,53 @@ final class LassoTrainer implements Trainer {
    * 3) Push value to server.
    */
   @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
-    final List<LassoData> totalInstancesProcessed = new LinkedList<>();
-    Map<Long, LassoData> nextTrainingData = trainingDataProvider.getNextTrainingData();
+  public void runMiniBatch(final Collection<LassoData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
 
-    // Model is trained by each mini-batch training data.
-    while (!nextTrainingData.isEmpty()) {
-      final List<LassoData> instances = new ArrayList<>(nextTrainingData.values());
+    pullModels();
 
-      // Pull the old model which should be trained in this while loop.
-      pullModels();
+    // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
+    // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
+    final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchData);
+    final Matrix featureMatrix = featureMatrixAndValues.getLeft();
+    final Vector yValues = featureMatrixAndValues.getRight();
 
-      // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
-      // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
-      final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(instances);
-      final Matrix featureMatrix = featureMatrixAndValues.getLeft();
-      final Vector yValues = featureMatrixAndValues.getRight();
+    final Vector precalculate = featureMatrix.mmul(newModel);
 
-      final Vector precalculate = featureMatrix.mmul(newModel);
-
-      // For each dimension, compute the optimal value.
-      for (int i = 0; i < numFeatures; i++) {
-        final Vector columnVector = featureMatrix.sliceColumn(i);
-        final double columnNorm = columnVector.dot(columnVector);
-        if (columnNorm == 0 || newModel.get(i) == 0) {
-          continue;
-        }
-        precalculate.subi(columnVector.scale(newModel.get(i)));
-        newModel.set(i, sthresh((columnVector.dot(yValues.sub(precalculate))) / columnNorm, lambda, columnNorm));
-        precalculate.addi(columnVector.scale(newModel.get(i)));
+    // For each dimension, compute the optimal value.
+    for (int i = 0; i < numFeatures; i++) {
+      final Vector columnVector = featureMatrix.sliceColumn(i);
+      final double columnNorm = columnVector.dot(columnVector);
+      if (columnNorm == 0 || newModel.get(i) == 0) {
+        continue;
       }
-
-      // Push the new model to the server.
-      pushAndResetGradients();
-
-      totalInstancesProcessed.addAll(instances);
-      nextTrainingData = trainingDataProvider.getNextTrainingData();
+      precalculate.subi(columnVector.scale(newModel.get(i)));
+      newModel.set(i, sthresh((columnVector.dot(yValues.sub(precalculate))) / columnNorm, lambda, columnNorm));
+      precalculate.addi(columnVector.scale(newModel.get(i)));
     }
 
-    if (decayRate != 1 && (iteration + 1) % decayPeriod == 0) {
-      final double prevStepSize = stepSize;
-      stepSize *= decayRate;
-      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
-              new Object[]{decayPeriod, prevStepSize, stepSize});
-    }
+    pushGradients();
+  }
+
+  @Override
+  public void onEpochFinished(final Collection<LassoData> epochData, final EpochInfo epochInfo) {
+    final int epochIdx = epochInfo.getEpochIdx();
 
     // Calculate the loss value.
     pullModels();
-    final double loss = computeLoss(totalInstancesProcessed);
+
+    final double loss = computeLoss(epochData);
     LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
-    if ((iteration + 1) % PRINT_MODEL_PERIOD == 0) {
+    if ((epochIdx + 1) % PRINT_MODEL_PERIOD == 0) {
       for (int i = 0; i < numFeatures; i++) {
         LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
+    }
+
+    if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+          new Object[]{decayPeriod, prevStepSize, stepSize});
     }
   }
 
@@ -172,7 +162,7 @@ final class LassoTrainer implements Trainer {
    * @param instances training data examples
    * @return the pair of feature matrix and vector composed of y values.
    */
-  private Pair<Matrix, Vector> convertToFeaturesAndValues(final List<LassoData> instances) {
+  private Pair<Matrix, Vector> convertToFeaturesAndValues(final Collection<LassoData> instances) {
     final List<Vector> features = new LinkedList<>();
     final Vector values = vectorFactory.createDenseZeros(instances.size());
     int iter = 0;
@@ -200,7 +190,7 @@ final class LassoTrainer implements Trainer {
   /**
    * Push the gradients to parameter server.
    */
-  private void pushAndResetGradients() {
+  private void pushGradients() {
     final Vector gradient = newModel.sub(oldModel);
     for (int modelIndex = 0; modelIndex < numFeatures; ++modelIndex) {
       parameterWorker.push(modelIndex, stepSize * gradient.get(modelIndex));
@@ -230,7 +220,7 @@ final class LassoTrainer implements Trainer {
   /**
    * Compute the loss value for the data.
    */
-  private double computeLoss(final List<LassoData> data) {
+  private double computeLoss(final Collection<LassoData> data) {
     double squaredErrorSum = 0;
     double reg = 0;
 

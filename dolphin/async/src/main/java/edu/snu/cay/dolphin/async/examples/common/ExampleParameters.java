@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.examples.param;
+package edu.snu.cay.dolphin.async.examples.common;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
@@ -34,8 +34,13 @@ public final class ExampleParameters {
   public final class NumWorkers implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The time to sleep to simulate the computation in workers",
+  @NamedParameter(doc = "The time to sleep (per training data instance) to simulate the computation in workers",
       short_name = "compute_time_ms", default_value = "300")
   public final class ComputeTimeMs implements Name<Long> {
+  }
+
+  @NamedParameter(doc = "The number of data instances to assign each worker",
+      short_name = "num_training_data")
+  public final class NumTrainingData implements Name<Integer> {
   }
 }
