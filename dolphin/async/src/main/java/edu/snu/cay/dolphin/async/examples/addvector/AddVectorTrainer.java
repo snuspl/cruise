@@ -104,7 +104,7 @@ final class AddVectorTrainer implements Trainer {
 
     this.computeTime = computeTime;
     this.miniBatchSize = miniBatchSize;
-    final int numMiniBatches = (numTrainingData + miniBatchSize - 1) / miniBatchSize;
+    final int numMiniBatches = numTrainingData / miniBatchSize + (numTrainingData % miniBatchSize != 0 ? 1 : 0);
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
     this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatches;
