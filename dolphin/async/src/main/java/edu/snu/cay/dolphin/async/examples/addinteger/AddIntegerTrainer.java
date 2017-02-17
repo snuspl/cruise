@@ -17,16 +17,17 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.common.metric.*;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
+import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Collection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -61,11 +62,6 @@ final class AddIntegerTrainer implements Trainer {
   private final int numberOfKeys;
 
   /**
-   * The number of updates for each key in an iteration.
-   */
-  private final int numberOfUpdates;
-
-  /**
    * Sleep time to simulate computation.
    */
   private final long computeTime;
@@ -75,8 +71,6 @@ final class AddIntegerTrainer implements Trainer {
    */
   private final int expectedResult;
 
-  private final MemoryStore<Long> memoryStore;
-
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final Tracer computeTracer;
@@ -84,25 +78,24 @@ final class AddIntegerTrainer implements Trainer {
   @Inject
   private AddIntegerTrainer(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
                             @Parameter(Parameters.Iterations.class) final int numIterations,
+                            @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
                             @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                             @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
-                            @Parameter(AddIntegerREEF.NumUpdatesPerItr.class) final int numberOfUpdates,
-                            final MemoryStore<Long> memoryStore,
+                            @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData,
                             final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
     this.numberOfKeys = numberOfKeys;
-    this.numberOfUpdates = numberOfUpdates;
     this.computeTime = computeTime;
+    final int numMiniBatches = numTrainingData / miniBatchSize + (numTrainingData % miniBatchSize != 0 ? 1 : 0);
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
-    this.expectedResult = delta * numberOfWorkers * numIterations * numberOfUpdates;
-    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numberOfUpdates:{3}",
-        new Object[]{delta, numberOfWorkers, numIterations, numberOfUpdates});
+    this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatches;
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numTrainingData:{3}, numMiniBatches:{4}",
+        new Object[]{delta, numberOfWorkers, numIterations, numTrainingData, numMiniBatches});
 
-    this.memoryStore = memoryStore;
     this.metricsMsgSender = metricsMsgSender;
 
     this.computeTracer = new Tracer();
@@ -113,28 +106,31 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
+  public void runMiniBatch(final Collection miniBatchData, final MiniBatchInfo miniBatchInfo) {
     // sleep to simulate computation
     computeTracer.startTimer();
     try {
-      Thread.sleep(computeTime);
+      Thread.sleep(computeTime * miniBatchData.size());
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     } finally {
       computeTracer.recordTime(1);
     }
 
-    for (int i = 0; i < numberOfUpdates; i++) {
-      for (int key = 0; key < numberOfKeys; key++) {
-        parameterWorker.push(key, delta);
-        final Integer value = parameterWorker.pull(key);
-        LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{key, value});
-      }
+    for (int key = 0; key < numberOfKeys; key++) {
+      parameterWorker.push(key, delta);
+      final Integer value = parameterWorker.pull(key);
+      LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{key, value});
     }
+  }
+
+  @Override
+  public void onEpochFinished(final Collection epochData, final EpochInfo epochInfo) {
+    final double elapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
 
     // send empty metrics to trigger optimization
-    final WorkerMetrics workerMetrics =
-        buildMetricsMsg(memoryStore.getNumBlocks());
+    final WorkerMetrics workerMetrics = buildMetricsMsg(epochInfo.getEpochIdx(), epochInfo.getNumMiniBatches(),
+        epochInfo.getNumEMBlocks(), elapsedTime, epochData.size());
 
     sendMetrics(workerMetrics);
   }
@@ -145,11 +141,16 @@ final class AddIntegerTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMetricsMsg(final int numDataBlocks) {
+  private WorkerMetrics buildMetricsMsg(final int epochIdx, final int numMiniBatches, final int numDataBlocks,
+                                        final double elapsedTime, final int numProcessedItems) {
     return WorkerMetrics.newBuilder()
+        .setEpochIdx(epochIdx)
+        .setNumMiniBatchForEpoch(numMiniBatches)
         .setNumDataBlocks(numDataBlocks)
         .setTotalCompTime(computeTracer.totalElapsedTime())
         .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
+        .setProcessedDataItemCount(numProcessedItems)
+        .setTotalTime(elapsedTime)
         .build();
   }
 

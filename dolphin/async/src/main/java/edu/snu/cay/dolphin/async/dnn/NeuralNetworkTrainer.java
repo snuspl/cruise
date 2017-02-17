@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
@@ -27,7 +29,6 @@ import edu.snu.cay.services.em.exceptions.IdGenerationException;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,7 +37,7 @@ import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.generateIter
 /**
  * Trainer for the neural network job.
  */
-final class NeuralNetworkTrainer implements Trainer {
+final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
 
   private static final Logger LOG = Logger.getLogger(NeuralNetworkTrainer.class.getName());
 
@@ -83,11 +84,8 @@ final class NeuralNetworkTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
-    final Map<Long, NeuralNetworkData> workloadMap = memoryStore.getAll();
-    final Collection<NeuralNetworkData> workload = workloadMap.values();
-
-    for (final NeuralNetworkData data : workload) {
+  public void runMiniBatch(final Collection<NeuralNetworkData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+    for (final NeuralNetworkData data : miniBatchData) {
       if (data.isValidation()) {
         continue;
       }
@@ -102,11 +100,14 @@ final class NeuralNetworkTrainer implements Trainer {
       neuralNetwork.train(input, labels);
       MatrixUtils.free(input);
     }
+  }
 
+  @Override
+  public void onEpochFinished(final Collection<NeuralNetworkData> epochData, final EpochInfo epochInfo) {
     // update parameters for model validation
     neuralNetwork.updateParameters();
 
-    for (final NeuralNetworkData data : workload) {
+    for (final NeuralNetworkData data : epochData) {
       final Matrix input = dataParser.asMatrix(data.getInstances());
       final int[] labels = data.getLabels();
 
@@ -119,8 +120,9 @@ final class NeuralNetworkTrainer implements Trainer {
       MatrixUtils.free(input);
     }
 
+    final int epochIdx = epochInfo.getEpochIdx();
     LOG.log(Level.INFO, generateIterationLog(
-        trainingValidator.getValidationStats(), crossValidator.getValidationStats(), iteration));
+        trainingValidator.getValidationStats(), crossValidator.getValidationStats(), epochIdx));
 
     crossValidator.getValidationStats().reset();
     trainingValidator.getValidationStats().reset();

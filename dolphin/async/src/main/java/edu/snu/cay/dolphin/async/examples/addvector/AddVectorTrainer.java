@@ -18,18 +18,19 @@ package edu.snu.cay.dolphin.async.examples.addvector;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
+import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,12 +52,6 @@ final class AddVectorTrainer implements Trainer {
    */
   private static final int NUM_VALIDATE_RETRIES = 20;
 
-  /**
-   * The number of items to process. Currently AddVectorTrainer is assumed to process only 1 element at fixed cost.
-   * We can extend it by storing data to process in its MemoryStore.
-   */
-  private static final int NUM_DATA_ITEMS_TO_PROCESS = 1;
-
   private final ParameterWorker<Integer, Integer, Vector> parameterWorker;
 
   /**
@@ -74,10 +69,6 @@ final class AddVectorTrainer implements Trainer {
    */
   private final int miniBatchSize;
 
-  // TODO #822: AddVector needs an actual training data set.
-  private static final int NUM_TOTAL_INSTANCES = 10;
-  private final int numMiniBatches;
-
   /**
    * Sleep time to simulate computation.
    */
@@ -87,9 +78,6 @@ final class AddVectorTrainer implements Trainer {
    * The expected total sum of each key.
    */
   private final int expectedResult;
-
-  // TODO #734: Improve AddVector example to enable runtime optimization
-  private final MemoryStore<Long> memoryStore;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -105,7 +93,7 @@ final class AddVectorTrainer implements Trainer {
                            @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
                            @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                            @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
-                           final MemoryStore<Long> memoryStore,
+                           @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData,
                            final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.delta = delta;
@@ -116,14 +104,13 @@ final class AddVectorTrainer implements Trainer {
 
     this.computeTime = computeTime;
     this.miniBatchSize = miniBatchSize;
-    this.numMiniBatches = (int) Math.ceil((double) NUM_TOTAL_INSTANCES / miniBatchSize);
+    final int numMiniBatches = numTrainingData / miniBatchSize + (numTrainingData % miniBatchSize != 0 ? 1 : 0);
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
     this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatches;
-    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numMiniBatchesPerItr:{3}",
-        new Object[]{delta, numberOfWorkers, numIterations, numMiniBatches});
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numTrainingData:{3}, miniBatchSize:{4}",
+        new Object[]{delta, numberOfWorkers, numIterations, numTrainingData, miniBatchSize});
 
-    this.memoryStore = memoryStore;
     this.metricsMsgSender = metricsMsgSender;
 
     this.pushTracer = new Tracer();
@@ -136,46 +123,54 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
-    final long epochStartTime = System.currentTimeMillis();
+  public void runMiniBatch(final Collection miniBatchData, final MiniBatchInfo miniBatchInfo) {
+    resetTracers();
+    final long miniBatchStartTime = System.currentTimeMillis();
+    final int numDataToProcess = miniBatchData.size();
 
-    // run mini-batches
-    for (int miniBatchIdx = 0; miniBatchIdx < numMiniBatches; miniBatchIdx++) {
-      resetTracers();
-      final long miniBatchStartTime = System.currentTimeMillis();
+    // 1. pull model to compute with
+    pullTracer.startTimer();
+    final List<Vector> valueList = parameterWorker.pull(keyList);
+    pullTracer.recordTime(valueList.size());
+    LOG.log(Level.FINE, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
-      // 1. pull model to compute with
-      pullTracer.startTimer();
-      final List<Vector> valueList = parameterWorker.pull(keyList);
-      pullTracer.recordTime(valueList.size());
-      LOG.log(Level.FINE, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
-
-      // 2. sleep to simulate computation
-      try {
-        computeTracer.startTimer();
-        Thread.sleep(computeTime);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
-      } finally {
-        computeTracer.recordTime(NUM_DATA_ITEMS_TO_PROCESS);
-      }
-
-      // 3. push computed model
-      pushTracer.startTimer();
-      for (final int key : keyList) {
-        parameterWorker.push(key, delta);
-      }
-      pushTracer.recordTime(keyList.size());
-
-      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-      final WorkerMetrics miniBatchMetric = buildMiniBatchMetric(iteration, miniBatchIdx, miniBatchElapsedTime);
-      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
-      sendMetrics(miniBatchMetric);
+    // 2. sleep to simulate computation
+    try {
+      computeTracer.startTimer();
+      Thread.sleep(computeTime * numDataToProcess);
+    } catch (final InterruptedException e) {
+      LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
+    } finally {
+      computeTracer.recordTime(numDataToProcess);
     }
 
-    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
-    final WorkerMetrics epochMetric = buildEpochMetric(iteration, memoryStore.getNumBlocks(), epochElapsedTime);
-    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    // 3. push computed model
+    pushTracer.startTimer();
+    for (final int key : keyList) {
+      parameterWorker.push(key, delta);
+    }
+    pushTracer.recordTime(keyList.size());
+
+    final int epochIdx = miniBatchInfo.getEpochIdx();
+    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
+    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+    final WorkerMetrics miniBatchMetric =
+        buildMiniBatchMetric(epochIdx, miniBatchIdx, miniBatchElapsedTime, numDataToProcess);
+    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
+    sendMetrics(miniBatchMetric);
+  }
+
+  @Override
+  public void onEpochFinished(final Collection epochData, final EpochInfo epochInfo) {
+    final int epochIdx = epochInfo.getEpochIdx();
+    final int numMiniBatches = epochInfo.getNumMiniBatches();
+    final int numEMBlocks = epochInfo.getNumEMBlocks();
+    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
+    final int numProcessedData = epochData.size();
+
+    final WorkerMetrics epochMetric =
+        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochElapsedTime, numProcessedData);
+    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
   }
 
@@ -185,12 +180,13 @@ final class AddVectorTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx, final double elapsedTime) {
+  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx, final double elapsedTime,
+                                             final int numProcessedItems) {
     return WorkerMetrics.newBuilder()
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
         .setMiniBatchIdx(miniBatchIdx)
-        .setProcessedDataItemCount(NUM_DATA_ITEMS_TO_PROCESS)
+        .setProcessedDataItemCount(numProcessedItems)
         .setTotalTime(elapsedTime)
         .setTotalCompTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
@@ -201,13 +197,14 @@ final class AddVectorTrainer implements Trainer {
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int iteration, final int numDataBlocks, final double elapsedTime) {
+  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatches, final int numDataBlocks,
+                                         final double elapsedTime, final int numProcessedItems) {
     return WorkerMetrics.newBuilder()
         .setEpochIdx(iteration)
         .setMiniBatchSize(miniBatchSize)
         .setNumMiniBatchForEpoch(numMiniBatches)
         .setNumDataBlocks(numDataBlocks)
-        .setProcessedDataItemCount(numMiniBatches * NUM_DATA_ITEMS_TO_PROCESS)
+        .setProcessedDataItemCount(numProcessedItems)
         .setTotalTime(elapsedTime)
         .build();
   }

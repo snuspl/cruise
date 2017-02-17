@@ -17,13 +17,11 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
-import edu.snu.cay.dolphin.async.NullDataParser;
-import edu.snu.cay.dolphin.async.examples.param.ExampleParameters;
+import edu.snu.cay.dolphin.async.examples.common.ExampleDataParser;
+import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
  * Application launching code for AddIntegerREEF.
@@ -46,20 +44,16 @@ public final class AddIntegerREEF {
     return AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(AddIntegerTrainer.class)
         .setUpdaterClass(AddIntegerUpdater.class)
-        .setParserClass(NullDataParser.class)
+        .setParserClass(ExampleDataParser.class)
         .addParameterClass(ExampleParameters.DeltaValue.class)
         .addParameterClass(ExampleParameters.NumKeys.class)
-        .addParameterClass(NumUpdatesPerItr.class)
         .addParameterClass(ExampleParameters.NumWorkers.class)
         .addParameterClass(ExampleParameters.ComputeTimeMs.class)
+        .addParameterClass(ExampleParameters.NumTrainingData.class)
         .build(), conf);
   }
 
   public static void main(final String[] args) {
     runAddInteger(args, Tang.Factory.getTang().newConfigurationBuilder().build());
-  }
-
-  @NamedParameter(doc = "The number of updates for each key in an iteration", short_name = "num_updates")
-  final class NumUpdatesPerItr implements Name<Integer> {
   }
 }
