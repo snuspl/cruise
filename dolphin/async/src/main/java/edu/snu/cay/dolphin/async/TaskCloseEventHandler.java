@@ -23,11 +23,11 @@ import javax.inject.Inject;
 /**
  * Event handler that is called when a Task is requested to close.
  */
-public final class TaskCloseEventHandler implements EventHandler<CloseEvent> {
+final class TaskCloseEventHandler implements EventHandler<CloseEvent> {
   private final AsyncWorkerTask asyncWorkerTask;
 
   @Inject
-  TaskCloseEventHandler(final AsyncWorkerTask asyncWorkerTask) {
+  private TaskCloseEventHandler(final AsyncWorkerTask asyncWorkerTask) {
     this.asyncWorkerTask = asyncWorkerTask;
   }
 
