@@ -18,6 +18,8 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -27,7 +29,6 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,7 +38,7 @@ import static edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.*;
  * {@link Trainer} class for the GBTREEF application.
  * Tree growing algorithm and boosting algorithm follows XGBoost.
  */
-final class GBTTrainer implements Trainer {
+final class GBTTrainer implements Trainer<GBTData> {
   private static final Logger LOG = Logger.getLogger(GBTTrainer.class.getName());
 
   private static final int TYPE_LINE = -1;
@@ -240,17 +241,10 @@ final class GBTTrainer implements Trainer {
    *    - if the feature type is label, pre-calculate sum of g values for each class.
    * 3) Build tree using pre-processed data.
    * 4) Push the tree to the server.
-   *
-   * @param iteration the index of current iteration
    */
   @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
+  public void runMiniBatch(final Collection<GBTData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
     final long startTime = System.currentTimeMillis();
-
-    // At this part, you can get all the training data.
-    // You have to set the mini-batch size larger than the data size.
-    final Map<Long, GBTData> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    final List<GBTData> instances = new ArrayList<>(nextTrainingData.values());
 
     // Pull the feature type vector(real number type : 0, label type : 1).
     pullTypeVectors();
@@ -258,11 +252,11 @@ final class GBTTrainer implements Trainer {
     // Divide into two cases : Regression / Classification
     if (valueType == CONTINUOUS_FEATURE) {
       // Calculate residual values for each data in this worker using all the trees.
-      calculateResidual(instances, CONTINUOUS_FEATURE);
+      calculateResidual(miniBatchData, CONTINUOUS_FEATURE);
 
-      // Get data from instances list and fill the certain lists(keyGPair, sortedByFeature, labelList).
+      // Get data from miniBatchData list and fill the certain lists(keyGPair, sortedByFeature, labelList).
       initializePreProcessingLists();
-      final int instanceSize = settingPreProcessingLists(instances);
+      final int instanceSize = settingPreProcessingLists(miniBatchData);
 
       // Pre-processing (prepare two lists to build tree):
       // For each feature type, pre-process the data for the following rules:
@@ -279,18 +273,16 @@ final class GBTTrainer implements Trainer {
       // Push a tree that is built in this run iteration to the server.
       pushTree(0);
 
-      // Clean up data that must be cleared before the next run iteration.
-      cleanAllDataForNextRun();
-      calculateResidual(instances, 0);
-      LOG.log(Level.INFO, "loss value : {0}", computeLoss(instances));
+      calculateResidual(miniBatchData, 0);
+      LOG.log(Level.INFO, "loss value : {0}", computeLoss(miniBatchData));
     } else {
       for (int label = 0; label < valueType; label++) {
         // Calculate residual values for each data in this worker using all the trees for this label.
-        calculateResidual(instances, label);
+        calculateResidual(miniBatchData, label);
 
-        // Get data from instances list and fill the certain lists(keyGPair, sortedByFeature, labelList).
+        // Get data from miniBatchData list and fill the certain lists(keyGPair, sortedByFeature, labelList).
         initializePreProcessingLists();
-        final int instanceSize = settingPreProcessingLists(instances);
+        final int instanceSize = settingPreProcessingLists(miniBatchData);
 
         // Pre-processing (prepare two lists to build tree):
         // For each feature type, pre-process the data for the following rules:
@@ -307,21 +299,35 @@ final class GBTTrainer implements Trainer {
         // Push a tree that is built in this run iteration to the server.
         pushTree(label);
 
-        // Clean up data that must be cleared before the next run iteration.
+        // Clean up data that must be cleared before the next label's training.
         cleanAllDataForNextRun();
       }
       double loss = 0;
       for (int label = 0; label < valueType; label++) {
-        calculateResidual(instances, label);
-        loss += computeLoss(instances);
+        calculateResidual(miniBatchData, label);
+        loss += computeLoss(miniBatchData);
       }
       LOG.log(Level.INFO, "loss value : {0}", loss);
     }
-    // This is for the test.
-    if (iteration == (maxIteration - 1)) {
-      testTrainingCode(instances);
-    }
     LOG.log(Level.INFO, "running time : {0}", System.currentTimeMillis() - startTime);
+  }
+
+  /**
+   * Print the predicted value or label of each data of epochData.
+   *
+   * @param epochData the training data that has been processed in the epoch
+   * @param epochInfo the metadata of the epoch (e.g., epochIdx, the number of mini-batches)
+   */
+  @Override
+  public void onEpochFinished(final Collection<GBTData> epochData, final EpochInfo epochInfo) {
+    // Clean up data that must be cleared before the next run iteration.
+    cleanAllDataForNextRun();
+
+    final int epochIdx = epochInfo.getEpochIdx();
+    // This is for the test.
+    if (epochIdx == (maxIteration - 1)) {
+      testTrainingCode(epochData);
+    }
   }
 
   /**
@@ -668,7 +674,7 @@ final class GBTTrainer implements Trainer {
    * Set the pre-processing lists by using instances list and return size of instances list except a data with
    * TYPE_LINE(-1) identity.
    */
-  private int settingPreProcessingLists(final List<GBTData> instances) {
+  private int settingPreProcessingLists(final Collection<GBTData> instances) {
     int instanceSize = 0;
     for (final GBTData instance : instances) {
       final int identity = instance.getIdentity();
@@ -732,7 +738,7 @@ final class GBTTrainer implements Trainer {
    * in this worker.
    * Then, calculate residual values for each data by using real y-values and predicted values.
    */
-  private void calculateResidual(final List<GBTData> instances, final int label) {
+  private void calculateResidual(final Collection<GBTData> instances, final int label) {
     pullAllTrees(label);
     final double[] predictedValue = new double[numData];
     for (int i = 0; i < numData; i++) {
@@ -822,7 +828,7 @@ final class GBTTrainer implements Trainer {
   /**
    * This method prints the expected y-value for each data based on the trees that are built.
    */
-  private void testTrainingCode(final List<GBTData> instances) {
+  private void testTrainingCode(final Collection<GBTData> instances) {
     if (valueType == CONTINUOUS_FEATURE) {
       pullAllTrees(0);
       final double[] predictedValue = new double[numData];
@@ -974,7 +980,7 @@ final class GBTTrainer implements Trainer {
   /**
    * Compute loss value using residual values.
    */
-  private double computeLoss(final List<GBTData> instances) {
+  private double computeLoss(final Collection<GBTData> instances) {
     double loss = 0;
     for (final GBTData instance : instances) {
       loss += residual.get(instance.getIdentity()) * residual.get(instance.getIdentity());

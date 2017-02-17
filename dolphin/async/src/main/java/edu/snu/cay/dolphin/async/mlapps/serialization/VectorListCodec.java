@@ -27,6 +27,9 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import org.apache.reef.io.serialization.Codec;
 
+/**
+ * Codec for vector list.
+ */
 public final class VectorListCodec implements Codec<List<Vector>> {
 
   private final VectorFactory vectorFactory;
@@ -45,10 +48,9 @@ public final class VectorListCodec implements Codec<List<Vector>> {
       totalLength += 32 + 64 * e.length();
     }
 
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream(32 + totalLength);
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE + totalLength);
 
-    try {
-      final DataOutputStream dos = new DataOutputStream(baos);
+    try (DataOutputStream dos  = new DataOutputStream(baos)) {
       Throwable totalThrow = null;
 
       try {

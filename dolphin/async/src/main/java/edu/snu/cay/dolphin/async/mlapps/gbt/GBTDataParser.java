@@ -66,6 +66,7 @@ final class GBTDataParser implements DataParser<GBTData> {
       }
 
       final String[] split = text.split("\\s+");
+      assert (split.length == numFeatures + 2);  // split array is composed of identity, feature, and y-value.
       final Vector feature =  vectorFactory.createDenseZeros(numFeatures);
       final int identity = Integer.parseInt(split[0]);
       for (int index = 1; index <= numFeatures; index++) {

@@ -22,7 +22,9 @@ import org.apache.reef.io.serialization.Codec;
 
 import java.util.List;
 
-
+/**
+ * Provides the VectorListCodec that (de-)serializes.
+ */
 public final class VectorListSerializer implements Serializer {
   private final Codec<List<Vector>> vectorListCodec;
 

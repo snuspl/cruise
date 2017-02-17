@@ -30,19 +30,19 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
  */
 public interface Tree<T> {
   /**
-   * Return the node at thisNode-index of the list.
+   * Return the node at nodeIdx-index of the list.
    */
-  T get(int thisNode);
+  T get(int nodeIdx);
 
   /**
-   * Return the left child of the node at thisNode-index of the list.
+   * Return the left child of the node at nodeIdx-index of the list.
    */
-  T leftChild(int thisNode);
+  T leftChild(int nodeIdx);
 
   /**
-   * Return the right child of the node at thisNode-index of the list.
+   * Return the right child of the node at nodeIdx-index of the list.
    */
-  T rightChild(int thisNode);
+  T rightChild(int nodeIdx);
 
   /**
    * Add newNode at the end of the list.
