@@ -22,8 +22,6 @@ import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.task.Task;
-import org.apache.reef.task.events.CloseEvent;
-import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.Collection;
@@ -36,21 +34,21 @@ import java.util.logging.Logger;
  * REEF Task for a trainer thread of {@code dolphin-async} applications.
  */
 @Unit
-final class AsyncWorkerTask implements Task {
+final class AsyncWorkerTask<K, V> implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
 
   private final String taskId;
   private final int maxIterations;
   private final WorkerSynchronizer synchronizer;
-  private final TrainingDataProvider trainingDataProvider;
-  private final MemoryStore memoryStore;
-  private final Trainer trainer;
+  private final TrainingDataProvider<K, V> trainingDataProvider;
+  private final MemoryStore<K> memoryStore;
+  private final Trainer<V> trainer;
   private final WorkerClock workerClock;
 
   /**
    * A boolean flag shared among all trainer threads.
-   * Trainer threads end when this flag becomes true by {@link CloseEventHandler#onNext(CloseEvent)}.
+   * Trainer threads end when this flag becomes true by {@link #close()}.
    */
   private AtomicBoolean abortFlag = new AtomicBoolean(false);
 
@@ -58,9 +56,9 @@ final class AsyncWorkerTask implements Task {
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
                           final WorkerSynchronizer synchronizer,
-                          final TrainingDataProvider trainingDataProvider,
-                          final MemoryStore memoryStore,
-                          final Trainer trainer,
+                          final TrainingDataProvider<K, V> trainingDataProvider,
+                          final MemoryStore<K> memoryStore,
+                          final Trainer<V> trainer,
                           final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
@@ -99,11 +97,11 @@ final class AsyncWorkerTask implements Task {
       final int numEMBlocks = memoryStore.getNumBlocks();
       trainingDataProvider.prepareDataForEpoch();
 
-      final Collection epochData = new LinkedList<>();
+      final Collection<V> epochData = new LinkedList<>();
 
       int miniBatchIdx = 0;
       while (true) {
-        final Collection miniBatchData = trainingDataProvider.getNextTrainingData().values();
+        final Collection<V> miniBatchData = trainingDataProvider.getNextTrainingData().values();
         if (miniBatchData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
         }
@@ -148,10 +146,10 @@ final class AsyncWorkerTask implements Task {
     return null;
   }
 
-  final class CloseEventHandler implements EventHandler<CloseEvent> {
-    @Override
-    public void onNext(final CloseEvent closeEvent) {
-      abortFlag.set(true);
-    }
+  /**
+   * Called when the Task is requested to close.
+   */
+  void close() {
+    abortFlag.set(true);
   }
 }
