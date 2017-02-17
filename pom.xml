@@ -361,23 +361,23 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>cobertura-maven-plugin</artifactId>
         <configuration>
-          <instrumentation>
-            <excludes>
-              <exclude>edu/snu/cay/dolphin/examples/**/*.class</exclude>
-              <exclude>edu/snu/cay/services/em/examples/**/*.class</exclude>
-              <exclude>edu/snu/cay/services/shuffle/examples/**/*.class</exclude>
-            </excludes>
-          </instrumentation>
-          <aggregate>true</aggregate>
-        </configuration>
-        <executions>
-          <execution>
-            <goals>
-              <goal>clean</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+      <instrumentation>
+        <excludes>
+          <exclude>edu/snu/cay/dolphin/examples/**/*.class</exclude>
+          <exclude>edu/snu/cay/services/em/examples/**/*.class</exclude>
+          <exclude>edu/snu/cay/services/shuffle/examples/**/*.class</exclude>
+        </excludes>
+      </instrumentation>
+      <aggregate>true</aggregate>
+    </configuration>
+    <executions>
+      <execution>
+        <goals>
+          <goal>clean</goal>
+        </goals>
+      </execution>
+    </executions>
+  </plugin>
     </plugins>
   </build>
 </project>
