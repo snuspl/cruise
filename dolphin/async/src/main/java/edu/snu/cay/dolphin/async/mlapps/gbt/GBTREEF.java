@@ -40,7 +40,6 @@ public final class GBTREEF {
         .setValueCodecClass(VectorListCodec.class)
         .setServerSerializerClass(VectorListSerializer.class)
         .setWorkerSerializerClass(GBTDataSerializer.class)
-        .addParameterClass(NumData.class)
         .addParameterClass(NumFeatures.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)

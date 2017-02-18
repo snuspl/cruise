@@ -39,10 +39,6 @@ final class GBTParameters {
   static final class Gamma implements Name<Double> {
   }
 
-  @NamedParameter(doc = "number of data to train", short_name = "num_of_data")
-  static final class NumData implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "maximum depth of model trees", short_name = "max_depth_of_tree")
   static final class TreeMaxDepth implements Name<Integer> {
   }

@@ -62,7 +62,7 @@ final class GBTTrainer implements Trainer<GBTData> {
   private final ParameterWorker<Integer, List<Vector>, List<Vector>> parameterWorker;
 
   private final int numFeatures;
-  private final int numData;
+  private int epochDataSize = 0;
 
   /**
    * Do not do full optimization in each step.
@@ -81,7 +81,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    * residual = (real y-value) - (predicted y-value).
    * Predicted y-value is calculated by using all the trees that are built.
    */
-  private final Vector residual;
+  private final List<Double> residual;
 
   private final TrainingDataProvider<Long, GBTData> trainingDataProvider;
 
@@ -179,7 +179,6 @@ final class GBTTrainer implements Trainer<GBTData> {
   @Inject
   private GBTTrainer(final ParameterWorker<Integer, List<Vector>, List<Vector>> parameterWorker,
                      @Parameter(NumFeatures.class) final int numFeatures,
-                     @Parameter(NumData.class) final int numData,
                      @Parameter(StepSize.class) final double stepSize,
                      @Parameter(Lambda.class) final double lambda,
                      @Parameter(Gamma.class) final double gamma,
@@ -190,7 +189,6 @@ final class GBTTrainer implements Trainer<GBTData> {
                      final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
     this.numFeatures = numFeatures;
-    this.numData = numData;
     this.stepSize = stepSize;
     this.lambda = lambda;
     this.gamma = gamma;
@@ -199,7 +197,7 @@ final class GBTTrainer implements Trainer<GBTData> {
     this.leafMinSize = leafMinSize;
     this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
-    this.residual = vectorFactory.createDenseZeros(numData);
+    this.residual = new ArrayList<>();
     this.sortedByFeature = new ArrayList<>(numFeatures);
     this.groupedByLabel = new ArrayList<>(numFeatures);
     this.labelList = new ArrayList<>();
@@ -246,17 +244,22 @@ final class GBTTrainer implements Trainer<GBTData> {
   public void runMiniBatch(final Collection<GBTData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
     final long startTime = System.currentTimeMillis();
 
+    final List<GBTData> instances = new ArrayList<>(miniBatchData);
+    if (miniBatchInfo.getEpochIdx() == 0) {
+      epochDataSize = 0;
+    }
     // Pull the feature type vector(real number type : 0, label type : 1).
     pullTypeVectors();
 
     // Divide into two cases : Regression / Classification
     if (valueType == CONTINUOUS_FEATURE) {
       // Calculate residual values for each data in this worker using all the trees.
-      calculateResidual(miniBatchData, CONTINUOUS_FEATURE);
+      calculateResidual(instances, CONTINUOUS_FEATURE);
 
-      // Get data from miniBatchData list and fill the certain lists(keyGPair, sortedByFeature, labelList).
+      // Get data from instances list and fill the certain lists(keyGPair, sortedByFeature, labelList).
       initializePreProcessingLists();
-      final int instanceSize = settingPreProcessingLists(miniBatchData);
+      final int miniBatchDataSize = settingPreProcessingLists(instances);
+      epochDataSize += miniBatchDataSize;
 
       // Pre-processing (prepare two lists to build tree):
       // For each feature type, pre-process the data for the following rules:
@@ -267,22 +270,25 @@ final class GBTTrainer implements Trainer<GBTData> {
 
       // Build tree model using preprocessed data.
       LOG.log(Level.INFO, "Before building tree: {0}", System.currentTimeMillis() - startTime);
-      buildTree(instanceSize);
+      buildTree(miniBatchDataSize);
       LOG.log(Level.INFO, "After building tree: {0}", System.currentTimeMillis() - startTime);
 
       // Push a tree that is built in this run iteration to the server.
       pushTree(0);
 
-      calculateResidual(miniBatchData, 0);
-      LOG.log(Level.INFO, "loss value : {0}", computeLoss(miniBatchData));
+      calculateResidual(instances, 0);
+      LOG.log(Level.INFO, "loss value : {0}", computeLoss(instances));
     } else {
       for (int label = 0; label < valueType; label++) {
         // Calculate residual values for each data in this worker using all the trees for this label.
-        calculateResidual(miniBatchData, label);
+        calculateResidual(instances, label);
 
-        // Get data from miniBatchData list and fill the certain lists(keyGPair, sortedByFeature, labelList).
+        // Get data from instances list and fill the certain lists(keyGPair, sortedByFeature, labelList).
         initializePreProcessingLists();
-        final int instanceSize = settingPreProcessingLists(miniBatchData);
+        final int miniBatchDataSize = settingPreProcessingLists(instances);
+        if (label == 0) {
+          epochDataSize += miniBatchDataSize;
+        }
 
         // Pre-processing (prepare two lists to build tree):
         // For each feature type, pre-process the data for the following rules:
@@ -293,19 +299,21 @@ final class GBTTrainer implements Trainer<GBTData> {
 
         // Build tree model using preprocessed data.
         LOG.log(Level.INFO, "Before building tree: {0}", System.currentTimeMillis() - startTime);
-        buildTree(instanceSize);
+        buildTree(miniBatchDataSize);
         LOG.log(Level.INFO, "After building tree: {0}", System.currentTimeMillis() - startTime);
 
         // Push a tree that is built in this run iteration to the server.
         pushTree(label);
 
-        // Clean up data that must be cleared before the next label's training.
-        cleanAllDataForNextRun();
+        if (label != valueType - 1) {
+          // Clean up data that must be cleared before the next label's training.
+          cleanAllDataForNextRun();
+        }
       }
       double loss = 0;
       for (int label = 0; label < valueType; label++) {
-        calculateResidual(miniBatchData, label);
-        loss += computeLoss(miniBatchData);
+        calculateResidual(instances, label);
+        loss += computeLoss(instances);
       }
       LOG.log(Level.INFO, "loss value : {0}", loss);
     }
@@ -320,14 +328,15 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   @Override
   public void onEpochFinished(final Collection<GBTData> epochData, final EpochInfo epochInfo) {
-    // Clean up data that must be cleared before the next run iteration.
-    cleanAllDataForNextRun();
-
     final int epochIdx = epochInfo.getEpochIdx();
+    final List<GBTData> instances = new ArrayList<>(epochData);
     // This is for the test.
     if (epochIdx == (maxIteration - 1)) {
-      testTrainingCode(epochData);
+      testTrainingCode(instances);
     }
+
+    // Clean up data that must be cleared before the next run iteration.
+    cleanAllDataForNextRun();
   }
 
   /**
@@ -443,18 +452,18 @@ final class GBTTrainer implements Trainer<GBTData> {
     double gL = 0;
     final List<Pair<Integer, Double>> thisSortedFeature = sortedByFeature.get(feature).get(treeNode);
 
-    for (int dataNum = 0; dataNum < nodeSize - 1; dataNum++) {
+    for (int dataIdx = 0; dataIdx < nodeSize - 1; dataIdx++) {
       boolean childNotExistError = false;
-      final Pair<Integer, Double> data = thisSortedFeature.get(dataNum);
+      final Pair<Integer, Double> data = thisSortedFeature.get(dataIdx);
       gL += keyGPair.get(data.getLeft()).getRight();
-      while (Math.abs(thisSortedFeature.get(dataNum + 1).getRight() - data.getRight()) < 1e-9) {
-        gL += keyGPair.get(thisSortedFeature.get(++dataNum).getLeft()).getRight();
-        if (dataNum >= nodeSize - 1) {
+      while (Math.abs(thisSortedFeature.get(dataIdx + 1).getRight() - data.getRight()) < 1e-9) {
+        gL += keyGPair.get(thisSortedFeature.get(++dataIdx).getLeft()).getRight();
+        if (dataIdx >= nodeSize - 1) {
           childNotExistError = true; break;
         }
       }
       if (!childNotExistError) {
-        final double tempGain = calculateGain(gL, gSum - gL, dataNum + 1, nodeSize - (dataNum + 1), totalGain);
+        final double tempGain = calculateGain(gL, gSum - gL, dataIdx + 1, nodeSize - (dataIdx + 1), totalGain);
         if (tempGain > retGain) {
           retGain = tempGain;
           retFeature = feature;
@@ -674,15 +683,16 @@ final class GBTTrainer implements Trainer<GBTData> {
    * Set the pre-processing lists by using instances list and return size of instances list except a data with
    * TYPE_LINE(-1) identity.
    */
-  private int settingPreProcessingLists(final Collection<GBTData> instances) {
+  private int settingPreProcessingLists(final List<GBTData> instances) {
     int instanceSize = 0;
+    int dataIdx = 0;
     for (final GBTData instance : instances) {
       final int identity = instance.getIdentity();
       final Vector featureVector = instance.getFeature();
       if (identity == TYPE_LINE) {
         continue;
       }
-      keyGPair.add(Pair.of(identity, -2.0 * residual.get(identity)));
+      keyGPair.add(Pair.of(identity, -2.0 * residual.get(dataIdx++)));
       for (int feature = 0; feature < numFeatures; feature++) {
         if (featureType.get(feature) == CONTINUOUS_FEATURE) {
           sortedByFeature.get(feature).get(0).add(Pair.of(instanceSize, featureVector.get(feature)));
@@ -738,31 +748,41 @@ final class GBTTrainer implements Trainer<GBTData> {
    * in this worker.
    * Then, calculate residual values for each data by using real y-values and predicted values.
    */
-  private void calculateResidual(final Collection<GBTData> instances, final int label) {
+  private void calculateResidual(final List<GBTData> instances, final int label) {
     pullAllTrees(label);
-    final double[] predictedValue = new double[numData];
-    for (int i = 0; i < numData; i++) {
-      predictedValue[i] = 0;
-    }
+    final List<Double> predictedValue = new ArrayList<>();
+    int treeNum = 0;
     for (final GBTree thisTree : forest) {
+      int dataIdx = 0;
       for (final GBTData instance : instances) {
         if (instance.getIdentity() != TYPE_LINE) {
-          predictedValue[instance.getIdentity()] += stepSize * predictByTree(instance, thisTree);
+          if (treeNum == 0) {
+            predictedValue.add(0.0);
+          }
+          final double originalValue = predictedValue.get(dataIdx);
+          predictedValue.set(dataIdx++,  originalValue + stepSize * predictByTree(instance, thisTree));
         }
       }
+      treeNum++;
     }
+
+    int dataIdx = 0;
+    residual.clear();
     for (final GBTData instance : instances) {
-      final int identity = instance.getIdentity();
-      if (identity != TYPE_LINE) {
-        final double thisPredictedValue = predictedValue[identity];
+      if (instance.getIdentity() != TYPE_LINE) {
         final double thisValue = instance.getValue();
+        if (forest.isEmpty()) {
+          residual.add(thisValue);
+          continue;
+        }
+        final double thisPredictedValue = predictedValue.get(dataIdx++);
         if (valueType == CONTINUOUS_FEATURE) {
-          residual.set(identity, thisValue - thisPredictedValue);
+          residual.add(thisValue - thisPredictedValue);
         } else {
           if (Math.abs(thisValue - label) < 1e-9) {
-            residual.set(identity, 1 - thisPredictedValue);
+            residual.add(1 - thisPredictedValue);
           } else {
-            residual.set(identity, -thisPredictedValue);
+            residual.add(-thisPredictedValue);
           }
         }
       }
@@ -828,26 +848,29 @@ final class GBTTrainer implements Trainer<GBTData> {
   /**
    * This method prints the expected y-value for each data based on the trees that are built.
    */
-  private void testTrainingCode(final Collection<GBTData> instances) {
+  private void testTrainingCode(final List<GBTData> instances) {
     if (valueType == CONTINUOUS_FEATURE) {
       pullAllTrees(0);
-      final double[] predictedValue = new double[numData];
-      for (int i = 0; i < numData; i++) {
+      final double[] predictedValue = new double[epochDataSize];
+      for (int i = 0; i < epochDataSize; i++) {
         predictedValue[i] = 0;
       }
       for (final GBTree thisTree : forest) {
+        int dataIdx = 0;
         for (final GBTData instance : instances) {
           if (instance.getIdentity() != TYPE_LINE) {
-            predictedValue[instance.getIdentity()] += stepSize * predictByTree(instance, thisTree);
+            predictedValue[dataIdx++] += stepSize * predictByTree(instance, thisTree);
           }
         }
+        epochDataSize = dataIdx;
       }
-      for (int i = 0; i < numData; i++) {
-        LOG.log(Level.INFO, "Value {0} : {1}", new Object[]{i, predictedValue[i]});
+      for (int i = 0; i < epochDataSize; i++) {
+        LOG.log(Level.INFO, "Value {0} : {1}", new Object[]{instances.get(i).getIdentity(), predictedValue[i]});
       }
     } else {
-      final double[][] predictedValue = new double[numData][valueType];
-      for (int  i = 0; i < numData; i++) {
+      int wrongNum = 0;
+      final double[][] predictedValue = new double[epochDataSize][valueType];
+      for (int  i = 0; i < epochDataSize; i++) {
         for (int j = 0; j < valueType; j++) {
           predictedValue[i][j] = 0;
         }
@@ -855,24 +878,35 @@ final class GBTTrainer implements Trainer<GBTData> {
       for (int label = 0; label < valueType; label++) {
         pullAllTrees(label);
         for (final GBTree thisTree : forest) {
+          int dataIdx = 0;
           for (final GBTData instance : instances) {
             if (instance.getIdentity() != TYPE_LINE) {
-              predictedValue[instance.getIdentity()][label] += stepSize * predictByTree(instance, thisTree);
+              predictedValue[dataIdx++][label] += stepSize * predictByTree(instance, thisTree);
             }
           }
+          epochDataSize = dataIdx;
         }
       }
-      for (int i = 0; i < numData; i++) {
-        int predictedResult = 0;
-        double maxValue = predictedValue[i][0];
-        for (int j = 1; j < valueType; j++) {
-          if (predictedValue[i][j] > maxValue) {
-            maxValue = predictedValue[i][j];
-            predictedResult = j;
+      int dataIdx = 0;
+      for (final GBTData instance : instances) {
+        if (instance.getIdentity() != TYPE_LINE) {
+          int predictedResult = 0;
+          double maxValue = predictedValue[dataIdx][0];
+          for (int label = 1; label < valueType; label++) {
+            if (predictedValue[dataIdx][label] > maxValue) {
+              maxValue = predictedValue[dataIdx][label];
+              predictedResult = label;
+            }
           }
+          if (Math.abs(predictedResult - instance.getValue()) > 1e-9) {
+            wrongNum++;
+          }
+          LOG.log(Level.INFO, "value {0} : {1}", new Object[]{instance.getIdentity(), predictedResult});
+          dataIdx++;
         }
-        LOG.log(Level.INFO, "value {0} : {1}", new Object[]{i, predictedResult});
       }
+      LOG.log(Level.INFO, "number of wrong prediction : {0}, error rate : {1}",
+              new Object[]{wrongNum, (double) wrongNum / epochDataSize});
     }
   }
 
@@ -980,12 +1014,16 @@ final class GBTTrainer implements Trainer<GBTData> {
   /**
    * Compute loss value using residual values.
    */
-  private double computeLoss(final Collection<GBTData> instances) {
+  private double computeLoss(final List<GBTData> instances) {
     double loss = 0;
+    int dataIdx = 0;
     for (final GBTData instance : instances) {
-      loss += residual.get(instance.getIdentity()) * residual.get(instance.getIdentity());
+      if (instance.getIdentity() != TYPE_LINE) {
+        loss += residual.get(dataIdx) * residual.get(dataIdx);
+        dataIdx++;
+      }
     }
-    loss /= (2 * instances.size());
+    loss /= (2 * dataIdx);
     return loss;
   }
 
