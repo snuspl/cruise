@@ -1,8 +1,10 @@
 package edu.snu.cay.common.datastorer;
 
+import java.io.IOException;
+
 /**
- * Created by yunseong on 2/13/17.
+ *
  */
 public interface DataStorer {
-  void storeData(String path, byte[] data);
+  void storeData(String subPath, byte[] data) throws IOException;
 }
