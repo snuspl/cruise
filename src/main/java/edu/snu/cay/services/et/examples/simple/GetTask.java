@@ -28,13 +28,14 @@ import java.util.logging.Logger;
 
 import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.TABLE0_ID;
 import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.TABLE1_ID;
-import static edu.snu.cay.services.et.examples.simple.SubscriberTask.*;
+import static edu.snu.cay.services.et.examples.simple.PutTask.*;
 
 /**
- * Task code for associators in simple example.
+ * Task code that gets values from tables.
+ * It should be submitted after {@link PutTask} is done.
  */
-final class AssociatorTask implements Task {
-  private static final Logger LOG = Logger.getLogger(AssociatorTask.class.getName());
+final class GetTask implements Task {
+  private static final Logger LOG = Logger.getLogger(GetTask.class.getName());
 
   private final String elasticTableId;
 
@@ -43,24 +44,19 @@ final class AssociatorTask implements Task {
   private final TableAccessor tableAccessor;
 
   @Inject
-  private AssociatorTask(@Parameter(ETIdentifier.class) final String elasticTableId,
-                         @Parameter(ExecutorIdentifier.class) final String executorId,
-                         final TableAccessor tableAccessor) {
+  private GetTask(@Parameter(ETIdentifier.class) final String elasticTableId,
+                  @Parameter(ExecutorIdentifier.class) final String executorId,
+                  final TableAccessor tableAccessor) {
     this.elasticTableId = elasticTableId;
     this.executorId = executorId;
     this.tableAccessor = tableAccessor;
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public byte[] call(final byte[] bytes) throws Exception {
-    LOG.log(Level.INFO, "Hello, {0}! I am an associator with an executor id {1}",
-        new Object[]{elasticTableId, executorId});
+    LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
     final Table<Long, String> table0 = tableAccessor.get(TABLE0_ID);
     final Table<Long, String> table1 = tableAccessor.get(TABLE1_ID);
-
-    // wait until subscriber tasks put values to tables before starting getting values
-    Thread.sleep(5000);
 
     final String value00 = table0.get(KEY0);
     final String value01 = table0.get(KEY1);
@@ -77,8 +73,6 @@ final class AssociatorTask implements Task {
       throw new RuntimeException("The result is different from the expectation");
     }
 
-    // wait until all executors get values from tables
-    Thread.sleep(5000);
     return null;
   }
 }

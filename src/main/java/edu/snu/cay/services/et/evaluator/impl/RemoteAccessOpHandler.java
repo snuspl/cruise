@@ -147,8 +147,7 @@ public final class RemoteAccessOpHandler implements EventHandler<TableAccessMsg>
             final OpType opType = operation.getOpType();
             switch (opType) {
             case PUT:
-              block.put(operation.getKey(), operation.getValue().get());
-              output = null;
+              output = block.put(operation.getKey(), operation.getValue().get());
               break;
             case GET:
               output = block.get(operation.getKey());

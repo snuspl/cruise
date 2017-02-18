@@ -15,8 +15,11 @@
  */
 package edu.snu.cay.services.et.driver.api;
 
+import edu.snu.cay.services.et.driver.impl.TaskResult;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
+
+import java.util.concurrent.Future;
 
 /**
  * Represents an allocated executor.
@@ -31,8 +34,9 @@ public interface AllocatedExecutor {
   /**
    * Assign task to executor.
    * @param taskConf task configuration.
+   * @return a future of {@link TaskResult}
    */
-  void submitTask(Configuration taskConf);
+  Future<TaskResult> submitTask(Configuration taskConf);
 
   /**
    * Closes the executor.

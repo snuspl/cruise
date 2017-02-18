@@ -18,7 +18,9 @@ package edu.snu.cay.services.et.driver.impl;
 import edu.snu.cay.services.et.common.impl.CallbackRegistry;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.task.FailedTask;
+import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -26,25 +28,30 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Provides {@link EventHandler} implementation for {@link CompletedTask}.
+ * Provides {@link EventHandler} implementation for {@link FailedTask}.
  */
 @Private
 @DriverSide
-public final class TaskCompletedHandler implements EventHandler<CompletedTask> {
-  private static final Logger LOG = Logger.getLogger(TaskCompletedHandler.class.getName());
+public final class TaskFailedHandler implements EventHandler<FailedTask> {
+  private static final Logger LOG = Logger.getLogger(TaskFailedHandler.class.getName());
   private final CallbackRegistry callbackRegistry;
 
   @Inject
-  private TaskCompletedHandler(final CallbackRegistry callbackRegistry) {
+  private TaskFailedHandler(final CallbackRegistry callbackRegistry) {
     this.callbackRegistry = callbackRegistry;
   }
 
   @Override
-  public void onNext(final CompletedTask completedTask) {
-    final String taskId = completedTask.getId();
-    final String executorId = completedTask.getActiveContext().getEvaluatorId();
-    LOG.log(Level.INFO, "Task {0} completed in executor {1}", new Object[]{taskId, executorId});
+  public void onNext(final FailedTask failedTask) {
+    final String taskId = failedTask.getId();
+    final Optional<ActiveContext> activeContextOptional = failedTask.getActiveContext();
+    if (activeContextOptional.isPresent()) {
+      final String executorId = activeContextOptional.get().getEvaluatorId();
+      LOG.log(Level.INFO, "Task {0} failed in executor {1}", new Object[]{taskId, executorId});
+    } else {
+      LOG.log(Level.INFO, "Task {0} failed", new Object[]{taskId});
+    }
 
-    callbackRegistry.onCompleted(TaskResult.class, taskId, new TaskResult(completedTask));
+    callbackRegistry.onCompleted(TaskResult.class, taskId, new TaskResult(failedTask));
   }
 }

@@ -94,8 +94,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
       // execute operation in local, holding ownershipLock
       if (!remoteIdOptional.isPresent()) {
         final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
-        block.put(key, value);
-        return value;
+        return block.put(key, value);
       }
     } catch (final BlockNotExistsException e) {
       throw new RuntimeException(e);

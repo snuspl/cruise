@@ -30,10 +30,10 @@ import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.TABLE0_ID;
 import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.TABLE1_ID;
 
 /**
- * Task code for subscribers for simple example.
+ * Task code that puts values to tables.
  */
-final class SubscriberTask implements Task {
-  private static final Logger LOG = Logger.getLogger(SubscriberTask.class.getName());
+final class PutTask implements Task {
+  private static final Logger LOG = Logger.getLogger(PutTask.class.getName());
   static final long KEY0 = 0;
   static final long KEY1 = 1;
   static final String VALUE0 = "Table0";
@@ -46,47 +46,32 @@ final class SubscriberTask implements Task {
   private final TableAccessor tableAccessor;
 
   @Inject
-  private SubscriberTask(@Parameter(ETIdentifier.class) final String elasticTableId,
-                         @Parameter(ExecutorIdentifier.class) final String executorId,
-                         final TableAccessor tableAccessor) {
+  private PutTask(@Parameter(ETIdentifier.class) final String elasticTableId,
+                  @Parameter(ExecutorIdentifier.class) final String executorId,
+                  final TableAccessor tableAccessor) {
     this.elasticTableId = elasticTableId;
     this.executorId = executorId;
     this.tableAccessor = tableAccessor;
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public byte[] call(final byte[] bytes) throws Exception {
-    LOG.log(Level.INFO, "Hello, {0}! I am a subscriber with executor id {1}",
-        new Object[]{elasticTableId, executorId});
+    LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
     final Table<Long, String> table0 = tableAccessor.get(TABLE0_ID);
     final Table<Long, String> table1 = tableAccessor.get(TABLE1_ID);
 
-    table0.put(KEY0, VALUE0);
+    final String prevValue00 = table0.put(KEY0, VALUE0);
     LOG.log(Level.INFO, "Put value {0} to key {1} in table0", new Object[]{VALUE0, KEY0});
-    table1.put(KEY1, VALUE1);
+    final String prevValue11 = table1.put(KEY1, VALUE1);
     LOG.log(Level.INFO, "Put value {0} to key {1} in table1", new Object[]{VALUE1, KEY1});
 
-    // wait to be in line with associator tasks that are waiting for a subscriber task to put values to tables
-    Thread.sleep(5000);
+    LOG.log(Level.INFO, "Prev value for key {0} in a table0 is {1}", new Object[]{KEY0, prevValue00});
+    LOG.log(Level.INFO, "Prev value for key {0} in a table1 is {1}", new Object[]{KEY1, prevValue11});
 
-    final String value00 = table0.get(KEY0);
-    final String value01 = table0.get(KEY1);
-    final String value10 = table1.get(KEY0);
-    final String value11 = table1.get(KEY1);
-
-    LOG.log(Level.INFO, "value for key {0} in a table0 is {1}", new Object[]{KEY0, value00});
-    LOG.log(Level.INFO, "value for key {0} in a table0 is {1}", new Object[]{KEY1, value01});
-    LOG.log(Level.INFO, "value for key {0} in a table1 is {1}", new Object[]{KEY0, value10});
-    LOG.log(Level.INFO, "value for key {0} in a table1 is {1}", new Object[]{KEY1, value11});
-
-    if (!value00.equals(VALUE0) || value01 != null ||
-        !value11.equals(VALUE1) || value10 != null) {
+    if (prevValue00 != null || prevValue11 != null) {
       throw new RuntimeException("The result is different from the expectation");
     }
 
-    // wait until all executors get values from tables
-    Thread.sleep(5000);
     return null;
   }
 }

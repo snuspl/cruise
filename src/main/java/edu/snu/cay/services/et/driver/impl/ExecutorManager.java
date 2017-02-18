@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.services.et.common.impl.CallbackRegistry;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
@@ -54,6 +55,8 @@ final class ExecutorManager {
   private static final Logger LOG = Logger.getLogger(ExecutorManager.class.getName());
   private static final String CONTEXT_PREFIX = "ET-";
 
+  private final CallbackRegistry callbackRegistry;
+
   private final EvaluatorManager evaluatorManager;
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
@@ -65,11 +68,13 @@ final class ExecutorManager {
   private final Map<String, AllocatedExecutor> executors = new ConcurrentHashMap<>();
 
   @Inject
-  private ExecutorManager(final EvaluatorManager evaluatorManager,
+  private ExecutorManager(final CallbackRegistry callbackRegistry,
+                          final EvaluatorManager evaluatorManager,
                           final NameServer nameServer,
                           final LocalAddressProvider localAddressProvider,
                           final IdentifierFactory identifierFactory,
                           @Parameter(DriverIdentifier.class) final String driverIdentifier) {
+    this.callbackRegistry = callbackRegistry;
     this.evaluatorManager = evaluatorManager;
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
@@ -93,7 +98,7 @@ final class ExecutorManager {
 
     final List<EventHandler<ActiveContext>> activeCtxHandlers = new ArrayList<>(1);
     activeCtxHandlers.add(activeContext -> {
-      final AllocatedExecutor allocatedExecutor = new AllocatedExecutorImpl(activeContext);
+      final AllocatedExecutor allocatedExecutor = new AllocatedExecutorImpl(activeContext, callbackRegistry);
       LOG.log(Level.INFO, "Allocated executor: {0}", allocatedExecutor.getId());
       synchronized (executorList) {
         executorList.add(allocatedExecutor);

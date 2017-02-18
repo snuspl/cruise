@@ -36,6 +36,9 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.NUM_ASSOCIATORS;
+import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.NUM_SUBSCRIBERS;
+
 /**
  * Client code for simple example.
  */
@@ -43,13 +46,14 @@ public final class SimpleET {
   private static final Logger LOG = Logger.getLogger(SimpleET.class.getName());
 
   private static final String DRIVER_IDENTIFIER = "Simple";
-  private static final int MAX_NUMBER_OF_EVALUATORS = 4; // 1 driver + 2 associator + 1 subscriber
+  private static final int MAX_NUMBER_OF_EVALUATORS = NUM_ASSOCIATORS + NUM_SUBSCRIBERS + 1; // + 1 for driver
   private static final int JOB_TIMEOUT = 30000; // 30 sec.
 
   /**
    * Should not be instantiated.
    */
   private SimpleET() {
+
   }
 
   public static void main(final String[] args) throws InjectionException, IOException {
