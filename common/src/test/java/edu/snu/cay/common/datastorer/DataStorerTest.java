@@ -16,7 +16,6 @@
 package edu.snu.cay.common.datastorer;
 
 import com.google.common.io.Files;
-import edu.snu.cay.common.datastorer.param.BaseDir;
 import org.apache.hadoop.fs.*;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -26,11 +25,13 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Arrays;
 
+import static edu.snu.cay.common.datastorer.DataStorerConfiguration.BASE_DIR;
+import static edu.snu.cay.common.datastorer.DataStorerConfiguration.DATA_STORER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for the DataStorer service.
+ * Tests for the DataStorer service using {@link LocalFSDataStorer}.
  */
 public final class DataStorerTest {
   private static final Tang TANG = Tang.Factory.getTang();
@@ -40,10 +41,11 @@ public final class DataStorerTest {
 
   @Before
   public void setUp() throws Exception {
-    final Configuration conf = TANG.newConfigurationBuilder()
-        .bindNamedParameter(BaseDir.class, baseDirStr)
+    final Configuration conf = DataStorerConfiguration.CONF
+        .set(BASE_DIR, baseDirStr)
+        .set(DATA_STORER, LocalFSDataStorer.class)
         .build();
-    dataStorer = TANG.newInjector(conf).getInstance(LocalFSDataStorer.class);
+    dataStorer = TANG.newInjector(conf).getInstance(DataStorer.class);
   }
 
   /**
