@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.Iterator;
 
 /**
- * A view of the data set to be loaded at an evaluator as an iterable of key value pairs.
+ * A view of the data set to be loaded as an iterable of key value pairs.
  * It loads data in HDFS from a serialized {@link HdfsSplitInfo},
  * using {@link HdfsSplitInfoSerializer#deserialize(String)} and {@link HdfsSplitFetcher#fetchData(HdfsSplitInfo)}.
  * @param <K> a type of key
