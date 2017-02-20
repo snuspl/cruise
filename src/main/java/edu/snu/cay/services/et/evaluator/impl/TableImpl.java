@@ -59,7 +59,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
   /**
    * A component for accessing remote blocks.
    */
-  private final RemoteAccessOpHandler remoteAccessOpHandler;
+  private final RemoteAccessOpSender remoteAccessOpSender;
 
   /**
    * Partition function that resolves key into block id.
@@ -71,13 +71,13 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
                     final OwnershipCache ownershipCache,
                     final BlockStore<K, V> blockStore,
                     final KVSerializer<K, V> kvSerializer,
-                    final RemoteAccessOpHandler remoteAccessOpHandler,
+                    final RemoteAccessOpSender remoteAccessOpSender,
                     final PartitionFunction<K> partitionFunction) {
     this.tableId = tableId;
     this.ownershipCache = ownershipCache;
     this.blockStore = blockStore;
     this.kvSerializer = kvSerializer;
-    this.remoteAccessOpHandler = remoteAccessOpHandler;
+    this.remoteAccessOpSender = remoteAccessOpSender;
     this.partitionFunction = partitionFunction;
   }
 
@@ -104,7 +104,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V> operation = remoteAccessOpHandler.sendOpToRemote(
+    final RemoteDataOp<K, V> operation = remoteAccessOpSender.sendOpToRemote(
         OpType.PUT, tableId, blockId, key, value, remoteIdOptional.get());
 
     return operation.getOutputData();
@@ -132,7 +132,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V> operation = remoteAccessOpHandler.sendOpToRemote(
+    final RemoteDataOp<K, V> operation = remoteAccessOpSender.sendOpToRemote(
         OpType.GET, tableId, blockId, key, null, remoteIdOptional.get());
 
     return operation.getOutputData();
@@ -160,7 +160,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V> operation = remoteAccessOpHandler.sendOpToRemote(
+    final RemoteDataOp<K, V> operation = remoteAccessOpSender.sendOpToRemote(
         OpType.UPDATE, tableId, blockId, key, deltaValue, remoteIdOptional.get());
 
     return operation.getOutputData();
@@ -188,7 +188,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V> operation = remoteAccessOpHandler.sendOpToRemote(
+    final RemoteDataOp<K, V> operation = remoteAccessOpSender.sendOpToRemote(
         OpType.REMOVE, tableId, blockId, key, null, remoteIdOptional.get());
 
     return operation.getOutputData();

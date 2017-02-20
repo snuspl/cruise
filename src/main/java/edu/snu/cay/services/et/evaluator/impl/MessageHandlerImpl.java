@@ -39,16 +39,19 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final ConfigurationSerializer confSerializer;
   private final InjectionFuture<MessageSender> msgSenderFuture;
   private final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture;
+  private final InjectionFuture<RemoteAccessOpSender> remoteAccessSenderFuture;
 
   @Inject
   private MessageHandlerImpl(final Tables tables,
                              final ConfigurationSerializer confSerializer,
                              final InjectionFuture<MessageSender> msgSenderFuture,
-                             final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture) {
+                             final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture,
+                             final InjectionFuture<RemoteAccessOpSender> remoteAccessSenderFuture) {
     this.tables = tables;
     this.confSerializer = confSerializer;
     this.msgSenderFuture = msgSenderFuture;
     this.remoteAccessHandlerFuture = remoteAccessHandlerFuture;
+    this.remoteAccessSenderFuture = remoteAccessSenderFuture;
   }
 
   @Override
@@ -57,7 +60,7 @@ public final class MessageHandlerImpl implements MessageHandler {
     final ETMsg innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
     case TableAccessMsg:
-      remoteAccessHandlerFuture.get().onNext(innerMsg.getTableAccessMsg());
+      onTableAccessMsg(innerMsg.getTableAccessMsg());
       break;
 
     case TableControlMsg:
@@ -66,6 +69,22 @@ public final class MessageHandlerImpl implements MessageHandler {
 
     case MigrationMsg:
       onMigrationMsg(innerMsg.getMigrationMsg());
+      break;
+
+    default:
+      throw new RuntimeException("Unexpected message: " + msg);
+    }
+  }
+
+  private void onTableAccessMsg(final TableAccessMsg msg) {
+    final long opId = msg.getOperationId();
+    switch (msg.getType()) {
+    case TableAccessReqMsg:
+      remoteAccessHandlerFuture.get().onTableAccessReqMsg(opId, msg.getTableAccessReqMsg());
+      break;
+
+    case TableAccessResMsg:
+      remoteAccessSenderFuture.get().onTableAccessResMsg(opId, msg.getTableAccessResMsg());
       break;
 
     default:

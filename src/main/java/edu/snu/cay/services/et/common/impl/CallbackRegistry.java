@@ -70,6 +70,7 @@ public final class CallbackRegistry {
           eventType));
     }
 
+    @SuppressWarnings("unchecked")
     final EventHandler<T> callback = callbackMaps.remove(identifier);
     if (callback == null) {
       throw new RuntimeException(String.format("Callback for event %s and id %s is not registered or already completed",
