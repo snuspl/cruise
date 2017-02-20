@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async;
 
 import  edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
@@ -43,6 +44,7 @@ final class AsyncWorkerTask<K, V> implements Task {
   private final MemoryStore<K> memoryStore;
   private final Trainer<V> trainer;
   private final WorkerClock workerClock;
+  private final boolean addedEval;
 
   /**
    * A boolean flag shared among all trainer threads.
@@ -53,6 +55,7 @@ final class AsyncWorkerTask<K, V> implements Task {
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
+                          @Parameter(AddedEval.class) final boolean addedEval,
                           final WorkerSynchronizer synchronizer,
                           final TrainingDataProvider<K, V> trainingDataProvider,
                           final MemoryStore<K> memoryStore,
@@ -60,6 +63,7 @@ final class AsyncWorkerTask<K, V> implements Task {
                           final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
+    this.addedEval = addedEval;
     this.synchronizer = synchronizer;
     this.trainingDataProvider = trainingDataProvider;
     this.memoryStore = memoryStore;
@@ -71,11 +75,16 @@ final class AsyncWorkerTask<K, V> implements Task {
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
-    // Prepare the training data to be accessible via TrainingDataProvider.
-    trainingDataProvider.initialize();
+    if (addedEval) {
+      LOG.log(Level.INFO, "This worker is added by EM. " +
+          "Will skip initializing TrainingDataProvider and Trainer");
+    } else {
+      // Prepare the training data to be accessible via TrainingDataProvider.
+      trainingDataProvider.initialize();
 
-    // TODO #681: Need to add numWorkerThreads concept after multi-thread trainer is enabled
-    trainer.initialize();
+      // TODO #681: Need to add numWorkerThreads concept after multi-thread trainer is enabled
+      trainer.initialize();
+    }
 
     // synchronize all workers before starting the main iteration
     // to avoid meaningless iterations by the workers who started earlier
