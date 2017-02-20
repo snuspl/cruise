@@ -85,15 +85,16 @@ public final class OwnershipFirstMigrationTest {
 
   private List<String> getDefaultArguments() {
     return Arrays.asList(
-        "-max_iter", Integer.toString(50),
+        "-max_iter", Integer.toString(10),
         "-mini_batch_size", Integer.toString(10),
+        "-num_training_data", Integer.toString(100),
         "-delta", Integer.toString(4),
         "-num_keys", Integer.toString(50),
         "-input", ClassLoader.getSystemResource("data").getPath() + "/empty_file",
         "-dynamic", Boolean.toString(true),
         "-plan_executor", AsyncDolphinPlanExecutor.class.getName(),
         "-vector_size", Integer.toString(5),
-        "-compute_time_ms", Integer.toString(300),
+        "-compute_time_ms", Integer.toString(30),
         "-optimization_interval_ms", Integer.toString(3000),
         "-delay_after_optimization_ms", Integer.toString(10000),
         "-worker_log_period_ms", Integer.toString(0),

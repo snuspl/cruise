@@ -16,15 +16,15 @@
 package edu.snu.cay.dolphin.async;
 
 import  edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.task.Task;
-import org.apache.reef.task.events.CloseEvent;
-import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.Collection;
+import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,21 +32,21 @@ import java.util.logging.Logger;
 /**
  * REEF Task for a trainer thread of {@code dolphin-async} applications.
  */
-@Unit
-final class AsyncWorkerTask implements Task {
+final class AsyncWorkerTask<K, V> implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
 
   private final String taskId;
   private final int maxIterations;
   private final WorkerSynchronizer synchronizer;
-  private final TrainingDataProvider trainingDataProvider;
-  private final Trainer trainer;
+  private final TrainingDataProvider<K, V> trainingDataProvider;
+  private final MemoryStore<K> memoryStore;
+  private final Trainer<V> trainer;
   private final WorkerClock workerClock;
 
   /**
    * A boolean flag shared among all trainer threads.
-   * Trainer threads end when this flag becomes true by {@link CloseEventHandler#onNext(CloseEvent)}.
+   * Trainer threads end when this flag becomes true by {@link #close()}.
    */
   private AtomicBoolean abortFlag = new AtomicBoolean(false);
 
@@ -54,13 +54,15 @@ final class AsyncWorkerTask implements Task {
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
                           final WorkerSynchronizer synchronizer,
-                          final TrainingDataProvider trainingDataProvider,
-                          final Trainer trainer,
+                          final TrainingDataProvider<K, V> trainingDataProvider,
+                          final MemoryStore<K> memoryStore,
+                          final Trainer<V> trainer,
                           final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
     this.synchronizer = synchronizer;
     this.trainingDataProvider = trainingDataProvider;
+    this.memoryStore = memoryStore;
     this.trainer = trainer;
     this.workerClock = workerClock;
   }
@@ -88,18 +90,47 @@ final class AsyncWorkerTask implements Task {
     // it prevents workers added by EM from starting from iteration 0 and deferring job completion.
     // More specifically, added workers start from the minimum iteration of other existing workers.
     for (int iteration = initialClock; iteration < maxIterations; ++iteration) {
+      LOG.log(Level.INFO, "Starting iteration {0}", iteration);
+      final long epochStartTime = System.currentTimeMillis();
+      final int numEMBlocks = memoryStore.getNumBlocks();
       trainingDataProvider.prepareDataForEpoch();
 
-      LOG.log(Level.INFO, "Starting iteration {0}", iteration);
-      trainer.run(iteration, abortFlag);
+      final Collection<V> epochData = new LinkedList<>();
 
-      if (abortFlag.get()) {
-        LOG.log(Level.INFO, "Stop task");
-        // record total network waiting time of worker clock when the task is abortFlag
-        workerClock.recordClockNetworkWaitingTime();
-        return null;
+      int miniBatchIdx = 0;
+      while (true) {
+        final Collection<V> miniBatchData = trainingDataProvider.getNextTrainingData().values();
+        if (miniBatchData.isEmpty()) {
+          break; // Finish the epoch when there are no more data to process
+        }
+
+        final MiniBatchInfo miniBatchInfo = MiniBatchInfo.getBuilder()
+            .setEpochIdx(iteration)
+            .setMiniBatchIdx(miniBatchIdx)
+            .build();
+
+        trainer.runMiniBatch(miniBatchData, miniBatchInfo);
+        epochData.addAll(miniBatchData);
+        miniBatchIdx++;
+
+        if (abortFlag.get()) {
+          LOG.log(Level.INFO, "Stop task");
+          // record total network waiting time of worker clock when the task is aborted
+          workerClock.recordClockNetworkWaitingTime();
+          return null;
+        }
       }
 
+      final EpochInfo epochInfo = EpochInfo.getBuilder()
+              .setEpochIdx(iteration)
+              .setNumMiniBatches(miniBatchIdx)
+              .setNumEMBlocks(numEMBlocks)
+              .setEpochStartTime(epochStartTime)
+              .build();
+
+      trainer.onEpochFinished(epochData, epochInfo);
+
+      // TODO #830: Clock should be a unit of iteration(mini-batch) instead of epoch
       workerClock.clock();
     }
 
@@ -113,10 +144,10 @@ final class AsyncWorkerTask implements Task {
     return null;
   }
 
-  final class CloseEventHandler implements EventHandler<CloseEvent> {
-    @Override
-    public void onNext(final CloseEvent closeEvent) {
-      abortFlag.set(true);
-    }
+  /**
+   * Called when the Task is requested to close.
+   */
+  void close() {
+    abortFlag.set(true);
   }
 }

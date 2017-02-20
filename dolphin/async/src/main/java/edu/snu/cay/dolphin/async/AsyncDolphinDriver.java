@@ -674,7 +674,7 @@ public final class AsyncDolphinDriver {
         final Configuration taskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, getWorkerTaskId(workerIndex))
             .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
-            .set(TaskConfiguration.ON_CLOSE, AsyncWorkerTask.CloseEventHandler.class)
+            .set(TaskConfiguration.ON_CLOSE, TaskCloseEventHandler.class)
             .build();
         final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class).build();

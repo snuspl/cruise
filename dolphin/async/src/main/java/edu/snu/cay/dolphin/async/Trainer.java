@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async;
 
 import org.apache.reef.annotations.audience.TaskSide;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Collection;
 
 /**
  * A trainer of a {@code dolphin-async} application.
@@ -37,9 +37,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Other parameters specified with {@link AsyncDolphinConfiguration.Builder#addParameterClass(Class)}
  * can also be received as constructor parameters, given that the parameter itself is tagged with
  * {@link org.apache.reef.tang.annotations.Parameter} and an actual value is given for the parameter via command line.
+ *
+ * @param <D> type of the training data
  */
 @TaskSide
-public interface Trainer {
+public interface Trainer<D> {
 
   /**
    * Pre-run method that is executed after the constructor but before {@code run}, exactly once.
@@ -47,13 +49,19 @@ public interface Trainer {
   void initialize();
 
   /**
-   * Main method of this trainer. The number of times this method is called can be adjusted with the parameter
-   * {@link edu.snu.cay.common.param.Parameters.Iterations}.
-   *
-   * @param iteration the index of current iteration
-   * @param abortFlag a flag indicating trainer to abort
+   * Main method of this trainer, which is called every mini-batch.
+   * @param miniBatchData the training data to process in the batch
+   *                      (at most {@link edu.snu.cay.common.param.Parameters.MiniBatchSize} instances.
+   * @param miniBatchInfo the metadata of the mini-batch (e.g., epochIdx, miniBatchIdx)
    */
-  void run(int iteration, AtomicBoolean abortFlag);
+  void runMiniBatch(Collection<D> miniBatchData, MiniBatchInfo miniBatchInfo);
+
+  /**
+   * EventHandler that is called when an epoch is finished.
+   * @param epochData the training data that has been processed in the epoch
+   * @param epochInfo the metadata of the epoch (e.g., epochIdx, the number of mini-batches)
+   */
+  void onEpochFinished(Collection<D> epochData, EpochInfo epochInfo);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

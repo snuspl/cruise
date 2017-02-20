@@ -20,12 +20,12 @@ import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.EpochInfo;
+import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
@@ -35,7 +35,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,7 +45,7 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
  * Uses {@code numClasses} model vectors to determine which class each data instance belongs to.
  * The model vector that outputs the highest dot product value is declared as that data instance's prediction.
  */
-final class MLRTrainer implements Trainer {
+final class MLRTrainer implements Trainer<MLRData> {
   private static final Logger LOG = Logger.getLogger(MLRTrainer.class.getName());
 
   /**
@@ -109,9 +108,6 @@ final class MLRTrainer implements Trainer {
    */
   private final int decayPeriod;
 
-  private final MemoryStore<Long> memoryStore;
-  private final TrainingDataProvider<Long, MLRData> trainingDataProvider;
-
   /**
    * Executes the Trainer threads.
    */
@@ -145,8 +141,6 @@ final class MLRTrainer implements Trainer {
                      @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final ModelAccessor<MLRModel> modelAccessor,
-                     final MemoryStore<Long> memoryStore,
-                     final TrainingDataProvider<Long, MLRData> trainingDataProvider,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
@@ -172,8 +166,6 @@ final class MLRTrainer implements Trainer {
     }
     this.metricsMsgSender = metricsMsgSender;
     this.modelAccessor = modelAccessor;
-    this.memoryStore = memoryStore;
-    this.trainingDataProvider = trainingDataProvider;
 
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
@@ -205,106 +197,78 @@ final class MLRTrainer implements Trainer {
   }
 
   @Override
-  public void run(final int iteration, final AtomicBoolean abortFlag) {
-    final long epochStartTime = System.currentTimeMillis();
+  public void runMiniBatch(final Collection<MLRData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+    resetTracers();
 
-    // Record the number of EM data blocks at the beginning of this iteration
-    // to filter out stale metrics for optimization
-    final int numEMBlocks = memoryStore.getNumBlocks();
+    final long miniBatchStartTime = System.currentTimeMillis();
 
-    int miniBatchIdx = 0;
-    int numTotalInstancesProcessed = 0;
-    final List<MLRData> totalInstancesProcessed = new LinkedList<>();
+    // pull data when mini-batch is started
+    pullModels();
 
-    Map<Long, MLRData> nextTrainingData = trainingDataProvider.getNextTrainingData();
+    final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-    while (!nextTrainingData.isEmpty()) {
-      if (abortFlag.get()) {
-        LOG.log(Level.INFO, "Abort a thread to completely close the task");
-        return;
-      }
+    final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchSize);
+    instances.addAll(miniBatchData);
+    final int numInstancesToProcess = instances.size();
 
-      final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
+    // collects the results (new models here) computed by multiple threads
+    final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
+    try {
+      computeTracer.startTimer();
 
-      final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchSize);
-      instances.addAll(nextTrainingData.values());
-      final int numInstancesToProcess = instances.size();
+      // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
+      // This way we can mitigate the slowdown from straggler threads.
+      final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
 
-      resetTracers();
-      final long miniBatchStartTime = System.currentTimeMillis();
+      for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
+        final Future<MLRModel> future = executor.submit(() -> {
+          final List<MLRData> drainedInstances = new ArrayList<>(drainSize);
+          final MLRModel model = modelAccessor.getModel()
+              .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
-      // pull data when mini-batch is started
-      pullModels();
-
-      // collects the results (new models here) computed by multiple threads
-      final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
-      try {
-        computeTracer.startTimer();
-
-        // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
-        // This way we can mitigate the slowdown from straggler threads.
-        final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
-
-        for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
-          final Future<MLRModel> future = executor.submit(() -> {
-            final List<MLRData> drainedInstances = new ArrayList<>(drainSize);
-            final MLRModel model = modelAccessor.getModel()
-                .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
-
-            int count = 0;
-            while (true) {
-              final int numDrained = instances.drainTo(drainedInstances, drainSize);
-              if (numDrained == 0) {
-                break;
-              }
-
-              drainedInstances.forEach(instance -> updateModel(instance, model));
-              drainedInstances.clear();
-              count += numDrained;
+          int count = 0;
+          while (true) {
+            final int numDrained = instances.drainTo(drainedInstances, drainSize);
+            if (numDrained == 0) {
+              break;
             }
-            latch.countDown();
-            LOG.log(Level.INFO, "{0} has computed {1} instances",
-                new Object[] {Thread.currentThread().getName(), count});
-            return model;
-          });
-          futures.add(future);
-        }
-        latch.await();
-        computeTracer.recordTime(numInstancesToProcess);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.SEVERE, "Exception occurred.", e);
-        throw new RuntimeException(e);
+
+            drainedInstances.forEach(instance -> updateModel(instance, model));
+            drainedInstances.clear();
+            count += numDrained;
+          }
+          latch.countDown();
+          LOG.log(Level.INFO, "{0} has computed {1} instances",
+              new Object[] {Thread.currentThread().getName(), count});
+          return model;
+        });
+        futures.add(future);
       }
-
-      final List<MLRModel> newModels = ThreadUtils.retrieveResults(futures);
-      final Vector[] gradients = aggregateGradient(newModels);
-
-      // push gradients
-      pushAndResetGradients(gradients);
-
-      // update the instances processed so far
-      numTotalInstancesProcessed += numInstancesToProcess;
-      totalInstancesProcessed.addAll(nextTrainingData.values());
-
-      // load the set of training data instances to process in the next mini-batch
-      nextTrainingData = trainingDataProvider.getNextTrainingData();
-
-      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-      final WorkerMetrics miniBatchMetric =
-          buildMiniBatchMetric(iteration, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
-      LOG.log(Level.INFO, "WorkerMetrics {0}", miniBatchMetric);
-      sendMetrics(miniBatchMetric);
-
-      miniBatchIdx++;
+      latch.await();
+      computeTracer.recordTime(numInstancesToProcess);
+    } catch (final InterruptedException e) {
+      LOG.log(Level.SEVERE, "Exception occurred.", e);
+      throw new RuntimeException(e);
     }
 
-    if (!(decayRate == 1) && iteration % decayPeriod == 0) {
-      final double prevStepSize = stepSize;
-      stepSize *= decayRate;
-      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
-          new Object[]{decayPeriod, prevStepSize, stepSize});
-    }
+    final List<MLRModel> newModels = ThreadUtils.retrieveResults(futures);
+    final Vector[] gradients = aggregateGradient(newModels);
 
+    // push gradients
+    pushAndResetGradients(gradients);
+
+    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+    final int epochIdx = miniBatchInfo.getEpochIdx();
+    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
+
+    final WorkerMetrics miniBatchMetric =
+        buildMiniBatchMetric(epochIdx, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
+    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
+    sendMetrics(miniBatchMetric);
+  }
+
+  @Override
+  public void onEpochFinished(final Collection<MLRData> epochData, final EpochInfo epochInfo) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
 
@@ -312,18 +276,29 @@ final class MLRTrainer implements Trainer {
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
-    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(totalInstancesProcessed, model);
-
-    final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
+    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(epochData, model);
     final double sampleLoss = lossRegLossAccuracy.getFirst();
     final double regLoss = lossRegLossAccuracy.getSecond();
     final double accuracy = lossRegLossAccuracy.getThird();
-    final WorkerMetrics epochMetric =
-        buildEpochMetric(iteration, miniBatchIdx, numEMBlocks,
-            numTotalInstancesProcessed, sampleLoss, regLoss, accuracy, epochElapsedTime);
 
-    LOG.log(Level.INFO, "WorkerMetrics {0}", epochMetric);
+    final int epochIdx = epochInfo.getEpochIdx();
+    final int numMiniBatches = epochInfo.getNumMiniBatches();
+    final int numEMBlocks = epochInfo.getNumEMBlocks();
+    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
+
+    final WorkerMetrics epochMetric =
+        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks,
+            epochData.size(), sampleLoss, regLoss, accuracy, epochElapsedTime);
+
+    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
+
+    if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
+      final double prevStepSize = stepSize;
+      stepSize *= decayRate;
+      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+          new Object[]{decayPeriod, prevStepSize, stepSize});
+    }
   }
 
   /**
@@ -441,7 +416,7 @@ final class MLRTrainer implements Trainer {
    * Compute the loss value using the current models and given data instances.
    * May take long, so do not call frequently.
    */
-  private Tuple3<Double, Double, Double> computeLoss(final List<MLRData> data, final MLRModel model) {
+  private Tuple3<Double, Double, Double> computeLoss(final Collection<MLRData> data, final MLRModel model) {
     final Vector[] params = model.getParams();
 
     double loss = 0;
