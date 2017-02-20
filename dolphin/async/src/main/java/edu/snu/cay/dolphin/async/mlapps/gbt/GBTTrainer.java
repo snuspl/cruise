@@ -864,8 +864,11 @@ final class GBTTrainer implements Trainer<GBTData> {
         }
         epochDataSize = dataIdx;
       }
-      for (int i = 0; i < epochDataSize; i++) {
-        LOG.log(Level.INFO, "Value {0} : {1}", new Object[]{instances.get(i).getIdentity(), predictedValue[i]});
+      int dataIdx = 0;
+      for (final GBTData instance : instances) {
+        if (instance.getIdentity() != TYPE_LINE) {
+          LOG.log(Level.INFO, "Value {0} : {1}", new Object[]{instance.getIdentity(), predictedValue[dataIdx++]});
+        }
       }
     } else {
       int wrongNum = 0;
