@@ -4,7 +4,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Created by yunseong on 2/13/17.
+ * Base directory for DataStorer to store data into.
  */
 @NamedParameter(doc = "The base directory of the files", short_name = "base_dir")
 public final class BaseDir implements Name<String> {

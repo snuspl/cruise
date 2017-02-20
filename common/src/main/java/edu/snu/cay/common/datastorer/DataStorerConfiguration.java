@@ -6,9 +6,13 @@ import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.RequiredParameter;
 
 /**
- * Created by yunseong on 2/13/17.
+ * Builds configuration for DataStorer service.
  */
 public final class DataStorerConfiguration extends ConfigurationModuleBuilder {
+
+  /**
+   * The base directory of the files
+   */
   public static final RequiredParameter<String> BASE_DIR = new RequiredParameter<>();
 
   public static final ConfigurationModule CONF = new DataStorerConfiguration()

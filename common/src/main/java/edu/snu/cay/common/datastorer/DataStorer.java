@@ -4,7 +4,7 @@ import java.io.IOException;
 
 /**
  * DataStorer service. Users can write serialized data to file system.
- * The path is determined by {@link edu.snu.cay.common.datastorer.param.BaseDir} and specified sub-path.
+ * The path is determined by {@link edu.snu.cay.common.datastorer.param.BaseDir} and sub-path specified by users.
  */
 public interface DataStorer {
 

@@ -8,6 +8,7 @@ import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
@@ -30,8 +31,12 @@ public final class DataStorerTest {
     dataStorer = TANG.newInjector(conf).getInstance(LocalFSDataStorer.class);
   }
 
+  /**
+   * Checks whether the file is written successfully by DataStorer.
+   * @throws IOException if a failure occurred while writing data.
+   */
   @Test
-  public void storeData() throws Exception {
+  public void testLocalFSStorer() throws IOException {
     final String filename = "foo";
     final String strToWrite = "abc123";
     final byte[] bytesToWrite = strToWrite.getBytes();
