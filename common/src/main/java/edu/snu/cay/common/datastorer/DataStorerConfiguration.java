@@ -18,6 +18,7 @@ package edu.snu.cay.common.datastorer;
 import edu.snu.cay.common.datastorer.param.BaseDir;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
+import org.apache.reef.tang.formats.RequiredImpl;
 import org.apache.reef.tang.formats.RequiredParameter;
 
 /**
@@ -30,7 +31,13 @@ public final class DataStorerConfiguration extends ConfigurationModuleBuilder {
    */
   public static final RequiredParameter<String> BASE_DIR = new RequiredParameter<>();
 
+  /**
+   * The implementation of {@link DataStorer}.
+   */
+  public static final RequiredImpl<DataStorer> DATA_STORER = new RequiredImpl<>();
+
   public static final ConfigurationModule CONF = new DataStorerConfiguration()
       .bindNamedParameter(BaseDir.class, BASE_DIR)
+      .bindImplementation(DataStorer.class, DATA_STORER)
       .build();
 }
