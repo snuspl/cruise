@@ -18,7 +18,6 @@ package edu.snu.cay.common.dataloader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.mapred.Counters.Counter;
-import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.data.loading.impl.JobConfExternalConstructor;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
