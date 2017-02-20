@@ -15,45 +15,27 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.gbt.tree;
 
+import edu.snu.cay.dolphin.async.mlapps.gbt.NodeState;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * This is a tree for Gradient Boosting Tree.
  * Every run() iteration makes new GBTree(by buildTree()) and push the tree to the server.
  */
-public final class GBTree implements Tree<Pair<Integer, Double>> {
-
-  private final List<Pair<Integer, Double>> gbTree;
-
+public final class GBTree extends Tree<Pair<Integer, Double>> {
   public GBTree(final int treeMaxDepth) {
-    gbTree = new ArrayList<>((1 << treeMaxDepth) - 1);
+    super(treeMaxDepth);
   }
-
-  @Override
-  public Pair<Integer, Double> get(final int thisNode) {
-    return gbTree.get(thisNode);
-  }
-
-  @Override
-  public Pair<Integer, Double> leftChild(final int thisNode) {
-    return gbTree.get(2 * thisNode + 1);
-  }
-
-  @Override
-  public Pair<Integer, Double> rightChild(final int thisNode) {
-    return gbTree.get(2 * thisNode + 2);
-  }
-
-  @Override
-  public void add(final Pair<Integer, Double> newNode) {
-    gbTree.add(newNode);
-  }
-
-  @Override
-  public void clear() {
-    gbTree.clear();
+  
+  public void makeLeaf(final int nodeIdx, final DataTree dataTree, final List<Double> gValues,
+                       final double lambda) {
+    double gSum = 0;
+    final List<Integer> thisNode = dataTree.get(nodeIdx);
+    for (final int leafMember : thisNode) {
+      gSum += gValues.get(leafMember);
+    }
+    tree.add(Pair.of(NodeState.LEAF.getValue(), -gSum / (2 * thisNode.size() + lambda)));
   }
 }

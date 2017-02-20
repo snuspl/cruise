@@ -13,30 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.gbt.tree;
-
-import org.apache.commons.lang3.tuple.Pair;
-
-import java.util.ArrayList;
-import java.util.List;
+package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 /**
- * This tree is for sortedByFeature list.
- * In each node of the tree, data are sorted by their feature values.
+ * This indicates each GBTree node's state.
+ * If the node is empty, the node's state is EMPTY(-2).
+ * If the node is leaf, the node's state is LEAF(-1).
  */
-public final class SortedTree extends Tree<List<Pair<Integer, Double>>> {
-  public SortedTree(final int treeMaxDepth) {
-    super(treeMaxDepth);
-    for (int i = 0; i < treeSize; i++) {
-      tree.add(new ArrayList<>());
-    }
+public enum NodeState {
+  EMPTY(-2), LEAF(-1);
+  
+  private final int value;
+  
+  NodeState(final int value) {
+    this.value = value;
   }
-
-  @Override
-  public void clear() {
-    for (final List<Pair<Integer, Double>> node : tree) {
-      node.clear();
-    }
-    tree.clear();
+  
+  public int getValue() {
+    return value;
   }
 }

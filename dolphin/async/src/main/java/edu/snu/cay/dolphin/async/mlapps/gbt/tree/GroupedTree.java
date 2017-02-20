@@ -29,44 +29,19 @@ import java.util.List;
  * First value of the pair is the number of values in that label.
  * Second value of the pair is the sum of the g values of the values that are belong to the label.
  */
-public final class GroupedTree implements Tree<List<Pair<Integer, Double>>> {
-
-  private final int treeSize;
-  private final List<List<Pair<Integer, Double>>> groupedTree;
-
+public final class GroupedTree extends Tree<List<Pair<Integer, Double>>> {
   public GroupedTree(final int treeMaxDepth) {
-    this.treeSize = (1 << treeMaxDepth) - 1;
-    this.groupedTree = new ArrayList<>(treeSize);
-    for (int i = 0; i < treeSize; i++) {
-      groupedTree.add(new ArrayList<>());
+    super(treeMaxDepth);
+    for (int  i = 0; i < treeSize; i++) {
+      tree.add(new ArrayList<>());
     }
-  }
-
-  @Override
-  public List<Pair<Integer, Double>> get(final int thisNode) {
-    return groupedTree.get(thisNode);
-  }
-
-  @Override
-  public List<Pair<Integer, Double>> leftChild(final int thisNode) {
-    return groupedTree.get(2 * thisNode + 1);
-  }
-
-  @Override
-  public List<Pair<Integer, Double>> rightChild(final int thisNode) {
-    return groupedTree.get(2 * thisNode + 2);
-  }
-
-  @Override
-  public void add(final List<Pair<Integer, Double>> newNode) {
-    groupedTree.add(newNode);
   }
 
   @Override
   public void clear() {
-    for (int i = 0; i < treeSize; i++) {
-      groupedTree.get(i).clear();
+    for (final List<Pair<Integer, Double>> node : tree) {
+      node.clear();
     }
-    groupedTree.clear();
+    tree.clear();
   }
 }

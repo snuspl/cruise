@@ -24,41 +24,22 @@ import java.util.List;
  * As run() proceeds, each data goes to left or right child.
  * Then those data will be added in the left or right child node.
  */
-public final class DataTree implements Tree<List<Integer>> {
-
-  private final int treeSize;
-  private final List<List<Integer>> dataTree;
-
-  public DataTree(final int treeMaxDepth) {
-    this.treeSize = (1 << treeMaxDepth) - 1;
-    this.dataTree = new ArrayList<>(treeSize);
-  }
-
-  @Override
-  public List<Integer> get(final int thisNode) {
-    return dataTree.get(thisNode);
-  }
-
-  @Override
-  public List<Integer> leftChild(final int thisNode) {
-    return dataTree.get(2 * thisNode + 1);
-  }
-
-  @Override
-  public List<Integer> rightChild(final int thisNode) {
-    return dataTree.get(2 * thisNode + 2);
-  }
-
-  @Override
-  public void add(final List<Integer> newNode) {
-    dataTree.add(newNode);
+public final class DataTree extends Tree<List<Integer>> {
+  public DataTree(final int treeMaxDepth, final int dataSize) {
+    super(treeMaxDepth);
+    for (int i = 0; i < treeSize; i++) {
+      tree.add(new ArrayList<>());
+    }
+    for (int i = 0; i < dataSize; i++) {
+      this.root().add(i);
+    }
   }
 
   @Override
   public void clear() {
-    for (int i = 0; i < treeSize; i++) {
-      dataTree.get(i).clear();
+    for (final List<Integer> node : tree) {
+      node.clear();
     }
-    dataTree.clear();
+    tree.clear();
   }
 }

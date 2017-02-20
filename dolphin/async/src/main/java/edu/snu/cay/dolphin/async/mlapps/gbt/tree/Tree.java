@@ -15,42 +15,62 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.gbt.tree;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Tree interface for diverse trees.
+ * Tree class for diverse trees.
+ * Many trees(GBTree, DataTree, GroupedTree, SortedTree) extend this class.
  *
- * Classes implementing this interface should include basic functions of trees, such as get(), leftChild(),
- * rightChild()...
- * All the trees in this folder is built with List<T> and the index of the list and the tree matches as follow.
- *            0
- *           / \
- *          1   2
- *         / \ / \
- *        3  4 5  6
- *        .. ... ..
+ * This tree class supports Complete Binary Tree.
+ * Thus, {@code add(final T newNode)} function adds the {@code newNode} at the end of the tree list.
  */
-public interface Tree<T> {
-  /**
-   * Return the node at nodeIdx-index of the list.
-   */
-  T get(int nodeIdx);
-
-  /**
-   * Return the left child of the node at nodeIdx-index of the list.
-   */
-  T leftChild(int nodeIdx);
-
-  /**
-   * Return the right child of the node at nodeIdx-index of the list.
-   */
-  T rightChild(int nodeIdx);
-
-  /**
-   * Add newNode at the end of the list.
-   */
-  void add(T newNode);
-
-  /**
-   * Clear all the data in the list.
-   */
-  void clear();
+public abstract class Tree<T> {
+  private final int treeMaxDepth;
+  protected final int treeSize;
+  protected final List<T> tree;
+  
+  Tree(final int treeMaxDepth) {
+    this.treeMaxDepth = treeMaxDepth;
+    this.treeSize = (1 << treeMaxDepth) - 1;
+    this.tree = new ArrayList<>(treeSize);
+  }
+  
+  public int getDepth(final int nodeIdx) {
+    int depth = treeMaxDepth;
+    int fallingNodeIdx = nodeIdx;
+    while (fallingNodeIdx < treeSize) {
+      final int leftChild = 2 * fallingNodeIdx + 1;
+      if (leftChild >= treeSize) {
+        return depth;
+      }
+      fallingNodeIdx = leftChild;
+      depth--;
+    }
+    return depth;
+  }
+  
+  public T root() {
+    return tree.get(0);
+  }
+  
+  public T get(final int nodeIdx) {
+    return tree.get(nodeIdx);
+  }
+  
+  public T leftChild(final int nodeIdx) {
+    return tree.get(2 * nodeIdx + 1);
+  }
+  
+  public T rightChild(final int nodeIdx) {
+    return tree.get(2 * nodeIdx + 2);
+  }
+  
+  public void add(final T newNode) {
+    tree.add(newNode);
+  }
+  
+  public void clear() {
+    tree.clear();
+  }
 }
