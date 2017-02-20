@@ -14,13 +14,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Created by yunseong on 2/18/17.
+ * Tests for the DataStorer service.
  */
-public final class LocalFSDataStorerTest {
+public final class DataStorerTest {
   private static Tang TANG = Tang.Factory.getTang();
 
   private final String baseDirStr = Files.createTempDir().getAbsolutePath();
-  private LocalFSDataStorer dataStorer;
+  private DataStorer dataStorer;
 
   @Before
   public void setUp() throws Exception {

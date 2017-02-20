@@ -14,12 +14,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Implemented a DataStorere that stores data to local file system.
+ * Implements a DataStore that stores data to local file system.
  */
 public class LocalFSDataStorer implements DataStorer {
   private static final Logger LOG = Logger.getLogger(LocalFSDataStorer.class.getName());
   private final Path baseDir;
-
 
   @Inject
   private LocalFSDataStorer(@Parameter(BaseDir.class) final String baseDir) {
