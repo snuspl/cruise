@@ -15,6 +15,10 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.gbt;
 
+import edu.snu.cay.common.dataloader.HdfsSplitFetcher;
+import edu.snu.cay.common.dataloader.HdfsSplitInfo;
+import edu.snu.cay.common.dataloader.HdfsSplitManager;
+import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.param.Parameters.Iterations;
@@ -29,9 +33,12 @@ import edu.snu.cay.dolphin.async.mlapps.gbt.tree.SortedTree;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -44,6 +51,7 @@ import static edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.*;
  */
 final class GBTTrainer implements Trainer<GBTData> {
   private static final Logger LOG = Logger.getLogger(GBTTrainer.class.getName());
+  private static final String META_INFO_PATH = "file:///tmp/meta";
 
   private static final int TYPE_LINE = -1;
   private static final int LABEL_SIZE_THRESHOLD = 10;
@@ -120,6 +128,8 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private final List<Integer> featureType;
 
+  private final Map<Integer, FeatureType> featureTypes;
+
   /**
    * If valueType == 0, the type of y-value is real number (for regression).
    * If valueType != 0, the type of y-value is categorical (for classification).
@@ -192,6 +202,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(TreeMaxDepth.class) final int treeMaxDepth,
                      @Parameter(LeafMinSize.class) final int leafMinSize,
                      @Parameter(Iterations.class) final int iterations,
+                     final GBTMetadataParser metadataParser,
                      final TrainingDataProvider<Long, GBTData> trainingDataProvider,
                      final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
@@ -210,10 +221,13 @@ final class GBTTrainer implements Trainer<GBTData> {
     this.labelList = new ArrayList<>();
     this.keyGPair = new ArrayList<>();
     this.featureType = new ArrayList<>();
+
     this.gbTree = new GBTree(treeMaxDepth);
     this.dataTree = new DataTree(treeMaxDepth);
     this.forest = new ArrayList<>();
     this.maxIteration = iterations;
+
+    this.featureTypes = metadataParser.getFeatureTypes();
   }
 
   @Override
@@ -1109,5 +1123,9 @@ final class GBTTrainer implements Trainer<GBTData> {
     public int getValue() {
       return value;
     }
+  }
+
+  public enum FeatureType {
+    CONTINUOUS, CATEGORICAL
   }
 }

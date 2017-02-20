@@ -46,4 +46,8 @@ final class GBTParameters {
   @NamedParameter(doc = "minimum size of model tree's leaf", short_name = "leaf_min_size")
   static final class LeafMinSize implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "the location of metadata for features", short_name = "metadata_path")
+  static final class MetadataPath implements Name<String> {
+  }
 }

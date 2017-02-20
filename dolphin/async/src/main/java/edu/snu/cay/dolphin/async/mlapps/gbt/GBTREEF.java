@@ -46,6 +46,7 @@ public final class GBTREEF {
         .addParameterClass(Gamma.class)
         .addParameterClass(TreeMaxDepth.class)
         .addParameterClass(LeafMinSize.class)
+        .addParameterClass(MetadataPath.class)
         .build());
   }
 }
