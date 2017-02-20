@@ -18,10 +18,15 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.common.metric.MetricsMsgSender;
+import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
 import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.dolphin.async.metric.Tracer;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.commons.lang3.tuple.Pair;
@@ -56,6 +61,8 @@ final class LassoTrainer implements Trainer<LassoData> {
   private final double decayRate;
   private final int decayPeriod;
 
+  private final int miniBatchSize;
+
   private Vector oldModel;
   private Vector newModel;
 
@@ -67,6 +74,14 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   private final ParameterWorker<Integer, Double, Double> parameterWorker;
 
+  /**
+   * To collect metric data.
+   */
+  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+  private final Tracer pushTracer;
+  private final Tracer pullTracer;
+  private final Tracer computeTracer;
+
   @Inject
   private LassoTrainer(final ParameterWorker<Integer, Double, Double> parameterWorker,
                        @Parameter(Lambda.class) final double lambda,
@@ -74,8 +89,10 @@ final class LassoTrainer implements Trainer<LassoData> {
                        @Parameter(StepSize.class) final double stepSize,
                        @Parameter(DecayRate.class) final double decayRate,
                        @Parameter(DecayPeriod.class) final int decayPeriod,
+                       @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                        final VectorFactory vectorFactory,
-                       final MatrixFactory matrixFactory) {
+                       final MatrixFactory matrixFactory,
+                       final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
     this.parameterWorker = parameterWorker;
     this.numFeatures = numFeatures;
     this.lambda = lambda;
@@ -88,8 +105,13 @@ final class LassoTrainer implements Trainer<LassoData> {
     if (decayPeriod <= 0) {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
+    this.miniBatchSize = miniBatchSize;
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
+    this.metricsMsgSender = metricsMsgSender;
+    this.pullTracer = new Tracer();
+    this.pushTracer = new Tracer();
+    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -108,9 +130,15 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   @Override
   public void runMiniBatch(final Collection<LassoData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+    resetTracer();
+
+    final long miniBatchStartTime = System.currentTimeMillis();
 
     pullModels();
 
+    final int numInstancesToProcess = miniBatchData.size();
+
+    computeTracer.startTimer();
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
     // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
     final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchData);
@@ -118,7 +146,9 @@ final class LassoTrainer implements Trainer<LassoData> {
     final Vector yValues = featureMatrixAndValues.getRight();
 
     final Vector precalculate = featureMatrix.mmul(newModel);
+    computeTracer.recordTime(0);
 
+    computeTracer.startTimer();
     // For each dimension, compute the optimal value.
     for (int i = 0; i < numFeatures; i++) {
       final Vector columnVector = featureMatrix.sliceColumn(i);
@@ -130,8 +160,18 @@ final class LassoTrainer implements Trainer<LassoData> {
       newModel.set(i, sthresh((columnVector.dot(yValues.sub(precalculate))) / columnNorm, lambda, columnNorm));
       precalculate.addi(columnVector.scale(newModel.get(i)));
     }
+    computeTracer.recordTime(numInstancesToProcess);
 
     pushGradients();
+
+    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+    final int epochIdx = miniBatchInfo.getEpochIdx();
+    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
+
+    final WorkerMetrics miniBatchMetric =
+        buildMiniBatchMetric(epochIdx, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
+    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
+    sendMetrics(miniBatchMetric);
   }
 
   @Override
@@ -141,13 +181,23 @@ final class LassoTrainer implements Trainer<LassoData> {
     // Calculate the loss value.
     pullModels();
 
-    final double loss = computeLoss(epochData);
-    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{loss});
+    final double regLoss = computeLoss(epochData);
+    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{regLoss});
     if ((epochIdx + 1) % PRINT_MODEL_PERIOD == 0) {
       for (int i = 0; i < numFeatures; i++) {
         LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
       }
     }
+
+    final int numMiniBatches = epochInfo.getNumMiniBatches();
+    final int numEMBlocks = epochInfo.getNumEMBlocks();
+    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
+
+    final WorkerMetrics epochMetric =
+        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochData.size(), regLoss, epochElapsedTime);
+
+    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
+    sendMetrics(epochMetric);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -165,10 +215,10 @@ final class LassoTrainer implements Trainer<LassoData> {
   private Pair<Matrix, Vector> convertToFeaturesAndValues(final Collection<LassoData> instances) {
     final List<Vector> features = new LinkedList<>();
     final Vector values = vectorFactory.createDenseZeros(instances.size());
-    int iter = 0;
+    int instanceIdx = 0;
     for (final LassoData instance : instances) {
       features.add(instance.getFeature());
-      values.set(iter++, instance.getValue());
+      values.set(instanceIdx++, instance.getValue());
     }
     return Pair.of(matrixFactory.horzcatVecDense(features).transpose(), values);
   }
@@ -181,9 +231,11 @@ final class LassoTrainer implements Trainer<LassoData> {
    * Pull up-to-date model parameters from server.
    */
   private void pullModels() {
+    pullTracer.startTimer();
     for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
       oldModel.set(modelIndex, parameterWorker.pull(modelIndex));
     }
+    pullTracer.recordTime(numFeatures);
     newModel = oldModel.copy();
   }
 
@@ -191,10 +243,14 @@ final class LassoTrainer implements Trainer<LassoData> {
    * Push the gradients to parameter server.
    */
   private void pushGradients() {
+    computeTracer.startTimer();
     final Vector gradient = newModel.sub(oldModel);
+    computeTracer.recordTime(0);
+    pushTracer.startTimer();
     for (int modelIndex = 0; modelIndex < numFeatures; ++modelIndex) {
       parameterWorker.push(modelIndex, stepSize * gradient.get(modelIndex));
     }
+    pushTracer.recordTime(numFeatures);
   }
 
   /**
@@ -237,5 +293,60 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     final double loss = 1.0 / (2 * data.size()) * squaredErrorSum + lambda * reg;
     return loss;
+  }
+
+  private void resetTracer() {
+    pullTracer.resetTrace();
+    pushTracer.resetTrace();
+    computeTracer.resetTrace();
+  }
+
+  private void sendMetrics(final WorkerMetrics workerMetrics) {
+    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", new Object[]{workerMetrics});
+
+    metricsMsgSender.send(workerMetrics);
+  }
+
+  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
+                                             final int numProcessedDataItemCount, final double elapsedTime) {
+    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+    appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
+
+    return WorkerMetrics.newBuilder()
+        .setMetrics(Metrics.newBuilder()
+            .setData(appMetricMap)
+            .build())
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setMiniBatchIdx(miniBatchIdx)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
+        .setTotalCompTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
+        .build();
+  }
+
+  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
+                                         final int numDataBlocks, final int numProcessedDataItemCount,
+                                         final double regLoss, final double elapsedTime) {
+    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
+    appMetricMap.put(MetricKeys.REG_LOSS_AVG, regLoss);
+    parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
+
+    return WorkerMetrics.newBuilder()
+        .setMetrics(Metrics.newBuilder()
+            .setData(appMetricMap)
+            .build())
+        .setEpochIdx(iteration)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
+        .setNumDataBlocks(numDataBlocks)
+        .setProcessedDataItemCount(numProcessedDataItemCount)
+        .setTotalTime(elapsedTime)
+        .build();
   }
 }
