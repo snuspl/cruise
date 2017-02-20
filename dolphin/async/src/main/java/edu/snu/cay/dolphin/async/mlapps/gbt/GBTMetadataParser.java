@@ -45,8 +45,9 @@ final class GBTMetadataParser {
     this.metadataPath = metadataPath;
   }
 
-  Map<Integer, FeatureType> getFeatureTypes() {
+  Pair<Map<Integer, FeatureType>, Integer> getFeatureTypes() {
     final Map<Integer, FeatureType> featureTypes = new HashMap<>(numFeatures + 1);
+    int valueTypeNum = 0;
 
     final HdfsSplitInfo[] infoArr =
         HdfsSplitManager.getSplits(metadataPath, TextInputFormat.class.getName(), NUM_SPLIT);
@@ -66,6 +67,9 @@ final class GBTMetadataParser {
             final String[] idxVal = split.split(":");
             assert idxVal.length == 2;
             final int idx = Integer.parseInt(idxVal[0]);
+            if (idx == numFeatures) {
+              valueTypeNum = Integer.parseInt(idxVal[1]);
+            }
             final FeatureType featureType =
                 Integer.parseInt(idxVal[1]) == 0 ? FeatureType.CONTINUOUS : FeatureType.CATEGORICAL;
             featureTypes.put(idx, featureType);
@@ -75,6 +79,6 @@ final class GBTMetadataParser {
         throw new RuntimeException(e);
       }
     }
-    return featureTypes;
+    return Pair.of(featureTypes, valueTypeNum);
   }
 }

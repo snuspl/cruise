@@ -26,7 +26,6 @@ import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.TrainingDataProvider;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.DataTree;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.GBTree;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.GroupedTree;
@@ -54,17 +53,14 @@ import static edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.*;
  */
 final class GBTTrainer implements Trainer<GBTData> {
   private static final Logger LOG = Logger.getLogger(GBTTrainer.class.getName());
-//  private static final String META_INFO_PATH = "file:///tmp/meta";
+  private static final String META_INFO_PATH = "file:///tmp/meta";
 
-  private static final int TYPE_LINE = -1;
   private static final int LABEL_SIZE_THRESHOLD = 10;
 
   /**
    * CONTINUOUS_FEATURE : features with real-number type.
-   * CATEGORICAL_FEATURE : features with label type.
    */
   private static final int CONTINUOUS_FEATURE = 0;
-  private static final int CATEGORICAL_FEATURE = 1;
 
   private static final int LEFT_CHILD = 0;
   private static final int RIGHT_CHILD = 1;
@@ -77,7 +73,6 @@ final class GBTTrainer implements Trainer<GBTData> {
   private final ParameterWorker<Integer, List<Vector>, List<Vector>> parameterWorker;
 
   private final int numFeatures;
-  private int epochDataSize = 0;
 
   /**
    * Do not do full optimization in each step.
@@ -92,46 +87,13 @@ final class GBTTrainer implements Trainer<GBTData> {
   private final double lambda;
   private final double gamma;
 
-  /**
-   * For residual
-   * residual = (real y-value) - (predicted y-value).
-   * Predicted y-value is calculated by using all the trees that are built.
-   */
-
-  private final TrainingDataProvider<Long, GBTData> trainingDataProvider;
-
   private final VectorFactory vectorFactory;
 
   /**
-   * For sortedByFeature
-   * Sort GBT data for each feature values and store it in sortedByFeature list.
-   * It is pre-calculated before the optimizing process is proceeded.
+   * If featureTypes.get(i) == CONTINUOUS, i-th feature type is real number.
+   * If featureTypes.get(i) == CATEGORICAL, i-th feature type is categorical.
    */
-
-  /**
-   * For groupedByLabel
-   * For each feature, pre-count the number and pre-calculate g-values' sum of data that are belong to the each label.
-   * groupedByLabel.get(i) : for the i-th feature, list of paired values.
-   */
-
-  /**
-   * For labelList
-   * For each feature, if the feature is label type, store each data's label for that feature.
-   * labelList.get(i) : for the i-th feature, list of each data's label.
-   */
-
-  /**
-   * For keyGPair
-   * keyGPair stores set of Pair(identity, g-value) to the i-th data in this worker.
-   */
-
-  /**
-   * If featureType.get(i) == CONTINUOUS_FEATURE(0), i-th feature type is real number.
-   * If featureType.get(i) == CATEGORICAL_FEATURE(1), i-th feature type is label.
-   */
-  private final List<Integer> featureType;
-
-//  private final Map<Integer, FeatureType> featureTypes;
+  private final Map<Integer, FeatureType> featureTypes;
 
   /**
    * If valueType == 0, the type of y-value is real number (for regression).
@@ -139,53 +101,19 @@ final class GBTTrainer implements Trainer<GBTData> {
    * The number of possible y values is equal to {@code valueType}
    * (e.g., if valueType == 5, y-value is in five categories)
    */
-  private int valueType;
-
+  private final FeatureType valueType;
+  
   /**
-   * For GBTree
-   * tree list is the form of CART(Classification and Regression Tree).
-   *
-   * Tree's node index looks as follow :
-   *          0
-   *         / \
-   *        1   2
-   *       / \ / \
-   *      3  4 5 6
-   *      .........
-   *
-   * Each node consists of a pair of two values: the first is the index of the criterion feature
-   * and the second is the value to split the node.
-   * (e.g., For a node (3,7), data falls into the left child if the value is smaller than 7 at feature 3.
-   * it goes to the right child otherwise)
-   *
-   * If the criterion feature is in the form of real number, split point is real number.
-   *  - If the feature value is less than or equal to the split point, the data goes to the left child.
-   *  - If the feature value is greater than the split point, the data goes to the right child.)
-   * If the criterion feature is in the form of labels, split point is binary number.
-   *  - Label order is descending order from the higher digit number.
-   *  - 0 indicates left child while 1 indicates right child.
-   * ex) 10011 : if the feature's label is 2, 3, the data goes to left child.
-   *             if the feature's label is 0, 1, 4, the data goes to the right child.
-   *
-   * If the first instance is NodeState.EMPTY(-2), it means the tree node does not exist.
-   * If the first instance is NodeState.LEAF(-1), it means the tree node is a leaf node.
+   * If valueType == FeatureType.CONTINUOUS, valueTypeNum == 0
+   * If valueType == FeatureType.CATEGORICAL, valueTypeNum is a number of value's label types.
    */
-
-  /**
-   * For dataTree
-   * i-th list of dataTree includes set of data numbers that are in the i-th tree node.
-   */
+  private final int valueTypeNum;
 
   /**
    * Maximum depth of the tree(for regularization).
    */
   private final int treeMaxDepth;
-
-  /**
-   * Size of the tree.
-   */
-  private final int treeSize;
-
+  
   /**
    * Minimum size of leaf(for regularization).
    */
@@ -205,8 +133,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(TreeMaxDepth.class) final int treeMaxDepth,
                      @Parameter(LeafMinSize.class) final int leafMinSize,
                      @Parameter(Iterations.class) final int iterations,
-                     //final GBTMetadataParser metadataParser,
-                     final TrainingDataProvider<Long, GBTData> trainingDataProvider,
+                     final GBTMetadataParser metadataParser,
                      final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
     this.numFeatures = numFeatures;
@@ -214,33 +141,18 @@ final class GBTTrainer implements Trainer<GBTData> {
     this.lambda = lambda;
     this.gamma = gamma;
     this.treeMaxDepth = treeMaxDepth;
-    this.treeSize = (1 << treeMaxDepth) - 1;
     this.leafMinSize = leafMinSize;
-    this.trainingDataProvider = trainingDataProvider;
     this.vectorFactory = vectorFactory;
-    this.featureType = new ArrayList<>();
     this.forest = new ArrayList<>();
     this.maxIteration = iterations;
-
-//    this.featureTypes = metadataParser.getFeatureTypes();
+    final Pair<Map<Integer, FeatureType>, Integer> metaData = metadataParser.getFeatureTypes();
+    this.featureTypes = metaData.getLeft();
+    this.valueType = featureTypes.get(numFeatures);
+    this.valueTypeNum = metaData.getRight();
   }
 
   @Override
   public void initialize() {
-    // If there is a feature type line in this worker's data set, push the feature type to the server.
-    trainingDataProvider.prepareDataForEpoch();
-    final Map<Long, GBTData> nextTrainingData = trainingDataProvider.getNextTrainingData();
-    final List<GBTData> instances = new ArrayList<>(nextTrainingData.values());
-    for (final GBTData instance : instances) {
-      if (instance.getIdentity() == TYPE_LINE) {
-        for (int i = 0; i < numFeatures; i++) {
-          featureType.add((int)instance.getFeature().get(i));
-        }
-        valueType = (int)instance.getValue();
-        pushType();
-        break;
-      }
-    }
   }
 
   @Override
@@ -260,30 +172,30 @@ final class GBTTrainer implements Trainer<GBTData> {
   public void runMiniBatch(final Collection<GBTData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
     final long startTime = System.currentTimeMillis();
 
+    final int miniBatchDataSize = miniBatchData.size();
     final List<GBTData> instances = new ArrayList<>(miniBatchData);
-    if (miniBatchInfo.getEpochIdx() == 0) {
-      epochDataSize = 0;
-    }
-    // Pull the feature type vector(real number type : 0, label type : 1).
-    pullTypeVectors();
-  
+
+    // Sort GBT data for each feature values and store it in sortedByFeature list.
     final List<SortedTree> sortedByFeature = new ArrayList<>();
+    // For each feature, pre-count the number and pre-calculate g-values' sum of data that are belong to the each label.
     final List<GroupedTree> groupedByLabel = new ArrayList<>();
+    // For each feature, if the feature is label type, store each data's label for that feature.
     final List<List<Integer>> labelList = new ArrayList<>();
+    // Store g-values for each data.
     final List<Double> gValues = new ArrayList<>();
+    // residual = (real y-value) - (predicted y-value).
+    // Predicted y-value is calculated by using all the trees that are built.
     final List<Double> residual = new ArrayList<>();
     
     // Divide into two cases : Regression / Classification
-    if (valueType == CONTINUOUS_FEATURE) {
+    if (valueType == FeatureType.CONTINUOUS) {
       final GBTree gbTree = new GBTree(treeMaxDepth);
   
       // Calculate residual values for each data in this worker using all the trees.
       calculateResidual(residual, instances, CONTINUOUS_FEATURE);
 
       // Get data from instances list and fill the certain lists(gValues, sortedByFeature, labelList).
-      final int miniBatchDataSize = initializePreProcessLists(sortedByFeature, groupedByLabel, labelList, gValues,
-                                                              residual, instances);
-      epochDataSize += miniBatchDataSize;
+      initializePreProcessLists(sortedByFeature, groupedByLabel, labelList, gValues, residual, instances);
 
       // Pre-processing (prepare two lists to build tree):
       // For each feature type, pre-process the data for the following rules:
@@ -301,21 +213,17 @@ final class GBTTrainer implements Trainer<GBTData> {
       pushTree(gbTree, 0);
       cleanAllDataForNextRun(gbTree, sortedByFeature, groupedByLabel, labelList, gValues);
 
-      calculateResidual(residual, instances, 0);
-      LOG.log(Level.INFO, "loss value : {0}", computeLoss(residual, instances));
+      calculateResidual(residual, instances, CONTINUOUS_FEATURE);
+      LOG.log(Level.INFO, "loss value : {0}", computeLoss(residual));
     } else {
-      for (int label = 0; label < valueType; label++) {
+      for (int label = 0; label < valueTypeNum; label++) {
         final GBTree gbTree = new GBTree(treeMaxDepth);
   
         // Calculate residual values for each data in this worker using all the trees for this label.
         calculateResidual(residual, instances, label);
 
         // Get data from instances list and fill the certain lists(keyGPair, sortedByFeature, labelList).
-        final int miniBatchDataSize = initializePreProcessLists(sortedByFeature, groupedByLabel, labelList, gValues,
-                                                                residual, instances);
-        if (label == 0) {
-          epochDataSize += miniBatchDataSize;
-        }
+        initializePreProcessLists(sortedByFeature, groupedByLabel, labelList, gValues, residual, instances);
 
         // Pre-processing (prepare two lists to build tree):
         // For each feature type, pre-process the data for the following rules:
@@ -363,6 +271,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                          final List<GroupedTree> groupedByLabel, final List<List<Integer>> labelList,
                          final List<Double> gValues, final int dataSize) {
     final DataTree dataTree = new DataTree(treeMaxDepth, dataSize);
+    final int treeSize = (1 << treeMaxDepth) - 1;
     
     for (int nodeIdx = 0; nodeIdx < treeSize; nodeIdx++) {
       final int nodeSize = dataTree.get(nodeIdx).size();
@@ -419,7 +328,7 @@ final class GBTTrainer implements Trainer<GBTData> {
     // For each feature, find the best split point.
     // If the best split point in certain feature splits better than global best split point, then save the condition.
     for (int feature = 0; feature < numFeatures; feature++) {
-      if (featureType.get(feature) == CONTINUOUS_FEATURE) {
+      if (featureTypes.get(feature) == FeatureType.CONTINUOUS) {
         final Tuple3<Double, Integer, Double> bestChoice = bestSplitRealNumberFeature(dataTree, sortedByFeature,
                                                            gValues, nodeIdx, feature, gSum, totalGain, bestGain,
                                                            bestFeature, bestSplitValue);
@@ -621,7 +530,7 @@ final class GBTTrainer implements Trainer<GBTData> {
     final List<Integer> leftChild = dataTree.leftChild(nodeIdx);
     final List<Integer> rightChild = dataTree.rightChild(nodeIdx);
 
-    if (featureType.get(bestFeature) == CONTINUOUS_FEATURE) {
+    if (featureTypes.get(bestFeature) == FeatureType.CONTINUOUS) {
       for (final Pair<Integer, Double> data : sortedByFeature.get(bestFeature).get(nodeIdx)) {
         if (data.getRight() <= bestSplitValue) {
           leftChild.add(data.getLeft());
@@ -666,7 +575,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                                      final List<Double> gValues, final int nodeIdx, final int[] position) {
     final List<Integer> thisNode = dataTree.get(nodeIdx);
     for (int i = 0; i < numFeatures; i++) {
-      if (featureType.get(i) == CONTINUOUS_FEATURE) {
+      if (featureTypes.get(i) == FeatureType.CONTINUOUS) {
         final List<Pair<Integer, Double>> thisSortedFeature = sortedByFeature.get(i).get(nodeIdx);
         final List<Pair<Integer, Double>> leftChildSorted = sortedByFeature.get(i).leftChild(nodeIdx);
         final List<Pair<Integer, Double>> rightChildSorted = sortedByFeature.get(i).rightChild(nodeIdx);
@@ -704,7 +613,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    * Set the pre-processing lists by using instances list and return size of instances list except a data with
    * TYPE_LINE(-1) identity.
    */
-  private int initializePreProcessLists(final List<SortedTree> sortedByFeature, final List<GroupedTree> groupedByLabel,
+  private void initializePreProcessLists(final List<SortedTree> sortedByFeature, final List<GroupedTree> groupedByLabel,
                                         final List<List<Integer>> labelList, final List<Double> gValues,
                                         final List<Double> residual, final List<GBTData> instances) {
     for (int i = 0; i < numFeatures; i++) {
@@ -713,25 +622,19 @@ final class GBTTrainer implements Trainer<GBTData> {
       labelList.add(new ArrayList<>());
     }
     
-    int instanceSize = 0;
     int dataIdx = 0;
     for (final GBTData instance : instances) {
-      final int identity = instance.getIdentity();
       final Vector featureVector = instance.getFeature();
-      if (identity == TYPE_LINE) {
-        continue;
-      }
-      gValues.add(-2.0 * residual.get(dataIdx++));
+      gValues.add(-2.0 * residual.get(dataIdx));
       for (int feature = 0; feature < numFeatures; feature++) {
-        if (featureType.get(feature) == CONTINUOUS_FEATURE) {
-          sortedByFeature.get(feature).get(0).add(Pair.of(instanceSize, featureVector.get(feature)));
+        if (featureTypes.get(feature) == FeatureType.CONTINUOUS) {
+          sortedByFeature.get(feature).get(0).add(Pair.of(dataIdx, featureVector.get(feature)));
         } else {
           labelList.get(feature).add((int)featureVector.get(feature));
         }
       }
-      instanceSize++;
+      dataIdx++;
     }
-    return instanceSize;
   }
 
   /**
@@ -740,8 +643,9 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private void preProcess(final List<SortedTree> sortedByFeature, final List<GroupedTree> groupedByLabel,
                           final List<Double> gValues, final List<List<Integer>> labelList) {
+    final int treeSize = (1 << treeMaxDepth) - 1;
     for (int feature = 0; feature < numFeatures; feature++) {
-      if (featureType.get(feature) == CONTINUOUS_FEATURE) {
+      if (featureTypes.get(feature) == FeatureType.CONTINUOUS) {
         sortedByFeature.get(feature).get(0).sort(FEATURE_COMPARATOR);
       } else {
         final List<Pair<Integer, Double>> groupedByLabelRoot = groupedByLabel.get(feature).get(0);
@@ -762,7 +666,7 @@ final class GBTTrainer implements Trainer<GBTData> {
       }
     }
     for (int feature = 0; feature < numFeatures; feature++) {
-      if (featureType.get(feature) == CATEGORICAL_FEATURE) {
+      if (featureTypes.get(feature) == FeatureType.CATEGORICAL) {
         final int existingLabelNum = groupedByLabel.get(feature).get(0).size();
         for (int node = 1; node < treeSize; node++) {
           for (int i = 0; i < existingLabelNum; i++) {
@@ -785,13 +689,11 @@ final class GBTTrainer implements Trainer<GBTData> {
     for (final GBTree thisTree : forest) {
       int dataIdx = 0;
       for (final GBTData instance : instances) {
-        if (instance.getIdentity() != TYPE_LINE) {
-          if (treeNum == 0) {
-            predictedValue.add(0.0);
-          }
-          final double originalValue = predictedValue.get(dataIdx);
-          predictedValue.set(dataIdx++,  originalValue + stepSize * predictByTree(instance, thisTree));
+        if (treeNum == 0) {
+          predictedValue.add(0.0);
         }
+        final double originalValue = predictedValue.get(dataIdx);
+        predictedValue.set(dataIdx++,  originalValue + stepSize * predictByTree(instance, thisTree));
       }
       treeNum++;
     }
@@ -799,21 +701,19 @@ final class GBTTrainer implements Trainer<GBTData> {
     int dataIdx = 0;
     residual.clear();
     for (final GBTData instance : instances) {
-      if (instance.getIdentity() != TYPE_LINE) {
-        final double thisValue = instance.getValue();
-        if (forest.isEmpty()) {
-          residual.add(thisValue);
-          continue;
-        }
-        final double thisPredictedValue = predictedValue.get(dataIdx++);
-        if (valueType == CONTINUOUS_FEATURE) {
-          residual.add(thisValue - thisPredictedValue);
+      final double thisValue = instance.getValue();
+      if (forest.isEmpty()) {
+        residual.add(thisValue);
+        continue;
+      }
+      final double thisPredictedValue = predictedValue.get(dataIdx++);
+      if (valueType == FeatureType.CONTINUOUS) {
+        residual.add(thisValue - thisPredictedValue);
+      } else {
+        if (Math.abs(thisValue - label) < 1e-9) {
+          residual.add(1 - thisPredictedValue);
         } else {
-          if (Math.abs(thisValue - label) < 1e-9) {
-            residual.add(1 - thisPredictedValue);
-          } else {
-            residual.add(-thisPredictedValue);
-          }
+          residual.add(-thisPredictedValue);
         }
       }
     }
@@ -834,6 +734,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    * bestFeature will be placed in the index-1 of parameter server.
    */
   private void pushBestFeatures(final GBTree gbTree, final int label) {
+    final int treeSize = (1 << treeMaxDepth) - 1;
     final List<Vector> pushBestFeatureList = new LinkedList<>();
     pushBestFeatureList.add(vectorFactory.createDenseOnes(1));
     final Vector bestFeatures = vectorFactory.createDenseZeros(treeSize);
@@ -849,6 +750,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    * bestSplitValue will be placed in the index-2 of parameter server.
    */
   private void pushBestSplitValues(final GBTree gbTree, final int label) {
+    final int treeSize = (1 << treeMaxDepth) - 1;
     final List<Vector> pushBestSplitValueList = new LinkedList<>();
     pushBestSplitValueList.add(vectorFactory.createDenseOnes(1));
     final Vector bestSplitValues = vectorFactory.createDenseZeros(treeSize);
@@ -863,6 +765,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    * Pull all the trees in the server and store them in the forest.
    */
   private void pullAllTrees(final int label) {
+    final int treeSize = (1 << treeMaxDepth) - 1;
     forest.clear();
     final List<Vector> bestFeatureList = parameterWorker.pull(2 * label + 1);
     final List<Vector> bestSplitValueList = parameterWorker.pull(2 * label + 2);
@@ -879,7 +782,8 @@ final class GBTTrainer implements Trainer<GBTData> {
    * This method prints the expected y-value for each data based on the trees that are built.
    */
   private void testTrainingCode(final List<GBTData> instances) {
-    if (valueType == CONTINUOUS_FEATURE) {
+    final int epochDataSize = instances.size();
+    if (valueType == FeatureType.CONTINUOUS) {
       pullAllTrees(0);
       final double[] predictedValue = new double[epochDataSize];
       for (int i = 0; i < epochDataSize; i++) {
@@ -888,57 +792,47 @@ final class GBTTrainer implements Trainer<GBTData> {
       for (final GBTree thisTree : forest) {
         int dataIdx = 0;
         for (final GBTData instance : instances) {
-          if (instance.getIdentity() != TYPE_LINE) {
-            predictedValue[dataIdx++] += stepSize * predictByTree(instance, thisTree);
-          }
+          predictedValue[dataIdx++] += stepSize * predictByTree(instance, thisTree);
         }
-        epochDataSize = dataIdx;
       }
       int dataIdx = 0;
       for (final GBTData instance : instances) {
-        if (instance.getIdentity() != TYPE_LINE) {
-          LOG.log(Level.INFO, "Value {0} : {1}", new Object[]{instance.getIdentity(), predictedValue[dataIdx++]});
-          LOG.log(Level.INFO, "real value : {0}", instance.getValue());
-        }
+        LOG.log(Level.INFO, "Value {0} : {1}", new Object[]{instance.getIdentity(), predictedValue[dataIdx++]});
+        LOG.log(Level.INFO, "real value : {0}", instance.getValue());
       }
     } else {
       int misclassifiedNum = 0;
-      final double[][] predictedValue = new double[epochDataSize][valueType];
+      final double[][] predictedValue = new double[epochDataSize][valueTypeNum];
       for (int  i = 0; i < epochDataSize; i++) {
-        for (int j = 0; j < valueType; j++) {
+        for (int j = 0; j < valueTypeNum; j++) {
           predictedValue[i][j] = 0;
         }
       }
-      for (int label = 0; label < valueType; label++) {
+      for (int label = 0; label < valueTypeNum; label++) {
         pullAllTrees(label);
         for (final GBTree thisTree : forest) {
           int dataIdx = 0;
           for (final GBTData instance : instances) {
-            if (instance.getIdentity() != TYPE_LINE) {
-              predictedValue[dataIdx++][label] += stepSize * predictByTree(instance, thisTree);
-            }
+            predictedValue[dataIdx++][label] += stepSize * predictByTree(instance, thisTree);
           }
-          epochDataSize = dataIdx;
         }
       }
       int dataIdx = 0;
       for (final GBTData instance : instances) {
-        if (instance.getIdentity() != TYPE_LINE) {
-          int predictedResult = 0;
-          double maxValue = predictedValue[dataIdx][0];
-          for (int label = 1; label < valueType; label++) {
-            if (predictedValue[dataIdx][label] > maxValue) {
-              maxValue = predictedValue[dataIdx][label];
-              predictedResult = label;
-            }
+        int predictedResult = 0;
+        double maxValue = predictedValue[dataIdx][0];
+        for (int label = 1; label < valueTypeNum; label++) {
+          if (predictedValue[dataIdx][label] > maxValue) {
+            maxValue = predictedValue[dataIdx][label];
+            predictedResult = label;
           }
-          if (Math.abs(predictedResult - instance.getValue()) > 1e-9) {
-            misclassifiedNum++;
-          }
-          LOG.log(Level.INFO, "value {0} : {1}", new Object[]{instance.getIdentity(), predictedResult});
-          LOG.log(Level.INFO, "real class : {0}", (int)instance.getValue());
-          dataIdx++;
         }
+        if (Math.abs(predictedResult - instance.getValue()) > 1e-9) {
+          misclassifiedNum++;
+        }
+        LOG.log(Level.INFO, "value {0} : {1}", new Object[]{instance.getIdentity(), predictedResult});
+        LOG.log(Level.INFO, "real class : {0}", (int)instance.getValue());
+        dataIdx++;
       }
       LOG.log(Level.INFO, "number of misclassified data : {0}, error rate : {1}",
               new Object[]{misclassifiedNum, (double) misclassifiedNum / epochDataSize});
@@ -957,7 +851,7 @@ final class GBTTrainer implements Trainer<GBTData> {
       if (nodeFeature == NodeState.LEAF.getValue()) {
         return node.getRight();
       }
-      if (featureType.get(nodeFeature) == CONTINUOUS_FEATURE) {
+      if (featureTypes.get(nodeFeature) == FeatureType.CONTINUOUS) {
         final double splitValue = node.getRight();
         if (feature.get(nodeFeature) <= splitValue) {
           nodeIdx = 2 * nodeIdx + 1;
@@ -977,37 +871,6 @@ final class GBTTrainer implements Trainer<GBTData> {
         }
       }
     }
-  }
-
-  /**
-   * Pull type of features(real number or class) and y-value.
-   */
-  private void pullTypeVectors() {
-    featureType.clear();
-    List<Vector> received = parameterWorker.pull(0);
-    while (received.size() == 0) {
-      received = parameterWorker.pull(0);
-    }
-    final Vector receivedType = received.get(0);
-    for (int i = 0; i < numFeatures; i++) {
-      featureType.add((int)receivedType.get(i));
-    }
-    valueType = (int)receivedType.get(numFeatures);
-  }
-
-  /**
-   * Since there is only one updater, update feature type after fitting its shape adequately.
-   */
-  private void pushType() {
-    final List<Vector> pushTypeList = new LinkedList<>();
-    pushTypeList.add(vectorFactory.createDenseZeros(1));
-    final Vector pushType = vectorFactory.createDenseZeros(numFeatures + 1);
-    for (int i = 0; i < numFeatures; i++) {
-      pushType.set(i, featureType.get(i));
-    }
-    pushType.set(numFeatures, valueType);
-    pushTypeList.add(pushType);
-    parameterWorker.push(0, pushTypeList);
   }
 
   /**
@@ -1035,16 +898,12 @@ final class GBTTrainer implements Trainer<GBTData> {
   /**
    * Compute loss value using residual values.
    */
-  private double computeLoss(final List<Double> residual, final List<GBTData> instances) {
+  private double computeLoss(final List<Double> residual) {
     double loss = 0;
-    int dataIdx = 0;
-    for (final GBTData instance : instances) {
-      if (instance.getIdentity() != TYPE_LINE) {
-        loss += residual.get(dataIdx) * residual.get(dataIdx);
-        dataIdx++;
-      }
+    for (final double res : residual) {
+      loss += res * res;
     }
-    loss /= (2 * dataIdx);
+    loss /= (2 * residual.size());
     return loss;
   }
 

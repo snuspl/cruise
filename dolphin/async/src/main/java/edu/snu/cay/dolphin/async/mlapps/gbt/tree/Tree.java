@@ -22,10 +22,19 @@ import java.util.List;
  * Tree class for diverse trees.
  * Many trees(GBTree, DataTree, GroupedTree, SortedTree) extend this class.
  *
+ * tree list is the form of CART(Classification and Regression Tree).
+ * Tree's node index looks as follow :
+ *          0
+ *         / \
+ *        1   2
+ *       / \ / \
+ *      3  4 5 6
+ *      .........
+ *
  * This tree class supports Complete Binary Tree.
  * Thus, {@code add(final T newNode)} function adds the {@code newNode} at the end of the tree list.
  */
-public abstract class Tree<T> {
+public class Tree<T> {
   private final int treeMaxDepth;
   protected final int treeSize;
   protected final List<T> tree;
@@ -36,6 +45,10 @@ public abstract class Tree<T> {
     this.tree = new ArrayList<>(treeSize);
   }
   
+  /**
+   * @param nodeIdx Index of the node.
+   * @return Depth of the node. Root node's depth is 0.
+   */
   public int getDepth(final int nodeIdx) {
     int depth = treeMaxDepth;
     int fallingNodeIdx = nodeIdx;
@@ -50,26 +63,45 @@ public abstract class Tree<T> {
     return depth;
   }
   
+  /**
+   * @return Root node of the tree.
+   */
   public T root() {
     return tree.get(0);
   }
   
+  /**
+   * @param nodeIdx Index of the node.
+   * @return Node with an index equals to nodeIdx.
+   */
   public T get(final int nodeIdx) {
     return tree.get(nodeIdx);
   }
   
+  /**
+   * @return Left child node of the node.
+   */
   public T leftChild(final int nodeIdx) {
     return tree.get(2 * nodeIdx + 1);
   }
   
+  /**
+   * @return Right child node of the node.
+   */
   public T rightChild(final int nodeIdx) {
     return tree.get(2 * nodeIdx + 2);
   }
   
+  /**
+   * Add newNode at the end of the tree(in this implementation, end of the tree is equal to the end of the tree list).
+   */
   public void add(final T newNode) {
     tree.add(newNode);
   }
   
+  /**
+   * Clear all the data in this tree.
+   */
   public void clear() {
     tree.clear();
   }
