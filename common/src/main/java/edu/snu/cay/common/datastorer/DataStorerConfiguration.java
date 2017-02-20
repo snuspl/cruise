@@ -26,7 +26,7 @@ import org.apache.reef.tang.formats.RequiredParameter;
 public final class DataStorerConfiguration extends ConfigurationModuleBuilder {
 
   /**
-   * The base directory of the files
+   * The base directory of the files.
    */
   public static final RequiredParameter<String> BASE_DIR = new RequiredParameter<>();
 

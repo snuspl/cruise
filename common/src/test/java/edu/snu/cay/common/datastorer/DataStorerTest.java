@@ -33,7 +33,7 @@ import static org.junit.Assert.assertTrue;
  * Tests for the DataStorer service.
  */
 public final class DataStorerTest {
-  private static Tang TANG = Tang.Factory.getTang();
+  private static final Tang TANG = Tang.Factory.getTang();
 
   private final String baseDirStr = Files.createTempDir().getAbsolutePath();
   private DataStorer dataStorer;
@@ -59,7 +59,7 @@ public final class DataStorerTest {
 
     final FileSystem fs = LocalFileSystem.get(new org.apache.hadoop.conf.Configuration());
     final Path writtenPath = new Path(baseDirStr, filename);
-    try (final FSDataInputStream dis = fs.open(writtenPath)) {
+    try (FSDataInputStream dis = fs.open(writtenPath)) {
       final byte[] bytesToRead = new byte[bytesToWrite.length];
       final int numBytesRead = dis.read(bytesToRead);
       assertEquals("The numbers of written bytes are different", bytesToWrite.length, numBytesRead);

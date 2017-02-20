@@ -31,7 +31,7 @@ import java.util.logging.Logger;
 /**
  * Implements a DataStore that stores data to local file system.
  */
-public class LocalFSDataStorer implements DataStorer {
+public final class LocalFSDataStorer implements DataStorer {
   private static final Logger LOG = Logger.getLogger(LocalFSDataStorer.class.getName());
   private final Path baseDir;
 
@@ -45,7 +45,7 @@ public class LocalFSDataStorer implements DataStorer {
     final Path path = new Path(baseDir, subPathStr);
     final FileSystem fs = LocalFileSystem.get(new Configuration());
 
-    try (final FSDataOutputStream fos = fs.create(path)) {
+    try (FSDataOutputStream fos = fs.create(path)) {
       fos.write(data);
       fos.close();
     }
