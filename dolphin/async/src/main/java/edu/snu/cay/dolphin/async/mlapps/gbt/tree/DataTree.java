@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.gbt;
+package edu.snu.cay.dolphin.async.mlapps.gbt.tree;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,12 +24,12 @@ import java.util.List;
  * As run() proceeds, each data goes to left or right child.
  * Then those data will be added in the left or right child node.
  */
-final class DataTree implements Tree<List<Integer>> {
+public final class DataTree implements Tree<List<Integer>> {
 
   private final int treeSize;
   private final List<List<Integer>> dataTree;
 
-  DataTree(final int treeMaxDepth) {
+  public DataTree(final int treeMaxDepth) {
     this.treeSize = (1 << treeMaxDepth) - 1;
     this.dataTree = new ArrayList<>(treeSize);
   }

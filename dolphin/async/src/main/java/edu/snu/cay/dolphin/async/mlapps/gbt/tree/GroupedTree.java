@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.gbt;
+package edu.snu.cay.dolphin.async.mlapps.gbt.tree;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -21,47 +21,52 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This tree is for sortedByFeature list.
- * In each node of the tree, data are sorted by their feature values.
+ * This tree is for groupedByLabel list.
+ * In each node of the tree, data are grouped by their label values and save two values.
+ * - the number of data in the label.
+ * - sum of the g-values of the data in the label.
+ *
+ * First value of the pair is the number of values in that label.
+ * Second value of the pair is the sum of the g values of the values that are belong to the label.
  */
-final class SortedTree implements Tree<List<Pair<Integer, Double>>> {
+public final class GroupedTree implements Tree<List<Pair<Integer, Double>>> {
 
   private final int treeSize;
-  private final List<List<Pair<Integer, Double>>> sortedTree;
+  private final List<List<Pair<Integer, Double>>> groupedTree;
 
-  SortedTree(final int treeMaxDepth) {
+  public GroupedTree(final int treeMaxDepth) {
     this.treeSize = (1 << treeMaxDepth) - 1;
-    this.sortedTree = new ArrayList<>(treeSize);
+    this.groupedTree = new ArrayList<>(treeSize);
     for (int i = 0; i < treeSize; i++) {
-      sortedTree.add(new ArrayList<>());
+      groupedTree.add(new ArrayList<>());
     }
   }
 
   @Override
   public List<Pair<Integer, Double>> get(final int thisNode) {
-    return sortedTree.get(thisNode);
+    return groupedTree.get(thisNode);
   }
 
   @Override
   public List<Pair<Integer, Double>> leftChild(final int thisNode) {
-    return sortedTree.get(2 * thisNode + 1);
+    return groupedTree.get(2 * thisNode + 1);
   }
 
   @Override
   public List<Pair<Integer, Double>> rightChild(final int thisNode) {
-    return sortedTree.get(2 * thisNode + 2);
+    return groupedTree.get(2 * thisNode + 2);
   }
 
   @Override
   public void add(final List<Pair<Integer, Double>> newNode) {
-    sortedTree.add(newNode);
+    groupedTree.add(newNode);
   }
 
   @Override
   public void clear() {
     for (int i = 0; i < treeSize; i++) {
-      sortedTree.get(i).clear();
+      groupedTree.get(i).clear();
     }
-    sortedTree.clear();
+    groupedTree.clear();
   }
 }

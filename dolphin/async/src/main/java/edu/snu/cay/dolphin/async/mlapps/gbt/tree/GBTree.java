@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.gbt;
+package edu.snu.cay.dolphin.async.mlapps.gbt.tree;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -24,11 +24,11 @@ import java.util.List;
  * This is a tree for Gradient Boosting Tree.
  * Every run() iteration makes new GBTree(by buildTree()) and push the tree to the server.
  */
-final class GBTree implements Tree<Pair<Integer, Double>> {
+public final class GBTree implements Tree<Pair<Integer, Double>> {
 
   private final List<Pair<Integer, Double>> gbTree;
 
-  GBTree(final int treeMaxDepth) {
+  public GBTree(final int treeMaxDepth) {
     gbTree = new ArrayList<>((1 << treeMaxDepth) - 1);
   }
 
