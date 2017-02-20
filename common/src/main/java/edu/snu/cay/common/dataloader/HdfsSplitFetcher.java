@@ -27,9 +27,8 @@ import java.io.IOException;
 import java.util.Iterator;
 
 /**
- * Used in Evaluator to fetch a split data from HDFS.
+ * Used to fetch a split data from HDFS.
  */
-@EvaluatorSide
 public final class HdfsSplitFetcher {
   private static final Reporter DUMMY_REPORTER = new DummyReporter();
 
