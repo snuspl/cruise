@@ -121,9 +121,10 @@ final class GBTTrainer implements Trainer<GBTData> {
   private final List<Integer> featureType;
 
   /**
-   * If valueType == 0, y-value type is a real number.
-   * If valueType != 0, y-value type is a label. There are valueType-number of labels for the y value.
-   * ex) if valueType == 5, five types of label exist for y-value.
+   * If valueType == 0, the type of y-value is real number (for regression).
+   * If valueType != 0, the type of y-value is categorical (for classification).
+   * The number of possible y values is equal to {@code valueType}
+   * (e.g., if valueType == 5, y-value is in five categories)
    */
   private int valueType;
 
@@ -138,8 +139,10 @@ final class GBTTrainer implements Trainer<GBTData> {
    *      3  4 5 6
    *      .........
    *
-   * First instance is the number of criterion feature to divide the node and the second instance is the split point.
-   * ex) (3,7) means if the feature3 value is smaller than 7, go to left child. Else, go to right child.
+   * Each node consists of a pair of two values: the first is the index of the criterion feature
+   * and the second is the value to split the node.
+   * (e.g., For a node (3,7), data falls into the left child if the value is smaller than 7 at feature 3.
+   * it goes to the right child otherwise)
    *
    * If the criterion feature is in the form of real number, split point is real number.
    *  - If the feature value is less than or equal to the split point, the data goes to the left child.
