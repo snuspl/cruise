@@ -18,24 +18,15 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 import edu.snu.cay.common.math.linalg.Vector;
 
 /**
- * Abstraction for training data used in GBT, consisting of identity value, feature vector and y-value.
+ * Abstraction for training data used in GBT, consisting of feature vector and y-value.
  */
 final class GBTData {
-  private final int identity;
   private final Vector feature;
   private final double value;
 
-  GBTData(final int identity, final Vector feature, final double value) {
-    this.identity = identity;
+  GBTData(final Vector feature, final double value) {
     this.feature = feature;
     this.value = value;
-  }
-
-  /**
-   * @return Identity value of the training data instance.
-   */
-  int getIdentity() {
-    return identity;
   }
 
   /**

@@ -33,10 +33,10 @@ import java.util.*;
  * Input files should be in the following form:
  *
  * <p>
- *   I_1 x_11 x_12 x_13 x_14 ... x_1n y_1 <br>
- *   I_2 x_21 x_22 x_23 x_24 ... x_2n y_2 <br>
+ *   x_11 x_12 x_13 x_14 ... x_1n y_1 <br>
+ *   x_21 x_22 x_23 x_24 ... x_2n y_2 <br>
  *   ... <br>
- *   I_m x_m1 x_m2 x_m3 x_m4 ... x_mn y_m <br>
+ *   x_m1 x_m2 x_m3 x_m4 ... x_mn y_m <br>
  * </p>
  */
 final class GBTDataParser implements DataParser<GBTData> {
@@ -66,14 +66,13 @@ final class GBTDataParser implements DataParser<GBTData> {
       }
 
       final String[] split = text.split("\\s+");
-      assert (split.length == numFeatures + 2);  // split array is composed of identity, feature, and y-value.
+      assert (split.length == numFeatures + 1);  // split array is composed of feature, and y-value.
       final Vector feature =  vectorFactory.createDenseZeros(numFeatures);
-      final int identity = Integer.parseInt(split[0]);
-      for (int index = 1; index <= numFeatures; index++) {
-        feature.set(index - 1, Double.parseDouble(split[index]));
+      for (int index = 0; index < numFeatures; index++) {
+        feature.set(index, Double.parseDouble(split[index]));
       }
-      final double yValue = Double.parseDouble(split[numFeatures + 1]);
-      retList.add(new GBTData(identity, feature, yValue));
+      final double yValue = Double.parseDouble(split[numFeatures]);
+      retList.add(new GBTData(feature, yValue));
     }
 
     return retList;

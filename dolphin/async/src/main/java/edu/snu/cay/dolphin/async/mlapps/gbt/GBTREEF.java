@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
+import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.VectorListCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.VectorListSerializer;
 
@@ -36,7 +37,7 @@ public final class GBTREEF {
         .setTrainerClass(GBTTrainer.class)
         .setUpdaterClass(GBTUpdater.class)
         .setParserClass(GBTDataParser.class)
-        .setPreValueCodecClass(VectorListCodec.class)
+        .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(VectorListCodec.class)
         .setServerSerializerClass(VectorListSerializer.class)
         .setWorkerSerializerClass(GBTDataSerializer.class)

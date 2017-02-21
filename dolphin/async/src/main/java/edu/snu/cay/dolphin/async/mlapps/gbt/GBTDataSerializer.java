@@ -66,7 +66,6 @@ final class GBTDataSerializer implements Serializer {
     @Override
     public void encodeToStream(final GBTData gbtData, final DataOutputStream daos) {
       try {
-        daos.writeInt(gbtData.getIdentity());
         denseVectorCodec.encodeToStream(gbtData.getFeature(), daos);
         daos.writeDouble(gbtData.getValue());
       } catch (final IOException e) {
@@ -77,10 +76,9 @@ final class GBTDataSerializer implements Serializer {
     @Override
     public GBTData decodeFromStream(final DataInputStream dais) {
       try {
-        final int identity = dais.readInt();
         final Vector featureVector = denseVectorCodec.decodeFromStream(dais);
         final double value = dais.readDouble();
-        return new GBTData(identity, featureVector, value);
+        return new GBTData(featureVector, value);
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
