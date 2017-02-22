@@ -146,9 +146,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     final Vector yValues = featureMatrixAndValues.getRight();
 
     final Vector precalculate = featureMatrix.mmul(newModel);
-    computeTracer.recordTime(0);
 
-    computeTracer.startTimer();
     // For each dimension, compute the optimal value.
     for (int i = 0; i < numFeatures; i++) {
       final Vector columnVector = featureMatrix.sliceColumn(i);
