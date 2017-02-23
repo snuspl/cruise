@@ -141,7 +141,7 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     computeTracer.startTimer();
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
-    // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into precalcuate vector.
+    // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into pre-calculate vector.
     final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchData);
     final Matrix featureMatrix = featureMatrixAndValues.getLeft();
     final Vector yValues = featureMatrixAndValues.getRight();
@@ -178,11 +178,11 @@ final class LassoTrainer implements Trainer<LassoData> {
     // Calculate the loss value.
     pullModels();
 
-    final double regLoss = computeLoss(epochData);
-    LOG.log(Level.INFO, "Loss value: {0}", new Object[]{regLoss});
+    final double sampleLossSum = computeLoss(epochData);
+    LOG.log(Level.INFO, "Loss value: {0}", sampleLossSum);
     if ((epochIdx + 1) % PRINT_MODEL_PERIOD == 0) {
       for (int i = 0; i < numFeatures; i++) {
-        LOG.log(Level.INFO, "model : {0}", new Object[]{newModel.get(i)});
+        LOG.log(Level.INFO, "model : {0}", newModel.get(i));
       }
     }
 
@@ -191,7 +191,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
 
     final WorkerMetrics epochMetric =
-        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochData.size(), regLoss, epochElapsedTime);
+        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochData.size(), sampleLossSum, epochElapsedTime);
 
     LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
     sendMetrics(epochMetric);
@@ -275,7 +275,6 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   private double computeLoss(final Collection<LassoData> data) {
     double squaredErrorSum = 0;
-    double reg = 0;
 
     for (final LassoData entry : data) {
       final Vector feature = entry.getFeature();
@@ -284,12 +283,7 @@ final class LassoTrainer implements Trainer<LassoData> {
       squaredErrorSum += (value - prediction) * (value - prediction);
     }
 
-    for (int i = 0; i < numFeatures; ++i) {
-      reg += newModel.get(i);
-    }
-
-    final double loss = 1.0 / (2 * data.size()) * squaredErrorSum + lambda * reg;
-    return loss;
+    return squaredErrorSum;
   }
 
   private void resetTracer() {
@@ -299,7 +293,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", new Object[]{workerMetrics});
+    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", workerMetrics);
 
     metricsMsgSender.send(workerMetrics);
   }
@@ -329,9 +323,9 @@ final class LassoTrainer implements Trainer<LassoData> {
 
   private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
                                          final int numDataBlocks, final int numProcessedDataItemCount,
-                                         final double regLoss, final double elapsedTime) {
+                                         final double loss, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(MetricKeys.REG_LOSS_AVG, regLoss);
+    appMetricMap.put(MetricKeys.SAMPLE_LOSS_SUM, loss);
     parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
 
     return WorkerMetrics.newBuilder()
