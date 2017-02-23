@@ -59,10 +59,10 @@ final class LassoParameters {
 
     // The key denoting the average of L2-regularized loss computed from the sample of training data instances.
     static final String REG_LOSS_AVG =
-        "MLR_TRAINER_REG_LOSS_AVG";
+        "LASSO_TRAINER_REG_LOSS_AVG";
 
     // The key denoting the number of training data instances processed per unit time.
     static final String DVT =
-        "MLR_TRAINER_DVT";
+        "LASSO_TRAINER_DVT";
   }
 }
