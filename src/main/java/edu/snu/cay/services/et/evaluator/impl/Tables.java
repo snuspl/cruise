@@ -61,10 +61,16 @@ public final class Tables implements TableAccessor {
   @Inject
   private Tables(final Injector tableBaseInjector,
                  final LocalKeyGenerator localKeyGenerator,
-                 @Parameter(ExecutorIdentifier.class) final String executorId) {
+                 @Parameter(ExecutorIdentifier.class) final String executorId,
+                 final RemoteAccessOpHandler remoteAccessOpHandler,
+                 final MigrationExecutor migrationExecutor) {
     this.tableBaseInjector = tableBaseInjector;
     this.localKeyGenerator = localKeyGenerator;
     this.executorId = executorId;
+
+    // RemoteAccessOpHandler and MigrationExecutor should be instantiated although they are not actually accessed.
+    // This is intentional. Otherwise RemoteAccessOpHandler and MigrationExecutor are created per Table, which we want
+    // to keep singleton.
   }
 
   /**
@@ -90,7 +96,6 @@ public final class Tables implements TableAccessor {
     // Initialize a table
     LOG.log(Level.INFO, "Initializing a table. tableId: {0}", tableId);
     final TableImpl table = tableInjector.getInstance(TableImpl.class);
-    tables.put(tableId, table);
 
     // Initialize ownership cache
     table.getOwnershipCache().init(blockOwners);
@@ -116,6 +121,7 @@ public final class Tables implements TableAccessor {
       hdfsDataSet.forEach(pair -> table.put(localKeyGenerator.get(), pair.getValue().toString()));
     }
 
+    tables.put(tableId, table);
     return tableId;
   }
 

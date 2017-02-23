@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,13 @@ package edu.snu.cay.services.et.driver.impl;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.wake.EventHandler;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Represents a state where the table is completely allocated into executors.
@@ -34,6 +36,8 @@ import java.util.Set;
  */
 @DriverSide
 public final class AllocatedTable {
+  private static final Logger LOG = Logger.getLogger(AllocatedTable.class.getName());
+
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
   private final TableInitializer tableInitializer;
@@ -100,16 +104,46 @@ public final class AllocatedTable {
     tableInitializer.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
   }
 
+  private synchronized void associate(final String executorId) {
+    final Set<String> executorIdSet = new HashSet<>(1);
+    blockManager.registerExecutor(executorId);
+    migrationManager.registerSubscription(tableConf.getId(), executorId);
+    executorIdSet.add(executorId);
+
+    tableInitializer.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
+  }
+
   /**
    * Moves the {@code numBlocks} number of blocks from src executor to dst executor.
    * @param srcExecutorId an id of src executor
    * @param dstExecutorId an id of dst executor
    * @param numBlocks the number of blocks to move
+   * @param callback a callback for the result of of migration
    */
   public synchronized void moveBlocks(final String srcExecutorId,
                                       final String dstExecutorId,
-                                      final int numBlocks) {
-    migrationManager.moveBlocks(blockManager, srcExecutorId, dstExecutorId, numBlocks);
+                                      final int numBlocks,
+                                      @Nullable final EventHandler<MigrationResult> callback) {
+    // if it's not associated explicitly, do it now
+    if (!blockManager.getAssociatedExecutorIds().contains(dstExecutorId)) {
+      associate(dstExecutorId);
+    }
+
+    final List<Integer> blocks = blockManager.chooseBlocksToMove(srcExecutorId, numBlocks);
+
+    // Check early failure conditions:
+    // there is no block to move (maybe all blocks are moving).
+    if (blocks.size() == 0) {
+      final String msg = String.format("There is no block to move in %s of type." +
+          " Requested numBlocks: %d", srcExecutorId, numBlocks);
+      if (callback != null) {
+        callback.onNext(new MigrationResult(false, msg, Collections.emptyList()));
+      }
+      LOG.log(Level.WARNING, "moveBlocks() fails because executor {0} has no movable block", srcExecutorId);
+      return;
+    }
+
+    migrationManager.startMigration(blockManager, tableConf.getId(), srcExecutorId, dstExecutorId, blocks, callback);
   }
 
   /**

@@ -46,11 +46,11 @@ public interface MessageSender {
    */
   void sendOwnershipUpdateMsg(String executorId,
                               String tableId, int blockId,
-                              String newOwnerId);
+                              String oldOwnerId, String newOwnerId);
 
   /**
    * Sends a MoveInitMsg that initializes migration process between two executors.
    */
-  void sendMoveInitMsg(String tableId, List<Integer> blockIds,
+  void sendMoveInitMsg(long opId, String tableId, List<Integer> blockIds,
                        String senderId, String receiverId);
 }

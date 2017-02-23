@@ -58,8 +58,7 @@ public final class MessageSenderImpl implements MessageSender {
                     TableInitMsg.newBuilder()
                         .setTableConf(confSerializer.toString(tableConf.getConfiguration()))
                         .setBlockOwners(blockOwnerList)
-                        .setFileSplit(fileSplit == null ? null :
-                            HdfsSplitInfoSerializer.serialize(fileSplit))
+                        .setFileSplit(fileSplit == null ? null : HdfsSplitInfoSerializer.serialize(fileSplit))
                         .build()
                 ).build()
         ).build();
@@ -74,13 +73,53 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendOwnershipUpdateMsg(final String executorId,
                                      final String tableId, final int blockId,
-                                     final String newOwnerId) {
+                                     final String oldOwnerId, final String newOwnerId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableControlMsg)
+        .setTableControlMsg(
+            TableControlMsg.newBuilder()
+                .setType(TableControlMsgType.OwnershipUpdateMsg)
+                .setOwnershipUpdateMsg(
+                    OwnershipUpdateMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setBlockId(blockId)
+                        .setOldOwnerId(oldOwnerId)
+                        .setNewOwnerId(newOwnerId)
+                        .build()
+                ).build()
+        ).build();
+
+    try {
+      networkConnection.send(executorId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending OwnershipUpdate message", e);
+    }
 
   }
 
   @Override
-  public void sendMoveInitMsg(final String tableId, final List<Integer> blockIds,
+  public void sendMoveInitMsg(final long opId, final String tableId, final List<Integer> blockIds,
                               final String senderId, final String receiverId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MigrationMsg)
+        .setMigrationMsg(
+            MigrationMsg.newBuilder()
+                .setOperationId(opId)
+                .setType(MigrationMsgType.MoveInitMsg)
+                .setMoveInitMsg(
+                    MoveInitMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setBlockIds(blockIds)
+                        .setSenderId(senderId)
+                        .setReceiverId(receiverId)
+                        .build()
+                ).build()
+        ).build();
 
+    try {
+      networkConnection.send(senderId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending MoveInit message", e);
+    }
   }
 }

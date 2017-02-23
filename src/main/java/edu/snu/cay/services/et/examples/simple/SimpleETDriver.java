@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,12 @@ package edu.snu.cay.services.et.examples.simple;
 
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
+import edu.snu.cay.services.et.driver.impl.MigrationResult;
 import edu.snu.cay.services.et.evaluator.impl.HashPartitionFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import org.apache.reef.driver.task.TaskConfiguration;
@@ -31,20 +33,25 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Driver code for simple example.
  */
 @Unit
 final class SimpleETDriver {
+  private static final Logger LOG = Logger.getLogger(SimpleETDriver.class.getName());
   private static final String GET_TASK_ID_PREFIX = "Simple-get-task-";
   private static final String PUT_TASK_ID_PREFIX = "Simple-put-task-";
-  static final int NUM_ASSOCIATORS = 2;
-  static final int NUM_SUBSCRIBERS = 2;
+  static final int NUM_ASSOCIATORS = 2; // should be at least 2
+  static final int NUM_SUBSCRIBERS = 1; // should be at least 1
   static final String TABLE0_ID = "Table0";
   static final String TABLE1_ID = "Table1";
 
@@ -98,14 +105,14 @@ final class SimpleETDriver {
       final AtomicInteger taskIdCount = new AtomicInteger(0);
 
       // 1. First start a put task in a subscriber
-      final Future<TaskResult> taskResultFuture = subscribers.get(0).submitTask(TaskConfiguration.CONF
+      final Future<TaskResult> putTaskResultFuture = subscribers.get(0).submitTask(TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, PUT_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
           .set(TaskConfiguration.TASK, PutTask.class)
           .build());
 
       // 2. wait until a put task finished
       try {
-        taskResultFuture.get();
+        putTaskResultFuture.get();
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
@@ -122,6 +129,50 @@ final class SimpleETDriver {
               .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
               .set(TaskConfiguration.TASK, GetTask.class)
               .build()));
+
+      // 4. migrate blocks between associators
+      final CountDownLatch migrationLatch = new CountDownLatch(2);
+      final EventHandler<MigrationResult> migrationCallback = migrationResult -> {
+        LOG.log(Level.INFO, "Migration has been finished: {0}, {1}, {2}",
+            new Object[]{migrationResult.isCompleted(), migrationResult.getMsg(), migrationResult.getMigratedBlocks()});
+        migrationLatch.countDown();
+      };
+
+      // move all blocks of table0 in the first associator to the second associator
+      table0.moveBlocks(associators.get(0).getId(), associators.get(1).getId(),
+          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback);
+
+      // move all blocks of table1 in the second associator to the first associator
+      table1.moveBlocks(associators.get(1).getId(), associators.get(0).getId(),
+          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback);
+
+      // wait until migrations finish
+      try {
+        migrationLatch.await();
+      } catch (final InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+
+      // 5. start get tasks in all executors again after migration
+      final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(associators.size() + subscribers.size());
+      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, GetTask.class)
+            .build())));
+
+      subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+              .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+              .set(TaskConfiguration.TASK, GetTask.class)
+              .build())));
+
+      // 6. wait all tasks finished and close executors
+      taskResultFutureList.forEach(taskResultFuture -> {
+        try {
+          taskResultFuture.get();
+        } catch (InterruptedException | ExecutionException e) {
+          throw new RuntimeException(e);
+        }
+      });
 
       subscribers.forEach(AllocatedExecutor::close);
       associators.forEach(AllocatedExecutor::close);

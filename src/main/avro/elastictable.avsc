@@ -134,6 +134,7 @@
   [
     {"name": "tableId", "type" : "string"},
     {"name": "blockId", "type": "int"},
+    {"name": "oldOwnerId", "type": "string"},
     {"name": "newOwnerId", "type": "string"}
   ]
 },
@@ -293,7 +294,7 @@
     {"name": "type", "type": {"type": "enum", "name": "MigrationMsgType",
         "symbols": ["MoveInitMsg", "OwnershipMsg", "OwnershipAckMsg", "OwnershipMovedMsg",
          "DataMsg", "DataAckMsg", "DataMovedMsg"]}},
-    {"name": "operationId", "type": ["null", "string"], "default": null},
+    {"name": "operationId", "type": "long"},
     {"name": "moveInitMsg", "type": ["null", "MoveInitMsg"], "default": null},
     {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null},
     {"name": "ownershipAckMsg", "type": ["null", "OwnershipAckMsg"], "default": null},

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.evaluator.api.Block;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;

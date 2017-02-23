@@ -38,15 +38,16 @@ public interface MessageSender {
    * process a remote access, parceling request metadata into the message.
    * Since the request can be transmitted multiple times through the multiple executors,
    * the message retains {@code origId}, an id of the executor where the operation is generated at the beginning.
-   * The operation should be given a unique {@code operationId}.
+   * The operation should be given a unique {@code opId}.
    */
-  void sendTableAccessReqMsg(String origId, String destId, long operationId,
+  void sendTableAccessReqMsg(String origId, String destId, long opId,
                              String tableId, OpType opType, DataKey dataKey, @Nullable DataValue dataValue);
 
   /**
-   * Sends a RemoteOpResultMsg that contains the result of the data operation specified with {@code operationId}.
+   * Sends a RemoteOpResultMsg that contains the result of the data operation.
+   * The operation should be given a unique {@code opId}.
    */
-  void sendTableAccessResMsg(String destId, long operationId,
+  void sendTableAccessResMsg(String destId, long opId,
                              @Nullable DataValue dataValue, boolean isSuccess);
 
   /**
@@ -56,35 +57,41 @@ public interface MessageSender {
 
   /**
    * Sends a message transferring ownership of a block from sender to receiver of migration.
+   * The operation should be given a unique {@code opId}.
    */
-  void sendOwnershipMsg(String tableId, int blockId,
+  void sendOwnershipMsg(long opId, String tableId, int blockId,
                         String oldOwnerId, String newOwnerId);
 
   /**
    * Sends a response message for OwnershipMsg from receiver to sender of migration.
+   * The operation should be given a unique {@code opId}.
    */
-  void sendOwnershipAckMsg(String tableId, int blockId,
+  void sendOwnershipAckMsg(long opId, String tableId, int blockId,
                            String oldOwnerId, String newOwnerId);
 
   /**
    * Sends a message to master to notify that the ownership of a block has been migrated successfully.
+   * The operation should be given a unique {@code opId}.
    */
-  void sendOwnershipMovedMsg(String tableId, int blockId);
+  void sendOwnershipMovedMsg(long opId, String tableId, int blockId);
 
   /**
    * Sends a message transferring data of a block from sender to receiver of migration.
+   * The operation should be given a unique {@code opId}.
    */
-  void sendDataMsg(String tableId, int blockId,
+  void sendDataMsg(long opId, String tableId, int blockId,
                    List<KVPair> kvPairs,
                    String senderId, String receiverId);
 
   /**
    * Sends a response message for DataMsg from receiver to sender of migration.
+   * The operation should be given a unique {@code opId}.
    */
-  void sendDataAckMsg(String tableId, int blockId,
+  void sendDataAckMsg(long opId, String tableId, int blockId,
                       String senderId, String receiverId);
   /**
    * Sends a message to master to notify that the ownership of a block has been migrated successfully.
+   * The operation should be given a unique {@code opId}.
    */
-  void sendDataMovedMsg(String tableId, int blockId);
+  void sendDataMovedMsg(long opId, String tableId, int blockId);
 }

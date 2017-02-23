@@ -26,18 +26,30 @@ import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * A message handler implementation.
  */
 @DriverSide
 public final class MessageHandlerImpl implements MessageHandler {
-
   private final InjectionFuture<TableInitializer> tableInitializerFuture;
+  private final InjectionFuture<MigrationManager> migrationManagerFuture;
+
+  /**
+   * A map for tracking which migration message (e.g., OwnershipMovedMsg, DataMovedMsg)
+   * has been arrived first for a specific block migration.
+   * Maintaining only block id is enough, because a block cannot be chosen by multiple migrations at the same time.
+   */
+  private final Set<Integer> migrationMsgArrivedBlockIds = Collections.synchronizedSet(new HashSet<>());
 
   @Inject
-  private MessageHandlerImpl(final InjectionFuture<TableInitializer> tableInitializerFuture) {
+  private MessageHandlerImpl(final InjectionFuture<TableInitializer> tableInitializerFuture,
+                             final InjectionFuture<MigrationManager> migrationManagerFuture) {
     this.tableInitializerFuture = tableInitializerFuture;
+    this.migrationManagerFuture = migrationManagerFuture;
   }
 
   @Override
@@ -72,14 +84,54 @@ public final class MessageHandlerImpl implements MessageHandler {
     tableInitializerFuture.get().onTableInitAck(msg.getTableId(), msg.getExecutorId());
   }
 
+  /**
+   * Handles MigrationMsgs (e.g., OwnershipAckMsg and DataMovedMsg).
+   * @param msg a migration msg
+   */
   private void onMigrationMsg(final MigrationMsg msg) {
+    final long opId = msg.getOperationId();
+    final int blockId;
+    final boolean ownershipMovedMsgArrivedFirst;
+
     switch (msg.getType()) {
-    case DataMovedMsg:
-      //onDataMovedMsg();
+    case OwnershipMovedMsg:
+      blockId = msg.getOwnershipMovedMsg().getBlockId();
+      // Handles the OwnershipAckMsg from the sender that reports an update of a block's ownership.
+      migrationManagerFuture.get().ownershipMoved(opId, blockId);
+
+      synchronized (this) {
+        if (migrationMsgArrivedBlockIds.contains(blockId)) {
+          migrationMsgArrivedBlockIds.remove(blockId);
+          ownershipMovedMsgArrivedFirst = false;
+        } else {
+          migrationMsgArrivedBlockIds.add(blockId);
+          ownershipMovedMsgArrivedFirst = true;
+        }
+      }
+
+      if (!ownershipMovedMsgArrivedFirst) {
+        // Handles DataMovedMsg from the sender that reports data migration for a block has been finished successfully.
+        migrationManagerFuture.get().markBlockAsMoved(opId, blockId);
+      }
       break;
 
-    case OwnershipMovedMsg:
-      //onOwnership
+    case DataMovedMsg:
+      blockId = msg.getDataMovedMsg().getBlockId();
+
+      synchronized (this) {
+        if (migrationMsgArrivedBlockIds.contains(blockId)) {
+          migrationMsgArrivedBlockIds.remove(blockId);
+          ownershipMovedMsgArrivedFirst = true;
+        } else {
+          migrationMsgArrivedBlockIds.add(blockId);
+          ownershipMovedMsgArrivedFirst = false;
+        }
+      }
+
+      if (ownershipMovedMsgArrivedFirst) {
+        // Handles DataMovedMsg from the sender that reports data migration for a block has been finished successfully.
+        migrationManagerFuture.get().markBlockAsMoved(opId, blockId);
+      }
       break;
 
     default:

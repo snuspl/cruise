@@ -52,14 +52,14 @@ final class RemoteAccessOpHandler {
 
   private volatile boolean closeFlag = false;
 
-  private final Tables tables;
+  private final InjectionFuture<Tables> tablesFuture;
   private final InjectionFuture<MessageSender> msgSenderFuture;
 
   @Inject
-  private RemoteAccessOpHandler(final Tables tables,
+  private RemoteAccessOpHandler(final InjectionFuture<Tables> tablesFuture,
                                 @Parameter(NumRemoteOpsHandlerThreads.class) final int numRemoteThreads,
                                 final InjectionFuture<MessageSender> msgSenderFuture) {
-    this.tables = tables;
+    this.tablesFuture = tablesFuture;
     this.msgSenderFuture = msgSenderFuture;
     initExecutor(numRemoteThreads);
   }
@@ -112,7 +112,7 @@ final class RemoteAccessOpHandler {
           new Object[]{operation.getOpId(), operation.getOrigId(), blockId});
 
       try {
-        final TableComponents<K, V> tableComponents = tables.get(tableId);
+        final TableComponents<K, V> tableComponents = tablesFuture.get().get(tableId);
         final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
         final BlockStore<K, V> blockStore = tableComponents.getBlockStore();
 
@@ -180,7 +180,7 @@ final class RemoteAccessOpHandler {
     final DataValue dataValue = msg.getDataValue();
 
     try {
-      final TableComponents<K, V> tableComponents = tables.get(tableId);
+      final TableComponents<K, V> tableComponents = tablesFuture.get().get(tableId);
       final KVSerializer<K, V> kvSerializer = tableComponents.getSerializer();
       final Codec<K> keyCodec = kvSerializer.getKeyCodec();
       final Codec<V> valueCodec = kvSerializer.getValueCodec();
@@ -221,7 +221,7 @@ final class RemoteAccessOpHandler {
 
     final TableComponents<K, V> tableComponents;
     try {
-      tableComponents = tables.get(tableId);
+      tableComponents = tablesFuture.get().get(tableId);
 
       final Codec<V> valueCodec = tableComponents.getSerializer().getValueCodec();
       final String origEvalId = operation.getOrigId();

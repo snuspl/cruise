@@ -49,20 +49,20 @@ public final class MessageSenderImpl implements MessageSender {
 
   @Override
   public void sendTableAccessReqMsg(final String origId, final String destId,
-                                    final long operationId, final String tableId,
-                                    final OpType accessType,
+                                    final long opId, final String tableId,
+                                    final OpType opType,
                                     final DataKey dataKey, @Nullable final DataValue dataValue) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
         .setTableAccessMsg(
             TableAccessMsg.newBuilder()
                 .setType(TableAccessMsgType.TableAccessReqMsg)
-                .setOperationId(operationId)
+                .setOperationId(opId)
                 .setTableAccessReqMsg(
                     TableAccessReqMsg.newBuilder()
                         .setOrigId(origId)
                         .setTableId(tableId)
-                        .setOpType(accessType)
+                        .setOpType(opType)
                         .setDataKey(dataKey)
                         .setDataValue(dataValue)
                         .build()
@@ -77,14 +77,14 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendTableAccessResMsg(final String destId, final long operationId,
+  public void sendTableAccessResMsg(final String destId, final long opId,
                                     @Nullable final DataValue dataValue, final boolean isSuccess) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
         .setTableAccessMsg(
             TableAccessMsg.newBuilder()
                 .setType(TableAccessMsgType.TableAccessResMsg)
-                .setOperationId(operationId)
+                .setOperationId(opId)
                 .setTableAccessResMsg(
                     TableAccessResMsg.newBuilder()
                         .setIsSuccess(isSuccess)
@@ -123,37 +123,157 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendOwnershipMsg(final String tableId, final int blockId,
+  public void sendOwnershipMsg(final long opId, final String tableId, final int blockId,
                                final String oldOwnerId, final String newOwnerId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MigrationMsg)
+        .setMigrationMsg(
+            MigrationMsg.newBuilder()
+                .setOperationId(opId)
+                .setType(MigrationMsgType.OwnershipMsg)
+                .setOwnershipMsg(
+                    OwnershipMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setBlockId(blockId)
+                        .setOldOwnerId(oldOwnerId)
+                        .setNewOwnerId(newOwnerId)
+                        .build()
+                ).build()
+        ).build();
 
+    try {
+      networkConnection.send(newOwnerId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending Ownership message", e);
+    }
   }
 
   @Override
-  public void sendOwnershipAckMsg(final String tableId, final int blockId,
+  public void sendOwnershipAckMsg(final long opId, final String tableId, final int blockId,
                                   final String oldOwnerId, final String newOwnerId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MigrationMsg)
+        .setMigrationMsg(
+            MigrationMsg.newBuilder()
+                .setOperationId(opId)
+                .setType(MigrationMsgType.OwnershipAckMsg)
+                .setOwnershipAckMsg(
+                    OwnershipAckMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setBlockId(blockId)
+                        .setOldOwnerId(oldOwnerId)
+                        .setNewOwnerId(newOwnerId)
+                        .build()
+                ).build()
+        ).build();
 
+    try {
+      networkConnection.send(oldOwnerId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending OwnershipAck message", e);
+    }
   }
 
   @Override
-  public void sendOwnershipMovedMsg(final String tableId, final int blockId) {
+  public void sendOwnershipMovedMsg(final long opId, final String tableId, final int blockId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MigrationMsg)
+        .setMigrationMsg(
+            MigrationMsg.newBuilder()
+                .setOperationId(opId)
+                .setType(MigrationMsgType.OwnershipMovedMsg)
+                .setOwnershipMovedMsg(
+                    OwnershipMovedMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setBlockId(blockId)
+                        .build()
+                ).build()
+        ).build();
 
+    try {
+      networkConnection.send(driverId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending OwnershipMoved message", e);
+    }
   }
 
   @Override
-  public void sendDataMsg(final String tableId, final int blockId,
+  public void sendDataMsg(final long opId, final String tableId, final int blockId,
                           final List<KVPair> kvPairs,
                           final String senderId, final String receiverId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MigrationMsg)
+        .setMigrationMsg(
+            MigrationMsg.newBuilder()
+                .setOperationId(opId)
+                .setType(MigrationMsgType.DataMsg)
+                .setDataMsg(
+                    DataMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setBlockId(blockId)
+                        .setKvPairs(kvPairs)
+                        .setSenderId(senderId)
+                        .setReceiverId(receiverId)
+                        .build()
+                ).build()
+        ).build();
 
+    try {
+      networkConnection.send(receiverId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending Data message", e);
+    }
   }
 
   @Override
-  public void sendDataAckMsg(final String tableId, final int blockId,
+  public void sendDataAckMsg(final long opId, final String tableId, final int blockId,
                              final String senderId, final String receiverId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MigrationMsg)
+        .setMigrationMsg(
+            MigrationMsg.newBuilder()
+                .setOperationId(opId)
+                .setType(MigrationMsgType.DataAckMsg)
+                .setDataAckMsg(
+                    DataAckMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setBlockId(blockId)
+                        .setSenderId(senderId)
+                        .setReceiverId(receiverId)
+                        .build()
+                )
+                .build())
+        .build();
 
+    try {
+      networkConnection.send(senderId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending DataAck message", e);
+    }
   }
 
   @Override
-  public void sendDataMovedMsg(final String tableId, final int blockId) {
+  public void sendDataMovedMsg(final long opId, final String tableId, final int blockId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MigrationMsg)
+        .setMigrationMsg(
+            MigrationMsg.newBuilder()
+                .setOperationId(opId)
+                .setType(MigrationMsgType.DataMovedMsg)
+                .setDataMovedMsg(
+                    DataMovedMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setBlockId(blockId)
+                        .build()
+                )
+                .build()
+        )
+        .build();
 
+    try {
+      networkConnection.send(driverId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending DataMoved message", e);
+    }
   }
 }

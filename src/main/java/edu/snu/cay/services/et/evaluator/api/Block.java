@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.evaluator.impl;
+package edu.snu.cay.services.et.evaluator.api;
 
-import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import org.apache.reef.annotations.audience.Private;
 
 import java.util.Map;

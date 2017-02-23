@@ -36,7 +36,7 @@ import static org.junit.Assert.*;
 /**
  * Tests to check whether OwnershipCache is initialized correctly, and give correct answer to route operations.
  */
-public class OwnershipCacheTest {
+public final class OwnershipCacheTest {
   private static final String EXECUTOR_ID_PREFIX = "executor-";
 
   /**

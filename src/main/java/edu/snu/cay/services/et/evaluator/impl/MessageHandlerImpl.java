@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
@@ -34,24 +35,27 @@ import java.io.IOException;
 @EvaluatorSide
 public final class MessageHandlerImpl implements MessageHandler {
 
-  private final Tables tables;
+  private final InjectionFuture<Tables> tablesFuture;
 
   private final ConfigurationSerializer confSerializer;
   private final InjectionFuture<MessageSender> msgSenderFuture;
   private final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture;
   private final InjectionFuture<RemoteAccessOpSender> remoteAccessSenderFuture;
+  private final InjectionFuture<MigrationExecutor> migrationExecutorFuture;
 
   @Inject
-  private MessageHandlerImpl(final Tables tables,
+  private MessageHandlerImpl(final InjectionFuture<Tables> tablesFuture,
                              final ConfigurationSerializer confSerializer,
                              final InjectionFuture<MessageSender> msgSenderFuture,
                              final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture,
-                             final InjectionFuture<RemoteAccessOpSender> remoteAccessSenderFuture) {
-    this.tables = tables;
+                             final InjectionFuture<RemoteAccessOpSender> remoteAccessSenderFuture,
+                             final InjectionFuture<MigrationExecutor> migrationExecutorFuture) {
+    this.tablesFuture = tablesFuture;
     this.confSerializer = confSerializer;
     this.msgSenderFuture = msgSenderFuture;
     this.remoteAccessHandlerFuture = remoteAccessHandlerFuture;
     this.remoteAccessSenderFuture = remoteAccessSenderFuture;
+    this.migrationExecutorFuture = migrationExecutorFuture;
   }
 
   @Override
@@ -68,7 +72,7 @@ public final class MessageHandlerImpl implements MessageHandler {
       break;
 
     case MigrationMsg:
-      onMigrationMsg(innerMsg.getMigrationMsg());
+      migrationExecutorFuture.get().onNext(innerMsg.getMigrationMsg());
       break;
 
     default:
@@ -99,7 +103,7 @@ public final class MessageHandlerImpl implements MessageHandler {
       break;
 
     case OwnershipUpdateMsg:
-      //onOwnershipUpdateMsg(msg);
+      onOwnershipUpdateMsg(msg.getOwnershipUpdateMsg());
       break;
 
     default:
@@ -109,7 +113,7 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private void onTableInitMsg(final TableInitMsg msg) {
     try {
-      final String tableId = tables.initTable(confSerializer.fromString(msg.getTableConf()),
+      final String tableId = tablesFuture.get().initTable(confSerializer.fromString(msg.getTableConf()),
           msg.getBlockOwners(), msg.getFileSplit());
 
       msgSenderFuture.get().sendTableInitAckMsg(tableId);
@@ -121,26 +125,12 @@ public final class MessageHandlerImpl implements MessageHandler {
     }
   }
 
-  private void onMigrationMsg(final MigrationMsg msg) {
-    switch (msg.getType()) {
-    case DataMsg:
-      //onDataMsg(msg);
-      break;
-
-    case DataAckMsg:
-      //onDataAckMsg(msg);
-      break;
-
-    case OwnershipMsg:
-      //onOwnershipMsg(msg);
-      break;
-
-    case OwnershipAckMsg:
-      //onOwnershipAckMsg(msg);
-      break;
-
-    default:
-      throw new RuntimeException("Unexpected message: " + msg);
+  private void onOwnershipUpdateMsg(final OwnershipUpdateMsg msg) {
+    try {
+      final OwnershipCache ownershipCache = tablesFuture.get().get(msg.getTableId()).getOwnershipCache();
+      ownershipCache.update(msg.getBlockId(), msg.getOldOwnerId(), msg.getNewOwnerId());
+    } catch (final TableNotExistException e) {
+      throw new RuntimeException(e);
     }
   }
 }
