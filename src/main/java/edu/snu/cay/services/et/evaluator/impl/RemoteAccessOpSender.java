@@ -51,15 +51,15 @@ final class RemoteAccessOpSender {
    */
   private final ConcurrentMap<Long, RemoteDataOp> ongoingOp = new ConcurrentHashMap<>();
 
-  private final Tables tables;
+  private final InjectionFuture<Tables> tablesFuture;
   private final String executorId;
   private final InjectionFuture<MessageSender> msgSenderFuture;
 
   @Inject
-  private RemoteAccessOpSender(final Tables tables,
+  private RemoteAccessOpSender(final InjectionFuture<Tables> tablesFuture,
                                @Parameter(ExecutorIdentifier.class) final String executorId,
                                final InjectionFuture<MessageSender> msgSenderFuture) {
-    this.tables = tables;
+    this.tablesFuture = tablesFuture;
     this.executorId = executorId;
     this.msgSenderFuture = msgSenderFuture;
   }
@@ -90,7 +90,7 @@ final class RemoteAccessOpSender {
     registerOp(operation);
 
     try {
-      final TableComponents<K, V> tableComponents = tables.get(tableId);
+      final TableComponents<K, V> tableComponents = tablesFuture.get().get(tableId);
 
       final KVSerializer<K, V> kvSerializer = tableComponents.getSerializer();
       final Codec<K> keyCodec = kvSerializer.getKeyCodec();
@@ -147,7 +147,7 @@ final class RemoteAccessOpSender {
     }
 
     try {
-      final TableComponents<K, V> tableComponents = tables.get(operation.getMetadata().getTableId());
+      final TableComponents<K, V> tableComponents = tablesFuture.get().get(operation.getMetadata().getTableId());
       final KVSerializer<K, V> kvSerializer = tableComponents.getSerializer();
       final Codec<V> valueCodec = kvSerializer.getValueCodec();
 

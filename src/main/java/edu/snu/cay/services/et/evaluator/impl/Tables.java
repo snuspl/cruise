@@ -63,14 +63,15 @@ public final class Tables implements TableAccessor {
                  final LocalKeyGenerator localKeyGenerator,
                  @Parameter(ExecutorIdentifier.class) final String executorId,
                  final RemoteAccessOpHandler remoteAccessOpHandler,
+                 final RemoteAccessOpSender remoteAccessOpSender,
                  final MigrationExecutor migrationExecutor) {
     this.tableBaseInjector = tableBaseInjector;
     this.localKeyGenerator = localKeyGenerator;
     this.executorId = executorId;
 
-    // RemoteAccessOpHandler and MigrationExecutor should be instantiated although they are not actually accessed.
-    // This is intentional. Otherwise RemoteAccessOpHandler and MigrationExecutor are created per Table, which we want
-    // to keep singleton.
+    // RemoteAccessOpHandler/Sender and MigrationExecutor should be instantiated although they're not actually accessed.
+    // This is intentional. Otherwise RemoteAccessOpHandler/Sender and MigrationExecutor are created per Table,
+    // which we want to keep singleton.
   }
 
   /**
