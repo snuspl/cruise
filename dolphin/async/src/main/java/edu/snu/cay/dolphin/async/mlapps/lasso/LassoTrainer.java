@@ -90,11 +90,11 @@ final class LassoTrainer implements Trainer<LassoData> {
     }
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
+    this.oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
   @Override
   public void initialize() {
-    oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
   /**

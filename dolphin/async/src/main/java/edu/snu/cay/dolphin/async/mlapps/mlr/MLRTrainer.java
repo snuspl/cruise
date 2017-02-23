@@ -173,14 +173,8 @@ final class MLRTrainer implements Trainer<MLRData> {
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
-  }
 
-  /**
-   * Parse the input dataset, initialize a few data structures, and wait for other workers.
-   */
-  @Override
-  public void initialize() {
-    classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
+    this.classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
         // 0 ~ (numPartitionsPerClass - 1) is for class 0
@@ -194,6 +188,10 @@ final class MLRTrainer implements Trainer<MLRData> {
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
+  }
+
+  @Override
+  public void initialize() {
   }
 
   @Override

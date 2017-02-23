@@ -108,6 +108,10 @@ final class LDATrainer implements Trainer<Document> {
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
+
+    LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
+    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
+    LOG.log(Level.INFO, "All random topic assignments are updated");
   }
 
   @Override
@@ -124,10 +128,6 @@ final class LDATrainer implements Trainer<Document> {
       }
     }
     pushAndResetGradients(topicChanges);
-
-    LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
-    LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
-    LOG.log(Level.INFO, "All random topic assignments are updated");
   }
 
   @Override
