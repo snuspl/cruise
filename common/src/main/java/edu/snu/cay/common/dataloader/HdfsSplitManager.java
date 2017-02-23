@@ -18,7 +18,6 @@ package edu.snu.cay.common.dataloader;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.data.loading.impl.JobConfExternalConstructor;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -29,9 +28,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Used in Driver to get splits of a HDFS directory/file.
+ * Used to get splits of a HDFS directory/file.
  */
-@DriverSide
 public final class HdfsSplitManager {
   private static final Logger LOG = Logger.getLogger(HdfsSplitManager.class.getName());
 
