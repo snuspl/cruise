@@ -112,11 +112,11 @@ final class LassoTrainer implements Trainer<LassoData> {
     this.pullTracer = new Tracer();
     this.pushTracer = new Tracer();
     this.computeTracer = new Tracer();
+    this.oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
   @Override
   public void initialize() {
-    oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
   /**
