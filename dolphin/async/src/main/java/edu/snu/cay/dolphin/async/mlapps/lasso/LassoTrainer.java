@@ -132,11 +132,12 @@ final class LassoTrainer implements Trainer<LassoData> {
   public void runMiniBatch(final Collection<LassoData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
     resetTracer();
 
+    final int epochIdx = miniBatchInfo.getEpochIdx();
+    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
+    final int numInstancesToProcess = miniBatchData.size();
     final long miniBatchStartTime = System.currentTimeMillis();
 
     pullModels();
-
-    final int numInstancesToProcess = miniBatchData.size();
 
     computeTracer.startTimer();
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
@@ -145,7 +146,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     final Matrix featureMatrix = featureMatrixAndValues.getLeft();
     final Vector yValues = featureMatrixAndValues.getRight();
 
-    final Vector precalculate = featureMatrix.mmul(newModel);
+    final Vector preCalculate = featureMatrix.mmul(newModel);
 
     // For each dimension, compute the optimal value.
     for (int i = 0; i < numFeatures; i++) {
@@ -154,17 +155,15 @@ final class LassoTrainer implements Trainer<LassoData> {
       if (columnNorm == 0 || newModel.get(i) == 0) {
         continue;
       }
-      precalculate.subi(columnVector.scale(newModel.get(i)));
-      newModel.set(i, sthresh((columnVector.dot(yValues.sub(precalculate))) / columnNorm, lambda, columnNorm));
-      precalculate.addi(columnVector.scale(newModel.get(i)));
+      preCalculate.subi(columnVector.scale(newModel.get(i)));
+      newModel.set(i, sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
+      preCalculate.addi(columnVector.scale(newModel.get(i)));
     }
     computeTracer.recordTime(numInstancesToProcess);
 
     pushGradients();
 
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-    final int epochIdx = miniBatchInfo.getEpochIdx();
-    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
 
     final WorkerMetrics miniBatchMetric =
         buildMiniBatchMetric(epochIdx, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
