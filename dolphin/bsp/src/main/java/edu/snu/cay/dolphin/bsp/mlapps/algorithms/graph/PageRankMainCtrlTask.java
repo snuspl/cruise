@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.dolphin.bsp.mlapps.algorithms.graph;
 
-import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.dolphin.bsp.mlapps.converge.PageRankConvCond;
 import edu.snu.cay.dolphin.bsp.mlapps.data.PageRankSummary;
 import edu.snu.cay.dolphin.bsp.mlapps.parameters.DampingFactor;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.bsp.core.UserControllerTask;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataReduceReceiver;
+import edu.snu.cay.dolphin.bsp.parameters.MaxIterations;
 import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -82,7 +82,7 @@ public class PageRankMainCtrlTask extends UserControllerTask
   public PageRankMainCtrlTask(final PageRankConvCond pageRankConvergenceCondition,
                               final OutputStreamProvider outputStreamProvider,
                               @Parameter(DampingFactor.class) final double dampingFactor,
-                              @Parameter(MaxNumEpochs.class) final int maxIter) {
+                              @Parameter(MaxIterations.class) final int maxIter) {
     this.pageRankConvergenceCondition = pageRankConvergenceCondition;
     this.outputStreamProvider = outputStreamProvider;
     this.dampingFactor = dampingFactor;
