@@ -147,7 +147,7 @@ final class GBTTrainer implements Trainer<GBTData> {
   }
 
   @Override
-  public void initialize() {
+  public void initGlobalSettings() {
   }
 
   @Override
