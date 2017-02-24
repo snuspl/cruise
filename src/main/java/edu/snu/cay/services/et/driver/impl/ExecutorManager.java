@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.driver.impl;
 import edu.snu.cay.services.et.common.impl.CallbackRegistry;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
+import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -61,6 +62,7 @@ final class ExecutorManager {
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
   private final IdentifierFactory identifierFactory;
+  private final String etIdentifier;
   private final String driverIdentifier;
 
   private final AtomicInteger contextIdCounter = new AtomicInteger(0);
@@ -73,12 +75,14 @@ final class ExecutorManager {
                           final NameServer nameServer,
                           final LocalAddressProvider localAddressProvider,
                           final IdentifierFactory identifierFactory,
+                          @Parameter(ETIdentifier.class) final String etIdentifier,
                           @Parameter(DriverIdentifier.class) final String driverIdentifier) {
     this.callbackRegistry = callbackRegistry;
     this.evaluatorManager = evaluatorManager;
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.identifierFactory = identifierFactory;
+    this.etIdentifier = etIdentifier;
     this.driverIdentifier = driverIdentifier;
   }
 
@@ -138,6 +142,7 @@ final class ExecutorManager {
           .set(ContextConfiguration.IDENTIFIER, CONTEXT_PREFIX + contextIdCounter.getAndIncrement())
           .build();
       final Configuration executorConfiguration = ExecutorConfiguration.CONF
+          .set(ExecutorConfiguration.ET_IDENTIFIER, etIdentifier)
           .set(ExecutorConfiguration.IDENTIFIER, allocatedEvaluator.getId()) // use evaluatorId as executorId
           .set(ExecutorConfiguration.NAME_SERVICE_HOST, localAddressProvider.getLocalAddress())
           .set(ExecutorConfiguration.NAME_SERVICE_PORT, nameServer.getPort())

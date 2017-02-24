@@ -16,6 +16,7 @@
 package edu.snu.cay.services.et.configuration;
 
 import edu.snu.cay.services.et.common.api.MessageHandler;
+import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.impl.ContextStartHandler;
 import edu.snu.cay.services.et.evaluator.impl.MessageHandlerImpl;
@@ -38,6 +39,7 @@ import org.apache.reef.wake.IdentifierFactory;
 @Private
 public final class ExecutorConfiguration extends ConfigurationModuleBuilder {
 
+  public static final RequiredParameter<String> ET_IDENTIFIER = new RequiredParameter<>();
   public static final RequiredParameter<String> IDENTIFIER = new RequiredParameter<>();
 
   /**
@@ -61,6 +63,7 @@ public final class ExecutorConfiguration extends ConfigurationModuleBuilder {
    * ConfigurationModule.
    */
   public static final ConfigurationModule CONF = new ExecutorConfiguration()
+      .bindNamedParameter(ETIdentifier.class, ET_IDENTIFIER)
       .bindNamedParameter(ExecutorIdentifier.class, IDENTIFIER)
       .bindNamedParameter(NameResolverNameServerAddr.class, NAME_SERVICE_HOST)
       .bindNamedParameter(NameResolverNameServerPort.class, NAME_SERVICE_PORT)
