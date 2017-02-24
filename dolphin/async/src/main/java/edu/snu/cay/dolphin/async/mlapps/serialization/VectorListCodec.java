@@ -35,103 +35,57 @@ public final class VectorListCodec implements Codec<List<Vector>> {
   private final VectorFactory vectorFactory;
 
   @Inject
-  public VectorListCodec(final VectorFactory vectorFactory) {
+  private VectorListCodec(final VectorFactory vectorFactory) {
     this.vectorFactory = vectorFactory;
   }
 
   public byte[] encode(final List<Vector> list) {
-    int totalLength = 0;
 
-    Vector e;
-    for (Iterator baos = list.iterator(); baos.hasNext();) {
-      e = (Vector)baos.next();
-      totalLength += 32 + 64 * e.length();
+    // This codec assume that vectors have the same length
+    int vectorLength = 0;
+    for (final Vector vector : list) {
+      vectorLength = vector.length();
     }
 
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE + totalLength);
-
-    try (DataOutputStream dos  = new DataOutputStream(baos)) {
-      Throwable totalThrow = null;
-
-      try {
+    // (1) the size of the list, (2) the length of each vector, and (3) the sum of all vectors' lengths in total.
+    try (final ByteArrayOutputStream baos =
+        new ByteArrayOutputStream(Integer.SIZE + Integer.SIZE + Double.SIZE * vectorLength * list.size())) {
+      try (final DataOutputStream dos = new DataOutputStream(baos)) {
         dos.writeInt(list.size());
-        final Iterator dataFromList = list.iterator();
+        dos.writeInt(vectorLength);
 
-        while (dataFromList.hasNext()) {
-          final Vector vector = (Vector)dataFromList.next();
-          final int length = vector.length();
-          dos.writeInt(length);
-
-          for (int i = 0; i < length; ++i) {
+        for (final Vector vector : list) {
+          for (int i = 0; i < vectorLength; ++i) {
             dos.writeDouble(vector.get(i));
           }
         }
-      } catch (Throwable throw1) {
-        totalThrow = throw1;
-        throw throw1;
-      } finally {
-        if (dos != null) {
-          if (totalThrow != null) {
-            try {
-              dos.close();
-            } catch (Throwable throw2) {
-              totalThrow.addSuppressed(throw2);
-            }
-          } else {
-            dos.close();
-          }
-        }
-
       }
-    } catch (IOException ioException) {
-      throw new RuntimeException(ioException.getCause());
-    }
 
-    return baos.toByteArray();
+      return baos.toByteArray();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public List<Vector> decode(final byte[] data) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-    final LinkedList resultList = new LinkedList();
+    try (final ByteArrayInputStream bais = new ByteArrayInputStream(data)) {
+      final List<Vector> resultList = new LinkedList<>();
 
-    try {
-      final DataInputStream e = new DataInputStream(bais);
-      Throwable totalThrow = null;
-
-      try {
-        final int listSize = e.readInt();
-
+      try (final DataInputStream dais = new DataInputStream(bais)) {
+        final int listSize = dais.readInt();
+        final int vectorLength = dais.readInt();
         for (int i = 0; i < listSize; ++i) {
-          final int length = e.readInt();
-          final Vector vector = vectorFactory.createDenseZeros(length);
-
-          for (int j = 0; j < length; ++j) {
-            vector.set(j, e.readDouble());
+          final Vector vector = vectorFactory.createDenseZeros(vectorLength);
+          for (int j = 0; j < vectorLength; ++j) {
+            vector.set(j, dais.readDouble());
           }
-
           resultList.add(vector);
         }
-      } catch (Throwable throw1) {
-        totalThrow = throw1;
-        throw throw1;
-      } finally {
-        if (e != null) {
-          if (totalThrow != null) {
-            try {
-              e.close();
-            } catch (Throwable throw2) {
-              totalThrow.addSuppressed(throw2);
-            }
-          } else {
-            e.close();
-          }
-        }
-
       }
 
       return resultList;
-    } catch (IOException ioException) {
-      throw new RuntimeException(ioException.getCause());
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
     }
   }
 }
