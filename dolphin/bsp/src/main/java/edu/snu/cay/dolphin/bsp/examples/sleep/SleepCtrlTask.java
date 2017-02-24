@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.examples.sleep;
 
-import edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.dolphin.bsp.core.UserControllerTask;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataReduceReceiver;
@@ -37,7 +37,7 @@ public final class SleepCtrlTask extends UserControllerTask
   private final Object broadcastObject;
 
   @Inject
-  private SleepCtrlTask(@Parameter(Iterations.class) final int maxIterations) {
+  private SleepCtrlTask(@Parameter(MaxNumEpochs.class) final int maxIterations) {
     this.maxIterations = maxIterations;
     this.broadcastObject = new Object();
   }

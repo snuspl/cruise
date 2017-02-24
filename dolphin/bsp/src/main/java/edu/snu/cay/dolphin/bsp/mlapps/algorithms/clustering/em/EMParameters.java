@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.mlapps.algorithms.clustering.em;
 
-import edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.dolphin.bsp.mlapps.data.ClusteringSerializer;
 import edu.snu.cay.dolphin.bsp.mlapps.parameters.ConvergenceThreshold;
 import edu.snu.cay.dolphin.bsp.mlapps.parameters.IsCovarianceDiagonal;
@@ -40,7 +40,7 @@ public final class EMParameters implements UserParameters {
 
   @Inject
   private EMParameters(@Parameter(ConvergenceThreshold.class) final double convThreshold,
-                       @Parameter(Iterations.class) final int maxIterations,
+                       @Parameter(MaxNumEpochs.class) final int maxIterations,
                        @Parameter(NumberOfClusters.class) final int numberOfClusters,
                        @Parameter(IsCovarianceDiagonal.class) final boolean isCovarianceDiagonal,
                        @Parameter(IsCovarianceShared.class) final boolean isCovarianceShared) {
@@ -55,7 +55,7 @@ public final class EMParameters implements UserParameters {
   public Configuration getDriverConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
-        .bindNamedParameter(Iterations.class, String.valueOf(maxIterations))
+        .bindNamedParameter(MaxNumEpochs.class, String.valueOf(maxIterations))
         .bindNamedParameter(NumberOfClusters.class, String.valueOf(numberOfClusters))
         .bindNamedParameter(IsCovarianceDiagonal.class, String.valueOf(isCovarianceDiagonal))
         .bindNamedParameter(IsCovarianceShared.class, String.valueOf(isCovarianceShared))
@@ -79,7 +79,7 @@ public final class EMParameters implements UserParameters {
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
-        .bindNamedParameter(Iterations.class, String.valueOf(maxIterations))
+        .bindNamedParameter(MaxNumEpochs.class, String.valueOf(maxIterations))
         .bindNamedParameter(NumberOfClusters.class, String.valueOf(numberOfClusters))
         .bindNamedParameter(IsCovarianceDiagonal.class, String.valueOf(isCovarianceDiagonal))
         .bindNamedParameter(IsCovarianceShared.class, String.valueOf(isCovarianceShared))
@@ -90,7 +90,7 @@ public final class EMParameters implements UserParameters {
     final ConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
     cl.registerShortNameOfClass(ConvergenceThreshold.class);
-    cl.registerShortNameOfClass(Iterations.class);
+    cl.registerShortNameOfClass(MaxNumEpochs.class);
     cl.registerShortNameOfClass(NumberOfClusters.class);
     cl.registerShortNameOfClass(IsCovarianceDiagonal.class);
     cl.registerShortNameOfClass(IsCovarianceShared.class);

@@ -310,7 +310,7 @@ public final class AsyncDolphinDriver {
                              @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
-                             @Parameter(Parameters.Iterations.class) final int iterations,
+                             @Parameter(Parameters.MaxNumEpochs.class) final int maxNumEpochs,
                              @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                              final MetricManager metricManager,
                              final HTraceParameters traceParameters,
@@ -337,7 +337,7 @@ public final class AsyncDolphinDriver {
 
     this.traceParameters = traceParameters;
     this.optimizationIntervalMs = optimizationIntervalMs;
-    this.iterations = iterations;
+    this.iterations = maxNumEpochs;
 
     try {
       final Injector workerInjector = injector.forkInjector();

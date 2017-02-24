@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.mlapps.algorithms.graph;
 
-import edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.dolphin.bsp.mlapps.converge.PageRankConvCond;
 import edu.snu.cay.dolphin.bsp.mlapps.data.PageRankSummary;
 import edu.snu.cay.dolphin.bsp.mlapps.parameters.DampingFactor;
@@ -82,7 +82,7 @@ public class PageRankMainCtrlTask extends UserControllerTask
   public PageRankMainCtrlTask(final PageRankConvCond pageRankConvergenceCondition,
                               final OutputStreamProvider outputStreamProvider,
                               @Parameter(DampingFactor.class) final double dampingFactor,
-                              @Parameter(Iterations.class) final int maxIter) {
+                              @Parameter(MaxNumEpochs.class) final int maxIter) {
     this.pageRankConvergenceCondition = pageRankConvergenceCondition;
     this.outputStreamProvider = outputStreamProvider;
     this.dampingFactor = dampingFactor;

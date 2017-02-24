@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.bsp.mlapps.algorithms.classification;
 
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.dolphin.bsp.core.UserControllerTask;
 import edu.snu.cay.dolphin.bsp.mlapps.converge.LinearModelConvCond;
 import edu.snu.cay.dolphin.bsp.mlapps.data.LinearModel;
@@ -48,7 +48,7 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
   public LogisticRegMainCtrlTask(final OutputStreamProvider outputStreamProvider,
                                  final LinearModelConvCond convergeCondition,
                                  final VectorFactory vectorFactory,
-                                 @Parameter(Iterations.class) final int maxIter,
+                                 @Parameter(MaxNumEpochs.class) final int maxIter,
                                  @Parameter(Dimension.class) final int dimension,
                                  @Parameter(IsDenseVector.class) final boolean isDenseVector) {
     this.outputStreamProvider = outputStreamProvider;

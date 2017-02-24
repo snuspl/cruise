@@ -77,7 +77,7 @@ final class AddIntegerTrainer implements Trainer {
 
   @Inject
   private AddIntegerTrainer(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
-                            @Parameter(Parameters.Iterations.class) final int numIterations,
+                            @Parameter(Parameters.MaxNumEpochs.class) final int numIterations,
                             @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
@@ -54,7 +54,7 @@ final class AsyncWorkerTask<K, V> implements Task {
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
-                          @Parameter(Iterations.class) final int maxIterations,
+                          @Parameter(MaxNumEpochs.class) final int maxIterations,
                           @Parameter(AddedEval.class) final boolean addedEval,
                           final WorkerSynchronizer synchronizer,
                           final TrainingDataProvider<K, V> trainingDataProvider,

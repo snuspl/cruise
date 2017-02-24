@@ -69,9 +69,9 @@ public final class Parameters {
   public final class LocalRuntimeMaxNumEvaluators implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Maximum number of iterations to run before termination",
-                  short_name = "max_iter")
-  public final class Iterations implements Name<Integer> {
+  @NamedParameter(doc = "Maximum number of epochs to run before termination",
+                  short_name = "max_num_epochs")
+  public final class MaxNumEpochs implements Name<Integer> {
   }
 
   @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap",
