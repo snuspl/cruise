@@ -69,7 +69,7 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
   }
 
   @Override
-  public void initialize() {
+  public void initGlobalSettings() {
     // put input data instances into the memory store
     final List<NeuralNetworkData> dataValues = dataParser.get();
     final List<Long> dataKeys;

@@ -119,7 +119,7 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public void initialize() {
+  public void initGlobalSettings() {
   }
 
   @Override

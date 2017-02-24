@@ -80,10 +80,10 @@ final class AsyncWorkerTask<K, V> implements Task {
           "Will skip initializing TrainingDataProvider and Trainer");
     } else {
       // Prepare the training data to be accessible via TrainingDataProvider.
-      trainingDataProvider.initialize();
+      trainingDataProvider.loadData();
 
       // TODO #681: Need to add numWorkerThreads concept after multi-thread trainer is enabled
-      trainer.initialize();
+      trainer.initGlobalSettings();
     }
 
     // synchronize all workers before starting the main iteration

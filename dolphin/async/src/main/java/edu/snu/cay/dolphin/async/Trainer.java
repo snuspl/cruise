@@ -24,8 +24,9 @@ import java.util.Collection;
  *
  * Classes implementing this interface should consist of
  * a main {@code run} method that is executed once every iteration, as well as
- * a pre-run method {@code initialize} and post-run method {@code cleanup}, which are
- * executed before and after the main run loop, respectively.
+ * a pre-run method {@code initGlobalSettings} and post-run method {@code cleanup}, which are
+ * executed before and after the main run loop, respectively. Note that {@code initGlobalSettings} is optional, since
+ * we do not need to initialize global settings while the job is running already.
  *
  * Implementations should also have at least one constructor that is marked with the {@link javax.inject.Inject}
  * annotation, so that the framework can successfully instantiate the class via dependency injection.
@@ -44,9 +45,11 @@ import java.util.Collection;
 public interface Trainer<D> {
 
   /**
-   * Pre-run method that is executed after the constructor but before {@code run}, exactly once.
+   * Pre-run method that initializes the global settings (e.g., model parameters).
+   * This method is executed exactly once before {@code run}, if the job's state is
+   * in {@link SynchronizationManager.State#INIT}. Note that this method is skipped in other states.
    */
-  void initialize();
+  void initGlobalSettings();
 
   /**
    * Main method of this trainer, which is called every mini-batch.

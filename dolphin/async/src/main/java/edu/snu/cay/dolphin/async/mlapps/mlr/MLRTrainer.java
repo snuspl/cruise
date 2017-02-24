@@ -191,7 +191,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public void initialize() {
+  public void initGlobalSettings() {
   }
 
   @Override

@@ -148,7 +148,7 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public void initialize() {
+  public void initGlobalSettings() {
   }
 
   @Override

@@ -117,7 +117,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   @Override
-  public void initialize() {
+  public void initGlobalSettings() {
   }
 
   /**

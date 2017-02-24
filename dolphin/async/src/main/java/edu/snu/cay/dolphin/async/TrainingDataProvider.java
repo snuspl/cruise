@@ -62,9 +62,9 @@ public final class TrainingDataProvider<K, V> {
   }
 
   /**
-   * Prepares the training data to be accessible via MemoryStore.
+   * Loads the training data and make it accessible via MemoryStore.
    */
-  void initialize() {
+  void loadData() {
     final List<V> dataValues = dataParser.parse();
     final List<K> dataKeys;
     try {
