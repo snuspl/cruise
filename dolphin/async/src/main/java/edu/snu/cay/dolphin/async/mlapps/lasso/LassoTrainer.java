@@ -108,15 +108,16 @@ final class LassoTrainer implements Trainer<LassoData> {
     this.miniBatchSize = miniBatchSize;
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
+    this.oldModel = vectorFactory.createDenseZeros(numFeatures);
+
     this.metricsMsgSender = metricsMsgSender;
     this.pullTracer = new Tracer();
     this.pushTracer = new Tracer();
     this.computeTracer = new Tracer();
-    this.oldModel = vectorFactory.createDenseZeros(numFeatures);
   }
 
   @Override
-  public void initialize() {
+  public void initGlobalSettings() {
   }
 
   /**

@@ -102,7 +102,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public void initialize() {
+  public void initGlobalSettings() {
   }
 
   @Override
