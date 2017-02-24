@@ -86,8 +86,8 @@ final class AsyncWorkerTask<K, V> implements Task {
       trainer.initGlobalSettings();
     }
 
-    // synchronize all workers before starting the main computation
-    // to avoid meaningless epochs by the workers who started earlier
+    // synchronize all workers before starting the main iterations
+    // to avoid meaningless computation by the workers who started earlier
     synchronizer.globalBarrier();
 
     // initialize the worker clock
@@ -99,7 +99,7 @@ final class AsyncWorkerTask<K, V> implements Task {
     // it prevents workers added by EM from starting from epoch 0 and deferring job completion.
     // More specifically, added workers start from the minimum epoch index of other existing workers.
     for (int epochIdx = initialClock; epochIdx < maxNumEpochs; ++epochIdx) {
-      LOG.log(Level.INFO, "Starting epochIdx {0}", epochIdx);
+      LOG.log(Level.INFO, "Starting epoch {0}", epochIdx);
       final long epochStartTime = System.currentTimeMillis();
       final int numEMBlocks = memoryStore.getNumBlocks();
       trainingDataProvider.prepareDataForEpoch();

@@ -276,7 +276,7 @@ public final class AsyncDolphinDriver {
 
   private final int maxNumEpochs;
   /**
-   * Triggers optimization. Optimization is performed only when workers are running their main iteration.
+   * Triggers optimization. Optimization is performed only when workers are running their main iterations.
    * Every optimization is triggered after {@link OptimizationIntervalMs} from the previous optimization.
    * See {@link StartHandler}.
    */
@@ -440,8 +440,8 @@ public final class AsyncDolphinDriver {
 
             LOG.log(Level.INFO, "Worker tasks are initialized. Start triggering optimization.");
 
-            // 3. trigger optimization during all workers are running their main iteration
-            // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iteration.
+            // 3. trigger optimization during all workers are running their main iterations
+            // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iterations
             LOG.log(Level.FINE, "Trigger optimization with interval {0} ms", optimizationIntervalMs);
             while (!synchronizationManager.waitingCleanup()) {
               optimizationOrchestrator.run();
