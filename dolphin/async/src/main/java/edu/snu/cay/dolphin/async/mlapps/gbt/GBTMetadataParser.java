@@ -31,6 +31,13 @@ import java.util.*;
 
 /**
  * Parses metadata of GBTData.
+ * Metadata should be in the following form :
+ *
+ * f_1:t_1 f_2:t_2 f_3:t_3 ... f_m:t_m
+ *
+ * Here, f_i is an index of the according feature and t_i is a type of the feature.
+ * If t_i == 0, the feature's type is numerical type(CONTINUOUS).
+ * If t_i == 1, the feature's type is categorical type(CATEGORICAL).
  */
 final class GBTMetadataParser {
   private static final int NUM_SPLIT = 1;
@@ -45,6 +52,10 @@ final class GBTMetadataParser {
     this.metadataPath = metadataPath;
   }
 
+  /**
+   * @return Pair of map and integer. Map contains an information of each feature's type. Integer value is a number of
+   *         y-value's possible types.
+   */
   Pair<Map<Integer, FeatureType>, Integer> getFeatureTypes() {
     final Map<Integer, FeatureType> featureTypes = new HashMap<>(numFeatures + 1);
     int valueTypeNum = 0;

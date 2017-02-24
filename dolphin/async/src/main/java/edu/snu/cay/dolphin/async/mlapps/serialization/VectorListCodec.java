@@ -48,9 +48,9 @@ public final class VectorListCodec implements Codec<List<Vector>> {
     }
 
     // (1) the size of the list, (2) the length of each vector, and (3) the sum of all vectors' lengths in total.
-    try (final ByteArrayOutputStream baos =
-        new ByteArrayOutputStream(Integer.SIZE + Integer.SIZE + Double.SIZE * vectorLength * list.size())) {
-      try (final DataOutputStream dos = new DataOutputStream(baos)) {
+    try (ByteArrayOutputStream baos =
+             new ByteArrayOutputStream(Integer.SIZE + Integer.SIZE + Double.SIZE * vectorLength * list.size())) {
+      try (DataOutputStream dos = new DataOutputStream(baos)) {
         dos.writeInt(list.size());
         dos.writeInt(vectorLength);
 
@@ -68,10 +68,10 @@ public final class VectorListCodec implements Codec<List<Vector>> {
   }
 
   public List<Vector> decode(final byte[] data) {
-    try (final ByteArrayInputStream bais = new ByteArrayInputStream(data)) {
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(data)) {
       final List<Vector> resultList = new LinkedList<>();
 
-      try (final DataInputStream dais = new DataInputStream(bais)) {
+      try (DataInputStream dais = new DataInputStream(bais)) {
         final int listSize = dais.readInt();
         final int vectorLength = dais.readInt();
         for (int i = 0; i < listSize; ++i) {
