@@ -54,4 +54,15 @@ final class LassoParameters {
           default_value = "5")
   static final class DecayPeriod implements Name<Integer> {
   }
+
+  static final class MetricKeys {
+
+    // The key denoting the sum of loss computed from the sample of training data instances.
+    static final String SAMPLE_LOSS_SUM =
+        "LASSO_TRAINER_SAMPLE_LOSS_SUM";
+
+    // The key denoting the number of training data instances processed per unit time.
+    static final String DVT =
+        "LASSO_TRAINER_DVT";
+  }
 }
