@@ -36,8 +36,8 @@ import java.util.logging.Logger;
 
 /**
  * {@link Trainer} class for the AddVectorREEF application.
- * Pushes a value to the server and checks the current value at the server via pull, once per iteration.
- * It sleeps {@link #computeTime} for each iteration to simulate computation, preventing the saturation of NCS of PS.
+ * Pushes a value to the server and checks the current value at the server via pull, once per mini-batch.
+ * It sleeps {@link #computeTime} for each mini-batch to simulate computation, preventing the saturation of NCS of PS.
  */
 final class AddVectorTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(AddVectorTrainer.class.getName());
@@ -87,7 +87,7 @@ final class AddVectorTrainer implements Trainer {
 
   @Inject
   private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
-                           @Parameter(Parameters.MaxNumEpochs.class) final int numIterations,
+                           @Parameter(Parameters.MaxNumEpochs.class) final int maxNumEpochs,
                            @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                            @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                            @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
@@ -107,9 +107,9 @@ final class AddVectorTrainer implements Trainer {
     final int numMiniBatches = numTrainingData / miniBatchSize + (numTrainingData % miniBatchSize != 0 ? 1 : 0);
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
-    this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatches;
-    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numTrainingData:{3}, miniBatchSize:{4}",
-        new Object[]{delta, numberOfWorkers, numIterations, numTrainingData, miniBatchSize});
+    this.expectedResult = delta * numberOfWorkers * maxNumEpochs * numMiniBatches;
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, miniBatchSize:{4}",
+        new Object[]{delta, numberOfWorkers, maxNumEpochs, numTrainingData, miniBatchSize});
 
     this.metricsMsgSender = metricsMsgSender;
 
@@ -180,10 +180,10 @@ final class AddVectorTrainer implements Trainer {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx, final double elapsedTime,
+  private WorkerMetrics buildMiniBatchMetric(final int epochIdx, final int miniBatchIdx, final double elapsedTime,
                                              final int numProcessedItems) {
     return WorkerMetrics.newBuilder()
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setMiniBatchIdx(miniBatchIdx)
         .setProcessedDataItemCount(numProcessedItems)
@@ -197,10 +197,10 @@ final class AddVectorTrainer implements Trainer {
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatches, final int numDataBlocks,
+  private WorkerMetrics buildEpochMetric(final int epochIdx, final int numMiniBatches, final int numDataBlocks,
                                          final double elapsedTime, final int numProcessedItems) {
     return WorkerMetrics.newBuilder()
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setNumMiniBatchForEpoch(numMiniBatches)
         .setNumDataBlocks(numDataBlocks)

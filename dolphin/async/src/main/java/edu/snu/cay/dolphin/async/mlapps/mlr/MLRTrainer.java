@@ -104,7 +104,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   private final double decayRate;
 
   /**
-   * The step size drops after every {@code decayPeriod} iterations pass.
+   * The step size drops after every {@code decayPeriod} epochs pass.
    */
   private final int decayPeriod;
 
@@ -294,7 +294,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
-      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+      LOG.log(Level.INFO, "{0} epochs passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
   }
@@ -510,7 +510,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
+  private WorkerMetrics buildMiniBatchMetric(final int epochIdx, final int miniBatchIdx,
                                              final int numProcessedDataItemCount, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
@@ -519,7 +519,7 @@ final class MLRTrainer implements Trainer<MLRData> {
         .setMetrics(Metrics.newBuilder()
             .setData(appMetricMap)
             .build())
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setMiniBatchIdx(miniBatchIdx)
         .setProcessedDataItemCount(numProcessedDataItemCount)
@@ -533,7 +533,7 @@ final class MLRTrainer implements Trainer<MLRData> {
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
+  private WorkerMetrics buildEpochMetric(final int epochIdx, final int numMiniBatchForEpoch,
                                          final int numDataBlocks, final int numProcessedDataItemCount,
                                          final double sampleLoss, final double regLoss, final double accuracy,
                                          final double elapsedTime) {
@@ -547,7 +547,7 @@ final class MLRTrainer implements Trainer<MLRData> {
         .setMetrics(Metrics.newBuilder()
             .setData(appMetricMap)
             .build())
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
         .setNumDataBlocks(numDataBlocks)

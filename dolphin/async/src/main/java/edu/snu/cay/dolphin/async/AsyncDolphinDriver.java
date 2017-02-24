@@ -274,9 +274,9 @@ public final class AsyncDolphinDriver {
    */
   private final long optimizationIntervalMs;
 
-  private final int iterations;
+  private final int maxNumEpochs;
   /**
-   * Triggers optimization. Optimization is performed only when workers are running their main iterations.
+   * Triggers optimization. Optimization is performed only when workers are running their main iteration.
    * Every optimization is triggered after {@link OptimizationIntervalMs} from the previous optimization.
    * See {@link StartHandler}.
    */
@@ -337,7 +337,7 @@ public final class AsyncDolphinDriver {
 
     this.traceParameters = traceParameters;
     this.optimizationIntervalMs = optimizationIntervalMs;
-    this.iterations = maxNumEpochs;
+    this.maxNumEpochs = maxNumEpochs;
 
     try {
       final Injector workerInjector = injector.forkInjector();
@@ -440,8 +440,8 @@ public final class AsyncDolphinDriver {
 
             LOG.log(Level.INFO, "Worker tasks are initialized. Start triggering optimization.");
 
-            // 3. trigger optimization during all workers are running their main iterations
-            // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iterations
+            // 3. trigger optimization during all workers are running their main iteration
+            // synchronizationManager.waitingCleanup() becomes true when any workers have finished their main iteration.
             LOG.log(Level.FINE, "Trigger optimization with interval {0} ms", optimizationIntervalMs);
             while (!synchronizationManager.waitingCleanup()) {
               optimizationOrchestrator.run();
@@ -1137,7 +1137,7 @@ public final class AsyncDolphinDriver {
     public float getProgress() {
       // TODO #830: Once we change clock to tick every mini-batch instead of epoch, we should change below accordingly.
       final int minClock = clockManager.getGlobalMinimumClock();
-      return (float) minClock / iterations;
+      return (float) minClock / maxNumEpochs;
     }
   }
 }

@@ -104,7 +104,7 @@ cd $DOLPHIN_ASYNC_HOME/bin
 	* `conf`: path of the protocol buffer definition file to use.
 * Optional
 	* `local`[default=false]: a boolean value that indicates whether to use REEF local runtime environment or not. If `false`, the neural network will run on YARN environment.
-	* `max_iter`[default=20]: the maximum number of allowed iterations before the neural network training stops.
+	* `max_num_epochs`[default=20]: the maximum number of allowed epochs before the neural network training stops.
 	* <a name="parameter-delim">`delim`</a>\[default=,\]: the delimiter that is used for separating elements of input data.
 	* `timeout`[default=100000]: allowed time until neural network training ends. (unit: milliseconds)
 
