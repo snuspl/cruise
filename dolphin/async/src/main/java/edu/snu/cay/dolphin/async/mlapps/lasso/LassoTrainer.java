@@ -141,7 +141,7 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     computeTracer.startTimer();
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
-    // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into pre-calculate vector.
+    // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into 'preCalculate' vector.
     final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchData);
     final Matrix featureMatrix = featureMatrixAndValues.getLeft();
     final Vector yValues = featureMatrixAndValues.getRight();
