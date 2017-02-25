@@ -37,7 +37,7 @@ import java.util.logging.Logger;
 
 /**
  * Assign a random topic to each word in all documents and block on a global barrier to make sure
- * all workers update their initial topic assignments. For each iteration, sequentially sampling documents,
+ * all workers update their initial topic assignments. For each mini-batch, sequentially sampling documents,
  * it immediately pushes the changed topic assignment whenever each word is sampled to a new topic.
  */
 final class LDATrainer implements Trainer<Document> {
@@ -282,7 +282,7 @@ final class LDATrainer implements Trainer<Document> {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
+  private WorkerMetrics buildMiniBatchMetric(final int epochIdx, final int miniBatchIdx,
                                              final int numProcessedDataItemCount, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
@@ -291,7 +291,7 @@ final class LDATrainer implements Trainer<Document> {
         .setMetrics(Metrics.newBuilder()
             .setData(appMetricMap)
             .build())
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setMiniBatchIdx(miniBatchIdx)
         .setProcessedDataItemCount(numProcessedDataItemCount)
@@ -305,7 +305,7 @@ final class LDATrainer implements Trainer<Document> {
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
+  private WorkerMetrics buildEpochMetric(final int epochIdx, final int numMiniBatchForEpoch,
                                          final int numDataBlocks, final int numProcessedDataItemCount,
                                          final double docLLH, final double wordLLH,
                                          final double elapsedTime) {
@@ -318,7 +318,7 @@ final class LDATrainer implements Trainer<Document> {
         .setMetrics(Metrics.newBuilder()
             .setData(appMetricMap)
             .build())
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
         .setNumDataBlocks(numDataBlocks)

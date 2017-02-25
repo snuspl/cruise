@@ -32,7 +32,7 @@ public final class ServerEvaluatorParameters implements EvaluatorParameters<Serv
    * Constructs a server evaluator's current status.
    * @param id the evaluator ID
    * @param dataInfo {@link DataInfo} representing the number of blocks allocated
-   * @param metrics {@link ServerMetrics} representing the server's iteration execution metrics
+   * @param metrics {@link ServerMetrics} representing the server's execution metrics
    */
   public ServerEvaluatorParameters(final String id,
                                    final DataInfo dataInfo,

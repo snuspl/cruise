@@ -183,21 +183,21 @@ public final class NeuralNetworkUtils {
   private static final String NEWLINE = System.getProperty("line.separator");
 
   /**
-   * Generate the log of statistics for training and cross validation input instances during an iteration.
+   * Generate the log of statistics for training and cross validation input instances during an epoch.
    * @param trainingValidationStats statistics for training inputs
    * @param crossValidationStats statistics for cross validation inputs
-   * @param iteration the index of an iteration
+   * @param epochIdx the index of an epoch
    * @return the generated log string
    */
-  public static String generateIterationLog(final ValidationStats trainingValidationStats,
-                                            final ValidationStats crossValidationStats,
-                                            final int iteration) {
+  public static String generateEpochLog(final ValidationStats trainingValidationStats,
+                                        final ValidationStats crossValidationStats,
+                                        final int epochIdx) {
     return new StringBuilder()
         .append(NEWLINE)
         .append("=========================================================")
         .append(NEWLINE)
-        .append("Iteration: ")
-        .append(iteration)
+        .append("Epoch: ")
+        .append(epochIdx)
         .append(NEWLINE)
         .append("Training Error: ")
         .append(trainingValidationStats.getError())

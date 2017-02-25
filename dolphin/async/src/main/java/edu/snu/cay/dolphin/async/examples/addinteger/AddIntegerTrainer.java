@@ -33,8 +33,8 @@ import java.util.logging.Logger;
 
 /**
  * {@link Trainer} class for the AddIntegerREEF application.
- * Pushes a value to the server and checks the current value at the server via pull, once per iteration.
- * It sleeps {@link #computeTime} for each iteration to simulate computation, preventing the saturation of NCS of PS.
+ * Pushes a value to the server and checks the current value at the server via pull, once per mini-batch.
+ * It sleeps {@link #computeTime} for each mini-batch to simulate computation, preventing the saturation of NCS of PS.
  */
 final class AddIntegerTrainer implements Trainer {
   private static final Logger LOG = Logger.getLogger(AddIntegerTrainer.class.getName());
@@ -77,7 +77,7 @@ final class AddIntegerTrainer implements Trainer {
 
   @Inject
   private AddIntegerTrainer(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
-                            @Parameter(Parameters.Iterations.class) final int numIterations,
+                            @Parameter(Parameters.MaxNumEpochs.class) final int maxNumEpochs,
                             @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
@@ -92,9 +92,9 @@ final class AddIntegerTrainer implements Trainer {
     final int numMiniBatches = numTrainingData / miniBatchSize + (numTrainingData % miniBatchSize != 0 ? 1 : 0);
 
     // TODO #681: Need to consider numWorkerThreads after multi-thread worker is enabled
-    this.expectedResult = delta * numberOfWorkers * numIterations * numMiniBatches;
-    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, numIterations:{2}, numTrainingData:{3}, numMiniBatches:{4}",
-        new Object[]{delta, numberOfWorkers, numIterations, numTrainingData, numMiniBatches});
+    this.expectedResult = delta * numberOfWorkers * maxNumEpochs * numMiniBatches;
+    LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, numMiniBatches:{4}",
+        new Object[]{delta, numberOfWorkers, maxNumEpochs, numTrainingData, numMiniBatches});
 
     this.metricsMsgSender = metricsMsgSender;
 

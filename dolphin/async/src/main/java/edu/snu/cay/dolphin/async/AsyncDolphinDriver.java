@@ -274,7 +274,7 @@ public final class AsyncDolphinDriver {
    */
   private final long optimizationIntervalMs;
 
-  private final int iterations;
+  private final int maxNumEpochs;
   /**
    * Triggers optimization. Optimization is performed only when workers are running their main iterations.
    * Every optimization is triggered after {@link OptimizationIntervalMs} from the previous optimization.
@@ -310,7 +310,7 @@ public final class AsyncDolphinDriver {
                              @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
-                             @Parameter(Parameters.Iterations.class) final int iterations,
+                             @Parameter(Parameters.MaxNumEpochs.class) final int maxNumEpochs,
                              @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                              final MetricManager metricManager,
                              final HTraceParameters traceParameters,
@@ -337,7 +337,7 @@ public final class AsyncDolphinDriver {
 
     this.traceParameters = traceParameters;
     this.optimizationIntervalMs = optimizationIntervalMs;
-    this.iterations = iterations;
+    this.maxNumEpochs = maxNumEpochs;
 
     try {
       final Injector workerInjector = injector.forkInjector();
@@ -1137,7 +1137,7 @@ public final class AsyncDolphinDriver {
     public float getProgress() {
       // TODO #830: Once we change clock to tick every mini-batch instead of epoch, we should change below accordingly.
       final int minClock = clockManager.getGlobalMinimumClock();
-      return (float) minClock / iterations;
+      return (float) minClock / maxNumEpochs;
     }
   }
 }
