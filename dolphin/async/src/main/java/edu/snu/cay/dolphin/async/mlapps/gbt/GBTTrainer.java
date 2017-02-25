@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
@@ -60,7 +60,7 @@ final class GBTTrainer implements Trainer<GBTData> {
   /**
    * Max iteration of run() method.
    */
-  private final int maxIteration;
+  private final int maxNumEpochs;
 
   private final ParameterWorker<Integer, Vector, List<Vector>> parameterWorker;
 
@@ -127,7 +127,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(Gamma.class) final double gamma,
                      @Parameter(TreeMaxDepth.class) final int treeMaxDepth,
                      @Parameter(LeafMinSize.class) final int leafMinSize,
-                     @Parameter(Iterations.class) final int iterations,
+                     @Parameter(MaxNumEpochs.class) final int maxNumEpochs,
                      final GBTMetadataParser metadataParser,
                      final VectorFactory vectorFactory) {
     this.parameterWorker = parameterWorker;
@@ -137,7 +137,7 @@ final class GBTTrainer implements Trainer<GBTData> {
     this.gamma = gamma;
     this.treeMaxDepth = treeMaxDepth;
     this.leafMinSize = leafMinSize;
-    this.maxIteration = iterations;
+    this.maxNumEpochs = maxNumEpochs;
     this.treeSize = (1 << treeMaxDepth) - 1;
     this.vectorFactory = vectorFactory;
     final Pair<Map<Integer, FeatureType>, Integer> metaData = metadataParser.getFeatureTypes();
@@ -184,7 +184,7 @@ final class GBTTrainer implements Trainer<GBTData> {
     final int epochIdx = epochInfo.getEpochIdx();
     final List<GBTData> instances = new ArrayList<>(epochData);
     // This is for the test.
-    if (epochIdx == (maxIteration - 1)) {
+    if (epochIdx == (maxNumEpochs - 1)) {
       showPredictedValues(instances);
     }
   }
@@ -305,15 +305,15 @@ final class GBTTrainer implements Trainer<GBTData> {
     for (int feature = 0; feature < numFeatures; feature++) {
       if (featureTypes.get(feature) == FeatureType.CONTINUOUS) {
         final List<Pair<Integer, Double>> sortedByFeature = sortedTreeList.get(feature).get(nodeIdx);
-        final Tuple3<Double, Integer, Double> bestChoice = bestSplitRealNumberFeature(sortedByFeature, gValues, feature,
-                                                           gSum, totalGain, bestGain, bestFeature, bestSplitValue);
+        final Tuple3<Double, Integer, Double> bestChoice = bestSplitRealNumberFeature(sortedByFeature, gValues,
+            feature, gSum, totalGain, bestGain, bestFeature, bestSplitValue);
         bestGain = bestChoice.getFirst();
         bestFeature = bestChoice.getSecond();
         bestSplitValue = bestChoice.getThird();
       } else {
         final List<Pair<Integer, Double>> groupedByLabel = groupedTreeList.get(feature).get(nodeIdx);
         final Tuple3<Double, Integer, Double> bestChoice = bestSplitLabelFeature(groupedByLabel, nodeSize, feature,
-                                                           gSum, totalGain, bestGain, bestFeature, bestSplitValue);
+            gSum, totalGain, bestGain, bestFeature, bestSplitValue);
         bestGain = bestChoice.getFirst();
         bestFeature = bestChoice.getSecond();
         bestSplitValue = bestChoice.getThird();
@@ -489,7 +489,7 @@ final class GBTTrainer implements Trainer<GBTData> {
   }
 
   /**
-   * Split the actual data in dataTree and set each data's position whether to go LEFT_CHILD(0) or RIGHT_CHILD(1).
+   * Split the actual data in dataTree and set each data's position whether to go LEFT_CHILD or RIGHT_CHILD.
    */
   private void splitActualDataAndSetPosition(final DataTree dataTree, final List<SortedTree> sortedTreeList,
                                              final List<GroupedTree> groupedTreeList,
@@ -582,9 +582,10 @@ final class GBTTrainer implements Trainer<GBTData> {
   /**
    * Set the pre-process lists using instances list.
    */
-  private void initializePreprocessLists(final List<SortedTree> sortedTreeList, final List<GroupedTree> groupedTreeList,
-                                         final List<List<Integer>> labelList, final List<Double> gValues,
-                                         final List<Double> residual, final List<GBTData> instances) {
+  private void initializePreprocessLists(final List<SortedTree> sortedTreeList,
+                                         final List<GroupedTree> groupedTreeList, final List<List<Integer>> labelList,
+                                         final List<Double> gValues, final List<Double> residual,
+                                         final List<GBTData> instances) {
     for (int i = 0; i < numFeatures; i++) {
       sortedTreeList.add(new SortedTree(treeMaxDepth));
       groupedTreeList.add(new GroupedTree(treeMaxDepth));
