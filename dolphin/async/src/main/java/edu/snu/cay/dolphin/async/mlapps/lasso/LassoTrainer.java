@@ -42,7 +42,7 @@ import java.util.logging.Logger;
  * Based on lasso regression via stochastic coordinate descent, proposed in
  * S. Shalev-Shwartz and A. Tewari, Stochastic Methods for l1-regularized Loss Minimization, 2011.
  *
- * For each iteration, the trainer pulls the whole model from the server,
+ * For each mini-batch, the trainer pulls the whole model from the server,
  * and then update all the model values.
  * The trainer computes and pushes the optimal model value for all the dimensions to
  * minimize the objective function - square loss with l1 regularization.
@@ -51,7 +51,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   private static final Logger LOG = Logger.getLogger(LassoTrainer.class.getName());
 
   /**
-   * Period(iterations) to print model parameters to check whether the training is working or not.
+   * Period(epochs) to print model parameters to check whether the training is working or not.
    */
   private static final int PRINT_MODEL_PERIOD = 50;
 
@@ -200,7 +200,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
-      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+      LOG.log(Level.INFO, "{0} epochs have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
   }
@@ -299,7 +299,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
+  private WorkerMetrics buildMiniBatchMetric(final int epochIdx, final int miniBatchIdx,
                                              final int numProcessedDataItemCount, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
@@ -308,7 +308,7 @@ final class LassoTrainer implements Trainer<LassoData> {
         .setMetrics(Metrics.newBuilder()
             .setData(appMetricMap)
             .build())
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setMiniBatchIdx(miniBatchIdx)
         .setProcessedDataItemCount(numProcessedDataItemCount)
@@ -322,7 +322,7 @@ final class LassoTrainer implements Trainer<LassoData> {
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
+  private WorkerMetrics buildEpochMetric(final int epochIdx, final int numMiniBatchForEpoch,
                                          final int numDataBlocks, final int numProcessedDataItemCount,
                                          final double loss, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
@@ -333,7 +333,7 @@ final class LassoTrainer implements Trainer<LassoData> {
         .setMetrics(Metrics.newBuilder()
             .setData(appMetricMap)
             .build())
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
         .setNumDataBlocks(numDataBlocks)

@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.bsp.mlapps.algorithms.clustering.kmeans;
 
-import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.bsp.core.KeyValueStore;
 import edu.snu.cay.dolphin.bsp.core.UserTaskTrace;
 import edu.snu.cay.dolphin.bsp.mlapps.key.Centroids;
@@ -24,6 +23,7 @@ import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.bsp.core.UserControllerTask;
 import edu.snu.cay.dolphin.bsp.mlapps.converge.ClusteringConvCond;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataReduceReceiver;
+import edu.snu.cay.dolphin.bsp.parameters.MaxIterations;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
@@ -89,7 +89,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
                             final KeyValueStore keyValueStore,
                             final OutputStreamProvider outputStreamProvider,
-                            @Parameter(Iterations.class) final int maxIterations,
+                            @Parameter(MaxIterations.class) final int maxIterations,
                             final UserTaskTrace trace) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;

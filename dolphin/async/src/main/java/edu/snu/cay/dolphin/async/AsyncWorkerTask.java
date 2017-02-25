@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
@@ -38,7 +38,7 @@ final class AsyncWorkerTask<K, V> implements Task {
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
 
   private final String taskId;
-  private final int maxIterations;
+  private final int maxNumEpochs;
   private final WorkerSynchronizer synchronizer;
   private final TrainingDataProvider<K, V> trainingDataProvider;
   private final MemoryStore<K> memoryStore;
@@ -54,7 +54,7 @@ final class AsyncWorkerTask<K, V> implements Task {
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
-                          @Parameter(Iterations.class) final int maxIterations,
+                          @Parameter(MaxNumEpochs.class) final int maxNumEpochs,
                           @Parameter(AddedEval.class) final boolean addedEval,
                           final WorkerSynchronizer synchronizer,
                           final TrainingDataProvider<K, V> trainingDataProvider,
@@ -62,7 +62,7 @@ final class AsyncWorkerTask<K, V> implements Task {
                           final Trainer<V> trainer,
                           final WorkerClock workerClock) {
     this.taskId = taskId;
-    this.maxIterations = maxIterations;
+    this.maxNumEpochs = maxNumEpochs;
     this.addedEval = addedEval;
     this.synchronizer = synchronizer;
     this.trainingDataProvider = trainingDataProvider;
@@ -86,8 +86,8 @@ final class AsyncWorkerTask<K, V> implements Task {
       trainer.initGlobalSettings();
     }
 
-    // synchronize all workers before starting the main iteration
-    // to avoid meaningless iterations by the workers who started earlier
+    // synchronize all workers before starting the main iterations
+    // to avoid meaningless computation by the workers who started earlier
     synchronizer.globalBarrier();
 
     // initialize the worker clock
@@ -95,11 +95,11 @@ final class AsyncWorkerTask<K, V> implements Task {
 
     final int initialClock = workerClock.getWorkerClock();
 
-    // By starting iteration from the initial clock, which is dynamically fetched from driver,
-    // it prevents workers added by EM from starting from iteration 0 and deferring job completion.
-    // More specifically, added workers start from the minimum iteration of other existing workers.
-    for (int iteration = initialClock; iteration < maxIterations; ++iteration) {
-      LOG.log(Level.INFO, "Starting iteration {0}", iteration);
+    // By starting epochs from the initial clock, which is dynamically fetched from driver,
+    // it prevents workers added by EM from starting from epoch 0 and deferring job completion.
+    // More specifically, added workers start from the minimum epoch index of other existing workers.
+    for (int epochIdx = initialClock; epochIdx < maxNumEpochs; ++epochIdx) {
+      LOG.log(Level.INFO, "Starting epoch {0}", epochIdx);
       final long epochStartTime = System.currentTimeMillis();
       final int numEMBlocks = memoryStore.getNumBlocks();
       trainingDataProvider.prepareDataForEpoch();
@@ -114,7 +114,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         }
 
         final MiniBatchInfo miniBatchInfo = MiniBatchInfo.getBuilder()
-            .setEpochIdx(iteration)
+            .setEpochIdx(epochIdx)
             .setMiniBatchIdx(miniBatchIdx)
             .build();
 
@@ -131,7 +131,7 @@ final class AsyncWorkerTask<K, V> implements Task {
       }
 
       final EpochInfo epochInfo = EpochInfo.getBuilder()
-              .setEpochIdx(iteration)
+              .setEpochIdx(epochIdx)
               .setNumMiniBatches(miniBatchIdx)
               .setNumEMBlocks(numEMBlocks)
               .setEpochStartTime(epochStartTime)
@@ -139,7 +139,7 @@ final class AsyncWorkerTask<K, V> implements Task {
 
       trainer.onEpochFinished(epochData, epochInfo);
 
-      // TODO #830: Clock should be a unit of iteration(mini-batch) instead of epoch
+      // TODO #830: Clock should be a unit of mini-batch instead of epoch
       workerClock.clock();
     }
 

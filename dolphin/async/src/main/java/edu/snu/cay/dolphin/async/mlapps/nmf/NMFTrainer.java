@@ -72,7 +72,7 @@ final class NMFTrainer implements Trainer<NMFData> {
   private final double decayRate;
 
   /**
-   * The step size drops after every {@code decayPeriod} iterations pass.
+   * The step size drops after every {@code decayPeriod} epochs pass.
    */
   private final int decayPeriod;
 
@@ -249,7 +249,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
-      LOG.log(Level.INFO, "{0} iterations have passed. Step size decays from {1} to {2}",
+      LOG.log(Level.INFO, "{0} epochs have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
   }
@@ -462,7 +462,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     metricsMsgSender.send(workerMetrics);
   }
 
-  private WorkerMetrics buildMiniBatchMetric(final int iteration, final int miniBatchIdx,
+  private WorkerMetrics buildMiniBatchMetric(final int epochIdx, final int miniBatchIdx,
                                              final int numProcessedDataItemCount, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
     appMetricMap.put(NMFParameters.MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
@@ -471,7 +471,7 @@ final class NMFTrainer implements Trainer<NMFData> {
         .setMetrics(Metrics.newBuilder()
             .setData(appMetricMap)
             .build())
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setMiniBatchIdx(miniBatchIdx)
         .setProcessedDataItemCount(numProcessedDataItemCount)
@@ -485,7 +485,7 @@ final class NMFTrainer implements Trainer<NMFData> {
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int iteration, final int numMiniBatchForEpoch,
+  private WorkerMetrics buildEpochMetric(final int epochIdx, final int numMiniBatchForEpoch,
                                          final int numDataBlocks, final int numProcessedDataItemCount,
                                          final double loss, final double elapsedTime) {
     final Map<CharSequence, Double> appMetricMap = new HashMap<>();
@@ -496,7 +496,7 @@ final class NMFTrainer implements Trainer<NMFData> {
         .setMetrics(Metrics.newBuilder()
             .setData(appMetricMap)
             .build())
-        .setEpochIdx(iteration)
+        .setEpochIdx(epochIdx)
         .setMiniBatchSize(miniBatchSize)
         .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
         .setNumDataBlocks(numDataBlocks)

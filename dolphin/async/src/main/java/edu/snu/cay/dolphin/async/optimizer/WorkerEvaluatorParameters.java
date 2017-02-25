@@ -32,7 +32,7 @@ public final class WorkerEvaluatorParameters implements EvaluatorParameters<Work
    * Constructs a worker evaluator's current status.
    * @param id the evaluator ID
    * @param dataInfo {@link DataInfo} representing the number of blocks allocated
-   * @param metrics {@link WorkerMetrics} representing the worker's iteration execution metrics
+   * @param metrics {@link WorkerMetrics} representing the worker's execution metrics
    */
   public WorkerEvaluatorParameters(final String id,
                                    final DataInfo dataInfo,

@@ -32,7 +32,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.generateIterationLog;
+import static edu.snu.cay.dolphin.async.dnn.util.NeuralNetworkUtils.generateEpochLog;
 
 /**
  * Trainer for the neural network job.
@@ -121,7 +121,7 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
     }
 
     final int epochIdx = epochInfo.getEpochIdx();
-    LOG.log(Level.INFO, generateIterationLog(
+    LOG.log(Level.INFO, generateEpochLog(
         trainingValidator.getValidationStats(), crossValidator.getValidationStats(), epochIdx));
 
     crossValidator.getValidationStats().reset();

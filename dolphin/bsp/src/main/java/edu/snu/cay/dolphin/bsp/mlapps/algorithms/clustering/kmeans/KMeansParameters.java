@@ -15,11 +15,11 @@
  */
 package edu.snu.cay.dolphin.bsp.mlapps.algorithms.clustering.kmeans;
 
-import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.bsp.core.UserParameters;
 import edu.snu.cay.dolphin.bsp.mlapps.data.ClusteringSerializer;
 import edu.snu.cay.dolphin.bsp.mlapps.parameters.ConvergenceThreshold;
 import edu.snu.cay.dolphin.bsp.mlapps.parameters.NumberOfClusters;
+import edu.snu.cay.dolphin.bsp.parameters.MaxIterations;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.ConfigurationBuilder;
@@ -36,7 +36,7 @@ public final class KMeansParameters implements UserParameters {
 
   @Inject
   private KMeansParameters(@Parameter(ConvergenceThreshold.class) final double convThreshold,
-                           @Parameter(Iterations.class) final int maxIterations,
+                           @Parameter(MaxIterations.class) final int maxIterations,
                            @Parameter(NumberOfClusters.class) final int numberOfClusters) {
     this.convThreshold = convThreshold;
     this.maxIterations = maxIterations;
@@ -47,7 +47,7 @@ public final class KMeansParameters implements UserParameters {
   public Configuration getDriverConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
-        .bindNamedParameter(Iterations.class, String.valueOf(maxIterations))
+        .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
         .bindNamedParameter(NumberOfClusters.class, String.valueOf(numberOfClusters))
         .build();
   }
@@ -69,7 +69,7 @@ public final class KMeansParameters implements UserParameters {
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
-        .bindNamedParameter(Iterations.class, String.valueOf(maxIterations))
+        .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
         .bindNamedParameter(NumberOfClusters.class, String.valueOf(numberOfClusters))
         .build();
   }
@@ -78,7 +78,7 @@ public final class KMeansParameters implements UserParameters {
     final ConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
     cl.registerShortNameOfClass(ConvergenceThreshold.class);
-    cl.registerShortNameOfClass(Iterations.class);
+    cl.registerShortNameOfClass(MaxIterations.class);
     cl.registerShortNameOfClass(NumberOfClusters.class);
     return cl;
   }

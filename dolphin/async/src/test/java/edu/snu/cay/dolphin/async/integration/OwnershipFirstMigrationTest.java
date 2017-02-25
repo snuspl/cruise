@@ -85,7 +85,7 @@ public final class OwnershipFirstMigrationTest {
 
   private List<String> getDefaultArguments() {
     return Arrays.asList(
-        "-max_iter", Integer.toString(10),
+        "-max_num_epochs", Integer.toString(10),
         "-mini_batch_size", Integer.toString(10),
         "-num_training_data", Integer.toString(100),
         "-delta", Integer.toString(4),
