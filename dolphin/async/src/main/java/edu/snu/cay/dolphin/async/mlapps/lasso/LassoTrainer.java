@@ -156,7 +156,7 @@ final class LassoTrainer implements Trainer<LassoData> {
       }
       final Vector columnVector = featureMatrix.sliceColumn(i);
       final double columnNorm = columnVector.dot(columnVector);
-      if (columnNorm == 0) {
+      if (Math.abs(columnNorm) < 1e-9) {
         continue;
       }
       preCalculate.subi(columnVector.scale(newModel.get(i)));
