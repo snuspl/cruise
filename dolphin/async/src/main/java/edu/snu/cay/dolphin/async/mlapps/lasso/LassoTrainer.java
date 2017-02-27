@@ -151,9 +151,12 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     // For each dimension, compute the optimal value.
     for (int i = 0; i < numFeatures; i++) {
+      if (Math.abs(newModel.get(i)) < 1e-9) {
+        continue;
+      }
       final Vector columnVector = featureMatrix.sliceColumn(i);
       final double columnNorm = columnVector.dot(columnVector);
-      if (columnNorm == 0 || newModel.get(i) == 0) {
+      if (columnNorm == 0) {
         continue;
       }
       preCalculate.subi(columnVector.scale(newModel.get(i)));
