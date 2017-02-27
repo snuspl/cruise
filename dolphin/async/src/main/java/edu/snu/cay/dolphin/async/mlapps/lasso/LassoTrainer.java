@@ -56,7 +56,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   private static final int PRINT_MODEL_PERIOD = 50;
 
   /**
-   * Threshold for a number that assumed to be zero.
+   * Threshold for a number to be regarded as zero.
    */
   private static final double ZERO_THRESHOLD = 1e-9;
 
@@ -351,7 +351,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   /**
-   * @return whether the value is close to 0 or not.
+   * @return {@code true} if the value is close to 0.
    */
   private boolean closeToZero(final double value) {
     return Math.abs(value) < ZERO_THRESHOLD;
