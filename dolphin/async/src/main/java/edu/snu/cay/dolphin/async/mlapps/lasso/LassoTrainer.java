@@ -264,7 +264,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   private void pullModels() {
     pullTracer.startTimer();
     final List<Vector> partialModels = parameterWorker.pull(modelPartitionIndices);
-    pullTracer.recordTime(numFeatures);
+    pullTracer.recordTime(numPartitions);
     computeTracer.startTimer();
     oldModel = vectorFactory.concatDense(partialModels);
     newModel = oldModel.copy();
