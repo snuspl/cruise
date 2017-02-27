@@ -55,6 +55,11 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   private static final int PRINT_MODEL_PERIOD = 50;
 
+  /**
+   * Threshold for a number that assumed to be zero.
+   */
+  private static final double ZERO_THRESHOLD = 1e-9;
+
   private final int numFeatures;
   private final double lambda;
   private double stepSize;
@@ -151,12 +156,12 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     // For each dimension, compute the optimal value.
     for (int i = 0; i < numFeatures; i++) {
-      if (isZero(newModel.get(i))) {
+      if (closeToZero(newModel.get(i))) {
         continue;
       }
       final Vector columnVector = featureMatrix.sliceColumn(i);
       final double columnNorm = columnVector.dot(columnVector);
-      if (isZero(columnNorm)) {
+      if (closeToZero(columnNorm)) {
         continue;
       }
       preCalculate.subi(columnVector.scale(newModel.get(i)));
@@ -345,7 +350,7 @@ final class LassoTrainer implements Trainer<LassoData> {
         .build();
   }
 
-  private boolean isZero(final double value) {
-    return Math.abs(value) < 1e-9;
+  private boolean closeToZero(final double value) {
+    return Math.abs(value) < ZERO_THRESHOLD;
   }
 }
