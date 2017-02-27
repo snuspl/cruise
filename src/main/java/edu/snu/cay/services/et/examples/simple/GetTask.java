@@ -26,8 +26,8 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.TABLE0_ID;
-import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.TABLE1_ID;
+import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.HASHED_TABLE_ID;
+import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.ORDERED_TABLE_ID;
 import static edu.snu.cay.services.et.examples.simple.PutTask.*;
 
 /**
@@ -55,18 +55,18 @@ final class GetTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
-    final Table<Long, String> table0 = tableAccessor.get(TABLE0_ID);
-    final Table<Long, String> table1 = tableAccessor.get(TABLE1_ID);
+    final Table<Long, String> hashedTable = tableAccessor.get(HASHED_TABLE_ID);
+    final Table<Long, String> orderedTable = tableAccessor.get(ORDERED_TABLE_ID);
 
-    final String value00 = table0.get(KEY0);
-    final String value01 = table0.get(KEY1);
-    final String value10 = table1.get(KEY0);
-    final String value11 = table1.get(KEY1);
+    final String value00 = hashedTable.get(KEY0);
+    final String value01 = hashedTable.get(KEY1);
+    final String value10 = orderedTable.get(KEY0);
+    final String value11 = orderedTable.get(KEY1);
 
-    LOG.log(Level.INFO, "value for key {0} in a table0 is {1}", new Object[]{KEY0, value00});
-    LOG.log(Level.INFO, "value for key {0} in a table0 is {1}", new Object[]{KEY1, value01});
-    LOG.log(Level.INFO, "value for key {0} in a table1 is {1}", new Object[]{KEY0, value10});
-    LOG.log(Level.INFO, "value for key {0} in a table1 is {1}", new Object[]{KEY1, value11});
+    LOG.log(Level.INFO, "value for key {0} in a hashedTable is {1}", new Object[]{KEY0, value00});
+    LOG.log(Level.INFO, "value for key {0} in a hashedTable is {1}", new Object[]{KEY1, value01});
+    LOG.log(Level.INFO, "value for key {0} in an orderedTable is {1}", new Object[]{KEY0, value10});
+    LOG.log(Level.INFO, "value for key {0} in an orderedTable is {1}", new Object[]{KEY1, value11});
 
     if (!value00.equals(VALUE0) || value01 != null ||
         !value11.equals(VALUE1) || value10 != null) {

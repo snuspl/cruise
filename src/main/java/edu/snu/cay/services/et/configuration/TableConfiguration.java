@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,10 @@
 package edu.snu.cay.services.et.configuration;
 
 import edu.snu.cay.services.et.configuration.parameters.*;
-import edu.snu.cay.services.et.evaluator.api.PartitionFunction;
+import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import edu.snu.cay.services.et.evaluator.impl.HashBasedBlockPartitioner;
+import edu.snu.cay.services.et.evaluator.impl.OrderingBasedBlockPartitioner;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
@@ -26,6 +28,8 @@ import org.apache.reef.util.BuilderUtils;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A builder for configuration required for creating table.
@@ -36,7 +40,7 @@ public final class TableConfiguration {
   private final Class<? extends Codec> keyCodecClass;
   private final Class<? extends Codec> valueCodecClass;
   private final Class<? extends UpdateFunction> updateFunctionClass;
-  private final Class<? extends PartitionFunction> partitionFunctionClass;
+  private final boolean isOrderedTable;
   private final int numTotalBlocks;
   private final String filePath;
   private Configuration configuration = null;
@@ -44,13 +48,13 @@ public final class TableConfiguration {
   private TableConfiguration(final String id,
                              final Class<? extends Codec> keyCodecClass, final Class<? extends Codec> valueCodecClass,
                              final Class<? extends UpdateFunction> updateFunctionClass,
-                             final Class<? extends PartitionFunction> partitionFunctionClass,
+                             final boolean isOrderedTable,
                              final Integer numTotalBlocks, @Nullable final String filePath) {
     this.id = id;
     this.keyCodecClass = keyCodecClass;
     this.valueCodecClass = valueCodecClass;
     this.updateFunctionClass = updateFunctionClass;
-    this.partitionFunctionClass = partitionFunctionClass;
+    this.isOrderedTable = isOrderedTable;
     this.numTotalBlocks = numTotalBlocks;
     this.filePath = filePath;
   }
@@ -84,10 +88,10 @@ public final class TableConfiguration {
   }
 
   /**
-   * @return a partition function
+   * @return True if it's an ordered table, not a hashed table.
    */
-  public Class<? extends PartitionFunction> getPartitionFunctionClass() {
-    return partitionFunctionClass;
+  public boolean isOrderedTable() {
+    return isOrderedTable;
   }
 
   /**
@@ -109,12 +113,16 @@ public final class TableConfiguration {
    */
   public Configuration getConfiguration() {
     if (configuration == null) {
+      final Class<? extends BlockPartitioner> blockPartitionerClass = isOrderedTable ?
+          OrderingBasedBlockPartitioner.class : HashBasedBlockPartitioner.class;
+
       configuration = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(TableIdentifier.class, id)
           .bindNamedParameter(KeyCodec.class, keyCodecClass)
           .bindNamedParameter(ValueCodec.class, valueCodecClass)
           .bindImplementation(UpdateFunction.class, updateFunctionClass)
-          .bindImplementation(PartitionFunction.class, partitionFunctionClass)
+          .bindNamedParameter(IsOrderedTable.class, Boolean.toString(isOrderedTable))
+          .bindImplementation(BlockPartitioner.class, blockPartitionerClass)
           .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
           .bindNamedParameter(FilePath.class, filePath != null ? filePath : FilePath.EMPTY)
           .build();
@@ -133,6 +141,8 @@ public final class TableConfiguration {
    * A builder of TableConfiguration.
    */
   public static final class Builder implements org.apache.reef.util.Builder<TableConfiguration> {
+    private static final Logger LOG = Logger.getLogger(Builder.class.getName());
+
     /**
      * Required parameters.
      */
@@ -140,7 +150,7 @@ public final class TableConfiguration {
     private Class<? extends Codec> keyCodecClass;
     private Class<? extends Codec> valueCodecClass;
     private Class<? extends UpdateFunction> updateFunctionClass;
-    private Class<? extends PartitionFunction> partitionFunctionClass;
+    private Boolean isOrderedTable;
 
     /**
      * Optional parameters.
@@ -171,8 +181,8 @@ public final class TableConfiguration {
       return this;
     }
 
-    public Builder setPartitionFunctionClass(final Class<? extends PartitionFunction> partitionFunctionClass) {
-      this.partitionFunctionClass = partitionFunctionClass;
+    public Builder setIsOrderedTable(final Boolean isOrderedTable) {
+      this.isOrderedTable = isOrderedTable;
       return this;
     }
 
@@ -192,14 +202,22 @@ public final class TableConfiguration {
       BuilderUtils.notNull(keyCodecClass);
       BuilderUtils.notNull(valueCodecClass);
       BuilderUtils.notNull(updateFunctionClass);
-      BuilderUtils.notNull(partitionFunctionClass);
+      BuilderUtils.notNull(isOrderedTable);
 
       if (numTotalBlocks == null) {
         numTotalBlocks = Integer.valueOf(NumTotalBlocks.DEFAULT_VALUE_STR);
       }
 
+      if (!isOrderedTable) {
+        if (filePath != null) {
+          LOG.log(Level.WARNING, "Initialization with bulk loading is not supported for hashed tables. " +
+              "Will skip loading files in tableId: {0}", id);
+          filePath = null;
+        }
+      }
+
       return new TableConfiguration(id, keyCodecClass, valueCodecClass,
-          updateFunctionClass, partitionFunctionClass, numTotalBlocks, filePath);
+          updateFunctionClass, isOrderedTable, numTotalBlocks, filePath);
     }
   }
 }

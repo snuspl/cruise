@@ -22,12 +22,14 @@ import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * A message handler implementation.
@@ -113,8 +115,13 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private void onTableInitMsg(final TableInitMsg msg) {
     try {
-      final String tableId = tablesFuture.get().initTable(confSerializer.fromString(msg.getTableConf()),
-          msg.getBlockOwners(), msg.getFileSplit());
+      final Configuration tableConf = confSerializer.fromString(msg.getTableConf());
+      final List<String> blockOwners = msg.getBlockOwners();
+      final String serializedHdfsSplitInfo = msg.getFileSplit();
+
+      final String tableId = serializedHdfsSplitInfo == null ?
+          tablesFuture.get().initTable(tableConf, blockOwners) :
+          tablesFuture.get().initTable(tableConf, blockOwners, serializedHdfsSplitInfo);
 
       msgSenderFuture.get().sendTableInitAckMsg(tableId);
 

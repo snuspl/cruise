@@ -23,7 +23,6 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
-import edu.snu.cay.services.et.evaluator.impl.HashPartitionFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -52,8 +51,9 @@ final class SimpleETDriver {
   private static final String PUT_TASK_ID_PREFIX = "Simple-put-task-";
   static final int NUM_ASSOCIATORS = 2; // should be at least 2
   static final int NUM_SUBSCRIBERS = 1; // should be at least 1
-  static final String TABLE0_ID = "Table0";
-  static final String TABLE1_ID = "Table1";
+  static final String HASHED_TABLE_ID = "Hashed_Table";
+  static final String ORDERED_TABLE_ID = "Ordered_Table";
+  static final String ORDERED_TABLE_WITH_FILE_ID = "Ordered_Table_WITH_FILE";
 
   private static final ResourceConfiguration RES_CONF = ResourceConfiguration.newBuilder()
       .setNumCores(1)
@@ -71,13 +71,14 @@ final class SimpleETDriver {
     this.tableInputPath = tableInputPath;
   }
 
-  private TableConfiguration buildTableConf(final String tableId, final String inputPath) {
+  private TableConfiguration buildTableConf(final String tableId, final String inputPath,
+                                            final boolean isOrderedTable) {
     final TableConfiguration.Builder tableConfBuilder = TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
-        .setPartitionFunctionClass(HashPartitionFunction.class);
+        .setIsOrderedTable(isOrderedTable);
 
     if (!inputPath.equals(SimpleET.TableInputPath.EMPTY)) {
       tableConfBuilder.setFilePath(inputPath);
@@ -94,13 +95,14 @@ final class SimpleETDriver {
     public void onNext(final StartTime startTime) {
       final List<AllocatedExecutor> associators = etMaster.addExecutors(NUM_ASSOCIATORS, RES_CONF);
 
-      final AllocatedTable table0 = etMaster.createTable(buildTableConf(TABLE0_ID, tableInputPath), associators);
-      final AllocatedTable table1 =
-          etMaster.createTable(buildTableConf(TABLE1_ID, SimpleET.TableInputPath.EMPTY), associators);
+      final AllocatedTable hashedTable = etMaster.createTable(buildTableConf(HASHED_TABLE_ID,
+          SimpleET.TableInputPath.EMPTY, false), associators);
+      final AllocatedTable orderedTable = etMaster.createTable(buildTableConf(ORDERED_TABLE_ID,
+          SimpleET.TableInputPath.EMPTY, true), associators);
 
       final List<AllocatedExecutor> subscribers = etMaster.addExecutors(NUM_SUBSCRIBERS, RES_CONF);
-      table0.subscribe(subscribers);
-      table1.subscribe(subscribers);
+      hashedTable.subscribe(subscribers);
+      orderedTable.subscribe(subscribers);
 
       final AtomicInteger taskIdCount = new AtomicInteger(0);
 
@@ -112,7 +114,7 @@ final class SimpleETDriver {
 
       // 2. wait until a put task finished
       try {
-        putTaskResultFuture.get();
+        assert putTaskResultFuture.get().isSuccess();
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
@@ -138,12 +140,12 @@ final class SimpleETDriver {
         migrationLatch.countDown();
       };
 
-      // move all blocks of table0 in the first associator to the second associator
-      table0.moveBlocks(associators.get(0).getId(), associators.get(1).getId(),
+      // move all blocks of hashedTable in the first associator to the second associator
+      hashedTable.moveBlocks(associators.get(0).getId(), associators.get(1).getId(),
           Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback);
 
-      // move all blocks of table1 in the second associator to the first associator
-      table1.moveBlocks(associators.get(1).getId(), associators.get(0).getId(),
+      // move all blocks of orderedTable in the second associator to the first associator
+      orderedTable.moveBlocks(associators.get(1).getId(), associators.get(0).getId(),
           Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback);
 
       // wait until migrations finish
@@ -168,11 +170,18 @@ final class SimpleETDriver {
       // 6. wait all tasks finished and close executors
       taskResultFutureList.forEach(taskResultFuture -> {
         try {
-          taskResultFuture.get();
+          assert taskResultFuture.get().isSuccess();
         } catch (InterruptedException | ExecutionException e) {
           throw new RuntimeException(e);
         }
       });
+
+      // 7. create a table with input file
+      final AllocatedTable orderedTableWithFile = etMaster.createTable(buildTableConf(ORDERED_TABLE_WITH_FILE_ID,
+          tableInputPath, true), associators);
+
+      // 8. start tasks to confirm that the last table has been loaded correctly
+      // TODO #27: Provide a way to access data in local blocks
 
       subscribers.forEach(AllocatedExecutor::close);
       associators.forEach(AllocatedExecutor::close);

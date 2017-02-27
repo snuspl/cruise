@@ -45,7 +45,7 @@ public interface TableComponents<K, V> {
   KVSerializer<K, V> getSerializer();
 
   /**
-   * @return a partition function of a table
+   * @return a block partitioner of a table
    */
-  PartitionFunction<K> getPartitionFunction();
+  BlockPartitioner<K> getBlockPartitioner();
 }

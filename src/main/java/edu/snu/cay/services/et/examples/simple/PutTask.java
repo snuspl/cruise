@@ -26,8 +26,8 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.TABLE0_ID;
-import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.TABLE1_ID;
+import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.HASHED_TABLE_ID;
+import static edu.snu.cay.services.et.examples.simple.SimpleETDriver.ORDERED_TABLE_ID;
 
 /**
  * Task code that puts values to tables.
@@ -57,16 +57,16 @@ final class PutTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
-    final Table<Long, String> table0 = tableAccessor.get(TABLE0_ID);
-    final Table<Long, String> table1 = tableAccessor.get(TABLE1_ID);
+    final Table<Long, String> hashedTable = tableAccessor.get(HASHED_TABLE_ID);
+    final Table<Long, String> orderedTable = tableAccessor.get(ORDERED_TABLE_ID);
 
-    final String prevValue00 = table0.put(KEY0, VALUE0);
-    LOG.log(Level.INFO, "Put value {0} to key {1} in table0", new Object[]{VALUE0, KEY0});
-    final String prevValue11 = table1.put(KEY1, VALUE1);
-    LOG.log(Level.INFO, "Put value {0} to key {1} in table1", new Object[]{VALUE1, KEY1});
+    final String prevValue00 = hashedTable.put(KEY0, VALUE0);
+    LOG.log(Level.INFO, "Put value {0} to key {1} in hashedTable", new Object[]{VALUE0, KEY0});
+    final String prevValue11 = orderedTable.put(KEY1, VALUE1);
+    LOG.log(Level.INFO, "Put value {0} to key {1} in orderedTable", new Object[]{VALUE1, KEY1});
 
-    LOG.log(Level.INFO, "Prev value for key {0} in a table0 is {1}", new Object[]{KEY0, prevValue00});
-    LOG.log(Level.INFO, "Prev value for key {0} in a table1 is {1}", new Object[]{KEY1, prevValue11});
+    LOG.log(Level.INFO, "Prev value for key {0} in a hashedTable is {1}", new Object[]{KEY0, prevValue00});
+    LOG.log(Level.INFO, "Prev value for key {0} in an orderedTable is {1}", new Object[]{KEY1, prevValue11});
 
     if (prevValue00 != null || prevValue11 != null) {
       throw new RuntimeException("The result is different from the expectation");

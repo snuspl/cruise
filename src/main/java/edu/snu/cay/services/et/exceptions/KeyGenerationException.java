@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.evaluator.api;
+package edu.snu.cay.services.et.exceptions;
 
 /**
- * A partitioning function of keys into blocks.
+ * Thrown when key identifier generation fails.
+ * The common reason of this failure is that it is impossible to make unique key identifier.
  */
-public interface PartitionFunction<K> {
-  int getBlockId(K key);
+public class KeyGenerationException extends Exception {
+
+  /**
+   * Constructs a new exception with the specified detail message.
+   * @param msg the detail message.
+   */
+  public KeyGenerationException(final String msg) {
+    super(msg);
+  }
 }

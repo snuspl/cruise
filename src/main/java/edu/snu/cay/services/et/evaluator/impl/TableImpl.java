@@ -17,7 +17,7 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.OpType;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
-import edu.snu.cay.services.et.evaluator.api.PartitionFunction;
+import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableComponents;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
@@ -64,7 +64,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
   /**
    * Partition function that resolves key into block id.
    */
-  private final PartitionFunction<K> partitionFunction;
+  private final BlockPartitioner<K> blockPartitioner;
 
   @Inject
   private TableImpl(@Parameter(TableIdentifier.class) final String tableId,
@@ -72,19 +72,19 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
                     final BlockStore<K, V> blockStore,
                     final KVSerializer<K, V> kvSerializer,
                     final RemoteAccessOpSender remoteAccessOpSender,
-                    final PartitionFunction<K> partitionFunction) {
+                    final BlockPartitioner<K> blockPartitioner) {
     this.tableId = tableId;
     this.ownershipCache = ownershipCache;
     this.blockStore = blockStore;
     this.kvSerializer = kvSerializer;
     this.remoteAccessOpSender = remoteAccessOpSender;
-    this.partitionFunction = partitionFunction;
+    this.blockPartitioner = blockPartitioner;
   }
 
   @Override
   public V put(final K key, final V value) {
 
-    final int blockId = partitionFunction.getBlockId(key);
+    final int blockId = blockPartitioner.getBlockId(key);
     final Optional<String> remoteIdOptional;
 
     final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -112,7 +112,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
 
   @Override
   public V get(final K key) {
-    final int blockId = partitionFunction.getBlockId(key);
+    final int blockId = blockPartitioner.getBlockId(key);
     final Optional<String> remoteIdOptional;
 
     final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -140,7 +140,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
 
   @Override
   public V update(final K key, final V deltaValue) {
-    final int blockId = partitionFunction.getBlockId(key);
+    final int blockId = blockPartitioner.getBlockId(key);
     final Optional<String> remoteIdOptional;
 
     final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -168,7 +168,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
 
   @Override
   public V remove(final K key) {
-    final int blockId = partitionFunction.getBlockId(key);
+    final int blockId = blockPartitioner.getBlockId(key);
     final Optional<String> remoteIdOptional;
 
     final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -209,8 +209,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
     return kvSerializer;
   }
 
-  @Override
-  public PartitionFunction<K> getPartitionFunction() {
-    return partitionFunction;
+  public BlockPartitioner<K> getBlockPartitioner() {
+    return blockPartitioner;
   }
 }

@@ -102,7 +102,7 @@ public final class RemoteAccessOpHandlerTest {
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
-        .setPartitionFunctionClass(HashPartitionFunction.class)
+        .setIsOrderedTable(false)
         .build();
   }
 

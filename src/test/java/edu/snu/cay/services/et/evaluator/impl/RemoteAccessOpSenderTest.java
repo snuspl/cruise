@@ -93,7 +93,7 @@ public class RemoteAccessOpSenderTest {
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
-        .setPartitionFunctionClass(HashPartitionFunction.class)
+        .setIsOrderedTable(false)
         .build();
   }
 

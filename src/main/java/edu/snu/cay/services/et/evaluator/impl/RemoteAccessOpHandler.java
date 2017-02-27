@@ -17,8 +17,8 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.configuration.parameters.NumRemoteOpsHandlerThreads;
+import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
-import edu.snu.cay.services.et.evaluator.api.PartitionFunction;
 import edu.snu.cay.services.et.evaluator.api.TableComponents;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
@@ -184,7 +184,7 @@ final class RemoteAccessOpHandler {
       final KVSerializer<K, V> kvSerializer = tableComponents.getSerializer();
       final Codec<K> keyCodec = kvSerializer.getKeyCodec();
       final Codec<V> valueCodec = kvSerializer.getValueCodec();
-      final PartitionFunction<K> partitionFunction = tableComponents.getPartitionFunction();
+      final BlockPartitioner<K> blockPartitioner = tableComponents.getBlockPartitioner();
 
       // decode data keys
       final K decodedKey = keyCodec.decode(dataKey.getKey().array());
@@ -193,7 +193,7 @@ final class RemoteAccessOpHandler {
       final V decodedValue = opType.equals(OpType.PUT) || opType.equals(OpType.UPDATE) ?
           valueCodec.decode(dataValue.getValue().array()) : null;
 
-      final int blockId = partitionFunction.getBlockId(decodedKey);
+      final int blockId = blockPartitioner.getBlockId(decodedKey);
       final DataOpMetadata<K, V> operation = new DataOpMetadata<>(origEvalId,
           opId, opType, tableId, blockId, decodedKey, decodedValue);
 
