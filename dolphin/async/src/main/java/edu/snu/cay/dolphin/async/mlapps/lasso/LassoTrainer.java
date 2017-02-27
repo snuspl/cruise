@@ -350,6 +350,9 @@ final class LassoTrainer implements Trainer<LassoData> {
         .build();
   }
 
+  /**
+   * @return whether the value is close to 0 or not.
+   */
   private boolean closeToZero(final double value) {
     return Math.abs(value) < ZERO_THRESHOLD;
   }
