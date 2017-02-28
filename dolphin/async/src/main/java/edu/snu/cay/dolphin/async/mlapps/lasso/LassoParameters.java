@@ -54,6 +54,10 @@ final class LassoParameters {
           default_value = "5")
   static final class DecayPeriod implements Name<Integer> {
   }
+  
+  @NamedParameter(doc = "number of features for each model partition", short_name = "features_per_partition")
+  static final class NumFeaturesPerPartition implements Name<Integer> {
+  }
 
   static final class MetricKeys {
 
