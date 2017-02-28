@@ -50,4 +50,8 @@ final class GBTParameters {
   @NamedParameter(doc = "the location of metadata for features", short_name = "metadata_path")
   static final class MetadataPath implements Name<String> {
   }
+
+  @NamedParameter(doc = "number of keys in server that is used to store GBTree", short_name = "num_keys_in_server")
+  static final class NumKeysInServer implements Name<Integer> {
+  }
 }

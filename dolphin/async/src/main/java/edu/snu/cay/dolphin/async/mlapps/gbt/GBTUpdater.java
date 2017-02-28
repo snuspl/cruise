@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.gbt;
 
-import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.dolphin.async.mlapps.gbt.tree.GBTree;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 
 import javax.inject.Inject;
@@ -27,38 +27,37 @@ import java.util.List;
  * {@link ParameterUpdater} for the GBTREEF application.
  * Forest list(in server) collects all the GBTrees that are built in runMiniBatch().
  * This updater's main role is adding newGBTree to the forest list.
- * Vectors are initialized with 0 vector.
  */
-final class GBTUpdater implements ParameterUpdater<Integer, Vector, List<Vector>> {
+final class GBTUpdater implements ParameterUpdater<Integer, GBTree, List<GBTree>> {
 
   @Inject
   private GBTUpdater() {
   }
 
   /**
-   * This method converts a preValue type(Vector) into a value type(List<Vector>).
-   * To convert the type, add the preValue vector into the retValue list which is an empty vector list.
+   * This method converts a preValue type(GBTree) into a value type(List<GBTree>).
+   * To convert the type, add the preValue GBTree into the retValue list which is an empty list.
    */
   @Override
-  public List<Vector> process(final Integer key, final Vector preValue) {
-    final List<Vector> retValue = new LinkedList<>();
+  public List<GBTree> process(final Integer key, final GBTree preValue) {
+    final List<GBTree> retValue = new LinkedList<>();
     retValue.add(preValue);
     return retValue;
   }
 
   /**
    * This method adds newGBTree into a forest list.
-   * newGBTree list's size is always one, because vector list with length one is created in the process method.
+   * newGBTree list's size is always one, because GBTree list with length one is created in the process method.
    */
   @Override
-  public List<Vector> update(final List<Vector> forest, final List<Vector> newGBTree) {
+  public List<GBTree> update(final List<GBTree> forest, final List<GBTree> newGBTree) {
     assert (newGBTree.size() == 1);
     forest.add(newGBTree.get(0));
     return forest;
   }
 
   @Override
-  public List<Vector> initValue(final Integer key) {
+  public List<GBTree> initValue(final Integer key) {
     return new LinkedList<>();
   }
 }

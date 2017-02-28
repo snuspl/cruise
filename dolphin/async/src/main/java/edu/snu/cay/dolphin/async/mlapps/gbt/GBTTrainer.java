@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
@@ -62,7 +61,12 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private final int maxNumEpochs;
 
-  private final ParameterWorker<Integer, Vector, List<Vector>> parameterWorker;
+  /**
+   * Number of keys in server that is used to store GBTree.
+   */
+  private final int numKeysInServer;
+
+  private final ParameterWorker<Integer, GBTree, List<GBTree>> parameterWorker;
 
   /**
    * Number of features.
@@ -117,10 +121,10 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private final int treeSize;
 
-  private final VectorFactory vectorFactory;
+  private final Random random;
 
   @Inject
-  private GBTTrainer(final ParameterWorker<Integer, Vector, List<Vector>> parameterWorker,
+  private GBTTrainer(final ParameterWorker<Integer, GBTree, List<GBTree>> parameterWorker,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(StepSize.class) final double stepSize,
                      @Parameter(Lambda.class) final double lambda,
@@ -128,8 +132,8 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(TreeMaxDepth.class) final int treeMaxDepth,
                      @Parameter(LeafMinSize.class) final int leafMinSize,
                      @Parameter(MaxNumEpochs.class) final int maxNumEpochs,
-                     final GBTMetadataParser metadataParser,
-                     final VectorFactory vectorFactory) {
+                     @Parameter(NumKeysInServer.class) final int numKeysInServer,
+                     final GBTMetadataParser metadataParser) {
     this.parameterWorker = parameterWorker;
     this.numFeatures = numFeatures;
     this.stepSize = stepSize;
@@ -138,8 +142,9 @@ final class GBTTrainer implements Trainer<GBTData> {
     this.treeMaxDepth = treeMaxDepth;
     this.leafMinSize = leafMinSize;
     this.maxNumEpochs = maxNumEpochs;
+    this.numKeysInServer = numKeysInServer;
     this.treeSize = (1 << treeMaxDepth) - 1;
-    this.vectorFactory = vectorFactory;
+    this.random = new Random();
     final Pair<Map<Integer, FeatureType>, Integer> metaData = metadataParser.getFeatureTypes();
     this.featureTypes = metaData.getLeft();
     this.valueType = featureTypes.get(numFeatures);
@@ -693,34 +698,11 @@ final class GBTTrainer implements Trainer<GBTData> {
 
   /**
    * Push the tree that is built in this run() iteration.
+   * Randomly pick one key to store a GBTree and push the GBTree to the chosen key.
    */
   private void pushTree(final GBTree gbTree, final int label) {
-    pushBestFeatures(gbTree, label);
-    pushBestSplitValues(gbTree, label);
-  }
-
-  /**
-   * Push the bestFeature list to the server.
-   * bestFeature will be placed in the (2 * label)-index of parameter server.
-   */
-  private void pushBestFeatures(final GBTree gbTree, final int label) {
-    final Vector bestFeatures = vectorFactory.createDenseZeros(treeSize);
-    for (int nodeIdx = 0; nodeIdx < treeSize; nodeIdx++) {
-      bestFeatures.set(nodeIdx, gbTree.get(nodeIdx).getLeft());
-    }
-    parameterWorker.push(2 * label, bestFeatures);
-  }
-
-  /**
-   * Push the bestSplitValue list to the server.
-   * bestSplitValue will be placed in the (2 * label + 1)-index of parameter server.
-   */
-  private void pushBestSplitValues(final GBTree gbTree, final int label) {
-    final Vector bestSplitValues = vectorFactory.createDenseZeros(treeSize);
-    for (int nodeIdx = 0; nodeIdx < treeSize; nodeIdx++) {
-      bestSplitValues.set(nodeIdx, gbTree.get(nodeIdx).getRight());
-    }
-    parameterWorker.push(2 * label + 1, bestSplitValues);
+    final int chosenKey = random.nextInt(numKeysInServer);
+    parameterWorker.push(label * numKeysInServer + chosenKey, gbTree);
   }
 
   /**
@@ -728,14 +710,8 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private List<GBTree> pullAllTrees(final int label) {
     final List<GBTree> forest = new LinkedList<>();
-    final List<Vector> bestFeatureList = parameterWorker.pull(2 * label);
-    final List<Vector> bestSplitValueList = parameterWorker.pull(2 * label + 1);
-    for (int i = 0; i < Math.min(bestFeatureList.size(), bestSplitValueList.size()); i++) {
-      final GBTree semiTree = new GBTree(treeMaxDepth);
-      for (int nodeIdx = 0; nodeIdx < treeSize; nodeIdx++) {
-        semiTree.add(Pair.of((int)bestFeatureList.get(i).get(nodeIdx), bestSplitValueList.get(i).get(nodeIdx)));
-      }
-      forest.add(semiTree);
+    for (int i = 0; i < numKeysInServer; i++) {
+      forest.addAll(parameterWorker.pull(label * numKeysInServer + i));
     }
     return forest;
   }

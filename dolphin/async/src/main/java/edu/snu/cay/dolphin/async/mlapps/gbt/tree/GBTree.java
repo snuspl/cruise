@@ -63,4 +63,25 @@ public final class GBTree extends Tree<Pair<Integer, Double>> {
     }
     tree.add(Pair.of(NodeState.LEAF.getValue(), -gSum / (2 * thisNode.size() + lambda)));
   }
+
+  /**
+   * @return max depth of the tree.
+   */
+  public int getMaxDepth() {
+    return this.treeMaxDepth;
+  }
+
+  /**
+   * @return size of the tree.
+   */
+  public int getTreeSize() {
+    return this.treeSize;
+  }
+
+  /**
+   * @return tree list.
+   */
+  public List<Pair<Integer, Double>> getTree() {
+    return this.tree;
+  }
 }

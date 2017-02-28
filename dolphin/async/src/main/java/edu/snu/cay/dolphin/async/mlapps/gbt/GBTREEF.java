@@ -18,9 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
-import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
-import edu.snu.cay.dolphin.async.mlapps.serialization.VectorListCodec;
-import edu.snu.cay.dolphin.async.mlapps.serialization.VectorListSerializer;
+import edu.snu.cay.dolphin.async.mlapps.serialization.*;
 
 import static edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.*;
 
@@ -37,9 +35,9 @@ public final class GBTREEF {
         .setTrainerClass(GBTTrainer.class)
         .setUpdaterClass(GBTUpdater.class)
         .setParserClass(GBTDataParser.class)
-        .setPreValueCodecClass(DenseVectorCodec.class)
-        .setValueCodecClass(VectorListCodec.class)
-        .setServerSerializerClass(VectorListSerializer.class)
+        .setPreValueCodecClass(GBTreeCodec.class)
+        .setValueCodecClass(GBTreeListCodec.class)
+        .setServerSerializerClass(GBTreeListSerializer.class)
         .setWorkerSerializerClass(GBTDataSerializer.class)
         .addParameterClass(NumFeatures.class)
         .addParameterClass(StepSize.class)
@@ -48,6 +46,7 @@ public final class GBTREEF {
         .addParameterClass(TreeMaxDepth.class)
         .addParameterClass(LeafMinSize.class)
         .addParameterClass(MetadataPath.class)
+        .addParameterClass(NumKeysInServer.class)
         .build());
   }
 }

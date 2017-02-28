@@ -35,7 +35,7 @@ import java.util.List;
  * Thus, {@code add(final T newNode)} function adds the {@code newNode} at the end of the tree list.
  */
 public class Tree<T> {
-  private final int treeMaxDepth;
+  protected final int treeMaxDepth;
   protected final int treeSize;
   protected final List<T> tree;
   
