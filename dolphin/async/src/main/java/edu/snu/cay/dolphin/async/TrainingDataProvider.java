@@ -79,7 +79,7 @@ public final class TrainingDataProvider<K, V> {
   }
 
   /**
-   * Prepares the data to process in the next epoch.
+   * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
    */
   public void prepareDataForEpoch() {
     synchronized (trainingDataKeys) {

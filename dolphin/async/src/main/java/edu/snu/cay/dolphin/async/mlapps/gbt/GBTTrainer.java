@@ -55,14 +55,19 @@ final class GBTTrainer implements Trainer<GBTData> {
    * CONTINUOUS_FEATURE : features with real-number type.
    */
   private static final int CONTINUOUS_FEATURE = 0;
-
+  
+  /**
+   * Threshold for checking whether two double values are the same.
+   */
+  private static final double SIMILAR_VALUE_THRESHOLD = 1e-9;
+  
   /**
    * Max iteration of run() method.
    */
   private final int maxNumEpochs;
 
   /**
-   * Number of keys in server that is used to store GBTree.
+   * The number of keys that are assigned to each tree for partitioning models across servers.
    */
   private final int numKeys;
 
@@ -368,7 +373,7 @@ final class GBTTrainer implements Trainer<GBTData> {
       boolean childNotExistError = false;
       final Pair<Integer, Double> data = sortedByFeature.get(dataIdx);
       gL += gValues.get(data.getLeft());
-      while (isDoubleSame(sortedByFeature.get(dataIdx + 1).getRight(), data.getRight())) {
+      while (similarValues(sortedByFeature.get(dataIdx + 1).getRight(), data.getRight())) {
         gL += gValues.get(sortedByFeature.get(++dataIdx).getLeft());
         if (dataIdx >= nodeSize - 1) {
           childNotExistError = true; break;
@@ -393,7 +398,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    * Initial Condition : All the members in dataTree(nodeIdx) are in left child / Empty right child.
    * For every combinations of the feature's label set, calculate the tempGain.
    * If the tempGain is larger than the global gain(in here, retGain), change the condition for the best condition.
-   * To travel all the possible combinations, grey code is used.
+   * To travel all the possible combinations, gray code is used.
    * Since only one feature changing occurs as iteration goes along, tempGain can be calculated efficiently.
    * Left child and right child must have at least one member(they must not be empty).
    *
@@ -412,10 +417,10 @@ final class GBTTrainer implements Trainer<GBTData> {
     int countLeft = nodeSize;
     final int numLabel = groupedByLabel.size();
     if (groupedByLabel.size() <= LABEL_SIZE_THRESHOLD) {
-      final List<Integer> greyCode = createGreyCode(numLabel);
-      for (int i = 1; i < greyCode.size(); i++) {
+      final List<Integer> grayCode = createGrayCode(numLabel);
+      for (int i = 1; i < grayCode.size(); i++) {
         int changedFeature = 0;
-        int changedDigit = greyCode.get(i) ^ greyCode.get(i - 1);
+        int changedDigit = grayCode.get(i) ^ grayCode.get(i - 1);
         while (true) {
           if (changedDigit % 2 == 1) {
             break;
@@ -424,7 +429,7 @@ final class GBTTrainer implements Trainer<GBTData> {
           changedFeature++;
         }
         final int addOrSubtract;
-        if (greyCode.get(i) > greyCode.get(i - 1)) {
+        if (grayCode.get(i) > grayCode.get(i - 1)) {
           addOrSubtract = 1;
         } else {
           addOrSubtract = -1;
@@ -439,7 +444,7 @@ final class GBTTrainer implements Trainer<GBTData> {
         if (tempGain > retGain) {
           retGain = tempGain;
           retFeature = feature;
-          retSplitValue = greyCode.get(i).doubleValue();
+          retSplitValue = grayCode.get(i).doubleValue();
         }
       }
     } else {
@@ -686,7 +691,7 @@ final class GBTTrainer implements Trainer<GBTData> {
       if (valueType == FeatureType.CONTINUOUS) {
         residual.add(thisValue - thisPredictedValue);
       } else {
-        if (isDoubleSame(thisValue, label)) {
+        if (similarValues(thisValue, label)) {
           residual.add(1 - thisPredictedValue);
         } else {
           residual.add(-thisPredictedValue);
@@ -765,7 +770,7 @@ final class GBTTrainer implements Trainer<GBTData> {
             predictedResult = label;
           }
         }
-        if (!isDoubleSame(predictedResult, instance.getValue())) {
+        if (!similarValues(predictedResult, instance.getValue())) {
           misclassifiedNum++;
         }
         LOG.log(Level.INFO, "Predicted class : {0}", new Object[]{predictedResult});
@@ -843,11 +848,12 @@ final class GBTTrainer implements Trainer<GBTData> {
     }
     return ret;
   }
-
+  
   /**
-   * Return grey code with the length of codeSize.
+   * @param codeSize codeSize-bit gray code is produced in this method.
+   * @return List of gray code sequence. The size of the list is 2^{@param codeSize}.
    */
-  private List<Integer> createGreyCode(final int codeSize) {
+  private List<Integer> createGrayCode(final int codeSize) {
     final List<Integer> ret = new LinkedList<>();
     ret.add(0);
     ret.add(1);
@@ -879,8 +885,8 @@ final class GBTTrainer implements Trainer<GBTData> {
   /**
    * @return If d1 == d2, return true. Else, return false.
    */
-  private boolean isDoubleSame(final double d1, final double d2) {
-    return Math.abs(d1 - d2) < 1e-9;
+  private boolean similarValues(final double d1, final double d2) {
+    return Math.abs(d1 - d2) < SIMILAR_VALUE_THRESHOLD;
   }
 
   public enum FeatureType {
