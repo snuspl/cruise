@@ -64,7 +64,7 @@ final class GBTTrainer implements Trainer<GBTData> {
   /**
    * Number of keys in server that is used to store GBTree.
    */
-  private final int numKeysInServer;
+  private final int numKeys;
 
   private final ParameterWorker<Integer, GBTree, List<GBTree>> parameterWorker;
 
@@ -132,7 +132,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(TreeMaxDepth.class) final int treeMaxDepth,
                      @Parameter(LeafMinSize.class) final int leafMinSize,
                      @Parameter(MaxNumEpochs.class) final int maxNumEpochs,
-                     @Parameter(NumKeysInServer.class) final int numKeysInServer,
+                     @Parameter(NumKeys.class) final int numKeys,
                      final GBTMetadataParser metadataParser) {
     this.parameterWorker = parameterWorker;
     this.numFeatures = numFeatures;
@@ -142,7 +142,7 @@ final class GBTTrainer implements Trainer<GBTData> {
     this.treeMaxDepth = treeMaxDepth;
     this.leafMinSize = leafMinSize;
     this.maxNumEpochs = maxNumEpochs;
-    this.numKeysInServer = numKeysInServer;
+    this.numKeys = numKeys;
     this.treeSize = (1 << treeMaxDepth) - 1;
     this.random = new Random();
     final Pair<Map<Integer, FeatureType>, Integer> metaData = metadataParser.getFeatureTypes();
@@ -701,8 +701,8 @@ final class GBTTrainer implements Trainer<GBTData> {
    * Randomly pick one key to store a GBTree and push the GBTree to the chosen key.
    */
   private void pushTree(final GBTree gbTree, final int label) {
-    final int chosenKey = random.nextInt(numKeysInServer);
-    parameterWorker.push(label * numKeysInServer + chosenKey, gbTree);
+    final int chosenKey = random.nextInt(numKeys);
+    parameterWorker.push(label * numKeys + chosenKey, gbTree);
   }
 
   /**
@@ -710,8 +710,8 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private List<GBTree> pullAllTrees(final int label) {
     final List<GBTree> forest = new LinkedList<>();
-    for (int i = 0; i < numKeysInServer; i++) {
-      forest.addAll(parameterWorker.pull(label * numKeysInServer + i));
+    for (int i = 0; i < numKeys; i++) {
+      forest.addAll(parameterWorker.pull(label * numKeys + i));
     }
     return forest;
   }

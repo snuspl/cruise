@@ -51,7 +51,7 @@ final class GBTParameters {
   static final class MetadataPath implements Name<String> {
   }
 
-  @NamedParameter(doc = "number of keys in server that is used to store GBTree", short_name = "num_keys_in_server")
-  static final class NumKeysInServer implements Name<Integer> {
+  @NamedParameter(doc = "number of keys in server that is used to store GBTree", short_name = "num_keys")
+  static final class NumKeys implements Name<Integer> {
   }
 }
