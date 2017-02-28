@@ -55,6 +55,11 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   private static final int PRINT_MODEL_PERIOD = 50;
 
+  /**
+   * Threshold for a number to be regarded as zero.
+   */
+  private static final double ZERO_THRESHOLD = 1e-9;
+
   private final int numFeatures;
   private final double lambda;
   private double stepSize;
@@ -72,8 +77,23 @@ final class LassoTrainer implements Trainer<LassoData> {
   /**
    * ParameterWorker object for interacting with the parameter server.
    */
-  private final ParameterWorker<Integer, Double, Double> parameterWorker;
-
+  private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
+  
+  /**
+   * A list from 0 to {@code numPartitions} that will be used during {@link #pullModels()} and {@link #pushGradients()}.
+   */
+  private List<Integer> modelPartitionIndices;
+  
+  /**
+   * Number of model partitions.
+   */
+  private final int numPartitions;
+  
+  /**
+   * Number of features of each model partition.
+   */
+  private final int numFeaturesPerPartition;
+  
   /**
    * To collect metric data.
    */
@@ -83,12 +103,13 @@ final class LassoTrainer implements Trainer<LassoData> {
   private final Tracer computeTracer;
 
   @Inject
-  private LassoTrainer(final ParameterWorker<Integer, Double, Double> parameterWorker,
+  private LassoTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                        @Parameter(Lambda.class) final double lambda,
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
                        @Parameter(DecayRate.class) final double decayRate,
                        @Parameter(DecayPeriod.class) final int decayPeriod,
+                       @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                        @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
                        final VectorFactory vectorFactory,
                        final MatrixFactory matrixFactory,
@@ -109,6 +130,15 @@ final class LassoTrainer implements Trainer<LassoData> {
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
     this.oldModel = vectorFactory.createDenseZeros(numFeatures);
+    if (numFeatures % numFeaturesPerPartition != 0) {
+      throw new IllegalArgumentException("Uneven model partitions");
+    }
+    this.numFeaturesPerPartition = numFeaturesPerPartition;
+    this.numPartitions = numFeatures / numFeaturesPerPartition;
+    this.modelPartitionIndices = new ArrayList<>(numPartitions);
+    for (int partitionIdx = 0; partitionIdx < numPartitions; partitionIdx++) {
+      modelPartitionIndices.add(partitionIdx);
+    }
 
     this.metricsMsgSender = metricsMsgSender;
     this.pullTracer = new Tracer();
@@ -151,9 +181,12 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     // For each dimension, compute the optimal value.
     for (int i = 0; i < numFeatures; i++) {
+      if (closeToZero(newModel.get(i))) {
+        continue;
+      }
       final Vector columnVector = featureMatrix.sliceColumn(i);
       final double columnNorm = columnVector.dot(columnVector);
-      if (columnNorm == 0 || newModel.get(i) == 0) {
+      if (closeToZero(columnNorm)) {
         continue;
       }
       preCalculate.subi(columnVector.scale(newModel.get(i)));
@@ -230,11 +263,12 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   private void pullModels() {
     pullTracer.startTimer();
-    for (int modelIndex = 0; modelIndex < numFeatures; modelIndex++) {
-      oldModel.set(modelIndex, parameterWorker.pull(modelIndex));
-    }
-    pullTracer.recordTime(numFeatures);
+    final List<Vector> partialModels = parameterWorker.pull(modelPartitionIndices);
+    pullTracer.recordTime(numPartitions);
+    computeTracer.startTimer();
+    oldModel = vectorFactory.concatDense(partialModels);
     newModel = oldModel.copy();
+    computeTracer.recordTime(0);
   }
 
   /**
@@ -245,10 +279,13 @@ final class LassoTrainer implements Trainer<LassoData> {
     final Vector gradient = newModel.sub(oldModel);
     computeTracer.recordTime(0);
     pushTracer.startTimer();
-    for (int modelIndex = 0; modelIndex < numFeatures; ++modelIndex) {
-      parameterWorker.push(modelIndex, stepSize * gradient.get(modelIndex));
+    for (int partitionIndex = 0; partitionIndex < numPartitions; ++partitionIndex) {
+      final int partitionStart = partitionIndex * numFeaturesPerPartition;
+      final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
+      parameterWorker.push(partitionIndex, vectorFactory.createDenseZeros(numFeaturesPerPartition)
+          .axpy(stepSize, gradient.slice(partitionStart, partitionEnd)));
     }
-    pushTracer.recordTime(numFeatures);
+    pushTracer.recordTime(numPartitions);
   }
 
   /**
@@ -340,5 +377,12 @@ final class LassoTrainer implements Trainer<LassoData> {
         .setProcessedDataItemCount(numProcessedDataItemCount)
         .setTotalTime(elapsedTime)
         .build();
+  }
+
+  /**
+   * @return {@code true} if the value is close to 0.
+   */
+  private boolean closeToZero(final double value) {
+    return Math.abs(value) < ZERO_THRESHOLD;
   }
 }
