@@ -38,7 +38,7 @@ import java.util.logging.Logger;
  */
 @TaskSide
 @ThreadSafe
-public final class TrainingDataProvider<K, V> {
+final class TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
 
   private final List<K> trainingDataKeys = Collections.synchronizedList(new LinkedList<>());
@@ -93,7 +93,7 @@ public final class TrainingDataProvider<K, V> {
    * Provides the training data instances to compute in the next mini-batch.
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
-  public Map<K, V> getNextTrainingData() {
+  Map<K, V> getNextTrainingData() {
     final List<K> nextTrainingDataKeyList;
     synchronized (trainingDataKeys) {
       if (trainingDataKeys.isEmpty()) {
