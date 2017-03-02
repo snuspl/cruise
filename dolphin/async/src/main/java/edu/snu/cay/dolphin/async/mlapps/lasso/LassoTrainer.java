@@ -179,12 +179,12 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     final Vector preCalculate = featureMatrix.mmul(newModel);
 
+    final Vector columnVector = vectorFactory.createDenseZeros(numInstancesToProcess);
     // For each dimension, compute the optimal value.
     for (int feature = 0; feature < numFeatures; feature++) {
       if (closeToZero(newModel.get(feature))) {
         continue;
       }
-      final Vector columnVector = vectorFactory.createDenseZeros(numInstancesToProcess);
       for (int row = 0; row < numInstancesToProcess; row++) {
         columnVector.set(row, featureMatrix.get(row, feature));
       }
