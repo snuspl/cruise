@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.lasso;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.SparseVectorCodec;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
@@ -28,12 +28,12 @@ import java.io.*;
  * Serializer that provides codec for (de-)serializing data used in Lasso.
  */
 final class LassoDataSerializer implements Serializer {
-  private final DenseVectorCodec denseVectorCodec;
+  private final SparseVectorCodec sparseVectorCodec;
   private final LassoDataCodec lassoDataCodec = new LassoDataCodec();
 
   @Inject
-  private LassoDataSerializer(final DenseVectorCodec denseVectorCodec) {
-    this.denseVectorCodec = denseVectorCodec;
+  private LassoDataSerializer(final SparseVectorCodec sparseVectorCodec) {
+    this.sparseVectorCodec = sparseVectorCodec;
   }
 
   @Override
@@ -44,7 +44,7 @@ final class LassoDataSerializer implements Serializer {
   private final class LassoDataCodec implements Codec<LassoData>, StreamingCodec<LassoData> {
     @Override
     public byte[] encode(final LassoData lassoData) {
-      final int numBytes = denseVectorCodec.getNumBytes(lassoData.getFeature()) + Integer.BYTES;
+      final int numBytes = sparseVectorCodec.getNumBytes(lassoData.getFeature()) + Integer.BYTES;
       try (ByteArrayOutputStream baos = new ByteArrayOutputStream(numBytes);
            DataOutputStream daos = new DataOutputStream(baos)) {
         encodeToStream(lassoData, daos);
@@ -66,7 +66,7 @@ final class LassoDataSerializer implements Serializer {
     @Override
     public void encodeToStream(final LassoData lassoData, final DataOutputStream daos) {
       try {
-        denseVectorCodec.encodeToStream(lassoData.getFeature(), daos);
+        sparseVectorCodec.encodeToStream(lassoData.getFeature(), daos);
         daos.writeDouble(lassoData.getValue());
       } catch (final IOException e) {
         throw new RuntimeException(e);
@@ -76,7 +76,7 @@ final class LassoDataSerializer implements Serializer {
     @Override
     public LassoData decodeFromStream(final DataInputStream dais) {
       try {
-        final Vector featureVector = denseVectorCodec.decodeFromStream(dais);
+        final Vector featureVector = sparseVectorCodec.decodeFromStream(dais);
         final double value = dais.readDouble();
         return new LassoData(featureVector, value);
       } catch (final IOException e) {
