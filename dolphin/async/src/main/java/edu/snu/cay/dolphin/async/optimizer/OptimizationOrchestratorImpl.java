@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
-import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
