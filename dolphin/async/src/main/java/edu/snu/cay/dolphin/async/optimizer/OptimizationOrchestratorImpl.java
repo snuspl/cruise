@@ -108,21 +108,25 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     // Dynamic resource availability only works if the number of extra resources and its period are set positive.
     if (numExtraResources > 0 && extraResourcesPeriodSec > 0) {
       if (numInitialResources + numExtraResources > localRuntimeMaxNumEvals) {
-        LOG.log(Level.WARNING, "This configuration does not work at the local runtime");
-      } else {
-        Executors.newScheduledThreadPool(1).scheduleWithFixedDelay(() -> {
-          if (numAvailableEvals == numInitialResources) {
-            this.numAvailableEvals = numInitialResources + numExtraResources;
-          } else {
-            this.numAvailableEvals = numInitialResources;
-          }
-          LOG.log(Level.INFO, "The number of available resources has changed to {0}", numAvailableEvals);
-        }, extraResourcesPeriodSec, extraResourcesPeriodSec, TimeUnit.SECONDS);
+        LOG.log(Level.WARNING, "The number of resources that optimizer will request exceeds " +
+                "the number of evaluators allowed in the local runtime ({0} + {1} > {2}).",
+            new Object[] {numInitialResources, numExtraResources, localRuntimeMaxNumEvals});
       }
+
+      Executors.newScheduledThreadPool(1).scheduleWithFixedDelay(() -> {
+        if (numAvailableEvals == numInitialResources) {
+          this.numAvailableEvals = numInitialResources + numExtraResources;
+        } else {
+          this.numAvailableEvals = numInitialResources;
+        }
+        LOG.log(Level.INFO, "The number of available resources has changed to {0}", numAvailableEvals);
+      }, extraResourcesPeriodSec, extraResourcesPeriodSec, TimeUnit.SECONDS);
     } else if (numExtraResources < 0 || extraResourcesPeriodSec < 0) {
       final String msg = String.format("Both the number of extra resources and the period should be set positive. " +
-              "But given (%d, %d) respectively", numExtraResources, extraResourcesPeriodSec);
+          "But given (%d, %d) respectively", numExtraResources, extraResourcesPeriodSec);
       throw new RuntimeException(msg);
+    } else {
+      LOG.log(Level.INFO, "The number of resources is fixed to {0}", numInitialResources);
     }
   }
 
