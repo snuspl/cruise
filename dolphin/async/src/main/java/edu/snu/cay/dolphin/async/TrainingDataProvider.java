@@ -24,6 +24,7 @@ import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
@@ -32,9 +33,11 @@ import java.util.logging.Logger;
 /**
  * Provides the training data to process in mini-batches, taking subset of training data no more than
  * {@link Parameters.MiniBatchSize} instances.
- * This class is designed to react to block migration by registering {@link BlockUpdateListener}.
+ * This class is designed to handle concurrent accesses to the training data,
+ * and react to block migration by registering {@link BlockUpdateListener}.
  * @param <K> type of the key, which should be the same with the one in MemoryStore.
  */
+@ThreadSafe
 @TaskSide
 final class TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
