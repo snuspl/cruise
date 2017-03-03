@@ -33,12 +33,13 @@ import java.util.logging.Logger;
 /**
  * Provides the training data to process in mini-batches, taking subset of training data no more than
  * {@link Parameters.MiniBatchSize} instances.
- * This class is designed to handle Trainer threads' concurrent accesses to the training data.
+ * This class is designed to handle concurrent accesses to the training data,
+ * and react to block migration by registering {@link BlockUpdateListener}.
  * @param <K> type of the key, which should be the same with the one in MemoryStore.
  */
-@TaskSide
 @ThreadSafe
-public final class TrainingDataProvider<K, V> {
+@TaskSide
+final class TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(TrainingDataProvider.class.getName());
 
   private final List<K> trainingDataKeys = Collections.synchronizedList(new LinkedList<>());
@@ -94,7 +95,7 @@ public final class TrainingDataProvider<K, V> {
    * Provides the training data instances to compute in the next mini-batch.
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
-  public Map<K, V> getNextTrainingData() {
+  Map<K, V> getNextTrainingData() {
     final List<K> nextTrainingDataKeyList;
     synchronized (trainingDataKeys) {
       if (trainingDataKeys.isEmpty()) {
