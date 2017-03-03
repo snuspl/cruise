@@ -44,6 +44,8 @@ public final class MetricProcessor {
    *
    * @param evalParams a list of {@link EvaluatorParameters}
    * @param targetMetricFunction a function to extract the target metric from {@param evalParams}
+   * @param metricWeightFactor an exponentially decreasing weight factor for values in EMA
+   * @param movingAvgWindowSize moving average window size for applying EMA to the set of collected metrics
    * @return the exponential moving average value
    */
   private static double calculateExponentialMovingAverage(
@@ -77,7 +79,9 @@ public final class MetricProcessor {
    * For servers, the total number of requests and processed times are summed up for average processing time overall.
    * For workers, the average of processing times are to be used.
    * @param namespace a namespace that indicates the given metrics are of workers or servers
-   * @param rawMetrics metrics to be processed
+   * @param rawMetrics metrics to process
+   * @param metricWeightFactor an exponentially decreasing weight factor for values in EMA
+   * @param movingAvgWindowSize moving average window size for applying EMA to the set of collected metrics
    * @return a processed metrics
    */
   // TODO #883: EMA must be applied to the actual performance metric
