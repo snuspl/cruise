@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.gbt;
+package edu.snu.cay.dolphin.async.mlapps.gbt.tree;
 
 /**
  * This indicates each GBTree node's state.
  * If the node is empty, the node's state is EMPTY(-2).
  * If the node is leaf, the node's state is LEAF(-1).
+ * Two NodeStates(EMPTY, LEAF) are assigned to integer values because they are written in the GBTree nodes'
+ * first value(Integer) of the Pair.
  */
 public enum NodeState {
   EMPTY(-2), LEAF(-1);

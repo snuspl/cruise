@@ -57,7 +57,7 @@ final class GBTMetadataParser {
    *         y-value's possible types.
    */
   Pair<Map<Integer, FeatureType>, Integer> getFeatureTypes() {
-    final Map<Integer, FeatureType> featureTypes = new HashMap<>(numFeatures + 1);
+    final Map<Integer, FeatureType> featureTypes = new HashMap<>(numFeatures);
     int valueTypeNum = 0;
 
     final HdfsSplitInfo[] infoArr =
@@ -80,10 +80,11 @@ final class GBTMetadataParser {
             final int idx = Integer.parseInt(idxVal[0]);
             if (idx == numFeatures) {
               valueTypeNum = Integer.parseInt(idxVal[1]);
+            } else {
+              final FeatureType featureType =
+                  Integer.parseInt(idxVal[1]) == 0 ? FeatureType.CONTINUOUS : FeatureType.CATEGORICAL;
+              featureTypes.put(idx, featureType);
             }
-            final FeatureType featureType =
-                Integer.parseInt(idxVal[1]) == 0 ? FeatureType.CONTINUOUS : FeatureType.CATEGORICAL;
-            featureTypes.put(idx, featureType);
           }
         }
       } catch (final IOException e) {

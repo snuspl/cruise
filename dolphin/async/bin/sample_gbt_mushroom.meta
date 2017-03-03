@@ -35,4 +35,9 @@
 #   	   |     	    				    w											
 #	       |	            			    y											
 
+# Metadata format
+# - idx:val separated by whitespace
+# - idx in [0, numFeatures) for the index of features. if idx == numFeatures, val implies the entry for y-value.
+# - the features with val = 0 are numerical. Features with non-zero val are categorical.
+
 0:1 1:1 2:1 3:1 4:1 5:1 6:1 7:1 8:1 9:1 10:1 11:1 12:1 13:1 14:1 15:1 16:1 17:1 18:1 19:2

@@ -25,8 +25,10 @@ import java.util.List;
 
 /**
  * {@link ParameterUpdater} for the GBTREEF application.
- * Forest list(in server) collects all the GBTrees that are built in runMiniBatch().
- * This updater's main role is adding newGBTree to the forest list.
+ * Forest(list of GBTrees in server) collects all the GBTrees that are built in runMiniBatch().
+ * {@code process} function changes preValue's type from GBTree to the list of GBTree.
+ * {@code update} function newGBTree to the forest.
+ * {@code initValue} function initialize forest as an empty list.
  */
 final class GBTUpdater implements ParameterUpdater<Integer, GBTree, List<GBTree>> {
 

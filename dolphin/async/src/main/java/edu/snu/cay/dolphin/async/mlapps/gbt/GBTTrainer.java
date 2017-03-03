@@ -20,10 +20,7 @@ import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.dolphin.async.mlapps.gbt.tree.DataTree;
-import edu.snu.cay.dolphin.async.mlapps.gbt.tree.GBTree;
-import edu.snu.cay.dolphin.async.mlapps.gbt.tree.GroupedTree;
-import edu.snu.cay.dolphin.async.mlapps.gbt.tree.SortedTree;
+import edu.snu.cay.dolphin.async.mlapps.gbt.tree.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.commons.lang3.tuple.Pair;
@@ -152,8 +149,12 @@ final class GBTTrainer implements Trainer<GBTData> {
     this.random = new Random();
     final Pair<Map<Integer, FeatureType>, Integer> metaData = metadataParser.getFeatureTypes();
     this.featureTypes = metaData.getLeft();
-    this.valueType = featureTypes.get(numFeatures);
     this.valueTypeNum = metaData.getRight();
+    if (valueTypeNum == 0) {  // if valueTypeNum == 0, value's type is numerical(FeatureType.CONTINUOUS).
+      this.valueType = FeatureType.CONTINUOUS;
+    } else {  // if valueTypeNum != 0, value's type is categorical(FeatureType.CATEGORICAL).
+      this.valueType = FeatureType.CATEGORICAL;
+    }
   }
 
   @Override
@@ -788,7 +789,7 @@ final class GBTTrainer implements Trainer<GBTData> {
   private double predictByTree(final GBTData instance, final GBTree thisTree) {
     final Vector feature = instance.getFeature();
     int nodeIdx = 0;
-    for (;;) {
+    while (true) {
       final Pair<Integer, Double> node = thisTree.get(nodeIdx);
       final int nodeFeature = node.getLeft();
       if (nodeFeature == NodeState.LEAF.getValue()) {
