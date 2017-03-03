@@ -18,10 +18,7 @@ package edu.snu.cay.dolphin.async.optimizer;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
-import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
-import edu.snu.cay.dolphin.async.optimizer.parameters.MetricWeightFactor;
-import edu.snu.cay.dolphin.async.optimizer.parameters.MovingAverageWindowSize;
+import edu.snu.cay.dolphin.async.optimizer.parameters.*;
 import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -36,10 +33,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.ToDoubleFunction;
@@ -66,7 +60,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
    */
   private final long delayAfterOptimizationMs;
 
-  private final int maxNumEvals;
+  private volatile int numAvailableEvals;
 
   /**
    * Weight decreasing factor used for metric EMA.
@@ -88,14 +82,18 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
 
   @Inject
   private OptimizationOrchestratorImpl(final Optimizer optimizer,
-                                   final PlanExecutor planExecutor,
-                                   final MetricManager metricManager,
-                                   @Parameter(WorkerEMMaster.class) final EMMaster workerEMMaster,
-                                   @Parameter(ServerEMMaster.class) final EMMaster serverEMMaster,
-                                   @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
-                                   @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
-                                   @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
-                                   @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
+                                       final PlanExecutor planExecutor,
+                                       final MetricManager metricManager,
+                                       @Parameter(WorkerEMMaster.class) final EMMaster workerEMMaster,
+                                       @Parameter(ServerEMMaster.class) final EMMaster serverEMMaster,
+                                       @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
+                                       @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
+                                       @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
+                                       @Parameter(ExtraResourcesPeriodSec.class) final long extraResourcesPeriodSec,
+                                       @Parameter(NumExtralResources.class) final int numExtraResources,
+                                       @Parameter(NumInitialResources.class) final int numInitialResources,
+                                       @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class)
+                                         final int localRuntimeMaxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.metricManager = metricManager;
@@ -104,8 +102,28 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
     this.metricWeightFactor = metricWeightFactor;
     this.movingAvgWindowSize = movingAvgWindowSize;
-    this.maxNumEvals = maxNumEvals;
     this.optimizerModelParams = new HashMap<>();
+    this.numAvailableEvals = numInitialResources;
+
+    // Dynamic resource availability only works if the number of extra resources and its period are set positive.
+    if (numExtraResources > 0 && extraResourcesPeriodSec > 0) {
+      if (numInitialResources + numExtraResources > localRuntimeMaxNumEvals) {
+        LOG.log(Level.WARNING, "This configuration does not work at the local runtime");
+      } else {
+        Executors.newScheduledThreadPool(1).scheduleWithFixedDelay(() -> {
+          if (numAvailableEvals == numInitialResources) {
+            this.numAvailableEvals = numInitialResources + numExtraResources;
+          } else {
+            this.numAvailableEvals = numInitialResources;
+          }
+          LOG.log(Level.INFO, "The number of available resources has changed to {0}", numAvailableEvals);
+        }, extraResourcesPeriodSec, extraResourcesPeriodSec, TimeUnit.SECONDS);
+      }
+    } else if (numExtraResources < 0 || extraResourcesPeriodSec < 0) {
+      final String msg = String.format("Both the number of extra resources and the period should be set positive. " +
+              "But given (%d, %d) respectively", numExtraResources, extraResourcesPeriodSec);
+      throw new RuntimeException(msg);
+    }
   }
 
   /**
@@ -184,7 +202,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
         // 4) Calculate the optimal plan with the metrics
         final Plan plan;
         try {
-          plan = optimizer.optimize(evaluatorParameters, maxNumEvals, optimizerModelParams);
+          plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
         } catch (final RuntimeException e) {
           LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
           return;

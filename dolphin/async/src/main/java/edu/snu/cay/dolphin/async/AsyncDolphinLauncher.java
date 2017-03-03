@@ -21,10 +21,7 @@ import edu.snu.cay.dolphin.async.dashboard.DashboardConfProvider;
 import edu.snu.cay.dolphin.async.dashboard.DashboardLauncher;
 import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardEnabled;
 import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardPort;
-import edu.snu.cay.dolphin.async.optimizer.parameters.DelayAfterOptimizationMs;
-import edu.snu.cay.dolphin.async.optimizer.parameters.MetricWeightFactor;
-import edu.snu.cay.dolphin.async.optimizer.parameters.MovingAverageWindowSize;
-import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
+import edu.snu.cay.dolphin.async.optimizer.parameters.*;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
@@ -306,6 +303,8 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(DelayAfterOptimizationMs.class);
     basicParameterClassList.add(MetricWeightFactor.class);
     basicParameterClassList.add(MovingAverageWindowSize.class);
+    basicParameterClassList.add(NumExtralResources.class);
+    basicParameterClassList.add(ExtraResourcesPeriodSec.class);
 
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {
       cl.registerShortNameOfClass(basicParameterClass);
