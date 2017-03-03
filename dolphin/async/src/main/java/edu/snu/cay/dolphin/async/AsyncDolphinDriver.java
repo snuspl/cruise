@@ -22,6 +22,7 @@ import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgCodec;
 import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
 import edu.snu.cay.dolphin.async.optimizer.*;
+import edu.snu.cay.dolphin.async.optimizer.parameters.NumInitialResources;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.services.em.avro.*;
@@ -362,6 +363,7 @@ public final class AsyncDolphinDriver {
       final Injector optimizerInjector = injector.forkInjector();
       optimizerInjector.bindVolatileParameter(ServerEMMaster.class, serverEMWrapper.getInstance());
       optimizerInjector.bindVolatileParameter(WorkerEMMaster.class, workerEMWrapper.getInstance());
+      optimizerInjector.bindVolatileParameter(NumInitialResources.class, initServerCount + initWorkerCount);
       optimizerInjector.bindVolatileInstance(EMRoutingTableManager.class, emRoutingTableManager);
       optimizerInjector.bindVolatileInstance(AsyncDolphinDriver.class, this);
       this.optimizationOrchestrator = optimizerInjector.getInstance(OptimizationOrchestrator.class);
