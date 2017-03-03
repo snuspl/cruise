@@ -138,10 +138,10 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     }
 
     // 2) Process the received metrics (e.g., calculate the EMA of metrics).
-    final List<EvaluatorParameters> processedServerMetrics =
-        processMetricsForOptimization(Constants.NAMESPACE_SERVER, currentServerMetrics);
-    final List<EvaluatorParameters> processedWorkerMetrics =
-        processMetricsForOptimization(Constants.NAMESPACE_WORKER, currentWorkerMiniBatchMetrics);
+    final List<EvaluatorParameters> processedServerMetrics = MetricProcessor.processMetricsForOptimization(
+        Constants.NAMESPACE_SERVER, currentServerMetrics, 0, 0);
+    final List<EvaluatorParameters> processedWorkerMetrics = MetricProcessor.processMetricsForOptimization(
+        Constants.NAMESPACE_WORKER, currentWorkerMiniBatchMetrics, 0, 0);
 
     // 3) Check that the processed metrics suffice to undergo an optimization cycle.
     // processed(*)Metrics of size less that the number of evaluators running in each space implies that
@@ -401,92 +401,5 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
       throw new RuntimeException("Unsupported namespace");
     }
     return numDataInstances;
-  }
-
-  /**
-   * Processes raw metrics to extract a representative metric for each evaluator.
-   * For servers, the total number of requests and processed times are summed up for average processing time overall.
-   * For workers, the average of processing times are to be used.
-   * @param namespace
-   * @param rawMetrics
-   * @return
-   */
-  private List<EvaluatorParameters> processMetricsForOptimization(
-      final String namespace, final Map<String, List<EvaluatorParameters>> rawMetrics) {
-    final List<EvaluatorParameters> processedMetrics = new ArrayList<>();
-
-    switch (namespace) {
-    case Constants.NAMESPACE_SERVER:
-      for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
-        final List<EvaluatorParameters> serverMetric = entry.getValue();
-        final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
-        aggregatedMetricBuilder.setWindowIndex((int) serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getWindowIndex()).average().getAsDouble());
-        aggregatedMetricBuilder.setMetricWindowMs((int) serverMetric.stream().mapToLong(
-            param -> ((ServerMetrics) param.getMetrics()).getMetricWindowMs()).average().getAsDouble());
-        aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessed()).sum());
-        aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessed()).sum());
-        aggregatedMetricBuilder.setTotalPullProcessingTimeSec(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPullProcessingTimeSec()).sum());
-        aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
-            param -> ((ServerMetrics) param.getMetrics()).getTotalPushProcessingTimeSec()).sum());
-
-        final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
-
-        // This server did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getTotalPushProcessed() == 0 && aggregatedMetric.getTotalPullProcessed() == 0) {
-          break;
-        } else {
-          processedMetrics.add(new ServerEvaluatorParameters(entry.getKey(),
-              new DataInfoImpl((int) serverMetric.stream().mapToInt(
-                  param -> param.getDataInfo().getNumBlocks()).average().getAsDouble()), aggregatedMetric));
-        }
-      }
-      break;
-    case Constants.NAMESPACE_WORKER:
-      int numTotalKeys = 0;
-      for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
-        final List<EvaluatorParameters> workerMetric = entry.getValue();
-        final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
-        aggregatedMetricBuilder.setProcessedDataItemCount((int) workerMetric.stream().mapToInt(
-            param -> ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount()).average().getAsDouble());
-        aggregatedMetricBuilder.setTotalTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalTime()).average().getAsDouble());
-        aggregatedMetricBuilder.setTotalCompTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime()).average().getAsDouble());
-        aggregatedMetricBuilder.setTotalPullTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalPullTime()).average().getAsDouble());
-        aggregatedMetricBuilder.setTotalPushTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getTotalPushTime()).average().getAsDouble());
-        aggregatedMetricBuilder.setAvgPullTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getAvgPullTime()).average().getAsDouble());
-        aggregatedMetricBuilder.setAvgPushTime(workerMetric.stream().mapToDouble(
-            param -> ((WorkerMetrics) param.getMetrics()).getAvgPushTime()).average().getAsDouble());
-
-        final WorkerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
-
-        // This worker did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getTotalCompTime() == 0D) {
-          break;
-        } else {
-          processedMetrics.add(new WorkerEvaluatorParameters(entry.getKey(),
-              new DataInfoImpl((int) workerMetric.stream().mapToInt(
-                  param -> param.getDataInfo().getNumBlocks()).average().getAsDouble()), aggregatedMetric));
-        }
-
-        // Estimate the number of keys distributed across servers using the number of pulls from worker-side,
-        // as this is used by the optimization model in AsyncDolphinOptimizer.
-        numTotalKeys += workerMetric.stream().mapToInt(
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getParameterWorkerMetrics()
-                .getTotalPullCount()).average().orElse(0);
-      }
-      optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, (double) numTotalKeys / rawMetrics.size());
-      break;
-    default:
-      throw new RuntimeException("Unsupported namespace");
-    }
-    return processedMetrics;
   }
 }
