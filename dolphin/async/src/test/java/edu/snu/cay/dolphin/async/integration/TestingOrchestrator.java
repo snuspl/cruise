@@ -17,19 +17,16 @@ package edu.snu.cay.dolphin.async.integration;
 
 import edu.snu.cay.common.param.Parameters.LocalRuntimeMaxNumEvaluators;
 import edu.snu.cay.dolphin.async.metric.MetricManager;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.services.em.driver.api.EMMaster;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
-import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
 import edu.snu.cay.services.em.plan.api.TransferStep;
-import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.RunningTask;
 
