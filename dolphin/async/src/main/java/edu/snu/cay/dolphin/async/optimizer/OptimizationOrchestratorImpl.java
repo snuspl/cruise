@@ -91,9 +91,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
                                        @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
                                        @Parameter(ExtraResourcesPeriodSec.class) final long extraResourcesPeriodSec,
                                        @Parameter(NumExtraResources.class) final int numExtraResources,
-                                       @Parameter(NumInitialResources.class) final int numInitialResources,
-                                       @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class)
-                                         final int localRuntimeMaxNumEvals) {
+                                       @Parameter(NumInitialResources.class) final int numInitialResources) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.metricManager = metricManager;
@@ -107,12 +105,6 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
 
     // Dynamic resource availability only works if the number of extra resources and its period are set positive.
     if (numExtraResources > 0 && extraResourcesPeriodSec > 0) {
-      if (numInitialResources + numExtraResources > localRuntimeMaxNumEvals) {
-        LOG.log(Level.WARNING, "The number of resources that optimizer will request exceeds " +
-                "the number of evaluators allowed in the local runtime ({0} + {1} > {2}).",
-            new Object[] {numInitialResources, numExtraResources, localRuntimeMaxNumEvals});
-      }
-
       Executors.newScheduledThreadPool(1).scheduleWithFixedDelay(() -> {
         if (numAvailableEvals == numInitialResources) {
           this.numAvailableEvals = numInitialResources + numExtraResources;

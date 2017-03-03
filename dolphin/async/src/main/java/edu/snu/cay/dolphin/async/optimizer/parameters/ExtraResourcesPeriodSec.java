@@ -18,8 +18,9 @@ package edu.snu.cay.dolphin.async.optimizer.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "The period (and duration) of extra resources. Note that it only works when the number of " +
-    "extra resources is set positive.",
+@NamedParameter(doc = "The period (and duration) of extra resources. " +
+    "It only works when the number of extra resources is set positive. " +
+    "Note that this parameter is only for experiments.",
     short_name = "extra_resources_period_sec", default_value = "0")
 public final class ExtraResourcesPeriodSec implements Name<Long> {
 }
