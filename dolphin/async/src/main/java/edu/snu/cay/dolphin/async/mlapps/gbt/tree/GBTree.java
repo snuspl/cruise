@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.gbt.tree;
 
-import edu.snu.cay.dolphin.async.mlapps.gbt.NodeState;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.List;
