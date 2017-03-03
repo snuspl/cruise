@@ -19,5 +19,5 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "The number of initially available resources (numServers + numWorkers)")
-public class NumInitialResources implements Name<Integer> {
+public final class NumInitialResources implements Name<Integer> {
 }

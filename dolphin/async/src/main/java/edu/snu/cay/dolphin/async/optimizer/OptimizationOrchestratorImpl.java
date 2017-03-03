@@ -90,7 +90,7 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
                                        @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
                                        @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
                                        @Parameter(ExtraResourcesPeriodSec.class) final long extraResourcesPeriodSec,
-                                       @Parameter(NumExtralResources.class) final int numExtraResources,
+                                       @Parameter(NumExtraResources.class) final int numExtraResources,
                                        @Parameter(NumInitialResources.class) final int numInitialResources,
                                        @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class)
                                          final int localRuntimeMaxNumEvals) {

@@ -303,7 +303,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(DelayAfterOptimizationMs.class);
     basicParameterClassList.add(MetricWeightFactor.class);
     basicParameterClassList.add(MovingAverageWindowSize.class);
-    basicParameterClassList.add(NumExtralResources.class);
+    basicParameterClassList.add(NumExtraResources.class);
     basicParameterClassList.add(ExtraResourcesPeriodSec.class);
 
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {

@@ -21,5 +21,5 @@ import org.apache.reef.tang.annotations.NamedParameter;
 @NamedParameter(doc = "The number of extra available resources. " +
     "Note that this parameter is only for experiments",
     short_name = "num_extra_resources", default_value = "0")
-public class NumExtralResources implements Name<Integer> {
+public final class NumExtraResources implements Name<Integer> {
 }
