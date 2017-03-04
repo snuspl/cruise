@@ -181,20 +181,20 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     final Vector columnVector = vectorFactory.createDenseZeros(numInstancesToProcess);
     // For each dimension, compute the optimal value.
-    for (int feature = 0; feature < numFeatures; feature++) {
-      if (closeToZero(newModel.get(feature))) {
+    for (int featureIdx = 0; featureIdx < numFeatures; featureIdx++) {
+      if (closeToZero(newModel.get(featureIdx))) {
         continue;
       }
-      for (int row = 0; row < numInstancesToProcess; row++) {
-        columnVector.set(row, featureMatrix.get(row, feature));
+      for (int rowIdx = 0; rowIdx < numInstancesToProcess; rowIdx++) {
+        columnVector.set(rowIdx, featureMatrix.get(rowIdx, featureIdx));
       }
       final double columnNorm = columnVector.dot(columnVector);
       if (closeToZero(columnNorm)) {
         continue;
       }
-      preCalculate.subi(columnVector.scale(newModel.get(feature)));
-      newModel.set(feature, sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
-      preCalculate.addi(columnVector.scale(newModel.get(feature)));
+      preCalculate.subi(columnVector.scale(newModel.get(featureIdx)));
+      newModel.set(featureIdx, sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
+      preCalculate.addi(columnVector.scale(newModel.get(featureIdx)));
     }
     computeTracer.recordTime(numInstancesToProcess);
 
