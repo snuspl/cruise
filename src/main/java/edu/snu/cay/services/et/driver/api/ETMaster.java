@@ -20,8 +20,10 @@ import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.ETMasterImpl;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -35,9 +37,10 @@ public interface ETMaster {
    * Allocates new {@code num} executors of the equal resource specification.
    * @param num the number of executors
    * @param resConf resource configuration
+   * @param userConf a user's configuration
    * @return a list of {@link AllocatedExecutor}s
    */
-  List<AllocatedExecutor> addExecutors(int num, ResourceConfiguration resConf);
+  List<AllocatedExecutor> addExecutors(int num, ResourceConfiguration resConf, @Nullable Configuration userConf);
 
   /**
    * Creates a table using the given table configuration.

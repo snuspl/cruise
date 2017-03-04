@@ -18,19 +18,15 @@ package edu.snu.cay.services.et.configuration;
 import edu.snu.cay.services.et.common.api.MessageHandler;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.services.et.evaluator.impl.ContextStartHandler;
 import edu.snu.cay.services.et.evaluator.impl.MessageHandlerImpl;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.parameters.DriverIdentifier;
-import org.apache.reef.evaluator.context.events.ContextStart;
-import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.RequiredImpl;
 import org.apache.reef.tang.formats.RequiredParameter;
-import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 
 /**
@@ -55,11 +51,6 @@ public final class ExecutorConfiguration extends ConfigurationModuleBuilder {
   public static final RequiredParameter<String> DRIVER_IDENTIFIER = new RequiredParameter<>();
 
   /**
-   * Parameters required for managing elastic tables context.
-   */
-  public static final RequiredImpl<EventHandler<ContextStart>> ON_CONTEXT_STARTED = new RequiredImpl<>();
-
-  /**
    * ConfigurationModule.
    */
   public static final ConfigurationModule CONF = new ExecutorConfiguration()
@@ -70,7 +61,5 @@ public final class ExecutorConfiguration extends ConfigurationModuleBuilder {
       .bindImplementation(IdentifierFactory.class, IDENTIFIER_FACTORY)
       .bindImplementation(MessageHandler.class, MessageHandlerImpl.class)
       .bindNamedParameter(DriverIdentifier.class, DRIVER_IDENTIFIER)
-      .bindSetEntry(ContextStartHandlers.class, ON_CONTEXT_STARTED)
-      .build()
-      .set(ON_CONTEXT_STARTED, ContextStartHandler.class);
+      .build();
 }

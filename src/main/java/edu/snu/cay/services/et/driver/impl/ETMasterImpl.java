@@ -22,9 +22,11 @@ import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.List;
 
@@ -47,8 +49,9 @@ public final class ETMasterImpl implements ETMaster {
   }
 
   @Override
-  public List<AllocatedExecutor> addExecutors(final int num, final ResourceConfiguration resConf) {
-    return executorManager.addExecutors(num, resConf);
+  public List<AllocatedExecutor> addExecutors(final int num, final ResourceConfiguration resConf,
+                                              @Nullable final Configuration userConf) {
+    return executorManager.addExecutors(num, resConf, userConf);
   }
 
   @Override

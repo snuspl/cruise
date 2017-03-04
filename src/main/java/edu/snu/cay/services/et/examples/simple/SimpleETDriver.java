@@ -93,14 +93,14 @@ final class SimpleETDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> associators = etMaster.addExecutors(NUM_ASSOCIATORS, RES_CONF);
+      final List<AllocatedExecutor> associators = etMaster.addExecutors(NUM_ASSOCIATORS, RES_CONF, null);
 
       final AllocatedTable hashedTable = etMaster.createTable(buildTableConf(HASHED_TABLE_ID,
           SimpleET.TableInputPath.EMPTY, false), associators);
       final AllocatedTable orderedTable = etMaster.createTable(buildTableConf(ORDERED_TABLE_ID,
           SimpleET.TableInputPath.EMPTY, true), associators);
 
-      final List<AllocatedExecutor> subscribers = etMaster.addExecutors(NUM_SUBSCRIBERS, RES_CONF);
+      final List<AllocatedExecutor> subscribers = etMaster.addExecutors(NUM_SUBSCRIBERS, RES_CONF, null);
       hashedTable.subscribe(subscribers);
       orderedTable.subscribe(subscribers);
 
