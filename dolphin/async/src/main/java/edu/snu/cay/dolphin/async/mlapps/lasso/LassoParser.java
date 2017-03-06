@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.DataParser;
-import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.NumFeatures;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.io.data.loading.api.DataSet;
@@ -29,15 +28,13 @@ import javax.inject.Inject;
 import java.util.LinkedList;
 import java.util.List;
 
+import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.NumFeatures;
+
 /**
- * Parser class for the LassoREEF application.
- * Input files should be in the following form:
- *
+ * A data parser for sparse vector regression input.
+ * Assumes the following data format.
  * <p>
- *   x_11 x_12 x_13 x_14 ... x_1n y_1 <br>
- *   x_21 x_22 x_23 x_24 ... x_2n y_2 <br>
- *   ... <br>
- *   x_m1 x_m2 x_m3 x_m4 ... x_mn y_m <br>
+ *   [yValue] [index]:[value] [index]:[value] ...
  * </p>
  */
 final class LassoParser implements DataParser<LassoData> {
@@ -66,15 +63,20 @@ final class LassoParser implements DataParser<LassoData> {
         continue;
       }
 
-      final String[] split = text.split("\\s+");
-      final double[] xValues = new double[numFeatures];
-      for (int index = 0; index < numFeatures; index++) {
-        xValues[index] = Double.parseDouble(split[index]);
+      final String[] split = text.split("\\s+|:");
+      final double yValue = Double.parseDouble(split[0]);
+
+      final int[] indices = new int[split.length / 2];
+      final double[] data = new double[split.length / 2];
+      for (int index = 0; index < split.length / 2; ++index) {
+        indices[index] = Integer.parseInt(split[2 * index + 1]);
+        data[index] = Double.parseDouble(split[2 * index + 2]);
       }
-      final double yValue = Double.parseDouble(split[numFeatures]);
-      final Vector feature = vectorFactory.createDense(xValues);
+
+      final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
       retList.add(new LassoData(feature, yValue));
     }
+
     return retList;
   }
 }
