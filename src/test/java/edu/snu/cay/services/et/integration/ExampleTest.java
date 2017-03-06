@@ -15,8 +15,13 @@
  */
 package edu.snu.cay.services.et.integration;
 
+import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.services.et.examples.addinteger.AddIntegerET;
+import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import edu.snu.cay.services.et.examples.simple.SimpleET;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
 
@@ -31,5 +36,19 @@ public class ExampleTest {
   public void testSimpleET() throws InjectionException {
     final String sampleInput = (ClassLoader.getSystemResource("data").getPath() + "/empty_file");
     assertEquals(LauncherStatus.COMPLETED, SimpleET.runSimpleET(sampleInput));
+  }
+
+  @Test
+  public void testAddIntegerET() throws InjectionException {
+    final Configuration commandLineConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(NumWorkers.class, Integer.toString(2))
+        .bindNamedParameter(NumServers.class, Integer.toString(2))
+        .bindNamedParameter(NumUpdates.class, Integer.toString(128))
+        .bindNamedParameter(StartKey.class, Integer.toString(0))
+        .bindNamedParameter(NumKeys.class, Integer.toString(8))
+        .bindNamedParameter(Parameters.Timeout.class, Integer.toString(30000))
+        .build();
+
+    assertEquals(LauncherStatus.COMPLETED, AddIntegerET.runAddIntegerET(commandLineConf));
   }
 }

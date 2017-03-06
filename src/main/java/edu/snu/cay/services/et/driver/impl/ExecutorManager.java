@@ -143,7 +143,7 @@ final class ExecutorManager {
     private final Configuration userConf;
 
     /**
-     * @param userConf a user configuration it allows null
+     * @param userConf a user configuration, it allows null
      */
     AllocatedEvalHandler(final Configuration userConf) {
       this.userConf = userConf;
