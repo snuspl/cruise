@@ -53,7 +53,7 @@ final class SimpleETDriver {
   static final int NUM_SUBSCRIBERS = 1; // should be at least 1
   static final String HASHED_TABLE_ID = "Hashed_Table";
   static final String ORDERED_TABLE_ID = "Ordered_Table";
-  static final String ORDERED_TABLE_WITH_FILE_ID = "Ordered_Table_WITH_FILE";
+  static final String ORDERED_TABLE_WITH_FILE_ID = "Ordered_Table_With_File";
 
   private static final ResourceConfiguration RES_CONF = ResourceConfiguration.newBuilder()
       .setNumCores(1)
@@ -105,34 +105,32 @@ final class SimpleETDriver {
       orderedTable.subscribe(subscribers);
 
       final AtomicInteger taskIdCount = new AtomicInteger(0);
+      final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(associators.size() + subscribers.size());
 
-      // 1. First start a put task in a subscriber
-      final Future<TaskResult> putTaskResultFuture = subscribers.get(0).submitTask(TaskConfiguration.CONF
+      // 1. First run a put task in a subscriber
+      taskResultFutureList.add(subscribers.get(0).submitTask(TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, PUT_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
           .set(TaskConfiguration.TASK, PutTask.class)
-          .build());
+          .build()));
 
-      // 2. wait until a put task finished
-      try {
-        assert putTaskResultFuture.get().isSuccess();
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
+      waitAndCheckTaskResult(taskResultFutureList);
 
-      // 3. Then start get tasks in all executors
-      associators.forEach(executor ->
-          executor.submitTask(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, GetTask.class)
-              .build()));
+      // 2. Then run get tasks in all executors
+      taskResultFutureList.clear();
 
-      subscribers.forEach(executor ->
-          executor.submitTask(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, GetTask.class)
-              .build()));
+      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          .set(TaskConfiguration.TASK, GetTask.class)
+          .build())));
 
-      // 4. migrate blocks between associators
+      subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          .set(TaskConfiguration.TASK, GetTask.class)
+          .build())));
+
+      waitAndCheckTaskResult(taskResultFutureList);
+
+      // 3. migrate blocks between associators
       final CountDownLatch migrationLatch = new CountDownLatch(2);
       final EventHandler<MigrationResult> migrationCallback = migrationResult -> {
         LOG.log(Level.INFO, "Migration has been finished: {0}, {1}, {2}",
@@ -155,36 +153,43 @@ final class SimpleETDriver {
         throw new RuntimeException(e);
       }
 
-      // 5. start get tasks in all executors again after migration
-      final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(associators.size() + subscribers.size());
+      // 4. run get tasks in all executors again after migration
+      taskResultFutureList.clear();
+
       associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-            .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-            .set(TaskConfiguration.TASK, GetTask.class)
-            .build())));
+          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          .set(TaskConfiguration.TASK, GetTask.class)
+          .build())));
 
       subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, GetTask.class)
-              .build())));
+          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          .set(TaskConfiguration.TASK, GetTask.class)
+          .build())));
 
-      // 6. wait all tasks finished and close executors
-      taskResultFutureList.forEach(taskResultFuture -> {
-        try {
-          assert taskResultFuture.get().isSuccess();
-        } catch (InterruptedException | ExecutionException e) {
-          throw new RuntimeException(e);
-        }
-      });
+      waitAndCheckTaskResult(taskResultFutureList);
 
-      // 7. create a table with input file
+      // 5. create a table with input file
       final AllocatedTable orderedTableWithFile = etMaster.createTable(buildTableConf(ORDERED_TABLE_WITH_FILE_ID,
           tableInputPath, true), associators);
 
-      // 8. start tasks to confirm that the last table has been loaded correctly
-      // TODO #27: Provide a way to access data in local blocks
-
+      // 6. close executors
       subscribers.forEach(AllocatedExecutor::close);
       associators.forEach(AllocatedExecutor::close);
     }
   }
+
+  private void waitAndCheckTaskResult(final List<Future<TaskResult>> taskResultFutureList) {
+    taskResultFutureList.forEach(taskResultFuture -> {
+      try {
+        final TaskResult taskResult = taskResultFuture.get();
+        if (!taskResult.isSuccess()) {
+          final String taskId = taskResult.getFailedTask().get().getId();
+          throw new RuntimeException(String.format("Task %s has been failed", taskId));
+        }
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+    });
+  }
+
 }
