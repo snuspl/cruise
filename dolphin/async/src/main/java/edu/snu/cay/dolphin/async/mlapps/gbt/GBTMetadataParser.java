@@ -41,6 +41,7 @@ import java.util.*;
  */
 final class GBTMetadataParser {
   private static final int NUM_SPLIT = 1;
+  private static final Pair<Map<Integer, FeatureType>, Integer> NO_INFORMATION = Pair.of(new HashMap<>(), -1);
 
   private final int numFeatures;
   private final String metadataPath;
@@ -57,40 +58,41 @@ final class GBTMetadataParser {
    *         y-value's possible types.
    */
   Pair<Map<Integer, FeatureType>, Integer> getFeatureTypes() {
-    final Map<Integer, FeatureType> featureTypes = new HashMap<>(numFeatures);
-    int valueTypeNum = 0;
-
     final HdfsSplitInfo[] infoArr =
         HdfsSplitManager.getSplits(metadataPath, TextInputFormat.class.getName(), NUM_SPLIT);
 
-    for (final HdfsSplitInfo info : infoArr) {
-      try {
-        final Iterator<Pair<LongWritable, Text>> iterator = HdfsSplitFetcher.fetchData(info);
-        while (iterator.hasNext()) {
-          final String text = iterator.next().getValue().toString().trim();
-          if (text.startsWith("#") || text.length() == 0) {
-            // comments and empty lines
-            continue;
-          }
-
-          final String[] splits = text.split(" ");
-          for (final String split : splits) {
-            final String[] idxVal = split.split(":");
-            assert idxVal.length == 2;
-            final int idx = Integer.parseInt(idxVal[0]);
-            if (idx == numFeatures) {
-              valueTypeNum = Integer.parseInt(idxVal[1]);
-            } else {
-              final FeatureType featureType =
-                  Integer.parseInt(idxVal[1]) == 0 ? FeatureType.CONTINUOUS : FeatureType.CATEGORICAL;
-              featureTypes.put(idx, featureType);
-            }
+    // infoArr's length is always 1(NUM_SPLIT == 1).
+    assert infoArr.length == 1;
+    final HdfsSplitInfo info = infoArr[0];
+    try {
+      final Iterator<Pair<LongWritable, Text>> iterator = HdfsSplitFetcher.fetchData(info);
+      while (iterator.hasNext()) {
+        final String text = iterator.next().getValue().toString().trim();
+        if (text.startsWith("#") || text.length() == 0) {
+          // comments and empty lines
+          continue;
+        }
+        
+        final Map<Integer, FeatureType> featureTypes = new HashMap<>(numFeatures);
+        final String[] splits = text.split(" ");
+        for (final String split : splits) {
+          final String[] idxVal = split.split(":");
+          assert idxVal.length == 2;
+          final int idx = Integer.parseInt(idxVal[0]);
+          if (idx != numFeatures) {
+            final FeatureType featureType =
+                Integer.parseInt(idxVal[1]) == 0 ? FeatureType.CONTINUOUS : FeatureType.CATEGORICAL;
+            featureTypes.put(idx, featureType);
           }
         }
-      } catch (final IOException e) {
-        throw new RuntimeException(e);
+        final int valueTypeNum = Integer.parseInt(splits[numFeatures].split(":")[1]);
+        // All the necessary data should be in one line.
+        return Pair.of(featureTypes, valueTypeNum);
       }
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
     }
-    return Pair.of(featureTypes, valueTypeNum);
+    // If the file does not contain any information, return the pair of an empty Hashmap and -1.
+    return NO_INFORMATION;
   }
 }
