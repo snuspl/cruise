@@ -39,7 +39,7 @@ final class NetworkLinkListener implements LinkListener<Message<ETMsg>> {
   @Override
   public void onSuccess(final Message<ETMsg> stringMessage) {
     for (final ETMsg msg : stringMessage.getData()) {
-      LOG.log(Level.INFO, "Success on sending message: {0}", msg);
+      LOG.log(Level.FINE, "Success on sending message: {0}", msg);
     }
   }
 
