@@ -41,7 +41,7 @@ import java.util.*;
  */
 final class GBTMetadataParser {
   private static final int NUM_SPLIT = 1;
-  private static final Pair<Map<Integer, FeatureType>, Integer> NO_INFORMATION = Pair.of(new HashMap<>(), -1);
+  private static final Pair<Map<Integer, FeatureType>, Integer> NO_INFORMATION = Pair.of(Collections.emptyMap(), -1);
 
   private final int numFeatures;
   private final String metadataPath;
@@ -92,7 +92,7 @@ final class GBTMetadataParser {
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
-    // If the file does not contain any information, return the pair of an empty Hashmap and -1.
+    // If the file does not contain any information, return the pair of Collections.emptyMap() and -1.
     return NO_INFORMATION;
   }
 }
