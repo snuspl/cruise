@@ -132,6 +132,8 @@ final class LDATrainer implements Trainer<Document> {
 
   @Override
   public void runMiniBatch(final Collection<Document> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+    resetTracers();
+
     final int epochIdx = miniBatchInfo.getEpochIdx();
     final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
     final long miniBatchStartTime = System.currentTimeMillis();
