@@ -84,6 +84,7 @@ final class TrainingDataProvider<K, V> {
    */
   void prepareDataForEpoch() {
     synchronized (trainingDataKeys) {
+      trainingDataKeys.clear();
       trainingDataKeys.addAll(memoryStore.getAll().keySet());
       Collections.shuffle(trainingDataKeys);
       LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
