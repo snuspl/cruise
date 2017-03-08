@@ -18,12 +18,13 @@ package edu.snu.cay.services.et.evaluator.api;
 import org.apache.reef.annotations.audience.Private;
 
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Interface for managing multiple key-value pairs with granularity of a block.
  */
 @Private
-public interface Block<K, V> {
+public interface Block<K, V> extends Iterable<Entry<K, V>> {
   /**
    * Associates the specified value with the specified key.
    * @param key key with which value is to be associated
@@ -72,8 +73,9 @@ public interface Block<K, V> {
 
   /**
    * Remove all data in a block.
+   * The block will be empty after this call returns.
    */
-  Map<K, V> removeAll();
+  void clear();
 
   /**
    * Return the number of data in a block.

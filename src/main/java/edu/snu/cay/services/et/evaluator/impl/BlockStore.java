@@ -24,7 +24,7 @@ import org.apache.reef.annotations.audience.Private;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentMap;
 @EvaluatorSide
 @ThreadSafe
 @Private
-public final class BlockStore<K, V> {
+public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
   /**
    * A mapping with indices and corresponding blocks.
    */
@@ -78,15 +78,14 @@ public final class BlockStore<K, V> {
   /**
    * Remove a block from BlockStore.
    * @param blockId index of the block
-   * @return content of the block
    * @throws BlockNotExistsException when the specified block does not exist
    */
-  public Map<K, V> removeBlock(final int blockId) throws BlockNotExistsException {
+  public void removeBlock(final int blockId) throws BlockNotExistsException {
     final Block<K, V> block = blocks.remove(blockId);
     if (block == null) {
       throw new BlockNotExistsException(blockId);
     }
-    return block.getAll();
+    block.clear(); // in order to reflect change to localDataIterator that iterates on this block
   }
 
   /**
@@ -111,5 +110,10 @@ public final class BlockStore<K, V> {
       throw new BlockNotExistsException(blockId);
     }
     return block;
+  }
+
+  @Override
+  public Iterator<Block<K, V>> iterator() {
+    return blocks.values().iterator();
   }
 }

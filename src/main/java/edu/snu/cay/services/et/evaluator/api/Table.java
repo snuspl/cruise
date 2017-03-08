@@ -18,6 +18,10 @@ package edu.snu.cay.services.et.evaluator.api;
 import edu.snu.cay.services.et.evaluator.impl.TableImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+
 /**
  * Abstraction for access to collection of key-value pairs.
  *
@@ -63,4 +67,21 @@ public interface Table<K, V> {
    * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
    */
   V remove(K key);
+
+  /**
+   * Returns a map that contains key-value mapping of all local data.
+   * The returned map is a shallow copy of the internal data structure.
+   * @return a map of data keys and the corresponding data values.
+   *         This map may be empty if no data exists.
+   */
+  Map<K, V> getLocalDataMap();
+
+  /**
+   * Gets an iterator of local data, which can react to background data migration.
+   * Specifically, new items can be added to this iterator and the existing items can be deleted, for the items that
+   * have not been consumed by this iterator yet.
+   * Consistency of iterator depends on the implementation of Table.
+   * @return an iterator of {@link Entry} of local data key-value pairs
+   */
+  Iterator<Entry<K, V>> getLocalDataIterator();
 }

@@ -49,6 +49,7 @@ final class SimpleETDriver {
   private static final Logger LOG = Logger.getLogger(SimpleETDriver.class.getName());
   private static final String GET_TASK_ID_PREFIX = "Simple-get-task-";
   private static final String PUT_TASK_ID_PREFIX = "Simple-put-task-";
+  private static final String SCAN_TASK_ID_PREFIX = "Simple-scan-task-";
   static final int NUM_ASSOCIATORS = 2; // should be at least 2
   static final int NUM_SUBSCRIBERS = 1; // should be at least 1
   static final String HASHED_TABLE_ID = "Hashed_Table";
@@ -131,24 +132,24 @@ final class SimpleETDriver {
       waitAndCheckTaskResult(taskResultFutureList);
 
       // 3. migrate blocks between associators
-      final CountDownLatch migrationLatch = new CountDownLatch(2);
-      final EventHandler<MigrationResult> migrationCallback = migrationResult -> {
+      final CountDownLatch migrationLatch1 = new CountDownLatch(2);
+      final EventHandler<MigrationResult> migrationCallback1 = migrationResult -> {
         LOG.log(Level.INFO, "Migration has been finished: {0}, {1}, {2}",
             new Object[]{migrationResult.isCompleted(), migrationResult.getMsg(), migrationResult.getMigratedBlocks()});
-        migrationLatch.countDown();
+        migrationLatch1.countDown();
       };
 
       // move all blocks of hashedTable in the first associator to the second associator
       hashedTable.moveBlocks(associators.get(0).getId(), associators.get(1).getId(),
-          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback);
+          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback1);
 
       // move all blocks of orderedTable in the second associator to the first associator
       orderedTable.moveBlocks(associators.get(1).getId(), associators.get(0).getId(),
-          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback);
+          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback1);
 
       // wait until migrations finish
       try {
-        migrationLatch.await();
+        migrationLatch1.await();
       } catch (final InterruptedException e) {
         throw new RuntimeException(e);
       }
@@ -172,7 +173,46 @@ final class SimpleETDriver {
       final AllocatedTable orderedTableWithFile = etMaster.createTable(buildTableConf(ORDERED_TABLE_WITH_FILE_ID,
           tableInputPath, true), associators);
 
-      // 6. close executors
+      // 6. start scan tasks in associator executors
+      taskResultFutureList.clear();
+
+      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          .set(TaskConfiguration.TASK, ScanTask.class)
+          .build())));
+
+      waitAndCheckTaskResult(taskResultFutureList);
+
+      // 7. migrate blocks between associators
+      final CountDownLatch migrationLatch2 = new CountDownLatch(1);
+      final EventHandler<MigrationResult> migrationCallback2 = migrationResult -> {
+        LOG.log(Level.INFO, "Migration has been finished: {0}, {1}, {2}",
+            new Object[]{migrationResult.isCompleted(), migrationResult.getMsg(), migrationResult.getMigratedBlocks()});
+        migrationLatch2.countDown();
+      };
+
+      // move all blocks of orderedTableWithFile in the second associator to the first associator
+      orderedTableWithFile.moveBlocks(associators.get(1).getId(), associators.get(0).getId(),
+          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback2);
+
+      // wait until migration finish
+      try {
+        migrationLatch2.await();
+      } catch (final InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+
+      // 8. start scan tasks again after migration
+      taskResultFutureList.clear();
+
+      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          .set(TaskConfiguration.TASK, ScanTask.class)
+          .build())));
+
+      waitAndCheckTaskResult(taskResultFutureList);
+
+      // 9. close executors
       subscribers.forEach(AllocatedExecutor::close);
       associators.forEach(AllocatedExecutor::close);
     }

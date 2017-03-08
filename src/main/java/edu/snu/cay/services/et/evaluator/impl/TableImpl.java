@@ -15,8 +15,10 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import com.google.common.collect.Iterators;
 import edu.snu.cay.services.et.avro.OpType;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
+import edu.snu.cay.services.et.evaluator.api.Block;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableComponents;
@@ -27,7 +29,8 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.Optional;
+import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -93,7 +96,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
 
       // execute operation in local, holding ownershipLock
       if (!remoteIdOptional.isPresent()) {
-        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+        final Block<K, V> block = blockStore.get(blockId);
         return block.put(key, value);
       }
     } catch (final BlockNotExistsException e) {
@@ -121,7 +124,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
 
       // execute operation in local, holding ownershipLock
       if (!remoteIdOptional.isPresent()) {
-        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+        final Block<K, V> block = blockStore.get(blockId);
         return block.get(key);
       }
     } catch (final BlockNotExistsException e) {
@@ -149,7 +152,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
 
       // execute operation in local, holding ownershipLock
       if (!remoteIdOptional.isPresent()) {
-        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+        final Block<K, V> block = blockStore.get(blockId);
         return block.update(key, deltaValue);
       }
     } catch (final BlockNotExistsException e) {
@@ -177,7 +180,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
 
       // execute operation in local, holding ownershipLock
       if (!remoteIdOptional.isPresent()) {
-        final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+        final Block<K, V> block = blockStore.get(blockId);
         return block.remove(key);
       }
     } catch (final BlockNotExistsException e) {
@@ -192,6 +195,74 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
         OpType.REMOVE, tableId, blockId, key, null, remoteIdOptional.get());
 
     return operation.getOutputData();
+  }
+
+  @Override
+  public Map<K, V> getLocalDataMap() {
+    Map<K, V> result = null;
+
+    // will not care blocks migrated in after this call
+    final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
+
+    for (final Integer blockId : localBlockIds) {
+      final Pair<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+      try {
+        if (!remoteEvalIdWithLock.getKey().isPresent()) { // scan block if it still remains in local
+          final Block<K, V> block = blockStore.get(blockId);
+
+          if (result == null) {
+            // reuse the first returned map object
+            result = block.getAll();
+          } else {
+            // huge memory pressure may happen here
+            result.putAll(block.getAll());
+          }
+        }
+      } catch (final BlockNotExistsException e) {
+        throw new RuntimeException(e);
+      } finally {
+        remoteEvalIdWithLock.getValue().unlock();
+      }
+    }
+
+    return result == null ? Collections.emptyMap() : result;
+  }
+
+
+  /**
+   * It utilizes iterator of {@link java.util.concurrent.ConcurrentHashMap}.
+   * This iterator returns elements reflecting the concurrent modifications
+   * without any synchronization, so it sees transient states of the map.
+   * It means that you can miss updates since the iteration began.
+   */
+  @Override
+  public synchronized Iterator<Entry<K, V>> getLocalDataIterator() {
+    return new Iterator<Entry<K, V>>() {
+      private final Iterator<Block<K, V>> blockIterator = blockStore.iterator();
+      private Iterator<Entry<K, V>> entryIterator = Iterators.emptyIterator();
+
+      private boolean checkNextBlocks() {
+        while (!entryIterator.hasNext()) {
+          if (!blockIterator.hasNext()) {
+            return false;
+          }
+          entryIterator = blockIterator.next().iterator();
+        }
+
+        return true;
+      }
+
+      @Override
+      public boolean hasNext() {
+        return checkNextBlocks();
+      }
+
+      @Override
+      public Entry<K, V> next() {
+        checkNextBlocks();
+        return entryIterator.next();
+      }
+    };
   }
 
   @Override

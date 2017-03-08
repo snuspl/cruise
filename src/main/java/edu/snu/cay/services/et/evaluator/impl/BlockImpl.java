@@ -19,7 +19,9 @@ import edu.snu.cay.services.et.evaluator.api.Block;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -76,14 +78,17 @@ final class BlockImpl<K, V> implements Block<K, V> {
   }
 
   @Override
-  public Map<K, V> removeAll() {
-    final Map<K, V> output = getAll();
+  public void clear() {
     subDataMap.clear();
-    return output;
   }
 
   @Override
   public int getNumPairs() {
     return subDataMap.size();
+  }
+
+  @Override
+  public Iterator<Entry<K, V>> iterator() {
+    return subDataMap.entrySet().iterator();
   }
 }
