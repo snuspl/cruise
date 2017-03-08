@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.lasso;
+package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.DataParser;
+import edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.*;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.io.data.loading.api.DataSet;
@@ -25,36 +26,37 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.LinkedList;
-import java.util.List;
-
-import static edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.NumFeatures;
+import java.util.*;
 
 /**
- * A data parser for sparse vector regression input.
- * Assumes the following data format.
+ * Parser class for the GBT application.
+ * Input files should be in the following form:
+ *
  * <p>
- *   [yValue] [index]:[value] [index]:[value] ...
+ *   x_11 x_12 x_13 x_14 ... x_1n y_1 <br>
+ *   x_21 x_22 x_23 x_24 ... x_2n y_2 <br>
+ *   ... <br>
+ *   x_m1 x_m2 x_m3 x_m4 ... x_mn y_m <br>
  * </p>
  */
-final class LassoParser implements DataParser<LassoData> {
+final class GBTDataParser implements DataParser<GBTData> {
 
   private final DataSet<LongWritable, Text> dataSet;
   private final VectorFactory vectorFactory;
   private final int numFeatures;
 
   @Inject
-  private LassoParser(final DataSet<LongWritable, Text> dataSet,
-                      final VectorFactory vectorFactory,
-                      @Parameter(NumFeatures.class) final int numFeatures) {
+  private GBTDataParser(final DataSet<LongWritable, Text> dataSet,
+                        final VectorFactory vectorFactory,
+                        @Parameter(NumFeatures.class) final int numFeatures) {
     this.dataSet = dataSet;
     this.vectorFactory = vectorFactory;
     this.numFeatures = numFeatures;
   }
 
   @Override
-  public List<LassoData> parse() {
-    final List<LassoData> retList = new LinkedList<>();
+  public List<GBTData> parse() {
+    final List<GBTData> retList = new LinkedList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
       final String text = keyValue.getSecond().toString().trim();
@@ -63,18 +65,14 @@ final class LassoParser implements DataParser<LassoData> {
         continue;
       }
 
-      final String[] split = text.split("\\s+|:");
-      final double yValue = Double.parseDouble(split[0]);
-
-      final int[] indices = new int[split.length / 2];
-      final double[] data = new double[split.length / 2];
-      for (int index = 0; index < split.length / 2; ++index) {
-        indices[index] = Integer.parseInt(split[2 * index + 1]);
-        data[index] = Double.parseDouble(split[2 * index + 2]);
+      final String[] split = text.split("\\s+");
+      assert (split.length == numFeatures + 1);  // split array is composed of feature, and y-value.
+      final Vector feature =  vectorFactory.createDenseZeros(numFeatures);
+      for (int index = 0; index < numFeatures; index++) {
+        feature.set(index, Double.parseDouble(split[index]));
       }
-
-      final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
-      retList.add(new LassoData(feature, yValue));
+      final double yValue = Double.parseDouble(split[numFeatures]);
+      retList.add(new GBTData(feature, yValue));
     }
 
     return retList;
