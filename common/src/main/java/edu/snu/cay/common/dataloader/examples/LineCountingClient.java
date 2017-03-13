@@ -109,7 +109,7 @@ public final class LineCountingClient {
         .set(DriverConfiguration.ON_DRIVER_STARTED, LineCountingDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, LineCountingDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_TASK_RUNNING, LineCountingDriver.RunningTaskHandler.class)
-        .set(DriverConfiguration.ON_TASK_MESSAGE, LineCountingDriver.TaskMsgHandler.class)
+        .set(DriverConfiguration.ON_TASK_COMPLETED, LineCountingDriver.CompletedTaskHandler.class)
         .build();
 
     return Configurations.merge(driverConf, paramConf,
