@@ -25,7 +25,6 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.CompletedTask;
-import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Name;
@@ -36,6 +35,7 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
+import javax.xml.bind.DatatypeConverter;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,10 +50,9 @@ public final class LineCountingDriver {
   private static final Logger LOG = Logger.getLogger(LineCountingDriver.class.getName());
 
   private static final String TASK_PREFIX = "Task-";
-  private static final int NUM_EVALS = 3;
 
   private final EvaluatorRequestor evalRequestor;
-  private final AtomicInteger evalCounter = new AtomicInteger(0);
+  private final AtomicInteger taskIDCounter = new AtomicInteger(0);
   private final AtomicInteger fileCounter = new AtomicInteger(0);
   private final AtomicInteger infoCounter = new AtomicInteger(0);
   private final List<String> inputPathList;
@@ -79,7 +78,7 @@ public final class LineCountingDriver {
     @Override
     public void onNext(final StartTime startTime) {
       evalRequestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(NUM_EVALS)
+          .setNumber(numSplits)
           .setMemory(128)
           .setNumberOfCores(1)
           .build());
@@ -89,24 +88,36 @@ public final class LineCountingDriver {
   final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      final int evalIdx = evalCounter.getAndIncrement();
+      final int evalIdx = taskIDCounter.getAndIncrement();
 
       final Configuration taskConf = TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + evalIdx)
           .set(TaskConfiguration.TASK, LineCountingTask.class)
-          .set(TaskConfiguration.ON_MESSAGE, LineCountingTask.DriverMsgHandler.class)
+          .set(TaskConfiguration.MEMENTO, getSplitToLoad())
           .build();
-
+      updateCounters();
       allocatedEvaluator.submitTask(taskConf);
     }
   }
 
+  private String getSplitToLoad() {
+    final HdfsSplitInfo[] fileToLoad = hdfsSplitInfoList.get(fileCounter.get());
+    final HdfsSplitInfo splitToLoad = fileToLoad[infoCounter.get()];
+    return DatatypeConverter.printBase64Binary(codec.encode(splitToLoad));
+  }
 
-  final class RunningTaskHandler implements EventHandler<RunningTask> {
-    @Override
-    public void onNext(final RunningTask runningTask) {
-      final byte[] bytes = codec.encode(hdfsSplitInfoList.get(fileCounter.get())[infoCounter.getAndIncrement()]);
-      runningTask.send(bytes);
+  private void updateCounters(final AtomicInteger lineCnt) {
+    if (infoCounter.incrementAndGet() >= numSplits) {
+      System.out.println("Total Line Count in " + inputPathList.get(fileCounter.get()) + ": " + lineCnt.get());
+      infoCounter.set(0);
+      fileCounter.incrementAndGet();
+    }
+  }
+
+  private void updateCounters() {
+    if (infoCounter.incrementAndGet() >= numSplits) {
+      infoCounter.set(0);
+      fileCounter.incrementAndGet();
     }
   }
 
@@ -136,26 +147,25 @@ public final class LineCountingDriver {
       final String retStr = new String(retBytes, StandardCharsets.UTF_8);
       lineCnt.addAndGet(Integer.parseInt(retStr));
 
-      if (infoCounter.get() >= numSplits) {
-        System.out.println("Total Line Count in " + inputPathList.get(fileCounter.get()) + ": " + lineCnt.get());
-        infoCounter.set(0);
-        fileCounter.set(fileCounter.addAndGet(1));
-      }
-
       if (fileCounter.get() >= hdfsSplitInfoList.size()) {
         return;
-      } else {
-        final Configuration taskConf = TaskConfiguration.CONF
-            .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + evalCounter.getAndIncrement())
-            .set(TaskConfiguration.TASK, LineCountingTask.class)
-            .set(TaskConfiguration.ON_MESSAGE, LineCountingTask.DriverMsgHandler.class)
-            .build();
-        task.getActiveContext().submitTask(taskConf);
       }
+      final String nextData = getSplitToLoad();
+      updateCounters(lineCnt);
+
+      final Configuration taskConf = TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIDCounter.getAndIncrement())
+          .set(TaskConfiguration.TASK, LineCountingTask.class)
+          .set(TaskConfiguration.MEMENTO, nextData)
+          .build();
+      task.getActiveContext().submitTask(taskConf);
     }
   }
 
   @NamedParameter(doc = "A list of file or directory to read input data from",
                   short_name = "inputs")
   final class Inputs implements Name<Set<String>> {
-  } }
+  }
+}
+
+

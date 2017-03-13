@@ -20,11 +20,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.annotations.audience.TaskSide;
-import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.task.Task;
 import org.apache.reef.task.events.DriverMessage;
-import org.apache.reef.util.Optional;
-import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -39,7 +36,7 @@ import java.util.logging.Logger;
  * Task will finish after loading all files specified by clients.
  */
 @TaskSide
-@Unit
+//@Unit
 final class LineCountingTask implements Task {
   private static final Logger LOG = Logger.getLogger(LineCountingTask.class.getName());
 
@@ -55,38 +52,25 @@ final class LineCountingTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     // wait until CloseEvent has been received. See {@link CloseEventHandler}.
-    finishedLatch.await();
-    final byte[] msg = msgToSend.getAndSet(null);
-    return msg;
-  }
-
-  /**
-   * A driver message handler that loads a file split given in the message.
-   * It counts lines in the split and report it to driver through heartbeat.
-   */
-  final class DriverMsgHandler implements EventHandler<DriverMessage> {
-
-    @Override
-    public void onNext(final DriverMessage driverMessage) {
-      final Optional<byte[]> bytes = driverMessage.get();
-      final HdfsDataSet<LongWritable, Text> dataSet;
-      try {
-        dataSet = HdfsDataSet.from(bytes.get());
-      } catch (final IOException e) {
-        throw new RuntimeException("Exception while instantiating a HdfsDataSet", e);
-      }
-
-      LOG.log(Level.FINER, "LineCounting task started");
-
-      int count = 0;
-      for (final Pair<LongWritable, Text> recordPair : dataSet) {
-        LOG.log(Level.FINEST, "Read line: {0}", recordPair);
-        count++;
-      }
-
-      LOG.log(Level.INFO, "LineCounting task finished: read {0} lines", count);
-      msgToSend.set(Integer.toString(count).getBytes(StandardCharsets.UTF_8));
-      finishedLatch.countDown();
+    //finishedLatch.await();
+    //final byte[] msg = msgToSend.getAndSet(null);
+    final byte[] msg = bytes;
+    final HdfsDataSet<LongWritable, Text> dataSet;
+    try {
+      dataSet = HdfsDataSet.from(bytes);
+    } catch (final IOException e) {
+      throw new RuntimeException("Exception while instantiating a HdfsDataSet", e);
     }
+
+    LOG.log(Level.FINER, "LineCounting task started");
+
+    int count = 0;
+    for (final Pair<LongWritable, Text> recordPair : dataSet) {
+      LOG.log(Level.FINEST, "Read line: {0}", recordPair);
+      count++;
+    }
+    LOG.log(Level.INFO, "LineCounting task finished: read {0} lines", count);
+    //msgToSend.set(Integer.toString(count).getBytes(StandardCharsets.UTF_8));
+    return Integer.toString(count).getBytes(StandardCharsets.UTF_8);
   }
 }
