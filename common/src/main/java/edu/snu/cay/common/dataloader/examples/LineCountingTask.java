@@ -21,7 +21,6 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.task.Task;
-import org.apache.reef.task.events.DriverMessage;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -30,8 +29,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The task that loads a file given through {@link DriverMessage} and counts the number of records.
- * Task will finish after loading all files specified by clients.
+ * The task that loads a split given through task config and counts the number of records.
+ * Task will finish after counting all lines.
  */
 @TaskSide
 final class LineCountingTask implements Task {
@@ -41,9 +40,14 @@ final class LineCountingTask implements Task {
   private LineCountingTask() {
   }
 
+  /**
+   * @param bytes split data from driver.
+   * @return line count in a split.
+   * @throws Exception if split data are not valid.
+   */
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
-    // wait until CloseEvent has been received. See {@link CloseEventHandler}.
+
     final HdfsDataSet<LongWritable, Text> dataSet;
     try {
       dataSet = HdfsDataSet.from(bytes);

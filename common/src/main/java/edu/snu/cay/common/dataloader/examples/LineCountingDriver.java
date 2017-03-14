@@ -59,29 +59,29 @@ public final class LineCountingDriver {
 
   private final EvaluatorRequestor evalRequestor;
   private final AtomicInteger fileCounter = new AtomicInteger(0);
-  private final List<String> fileList;
-
-  private final List<ActiveContext> contextList;
+  private final List<String> filePathList;
 
   private final int numSplits;
   private final ArrayList<HdfsSplitInfo[]> hdfsSplitInfoList;
+  private final List<ActiveContext> contextList;
 
   @Inject
   private LineCountingDriver(final EvaluatorRequestor evalRequestor,
                              @Parameter(Inputs.class) final Set<String> inputs,
                              @Parameter(Parameters.Splits.class) final int numSplits) {
     this.evalRequestor = evalRequestor;
-    this.fileList = new ArrayList<>(inputs);
+    this.filePathList = new ArrayList<>(inputs);
 
     // launch evaluators as many as the number of splits and then every evaluator loads one split
+    // there is one context in each evaluator
     this.numSplits = numSplits;
-    this.hdfsSplitInfoList = buildHdfsSplitInfoList();
+    this.hdfsSplitInfoList = buildHdfsSplitInfosList();
     this.contextList = Collections.synchronizedList(new ArrayList<>(numSplits));
   }
 
-  private ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfoList() {
+  private ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfosList() {
     final ArrayList<HdfsSplitInfo[]> list = new ArrayList<>();
-    for (final String aFileList : fileList) {
+    for (final String aFileList : filePathList) {
       final HdfsSplitInfo[] splitInfoArray = HdfsSplitManager.getSplits(
           aFileList, TextInputFormat.class.getName(), numSplits);
       list.add(splitInfoArray);
@@ -110,50 +110,35 @@ public final class LineCountingDriver {
     }
   }
 
+  /**
+   * Build context list that can submit tasks for loading a next file.
+   * After building list, tasks are submitted.
+   */
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
     private final AtomicInteger activeCtxCounter = new AtomicInteger(0);
 
     @Override
     public void onNext(final ActiveContext activeContext) {
-      final int numActiveCtxs = activeCtxCounter.incrementAndGet();
-
+      final int activeCtxCnt = activeCtxCounter.incrementAndGet();
       contextList.add(activeContext);
 
-      LOG.log(Level.INFO, "Active context: ({0} / {1})", new Object[]{numActiveCtxs, numSplits});
-      if (numActiveCtxs == numSplits) {
+      LOG.log(Level.FINER, "Active context: ({0} / {1})", new Object[]{activeCtxCnt, numSplits});
+
+      // submit line counting tasks first.
+      if (activeCtxCnt == numSplits) {
         final HdfsSplitInfo[] fileSplitsToLoad = hdfsSplitInfoList.get(fileCounter.get());
         submitLineCountingTasks(fileSplitsToLoad);
       }
     }
   }
 
-  private void submitLineCountingTasks(final HdfsSplitInfo[] fileSplitsToload) {
-    LOG.log(Level.INFO, "Submit line counting tasks");
-    for (int idx = 0; idx < contextList.size(); idx++) {
-      final String taskId = TASK_PREFIX + taskIdCounter.getAndIncrement();
-      final HdfsSplitInfo fileSplitToload = fileSplitsToload[idx];
-      final ActiveContext context = contextList.get(idx);
-
-      final Configuration taskConf = TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, taskId)
-          .set(TaskConfiguration.TASK, LineCountingTask.class)
-          .set(TaskConfiguration.MEMENTO, encodeHdfsSplitInfo(fileSplitToload))
-          .build();
-
-      context.submitTask(taskConf);
-    }
-  }
-
-  private String encodeHdfsSplitInfo(final HdfsSplitInfo splitToLoad) {
-    return HdfsSplitInfoSerializer.serialize(splitToLoad);
-  }
-
   /**
-   * A handler of TaskMessage that reports the counted number of lines in loaded files.
+   * Handles CompletedTask: Summation of task values, make a total line count of each file.
+   * If there are any remaining files, try to load next file.
    */
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
-    private final AtomicInteger lineCnt = new AtomicInteger(0);
-    private final AtomicInteger completedTaskCnt = new AtomicInteger(0);
+    private final AtomicInteger lineCounter = new AtomicInteger(0);
+    private final AtomicInteger completedTaskCounter = new AtomicInteger(0);
     @Override
     public void onNext(final CompletedTask task) {
       final byte[] retBytes = task.get();
@@ -161,37 +146,60 @@ public final class LineCountingDriver {
         return;
       }
 
+      final String filePath = filePathList.get(fileCounter.get());
       final int retCnt = Integer.parseInt(new String(retBytes, StandardCharsets.UTF_8));
-      final int numCompletedTask = completedTaskCnt.incrementAndGet();
-      final String filePath = fileList.get(fileCounter.get());
-
-      lineCnt.addAndGet(retCnt);
-      LOG.log(Level.INFO, "Number of lines counted by {0} for file {1} is {2}", new Object[]{task.getId(),
+      lineCounter.addAndGet(retCnt);
+      LOG.log(Level.FINE, "Number of lines counted by {0} for a file {1} is {2}", new Object[]{task.getId(),
           filePath, retCnt});
 
-      LOG.log(Level.INFO, "Completed tasks: ({0} / {1})", new Object[]{numCompletedTask, contextList.size()});
+      final int completedTaskCnt = completedTaskCounter.incrementAndGet();
+      LOG.log(Level.FINER, "Completed tasks: ({0} / {1})", new Object[]{completedTaskCnt, contextList.size()});
 
       // when all tasks for a file is completed
-      if (numCompletedTask == contextList.size()) {
-        System.out.println(String.format("Total Line Count in %s : %d", filePath, lineCnt.get()));
-
-        tryNextFile();
+      if (completedTaskCnt == contextList.size()) {
+        System.out.println(String.format("Total Line Count in %s : %d", filePath, lineCounter.get()));
+        tryToLoadNextFile();
       }
     }
 
-    private void tryNextFile() {
+    private void tryToLoadNextFile() {
       // if there's no next file
-      if (fileCounter.incrementAndGet() >= fileList.size()) {
+      if (fileCounter.incrementAndGet() >= filePathList.size()) {
         contextList.forEach(ActiveContext::close);
         return;
       }
 
       final HdfsSplitInfo[] fileSplitsToLoad = hdfsSplitInfoList.get(fileCounter.get());
       submitLineCountingTasks(fileSplitsToLoad);
-
-      completedTaskCnt.set(0);
-      lineCnt.set(0);
+      completedTaskCounter.set(0);
+      lineCounter.set(0);
     }
+  }
+    /**
+   * @param fileSplitsToLoad Array of HdfsSplitInfo from a file.
+   * Load next file to contexts.
+   * It assigns on split to each context.
+   */
+  private void submitLineCountingTasks(final HdfsSplitInfo[] fileSplitsToLoad) {
+    LOG.log(Level.FINER, "Submit line counting tasks");
+    for (int idx = 0; idx < contextList.size(); idx++) {
+
+      final String taskId = TASK_PREFIX + taskIdCounter.getAndIncrement();
+      final HdfsSplitInfo fileSplitToLoad = fileSplitsToLoad[idx];
+      final ActiveContext context = contextList.get(idx);
+
+      final Configuration taskConf = TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, taskId)
+          .set(TaskConfiguration.TASK, LineCountingTask.class)
+          .set(TaskConfiguration.MEMENTO, encodeHdfsSplitInfo(fileSplitToLoad))
+          .build();
+
+      context.submitTask(taskConf);
+    }
+  }
+
+  private static String encodeHdfsSplitInfo(final HdfsSplitInfo splitToLoad) {
+    return HdfsSplitInfoSerializer.serialize(splitToLoad);
   }
 
   @NamedParameter(doc = "A list of file or directory to read input data from",
