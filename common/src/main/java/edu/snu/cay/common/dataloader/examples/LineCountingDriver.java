@@ -154,7 +154,6 @@ public final class LineCountingDriver {
                     .set(TaskConfiguration.TASK, LineCountingTask.class)
                     .set(TaskConfiguration.MEMENTO, encodeHdfsSplitInfo(splitToLoad))
                     .build();
-            LOG.log(Level.INFO, "Submit new Task " + contextList.size());
             contextList.get(i).submitTask(taskConf);
           }
           contextList.clear();
