@@ -39,6 +39,7 @@ import javax.xml.bind.DatatypeConverter;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -54,7 +55,7 @@ public final class LineCountingDriver {
   private final EvaluatorRequestor evalRequestor;
   private final AtomicInteger taskIDCounter = new AtomicInteger(0);
   private final AtomicInteger fileCounter = new AtomicInteger(0);
-  private final AtomicInteger infoCounter = new AtomicInteger(0);
+  private final AtomicInteger splitCounter = new AtomicInteger(0);
   private final List<String> inputPathList;
 
   private final int numSplits;
@@ -95,30 +96,25 @@ public final class LineCountingDriver {
           .set(TaskConfiguration.TASK, LineCountingTask.class)
           .set(TaskConfiguration.MEMENTO, getSplitToLoad())
           .build();
-      updateCounters();
       allocatedEvaluator.submitTask(taskConf);
     }
   }
 
-  private String getSplitToLoad() {
+  private synchronized String getSplitToLoad() {
+    if (splitCounter.get() >= numSplits &&
+            fileCounter.get() >= hdfsSplitInfoList.size() - 1) {
+      return null;
+    }
     final HdfsSplitInfo[] fileToLoad = hdfsSplitInfoList.get(fileCounter.get());
-    final HdfsSplitInfo splitToLoad = fileToLoad[infoCounter.get()];
+    final HdfsSplitInfo splitToLoad = fileToLoad[splitCounter.get()];
+    LOG.log(Level.INFO, "Send Index is file : " + fileCounter.get());
+    LOG.log(Level.INFO, "Send Index is split : " + splitCounter.get());
+    if (splitCounter.incrementAndGet() >= numSplits &&
+            fileCounter.get() < hdfsSplitInfoList.size() - 1) {
+      splitCounter.set(0);
+      fileCounter.incrementAndGet();
+    }
     return DatatypeConverter.printBase64Binary(codec.encode(splitToLoad));
-  }
-
-  private void updateCounters(final AtomicInteger lineCnt) {
-    if (infoCounter.incrementAndGet() >= numSplits) {
-      System.out.println("Total Line Count in " + inputPathList.get(fileCounter.get()) + ": " + lineCnt.get());
-      infoCounter.set(0);
-      fileCounter.incrementAndGet();
-    }
-  }
-
-  private void updateCounters() {
-    if (infoCounter.incrementAndGet() >= numSplits) {
-      infoCounter.set(0);
-      fileCounter.incrementAndGet();
-    }
   }
 
   private ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfoList() {
@@ -136,22 +132,31 @@ public final class LineCountingDriver {
    */
 
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
+    private final AtomicInteger fileCnt = new AtomicInteger(0);
     private final AtomicInteger lineCnt = new AtomicInteger(0);
+    private final AtomicInteger taskCnt = new AtomicInteger(0);
     @Override
     public void onNext(final CompletedTask task) {
       final byte[] retBytes = task.get();
       if (retBytes == null) {
         return;
       }
-
       final String retStr = new String(retBytes, StandardCharsets.UTF_8);
-      lineCnt.addAndGet(Integer.parseInt(retStr));
+      final int currCnt = Integer.parseInt(retStr);
+      lineCnt.addAndGet(currCnt);
+      LOG.log(Level.INFO, "file : " + fileCounter.get() + " Get Line Count is : " + retStr);
 
-      if (fileCounter.get() >= hdfsSplitInfoList.size()) {
+      if (taskCnt.incrementAndGet() >= numSplits) {
+        System.out.println("Total Line Count in " + inputPathList.get(fileCnt.get()) + ": " + lineCnt.get());
+        fileCnt.incrementAndGet();
+        taskCnt.set(0);
+        lineCnt.set(0);
+      }
+
+      final String nextData = getSplitToLoad();
+      if (nextData == null) {
         return;
       }
-      final String nextData = getSplitToLoad();
-      updateCounters(lineCnt);
 
       final Configuration taskConf = TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIDCounter.getAndIncrement())

@@ -26,8 +26,6 @@ import org.apache.reef.task.events.DriverMessage;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,14 +34,8 @@ import java.util.logging.Logger;
  * Task will finish after loading all files specified by clients.
  */
 @TaskSide
-//@Unit
 final class LineCountingTask implements Task {
   private static final Logger LOG = Logger.getLogger(LineCountingTask.class.getName());
-
-  private final AtomicReference<byte[]> msgToSend = new AtomicReference<>(null);
-
-  private final CountDownLatch finishedLatch = new CountDownLatch(1);
-
 
   @Inject
   private LineCountingTask() {
@@ -52,8 +44,6 @@ final class LineCountingTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     // wait until CloseEvent has been received. See {@link CloseEventHandler}.
-    //finishedLatch.await();
-    //final byte[] msg = msgToSend.getAndSet(null);
     final byte[] msg = bytes;
     final HdfsDataSet<LongWritable, Text> dataSet;
     try {
@@ -70,7 +60,6 @@ final class LineCountingTask implements Task {
       count++;
     }
     LOG.log(Level.INFO, "LineCounting task finished: read {0} lines", count);
-    //msgToSend.set(Integer.toString(count).getBytes(StandardCharsets.UTF_8));
     return Integer.toString(count).getBytes(StandardCharsets.UTF_8);
   }
 }
