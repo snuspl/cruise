@@ -44,7 +44,6 @@ final class LineCountingTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     // wait until CloseEvent has been received. See {@link CloseEventHandler}.
-    final byte[] msg = bytes;
     final HdfsDataSet<LongWritable, Text> dataSet;
     try {
       dataSet = HdfsDataSet.from(bytes);

@@ -21,6 +21,7 @@ import edu.snu.cay.common.dataloader.HdfsSplitManager;
 import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
@@ -55,8 +56,8 @@ public final class LineCountingDriver {
   private final EvaluatorRequestor evalRequestor;
   private final AtomicInteger taskIDCounter = new AtomicInteger(0);
   private final AtomicInteger fileCounter = new AtomicInteger(0);
-  private final AtomicInteger splitCounter = new AtomicInteger(0);
-  private final List<String> inputPathList;
+  private final List<String> fileList;
+  private final List<ActiveContext> contextList = new ArrayList<>();
 
   private final int numSplits;
   private final ArrayList<HdfsSplitInfo[]> hdfsSplitInfoList;
@@ -68,7 +69,7 @@ public final class LineCountingDriver {
                              @Parameter(Inputs.class) final Set<String> inputs,
                              @Parameter(Parameters.Splits.class) final int numSplits) {
     this.evalRequestor = evalRequestor;
-    this.inputPathList = new ArrayList<>(inputs);
+    this.fileList = new ArrayList<>(inputs);
 
     // launch evaluators as many as the number of splits and then every evaluator loads one split
     this.numSplits = numSplits;
@@ -87,41 +88,34 @@ public final class LineCountingDriver {
   }
 
   final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+    private final AtomicInteger evalCounter = new AtomicInteger(0);
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final int evalIdx = taskIDCounter.getAndIncrement();
-
+      final HdfsSplitInfo splitToLoad = getSplitToLoad(evalCounter.getAndIncrement());
       final Configuration taskConf = TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + evalIdx)
           .set(TaskConfiguration.TASK, LineCountingTask.class)
-          .set(TaskConfiguration.MEMENTO, getSplitToLoad())
+          .set(TaskConfiguration.MEMENTO, encodeHdfsSplitInfo(splitToLoad))
           .build();
       allocatedEvaluator.submitTask(taskConf);
     }
   }
 
-  private synchronized String getSplitToLoad() {
-    if (splitCounter.get() >= numSplits &&
-            fileCounter.get() >= hdfsSplitInfoList.size() - 1) {
-      return null;
-    }
+  private HdfsSplitInfo getSplitToLoad(final int index) {
     final HdfsSplitInfo[] fileToLoad = hdfsSplitInfoList.get(fileCounter.get());
-    final HdfsSplitInfo splitToLoad = fileToLoad[splitCounter.get()];
-    LOG.log(Level.INFO, "Send Index is file : " + fileCounter.get());
-    LOG.log(Level.INFO, "Send Index is split : " + splitCounter.get());
-    if (splitCounter.incrementAndGet() >= numSplits &&
-            fileCounter.get() < hdfsSplitInfoList.size() - 1) {
-      splitCounter.set(0);
-      fileCounter.incrementAndGet();
-    }
+    return fileToLoad[index];
+  }
+
+  private String encodeHdfsSplitInfo(final HdfsSplitInfo splitToLoad) {
     return DatatypeConverter.printBase64Binary(codec.encode(splitToLoad));
   }
 
   private ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfoList() {
     final ArrayList<HdfsSplitInfo[]> list = new ArrayList<>();
-    for (int i = 0; i < inputPathList.size(); i++) {
+    for (int i = 0; i < fileList.size(); i++) {
       final HdfsSplitInfo[] splitInfoArray = HdfsSplitManager.getSplits(
-              inputPathList.get(i), TextInputFormat.class.getName(), numSplits);
+              fileList.get(i), TextInputFormat.class.getName(), numSplits);
       list.add(splitInfoArray);
     }
     return list;
@@ -132,7 +126,6 @@ public final class LineCountingDriver {
    */
 
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
-    private final AtomicInteger fileCnt = new AtomicInteger(0);
     private final AtomicInteger lineCnt = new AtomicInteger(0);
     private final AtomicInteger taskCnt = new AtomicInteger(0);
     @Override
@@ -145,25 +138,29 @@ public final class LineCountingDriver {
       final int currCnt = Integer.parseInt(retStr);
       lineCnt.addAndGet(currCnt);
       LOG.log(Level.INFO, "file : " + fileCounter.get() + " Get Line Count is : " + retStr);
+      contextList.add(task.getActiveContext());
 
       if (taskCnt.incrementAndGet() >= numSplits) {
-        System.out.println("Total Line Count in " + inputPathList.get(fileCnt.get()) + ": " + lineCnt.get());
-        fileCnt.incrementAndGet();
+        System.out.println("Total Line Count in " + fileList.get(fileCounter.get()) + ": " + lineCnt.get());
         taskCnt.set(0);
         lineCnt.set(0);
+        if (fileCounter.incrementAndGet() >= fileList.size()) {
+          contextList.forEach(ActiveContext::close);
+        } else {
+          for (int i = 0; i < contextList.size(); i++) {
+            final HdfsSplitInfo splitToLoad = getSplitToLoad(i);
+            final Configuration taskConf = TaskConfiguration.CONF
+                    .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIDCounter.getAndIncrement())
+                    .set(TaskConfiguration.TASK, LineCountingTask.class)
+                    .set(TaskConfiguration.MEMENTO, encodeHdfsSplitInfo(splitToLoad))
+                    .build();
+            LOG.log(Level.INFO, "Submit new Task " + contextList.size());
+            contextList.get(i).submitTask(taskConf);
+          }
+          contextList.clear();
+        }
       }
 
-      final String nextData = getSplitToLoad();
-      if (nextData == null) {
-        return;
-      }
-
-      final Configuration taskConf = TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIDCounter.getAndIncrement())
-          .set(TaskConfiguration.TASK, LineCountingTask.class)
-          .set(TaskConfiguration.MEMENTO, nextData)
-          .build();
-      task.getActiveContext().submitTask(taskConf);
     }
   }
 
