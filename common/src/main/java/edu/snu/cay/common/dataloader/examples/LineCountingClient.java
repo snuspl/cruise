@@ -108,6 +108,7 @@ public final class LineCountingClient {
         .set(DriverConfiguration.DRIVER_IDENTIFIER, DRIVER_ID)
         .set(DriverConfiguration.ON_DRIVER_STARTED, LineCountingDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, LineCountingDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, LineCountingDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, LineCountingDriver.CompletedTaskHandler.class)
         .build();
 
