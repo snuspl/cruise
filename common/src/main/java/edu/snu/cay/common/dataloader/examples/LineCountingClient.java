@@ -64,6 +64,10 @@ public final class LineCountingClient {
     final Injector commandLineInjector = Tang.Factory.getTang().newInjector(commandLineConf);
 
     final Set<String> inputs = commandLineInjector.getNamedInstance(LineCountingDriver.Inputs.class);
+    if (inputs.isEmpty()) {
+      throw new IllegalArgumentException("User should set at least one input file");
+    }
+
     final boolean onLocal = commandLineInjector.getNamedInstance(Parameters.OnLocal.class);
     final int splits = commandLineInjector.getNamedInstance(Parameters.Splits.class);
 

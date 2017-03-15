@@ -29,7 +29,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The task that loads a split given through task config and counts the number of records.
+ * The task that loads a split given through the parameter of {@link #call(byte[])} and counts the number of records.
  * Task will finish after counting all lines.
  */
 @TaskSide
@@ -41,8 +41,8 @@ final class LineCountingTask implements Task {
   }
 
   /**
-   * @param bytes split data from driver.
-   * @return line count in a split.
+   * @param bytes a serialized form of split info
+   * @return a byte array of serialized form of line count in a split.
    * @throws Exception if split data are not valid.
    */
   @Override

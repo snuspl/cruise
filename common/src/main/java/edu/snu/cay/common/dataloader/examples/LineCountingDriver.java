@@ -44,7 +44,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver side for the line counting that uses the data loader.
+ * Driver side for the line counting app that uses the data loader.
  */
 @DriverSide
 @Unit
@@ -61,8 +61,16 @@ public final class LineCountingDriver {
   private final AtomicInteger fileCounter = new AtomicInteger(0);
   private final List<String> filePathList;
 
+  /**
+   * The number of splits for each file.
+   */
   private final int numSplits;
+
   private final ArrayList<HdfsSplitInfo[]> hdfsSplitInfoList;
+
+  /**
+   * A list of contexts running on evaluators. It lasts during a job.
+   */
   private final List<ActiveContext> contextList;
 
   @Inject
@@ -72,16 +80,22 @@ public final class LineCountingDriver {
     this.evalRequestor = evalRequestor;
     this.filePathList = new ArrayList<>(inputs);
 
-    // launch evaluators as many as the number of splits and then every evaluator loads one split
-    // there is one context in each evaluator
     this.numSplits = numSplits;
-    this.hdfsSplitInfoList = buildHdfsSplitInfosList();
+    this.hdfsSplitInfoList = buildHdfsSplitInfosList(filePathList);
+
+    // a list of contexts that will be submitted to evaluators
+    // this context is for maintaining evaluator between multiple tasks
     this.contextList = Collections.synchronizedList(new ArrayList<>(numSplits));
   }
 
-  private ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfosList() {
+  /**
+   * Splits the given files and assembles the splits of a single file into an array.
+   * @param filePaths a list of file paths
+   * @return a list of array of {@link HdfsSplitInfo}, each array contains all splits of a file
+   */
+  private ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfosList(final List<String> filePaths) {
     final ArrayList<HdfsSplitInfo[]> list = new ArrayList<>();
-    for (final String aFileList : filePathList) {
+    for (final String aFileList : filePaths) {
       final HdfsSplitInfo[] splitInfoArray = HdfsSplitManager.getSplits(
           aFileList, TextInputFormat.class.getName(), numSplits);
       list.add(splitInfoArray);
@@ -89,6 +103,9 @@ public final class LineCountingDriver {
     return list;
   }
 
+  /**
+   * Launches evaluators as many as the number of splits and then every evaluator loads one split of .
+   */
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
@@ -100,6 +117,10 @@ public final class LineCountingDriver {
     }
   }
 
+  /**
+   * Submits a context that will last during executing multiple tasks.
+   * It is for easily managing the contexts, by explicitly submitting the contexts.
+   */
   final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
@@ -111,8 +132,8 @@ public final class LineCountingDriver {
   }
 
   /**
-   * Build context list that can submit tasks for loading a next file.
-   * After building list, tasks are submitted.
+   * Builds a list of contexts that we can submit tasks.
+   * It submits tasks to the given context after adding {@link ActiveContext} to {@link #contextList}.
    */
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
     private final AtomicInteger activeCtxCounter = new AtomicInteger(0);
@@ -124,8 +145,9 @@ public final class LineCountingDriver {
 
       LOG.log(Level.FINER, "Active context: ({0} / {1})", new Object[]{activeCtxCnt, numSplits});
 
-      // submit line counting tasks first.
+      // when all contexts become active, submit line counting tasks
       if (activeCtxCnt == numSplits) {
+        // we assume that we have at least one file to load
         final HdfsSplitInfo[] fileSplitsToLoad = hdfsSplitInfoList.get(fileCounter.get());
         submitLineCountingTasks(fileSplitsToLoad);
       }
@@ -133,8 +155,8 @@ public final class LineCountingDriver {
   }
 
   /**
-   * Handles CompletedTask: Summation of task values, make a total line count of each file.
-   * If there are any remaining files, try to load next file.
+   * Handles CompletedTask: It sums task return values and makes a total line count of each file.
+   * If there are any remaining files, try next file.
    */
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     private final AtomicInteger lineCounter = new AtomicInteger(0);
@@ -158,28 +180,39 @@ public final class LineCountingDriver {
       // when all tasks for a file is completed
       if (completedTaskCnt == contextList.size()) {
         System.out.println(String.format("Total Line Count in %s : %d", filePath, lineCounter.get()));
-        tryToLoadNextFile();
+
+        if (tryToLoadNextFile()) {
+          // close contexts, when it finishes all file
+          contextList.forEach(ActiveContext::close);
+        }
       }
     }
 
-    private void tryToLoadNextFile() {
-      // if there's no next file
+    /**
+     * Submits tasks for the next round, if there is a remaining file to count.
+     * It sets the state of {@link CompletedTaskHandler}
+     * (e.g., {@link #lineCounter}, {@link #completedTaskCounter}) to ready for the new file.
+     * @return True when it succeed to take next file
+     */
+    private boolean tryToLoadNextFile() {
       if (fileCounter.incrementAndGet() >= filePathList.size()) {
-        contextList.forEach(ActiveContext::close);
-        return;
+        return false;
       }
 
       final HdfsSplitInfo[] fileSplitsToLoad = hdfsSplitInfoList.get(fileCounter.get());
       submitLineCountingTasks(fileSplitsToLoad);
       completedTaskCounter.set(0);
       lineCounter.set(0);
+      return true;
     }
   }
-    /**
-   * @param fileSplitsToLoad Array of HdfsSplitInfo from a file.
+
+  /**
    * Load next file to contexts.
    * It assigns on split to each context.
+   * @param fileSplitsToLoad Array of HdfsSplitInfo from a file.
    */
+
   private void submitLineCountingTasks(final HdfsSplitInfo[] fileSplitsToLoad) {
     LOG.log(Level.FINER, "Submit line counting tasks");
     for (int idx = 0; idx < contextList.size(); idx++) {
