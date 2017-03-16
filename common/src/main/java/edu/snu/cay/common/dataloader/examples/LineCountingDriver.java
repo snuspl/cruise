@@ -142,7 +142,6 @@ public final class LineCountingDriver {
     public void onNext(final ActiveContext activeContext) {
       final int activeCtxCnt = activeCtxCounter.incrementAndGet();
       contextList.add(activeContext);
-
       LOG.log(Level.FINER, "Active context: ({0} / {1})", new Object[]{activeCtxCnt, numSplits});
 
       // when all contexts become active, submit line counting tasks
