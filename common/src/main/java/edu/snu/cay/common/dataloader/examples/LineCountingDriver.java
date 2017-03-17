@@ -66,10 +66,14 @@ public final class LineCountingDriver {
    */
   private final int numSplits;
 
+  /**
+   * Each element in a list represents one file.
+   */
   private final ArrayList<HdfsSplitInfo[]> hdfsSplitInfoList;
 
   /**
    * A list of contexts running on evaluators. It lasts during a job.
+   * Each context in a list is for maintaining evaluator between multiple tasks.
    */
   private final List<ActiveContext> contextList;
 
@@ -82,9 +86,6 @@ public final class LineCountingDriver {
 
     this.numSplits = numSplits;
     this.hdfsSplitInfoList = buildHdfsSplitInfosList(filePathList);
-
-    // a list of contexts that will be submitted to evaluators
-    // this context is for maintaining evaluator between multiple tasks
     this.contextList = Collections.synchronizedList(new ArrayList<>(numSplits));
   }
 
@@ -95,9 +96,9 @@ public final class LineCountingDriver {
    */
   private ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfosList(final List<String> filePaths) {
     final ArrayList<HdfsSplitInfo[]> list = new ArrayList<>();
-    for (final String aFileList : filePaths) {
+    for (final String filePath : filePaths) {
       final HdfsSplitInfo[] splitInfoArray = HdfsSplitManager.getSplits(
-          aFileList, TextInputFormat.class.getName(), numSplits);
+          filePath, TextInputFormat.class.getName(), numSplits);
       list.add(splitInfoArray);
     }
     return list;
@@ -180,7 +181,7 @@ public final class LineCountingDriver {
       if (completedTaskCnt == contextList.size()) {
         System.out.println(String.format("Total Line Count in %s : %d", filePath, lineCounter.get()));
 
-        if (tryToLoadNextFile()) {
+        if (!tryToLoadNextFile()) {
           // close contexts, when it finishes all file
           contextList.forEach(ActiveContext::close);
         }
