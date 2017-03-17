@@ -85,7 +85,7 @@ public final class LineCountingDriver {
     this.filePathList = new ArrayList<>(inputs);
 
     this.numSplits = numSplits;
-    this.hdfsSplitInfoList = buildHdfsSplitInfosList(filePathList);
+    this.hdfsSplitInfoList = buildHdfsSplitInfosList(filePathList, numSplits);
     this.contextList = Collections.synchronizedList(new ArrayList<>(numSplits));
   }
 
@@ -94,7 +94,8 @@ public final class LineCountingDriver {
    * @param filePaths a list of file paths
    * @return a list of array of {@link HdfsSplitInfo}, each array contains all splits of a file
    */
-  private ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfosList(final List<String> filePaths) {
+  private static ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfosList(final List<String> filePaths,
+                                                                    final int numSplits) {
     final ArrayList<HdfsSplitInfo[]> list = new ArrayList<>();
     for (final String filePath : filePaths) {
       final HdfsSplitInfo[] splitInfoArray = HdfsSplitManager.getSplits(
@@ -105,7 +106,7 @@ public final class LineCountingDriver {
   }
 
   /**
-   * Launches evaluators as many as the number of splits and then every evaluator loads one split of .
+   * Launches evaluators as many as the number of splits and then every evaluator loads one split of a file.
    */
   final class StartHandler implements EventHandler<StartTime> {
     @Override
@@ -167,8 +168,8 @@ public final class LineCountingDriver {
       if (retBytes == null) {
         return;
       }
-
-      final String filePath = filePathList.get(fileCounter.get());
+      final int currFileIdx = fileCounter.get();
+      final String filePath = filePathList.get(currFileIdx);
       final int retCnt = Integer.parseInt(new String(retBytes, StandardCharsets.UTF_8));
       lineCounter.addAndGet(retCnt);
       LOG.log(Level.FINE, "Number of lines counted by {0} for a file {1} is {2}", new Object[]{task.getId(),
@@ -195,14 +196,18 @@ public final class LineCountingDriver {
      * @return True when it succeed to take next file
      */
     private boolean tryToLoadNextFile() {
-      if (fileCounter.incrementAndGet() >= filePathList.size()) {
+      if (fileCounter.get() + 1 >= filePathList.size()) {
         return false;
       }
 
-      final HdfsSplitInfo[] fileSplitsToLoad = hdfsSplitInfoList.get(fileCounter.get());
-      submitLineCountingTasks(fileSplitsToLoad);
+      // Reset state for handling the task results for the next file.
       completedTaskCounter.set(0);
       lineCounter.set(0);
+
+      // It submits next tasks after the initialization of all counters.
+      final int nextFileIdx = fileCounter.incrementAndGet();
+      final HdfsSplitInfo[] fileSplitsToLoad = hdfsSplitInfoList.get(nextFileIdx);
+      submitLineCountingTasks(fileSplitsToLoad);
       return true;
     }
   }
@@ -212,7 +217,6 @@ public final class LineCountingDriver {
    * It assigns on split to each context.
    * @param fileSplitsToLoad Array of HdfsSplitInfo from a file.
    */
-
   private void submitLineCountingTasks(final HdfsSplitInfo[] fileSplitsToLoad) {
     LOG.log(Level.FINER, "Submit line counting tasks");
     for (int idx = 0; idx < contextList.size(); idx++) {
@@ -224,15 +228,11 @@ public final class LineCountingDriver {
       final Configuration taskConf = TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, taskId)
           .set(TaskConfiguration.TASK, LineCountingTask.class)
-          .set(TaskConfiguration.MEMENTO, encodeHdfsSplitInfo(fileSplitToLoad))
+          .set(TaskConfiguration.MEMENTO, HdfsSplitInfoSerializer.serialize(fileSplitToLoad))
           .build();
 
       context.submitTask(taskConf);
     }
-  }
-
-  private static String encodeHdfsSplitInfo(final HdfsSplitInfo splitToLoad) {
-    return HdfsSplitInfoSerializer.serialize(splitToLoad);
   }
 
   @NamedParameter(doc = "A list of file or directory to read input data from",
@@ -240,5 +240,3 @@ public final class LineCountingDriver {
   final class Inputs implements Name<Set<String>> {
   }
 }
-
-

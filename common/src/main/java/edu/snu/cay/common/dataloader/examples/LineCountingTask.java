@@ -29,7 +29,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The task that loads a split given through the parameter of {@link #call(byte[])} and counts the number of records.
+ * The task that loads a split given through the parameter of {@link #call(byte[])} and counts the number of lines.
  * Task will finish after counting all lines.
  */
 @TaskSide
@@ -43,7 +43,7 @@ final class LineCountingTask implements Task {
   /**
    * @param bytes a serialized form of split info
    * @return a byte array of serialized form of line count in a split.
-   * @throws Exception if split data are not valid.
+   * @throws IOException if split data are not valid.
    */
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
@@ -52,7 +52,8 @@ final class LineCountingTask implements Task {
     try {
       dataSet = HdfsDataSet.from(bytes);
     } catch (final IOException e) {
-      throw new RuntimeException("Exception while instantiating a HdfsDataSet", e);
+      LOG.log(Level.SEVERE, "Exception while instantiating a HdfsDataSet: {0}", e);
+      throw e;
     }
 
     LOG.log(Level.FINER, "LineCounting task started");
