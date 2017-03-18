@@ -175,6 +175,11 @@ public final class DynamicServerResolver implements ServerResolver {
       }
     }
 
+    if (blockIdToStoreId.size() != numTotalBlocks ||
+        storeIdToBlockIds.size() != storeIdToEndpointId.size()) {
+      throw new RuntimeException("Init info is invalid");
+    }
+
     initLatch.countDown();
 
     LOG.log(Level.FINE, "Server resolver is initialized");
