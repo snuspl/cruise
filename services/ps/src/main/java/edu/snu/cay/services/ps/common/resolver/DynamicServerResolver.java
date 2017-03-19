@@ -15,6 +15,9 @@
  */
 package edu.snu.cay.services.ps.common.resolver;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Maps;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.worker.impl.WorkerMsgSender;
@@ -53,7 +56,7 @@ public final class DynamicServerResolver implements ServerResolver {
    * Mapping from EM's MemoryStore ID to the PS's NCS endpoint ID.
    * This mapping rarely changes compared to the blockIdToStoreId.
    */
-  private final Map<Integer, String> storeIdToEndpointId = new ConcurrentHashMap<>();
+  private final BiMap<Integer, String> storeIdToEndpointId = Maps.synchronizedBiMap(HashBiMap.create());
 
   private volatile int numTotalBlocks = 0;
 
@@ -243,7 +246,7 @@ public final class DynamicServerResolver implements ServerResolver {
 
     // It needs to be synchronized to avoid concurrent execution with the sync block in updateRoutingTable
     synchronized (this) {
-      if (!storeIdToBlockIds.containsKey(serverId)) {
+      if (!storeIdToEndpointId.inverse().containsKey(serverId)) {
         msgSender.get().sendRoutingTableSyncReplyMsg(serverId);
 
       } else {
