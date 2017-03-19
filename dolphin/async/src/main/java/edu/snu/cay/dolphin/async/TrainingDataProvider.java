@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.em.evaluator.api.BlockUpdateListener;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -32,7 +31,7 @@ import java.util.logging.Logger;
 
 /**
  * Provides the training data to process in mini-batches, taking subset of training data no more than
- * {@link Parameters.MiniBatchSize} instances.
+ * {@link DolphinParameters.MiniBatchSize} instances.
  * This class is designed to handle concurrent accesses to the training data,
  * and react to block migration by registering {@link BlockUpdateListener}.
  * @param <K> type of the key, which should be the same with the one in MemoryStore.
@@ -51,7 +50,7 @@ final class TrainingDataProvider<K, V> {
   private final DataParser<V> dataParser;
 
   @Inject
-  private TrainingDataProvider(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+  private TrainingDataProvider(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                                final MemoryStore<K> memoryStore,
                                final DataIdFactory<K> dataIdFactory,
                                final DataParser<V> dataParser) {

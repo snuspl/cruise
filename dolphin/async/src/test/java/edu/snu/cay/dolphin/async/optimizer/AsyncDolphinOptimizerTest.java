@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
@@ -71,7 +71,7 @@ public final class AsyncDolphinOptimizerTest {
     final Injector injector = Tang.Factory.getTang().newInjector(
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(ServerNumThreads.class, String.valueOf(NUM_SERVER_THREADS))
-            .bindNamedParameter(Parameters.MiniBatchSize.class, String.valueOf(miniBatchSize))
+            .bindNamedParameter(DolphinParameters.MiniBatchSize.class, String.valueOf(miniBatchSize))
         .build());
 
     // worker metrics

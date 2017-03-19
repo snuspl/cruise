@@ -19,11 +19,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.EpochInfo;
-import edu.snu.cay.dolphin.async.MiniBatchInfo;
-import edu.snu.cay.dolphin.async.ModelAccessor;
-import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -138,8 +134,8 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(Lambda.class) final double lambda,
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
-                     @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads,
+                     @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
+                     @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final ModelAccessor<MLRModel> modelAccessor,
                      final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final VectorFactory vectorFactory) {

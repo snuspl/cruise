@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.common.param.Parameters.MaxNumEpochs;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
@@ -133,7 +133,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(Gamma.class) final double gamma,
                      @Parameter(TreeMaxDepth.class) final int treeMaxDepth,
                      @Parameter(LeafMinSize.class) final int leafMinSize,
-                     @Parameter(MaxNumEpochs.class) final int maxNumEpochs,
+                     @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                      @Parameter(NumKeys.class) final int numKeys,
                      final GBTMetadataParser metadataParser) {
     this.parameterWorker = parameterWorker;
