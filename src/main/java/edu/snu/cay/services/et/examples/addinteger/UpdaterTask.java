@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.examples.addinteger;
 
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.examples.addinteger.parameters.DeltaValue;
 import edu.snu.cay.services.et.examples.addinteger.parameters.NumKeys;
 import edu.snu.cay.services.et.examples.addinteger.parameters.NumUpdates;
 import edu.snu.cay.services.et.examples.addinteger.parameters.StartKey;
@@ -45,16 +46,19 @@ public final class UpdaterTask implements Task {
 
   private final TableAccessor tableAccessor;
   private final int startKey;
+  private final int deltaValue;
   private final int numKeys;
   private final int numUpdates;
 
   @Inject
   private UpdaterTask(final TableAccessor tableAccessor,
                       @Parameter(StartKey.class) final int startKey,
+                      @Parameter(DeltaValue.class) final int deltaValue,
                       @Parameter(NumKeys.class) final int numKeys,
                       @Parameter(NumUpdates.class) final int numUpdates) {
     this.tableAccessor = tableAccessor;
     this.startKey = startKey;
+    this.deltaValue = deltaValue;
     this.numKeys = numKeys;
     this.numUpdates = numUpdates;
   }
@@ -66,7 +70,7 @@ public final class UpdaterTask implements Task {
 
     for (int i = 0; i < numUpdates; i++) {
       final int keyToUpdate = startKey + (i % numKeys);
-      final Integer updatedValue = modelTable.update(keyToUpdate, 1);
+      final Integer updatedValue = modelTable.update(keyToUpdate, deltaValue);
       LOG.log(Level.INFO, "Update result for key {0}: {1}", new Object[]{keyToUpdate, updatedValue});
     }
 

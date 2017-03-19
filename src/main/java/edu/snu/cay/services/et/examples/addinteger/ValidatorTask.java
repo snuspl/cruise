@@ -17,10 +17,7 @@ package edu.snu.cay.services.et.examples.addinteger;
 
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
-import edu.snu.cay.services.et.examples.addinteger.parameters.NumKeys;
-import edu.snu.cay.services.et.examples.addinteger.parameters.NumUpdates;
-import edu.snu.cay.services.et.examples.addinteger.parameters.NumWorkers;
-import edu.snu.cay.services.et.examples.addinteger.parameters.StartKey;
+import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.tang.annotations.Parameter;
@@ -43,6 +40,8 @@ public final class ValidatorTask implements Task {
 
   private final TableAccessor tableAccessor;
   private final int startKey;
+  private final int deltaValue;
+  private final int updateCoefficient;
   private final int numKeys;
   private final int numWorkers;
   private final int numUpdates;
@@ -50,11 +49,15 @@ public final class ValidatorTask implements Task {
   @Inject
   private ValidatorTask(final TableAccessor tableAccessor,
                         @Parameter(StartKey.class) final int startKey,
+                        @Parameter(DeltaValue.class) final int deltaValue,
+                        @Parameter(UpdateCoefficient.class) final int updateCoefficient,
                         @Parameter(NumKeys.class) final int numKeys,
                         @Parameter(NumWorkers.class) final int numWorkers,
                         @Parameter(NumUpdates.class) final int numUpdates) {
     this.tableAccessor = tableAccessor;
     this.startKey = startKey;
+    this.deltaValue = deltaValue;
+    this.updateCoefficient = updateCoefficient;
     this.numKeys = numKeys;
     this.numWorkers = numWorkers;
     this.numUpdates = numUpdates;
@@ -67,7 +70,7 @@ public final class ValidatorTask implements Task {
     final long sleepMillis = 100;
     int numRetries = 20;
 
-    final int expectedResult = numWorkers * numUpdates / numKeys;
+    final int expectedResult = (numWorkers * numUpdates / numKeys) * (deltaValue * updateCoefficient);
     while (numRetries > 0) {
       numRetries--;
 

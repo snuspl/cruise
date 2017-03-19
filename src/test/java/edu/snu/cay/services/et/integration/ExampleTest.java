@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,8 +44,10 @@ public class ExampleTest {
         .bindNamedParameter(NumWorkers.class, Integer.toString(2))
         .bindNamedParameter(NumServers.class, Integer.toString(2))
         .bindNamedParameter(NumUpdates.class, Integer.toString(128))
-        .bindNamedParameter(StartKey.class, Integer.toString(0))
         .bindNamedParameter(NumKeys.class, Integer.toString(8))
+        .bindNamedParameter(StartKey.class, Integer.toString(0))
+        .bindNamedParameter(DeltaValue.class, Integer.toString(1))
+        .bindNamedParameter(UpdateCoefficient.class, Integer.toString(1))
         .bindNamedParameter(Parameters.Timeout.class, Integer.toString(30000))
         .build();
 

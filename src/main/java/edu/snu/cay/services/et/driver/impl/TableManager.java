@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
@@ -42,10 +43,11 @@ final class TableManager {
   private final Map<String, AllocatedTable> allocatedTableMap = new ConcurrentHashMap<>();
 
   @Inject
-  private TableManager(final Injector baseTableInjector,
-                       final MigrationManager migrationManager,
+  private TableManager(final MigrationManager migrationManager,
                        final TableInitializer tableInitializer) throws InjectionException {
-    this.baseTableInjector = baseTableInjector;
+    this.baseTableInjector = Tang.Factory.getTang().newInjector();
+    baseTableInjector.bindVolatileInstance(MigrationManager.class, migrationManager);
+    baseTableInjector.bindVolatileInstance(TableInitializer.class, tableInitializer);
 
     // MigrationManager and TableInitializer should be instantiated although they are not actually accessed.
     // This is intentional. Otherwise MigrationManager and TableInitializer are created per Table, which we want

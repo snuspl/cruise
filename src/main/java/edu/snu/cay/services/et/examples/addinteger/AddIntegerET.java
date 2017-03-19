@@ -85,6 +85,8 @@ public final class AddIntegerET {
         .registerShortNameOfClass(NumUpdates.class)
         .registerShortNameOfClass(NumKeys.class)
         .registerShortNameOfClass(StartKey.class)
+        .registerShortNameOfClass(DeltaValue.class)
+        .registerShortNameOfClass(UpdateCoefficient.class)
         .registerShortNameOfClass(NumWorkers.class)
         .registerShortNameOfClass(NumServers.class)
         .processCommandLine(args);

@@ -21,7 +21,6 @@ import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
-import edu.snu.cay.services.et.evaluator.impl.AddIntegerUpdateFunction;
 import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.task.TaskConfiguration;
@@ -68,6 +67,8 @@ public final class AddIntegerETDriver {
   private final int numServers;
   private final int numWorkers;
 
+  private final TableConfiguration tableConf;
+
   /**
    * User param configuration for {@link UpdaterTask}.
    */
@@ -84,34 +85,44 @@ public final class AddIntegerETDriver {
                              @Parameter(NumWorkers.class) final int numWorkers,
                              @Parameter(NumUpdates.class) final int numUpdates,
                              @Parameter(StartKey.class) final int startKey,
+                             @Parameter(DeltaValue.class) final int deltaValue,
+                             @Parameter(UpdateCoefficient.class) final int coefficient,
                              @Parameter(NumKeys.class) final int numKeys) {
     this.updaterTaskParamConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(StartKey.class, Integer.toString(startKey))
+        .bindNamedParameter(DeltaValue.class, Integer.toString(deltaValue))
         .bindNamedParameter(NumKeys.class, Integer.toString(numKeys))
         .bindNamedParameter(NumUpdates.class, Integer.toString(numUpdates))
         .build();
 
     this.validatorTaskParamConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(StartKey.class, Integer.toString(startKey))
+        .bindNamedParameter(DeltaValue.class, Integer.toString(deltaValue))
+        .bindNamedParameter(UpdateCoefficient.class, Integer.toString(coefficient))
         .bindNamedParameter(NumKeys.class, Integer.toString(numKeys))
         .bindNamedParameter(NumUpdates.class, Integer.toString(numUpdates))
         .bindNamedParameter(NumWorkers.class, Integer.toString(numWorkers))
         .build();
+
+    final Configuration tableUserParamConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(UpdateCoefficient.class, Integer.toString(coefficient))
+        .build();
+    this.tableConf = buildTableConf(MODEL_TABLE_ID, tableUserParamConf);
 
     this.etMaster = etMaster;
     this.numServers = numServers;
     this.numWorkers = numWorkers;
   }
 
-  private TableConfiguration buildTableConf(final String tableId) {
-    final TableConfiguration.Builder tableConfBuilder = TableConfiguration.newBuilder()
+  private TableConfiguration buildTableConf(final String tableId, final Configuration userTableParamConf) {
+    return TableConfiguration.newBuilder()
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
-        .setIsOrderedTable(false);
-
-    return tableConfBuilder.build();
+        .setUserParamConf(userTableParamConf)
+        .setIsOrderedTable(false)
+        .build();
   }
 
   /**
@@ -123,7 +134,7 @@ public final class AddIntegerETDriver {
       final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, RES_CONF, null);
       final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, RES_CONF, null);
 
-      final AllocatedTable modelTable = etMaster.createTable(buildTableConf(MODEL_TABLE_ID), servers);
+      final AllocatedTable modelTable = etMaster.createTable(tableConf, servers);
 
       modelTable.subscribe(workers);
 

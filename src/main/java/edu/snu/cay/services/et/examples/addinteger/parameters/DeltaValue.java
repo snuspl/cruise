@@ -13,31 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.evaluator.impl;
+package edu.snu.cay.services.et.examples.addinteger.parameters;
 
-import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-import javax.inject.Inject;
-
-/**
- * A simple UpdateFunction that accumulates integers.
- */
-public final class AddIntegerUpdateFunction implements UpdateFunction<Object, Integer> {
-
-  /**
-   * Injectable constructor.
-   */
-  @Inject
-  private AddIntegerUpdateFunction() {
-  }
-
-  @Override
-  public Integer initValue(final Object key) {
-    return 0;
-  }
-
-  @Override
-  public Integer updateValue(final Object key, final Integer oldValue, final Integer deltaValue) {
-    return oldValue + deltaValue;
-  }
+@NamedParameter(doc = "Delta value to add in each update",
+                default_value = "1",
+                short_name = "delta_value")
+public final class DeltaValue implements Name<Integer> {
 }
