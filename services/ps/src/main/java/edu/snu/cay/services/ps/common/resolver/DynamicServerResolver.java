@@ -180,7 +180,12 @@ public final class DynamicServerResolver implements ServerResolver {
 
     initLatch.countDown();
 
-    LOG.log(Level.FINE, "Server resolver is initialized");
+    if (LOG.isLoggable(Level.FINE)) {
+      LOG.log(Level.FINE, "Server resolver is initialized with NumTotalBlocks: {0}, StoreIdToBlockIds: {1}",
+          new Object[]{numTotalBlocks, storeIdToBlockIds});
+    } else {
+      LOG.log(Level.INFO, "Server resolver is initialized");
+    }
   }
 
   @Override
