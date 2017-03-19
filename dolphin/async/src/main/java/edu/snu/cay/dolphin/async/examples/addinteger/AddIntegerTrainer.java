@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.common.metric.*;
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
@@ -77,8 +77,8 @@ final class AddIntegerTrainer implements Trainer {
 
   @Inject
   private AddIntegerTrainer(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
-                            @Parameter(Parameters.MaxNumEpochs.class) final int maxNumEpochs,
-                            @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                            @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                            @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
                             @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,

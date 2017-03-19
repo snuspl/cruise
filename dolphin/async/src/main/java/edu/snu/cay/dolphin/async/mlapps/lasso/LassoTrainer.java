@@ -20,7 +20,7 @@ import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.EpochInfo;
 import edu.snu.cay.dolphin.async.MiniBatchInfo;
 import edu.snu.cay.dolphin.async.Trainer;
@@ -110,7 +110,7 @@ final class LassoTrainer implements Trainer<LassoData> {
                        @Parameter(DecayRate.class) final double decayRate,
                        @Parameter(DecayPeriod.class) final int decayPeriod,
                        @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                       @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                       @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                        final VectorFactory vectorFactory,
                        final MatrixFactory matrixFactory,
                        final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {

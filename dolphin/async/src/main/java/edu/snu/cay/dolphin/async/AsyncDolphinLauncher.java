@@ -169,12 +169,12 @@ public final class AsyncDolphinLauncher {
       final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
           .bindImplementation(DataParser.class, asyncDolphinConfiguration.getParserClass())
-          .bindNamedParameter(MaxNumEpochs.class,
-              Integer.toString(basicParameterInjector.getNamedInstance(MaxNumEpochs.class)))
-          .bindNamedParameter(MiniBatchSize.class,
-              Integer.toString(basicParameterInjector.getNamedInstance(MiniBatchSize.class)))
-          .bindNamedParameter(NumTrainerThreads.class,
-              Integer.toString(basicParameterInjector.getNamedInstance(NumTrainerThreads.class)))
+          .bindNamedParameter(DolphinParameters.MaxNumEpochs.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.MaxNumEpochs.class)))
+          .bindNamedParameter(DolphinParameters.MiniBatchSize.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.MiniBatchSize.class)))
+          .bindNamedParameter(DolphinParameters.NumTrainerThreads.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.NumTrainerThreads.class)))
           .build();
       final Configuration workerConf = Configurations.merge(basicWorkerConf,
           asyncDolphinConfiguration.getWorkerConfiguration());
@@ -257,11 +257,11 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(Splits.class);
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
-    basicParameterClassList.add(MaxNumEpochs.class);
+    basicParameterClassList.add(DolphinParameters.MaxNumEpochs.class);
     basicParameterClassList.add(JVMHeapSlack.class);
-    basicParameterClassList.add(MiniBatchSize.class);
+    basicParameterClassList.add(DolphinParameters.MiniBatchSize.class);
     basicParameterClassList.add(OptimizationBenefitThreshold.class);
-    basicParameterClassList.add(NumTrainerThreads.class);
+    basicParameterClassList.add(DolphinParameters.NumTrainerThreads.class);
 
     // add ps parameters
     basicParameterClassList.add(NumServers.class);

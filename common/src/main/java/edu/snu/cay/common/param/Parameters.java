@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,31 +69,10 @@ public final class Parameters {
   public final class LocalRuntimeMaxNumEvaluators implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Maximum number of epochs to run before termination",
-                  short_name = "max_num_epochs")
-  public final class MaxNumEpochs implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap",
                   short_name = "heap_slack",
                   default_value = "0.0")
   public final class JVMHeapSlack implements Name<Double> {
-  }
-
-  @NamedParameter(doc = "Number of mini-batches",
-      short_name = "num_mini_batch",
-      default_value = "1")
-  public final class MiniBatches implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "Mini-batch size in number of training data instances",
-      short_name = "mini_batch_size")
-  public final class MiniBatchSize implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "Number of threads to run Trainer with",
-      short_name = "num_trainer_threads", default_value = "1")
-  public final class NumTrainerThreads implements Name<Integer> {
   }
 
   @NamedParameter(doc = "The minimum cost benefit (in a ratio) for which system optimization occurs. " +
