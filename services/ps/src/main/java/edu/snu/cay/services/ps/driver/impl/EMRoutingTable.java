@@ -34,7 +34,7 @@ public final class EMRoutingTable {
   public EMRoutingTable(final Map<Integer, Set<Integer>> storeIdToBlockIds,
                         final Map<Integer, String> storeIdToEndpointId) {
     if (storeIdToBlockIds.size() != storeIdToEndpointId.size()) {
-      throw new IllegalArgumentException("Init info is invalid");
+      throw new IllegalArgumentException("Trying to initialize the routing table with invalid information.");
     }
 
     this.storeIdToBlockIds = storeIdToBlockIds;
