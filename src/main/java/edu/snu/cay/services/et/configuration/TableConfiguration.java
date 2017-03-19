@@ -17,7 +17,9 @@ package edu.snu.cay.services.et.configuration;
 
 import edu.snu.cay.services.et.configuration.parameters.*;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
+import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
+import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
 import edu.snu.cay.services.et.evaluator.impl.HashBasedBlockPartitioner;
 import edu.snu.cay.services.et.evaluator.impl.OrderingBasedBlockPartitioner;
 import org.apache.reef.annotations.audience.Private;
@@ -28,8 +30,6 @@ import org.apache.reef.util.BuilderUtils;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * A builder for configuration required for creating table.
@@ -43,13 +43,17 @@ public final class TableConfiguration {
   private final boolean isOrderedTable;
   private final int numTotalBlocks;
   private final String filePath;
+  private final Class<? extends DataParser> dataParserClass;
+
   private Configuration configuration = null;
 
   private TableConfiguration(final String id,
                              final Class<? extends Codec> keyCodecClass, final Class<? extends Codec> valueCodecClass,
                              final Class<? extends UpdateFunction> updateFunctionClass,
                              final boolean isOrderedTable,
-                             final Integer numTotalBlocks, @Nullable final String filePath) {
+                             final Integer numTotalBlocks,
+                             @Nullable final String filePath,
+                             final Class<? extends DataParser> dataParserClass) {
     this.id = id;
     this.keyCodecClass = keyCodecClass;
     this.valueCodecClass = valueCodecClass;
@@ -57,6 +61,7 @@ public final class TableConfiguration {
     this.isOrderedTable = isOrderedTable;
     this.numTotalBlocks = numTotalBlocks;
     this.filePath = filePath;
+    this.dataParserClass = dataParserClass;
   }
 
   /**
@@ -109,6 +114,13 @@ public final class TableConfiguration {
   }
 
   /**
+   * @return a data parser
+   */
+  public Class<? extends DataParser> getDataParserClass() {
+    return dataParserClass;
+  }
+
+  /**
    * @return a tang {@link Configuration} that includes all metadata of table
    */
   public Configuration getConfiguration() {
@@ -125,6 +137,7 @@ public final class TableConfiguration {
           .bindImplementation(BlockPartitioner.class, blockPartitionerClass)
           .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
           .bindNamedParameter(FilePath.class, filePath != null ? filePath : FilePath.EMPTY)
+          .bindImplementation(DataParser.class, dataParserClass != null ? dataParserClass : DefaultDataParser.class)
           .build();
     }
     return configuration;
@@ -141,8 +154,6 @@ public final class TableConfiguration {
    * A builder of TableConfiguration.
    */
   public static final class Builder implements org.apache.reef.util.Builder<TableConfiguration> {
-    private static final Logger LOG = Logger.getLogger(Builder.class.getName());
-
     /**
      * Required parameters.
      */
@@ -157,6 +168,7 @@ public final class TableConfiguration {
      */
     private Integer numTotalBlocks;
     private String filePath;
+    private Class<? extends DataParser> dataParserClass;
 
     private Builder() {
     }
@@ -196,6 +208,10 @@ public final class TableConfiguration {
       return this;
     }
 
+    public void setDataParserClass(final Class<? extends DataParser> dataParserClass) {
+      this.dataParserClass = dataParserClass;
+    }
+
     @Override
     public TableConfiguration build() {
       BuilderUtils.notNull(id);
@@ -208,16 +224,18 @@ public final class TableConfiguration {
         numTotalBlocks = Integer.valueOf(NumTotalBlocks.DEFAULT_VALUE_STR);
       }
 
-      if (!isOrderedTable) {
-        if (filePath != null) {
-          LOG.log(Level.WARNING, "Initialization with bulk loading is not supported for hashed tables. " +
-              "Will skip loading files in tableId: {0}", id);
-          filePath = null;
+      // file loading for table requires both filePath and dataParserClass
+      if (filePath != null) {
+        if (!isOrderedTable) {
+          throw new IllegalArgumentException(
+              String.format("Initialization with bulk loading is not supported for hashed tables. Table Id : %s", id));
         }
+
+        BuilderUtils.notNull(dataParserClass);
       }
 
       return new TableConfiguration(id, keyCodecClass, valueCodecClass,
-          updateFunctionClass, isOrderedTable, numTotalBlocks, filePath);
+          updateFunctionClass, isOrderedTable, numTotalBlocks, filePath, dataParserClass);
     }
   }
 }

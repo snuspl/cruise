@@ -128,10 +128,9 @@ public final class Tables implements TableAccessor {
 
       final boolean isOrderedTable = tableInjector.getNamedInstance(IsOrderedTable.class);
       if (isOrderedTable) {
-        final LocalKeyGenerator localKeyGenerator = tableInjector.getInstance(LocalKeyGenerator.class);
-
+        final BulkDataLoader bulkDataLoader = tableInjector.getInstance(BulkDataLoader.class);
         try {
-          BulkDataLoader.load(table, serializedHdfsSplitInfo, localKeyGenerator);
+          bulkDataLoader.load(serializedHdfsSplitInfo);
         } catch (KeyGenerationException | IOException e) {
           throw new RuntimeException("Fail to load a file into a table", e);
         }

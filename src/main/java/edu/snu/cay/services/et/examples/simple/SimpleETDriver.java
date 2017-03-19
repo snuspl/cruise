@@ -23,6 +23,7 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
+import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -83,6 +84,7 @@ final class SimpleETDriver {
 
     if (!inputPath.equals(SimpleET.TableInputPath.EMPTY)) {
       tableConfBuilder.setFilePath(inputPath);
+      tableConfBuilder.setDataParserClass(DefaultDataParser.class);
     }
 
     return tableConfBuilder.build();
