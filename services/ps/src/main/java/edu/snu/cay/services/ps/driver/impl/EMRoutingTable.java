@@ -33,6 +33,10 @@ public final class EMRoutingTable {
 
   public EMRoutingTable(final Map<Integer, Set<Integer>> storeIdToBlockIds,
                         final Map<Integer, String> storeIdToEndpointId) {
+    if (storeIdToBlockIds.size() != storeIdToEndpointId.size()) {
+      throw new IllegalArgumentException("Init info is invalid");
+    }
+
     this.storeIdToBlockIds = storeIdToBlockIds;
     this.storeIdToEndpointId = storeIdToEndpointId;
     this.numTotalBlocks = countNumBlocks();
