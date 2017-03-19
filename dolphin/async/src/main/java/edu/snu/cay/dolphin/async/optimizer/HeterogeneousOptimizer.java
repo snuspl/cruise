@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.EmptyPlan;
@@ -54,7 +55,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
   private final Map<String, Double> hostnameToBandwidth;
 
   @Inject
-  private HeterogeneousOptimizer(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+  private HeterogeneousOptimizer(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                                  @Parameter(Parameters.NetworkBandwidth.class) final double defaultNetworkBandwidth,
                                  @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                  final double optBenefitThreshold) {

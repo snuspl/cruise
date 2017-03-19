@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.EmptyPlan;
@@ -59,7 +60,7 @@ public final class AsyncDolphinOptimizer implements Optimizer {
   private final double optBenefitThreshold;
 
   @Inject
-  private AsyncDolphinOptimizer(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+  private AsyncDolphinOptimizer(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                                 @Parameter(ServerNumThreads.class) final int serverNumThreads,
                                 @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                 final double optBenefitThreshold) {
