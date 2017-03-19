@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.utils.ThreadUtils;
@@ -62,7 +62,7 @@ final class SparseLDASampler {
                            @Parameter(Beta.class) final double beta,
                            @Parameter(NumTopics.class) final int numTopics,
                            @Parameter(NumVocabs.class) final int numVocabs,
-                           @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads,
+                           @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                            final ModelAccessor<LDAModel> modelAccessor) {
     this.alpha = alpha;
     this.beta = beta;

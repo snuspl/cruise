@@ -311,7 +311,7 @@ public final class AsyncDolphinDriver {
                              @Parameter(Parameters.NumEvaluatorCores.class) final int numEvalCores,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
-                             @Parameter(Parameters.MaxNumEpochs.class) final int maxNumEpochs,
+                             @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                              @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                              final MetricManager metricManager,
                              final HTraceParameters traceParameters,

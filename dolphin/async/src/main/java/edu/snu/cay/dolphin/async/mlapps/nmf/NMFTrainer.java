@@ -18,11 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 import com.google.common.collect.Sets;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.common.param.Parameters;
-import edu.snu.cay.dolphin.async.EpochInfo;
-import edu.snu.cay.dolphin.async.MiniBatchInfo;
-import edu.snu.cay.dolphin.async.ModelAccessor;
-import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
@@ -108,9 +104,9 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(Lambda.class) final double lambda,
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
-                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+                     @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
-                     @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads,
+                     @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final ModelAccessor<NMFModel> modelAccessor,
                      final NMFModelGenerator modelGenerator,
                      final MemoryStore<Long> memoryStore,
