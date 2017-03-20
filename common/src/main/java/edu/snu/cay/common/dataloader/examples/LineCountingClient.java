@@ -64,6 +64,10 @@ public final class LineCountingClient {
     final Injector commandLineInjector = Tang.Factory.getTang().newInjector(commandLineConf);
 
     final Set<String> inputs = commandLineInjector.getNamedInstance(LineCountingDriver.Inputs.class);
+    if (inputs.isEmpty()) {
+      throw new IllegalArgumentException("User should set at least one input file");
+    }
+
     final boolean onLocal = commandLineInjector.getNamedInstance(Parameters.OnLocal.class);
     final int splits = commandLineInjector.getNamedInstance(Parameters.Splits.class);
 
@@ -108,8 +112,8 @@ public final class LineCountingClient {
         .set(DriverConfiguration.DRIVER_IDENTIFIER, DRIVER_ID)
         .set(DriverConfiguration.ON_DRIVER_STARTED, LineCountingDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, LineCountingDriver.EvaluatorAllocatedHandler.class)
-        .set(DriverConfiguration.ON_TASK_RUNNING, LineCountingDriver.RunningTaskHandler.class)
-        .set(DriverConfiguration.ON_TASK_MESSAGE, LineCountingDriver.TaskMsgHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, LineCountingDriver.ActiveContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_COMPLETED, LineCountingDriver.CompletedTaskHandler.class)
         .build();
 
     return Configurations.merge(driverConf, paramConf,
