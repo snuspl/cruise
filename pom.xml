@@ -44,7 +44,6 @@
     <reef.version>0.16.0-SNAPSHOT</reef.version>
     <hadoop.version>2.6.0</hadoop.version>
     <htrace.version>3.0.4</htrace.version>
-    <mahout.version>0.9</mahout.version>
     <avro.version>1.7.7</avro.version>
     <jetty.version>6.1.26</jetty.version>
     <jackson.version>1.9.13</jackson.version>
@@ -53,7 +52,6 @@
     <checkstyle.version>7.2</checkstyle.version>
     <mockito.version>1.10.19</mockito.version>
     <powermock.version>1.6.5</powermock.version>
-    <ojalgo.version>37.1</ojalgo.version>
     <breeze.version>0.12</breeze.version>
     <guava.version>11.0.2</guava.version>
     <jblas.version>1.2.4</jblas.version>
@@ -66,7 +64,6 @@
   </prerequisites>
 
   <modules>
-    <module>dolphin/bsp</module>
     <module>dolphin/async</module>
     <module>services/elastic-memory</module>
     <module>services/evaluator-manager</module>
@@ -162,16 +159,6 @@
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>1.7.5</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.mahout</groupId>
-        <artifactId>mahout-math</artifactId>
-        <version>${mahout.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.ojalgo</groupId>
-        <artifactId>ojalgo</artifactId>
-        <version>${ojalgo.version}</version>
       </dependency>
       <dependency>
         <groupId>org.scalanlp</groupId>
