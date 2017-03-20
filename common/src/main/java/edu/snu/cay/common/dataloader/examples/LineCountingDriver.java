@@ -148,9 +148,7 @@ public final class LineCountingDriver {
 
       // when all contexts become active, submit line counting tasks
       if (activeCtxCnt == numSplits) {
-        // we assume that we have at least one file to load
-        final HdfsSplitInfo[] fileSplitsToLoad = hdfsSplitInfoList.get(fileCounter.get());
-        submitLineCountingTasks(fileSplitsToLoad);
+        loadNextFile();
       }
     }
   }
@@ -168,7 +166,7 @@ public final class LineCountingDriver {
       if (retBytes == null) {
         return;
       }
-      final int currFileIdx = fileCounter.get();
+      final int currFileIdx = fileCounter.get() - 1;
       final String filePath = filePathList.get(currFileIdx);
       final int retCnt = Integer.parseInt(new String(retBytes, StandardCharsets.UTF_8));
       lineCounter.addAndGet(retCnt);
@@ -182,7 +180,9 @@ public final class LineCountingDriver {
       if (completedTaskCnt == contextList.size()) {
         System.out.println(String.format("Total Line Count in %s : %d", filePath, lineCounter.get()));
 
-        if (!tryToLoadNextFile()) {
+        if (loadNextFile()) {
+          reset();
+        } else {
           // close contexts, when it finishes all file
           contextList.forEach(ActiveContext::close);
         }
@@ -190,26 +190,29 @@ public final class LineCountingDriver {
     }
 
     /**
-     * Submits tasks for the next round, if there is a remaining file to count.
-     * It sets the state of {@link CompletedTaskHandler}
-     * (e.g., {@link #lineCounter}, {@link #completedTaskCounter}) to ready for the new file.
-     * @return True when it succeed to take next file
+     * Resets counters (e.g., {@link #lineCounter}, {@link #completedTaskCounter}) to ready for the new file.
      */
-    private boolean tryToLoadNextFile() {
-      if (fileCounter.get() + 1 >= filePathList.size()) {
-        return false;
-      }
-
+    private void reset() {
       // Reset state for handling the task results for the next file.
       completedTaskCounter.set(0);
       lineCounter.set(0);
-
-      // It submits next tasks after the initialization of all counters.
-      final int nextFileIdx = fileCounter.incrementAndGet();
-      final HdfsSplitInfo[] fileSplitsToLoad = hdfsSplitInfoList.get(nextFileIdx);
-      submitLineCountingTasks(fileSplitsToLoad);
-      return true;
     }
+  }
+
+  /**
+   * Submits tasks for the next round, if there is a remaining file to count.
+   * @return True when it succeed to take next file
+   */
+  private boolean loadNextFile() {
+    if (fileCounter.get() >= filePathList.size()) {
+      return false;
+    }
+
+    // It submits next tasks after the initialization of all counters.
+    final int nextFileIdx = fileCounter.getAndIncrement();
+    final HdfsSplitInfo[] fileSplitsToLoad = hdfsSplitInfoList.get(nextFileIdx);
+    submitLineCountingTasks(fileSplitsToLoad);
+    return true;
   }
 
   /**
