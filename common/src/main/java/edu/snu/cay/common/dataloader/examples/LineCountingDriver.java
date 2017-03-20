@@ -92,6 +92,7 @@ public final class LineCountingDriver {
   /**
    * Splits the given files and assembles the splits of a single file into an array.
    * @param filePaths a list of file paths
+   * @param numSplits the number of splits for each file
    * @return a list of array of {@link HdfsSplitInfo}, each array contains all splits of a file
    */
   private static ArrayList<HdfsSplitInfo[]> buildHdfsSplitInfosList(final List<String> filePaths,
