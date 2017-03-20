@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
@@ -67,7 +66,7 @@ public class TrainingDataProviderTest {
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(LOCAL_STORE_ID))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_MEMORY_STORES))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
-        .bindNamedParameter(Parameters.MiniBatchSize.class, Integer.toString(MINI_BATCH_SIZE))
+        .bindNamedParameter(DolphinParameters.MiniBatchSize.class, Integer.toString(MINI_BATCH_SIZE))
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);

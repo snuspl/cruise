@@ -18,11 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 import com.google.common.collect.Table;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.dolphin.async.EpochInfo;
-import edu.snu.cay.dolphin.async.MiniBatchInfo;
-import edu.snu.cay.dolphin.async.ModelAccessor;
-import edu.snu.cay.dolphin.async.Trainer;
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
@@ -86,8 +82,8 @@ final class LDATrainer implements Trainer<Document> {
                      final ModelAccessor<LDAModel> modelAccessor,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(NumTopics.class) final int numTopics,
-                     @Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
-                     @Parameter(Parameters.NumTrainerThreads.class) final int numTrainerThreads) {
+                     @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
+                     @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads) {
     this.sampler = sampler;
     this.statCalculator = statCalculator;
     this.memoryStore = memoryStore;

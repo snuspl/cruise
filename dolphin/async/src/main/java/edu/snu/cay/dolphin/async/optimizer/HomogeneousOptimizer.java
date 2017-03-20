@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.dolphin.async.plan.EmptyPlan;
@@ -58,7 +59,7 @@ public final class HomogeneousOptimizer implements Optimizer {
   private final double optBenefitThreshold;
 
   @Inject
-  private HomogeneousOptimizer(@Parameter(Parameters.MiniBatchSize.class) final int miniBatchSize,
+  private HomogeneousOptimizer(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                                @Parameter(Parameters.NetworkBandwidth.class) final double networkBandwidth,
                                @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                final double optBenefitThreshold) {
