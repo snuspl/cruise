@@ -56,7 +56,7 @@ public final class OwnershipFirstMigrationTest {
     argList.addAll(defaultArgList);
     argList.addAll(argListForDeletingOneServer);
 
-    final String[] args = argList.toArray(new String[defaultArgList.size() + argListForDeletingOneServer.size()]);
+    final String[] args = argList.toArray(new String[argList.size()]);
     assertEquals("The job has been failed", LauncherStatus.COMPLETED,
         AddVectorREEF.runAddVector(args, Tang.Factory.getTang().newConfigurationBuilder().build()));
   }
@@ -81,7 +81,7 @@ public final class OwnershipFirstMigrationTest {
     argList.addAll(defaultArgList);
     argList.addAll(argListForAddingOneServer);
 
-    final String[] args = argList.toArray(new String[defaultArgList.size() + argListForAddingOneServer.size()]);
+    final String[] args = argList.toArray(new String[argList.size()]);
     assertEquals("The job has been failed", LauncherStatus.COMPLETED,
         AddVectorREEF.runAddVector(args, Tang.Factory.getTang().newConfigurationBuilder().build()));
   }

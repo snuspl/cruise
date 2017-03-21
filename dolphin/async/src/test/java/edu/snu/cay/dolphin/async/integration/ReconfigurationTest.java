@@ -49,7 +49,7 @@ public final class ReconfigurationTest {
     final List<String> argListForAddInteger = getDefaultArguments();
 
     assertEquals("The job has been failed", LauncherStatus.COMPLETED,
-        AddIntegerREEF.runAddInteger((String[]) argListForAddInteger.toArray(), conf));
+        AddIntegerREEF.runAddInteger(argListForAddInteger.toArray(new String[argListForAddInteger.size()]), conf));
 
     final List<String> additionalArgList = Arrays.asList(
         "-vector_size", Integer.toString(5)
@@ -60,7 +60,7 @@ public final class ReconfigurationTest {
     argListForAddVector.addAll(additionalArgList);
 
     assertEquals("The job has been failed", LauncherStatus.COMPLETED,
-        AddVectorREEF.runAddVector((String[]) argListForAddVector.toArray(), conf));
+        AddVectorREEF.runAddVector(argListForAddVector.toArray(new String[argListForAddVector.size()]), conf));
   }
 
   private List<String> getDefaultArguments() {
