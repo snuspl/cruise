@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.optimizer;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
@@ -53,17 +55,35 @@ public final class HeterogeneousOptimizer implements Optimizer {
   private final double optBenefitThreshold;
 
   private final Map<String, Double> hostnameToBandwidth;
+  private final JsonParser jsonParser = new JsonParser();
 
   @Inject
   private HeterogeneousOptimizer(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                                  @Parameter(Parameters.NetworkBandwidth.class) final double defaultNetworkBandwidth,
+                                 @Parameter(Parameters.NetworkBandwidthToHostsJson.class)
+                                   final String networkBandwidthToHostsJson,
                                  @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                  final double optBenefitThreshold) {
     this.miniBatchSize = miniBatchSize;
     // convert bits per second to bytes per second
     this.defaultNetworkBandwidth = defaultNetworkBandwidth / 8D;
     this.optBenefitThreshold = optBenefitThreshold;
-    this.hostnameToBandwidth = new HashMap<>();
+    this.hostnameToBandwidth = parseBandwidthMapping(networkBandwidthToHostsJson);
+    LOG.log(Level.INFO, "Hostname to bandwidth: {0}", hostnameToBandwidth);
+  }
+
+  private Map<String, Double> parseBandwidthMapping(final String networkBandwidthToHostsJson) {
+    final Map<String, Double> mapping = new HashMap<>();
+    final JsonElement rootElem = jsonParser.parse(networkBandwidthToHostsJson);
+    rootElem.getAsJsonArray().forEach(
+        bandwidthToHosts ->
+            bandwidthToHosts.getAsJsonObject().entrySet().forEach(
+                entry -> {
+                  final double bandwidth = Double.parseDouble(entry.getKey());
+                  entry.getValue().getAsJsonArray().forEach(
+                      hostname -> mapping.put(hostname.getAsString(), bandwidth));
+                }));
+    return mapping;
   }
 
   /**
