@@ -15,8 +15,12 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.common.metric.MetricsMsgSender;
+import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
@@ -38,10 +42,18 @@ final class AsyncWorkerTask<K, V> implements Task {
 
   private final String taskId;
   private final int maxNumEpochs;
+
+  /**
+   * Number of training data instances to be processed per mini-batch.
+   */
+  private final int miniBatchSize;
+
   private final WorkerSynchronizer synchronizer;
+  private final ParameterWorker parameterWorker;
   private final TrainingDataProvider<K, V> trainingDataProvider;
   private final MemoryStore<K> memoryStore;
   private final Trainer<V> trainer;
+  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final WorkerClock workerClock;
   private final boolean addedEval;
 
@@ -54,19 +66,25 @@ final class AsyncWorkerTask<K, V> implements Task {
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                          @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                           @Parameter(AddedEval.class) final boolean addedEval,
                           final WorkerSynchronizer synchronizer,
+                          final ParameterWorker parameterWorker,
                           final TrainingDataProvider<K, V> trainingDataProvider,
                           final MemoryStore<K> memoryStore,
                           final Trainer<V> trainer,
+                          final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                           final WorkerClock workerClock) {
     this.taskId = taskId;
     this.maxNumEpochs = maxNumEpochs;
+    this.miniBatchSize = miniBatchSize;
     this.addedEval = addedEval;
     this.synchronizer = synchronizer;
+    this.parameterWorker = parameterWorker;
     this.trainingDataProvider = trainingDataProvider;
     this.memoryStore = memoryStore;
     this.trainer = trainer;
+    this.metricsMsgSender = metricsMsgSender;
     this.workerClock = workerClock;
   }
 
@@ -102,6 +120,7 @@ final class AsyncWorkerTask<K, V> implements Task {
       final long epochStartTime = System.currentTimeMillis();
       final int numEMBlocks = memoryStore.getNumBlocks();
       trainingDataProvider.prepareDataForEpoch();
+      parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
 
       final Collection<V> epochData = new LinkedList<>();
 
@@ -112,12 +131,13 @@ final class AsyncWorkerTask<K, V> implements Task {
           break; // Finish the epoch when there are no more data to process
         }
 
-        final MiniBatchInfo miniBatchInfo = MiniBatchInfo.getBuilder()
-            .setEpochIdx(epochIdx)
-            .setMiniBatchIdx(miniBatchIdx)
-            .build();
+        final long miniBatchStartTime = System.currentTimeMillis();
+        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchData);
+        final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
-        trainer.runMiniBatch(miniBatchData, miniBatchInfo);
+        buildAndSendMiniBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
+            miniBatchData.size(), miniBatchElapsedTime);
+
         epochData.addAll(miniBatchData);
         miniBatchIdx++;
 
@@ -129,14 +149,11 @@ final class AsyncWorkerTask<K, V> implements Task {
         }
       }
 
-      final EpochInfo epochInfo = EpochInfo.getBuilder()
-              .setEpochIdx(epochIdx)
-              .setNumMiniBatches(miniBatchIdx)
-              .setNumEMBlocks(numEMBlocks)
-              .setEpochStartTime(epochStartTime)
-              .build();
+      final EpochResult epochResult = trainer.onEpochFinished(epochData, epochIdx);
+      final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
-      trainer.onEpochFinished(epochData, epochInfo);
+      buildAndSendEpochMetrics(epochResult, epochIdx, miniBatchIdx,
+          epochData.size(), numEMBlocks, epochElapsedTime);
 
       // TODO #830: Clock should be a unit of mini-batch instead of epoch
       workerClock.clock();
@@ -150,6 +167,48 @@ final class AsyncWorkerTask<K, V> implements Task {
     // record total network waiting time of worker clock when the task is finished
     workerClock.recordClockNetworkWaitingTime();
     return null;
+  }
+
+  private void buildAndSendMiniBatchMetrics(final MiniBatchResult miniBatchResult,
+                                            final int epochIdx, final int miniBatchIdx,
+                                            final int processedDataItemCount,
+                                            final double miniBatchElapsedTime) {
+    final WorkerMetrics miniBatchMetric = WorkerMetrics.newBuilder()
+        .setMetrics(Metrics.newBuilder().setData(miniBatchResult.getAppMetrics()).build())
+        .setEpochIdx(epochIdx)
+        .setMiniBatchIdx(miniBatchIdx)
+        .setMiniBatchSize(miniBatchSize)
+        .setProcessedDataItemCount(processedDataItemCount)
+        .setTotalTime(miniBatchElapsedTime)
+        .setTotalCompTime(miniBatchResult.getComputeTime())
+        .setTotalPullTime(miniBatchResult.getTotalPullTime())
+        .setTotalPushTime(miniBatchResult.getTotalPushTime())
+        .setAvgPullTime(miniBatchResult.getAvgPullTime())
+        .setAvgPushTime(miniBatchResult.getAvgPushTime())
+        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
+        .build();
+
+    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
+    metricsMsgSender.send(miniBatchMetric);
+  }
+
+  private void buildAndSendEpochMetrics(final EpochResult epochResult,
+                                        final int epochIdx, final int miniBatchIdx,
+                                        final int processedDataItemCount,
+                                        final int numDataBlocks,
+                                        final double epochElapsedTime) {
+    final WorkerMetrics epochMetric = WorkerMetrics.newBuilder()
+        .setMetrics(Metrics.newBuilder().setData(epochResult.getAppMetrics()).build())
+        .setEpochIdx(epochIdx)
+        .setMiniBatchSize(miniBatchSize)
+        .setNumMiniBatchForEpoch(miniBatchIdx)
+        .setProcessedDataItemCount(processedDataItemCount)
+        .setNumDataBlocks(numDataBlocks)
+        .setTotalTime(epochElapsedTime)
+        .build();
+
+    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
+    metricsMsgSender.send(epochMetric);
   }
 
   /**
