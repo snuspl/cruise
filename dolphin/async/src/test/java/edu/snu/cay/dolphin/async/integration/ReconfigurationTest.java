@@ -25,6 +25,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -45,19 +46,24 @@ public final class ReconfigurationTest {
 
     System.setProperty("java.util.logging.config.class", TestLoggingConfig.class.getName());
 
-    final List<String> args = getArguments();
+    final List<String> argListForAddInteger = getDefaultArguments();
 
     assertEquals("The job has been failed", LauncherStatus.COMPLETED,
-        AddIntegerREEF.runAddInteger((String[]) args.toArray(), conf));
+        AddIntegerREEF.runAddInteger((String[]) argListForAddInteger.toArray(), conf));
 
-    args.add("-vector_size");
-    args.add(Integer.toString(5));
+    final List<String> additionalArgList = Arrays.asList(
+        "-vector_size", Integer.toString(5)
+    );
+
+    final List<String> argListForAddVector = new ArrayList<>(argListForAddInteger.size() + additionalArgList.size());
+    argListForAddVector.addAll(argListForAddInteger);
+    argListForAddVector.addAll(additionalArgList);
 
     assertEquals("The job has been failed", LauncherStatus.COMPLETED,
-        AddVectorREEF.runAddVector((String[]) args.toArray(), conf));
+        AddVectorREEF.runAddVector((String[]) argListForAddVector.toArray(), conf));
   }
 
-  private List<String> getArguments() {
+  private List<String> getDefaultArguments() {
     final int numWorkers = 3;
     final int numServers = 2;
     final int numTotalEvals = numWorkers + numServers; // do not use more resources
