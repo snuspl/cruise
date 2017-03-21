@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.async.integration;
 
 import edu.snu.cay.dolphin.async.examples.addinteger.AddIntegerREEF;
+import edu.snu.cay.dolphin.async.examples.addvector.AddVectorREEF;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.utils.TestLoggingConfig;
@@ -23,6 +24,9 @@ import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -35,23 +39,30 @@ public final class ReconfigurationTest {
 
   @Test
   public void testReconfigurationWithSampleOptimizers() {
-    final String[] args = getArguments();
-
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(OptimizationOrchestrator.class, TestingOrchestrator.class)
         .build();
 
     System.setProperty("java.util.logging.config.class", TestLoggingConfig.class.getName());
 
-    assertEquals("The job has been failed", LauncherStatus.COMPLETED, AddIntegerREEF.runAddInteger(args, conf));
+    final List<String> args = getArguments();
+
+    assertEquals("The job has been failed", LauncherStatus.COMPLETED,
+        AddIntegerREEF.runAddInteger((String[]) args.toArray(), conf));
+
+    args.add("-vector_size");
+    args.add(Integer.toString(5));
+
+    assertEquals("The job has been failed", LauncherStatus.COMPLETED,
+        AddVectorREEF.runAddVector((String[]) args.toArray(), conf));
   }
 
-  private String[] getArguments() {
+  private List<String> getArguments() {
     final int numWorkers = 3;
     final int numServers = 2;
     final int numTotalEvals = numWorkers + numServers; // do not use more resources
 
-    return new String[]{
+    return Arrays.asList(
         "-split", Integer.toString(numWorkers),
         "-num_workers", Integer.toString(numWorkers),
         "-num_servers", Integer.toString(numServers),
@@ -70,7 +81,6 @@ public final class ReconfigurationTest {
         "-worker_log_period_ms", Integer.toString(0),
         "-server_log_period_ms", Integer.toString(0),
         "-server_metrics_window_ms", Integer.toString(1000),
-        "-timeout", Integer.toString(300000)
-    };
+        "-timeout", Integer.toString(300000));
   }
 }

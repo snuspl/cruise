@@ -22,6 +22,8 @@ import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorSerializer;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
@@ -37,11 +39,12 @@ public final class AddVectorREEF {
   }
 
   /**
-   * Runs app with given arguments.
+   * Runs app with given arguments and custom configuration.
    * @param args command line arguments for running app
+   * @param conf a job configuration
    * @return a LauncherStatus
    */
-  public static LauncherStatus runAddVector(final String[] args) {
+  public static LauncherStatus runAddVector(final String[] args, final Configuration conf) {
     return AsyncDolphinLauncher.launch("AddVectorREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setTrainerClass(AddVectorTrainer.class)
         .setUpdaterClass(AddVectorUpdater.class)
@@ -54,11 +57,11 @@ public final class AddVectorREEF {
         .addParameterClass(ExampleParameters.ComputeTimeMs.class)
         .addParameterClass(ExampleParameters.NumTrainingData.class)
         .addParameterClass(VectorSize.class)
-        .build());
+        .build(), conf);
   }
 
   public static void main(final String[] args) {
-    runAddVector(args);
+    runAddVector(args, Tang.Factory.getTang().newConfigurationBuilder().build());
   }
 
   @NamedParameter(doc = "The size of vector", short_name = "vector_size")
