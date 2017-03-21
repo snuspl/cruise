@@ -225,8 +225,9 @@ public final class TableConfiguration {
       return this;
     }
 
-    public void setDataParserClass(final Class<? extends DataParser> dataParserClass) {
+    public Builder setDataParserClass(final Class<? extends DataParser> dataParserClass) {
       this.dataParserClass = dataParserClass;
+      return this;
     }
 
     public Builder setUserParamConf(final Configuration userParamConf) {
