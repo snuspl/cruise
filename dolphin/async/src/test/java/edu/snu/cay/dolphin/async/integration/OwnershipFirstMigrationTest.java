@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.async.examples.addvector.AddVectorREEF;
 import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.tang.Tang;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -56,7 +57,8 @@ public final class OwnershipFirstMigrationTest {
     argList.addAll(argListForDeletingOneServer);
 
     final String[] args = argList.toArray(new String[defaultArgList.size() + argListForDeletingOneServer.size()]);
-    assertEquals("The job has been failed", LauncherStatus.COMPLETED, AddVectorREEF.runAddVector(args));
+    assertEquals("The job has been failed", LauncherStatus.COMPLETED,
+        AddVectorREEF.runAddVector(args, Tang.Factory.getTang().newConfigurationBuilder().build()));
   }
 
   @Test
@@ -80,7 +82,8 @@ public final class OwnershipFirstMigrationTest {
     argList.addAll(argListForAddingOneServer);
 
     final String[] args = argList.toArray(new String[defaultArgList.size() + argListForAddingOneServer.size()]);
-    assertEquals("The job has been failed", LauncherStatus.COMPLETED, AddVectorREEF.runAddVector(args));
+    assertEquals("The job has been failed", LauncherStatus.COMPLETED,
+        AddVectorREEF.runAddVector(args, Tang.Factory.getTang().newConfigurationBuilder().build()));
   }
 
   private List<String> getDefaultArguments() {
