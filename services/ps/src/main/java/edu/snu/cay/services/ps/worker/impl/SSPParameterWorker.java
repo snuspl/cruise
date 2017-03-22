@@ -309,7 +309,7 @@ public final class SSPParameterWorker<K, P, V> implements ParameterWorker<K, P, 
   }
 
   @Override
-  public ParameterWorkerMetrics buildParameterWorkerMetrics() {
+  public ParameterWorkerMetrics buildAndResetMetrics() {
     throw new UnsupportedOperationException("SSP version of parameter worker currently does not support metrics.");
   }
 
