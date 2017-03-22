@@ -120,7 +120,7 @@ final class AsyncWorkerTask<K, V> implements Task {
       final long epochStartTime = System.currentTimeMillis();
       final int numEMBlocks = memoryStore.getNumBlocks();
       trainingDataProvider.prepareDataForEpoch();
-      parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
+      parameterWorker.buildAndResetMetrics(); // Reset Tracers in ParameterWorker
 
       final Collection<V> epochData = new LinkedList<>();
 
@@ -185,7 +185,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         .setTotalPushTime(miniBatchResult.getTotalPushTime())
         .setAvgPullTime(miniBatchResult.getAvgPullTime())
         .setAvgPushTime(miniBatchResult.getAvgPushTime())
-        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
+        .setParameterWorkerMetrics(parameterWorker.buildAndResetMetrics())
         .build();
 
     LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);

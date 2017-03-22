@@ -47,7 +47,7 @@ public final class MiniBatchResult {
   }
 
   /**
-   * @return A builder to create an MiniBatchResult object.
+   * @return A builder to create a MiniBatchResult object.
    */
   public static Builder newBuilder() {
     return new Builder();
