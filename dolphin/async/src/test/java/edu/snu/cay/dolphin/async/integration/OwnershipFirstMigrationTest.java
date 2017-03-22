@@ -20,7 +20,6 @@ import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import org.apache.reef.client.LauncherStatus;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,7 +33,6 @@ import static org.junit.Assert.assertEquals;
  * It runs the app with several optimization plans that add and delete servers
  * to confirm that this migration protocol preserves data values during migration correctly.
  */
-@Category(edu.snu.cay.utils.test.IntegrationTests.class)
 public final class OwnershipFirstMigrationTest {
 
   @Test

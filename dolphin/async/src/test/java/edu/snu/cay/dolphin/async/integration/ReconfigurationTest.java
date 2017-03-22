@@ -23,7 +23,6 @@ import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.assertEquals;
 
@@ -32,7 +31,6 @@ import static org.junit.Assert.assertEquals;
  * It runs the app with {@link TestingOrchestrator} that runs several optimization plans
  * to confirm that dolphin reconfigures the system correctly and reliably.
  */
-@Category(edu.snu.cay.utils.test.IntegrationTests.class)
 public final class ReconfigurationTest {
 
   @Test
