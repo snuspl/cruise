@@ -30,8 +30,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Provides the training data to process in mini-batches, taking subset of training data no more than
- * {@link DolphinParameters.MiniBatchSize} instances.
+ * An implementation of TrainingDataProvider based on ElasticMemory. The training data is stored in the
+ * MemoryStore.
  * This class is designed to handle concurrent accesses to the training data,
  * and react to block migration by registering {@link BlockUpdateListener}.
  * @param <K> type of the key, which should be the same with the one in MemoryStore.
@@ -51,9 +51,9 @@ final class TrainingDataProviderImpl<K, V> implements TrainingDataProvider<K, V>
 
   @Inject
   private TrainingDataProviderImpl(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
-                               final MemoryStore<K> memoryStore,
-                               final DataIdFactory<K> dataIdFactory,
-                               final DataParser<V> dataParser) {
+                                   final MemoryStore<K> memoryStore,
+                                   final DataIdFactory<K> dataIdFactory,
+                                   final DataParser<V> dataParser) {
     this.miniBatchSize = miniBatchSize;
     this.memoryStore = memoryStore;
     this.dataIdFactory = dataIdFactory;
@@ -134,8 +134,8 @@ final class TrainingDataProviderImpl<K, V> implements TrainingDataProvider<K, V>
     public void onAddedBlock(final int blockId, final Set<K> addedKeys) {
       synchronized (trainingDataKeys) {
         trainingDataKeys.addAll(addedKeys);
-        LOG.log(Level.INFO, "Added key set size = " + addedKeys.size()
-            + ", changed training data key set size = " + trainingDataKeys.size());
+        LOG.log(Level.INFO, "The number of added keys: {0}, the number of training data after addition: {1}",
+            new Object[] {addedKeys.size(), trainingDataKeys.size()});
       }
     }
 
@@ -143,8 +143,8 @@ final class TrainingDataProviderImpl<K, V> implements TrainingDataProvider<K, V>
     public void onRemovedBlock(final int blockId, final Set<K> removedKeys) {
       synchronized (trainingDataKeys) {
         trainingDataKeys.removeAll(removedKeys);
-        LOG.log(Level.INFO, "Removed key set size = " + removedKeys.size()
-            + ", changed training data key set size = " + trainingDataKeys.size());
+        LOG.log(Level.INFO, "The number of removed keys: {0}, the number of training data after removal: {1}",
+            new Object[] {removedKeys.size(), trainingDataKeys.size()});
       }
     }
   }
