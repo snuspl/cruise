@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -169,6 +169,7 @@ public final class AsyncDolphinLauncher {
       final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
           .bindImplementation(DataParser.class, asyncDolphinConfiguration.getParserClass())
+          .bindImplementation(TrainingDataProvider.class, TrainingDataProviderImpl.class)
           .bindNamedParameter(DolphinParameters.MaxNumEpochs.class,
               Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.MaxNumEpochs.class)))
           .bindNamedParameter(DolphinParameters.MiniBatchSize.class,
