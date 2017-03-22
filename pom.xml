@@ -58,8 +58,7 @@
     <javacpp.version>1.2.2</javacpp.version>
     <build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
     <tests.groups></tests.groups>
-    <tests.excluded.intensive></tests.excluded.intensive>
-    <tests.excluded.integration></tests.excluded.integration>
+    <tests.excluded></tests.excluded>
   </properties>
 
   <prerequisites>
@@ -376,7 +375,7 @@
         <version>2.19.1</version>
         <configuration>
           <groups>${tests.groups}</groups>
-          <excludedGroups>${tests.excluded.intensive}</excludedGroups>
+          <excludedGroups>${tests.excluded}</excludedGroups>
         </configuration>
       </plugin>
     </plugins>
@@ -388,14 +387,14 @@
       <!-- only Unit tests-->
       <id>UnitTests</id>
       <properties>
-        <tests.excluded.intensive>edu.snu.cay.utils.test.IntensiveTests, edu.snu.cay.utils.test.IntegrationTests</tests.excluded.intensive>
+        <tests.excluded>edu.snu.cay.utils.test.IntensiveTests, edu.snu.cay.utils.test.IntegrationTests</tests.excluded>
       </properties>
     </profile>
     <profile>
       <!-- Unit, Intensive tests-->
       <id>IntensiveTests</id>
       <properties>
-        <tests.excluded.intensive>edu.snu.cay.utils.test.IntegrationTests</tests.excluded.intensive>
+        <tests.excluded>edu.snu.cay.utils.test.IntegrationTests</tests.excluded>
       </properties>
     </profile>
     <profile>
