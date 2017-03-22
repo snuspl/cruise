@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,9 @@
  */
 package edu.snu.cay.dolphin.async.examples.addinteger;
 
-import edu.snu.cay.common.metric.*;
-import edu.snu.cay.dolphin.async.DolphinParameters;
-import edu.snu.cay.dolphin.async.EpochInfo;
-import edu.snu.cay.dolphin.async.MiniBatchInfo;
-import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -57,11 +52,6 @@ final class AddIntegerTrainer implements Trainer {
   private final int delta;
 
   /**
-   * Number of training data instances to be processed per mini-batch.
-   */
-  private final int miniBatchSize;
-
-  /**
    * The number of keys.
    */
   private final int numberOfKeys;
@@ -77,7 +67,6 @@ final class AddIntegerTrainer implements Trainer {
   private final int expectedResult;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -90,10 +79,8 @@ final class AddIntegerTrainer implements Trainer {
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
                             @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                             @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
-                            @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData,
-                            final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
+                            @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData) {
     this.parameterWorker = parameterWorker;
-    this.miniBatchSize = miniBatchSize;
     this.delta = delta;
     this.numberOfKeys = numberOfKeys;
     this.computeTime = computeTime;
@@ -103,8 +90,6 @@ final class AddIntegerTrainer implements Trainer {
     this.expectedResult = delta * numberOfWorkers * maxNumEpochs * numMiniBatches;
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, numMiniBatches:{4}",
         new Object[]{delta, numberOfWorkers, maxNumEpochs, numTrainingData, numMiniBatches});
-
-    this.metricsMsgSender = metricsMsgSender;
 
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
@@ -116,10 +101,8 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public void runMiniBatch(final Collection miniBatchData, final MiniBatchInfo miniBatchInfo) {
+  public MiniBatchResult runMiniBatch(final Collection miniBatchData) {
     resetTracers();
-    final long miniBatchStartTime = System.currentTimeMillis();
-    final int numDataToProcess = miniBatchData.size();
 
     // sleep to simulate computation
     computeTracer.startTimer();
@@ -142,64 +125,23 @@ final class AddIntegerTrainer implements Trainer {
       LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{key, value});
     }
 
-    final int epochIdx = miniBatchInfo.getEpochIdx();
-    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
-    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-    final WorkerMetrics miniBatchMetric =
-        buildMiniBatchMetric(epochIdx, miniBatchIdx, miniBatchElapsedTime, numDataToProcess);
-    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
-    sendMetrics(miniBatchMetric);
+    return buildMiniBatchResult();
   }
 
   @Override
-  public void onEpochFinished(final Collection epochData, final EpochInfo epochInfo) {
-    final int epochIdx = epochInfo.getEpochIdx();
-    final int numMiniBatches = epochInfo.getNumMiniBatches();
-    final int numEMBlocks = epochInfo.getNumEMBlocks();
-    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
-    final int numProcessedData = epochData.size();
-
-    final WorkerMetrics epochMetric =
-        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochElapsedTime, numProcessedData);
-    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
-    sendMetrics(epochMetric);
+  public EpochResult onEpochFinished(final Collection epochData, final int epochIdx) {
+    return EpochResult.EMPTY_RESULT;
   }
 
-  private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", workerMetrics);
-
-    metricsMsgSender.send(workerMetrics);
-  }
-
-  private WorkerMetrics buildMiniBatchMetric(final int epochIdx, final int miniBatchIdx, final double elapsedTime,
-                                             final int numProcessedItems) {
-    return WorkerMetrics.newBuilder()
-        .setEpochIdx(epochIdx)
-        .setMiniBatchSize(miniBatchSize)
-        .setMiniBatchIdx(miniBatchIdx)
-        .setProcessedDataItemCount(numProcessedItems)
-        .setTotalTime(elapsedTime)
-        .setTotalCompTime(computeTracer.totalElapsedTime())
+  private MiniBatchResult buildMiniBatchResult() {
+    return MiniBatchResult.newBuilder()
+        .setComputeTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
         .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
         .setAvgPushTime(pushTracer.avgTimePerElem())
-        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
   }
-
-  private WorkerMetrics buildEpochMetric(final int epochIdx, final int numMiniBatches, final int numDataBlocks,
-                                         final double elapsedTime, final int numProcessedItems) {
-    return WorkerMetrics.newBuilder()
-        .setEpochIdx(epochIdx)
-        .setMiniBatchSize(miniBatchSize)
-        .setNumMiniBatchForEpoch(numMiniBatches)
-        .setNumDataBlocks(numDataBlocks)
-        .setProcessedDataItemCount(numProcessedItems)
-        .setTotalTime(elapsedTime)
-        .build();
-  }
-
 
   @Override
   public void cleanup() {
