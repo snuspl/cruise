@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.remote;
 
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.examples.remote.RemoteEMREEF;
+import edu.snu.cay.utils.test.IntegrationTests;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
@@ -26,6 +27,7 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.assertEquals;
 
@@ -40,6 +42,7 @@ public class RemoteAccessTest {
   private static final int TIMEOUT_MS = 100000;
 
   @Test
+  @Category(IntegrationTests.class)
   public void runSingleKeyAccessTest() throws InjectionException {
     final boolean rangeSupport = false;
     final LauncherStatus status = runTest(rangeSupport);
@@ -48,6 +51,7 @@ public class RemoteAccessTest {
   }
 
   @Test
+  @Category(IntegrationTests.class)
   public void runRangeKeyAccessTest() throws InjectionException {
     final boolean rangeSupport = true;
     final LauncherStatus status = runTest(rangeSupport);
