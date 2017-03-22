@@ -55,6 +55,16 @@
       <groupId>org.htrace</groupId>
       <artifactId>htrace-zipkin</artifactId>
     </dependency>
+      <dependency>
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+          <scope>compile</scope>
+      </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <build>

@@ -31,6 +31,7 @@ import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.RunningTask;
 
 import org.apache.reef.tang.annotations.Parameter;
+import org.junit.experimental.categories.Category;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -47,6 +48,7 @@ import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE
  * Testing purpose implementation of {@link OptimizationOrchestrator}.
  * It invokes various kinds of optimizers to validate the correct working of reconfiguration.
  */
+@Category(edu.snu.cay.utils.test.IntegrationTests.class)
 final class TestingOrchestrator implements OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(TestingOrchestrator.class.getName());
 

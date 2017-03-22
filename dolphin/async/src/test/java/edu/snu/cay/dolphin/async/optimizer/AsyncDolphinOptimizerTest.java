@@ -28,6 +28,7 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +44,7 @@ import static org.junit.Assert.assertEquals;
  * workers and servers respectively to test that the optimizer generates a valid plan.
  */
 
+@Category(edu.snu.cay.utils.test.IntensiveTests.class)
 public final class AsyncDolphinOptimizerTest {
   private static final String WORKER_PREFIX = "Worker-";
   private static final String SERVER_PREFIX = "Server-";

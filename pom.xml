@@ -57,6 +57,9 @@
     <jblas.version>1.2.4</jblas.version>
     <javacpp.version>1.2.2</javacpp.version>
     <build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
+    <tests.groups></tests.groups>
+    <tests.excluded.intensive></tests.excluded.intensive>
+    <tests.excluded.integration></tests.excluded.integration>
   </properties>
 
   <prerequisites>
@@ -72,6 +75,8 @@
     <module>utils</module>
     <module>common</module>
   </modules>
+
+
 
   <dependencyManagement>
     <dependencies>
@@ -365,6 +370,41 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.19.1</version>
+        <configuration>
+          <groups>${tests.groups}</groups>
+          <excludedGroups>${tests.excluded.intensive}</excludedGroups>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
+
+  <!-- default : All tests-->
+  <profiles>
+    <profile>
+      <!-- only Unit tests-->
+      <id>UnitTests</id>
+      <properties>
+        <tests.excluded.intensive>edu.snu.cay.utils.test.IntensiveTests, edu.snu.cay.utils.test.IntegrationTests</tests.excluded.intensive>
+      </properties>
+    </profile>
+    <profile>
+      <!-- Unit, Intensive tests-->
+      <id>IntensiveTests</id>
+      <properties>
+        <tests.excluded.intensive>edu.snu.cay.utils.test.IntegrationTests</tests.excluded.intensive>
+      </properties>
+    </profile>
+    <profile>
+      <!-- Only Integration tests-->
+      <id>IntegrationTests</id>
+      <properties>
+        <tests.groups>edu.snu.cay.utils.test.IntegrationTests</tests.groups>
+      </properties>
+    </profile>
+  </profiles>
+
 </project>
