@@ -102,6 +102,8 @@ final class AddIntegerTrainer implements Trainer {
 
   @Override
   public MiniBatchResult runMiniBatch(final Collection miniBatchData) {
+    resetTracers();
+
     // sleep to simulate computation
     computeTracer.startTimer();
     try {
@@ -179,5 +181,11 @@ final class AddIntegerTrainer implements Trainer {
       }
     }
     return isSuccess;
+  }
+
+  private void resetTracers() {
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+    computeTracer.resetTrace();
   }
 }
