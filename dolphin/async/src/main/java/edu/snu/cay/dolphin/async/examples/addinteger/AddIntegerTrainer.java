@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -44,7 +43,7 @@ final class AddIntegerTrainer implements Trainer {
    */
   private static final int NUM_VALIDATE_RETRIES = 20;
 
-  private final ParameterWorker<Integer, Integer, Integer> parameterWorker;
+  private final ModelAccessor<Integer, Integer, Integer> modelAccessor;
 
   /**
    * The integer to be added to each key in an update.
@@ -72,7 +71,7 @@ final class AddIntegerTrainer implements Trainer {
   private final Tracer computeTracer;
 
   @Inject
-  private AddIntegerTrainer(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
+  private AddIntegerTrainer(final ModelAccessor<Integer, Integer, Integer> modelAccessor,
                             @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                             @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
@@ -80,7 +79,7 @@ final class AddIntegerTrainer implements Trainer {
                             @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                             @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
                             @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData) {
-    this.parameterWorker = parameterWorker;
+    this.modelAccessor = modelAccessor;
     this.delta = delta;
     this.numberOfKeys = numberOfKeys;
     this.computeTime = computeTime;
@@ -116,11 +115,11 @@ final class AddIntegerTrainer implements Trainer {
 
     for (int key = 0; key < numberOfKeys; key++) {
       pushTracer.startTimer();
-      parameterWorker.push(key, delta);
+      modelAccessor.push(key, delta);
       pushTracer.recordTime(1);
 
       pullTracer.startTimer();
-      final Integer value = parameterWorker.pull(key);
+      final Integer value = modelAccessor.pull(key);
       pullTracer.recordTime(1);
       LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{key, value});
     }
@@ -172,7 +171,7 @@ final class AddIntegerTrainer implements Trainer {
     LOG.log(Level.INFO, "Start validation");
     boolean isSuccess = true;
     for (int key = 0; key < numberOfKeys; key++) {
-      final int result = parameterWorker.pull(key);
+      final int result = modelAccessor.pull(key);
 
       if (expectedResult != result) {
         LOG.log(Level.WARNING, "For key {0}, expected value {1} but received {2}",

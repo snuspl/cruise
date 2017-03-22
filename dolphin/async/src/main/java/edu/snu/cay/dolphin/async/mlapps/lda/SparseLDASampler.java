@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import edu.snu.cay.dolphin.async.DolphinParameters;
-import edu.snu.cay.dolphin.async.ModelAccessor;
+import edu.snu.cay.dolphin.async.ModelHolder;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.annotations.Parameter;
@@ -34,7 +34,7 @@ import java.util.logging.Logger;
  * 15th ACM SIGKDD international conference on Knowledge discovery and data mining, pages 937–946. ACM, 2009.
  */
 final class SparseLDASampler {
-  private static final String MSG_GET_MODEL_FAILED = "Model is not set via ModelAccessor.resetModel()";
+  private static final String MSG_GET_MODEL_FAILED = "Model is not set via ModelHolder.resetModel()";
   private static final Logger LOG = Logger.getLogger(SparseLDASampler.class.getName());
 
   private final double alpha;
@@ -55,7 +55,7 @@ final class SparseLDASampler {
   /**
    * Allows to access and update the latest model.
    */
-  private final ModelAccessor<LDAModel> modelAccessor;
+  private final ModelHolder<LDAModel> modelHolder;
 
   @Inject
   private SparseLDASampler(@Parameter(Alpha.class) final double alpha,
@@ -63,12 +63,12 @@ final class SparseLDASampler {
                            @Parameter(NumTopics.class) final int numTopics,
                            @Parameter(NumVocabs.class) final int numVocabs,
                            @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
-                           final ModelAccessor<LDAModel> modelAccessor) {
+                           final ModelHolder<LDAModel> modelHolder) {
     this.alpha = alpha;
     this.beta = beta;
     this.numTopics = numTopics;
     this.numVocabs = numVocabs;
-    this.modelAccessor = modelAccessor;
+    this.modelHolder = modelHolder;
 
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
@@ -88,7 +88,7 @@ final class SparseLDASampler {
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
         final Future<TopicChanges> future = executor.submit(() -> {
           final List<Document> drainedInstances = new ArrayList<>(drainSize);
-          final LDAModel model = modelAccessor.getModel()
+          final LDAModel model = modelHolder.getModel()
               .orElseThrow(() -> new RuntimeException(MSG_GET_MODEL_FAILED));
 
           int count = 0;

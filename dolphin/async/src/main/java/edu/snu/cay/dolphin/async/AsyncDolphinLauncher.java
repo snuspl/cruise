@@ -170,6 +170,7 @@ public final class AsyncDolphinLauncher {
           .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
           .bindImplementation(DataParser.class, asyncDolphinConfiguration.getParserClass())
           .bindImplementation(TrainingDataProvider.class, TrainingDataProviderImpl.class)
+          .bindImplementation(ModelAccessor.class, ModelAccessorPSImpl.class)
           .bindNamedParameter(DolphinParameters.MaxNumEpochs.class,
               Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.MaxNumEpochs.class)))
           .bindNamedParameter(DolphinParameters.MiniBatchSize.class,

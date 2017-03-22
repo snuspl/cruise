@@ -19,7 +19,6 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.metric.Tracer;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -47,7 +46,7 @@ final class AddVectorTrainer implements Trainer {
    */
   private static final int NUM_VALIDATE_RETRIES = 20;
 
-  private final ParameterWorker<Integer, Integer, Vector> parameterWorker;
+  private final ModelAccessor<Integer, Integer, Vector> modelAccessor;
 
   /**
    * The integer to be added to each key in an update.
@@ -75,7 +74,7 @@ final class AddVectorTrainer implements Trainer {
   private final Tracer computeTracer;
 
   @Inject
-  private AddVectorTrainer(final ParameterWorker<Integer, Integer, Vector> parameterWorker,
+  private AddVectorTrainer(final ModelAccessor<Integer, Integer, Vector> modelAccessor,
                            @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                            @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                            @Parameter(ExampleParameters.DeltaValue.class) final int delta,
@@ -83,7 +82,7 @@ final class AddVectorTrainer implements Trainer {
                            @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
                            @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
                            @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData) {
-    this.parameterWorker = parameterWorker;
+    this.modelAccessor = modelAccessor;
     this.delta = delta;
     this.keyList = new ArrayList<>(numberOfKeys);
     for (int key = 0; key < numberOfKeys; key++) {
@@ -114,7 +113,7 @@ final class AddVectorTrainer implements Trainer {
 
     // 1. pull model to compute with
     pullTracer.startTimer();
-    final List<Vector> valueList = parameterWorker.pull(keyList);
+    final List<Vector> valueList = modelAccessor.pull(keyList);
     pullTracer.recordTime(valueList.size());
     LOG.log(Level.FINE, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
@@ -131,7 +130,7 @@ final class AddVectorTrainer implements Trainer {
     // 3. push computed model
     pushTracer.startTimer();
     for (final int key : keyList) {
-      parameterWorker.push(key, delta);
+      modelAccessor.push(key, delta);
     }
     pushTracer.recordTime(keyList.size());
 
@@ -182,7 +181,7 @@ final class AddVectorTrainer implements Trainer {
     LOG.log(Level.INFO, "Start validation");
     boolean isSuccess = true;
 
-    final List<Vector> valueList = parameterWorker.pull(keyList);
+    final List<Vector> valueList = modelAccessor.pull(keyList);
     LOG.log(Level.FINE, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
     for (int idx = 0; idx < keyList.size(); idx++) {
