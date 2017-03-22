@@ -373,7 +373,13 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
   }
 
   private int getNumMetricSources(final Map<String, List<EvaluatorParameters>> evalParams) {
-    return evalParams.keySet().size();
+    int validMetricSources = 0;
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : evalParams.entrySet()) {
+      if (!entry.getValue().isEmpty()) {
+        validMetricSources++;
+      }
+    }
+    return validMetricSources;
   }
 
   /**

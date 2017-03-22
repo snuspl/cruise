@@ -141,14 +141,30 @@ public final class MetricManager {
     return validationInfo != null && validationInfo.containsKey(srcId);
   }
 
+  /**
+   * Returns a map that contains mini-batch metrics from workers.
+   * Key is a worker id and value is a list of {@link EvaluatorParameters} from the corresponding worker.
+   * @return a map between worker id and its mini-batch metrics
+   */
   public Map<String, List<EvaluatorParameters>> getWorkerMiniBatchMetrics() {
     return copyMetrics(metricStore.getWorkerMiniBatchMetrics());
   }
 
+  /**
+   * Returns a map that contains epoch metrics from workers.
+   * Key is a worker id and value is a list of {@link EvaluatorParameters} from the corresponding worker.
+   * The list of a worker is empty, when the worker still does not report valid epoch metrics.
+   * @return a map between worker id and its epoch metrics
+   */
   public Map<String, List<EvaluatorParameters>> getWorkerEpochMetrics() {
     return copyMetrics(metricStore.getWorkerEpochMetrics());
   }
 
+  /**
+   * Returns a map that contains metrics from servers.
+   * Key is a server id and value is a list of {@link EvaluatorParameters} from the corresponding server.
+   * @return a map between server id and its metrics
+   */
   public Map<String, List<EvaluatorParameters>> getServerMetrics() {
     return copyMetrics(metricStore.getServerMetrics());
   }
