@@ -135,10 +135,10 @@ final class TestingOrchestrator implements OptimizationOrchestrator {
     }
 
     // 2) Process the received metrics (e.g., calculate the EMA of metrics).
-    final List<EvaluatorParameters> processedServerMetrics = MetricProcessor.processMetricsForOptimization(
-        Constants.NAMESPACE_SERVER, currentServerMetrics, 0, 0);
-    final List<EvaluatorParameters> processedWorkerMetrics = MetricProcessor.processMetricsForOptimization(
-        Constants.NAMESPACE_WORKER, currentWorkerMiniBatchMetrics, 0, 0);
+    final List<EvaluatorParameters> processedServerMetrics =
+        MetricProcessor.processServerMetrics(currentServerMetrics, 0, 0);
+    final List<EvaluatorParameters> processedWorkerMetrics =
+        MetricProcessor.processWorkerMetrics(currentWorkerMiniBatchMetrics, 0, 0);
 
     // 3) Check that the processed metrics suffice to undergo an optimization cycle.
     // processed(*)Metrics of size less that the number of evaluators running in each space implies that

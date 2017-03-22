@@ -157,10 +157,10 @@ public final class OptimizationOrchestratorImpl implements OptimizationOrchestra
     }
 
     // 3) Process the received metrics (e.g., calculate the EMA of metrics).
-    final List<EvaluatorParameters> processedServerMetrics = MetricProcessor.processMetricsForOptimization(
-        Constants.NAMESPACE_SERVER, currentServerMetrics, metricWeightFactor, movingAvgWindowSize);
-    final List<EvaluatorParameters> processedWorkerMetrics = MetricProcessor.processMetricsForOptimization(
-        Constants.NAMESPACE_WORKER, currentWorkerMiniBatchMetrics, metricWeightFactor, movingAvgWindowSize);
+    final List<EvaluatorParameters> processedServerMetrics = MetricProcessor.processServerMetrics(
+        currentServerMetrics, metricWeightFactor, movingAvgWindowSize);
+    final List<EvaluatorParameters> processedWorkerMetrics = MetricProcessor.processWorkerMetrics(
+        currentWorkerMiniBatchMetrics, metricWeightFactor, movingAvgWindowSize);
 
     // 4) Check that the processed metrics suffice to undergo an optimization cycle.
     // processed metrics of size less than the number of evaluators running in each space implies that
