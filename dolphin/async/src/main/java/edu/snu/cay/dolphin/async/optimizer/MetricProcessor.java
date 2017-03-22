@@ -47,7 +47,6 @@ public final class MetricProcessor {
    * @param movingAvgWindowSize moving average window size for applying EMA to the set of collected metrics
    * @return the exponential moving average value
    */
-  // TODO #883: EMA must be applied to the actual performance metric
   private static double calculateExponentialMovingAverage(
       final List<EvaluatorParameters> evalParams,
       final ToDoubleFunction<EvaluatorParameters> targetMetricFunction,
@@ -82,6 +81,7 @@ public final class MetricProcessor {
    * @param movingAvgWindowSize moving average window size for applying EMA to the set of collected metrics
    * @return a processed metrics
    */
+  // TODO #883: EMA must be applied to the actual performance metric
   public static List<EvaluatorParameters> processServerMetrics(final Map<String, List<EvaluatorParameters>> rawMetrics,
                                                                final double metricWeightFactor,
                                                                final int movingAvgWindowSize) {
@@ -125,6 +125,7 @@ public final class MetricProcessor {
    * @param movingAvgWindowSize moving average window size for applying EMA to the set of collected metrics
    * @return a processed metrics
    */
+  // TODO #883: EMA must be applied to the actual performance metric
   public static List<EvaluatorParameters> processWorkerMetrics(final Map<String, List<EvaluatorParameters>> rawMetrics,
                                                                final double metricWeightFactor,
                                                                final int movingAvgWindowSize) {
