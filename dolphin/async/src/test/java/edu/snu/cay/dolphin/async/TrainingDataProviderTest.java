@@ -63,6 +63,7 @@ public class TrainingDataProviderTest {
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindImplementation(BlockFactory.class, BlockFactoryImpl.class)
+        .bindImplementation(TrainingDataProvider.class, TrainingDataProviderImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(LOCAL_STORE_ID))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_MEMORY_STORES))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
