@@ -38,8 +38,8 @@ import java.util.logging.Logger;
  */
 @ThreadSafe
 @TaskSide
-final class TrainingDataProviderImpl<K, V> implements TrainingDataProvider<K, V> {
-  private static final Logger LOG = Logger.getLogger(TrainingDataProviderImpl.class.getName());
+final class EMTrainingDataProvider<K, V> implements TrainingDataProvider<K, V> {
+  private static final Logger LOG = Logger.getLogger(EMTrainingDataProvider.class.getName());
 
   private final List<K> trainingDataKeys = Collections.synchronizedList(new LinkedList<>());
 
@@ -50,10 +50,10 @@ final class TrainingDataProviderImpl<K, V> implements TrainingDataProvider<K, V>
   private final DataParser<V> dataParser;
 
   @Inject
-  private TrainingDataProviderImpl(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
-                                   final MemoryStore<K> memoryStore,
-                                   final DataIdFactory<K> dataIdFactory,
-                                   final DataParser<V> dataParser) {
+  private EMTrainingDataProvider(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
+                                 final MemoryStore<K> memoryStore,
+                                 final DataIdFactory<K> dataIdFactory,
+                                 final DataParser<V> dataParser) {
     this.miniBatchSize = miniBatchSize;
     this.memoryStore = memoryStore;
     this.dataIdFactory = dataIdFactory;
