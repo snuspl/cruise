@@ -87,7 +87,6 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider 
 
     final Map<K, V> nextTrainingData = new HashMap<>();
     for (final K key : nextTrainingDataKeyList) {
-      // TODO #464: Add getList() API to MemoryStore
       final V value = trainingDataTable.get(key);
       if (value == null) {
         continue;
