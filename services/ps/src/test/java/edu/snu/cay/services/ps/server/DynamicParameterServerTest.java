@@ -34,6 +34,7 @@ import edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer;
 import edu.snu.cay.services.ps.server.impl.dynamic.EMUpdateFunctionForPS;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
 import edu.snu.cay.utils.ThreadUtils;
+import edu.snu.cay.utils.test.IntegrationTests;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -42,6 +43,7 @@ import org.htrace.SpanReceiver;
 import org.htrace.TraceInfo;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +62,7 @@ import static org.mockito.Mockito.*;
 /**
  * Tests for {@link DynamicParameterServer}.
  */
+@Category(IntegrationTests.class)
 public final class DynamicParameterServerTest {
   private static final long CLOSE_TIMEOUT = 20000;
 

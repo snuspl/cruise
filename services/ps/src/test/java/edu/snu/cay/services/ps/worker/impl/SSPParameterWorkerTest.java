@@ -47,9 +47,7 @@ import org.htrace.TraceInfo;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.Stopwatch;
 import org.junit.rules.TestRule;
-import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -158,13 +156,6 @@ public final class SSPParameterWorkerTest {
     }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
   }
 
-  @Rule
-  public final Stopwatch stopWatch = new Stopwatch() {
-    @Override
-    protected void succeeded(final long nanos, final Description description) {
-      System.out.println(description.getMethodName() + " succeeded, time taken " + nanos / 1000000000.0);
-    }
-  };
   /**
    * Test that {@link SSPParameterWorker#close(long)} does indeed block further operations from being processed.
    */

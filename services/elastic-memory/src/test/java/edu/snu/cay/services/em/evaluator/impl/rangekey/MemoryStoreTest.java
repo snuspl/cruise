@@ -31,10 +31,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.htrace.SpanReceiver;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.Stopwatch;
-import org.junit.runner.Description;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -80,13 +77,6 @@ public final class MemoryStoreTest {
     ownershipCache.triggerInitialization();
   }
 
-  @Rule
-  public final Stopwatch stopWatch = new Stopwatch() {
-    @Override
-    protected void succeeded(final long nanos, final Description description) {
-      System.out.println(description.getMethodName() + " succeeded, time taken " + nanos / 1000000000.0);
-    }
-  };
   /**
    * Multithreading test for {@code put}.
    * Check that the consistency of a {@code SubMemoryStore} is preserved

@@ -15,9 +15,11 @@
  */
 package edu.snu.cay.services.evalmanager.impl;
 
+import edu.snu.cay.utils.test.IntensiveTests;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 /**
  * Tests that {@link HeterogeneousEvalManager} requests for evaluators and handles REEF events correctly.
@@ -53,6 +55,7 @@ public final class HeterogeneousEvalManagerTest {
    * Checks that context stack is built correctly.
    */
   @Test
+  @Category(IntensiveTests.class)
   public void testMultiplePlanMultipleContext() {
     evaluatorManagerTestHelper.testMultiplePlanMultipleContext();
   }

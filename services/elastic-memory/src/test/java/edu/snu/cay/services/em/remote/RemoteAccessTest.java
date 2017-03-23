@@ -43,7 +43,6 @@ public class RemoteAccessTest {
   private static final int TIMEOUT_MS = 100000;
 
   @Test
-  @Category(IntegrationTests.class)
   public void runSingleKeyAccessTest() throws InjectionException {
     final boolean rangeSupport = false;
     final LauncherStatus status = runTest(rangeSupport);
@@ -52,7 +51,6 @@ public class RemoteAccessTest {
   }
 
   @Test
-  @Category(IntegrationTests.class)
   public void runRangeKeyAccessTest() throws InjectionException {
     final boolean rangeSupport = true;
     final LauncherStatus status = runTest(rangeSupport);

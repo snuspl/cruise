@@ -38,9 +38,7 @@ import org.htrace.TraceInfo;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.Stopwatch;
 import org.junit.rules.TestRule;
-import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -101,14 +99,6 @@ public final class AsyncParameterWorkerTest {
     workerHandler = injector.getInstance(WorkerHandler.class);
   }
 
-  @Rule
-  public final Stopwatch stopWatch = new Stopwatch() {
-    @Override
-    protected void succeeded(final long nanos, final Description description) {
-      System.out.println(description.getMethodName() + " succeeded, time taken " + nanos / 1000000000.0);
-    }
-  };
-
   /**
    * Test that {@link AsyncParameterWorker#close(long)} does indeed block further operations from being processed.
    */
@@ -118,7 +108,6 @@ public final class AsyncParameterWorkerTest {
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
     prepare(TIMEOUT_NO_RETRY);
     ParameterWorkerTestUtil.close(parameterWorker, mockSender, workerHandler);
-    stopWatch.runtime(TimeUnit.MILLISECONDS);
   }
 
   /**
