@@ -115,6 +115,11 @@
       <artifactId>httpasyncclient</artifactId>
       <version>4.1.2</version>
     </dependency>
+    <dependency>
+      <groupId>edu.snu.cay.services</groupId>
+      <artifactId>elastic-tables</artifactId>
+      <version>0.1-SNAPSHOT</version>
+    </dependency>
   </dependencies>
 
   <build>
