@@ -41,9 +41,9 @@ import static junit.framework.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests for {@link TrainingDataProvider} provides training data instances for mini-batches correctly.
+ * Tests for {@link EMTrainingDataProvider} provides training data instances for mini-batches correctly.
  */
-public class TrainingDataProviderTest {
+public class EMTrainingDataProviderTest {
   private static final int MINI_BATCH_SIZE = 5;
   private static final int NUM_TOTAL_BLOCKS = 0x10;
   private static final int BLOCK_SIZE = 128;
