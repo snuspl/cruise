@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,10 @@ package edu.snu.cay.dolphin.async.mlapps.lasso;
 import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.metric.Tracer;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -68,11 +65,8 @@ final class LassoTrainer implements Trainer<LassoData> {
   private final VectorFactory vectorFactory;
   private final MatrixFactory matrixFactory;
 
-  /**
-   * ParameterWorker object for interacting with the parameter server.
-   */
-  private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
-  
+  private final ModelAccessor<Integer, Vector, Vector> modelAccessor;
+
   /**
    * A list from 0 to {@code numPartitions} that will be used during {@link #pullModels()} and {@link #pushGradients()}.
    */
@@ -97,7 +91,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   private final Tracer computeTracer;
 
   @Inject
-  private LassoTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+  private LassoTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
                        @Parameter(Lambda.class) final double lambda,
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
@@ -105,9 +99,8 @@ final class LassoTrainer implements Trainer<LassoData> {
                        @Parameter(DecayPeriod.class) final int decayPeriod,
                        @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                        final VectorFactory vectorFactory,
-                       final MatrixFactory matrixFactory,
-                       final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
-    this.parameterWorker = parameterWorker;
+                       final MatrixFactory matrixFactory) {
+    this.modelAccessor = modelAccessor;
     this.numFeatures = numFeatures;
     this.lambda = lambda;
     this.stepSize = stepSize;
@@ -242,7 +235,7 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   private void pullModels() {
     pullTracer.startTimer();
-    final List<Vector> partialModels = parameterWorker.pull(modelPartitionIndices);
+    final List<Vector> partialModels = modelAccessor.pull(modelPartitionIndices);
     pullTracer.recordTime(numPartitions);
     computeTracer.startTimer();
     oldModel = vectorFactory.concatDense(partialModels);
@@ -261,7 +254,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     for (int partitionIndex = 0; partitionIndex < numPartitions; ++partitionIndex) {
       final int partitionStart = partitionIndex * numFeaturesPerPartition;
       final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
-      parameterWorker.push(partitionIndex, vectorFactory.createDenseZeros(numFeaturesPerPartition)
+      modelAccessor.push(partitionIndex, vectorFactory.createDenseZeros(numFeaturesPerPartition)
           .axpy(stepSize, gradient.slice(partitionStart, partitionEnd)));
     }
     pushTracer.recordTime(numPartitions);

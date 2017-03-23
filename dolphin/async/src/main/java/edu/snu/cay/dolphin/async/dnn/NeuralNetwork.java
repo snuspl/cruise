@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
+import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
@@ -22,7 +23,6 @@ import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationParameters.*;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerBase;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -52,10 +52,7 @@ public final class NeuralNetwork {
    */
   private final LayerBase[] layers;
 
-  /**
-   * Parameter worker that provides the updated parameters and gathers gradients for each input instance.
-   */
-  private final ParameterWorker<Integer, LayerParameter, LayerParameter> parameterWorker;
+  private final ModelAccessor<Integer, LayerParameter, LayerParameter> modelAccessor;
 
   /**
    * the empty matrix.
@@ -81,7 +78,7 @@ public final class NeuralNetwork {
    * @param configurationSerializer the serializer to deserialize Tang configurations for layers
    * @param serializedLayerConfSets the set of Tang configurations used to inject layer instances
    * @param inputShape the shape of input data
-   * @param parameterWorker the parameter worker for updating layer parameters
+   * @param modelAccessor the model accessor for updating layer parameters
    * @param matrixFactory the factory to create new matrices
    * @param injector the injector having the matrix factory configuration to be used for injecting layer instances
    */
@@ -91,11 +88,11 @@ public final class NeuralNetwork {
       @Parameter(SerializedLayerConfigurationSet.class) final Set<String> serializedLayerConfSets,
       @Parameter(InputShape.class) final String inputShape,
       @Parameter(NeuralNetworkConfigurationParameters.BatchSize.class) final int batchSize,
-      final ParameterWorker<Integer, LayerParameter, LayerParameter> parameterWorker,
+      final ModelAccessor<Integer, LayerParameter, LayerParameter> modelAccessor,
       final MatrixFactory matrixFactory,
       final Injector injector) {
     this.matrixFactory = matrixFactory;
-    this.parameterWorker = parameterWorker;
+    this.modelAccessor = modelAccessor;
     final Configuration[] layerConfs =
         deserializeLayerConfSetToArray(configurationSerializer, serializedLayerConfSets);
     this.layers = getLayerInstances(injector, layerConfs, inputShape);
@@ -175,7 +172,7 @@ public final class NeuralNetwork {
         parameterGradients[i].getWeightParam().divi(inputSize);
         parameterGradients[i].getBiasParam().divi(inputSize);
 
-        parameterWorker.push(i, parameterGradients[i]);
+        modelAccessor.push(i, parameterGradients[i]);
       }
     }
   }
@@ -184,7 +181,7 @@ public final class NeuralNetwork {
    * Updates the layer parameters by pulling the latest parameters from the parameter servers.
    */
   void updateParameters() {
-    final List<LayerParameter> newParameters = parameterWorker.pull(learnableLayerIndices);
+    final List<LayerParameter> newParameters = modelAccessor.pull(learnableLayerIndices);
     for (int i = 0; i < learnableLayerIndices.size(); ++i) {
       layers[learnableLayerIndices.get(i)].setLayerParameter(newParameters.get(i));
     }

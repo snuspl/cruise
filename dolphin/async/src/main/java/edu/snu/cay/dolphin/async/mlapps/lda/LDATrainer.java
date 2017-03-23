@@ -20,7 +20,6 @@ import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -46,7 +45,7 @@ final class LDATrainer implements Trainer<Document> {
 
   private final MemoryStore<Long> memoryStore;
 
-  private final ParameterWorker<Integer, int[], int[]> parameterWorker;
+  private final ModelAccessor<Integer, int[], int[]> modelAccessor;
 
 
   /**
@@ -57,7 +56,7 @@ final class LDATrainer implements Trainer<Document> {
   /**
    * Allows to access and update the latest model.
    */
-  private final ModelAccessor<LDAModel> modelAccessor;
+  private final ModelHolder<LDAModel> modelHolder;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final Tracer pushTracer;
@@ -68,8 +67,8 @@ final class LDATrainer implements Trainer<Document> {
   private LDATrainer(final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
                      final MemoryStore<Long> memoryStore,
-                     final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                     final ModelAccessor<LDAModel> modelAccessor,
+                     final ModelAccessor<Integer, int[], int[]> modelAccessor,
+                     final ModelHolder<LDAModel> modelHolder,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(NumTopics.class) final int numTopics,
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
@@ -77,7 +76,7 @@ final class LDATrainer implements Trainer<Document> {
     this.sampler = sampler;
     this.statCalculator = statCalculator;
     this.memoryStore = memoryStore;
-    this.parameterWorker = parameterWorker;
+    this.modelAccessor = modelAccessor;
     this.numVocabs = numVocabs;
     this.numTrainerThreads = numTrainerThreads;
 
@@ -88,7 +87,7 @@ final class LDATrainer implements Trainer<Document> {
     }
     this.numTopics = numTopics;
 
-    this.modelAccessor = modelAccessor;
+    this.modelHolder = modelHolder;
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
@@ -144,7 +143,7 @@ final class LDATrainer implements Trainer<Document> {
                                      final int epochIdx) {
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
-    final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
+    final List<int[]> wordTopicCounts = modelAccessor.pull(vocabList);
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
 
     LOG.log(Level.INFO, "Start computing log likelihood");
@@ -156,7 +155,7 @@ final class LDATrainer implements Trainer<Document> {
 
   private void pullModels(final List<Integer> words) {
     pullTracer.startTimer();
-    final List<int[]> topicVectors = parameterWorker.pull(words);
+    final List<int[]> topicVectors = modelAccessor.pull(words);
     pullTracer.recordTime(words.size());
 
     final int[] sparseTopicSummaryVector = topicVectors.remove(words.size() - 1);
@@ -173,7 +172,7 @@ final class LDATrainer implements Trainer<Document> {
       wordTopicVectors.put(words.get(i), topicVectors.get(i));
     }
 
-    modelAccessor.resetModel(new LDAModel(topicSummaryVector, wordTopicVectors));
+    modelHolder.resetModel(new LDAModel(topicSummaryVector, wordTopicVectors));
   }
 
   /**
@@ -216,7 +215,7 @@ final class LDATrainer implements Trainer<Document> {
       computeTracer.recordTime(0);
 
       pushTracer.startTimer();
-      parameterWorker.push(changedWord, parameters);
+      modelAccessor.push(changedWord, parameters);
       pushTracer.recordTime(1);
     }
     changedTopicCount.clear();
