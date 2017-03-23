@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import org.apache.reef.client.LauncherStatus;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.util.ArrayList;
 import java.util.Arrays;
