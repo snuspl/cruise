@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.dnn;
 
+import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.dnn.blas.Matrix;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixFactory;
 import edu.snu.cay.dolphin.async.dnn.blas.MatrixUtils;
@@ -25,7 +26,6 @@ import edu.snu.cay.dolphin.async.dnn.conf.ActivationWithLossLayerConfigurationBu
 import edu.snu.cay.dolphin.async.dnn.conf.FullyConnectedLayerConfigurationBuilder;
 import edu.snu.cay.dolphin.async.dnn.conf.NeuralNetworkConfigurationBuilder;
 import edu.snu.cay.dolphin.async.dnn.layers.LayerParameter;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -229,8 +229,8 @@ public final class NeuralNetworkTest {
             expectedOutput.getLength(), BATCH_SIZE)};
 
     final Injector injector = Tang.Factory.getTang().newInjector(blasConf, neuralNetworkConfiguration);
-    final ParameterWorker mockParameterWorker = mock(ParameterWorker.class);
-    injector.bindVolatileInstance(ParameterWorker.class, mockParameterWorker);
+    final ModelAccessor mockModelAccessor = mock(ModelAccessor.class);
+    injector.bindVolatileInstance(ModelAccessor.class, mockModelAccessor);
     this.neuralNetwork = injector.getInstance(NeuralNetwork.class);
 
     doAnswer(invocation -> {
@@ -240,7 +240,7 @@ public final class NeuralNetworkTest {
       result.add(layerParameterOne);
       result.add(layerParameterTwo);
       return result;
-    }).when(mockParameterWorker).pull(anyObject());
+    }).when(mockModelAccessor).pull(anyObject());
 
     neuralNetwork.updateParameters();
   }

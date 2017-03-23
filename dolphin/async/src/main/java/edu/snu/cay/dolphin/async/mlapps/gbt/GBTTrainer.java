@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.*;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -65,7 +64,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private final int numKeys;
 
-  private final ParameterWorker<Integer, GBTree, List<GBTree>> parameterWorker;
+  private final ModelAccessor<Integer, GBTree, List<GBTree>> modelAccessor;
 
   /**
    * Number of features.
@@ -123,7 +122,8 @@ final class GBTTrainer implements Trainer<GBTData> {
   private final Random random;
 
   @Inject
-  private GBTTrainer(final ParameterWorker<Integer, GBTree, List<GBTree>> parameterWorker,
+  private GBTTrainer(
+                     final ModelAccessor<Integer, GBTree, List<GBTree>> modelAccessor,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(StepSize.class) final double stepSize,
                      @Parameter(Lambda.class) final double lambda,
@@ -133,7 +133,7 @@ final class GBTTrainer implements Trainer<GBTData> {
                      @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                      @Parameter(NumKeys.class) final int numKeys,
                      final GBTMetadataParser metadataParser) {
-    this.parameterWorker = parameterWorker;
+    this.modelAccessor = modelAccessor;
     this.numFeatures = numFeatures;
     this.stepSize = stepSize;
     this.lambda = lambda;
@@ -708,7 +708,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private void pushTree(final GBTree gbTree, final int label) {
     final int chosenKey = random.nextInt(numKeys);
-    parameterWorker.push(label * numKeys + chosenKey, gbTree);
+    modelAccessor.push(label * numKeys + chosenKey, gbTree);
   }
 
   /**
@@ -717,7 +717,7 @@ final class GBTTrainer implements Trainer<GBTData> {
   private List<GBTree> pullAllTrees(final int label) {
     final List<GBTree> forest = new LinkedList<>();
     for (int i = 0; i < numKeys; i++) {
-      forest.addAll(parameterWorker.pull(label * numKeys + i));
+      forest.addAll(modelAccessor.pull(label * numKeys + i));
     }
     return forest;
   }
