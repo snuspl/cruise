@@ -41,7 +41,6 @@ public final class FullyConnectedGpuLayer extends LayerBase {
   private final MatrixFactory matrixFactory;
   private Matrix output;
   private Matrix layerError;
-  private LayerParameter parameterGradient;
 
   /**
    * @param index the index of this layer
@@ -59,10 +58,6 @@ public final class FullyConnectedGpuLayer extends LayerBase {
     this.matrixFactory = matrixFactory;
     this.output = null;
     this.layerError = null;
-
-    final Matrix weightGradient = matrixFactory.create(getShapeLength(outputShape), getShapeLength(getInputShape()));
-    final Matrix biasGradient = matrixFactory.create(getShapeLength(outputShape), 1);
-    this.parameterGradient = new LayerParameter(weightGradient, biasGradient);
   }
 
   /** {@inheritDoc} */
@@ -114,6 +109,10 @@ public final class FullyConnectedGpuLayer extends LayerBase {
   /** {@inheritDoc} */
   @Override
   public LayerParameter generateParameterGradient(final Matrix input, final Matrix nextError) {
+    final Matrix weightGradient = matrixFactory.create(getShapeLength(outputShape), getShapeLength(getInputShape()));
+    final Matrix biasGradient = matrixFactory.create(getShapeLength(outputShape), 1);
+    final LayerParameter parameterGradient = new LayerParameter(weightGradient, biasGradient);
+
     nextError.mmult(input, parameterGradient.getWeightParam());
     nextError.rowSums(parameterGradient.getBiasParam());
     return parameterGradient;
@@ -125,6 +124,5 @@ public final class FullyConnectedGpuLayer extends LayerBase {
 
     MatrixUtils.free(output);
     MatrixUtils.free(layerError);
-    parameterGradient.cleanup();
   }
 }
