@@ -15,25 +15,35 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.utils.Copyable;
-import org.apache.reef.tang.annotations.DefaultImplementation;
-
-import java.util.Optional;
+import java.util.List;
 
 /**
- * Provides a way for Trainer threads to access model.
- * @param <M> Type of the app-specific model.
+ * A class for accessing global model shared by multiple workers.
+ * @param <K> type of keys
+ * @param <P> type of delta values
+ * @param <V> type of values
  */
-@DefaultImplementation(ThreadLocalModelAccessor.class)
-public interface ModelAccessor<M extends Copyable<M>> {
+public interface ModelAccessor<K, P, V> {
 
   /**
-   * Updates the model to the latest one.
+   * Updates value associated with a {@code key} using a {@code deltaValue}.
+   * @param key key of model parameter
+   * @param deltaValue value to push to the servers
    */
-  void resetModel(M model);
+  void push(K key, P deltaValue);
 
   /**
-   * @return the up-to-date model if set through {@link #resetModel}. Otherwise {@link Optional#empty()} is returned.
+   * Fetches a value associated with a certain {@code key}.
+   * @param key key of model parameter
+   * @return value associated with the {@code key}, or {@code null} if there is no associated value
    */
-  Optional<M> getModel();
+  V pull(K key);
+
+  /**
+   * Fetches values associated with certain {@code keys}.
+   * @param keys a list of keys of model parameter
+   * @return a list of values associated with the given {@code keys}.
+   *        Some positions in the list can be {@code null}, if the key has no associated value
+   */
+  List<V> pull(List<K> keys);
 }

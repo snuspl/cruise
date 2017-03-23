@@ -15,35 +15,35 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.utils.Copyable;
+import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 
-import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.Optional;
+import java.util.List;
 
 /**
- * ModelAccessor that provides model assigned to Trainer threads locally.
+ * An {@link ModelAccessor} implementation based on PS.
  */
-@ThreadSafe
-public final class ThreadLocalModelAccessor<M extends Copyable<M>> implements ModelAccessor<M> {
-  private ThreadLocal<M> model;
+public class PSModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
+
+  private final ParameterWorker<K, P, V> parameterWorker;
 
   @Inject
-  private ThreadLocalModelAccessor() {
+  PSModelAccessor(final ParameterWorker<K, P, V> parameterWorker) {
+    this.parameterWorker = parameterWorker;
   }
 
   @Override
-  public void resetModel(final M newModel) {
-    final M copied = newModel.copyOf(); // we keep the model's copy to discard the changes made outside.
-    model = ThreadLocal.withInitial(copied::copyOf);
+  public void push(final K key, final P deltaValue) {
+    parameterWorker.push(key, deltaValue);
   }
 
   @Override
-  public Optional<M> getModel() {
-    if (model == null) {
-      return Optional.empty();
-    } else {
-      return Optional.ofNullable(model.get());
-    }
+  public V pull(final K key) {
+    return parameterWorker.pull(key);
+  }
+
+  @Override
+  public List<V> pull(final List<K> keys) {
+    return parameterWorker.pull(keys);
   }
 }

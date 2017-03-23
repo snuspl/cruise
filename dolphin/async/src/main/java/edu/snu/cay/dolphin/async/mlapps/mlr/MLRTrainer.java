@@ -19,7 +19,6 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.metric.Tracer;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
@@ -41,10 +40,7 @@ import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 final class MLRTrainer implements Trainer<MLRData> {
   private static final Logger LOG = Logger.getLogger(MLRTrainer.class.getName());
 
-  /**
-   * ParameterWorker object used to interact with the parameter server.
-   */
-  private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
+  private final ModelAccessor<Integer, Vector, Vector> modelAccessor;
 
   /**
    * Number of possible classes for a data instance.
@@ -109,7 +105,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   /**
    * Allows to access and update the latest model.
    */
-  private final ModelAccessor<MLRModel> modelAccessor;
+  private final ModelHolder<MLRModel> modelHolder;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final Tracer pushTracer;
@@ -117,7 +113,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   private final Tracer computeTracer;
 
   @Inject
-  private MLRTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+  private MLRTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
                      @Parameter(NumClasses.class) final int numClasses,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
@@ -127,9 +123,9 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
-                     final ModelAccessor<MLRModel> modelAccessor,
+                     final ModelHolder<MLRModel> modelHolder,
                      final VectorFactory vectorFactory) {
-    this.parameterWorker = parameterWorker;
+    this.modelAccessor = modelAccessor;
     this.numClasses = numClasses;
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     if (numFeatures % numFeaturesPerPartition != 0) {
@@ -149,7 +145,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     if (decayPeriod <= 0) {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
-    this.modelAccessor = modelAccessor;
+    this.modelHolder = modelHolder;
 
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
@@ -205,7 +201,7 @@ final class MLRTrainer implements Trainer<MLRData> {
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
         final Future<MLRModel> future = executor.submit(() -> {
           final List<MLRData> drainedInstances = new ArrayList<>(drainSize);
-          final MLRModel model = modelAccessor.getModel()
+          final MLRModel model = modelHolder.getModel()
               .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
           int count = 0;
@@ -249,7 +245,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
 
-    final MLRModel model = modelAccessor.getModel()
+    final MLRModel model = modelHolder.getModel()
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
@@ -277,11 +273,11 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   /**
-   * Pull up-to-date model parameters from server, which become accessible via {@link ModelAccessor#getModel()}.
+   * Pull up-to-date model parameters from server, which become accessible via {@link ModelHolder#getModel()}.
    */
   private void pullModels() {
     pullTracer.startTimer();
-    final List<Vector> partitions = parameterWorker.pull(classPartitionIndices);
+    final List<Vector> partitions = modelAccessor.pull(classPartitionIndices);
     pullTracer.recordTime(partitions.size());
 
     computeTracer.startTimer();
@@ -298,7 +294,7 @@ final class MLRTrainer implements Trainer<MLRData> {
       newParams[classIndex] = oldParams[classIndex].copy();
     }
 
-    modelAccessor.resetModel(new MLRModel(newParams));
+    modelHolder.resetModel(new MLRModel(newParams));
     computeTracer.recordTime(0);
   }
 
@@ -372,7 +368,7 @@ final class MLRTrainer implements Trainer<MLRData> {
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
         final int partitionStart = partitionIndex * numFeaturesPerPartition;
         final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
-        parameterWorker.push(classIndex * numPartitionsPerClass + partitionIndex,
+        modelAccessor.push(classIndex * numPartitionsPerClass + partitionIndex,
             gradient.slice(partitionStart, partitionEnd));
       }
       pushTracer.recordTime(numPartitionsPerClass);
