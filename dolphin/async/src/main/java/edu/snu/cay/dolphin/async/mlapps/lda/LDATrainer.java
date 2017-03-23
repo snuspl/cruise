@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,8 @@
 package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import com.google.common.collect.Table;
-import edu.snu.cay.common.metric.MetricsMsgSender;
-import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.metric.Tracer;
-import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -62,13 +59,7 @@ final class LDATrainer implements Trainer<Document> {
    */
   private final ModelAccessor<LDAModel> modelAccessor;
 
-  /**
-   * Number of training data instances to be processed per mini-batch.
-   */
-  private final int miniBatchSize;
-
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -78,7 +69,6 @@ final class LDATrainer implements Trainer<Document> {
                      final LDAStatCalculator statCalculator,
                      final MemoryStore<Long> memoryStore,
                      final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                     final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
                      final ModelAccessor<LDAModel> modelAccessor,
                      @Parameter(NumVocabs.class) final int numVocabs,
                      @Parameter(NumTopics.class) final int numTopics,
@@ -89,7 +79,6 @@ final class LDATrainer implements Trainer<Document> {
     this.memoryStore = memoryStore;
     this.parameterWorker = parameterWorker;
     this.numVocabs = numVocabs;
-    this.miniBatchSize = miniBatchSize;
     this.numTrainerThreads = numTrainerThreads;
 
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
@@ -100,7 +89,6 @@ final class LDATrainer implements Trainer<Document> {
     this.numTopics = numTopics;
 
     this.modelAccessor = modelAccessor;
-    this.metricsMsgSender = metricsMsgSender;
     this.pushTracer = new Tracer();
     this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
@@ -127,11 +115,9 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   @Override
-  public void runMiniBatch(final Collection<Document> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+  public MiniBatchResult runMiniBatch(final Collection<Document> miniBatchData) {
     resetTracers();
 
-    final int epochIdx = miniBatchInfo.getEpochIdx();
-    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
     final long miniBatchStartTime = System.currentTimeMillis();
 
     final List<Integer> words = getKeys(miniBatchData);
@@ -149,15 +135,13 @@ final class LDATrainer implements Trainer<Document> {
     pushAndResetGradients(aggregated);
 
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-    final WorkerMetrics miniBatchMetric =
-        buildMiniBatchMetric(epochIdx, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
-    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
-    sendMetrics(miniBatchMetric);
+
+    return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
   }
 
   @Override
-  public void onEpochFinished(final Collection<Document> epochData,
-                              final EpochInfo epochInfo) {
+  public EpochResult onEpochFinished(final Collection<Document> epochData,
+                                     final int epochIdx) {
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
     final List<int[]> wordTopicCounts = parameterWorker.pull(vocabList);
@@ -167,15 +151,7 @@ final class LDATrainer implements Trainer<Document> {
     final double docLLH = statCalculator.computeDocLLH(epochData);
     final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
 
-    final int epochIdx = epochInfo.getEpochIdx();
-    final int numMiniBatches = epochInfo.getNumMiniBatches();
-    final int numEMBlocks = epochInfo.getNumEMBlocks();
-    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
-
-    final WorkerMetrics epochMetric =
-        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochData.size(), docLLH, wordLLH, epochElapsedTime);
-    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
-    sendMetrics(epochMetric);
+    return buildEpochResult(docLLH, wordLLH);
   }
 
   private void pullModels(final List<Integer> words) {
@@ -274,54 +250,21 @@ final class LDATrainer implements Trainer<Document> {
     pullTracer.resetTrace();
   }
 
-  private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", workerMetrics);
-
-    metricsMsgSender.send(workerMetrics);
-  }
-
-  private WorkerMetrics buildMiniBatchMetric(final int epochIdx, final int miniBatchIdx,
-                                             final int numProcessedDataItemCount, final double elapsedTime) {
-    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
-
-    return WorkerMetrics.newBuilder()
-        .setMetrics(Metrics.newBuilder()
-            .setData(appMetricMap)
-            .build())
-        .setEpochIdx(epochIdx)
-        .setMiniBatchSize(miniBatchSize)
-        .setMiniBatchIdx(miniBatchIdx)
-        .setProcessedDataItemCount(numProcessedDataItemCount)
-        .setTotalTime(elapsedTime)
-        .setTotalCompTime(computeTracer.totalElapsedTime())
+  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
+    return MiniBatchResult.newBuilder()
+        .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
+        .setComputeTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
         .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
         .setAvgPushTime(pushTracer.avgTimePerElem())
-        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int epochIdx, final int numMiniBatchForEpoch,
-                                         final int numDataBlocks, final int numProcessedDataItemCount,
-                                         final double docLLH, final double wordLLH,
-                                         final double elapsedTime) {
-    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(MetricKeys.DOC_LLH, docLLH);
-    appMetricMap.put(MetricKeys.WORD_LLH, wordLLH);
-    parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
-
-    return WorkerMetrics.newBuilder()
-        .setMetrics(Metrics.newBuilder()
-            .setData(appMetricMap)
-            .build())
-        .setEpochIdx(epochIdx)
-        .setMiniBatchSize(miniBatchSize)
-        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
-        .setNumDataBlocks(numDataBlocks)
-        .setProcessedDataItemCount(numProcessedDataItemCount)
-        .setTotalTime(elapsedTime)
+  private EpochResult buildEpochResult(final double docLLH, final double wordLLH) {
+    return EpochResult.newBuilder()
+        .addAppMetric(MetricKeys.DOC_LLH, docLLH)
+        .addAppMetric(MetricKeys.WORD_LLH, wordLLH)
         .build();
   }
 }

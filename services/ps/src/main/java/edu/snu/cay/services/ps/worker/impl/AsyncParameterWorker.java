@@ -462,7 +462,7 @@ public final class AsyncParameterWorker<K, P, V> implements ParameterWorker<K, P
    * {@inheritDoc}
    */
   @Override
-  public ParameterWorkerMetrics buildParameterWorkerMetrics() {
+  public ParameterWorkerMetrics buildAndResetMetrics() {
     final Pair<Integer, Double> totalPullStat = summarizeAndResetStats(pullStats);
     final Pair<Integer, Double> totalPushStat = summarizeAndResetStats(pushStats);
     final Pair<Integer, Double> totalNetworkStat = summarizeAndResetStats(networkStats);

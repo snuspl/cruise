@@ -19,10 +19,12 @@ import edu.snu.cay.dolphin.async.examples.addinteger.AddIntegerREEF;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.utils.TestLoggingConfig;
+import edu.snu.cay.utils.test.IntegrationTests;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.assertEquals;
 
@@ -34,6 +36,7 @@ import static org.junit.Assert.assertEquals;
 public final class ReconfigurationTest {
 
   @Test
+  @Category(IntegrationTests.class)
   public void testReconfigurationWithSampleOptimizers() {
     final String[] args = getArguments();
 

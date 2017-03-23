@@ -19,11 +19,7 @@ import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.metric.MetricsMsgSender;
-import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.dolphin.async.DolphinParameters;
-import edu.snu.cay.dolphin.async.EpochInfo;
-import edu.snu.cay.dolphin.async.MiniBatchInfo;
-import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
@@ -66,8 +62,6 @@ final class LassoTrainer implements Trainer<LassoData> {
   private final double decayRate;
   private final int decayPeriod;
 
-  private final int miniBatchSize;
-
   private Vector oldModel;
   private Vector newModel;
 
@@ -97,7 +91,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   /**
    * To collect metric data.
    */
-  private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
+  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -110,7 +104,6 @@ final class LassoTrainer implements Trainer<LassoData> {
                        @Parameter(DecayRate.class) final double decayRate,
                        @Parameter(DecayPeriod.class) final int decayPeriod,
                        @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                       @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                        final VectorFactory vectorFactory,
                        final MatrixFactory matrixFactory,
                        final MetricsMsgSender<WorkerMetrics> metricsMsgSender) {
@@ -126,7 +119,6 @@ final class LassoTrainer implements Trainer<LassoData> {
     if (decayPeriod <= 0) {
       throw new IllegalArgumentException("decay_period must be a positive value");
     }
-    this.miniBatchSize = miniBatchSize;
     this.vectorFactory = vectorFactory;
     this.matrixFactory = matrixFactory;
     this.oldModel = vectorFactory.createDenseZeros(numFeatures);
@@ -140,7 +132,6 @@ final class LassoTrainer implements Trainer<LassoData> {
       modelPartitionIndices.add(partitionIdx);
     }
 
-    this.metricsMsgSender = metricsMsgSender;
     this.pullTracer = new Tracer();
     this.pushTracer = new Tracer();
     this.computeTracer = new Tracer();
@@ -160,11 +151,9 @@ final class LassoTrainer implements Trainer<LassoData> {
    * 3) Push value to server.
    */
   @Override
-  public void runMiniBatch(final Collection<LassoData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+  public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchData) {
     resetTracer();
 
-    final int epochIdx = miniBatchInfo.getEpochIdx();
-    final int miniBatchIdx = miniBatchInfo.getMiniBatchIdx();
     final int numInstancesToProcess = miniBatchData.size();
     final long miniBatchStartTime = System.currentTimeMillis();
 
@@ -202,16 +191,11 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
-    final WorkerMetrics miniBatchMetric =
-        buildMiniBatchMetric(epochIdx, miniBatchIdx, numInstancesToProcess, miniBatchElapsedTime);
-    LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
-    sendMetrics(miniBatchMetric);
+    return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
   }
 
   @Override
-  public void onEpochFinished(final Collection<LassoData> epochData, final EpochInfo epochInfo) {
-    final int epochIdx = epochInfo.getEpochIdx();
-
+  public EpochResult onEpochFinished(final Collection<LassoData> epochData, final int epochIdx) {
     // Calculate the loss value.
     pullModels();
 
@@ -223,22 +207,14 @@ final class LassoTrainer implements Trainer<LassoData> {
       }
     }
 
-    final int numMiniBatches = epochInfo.getNumMiniBatches();
-    final int numEMBlocks = epochInfo.getNumEMBlocks();
-    final double epochElapsedTime = (System.currentTimeMillis() - epochInfo.getEpochStartTime()) / 1000.0D;
-
-    final WorkerMetrics epochMetric =
-        buildEpochMetric(epochIdx, numMiniBatches, numEMBlocks, epochData.size(), sampleLossSum, epochElapsedTime);
-
-    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
-    sendMetrics(epochMetric);
-
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
       stepSize *= decayRate;
       LOG.log(Level.INFO, "{0} epochs have passed. Step size decays from {1} to {2}",
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
+
+    return buildEpochResult(sampleLossSum);
   }
 
   /**
@@ -333,55 +309,22 @@ final class LassoTrainer implements Trainer<LassoData> {
     computeTracer.resetTrace();
   }
 
-  private void sendMetrics(final WorkerMetrics workerMetrics) {
-    LOG.log(Level.FINE, "Sending WorkerMetrics {0}", workerMetrics);
-
-    metricsMsgSender.send(workerMetrics);
-  }
-
-  private WorkerMetrics buildMiniBatchMetric(final int epochIdx, final int miniBatchIdx,
-                                             final int numProcessedDataItemCount, final double elapsedTime) {
-    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime);
-
-    return WorkerMetrics.newBuilder()
-        .setMetrics(Metrics.newBuilder()
-            .setData(appMetricMap)
-            .build())
-        .setEpochIdx(epochIdx)
-        .setMiniBatchSize(miniBatchSize)
-        .setMiniBatchIdx(miniBatchIdx)
-        .setProcessedDataItemCount(numProcessedDataItemCount)
-        .setTotalTime(elapsedTime)
-        .setTotalCompTime(computeTracer.totalElapsedTime())
+  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
+    return MiniBatchResult.newBuilder()
+        .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
+        .setComputeTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
         .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
         .setAvgPushTime(pushTracer.avgTimePerElem())
-        .setParameterWorkerMetrics(parameterWorker.buildParameterWorkerMetrics())
         .build();
   }
 
-  private WorkerMetrics buildEpochMetric(final int epochIdx, final int numMiniBatchForEpoch,
-                                         final int numDataBlocks, final int numProcessedDataItemCount,
-                                         final double loss, final double elapsedTime) {
-    final Map<CharSequence, Double> appMetricMap = new HashMap<>();
-    appMetricMap.put(MetricKeys.SAMPLE_LOSS_SUM, loss);
-    parameterWorker.buildParameterWorkerMetrics(); // clear ParameterWorker metrics
-
-    return WorkerMetrics.newBuilder()
-        .setMetrics(Metrics.newBuilder()
-            .setData(appMetricMap)
-            .build())
-        .setEpochIdx(epochIdx)
-        .setMiniBatchSize(miniBatchSize)
-        .setNumMiniBatchForEpoch(numMiniBatchForEpoch)
-        .setNumDataBlocks(numDataBlocks)
-        .setProcessedDataItemCount(numProcessedDataItemCount)
-        .setTotalTime(elapsedTime)
+  private EpochResult buildEpochResult(final double loss) {
+    return EpochResult.newBuilder()
+        .addAppMetric(MetricKeys.SAMPLE_LOSS_SUM, loss)
         .build();
   }
-
   /**
    * @return {@code true} if the value is close to 0.
    */

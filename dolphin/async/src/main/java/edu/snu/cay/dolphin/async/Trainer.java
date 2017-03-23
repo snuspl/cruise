@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,17 +54,18 @@ public interface Trainer<D> {
   /**
    * Main method of this trainer, which is called every mini-batch.
    * @param miniBatchData the training data to process in the batch
-   *                      (at most {@link edu.snu.cay.common.param.Parameters.MiniBatchSize} instances.
-   * @param miniBatchInfo the metadata of the mini-batch (e.g., epochIdx, miniBatchIdx)
+   *                      (at most {@link edu.snu.cay.dolphin.async.DolphinParameters.MiniBatchSize} instances.
+   * @return a result of the mini-batch
    */
-  void runMiniBatch(Collection<D> miniBatchData, MiniBatchInfo miniBatchInfo);
+  MiniBatchResult runMiniBatch(Collection<D> miniBatchData);
 
   /**
    * EventHandler that is called when an epoch is finished.
    * @param epochData the training data that has been processed in the epoch
-   * @param epochInfo the metadata of the epoch (e.g., epochIdx, the number of mini-batches)
+   * @param epochIdx the index of the epoch
+   * @return a result of the epoch
    */
-  void onEpochFinished(Collection<D> epochData, EpochInfo epochInfo);
+  EpochResult onEpochFinished(Collection<D> epochData, int epochIdx);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

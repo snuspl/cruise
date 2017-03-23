@@ -16,10 +16,7 @@
 package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.DolphinParameters;
-import edu.snu.cay.dolphin.async.EpochInfo;
-import edu.snu.cay.dolphin.async.MiniBatchInfo;
-import edu.snu.cay.dolphin.async.Trainer;
+import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.*;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.Tuple3;
@@ -169,7 +166,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    * Build tree for this miniBatchData based on the trees that are already built before this run iteration.
    */
   @Override
-  public void runMiniBatch(final Collection<GBTData> miniBatchData, final MiniBatchInfo miniBatchInfo) {
+  public MiniBatchResult runMiniBatch(final Collection<GBTData> miniBatchData) {
     final List<GBTData> instances = new ArrayList<>(miniBatchData);
     
     // Divide into two cases : Regression / Classification
@@ -182,22 +179,25 @@ final class GBTTrainer implements Trainer<GBTData> {
     } else {
       throw new IllegalArgumentException("valueType must be either numerical type or categorical type.");
     }
+
+    return MiniBatchResult.EMPTY_RESULT;
   }
 
   /**
    * Print the predicted value or label of each data of epochData.
    *
    * @param epochData the training data that has been processed in the epoch
-   * @param epochInfo the metadata of the epoch (e.g., epochIdx, the number of mini-batches)
+   * @param epochIdx the index of the epoch
    */
   @Override
-  public void onEpochFinished(final Collection<GBTData> epochData, final EpochInfo epochInfo) {
-    final int epochIdx = epochInfo.getEpochIdx();
+  public EpochResult onEpochFinished(final Collection<GBTData> epochData, final int epochIdx) {
     final List<GBTData> instances = new ArrayList<>(epochData);
     // This is for the test.
     if (epochIdx == (maxNumEpochs - 1)) {
       showPredictedValues(instances);
     }
+
+    return EpochResult.EMPTY_RESULT;
   }
 
   /**

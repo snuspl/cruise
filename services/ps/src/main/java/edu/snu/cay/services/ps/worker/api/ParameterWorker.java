@@ -64,5 +64,5 @@ public interface ParameterWorker<K, P, V> {
    * Builds metrics related to the parameter worker (pull/push times, encoding time, network time, pending time).
    * @return A json format of the metrics
    */
-  ParameterWorkerMetrics buildParameterWorkerMetrics();
+  ParameterWorkerMetrics buildAndResetMetrics();
 }

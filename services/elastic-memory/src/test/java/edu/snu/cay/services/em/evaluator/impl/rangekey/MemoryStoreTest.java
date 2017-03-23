@@ -24,6 +24,7 @@ import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
 import edu.snu.cay.services.em.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.em.msg.api.EMMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
+import edu.snu.cay.utils.test.IntensiveTests;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -32,6 +33,7 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.htrace.SpanReceiver;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;

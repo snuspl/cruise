@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.dolphin.async.optimizer.parameters.Constants;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
@@ -75,95 +74,102 @@ public final class MetricProcessor {
   }
 
   /**
-   * Processes raw metrics to extract a representative metric for each evaluator.
-   * For servers, the total number of requests and processed times are summed up for average processing time overall.
-   * For workers, the average of processing times are to be used.
-   * @param namespace a namespace that indicates the given metrics are of workers or servers
+   * Processes raw server metrics to extract a representative metric for each server.
+   * The total number of requests and processed times are summed up for average processing time overall.
    * @param rawMetrics metrics to process
    * @param metricWeightFactor an exponentially decreasing weight factor for values in EMA
    * @param movingAvgWindowSize moving average window size for applying EMA to the set of collected metrics
    * @return a processed metrics
    */
   // TODO #883: EMA must be applied to the actual performance metric
-  public static List<EvaluatorParameters> processMetricsForOptimization(
-      final String namespace,
-      final Map<String, List<EvaluatorParameters>> rawMetrics,
-      final double metricWeightFactor,
-      final int movingAvgWindowSize) {
+  public static List<EvaluatorParameters> processServerMetrics(final Map<String, List<EvaluatorParameters>> rawMetrics,
+                                                               final double metricWeightFactor,
+                                                               final int movingAvgWindowSize) {
     final List<EvaluatorParameters> processedMetrics = new ArrayList<>();
 
-    switch (namespace) {
-    case Constants.NAMESPACE_SERVER:
-      for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
-        final List<EvaluatorParameters> serverMetric = entry.getValue();
-        final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
-        aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessed()).sum());
-        aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessed()).sum());
-        aggregatedMetricBuilder.setTotalPullProcessingTimeSec(serverMetric.stream().mapToDouble(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessingTimeSec()).sum());
-        aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
-            param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessingTimeSec()).sum());
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
+      final List<EvaluatorParameters> serverMetric = entry.getValue();
+      final ServerMetrics.Builder aggregatedMetricBuilder = ServerMetrics.newBuilder();
+      aggregatedMetricBuilder.setTotalPullProcessed(serverMetric.stream().mapToInt(
+          param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessed()).sum());
+      aggregatedMetricBuilder.setTotalPushProcessed(serverMetric.stream().mapToInt(
+          param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessed()).sum());
+      aggregatedMetricBuilder.setTotalPullProcessingTimeSec(serverMetric.stream().mapToDouble(
+          param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPullProcessingTimeSec()).sum());
+      aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
+          param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessingTimeSec()).sum());
 
-        final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
+      final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
-        // This server did not send metrics meaningful enough for optimization.
-        // TODO #862: the following condition may be considered sufficient as Optimization triggering policy changes
-        if (aggregatedMetric.getTotalPushProcessed() == 0 || aggregatedMetric.getTotalPullProcessed() == 0) {
-          break;
-        } else {
-          final String serverId = entry.getKey();
-          processedMetrics.add(new ServerEvaluatorParameters(serverId,
-              new DataInfoImpl((int) calculateExponentialMovingAverage(serverMetric,
-                  param -> param.getDataInfo().getNumBlocks(), metricWeightFactor, movingAvgWindowSize)),
-              aggregatedMetric));
-        }
+      // This server did not send metrics meaningful enough for optimization.
+      // TODO #862: the following condition may be considered sufficient as Optimization triggering policy changes
+      if (aggregatedMetric.getTotalPushProcessed() == 0 || aggregatedMetric.getTotalPullProcessed() == 0) {
+        break;
+      } else {
+        final String serverId = entry.getKey();
+        processedMetrics.add(new ServerEvaluatorParameters(serverId,
+            new DataInfoImpl((int) calculateExponentialMovingAverage(serverMetric,
+                param -> param.getDataInfo().getNumBlocks(), metricWeightFactor, movingAvgWindowSize)),
+            aggregatedMetric));
       }
-      break;
-    case Constants.NAMESPACE_WORKER:
-      for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
-        final List<EvaluatorParameters> workerMetric = entry.getValue();
-        final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
-        aggregatedMetricBuilder.setProcessedDataItemCount((int) calculateExponentialMovingAverage(workerMetric,
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getProcessedDataItemCount(),
-            metricWeightFactor, movingAvgWindowSize));
-        aggregatedMetricBuilder.setTotalTime(calculateExponentialMovingAverage(workerMetric,
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalTime(),
-            metricWeightFactor, movingAvgWindowSize));
-        aggregatedMetricBuilder.setTotalCompTime(calculateExponentialMovingAverage(workerMetric,
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalCompTime(),
-            metricWeightFactor, movingAvgWindowSize));
-        aggregatedMetricBuilder.setTotalPullTime(calculateExponentialMovingAverage(workerMetric,
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalPullTime(),
-            metricWeightFactor, movingAvgWindowSize));
-        aggregatedMetricBuilder.setTotalPushTime(calculateExponentialMovingAverage(workerMetric,
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalPushTime(),
-            metricWeightFactor, movingAvgWindowSize));
-        aggregatedMetricBuilder.setAvgPullTime(calculateExponentialMovingAverage(workerMetric,
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getAvgPullTime(),
-            metricWeightFactor, movingAvgWindowSize));
-        aggregatedMetricBuilder.setAvgPushTime(calculateExponentialMovingAverage(workerMetric,
-            param -> ((WorkerEvaluatorParameters) param).getMetrics().getAvgPushTime(),
-            metricWeightFactor, movingAvgWindowSize));
-
-        final WorkerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
-
-        // This worker did not send metrics meaningful enough for optimization.
-        if (aggregatedMetric.getProcessedDataItemCount() == 0) {
-          break;
-        } else {
-          final String workerId = entry.getKey();
-          processedMetrics.add(new WorkerEvaluatorParameters(workerId,
-              new DataInfoImpl((int) calculateExponentialMovingAverage(workerMetric,
-                  param -> param.getDataInfo().getNumBlocks(), metricWeightFactor, movingAvgWindowSize)),
-              aggregatedMetric));
-        }
-      }
-      break;
-    default:
-      throw new RuntimeException("Unsupported namespace");
     }
+
+    return processedMetrics;
+  }
+
+  /**
+   * Processes raw worker metrics to extract a representative metric for each worker.
+   * The average of processing times are to be used.
+   * @param rawMetrics metrics to process
+   * @param metricWeightFactor an exponentially decreasing weight factor for values in EMA
+   * @param movingAvgWindowSize moving average window size for applying EMA to the set of collected metrics
+   * @return a processed metrics
+   */
+  // TODO #883: EMA must be applied to the actual performance metric
+  public static List<EvaluatorParameters> processWorkerMetrics(final Map<String, List<EvaluatorParameters>> rawMetrics,
+                                                               final double metricWeightFactor,
+                                                               final int movingAvgWindowSize) {
+    final List<EvaluatorParameters> processedMetrics = new ArrayList<>();
+
+    for (final Map.Entry<String, List<EvaluatorParameters>> entry : rawMetrics.entrySet()) {
+      final List<EvaluatorParameters> workerMetric = entry.getValue();
+      final WorkerMetrics.Builder aggregatedMetricBuilder = WorkerMetrics.newBuilder();
+      aggregatedMetricBuilder.setProcessedDataItemCount((int) calculateExponentialMovingAverage(workerMetric,
+          param -> ((WorkerEvaluatorParameters) param).getMetrics().getProcessedDataItemCount(),
+          metricWeightFactor, movingAvgWindowSize));
+      aggregatedMetricBuilder.setTotalTime(calculateExponentialMovingAverage(workerMetric,
+          param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalTime(),
+          metricWeightFactor, movingAvgWindowSize));
+      aggregatedMetricBuilder.setTotalCompTime(calculateExponentialMovingAverage(workerMetric,
+          param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalCompTime(),
+          metricWeightFactor, movingAvgWindowSize));
+      aggregatedMetricBuilder.setTotalPullTime(calculateExponentialMovingAverage(workerMetric,
+          param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalPullTime(),
+          metricWeightFactor, movingAvgWindowSize));
+      aggregatedMetricBuilder.setTotalPushTime(calculateExponentialMovingAverage(workerMetric,
+          param -> ((WorkerEvaluatorParameters) param).getMetrics().getTotalPushTime(),
+          metricWeightFactor, movingAvgWindowSize));
+      aggregatedMetricBuilder.setAvgPullTime(calculateExponentialMovingAverage(workerMetric,
+          param -> ((WorkerEvaluatorParameters) param).getMetrics().getAvgPullTime(),
+          metricWeightFactor, movingAvgWindowSize));
+      aggregatedMetricBuilder.setAvgPushTime(calculateExponentialMovingAverage(workerMetric,
+          param -> ((WorkerEvaluatorParameters) param).getMetrics().getAvgPushTime(),
+          metricWeightFactor, movingAvgWindowSize));
+
+      final WorkerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
+
+      // This worker did not send metrics meaningful enough for optimization.
+      if (aggregatedMetric.getProcessedDataItemCount() == 0) {
+        break;
+      } else {
+        final String workerId = entry.getKey();
+        processedMetrics.add(new WorkerEvaluatorParameters(workerId,
+            new DataInfoImpl((int) calculateExponentialMovingAverage(workerMetric,
+                param -> param.getDataInfo().getNumBlocks(), metricWeightFactor, movingAvgWindowSize)),
+            aggregatedMetric));
+      }
+    }
+
     return processedMetrics;
   }
 }

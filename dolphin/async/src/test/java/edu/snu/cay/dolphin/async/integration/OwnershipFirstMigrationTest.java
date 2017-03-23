@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.integration;
 import edu.snu.cay.dolphin.async.examples.addvector.AddVectorREEF;
 import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
+import edu.snu.cay.utils.test.IntegrationTests;
 import org.apache.reef.client.LauncherStatus;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -37,6 +38,7 @@ import static org.junit.Assert.assertEquals;
 public final class OwnershipFirstMigrationTest {
 
   @Test
+  @Category(IntegrationTests.class)
   public void testOwnershipFirstMigrationByDeletingOneServer() {
     final List<String> defaultArgList = getDefaultArguments();
 
@@ -61,6 +63,7 @@ public final class OwnershipFirstMigrationTest {
   }
 
   @Test
+  @Category(IntegrationTests.class)
   public void testOwnershipFirstMigrationByAddingOneServer() {
     final List<String> defaultArgList = getDefaultArguments();
 
