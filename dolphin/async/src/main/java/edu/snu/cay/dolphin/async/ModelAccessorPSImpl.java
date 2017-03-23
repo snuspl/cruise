@@ -22,8 +22,6 @@ import java.util.List;
 
 /**
  * An {@link ModelAccessor} implementation based on PS.
- * @param <K>
- * @param <V>
  */
 public class ModelAccessorPSImpl<K, P, V> implements ModelAccessor<K, P, V> {
 
