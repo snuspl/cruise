@@ -23,12 +23,12 @@ import java.util.List;
 /**
  * An {@link ModelAccessor} implementation based on PS.
  */
-public class ModelAccessorPSImpl<K, P, V> implements ModelAccessor<K, P, V> {
+public class PSModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
   private final ParameterWorker<K, P, V> parameterWorker;
 
   @Inject
-  ModelAccessorPSImpl(final ParameterWorker<K, P, V> parameterWorker) {
+  PSModelAccessor(final ParameterWorker<K, P, V> parameterWorker) {
     this.parameterWorker = parameterWorker;
   }
 
