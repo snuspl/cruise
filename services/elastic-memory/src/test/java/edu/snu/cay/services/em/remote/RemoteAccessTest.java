@@ -37,6 +37,7 @@ import static org.junit.Assert.assertEquals;
  * This test completely depends on the RemoteEMREEF example.
  * So it's better to modify the RemoteEMREEF example, when you wanna change the test.
  */
+@Category(IntegrationTests.class)
 public class RemoteAccessTest {
 
   private static final int TIMEOUT_MS = 100000;

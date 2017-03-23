@@ -35,10 +35,10 @@ import static org.junit.Assert.assertEquals;
  * It runs the app with several optimization plans that add and delete servers
  * to confirm that this migration protocol preserves data values during migration correctly.
  */
+@Category(IntegrationTests.class)
 public final class OwnershipFirstMigrationTest {
 
   @Test
-  @Category(IntegrationTests.class)
   public void testOwnershipFirstMigrationByDeletingOneServer() {
     final List<String> defaultArgList = getDefaultArguments();
 
@@ -63,7 +63,6 @@ public final class OwnershipFirstMigrationTest {
   }
 
   @Test
-  @Category(IntegrationTests.class)
   public void testOwnershipFirstMigrationByAddingOneServer() {
     final List<String> defaultArgList = getDefaultArguments();
 

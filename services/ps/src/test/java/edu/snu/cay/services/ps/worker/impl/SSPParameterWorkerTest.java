@@ -33,6 +33,7 @@ import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import edu.snu.cay.utils.ThreadUtils;
+import edu.snu.cay.utils.test.IntensiveTests;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -45,7 +46,10 @@ import org.apache.reef.wake.IdentifierFactory;
 import org.htrace.TraceInfo;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.rules.Stopwatch;
 import org.junit.rules.TestRule;
+import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -154,10 +158,18 @@ public final class SSPParameterWorkerTest {
     }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
   }
 
+  @Rule
+  public final Stopwatch stopWatch = new Stopwatch() {
+    @Override
+    protected void succeeded(final long nanos, final Description description) {
+      System.out.println(description.getMethodName() + " succeeded, time taken " + nanos / 1000000000.0);
+    }
+  };
   /**
    * Test that {@link SSPParameterWorker#close(long)} does indeed block further operations from being processed.
    */
   @Test
+  @Category(IntensiveTests.class)
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
     prepare(TIMEOUT_NO_RETRY);
@@ -244,6 +256,7 @@ public final class SSPParameterWorkerTest {
    * Tests whether worker correctly restart the pull operation, when the server does not respond within timeout.
    */
   @Test
+  @Category(IntensiveTests.class)
   public void testPullTimeoutAndRetry()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
     prepare(ParameterWorkerTestUtil.PULL_RETRY_TIMEOUT_MS);
@@ -311,6 +324,7 @@ public final class SSPParameterWorkerTest {
    * When worker threads request pull operations, they are blocked or released according to their staleness condition.
    */
   @Test(timeout = 30000)
+  @Category(IntensiveTests.class)
   public void testWorkerStalenessCheck() throws NetworkException, InterruptedException, BrokenBarrierException,
       InjectionException {
     prepare(TIMEOUT_NO_RETRY);
