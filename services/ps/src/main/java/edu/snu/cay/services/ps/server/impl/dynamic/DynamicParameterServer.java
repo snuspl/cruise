@@ -38,6 +38,8 @@ import org.htrace.TraceScope;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.net.Inet4Address;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -147,6 +149,8 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
    */
   private int windowIndex = 0;
 
+  private String hostname = null;
+
 
   @Inject
   private DynamicParameterServer(final MemoryStore<HashedKey<K>> memoryStore,
@@ -172,6 +176,12 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     this.pullWaitStats = Statistics.newInstances(numThreads);
     this.metricsMsgSender = metricsMsgSender;
     this.metricsWindowMs = metricsWindowMs;
+
+    try {
+      this.hostname = Inet4Address.getLocalHost().getHostName();
+    } catch (UnknownHostException e) {
+      LOG.log(Level.WARNING, "Failed to get the local hostname");
+    }
 
     // Execute a thread to send metrics.
     Executors.newSingleThreadExecutor().submit(this::sendMetrics);
@@ -266,6 +276,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
             .setTotalPushProcessingTimeSec(totalPushStat.getSecond() / 1e9D)
             .setTotalPullWaitingTimeSec(totalPullWaitStats.getSecond() / 1e9D)
             .setTotalPushWaitingTimeSec(totalPushWaitStats.getSecond() / 1e9D)
+            .setHostname(hostname)
             .build();
 
         LOG.log(Level.FINE, "Sending ServerMetrics {0}", metricsMessage);
