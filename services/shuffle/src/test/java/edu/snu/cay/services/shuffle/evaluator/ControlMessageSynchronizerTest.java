@@ -16,7 +16,7 @@
 package edu.snu.cay.services.shuffle.evaluator;
 
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import edu.snu.cay.utils.test.IntensiveTests;
+import edu.snu.cay.utils.test.IntensiveTest;
 import org.apache.reef.util.Optional;
 import org.junit.Before;
 import org.junit.Rule;
@@ -59,7 +59,7 @@ public final class ControlMessageSynchronizerTest {
    * receive prescribed number of messages.
    */
   @Test
-  @Category(IntensiveTests.class)
+  @Category(IntensiveTest.class)
   public void testMultipleResetWithManyMessageTypes() throws Exception {
     LOG.log(Level.INFO, name.getMethodName());
 

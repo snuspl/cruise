@@ -16,9 +16,8 @@
 package edu.snu.cay.utils.test;
 
 /**
- * JUnit category for Integration tests.
+ * JUnit category for Intensive (time-consuming) test.
  * Annotate using @Category on test classes or methods.
  */
-public interface IntegrationTests {
-
+public interface IntensiveTest {
 }

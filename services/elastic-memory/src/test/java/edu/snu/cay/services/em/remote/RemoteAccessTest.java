@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.remote;
 
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.examples.remote.RemoteEMREEF;
-import edu.snu.cay.utils.test.IntegrationTests;
+import edu.snu.cay.utils.test.IntegrationTest;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
@@ -37,7 +37,7 @@ import static org.junit.Assert.assertEquals;
  * This test completely depends on the RemoteEMREEF example.
  * So it's better to modify the RemoteEMREEF example, when you wanna change the test.
  */
-@Category(IntegrationTests.class)
+@Category(IntegrationTest.class)
 public class RemoteAccessTest {
 
   private static final int TIMEOUT_MS = 100000;

@@ -57,8 +57,6 @@
     <jblas.version>1.2.4</jblas.version>
     <javacpp.version>1.2.2</javacpp.version>
     <build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
-    <tests.groups></tests.groups>
-    <tests.excluded></tests.excluded>
   </properties>
 
   <prerequisites>
@@ -74,8 +72,6 @@
     <module>utils</module>
     <module>common</module>
   </modules>
-
-
 
   <dependencyManagement>
     <dependencies>
@@ -382,27 +378,27 @@
     </plugins>
   </build>
 
-  <!-- default : All tests-->
+  <!-- default : All tests including Unit, Intensive, and Integration categories-->
   <profiles>
     <profile>
       <!-- only Unit tests-->
-      <id>UnitTests</id>
+      <id>UnitTest</id>
       <properties>
-        <tests.excluded>edu.snu.cay.utils.test.IntensiveTests, edu.snu.cay.utils.test.IntegrationTests</tests.excluded>
+        <tests.excluded>edu.snu.cay.utils.test.IntensiveTest, edu.snu.cay.utils.test.IntegrationTest</tests.excluded>
       </properties>
     </profile>
     <profile>
       <!-- Unit, Intensive tests-->
-      <id>IntensiveTests</id>
+      <id>IntensiveTest</id>
       <properties>
-        <tests.excluded>edu.snu.cay.utils.test.IntegrationTests</tests.excluded>
+        <tests.excluded>edu.snu.cay.utils.test.IntegrationTest</tests.excluded>
       </properties>
     </profile>
     <profile>
       <!-- Only Integration tests-->
-      <id>IntegrationTests</id>
+      <id>IntegrationTest</id>
       <properties>
-        <tests.groups>edu.snu.cay.utils.test.IntegrationTests</tests.groups>
+        <tests.groups>edu.snu.cay.utils.test.IntegrationTest</tests.groups>
       </properties>
     </profile>
   </profiles>

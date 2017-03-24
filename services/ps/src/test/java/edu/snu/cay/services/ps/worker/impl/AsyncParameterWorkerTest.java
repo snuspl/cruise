@@ -25,7 +25,7 @@ import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.EnforceLoggingLevelRule;
 import edu.snu.cay.utils.ThreadUtils;
-import edu.snu.cay.utils.test.IntensiveTests;
+import edu.snu.cay.utils.test.IntensiveTest;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -103,7 +103,7 @@ public final class AsyncParameterWorkerTest {
    * Test that {@link AsyncParameterWorker#close(long)} does indeed block further operations from being processed.
    */
   @Test
-  @Category(IntensiveTests.class)
+  @Category(IntensiveTest.class)
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
     prepare(TIMEOUT_NO_RETRY);
@@ -194,7 +194,7 @@ public final class AsyncParameterWorkerTest {
    * Tests whether worker correctly restart the pull operation, when the server does not respond within timeout.
    */
   @Test
-  @Category(IntensiveTests.class)
+  @Category(IntensiveTest.class)
   public void testPullTimeoutAndRetry()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
     prepare(ParameterWorkerTestUtil.PULL_RETRY_TIMEOUT_MS);
