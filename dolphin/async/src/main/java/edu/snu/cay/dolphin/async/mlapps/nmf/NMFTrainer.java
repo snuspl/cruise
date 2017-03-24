@@ -22,7 +22,6 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -45,7 +44,7 @@ final class NMFTrainer implements Trainer<NMFData> {
 
   private static final Logger LOG = Logger.getLogger(NMFTrainer.class.getName());
 
-  private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
+  private final ModelAccessor<Integer, Vector, Vector> modelAccessor;
   private final VectorFactory vectorFactory;
   private final int rank;
   private double stepSize;
@@ -79,7 +78,7 @@ final class NMFTrainer implements Trainer<NMFData> {
   /**
    * Allows to access and update the latest model.
    */
-  private final ModelAccessor<NMFModel> modelAccessor;
+  private final ModelHolder<NMFModel> modelHolder;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final Tracer pushTracer;
@@ -87,7 +86,7 @@ final class NMFTrainer implements Trainer<NMFData> {
   private final Tracer computeTracer;
 
   @Inject
-  private NMFTrainer(final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+  private NMFTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
                      final VectorFactory vectorFactory,
                      @Parameter(Rank.class) final int rank,
                      @Parameter(StepSize.class) final double stepSize,
@@ -97,10 +96,10 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                      @Parameter(PrintMatrices.class) final boolean printMatrices,
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
-                     final ModelAccessor<NMFModel> modelAccessor,
+                     final ModelHolder<NMFModel> modelHolder,
                      final NMFModelGenerator modelGenerator,
                      final MemoryStore<Long> memoryStore) {
-    this.parameterWorker = parameterWorker;
+    this.modelAccessor = modelAccessor;
     this.vectorFactory = vectorFactory;
     this.rank = rank;
     this.stepSize = stepSize;
@@ -117,7 +116,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     this.modelGenerator = modelGenerator;
     this.memoryStore = memoryStore;
 
-    this.modelAccessor = modelAccessor;
+    this.modelHolder = modelHolder;
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
 
@@ -161,7 +160,7 @@ final class NMFTrainer implements Trainer<NMFData> {
       for (int threadIdx = 0; threadIdx < numTrainerThreads; threadIdx++) {
         final Future<NMFModel> future = executor.submit(() -> {
           final List<NMFData> drainedInstances = new ArrayList<>(drainSize);
-          final NMFModel model = modelAccessor.getModel()
+          final NMFModel model = modelHolder.getModel()
               .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
           int count = 0;
@@ -206,7 +205,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels(getKeys(epochData));
 
-    final NMFModel model = modelAccessor.getModel()
+    final NMFModel model = modelHolder.getModel()
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
@@ -245,7 +244,7 @@ final class NMFTrainer implements Trainer<NMFData> {
 
     // print transposed R matrix
     pullModels(getKeys(workload));
-    final NMFModel model = modelAccessor.getModel()
+    final NMFModel model = modelHolder.getModel()
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     final StringBuilder rsb = new StringBuilder();
@@ -261,18 +260,18 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   /**
-   * Pull up-to-date model parameters from server, which become accessible via {@link ModelAccessor#getModel()}.
+   * Pull up-to-date model parameters from server, which become accessible via {@link ModelHolder#getModel()}.
    * @param keys Column indices with which server stores the model parameters.
    */
   private void pullModels(final List<Integer> keys) {
     pullTracer.startTimer();
     final Map<Integer, Vector> rMatrix = new HashMap<>(keys.size());
-    final List<Vector> vectors = parameterWorker.pull(keys);
+    final List<Vector> vectors = modelAccessor.pull(keys);
     for (int i = 0; i < keys.size(); ++i) {
       rMatrix.put(keys.get(i), vectors.get(i));
     }
 
-    modelAccessor.resetModel(new NMFModel(rMatrix));
+    modelHolder.resetModel(new NMFModel(rMatrix));
     pullTracer.recordTime(keys.size());
   }
 
@@ -344,7 +343,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     // push gradients
     pushTracer.startTimer();
     for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
-      parameterWorker.push(entry.getKey(), entry.getValue());
+      modelAccessor.push(entry.getKey(), entry.getValue());
     }
     pushTracer.recordTime(gradients.size());
     // clear gradients

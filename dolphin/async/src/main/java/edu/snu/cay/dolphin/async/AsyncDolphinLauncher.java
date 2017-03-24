@@ -169,7 +169,8 @@ public final class AsyncDolphinLauncher {
       final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
           .bindImplementation(DataParser.class, asyncDolphinConfiguration.getParserClass())
-          .bindImplementation(TrainingDataProvider.class, TrainingDataProviderImpl.class)
+          .bindImplementation(TrainingDataProvider.class, EMTrainingDataProvider.class)
+          .bindImplementation(ModelAccessor.class, PSModelAccessor.class)
           .bindNamedParameter(DolphinParameters.MaxNumEpochs.class,
               Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.MaxNumEpochs.class)))
           .bindNamedParameter(DolphinParameters.MiniBatchSize.class,

@@ -41,9 +41,9 @@ import static junit.framework.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests for {@link TrainingDataProvider} provides training data instances for mini-batches correctly.
+ * Tests for {@link EMTrainingDataProvider} provides training data instances for mini-batches correctly.
  */
-public class TrainingDataProviderTest {
+public class EMTrainingDataProviderTest {
   private static final int MINI_BATCH_SIZE = 5;
   private static final int NUM_TOTAL_BLOCKS = 0x10;
   private static final int BLOCK_SIZE = 128;
@@ -63,7 +63,7 @@ public class TrainingDataProviderTest {
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindImplementation(BlockFactory.class, BlockFactoryImpl.class)
-        .bindImplementation(TrainingDataProvider.class, TrainingDataProviderImpl.class)
+        .bindImplementation(TrainingDataProvider.class, EMTrainingDataProvider.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(LOCAL_STORE_ID))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(NUM_MEMORY_STORES))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
