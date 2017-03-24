@@ -88,10 +88,9 @@ public final class Parameters {
   public final class NetworkBandwidth implements Name<Double> {
   }
 
-  @NamedParameter(doc = "Mapping from network bandwidth (in bps) to list of the name of hosts, " +
-      "encoded as a json string.",
-      short_name = "bandwidth_to_host_json",
-      default_value = "{}")
-  public final class NetworkBandwidthToHostsJson implements Name<String> {
+  @NamedParameter(doc = "A path of file that contains a mapping from hostname to network bandwidth (in bps).",
+      short_name = "host_to_bandwidth_file_path",
+      default_value = "")
+  public final class HostToBandwidthFilePath implements Name<String> {
   }
 }

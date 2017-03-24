@@ -308,7 +308,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(NumExtraResources.class);
     basicParameterClassList.add(ExtraResourcesPeriodSec.class);
     basicParameterClassList.add(NetworkBandwidth.class);
-    basicParameterClassList.add(NetworkBandwidthToHostsJson.class);
+    basicParameterClassList.add(HostToBandwidthFilePath.class);
 
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {
       cl.registerShortNameOfClass(basicParameterClass);
