@@ -27,6 +27,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.net.Inet4Address;
+import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -57,6 +59,8 @@ final class AsyncWorkerTask<K, V> implements Task {
   private final WorkerClock workerClock;
   private final boolean addedEval;
 
+  private String hostname = null;
+
   /**
    * A boolean flag shared among all trainer threads.
    * Trainer threads end when this flag becomes true by {@link #close()}.
@@ -86,6 +90,12 @@ final class AsyncWorkerTask<K, V> implements Task {
     this.trainer = trainer;
     this.metricsMsgSender = metricsMsgSender;
     this.workerClock = workerClock;
+
+    try {
+      this.hostname = Inet4Address.getLocalHost().getHostName();
+    } catch (UnknownHostException e) {
+      LOG.log(Level.WARNING, "Failed to get the local hostname");
+    }
   }
 
   @Override
@@ -186,6 +196,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         .setAvgPullTime(miniBatchResult.getAvgPullTime())
         .setAvgPushTime(miniBatchResult.getAvgPushTime())
         .setParameterWorkerMetrics(parameterWorker.buildAndResetMetrics())
+        .setHostname(hostname)
         .build();
 
     LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
@@ -205,6 +216,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         .setProcessedDataItemCount(processedDataItemCount)
         .setNumDataBlocks(numDataBlocks)
         .setTotalTime(epochElapsedTime)
+        .setHostname(hostname)
         .build();
 
     LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
