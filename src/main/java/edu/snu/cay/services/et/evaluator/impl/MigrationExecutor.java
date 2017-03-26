@@ -110,7 +110,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final List<Integer> blockIds = msg.getBlockIds();
 
     try {
-      final TableComponents<K, V> tableComponents = tablesFuture.get().get(tableId);
+      final TableComponents<K, V, ?> tableComponents = tablesFuture.get().get(tableId);
 
       final Migration<K, V> migration = new Migration<>(operationId, tableId, blockIds,
           senderId, receiverId, tableComponents);
@@ -185,13 +185,13 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final String receiverId = dataMsg.getReceiverId();
 
     try {
-      final TableComponents<K, V> tableComponents = tablesFuture.get().get(tableId);
+      final TableComponents<K, V, ?> tableComponents = tablesFuture.get().get(tableId);
       final BlockStore<K, V> blockStore = tableComponents.getBlockStore();
       final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
-      final KVSerializer<K, V> kvSerializer = tableComponents.getSerializer();
+      final KVUSerializer<K, V, ?> kvuSerializer = tableComponents.getSerializer();
 
       dataMsgHandlerExecutor.submit(() -> {
-        final Map<K, V> dataMap = toDataMap(dataMsg.getKvPairs(), kvSerializer);
+        final Map<K, V> dataMap = toDataMap(dataMsg.getKvPairs(), kvuSerializer);
 
         // should allow access after putting a block
         try {
@@ -252,7 +252,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     private final String receiverId;
     private final List<Integer> blockIds;
 
-    private final TableComponents<K, V> tableComponents;
+    private final TableComponents<K, V, ?> tableComponents;
 
     // state of migration
     private final AtomicInteger blockIdxCounter = new AtomicInteger(0);
@@ -262,7 +262,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     private final Semaphore semaphore = new Semaphore(MAX_CONCURRENT_MIGRATIONS);
 
     Migration(final long operationId, final String tableId, final List<Integer> blockIds,
-              final String senderId, final String receiverId, final TableComponents<K, V> tableComponents) {
+              final String senderId, final String receiverId, final TableComponents<K, V, ?> tableComponents) {
       this.operationId = operationId;
       this.tableId = tableId;
       this.blockIds = blockIds;
@@ -312,14 +312,14 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
   }
 
   private <K, V> List<KVPair> toKeyValuePairs(final Map<K, V> blockData,
-                                              final KVSerializer<K, V> kvSerializer) {
+                                              final KVUSerializer<K, V, ?> kvuSerializer) {
     final List<KVPair> kvPairs = new ArrayList<>(blockData.size());
     for (final Map.Entry<K, V> entry : blockData.entrySet()) {
       final DataKey dataKey = DataKey.newBuilder()
-          .setKey(ByteBuffer.wrap(kvSerializer.getKeyCodec().encode(entry.getKey())))
+          .setKey(ByteBuffer.wrap(kvuSerializer.getKeyCodec().encode(entry.getKey())))
           .build();
       final DataValue dataValue = DataValue.newBuilder()
-          .setValue(ByteBuffer.wrap(kvSerializer.getValueCodec().encode(entry.getValue())))
+          .setValue(ByteBuffer.wrap(kvuSerializer.getValueCodec().encode(entry.getValue())))
           .build();
 
       kvPairs.add(KVPair.newBuilder()
@@ -331,14 +331,14 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
   }
 
   private <K, V> Map<K, V> toDataMap(final List<KVPair> kvPairs,
-                                     final KVSerializer<K, V> kvSerializer) {
+                                     final KVUSerializer<K, V, ?> kvuSerializer) {
     final Map<K, V> dataMap = new HashMap<>(kvPairs.size());
     for (final KVPair kvPair : kvPairs) {
       final DataKey dataKey = kvPair.getKey();
       final DataValue dataValue = kvPair.getValue();
 
-      dataMap.put(kvSerializer.getKeyCodec().decode(dataKey.getKey().array()),
-          kvSerializer.getValueCodec().decode(dataValue.getValue().array()));
+      dataMap.put(kvuSerializer.getKeyCodec().decode(dataKey.getKey().array()),
+          kvuSerializer.getValueCodec().decode(dataValue.getValue().array()));
     }
     return dataMap;
   }

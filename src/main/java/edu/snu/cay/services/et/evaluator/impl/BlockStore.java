@@ -16,7 +16,6 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.evaluator.api.Block;
-import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -40,14 +39,8 @@ public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
    */
   private final ConcurrentMap<Integer, Block<K, V>> blocks = new ConcurrentHashMap<>();
 
-  /**
-   * Update function for update operation.
-   */
-  private final UpdateFunction<K, V> updateFunction;
-
   @Inject
-  private BlockStore(final UpdateFunction<K, V> updateFunction) {
-    this.updateFunction = updateFunction;
+  private BlockStore() {
   }
 
   /**
@@ -56,7 +49,7 @@ public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
    * @throws BlockAlreadyExistsException when the specified block already exists
    */
   public void createEmptyBlock(final int blockId) throws BlockAlreadyExistsException {
-    if (blocks.putIfAbsent(blockId, new BlockImpl<>(updateFunction)) != null) {
+    if (blocks.putIfAbsent(blockId, new BlockImpl<>()) != null) {
       throw new BlockAlreadyExistsException(blockId);
     }
   }
@@ -68,7 +61,7 @@ public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
    * @throws BlockAlreadyExistsException when the specified block already exists
    */
   public void putBlock(final int blockId, final Map<K, V> data) throws BlockAlreadyExistsException {
-    final Block<K, V> block = new BlockImpl<>(updateFunction);
+    final Block<K, V> block = new BlockImpl<>();
     block.putAll(data);
     if (blocks.putIfAbsent(blockId, block) != null) {
       throw new BlockAlreadyExistsException(blockId);

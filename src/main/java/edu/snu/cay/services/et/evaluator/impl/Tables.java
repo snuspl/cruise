@@ -182,9 +182,8 @@ public final class Tables implements TableAccessor {
    * @return the corresponding {@link TableImpl} object
    */
   @Override
-  public synchronized <K, V> TableImpl<K, V> get(final String tableId) throws TableNotExistException {
-    @SuppressWarnings("unchecked")
-    final TableImpl<K, V> table = tables.get(tableId);
+  public synchronized TableImpl get(final String tableId) throws TableNotExistException {
+    final TableImpl table = tables.get(tableId);
     if (table == null) {
       // cannot access such table.
       // 1) table does not exist or 2) it's not associated or subscribed by this executor.

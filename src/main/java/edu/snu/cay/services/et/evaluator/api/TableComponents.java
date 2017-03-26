@@ -16,7 +16,7 @@
 package edu.snu.cay.services.et.evaluator.api;
 
 import edu.snu.cay.services.et.evaluator.impl.BlockStore;
-import edu.snu.cay.services.et.evaluator.impl.KVSerializer;
+import edu.snu.cay.services.et.evaluator.impl.KVUSerializer;
 import edu.snu.cay.services.et.evaluator.impl.OwnershipCache;
 import edu.snu.cay.services.et.evaluator.impl.TableImpl;
 import org.apache.reef.annotations.audience.Private;
@@ -27,7 +27,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  */
 @DefaultImplementation(TableImpl.class)
 @Private
-public interface TableComponents<K, V> {
+public interface TableComponents<K, V, U> {
 
   /**
    * @return a ownership cache of a table
@@ -40,9 +40,14 @@ public interface TableComponents<K, V> {
   BlockStore<K, V> getBlockStore();
 
   /**
+   * @return an update function
+   */
+  UpdateFunction<K, V, U> getUpdateFunction();
+
+  /**
    * @return a serializer of a table
    */
-  KVSerializer<K, V> getSerializer();
+  KVUSerializer<K, V, U> getSerializer();
 
   /**
    * @return a block partitioner of a table

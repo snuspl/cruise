@@ -35,13 +35,7 @@ final class BlockImpl<K, V> implements Block<K, V> {
    */
   private final ConcurrentMap<K, V> subDataMap = new ConcurrentHashMap<>();
 
-  /**
-   * Update function for the table.
-   */
-  private final UpdateFunction<K, V> updateFunction;
-
-  BlockImpl(final UpdateFunction<K, V> updateFunction) {
-    this.updateFunction = updateFunction;
+  BlockImpl() {
   }
 
   @Override
@@ -55,10 +49,10 @@ final class BlockImpl<K, V> implements Block<K, V> {
   }
 
   @Override
-  public V update(final K key, final V deltaValue) {
+  public <U> V update(final K key, final U updateValue, final UpdateFunction<K, V, U> updateFunction) {
     return subDataMap.compute(key, (k, v) -> {
       final V oldValue = (v == null) ? updateFunction.initValue(k) : v;
-      return updateFunction.updateValue(key, oldValue, deltaValue);
+      return updateFunction.updateValue(key, oldValue, updateValue);
     });
   }
 

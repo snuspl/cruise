@@ -23,7 +23,7 @@ import java.util.Optional;
 /**
  * A metadata of each access to a table.
  */
-class DataOpMetadata<K, V> {
+class DataOpMetadata<K, V, U> {
 
   /**
    * Metadata of the operation.
@@ -35,6 +35,7 @@ class DataOpMetadata<K, V> {
   private final int blockId;
   private final K dataKey;
   private final V dataValue;
+  private final U updateValue;
 
   /**
    * A constructor for an operation.
@@ -45,11 +46,15 @@ class DataOpMetadata<K, V> {
    * @param blockId an id of block
    * @param dataKey a key of data
    * @param dataValue a value of data. It is null when the operation is one of GET or REMOVE.
+   * @param updateValue a value to be used in {@link edu.snu.cay.services.et.evaluator.api.UpdateFunction},
+   *                    which is not null only when UPDATE.
    */
   DataOpMetadata(final String origExecutorId,
                  final long operationId, final OpType operationType,
                  final String tableId, final int blockId,
-                 final K dataKey, @Nullable final V dataValue) {
+                 final K dataKey,
+                 @Nullable final V dataValue,
+                 @Nullable final U updateValue) {
     this.origExecutorId = origExecutorId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -57,6 +62,7 @@ class DataOpMetadata<K, V> {
     this.blockId = blockId;
     this.dataKey = dataKey;
     this.dataValue = dataValue;
+    this.updateValue = updateValue;
   }
 
   /**
@@ -106,5 +112,9 @@ class DataOpMetadata<K, V> {
    */
   Optional<V> getValue() {
     return Optional.ofNullable(dataValue);
+  }
+
+  Optional<U> getUpdateValue() {
+    return Optional.ofNullable(updateValue);
   }
 }

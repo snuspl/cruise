@@ -18,10 +18,7 @@ package edu.snu.cay.services.et.evaluator.impl;
 import com.google.common.collect.Iterators;
 import edu.snu.cay.services.et.avro.OpType;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
-import edu.snu.cay.services.et.evaluator.api.Block;
-import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
-import edu.snu.cay.services.et.evaluator.api.Table;
-import edu.snu.cay.services.et.evaluator.api.TableComponents;
+import edu.snu.cay.services.et.evaluator.api.*;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -38,7 +35,7 @@ import java.util.concurrent.locks.Lock;
  */
 @EvaluatorSide
 @ThreadSafe
-public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V> {
+public final class TableImpl<K, V, U> implements Table<K, V, U>, TableComponents<K, V, U> {
   /**
    * Table identifier.
    */
@@ -57,7 +54,12 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
   /**
    * A serializer for both key and value of a table.
    */
-  private final KVSerializer<K, V> kvSerializer;
+  private final KVUSerializer<K, V, U> kvuSerializer;
+
+  /**
+   * A function for updating values in the table.
+   */
+  private final UpdateFunction<K, V, U> updateFunction;
 
   /**
    * A component for accessing remote blocks.
@@ -73,13 +75,15 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
   private TableImpl(@Parameter(TableIdentifier.class) final String tableId,
                     final OwnershipCache ownershipCache,
                     final BlockStore<K, V> blockStore,
-                    final KVSerializer<K, V> kvSerializer,
+                    final KVUSerializer<K, V, U> kvuSerializer,
+                    final UpdateFunction<K, V, U> updateFunction,
                     final RemoteAccessOpSender remoteAccessOpSender,
                     final BlockPartitioner<K> blockPartitioner) {
     this.tableId = tableId;
     this.ownershipCache = ownershipCache;
     this.blockStore = blockStore;
-    this.kvSerializer = kvSerializer;
+    this.kvuSerializer = kvuSerializer;
+    this.updateFunction = updateFunction;
     this.remoteAccessOpSender = remoteAccessOpSender;
     this.blockPartitioner = blockPartitioner;
   }
@@ -107,8 +111,8 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V> operation = remoteAccessOpSender.sendOpToRemote(
-        OpType.PUT, tableId, blockId, key, value, remoteIdOptional.get());
+    final RemoteDataOp<K, V, U> operation = remoteAccessOpSender.sendOpToRemote(
+        OpType.PUT, tableId, blockId, key, value, null, remoteIdOptional.get());
 
     return operation.getOutputData();
   }
@@ -135,14 +139,14 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V> operation = remoteAccessOpSender.sendOpToRemote(
-        OpType.GET, tableId, blockId, key, null, remoteIdOptional.get());
+    final RemoteDataOp<K, V, U> operation = remoteAccessOpSender.sendOpToRemote(
+        OpType.GET, tableId, blockId, key, null, null, remoteIdOptional.get());
 
     return operation.getOutputData();
   }
 
   @Override
-  public V update(final K key, final V deltaValue) {
+  public V update(final K key, final U updateValue) {
     final int blockId = blockPartitioner.getBlockId(key);
     final Optional<String> remoteIdOptional;
 
@@ -153,7 +157,7 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
       // execute operation in local, holding ownershipLock
       if (!remoteIdOptional.isPresent()) {
         final Block<K, V> block = blockStore.get(blockId);
-        return block.update(key, deltaValue);
+        return block.update(key, updateValue, updateFunction);
       }
     } catch (final BlockNotExistsException e) {
       throw new RuntimeException(e);
@@ -163,8 +167,8 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V> operation = remoteAccessOpSender.sendOpToRemote(
-        OpType.UPDATE, tableId, blockId, key, deltaValue, remoteIdOptional.get());
+    final RemoteDataOp<K, V, U> operation = remoteAccessOpSender.sendOpToRemote(
+        OpType.UPDATE, tableId, blockId, key, null, updateValue, remoteIdOptional.get());
 
     return operation.getOutputData();
   }
@@ -191,8 +195,8 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V> operation = remoteAccessOpSender.sendOpToRemote(
-        OpType.REMOVE, tableId, blockId, key, null, remoteIdOptional.get());
+    final RemoteDataOp<K, V, U> operation = remoteAccessOpSender.sendOpToRemote(
+        OpType.REMOVE, tableId, blockId, key, null, null, remoteIdOptional.get());
 
     return operation.getOutputData();
   }
@@ -276,8 +280,13 @@ public final class TableImpl<K, V> implements Table<K, V>, TableComponents<K, V>
   }
 
   @Override
-  public KVSerializer<K, V> getSerializer() {
-    return kvSerializer;
+  public UpdateFunction<K, V, U> getUpdateFunction() {
+    return updateFunction;
+  }
+
+  @Override
+  public KVUSerializer<K, V, U> getSerializer() {
+    return kvuSerializer;
   }
 
   public BlockPartitioner<K> getBlockPartitioner() {

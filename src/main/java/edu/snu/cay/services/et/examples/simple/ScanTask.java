@@ -57,7 +57,7 @@ final class ScanTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
-    final Table<Long, String> orderedTableWithFile = tableAccessor.get(ORDERED_TABLE_WITH_FILE_ID);
+    final Table<Long, String, ?> orderedTableWithFile = tableAccessor.get(ORDERED_TABLE_WITH_FILE_ID);
 
     final Map<Long, String> localDataMap = orderedTableWithFile.getLocalDataMap();
     final Iterator<Entry<Long, String>> localDataIter = orderedTableWithFile.getLocalDataIterator();

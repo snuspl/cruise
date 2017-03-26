@@ -104,7 +104,7 @@ final class RemoteAccessOpHandler {
       }
     }
 
-    private <K, V> void handleOperation(final DataOpMetadata<K, V> operation) {
+    private <K, V, U> void handleOperation(final DataOpMetadata<K, V, U> operation) {
       final String tableId = operation.getTableId();
       final int blockId = operation.getBlockId();
 
@@ -112,7 +112,7 @@ final class RemoteAccessOpHandler {
           new Object[]{operation.getOpId(), operation.getOrigId(), blockId});
 
       try {
-        final TableComponents<K, V> tableComponents = tablesFuture.get().get(tableId);
+        final TableComponents<K, V, U> tableComponents = tablesFuture.get().get(tableId);
         final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
         final BlockStore<K, V> blockStore = tableComponents.getBlockStore();
 
@@ -137,7 +137,8 @@ final class RemoteAccessOpHandler {
               output = block.remove(operation.getKey());
               break;
             case UPDATE:
-              output = block.update(operation.getKey(), operation.getValue().get());
+              output = block.update(operation.getKey(), operation.getUpdateValue().get(),
+                  tableComponents.getUpdateFunction());
               break;
             default:
               LOG.log(Level.WARNING, "Undefined type of operation.");
@@ -172,7 +173,7 @@ final class RemoteAccessOpHandler {
   /**
    * Handles the data operation sent from the remote executor.
    */
-  <K, V> void onTableAccessReqMsg(final long opId, final TableAccessReqMsg msg) {
+  <K, V, U> void onTableAccessReqMsg(final long opId, final TableAccessReqMsg msg) {
     final String origEvalId = msg.getOrigId();
     final OpType opType = msg.getOpType();
     final String tableId = msg.getTableId();
@@ -180,22 +181,27 @@ final class RemoteAccessOpHandler {
     final DataValue dataValue = msg.getDataValue();
 
     try {
-      final TableComponents<K, V> tableComponents = tablesFuture.get().get(tableId);
-      final KVSerializer<K, V> kvSerializer = tableComponents.getSerializer();
-      final Codec<K> keyCodec = kvSerializer.getKeyCodec();
-      final Codec<V> valueCodec = kvSerializer.getValueCodec();
+      final TableComponents<K, V, U> tableComponents = tablesFuture.get().get(tableId);
+      final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
+      final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
+      final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+      final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
       final BlockPartitioner<K> blockPartitioner = tableComponents.getBlockPartitioner();
 
       // decode data keys
       final K decodedKey = keyCodec.decode(dataKey.getKey().array());
 
       // decode data values
-      final V decodedValue = opType.equals(OpType.PUT) || opType.equals(OpType.UPDATE) ?
+      final V decodedValue = opType.equals(OpType.PUT) ?
           valueCodec.decode(dataValue.getValue().array()) : null;
 
+      // decode update data value
+      final U decodedUpdateValue = opType.equals(OpType.UPDATE) ?
+          updateValueCodec.decode(dataValue.getValue().array()) : null;
+
       final int blockId = blockPartitioner.getBlockId(decodedKey);
-      final DataOpMetadata<K, V> operation = new DataOpMetadata<>(origEvalId,
-          opId, opType, tableId, blockId, decodedKey, decodedValue);
+      final DataOpMetadata<K, V, U> operation = new DataOpMetadata<>(origEvalId,
+          opId, opType, tableId, blockId, decodedKey, decodedValue, decodedUpdateValue);
 
       LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}", operation.getOpId());
       try {
@@ -211,7 +217,7 @@ final class RemoteAccessOpHandler {
   /**
    * Sends the result to the original executor.
    */
-  private <K, V> void sendResultToOrigin(final DataOpMetadata<K, V> operation,
+  private <K, V> void sendResultToOrigin(final DataOpMetadata<K, V, ?> operation,
                                          @Nullable final V localOutput,
                                          final boolean isSuccess) {
     LOG.log(Level.FINEST, "Send result to origin. OpId: {0}, OrigId: {1}",
@@ -219,7 +225,7 @@ final class RemoteAccessOpHandler {
 
     final String tableId = operation.getTableId();
 
-    final TableComponents<K, V> tableComponents;
+    final TableComponents<K, V, ?> tableComponents;
     try {
       tableComponents = tablesFuture.get().get(tableId);
 

@@ -24,7 +24,7 @@ import javax.inject.Inject;
 /**
  * A simple UpdateFunction that accumulates integers.
  */
-public final class AddIntegerUpdateFunction implements UpdateFunction<Object, Integer> {
+public final class AddIntegerUpdateFunction implements UpdateFunction<Object, Integer, Integer> {
   private final int updateCoefficient;
 
   /**

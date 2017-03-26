@@ -119,6 +119,7 @@ public final class AddIntegerETDriver {
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
+        .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
         .setUserParamConf(userTableParamConf)
         .setIsOrderedTable(false)

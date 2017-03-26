@@ -55,8 +55,8 @@ final class GetTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
-    final Table<Long, String> hashedTable = tableAccessor.get(HASHED_TABLE_ID);
-    final Table<Long, String> orderedTable = tableAccessor.get(ORDERED_TABLE_ID);
+    final Table<Long, String, ?> hashedTable = tableAccessor.get(HASHED_TABLE_ID);
+    final Table<Long, String, ?> orderedTable = tableAccessor.get(ORDERED_TABLE_ID);
 
     final String value00 = hashedTable.get(KEY0);
     final String value01 = hashedTable.get(KEY1);

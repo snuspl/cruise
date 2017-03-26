@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ package edu.snu.cay.services.et.evaluator.api;
  * @param <K> a type of key
  * @param <V> a type of data
  */
-public interface UpdateFunction<K, V> {
+public interface UpdateFunction<K, V, U> {
 
   /**
    * Gets an initial oldValue to associate with given key in {@link Table#update},
@@ -33,12 +33,12 @@ public interface UpdateFunction<K, V> {
   V initValue(K key);
 
   /**
-   * Gets an update value by applying deltaValue to oldValue when {@link Table#update} is called.
-   * Implementations should specify how to update the associated value with the given deltaValue.
+   * Gets the result of applying the function with updateValue and oldValue when {@link Table#update} is called.
+   * Implementations should specify how to update the associated value with the given updateValue.
    * @param key a key
    * @param oldValue an old value
-   * @param deltaValue a delta value
-   * @return the update value
+   * @param updateValue a update value
+   * @return the updated value
    */
-  V updateValue(K key, V oldValue, V deltaValue);
+  V updateValue(K key, V oldValue, U updateValue);
 }

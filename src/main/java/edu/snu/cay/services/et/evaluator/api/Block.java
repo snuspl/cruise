@@ -44,15 +44,16 @@ public interface Block<K, V> extends Iterable<Entry<K, V>> {
 
   /**
    * Update a value associated with the specified key using {@link UpdateFunction}.
-   * Specifically, it processes the value associated with key with {@code deltaValue} by
+   * Specifically, it processes the value associated with key with {@code updateValue} by
    * {@link UpdateFunction#updateValue(K, V, V)}.
    * If there's no associated value, it uses the value from {@link UpdateFunction#initValue(K)} as oldValue.
    *
    * @param key global unique identifier of item
-   * @param deltaValue value
+   * @param updateValue update value
+   * @param updateFunction a function for updating value
    * @return the updated value associated with the key
    */
-  V update(K key, V deltaValue);
+  <U> V update(K key, U updateValue, UpdateFunction<K, V, U> updateFunction);
 
   /**
    * Removes association for the specified key.

@@ -91,7 +91,7 @@ public final class ValidatorTask implements Task {
   }
 
   private boolean validate(final int expectedResult) throws IntegerValidationException, TableNotExistException {
-    final Table<Integer, Integer> modelTable = tableAccessor.get(MODEL_TABLE_ID);
+    final Table<Integer, Integer, ?> modelTable = tableAccessor.get(MODEL_TABLE_ID);
 
     for (int i = 0; i < numKeys; i++) {
       final int key = startKey + i;

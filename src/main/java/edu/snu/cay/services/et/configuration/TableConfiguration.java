@@ -39,6 +39,7 @@ public final class TableConfiguration {
   private final String id;
   private final Class<? extends Codec> keyCodecClass;
   private final Class<? extends Codec> valueCodecClass;
+  private final Class<? extends Codec> updateValueCodecClass;
   private final Class<? extends UpdateFunction> updateFunctionClass;
   private final boolean isOrderedTable;
   private final int numTotalBlocks;
@@ -50,6 +51,7 @@ public final class TableConfiguration {
 
   private TableConfiguration(final String id,
                              final Class<? extends Codec> keyCodecClass, final Class<? extends Codec> valueCodecClass,
+                             final Class<? extends Codec> updateValueCodecClass,
                              final Class<? extends UpdateFunction> updateFunctionClass,
                              final boolean isOrderedTable,
                              final Integer numTotalBlocks,
@@ -59,6 +61,7 @@ public final class TableConfiguration {
     this.id = id;
     this.keyCodecClass = keyCodecClass;
     this.valueCodecClass = valueCodecClass;
+    this.updateValueCodecClass = updateValueCodecClass;
     this.updateFunctionClass = updateFunctionClass;
     this.isOrderedTable = isOrderedTable;
     this.numTotalBlocks = numTotalBlocks;
@@ -86,6 +89,13 @@ public final class TableConfiguration {
    */
   public Class<? extends Codec> getValueCodecClass() {
     return valueCodecClass;
+  }
+
+  /**
+   * @return an update value codec
+   */
+  public Class<? extends Codec> getUpdateValueCodecClass() {
+    return updateValueCodecClass;
   }
 
   /**
@@ -147,6 +157,7 @@ public final class TableConfiguration {
               .bindNamedParameter(TableIdentifier.class, id)
               .bindNamedParameter(KeyCodec.class, keyCodecClass)
               .bindNamedParameter(ValueCodec.class, valueCodecClass)
+              .bindNamedParameter(UpdateValueCodec.class, updateValueCodecClass)
               .bindImplementation(UpdateFunction.class, updateFunctionClass)
               .bindNamedParameter(IsOrderedTable.class, Boolean.toString(isOrderedTable))
               .bindImplementation(BlockPartitioner.class, blockPartitionerClass)
@@ -176,6 +187,7 @@ public final class TableConfiguration {
     private String id;
     private Class<? extends Codec> keyCodecClass;
     private Class<? extends Codec> valueCodecClass;
+    private Class<? extends Codec> updateValueCodecClass;
     private Class<? extends UpdateFunction> updateFunctionClass;
     private Boolean isOrderedTable;
 
@@ -202,6 +214,11 @@ public final class TableConfiguration {
 
     public Builder setValueCodecClass(final Class<? extends Codec> valueCodecClass) {
       this.valueCodecClass = valueCodecClass;
+      return this;
+    }
+
+    public Builder setUpdateValueCodecClass(final Class<? extends Codec> updateValueCodecClass) {
+      this.updateValueCodecClass = updateValueCodecClass;
       return this;
     }
 
@@ -240,6 +257,7 @@ public final class TableConfiguration {
       BuilderUtils.notNull(id);
       BuilderUtils.notNull(keyCodecClass);
       BuilderUtils.notNull(valueCodecClass);
+      BuilderUtils.notNull(updateValueCodecClass);
       BuilderUtils.notNull(updateFunctionClass);
       BuilderUtils.notNull(isOrderedTable);
 
@@ -250,7 +268,7 @@ public final class TableConfiguration {
         }
       }
 
-      return new TableConfiguration(id, keyCodecClass, valueCodecClass,
+      return new TableConfiguration(id, keyCodecClass, valueCodecClass, updateValueCodecClass,
           updateFunctionClass, isOrderedTable, numTotalBlocks, filePath, dataParserClass, userParamConf);
     }
   }

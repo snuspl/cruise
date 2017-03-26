@@ -18,7 +18,6 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
-import edu.snu.cay.services.et.evaluator.api.TableComponents;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
@@ -71,18 +70,22 @@ final class RemoteAccessOpSender {
    * @param key a data key
    * @param value an Optional with a data value
    * @param targetEvalId a target evaluator
-   * @param <V> a type of data
+   * @param <K> a type of key
+   * @param <V> a type of value
+   * @param <U> a type of update value
    * @return an operation holding the result
    */
-  <K, V> RemoteDataOp<K, V> sendOpToRemote(final OpType opType,
-                                           final String tableId, final int blockId,
-                                           final K key, @Nullable final V value,
-                                           final String targetEvalId) {
+  <K, V, U> RemoteDataOp<K, V, U> sendOpToRemote(final OpType opType,
+                                                 final String tableId, final int blockId,
+                                                 final K key,
+                                                 @Nullable final V value,
+                                                 @Nullable final U updateValue,
+                                                 final String targetEvalId) {
     final long operationId = remoteOpIdCounter.getAndIncrement();
     final String origId = executorId;
-    final RemoteDataOp<K, V> operation = new RemoteDataOp<>(origId, operationId, opType,
-        tableId, blockId, key, value);
-    final DataOpMetadata<K, V> opMetadata = operation.getMetadata();
+    final RemoteDataOp<K, V, U> operation = new RemoteDataOp<>(origId, operationId, opType,
+        tableId, blockId, key, value, updateValue);
+    final DataOpMetadata<K, V, U> opMetadata = operation.getMetadata();
 
     LOG.log(Level.FINEST, "Send op to remote. OpId: {0}, OpType: {1}, targetId: {2}",
         new Object[]{opMetadata.getOpId(), opMetadata.getOpType(), targetEvalId});
@@ -90,22 +93,31 @@ final class RemoteAccessOpSender {
     registerOp(operation);
 
     try {
-      final TableComponents<K, V> tableComponents = tablesFuture.get().get(tableId);
-
-      final KVSerializer<K, V> kvSerializer = tableComponents.getSerializer();
-      final Codec<K> keyCodec = kvSerializer.getKeyCodec();
-      final Codec<V> valueCodec = kvSerializer.getValueCodec();
+      final KVUSerializer<K, V, U> kvuSerializer = tablesFuture.get().get(tableId).getSerializer();
+      final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
+      final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+      final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
 
       // encode data
       final ByteBuffer encodedKey = ByteBuffer.wrap(keyCodec.encode(opMetadata.getKey()));
+
       final DataValue dataValue;
-      if (opMetadata.getOpType().equals(OpType.PUT) || opMetadata.getOpType().equals(OpType.UPDATE)) {
+      if (opMetadata.getOpType().equals(OpType.PUT)) {
         if (!opMetadata.getValue().isPresent()) {
-          throw new RuntimeException("Data value is empty for PUT/UPDATE");
+          throw new RuntimeException("Data value is empty for PUT");
         }
-        final ByteBuffer encodedValue = ByteBuffer.wrap(valueCodec.encode(opMetadata.getValue().get()));
+        final ByteBuffer encodedValue = ByteBuffer.wrap(
+            valueCodec.encode(opMetadata.getValue().get()));
         dataValue = new DataValue(encodedValue);
-      } else {
+      } else if (opMetadata.getOpType().equals(OpType.UPDATE)) {
+        if (!opMetadata.getUpdateValue().isPresent()) {
+          throw new RuntimeException("Data value is empty for PUT");
+        }
+        final ByteBuffer encodedUpdateValue = ByteBuffer.wrap(
+            updateValueCodec.encode(opMetadata.getUpdateValue().get()));
+        // treat UpdateValue same as Value
+        dataValue = new DataValue(encodedUpdateValue);
+      } else  {
         dataValue = null;
       }
 
@@ -135,21 +147,20 @@ final class RemoteAccessOpSender {
   /**
    * Handles the result of remote operation.
    */
+  @SuppressWarnings("unchecked")
   <K, V> void onTableAccessResMsg(final long opId, final TableAccessResMsg msg) {
     final DataValue remoteOutput = msg.getDataValue();
     final boolean isSuccess = msg.getIsSuccess();
 
-    @SuppressWarnings("unchecked")
-    final RemoteDataOp<K, V> operation = ongoingOp.get(opId);
+    final RemoteDataOp<K, V, ?> operation = ongoingOp.get(opId);
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", opId);
       return;
     }
 
+    final String tableId = operation.getMetadata().getTableId();
     try {
-      final TableComponents<K, V> tableComponents = tablesFuture.get().get(operation.getMetadata().getTableId());
-      final KVSerializer<K, V> kvSerializer = tableComponents.getSerializer();
-      final Codec<V> valueCodec = kvSerializer.getValueCodec();
+      final Codec<V> valueCodec = tablesFuture.get().get(tableId).getSerializer().getValueCodec();
 
       // decode data value
       final V decodedValue = isSuccess && remoteOutput != null ?

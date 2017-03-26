@@ -79,6 +79,7 @@ final class SimpleETDriver {
         .setId(tableId)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
+        .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsOrderedTable(isOrderedTable);
 

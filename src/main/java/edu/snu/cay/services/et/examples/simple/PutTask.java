@@ -57,8 +57,8 @@ final class PutTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
-    final Table<Long, String> hashedTable = tableAccessor.get(HASHED_TABLE_ID);
-    final Table<Long, String> orderedTable = tableAccessor.get(ORDERED_TABLE_ID);
+    final Table<Long, String, ?> hashedTable = tableAccessor.get(HASHED_TABLE_ID);
+    final Table<Long, String, ?> orderedTable = tableAccessor.get(ORDERED_TABLE_ID);
 
     final String prevValue00 = hashedTable.put(KEY0, VALUE0);
     LOG.log(Level.INFO, "Put value {0} to key {1} in hashedTable", new Object[]{VALUE0, KEY0});

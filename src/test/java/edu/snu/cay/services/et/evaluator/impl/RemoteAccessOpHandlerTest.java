@@ -102,6 +102,7 @@ public final class RemoteAccessOpHandlerTest {
         .setNumTotalBlocks(numTotalBlocks)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
+        .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
         .setIsOrderedTable(false)
         .build();
@@ -109,10 +110,10 @@ public final class RemoteAccessOpHandlerTest {
 
   @Test
   public void testRemoteAccess() throws TableNotExistException, InterruptedException {
-    final TableComponents<String, Integer> tableComponents = tables.get(TABLE_ID);
-    final KVSerializer<String, Integer> kvSerializer = tableComponents.getSerializer();
-    final Codec<String> keyCodec = kvSerializer.getKeyCodec();
-    final Codec<Integer> valueCodec = kvSerializer.getValueCodec();
+    final TableComponents<String, Integer, Integer> tableComponents = tables.get(TABLE_ID);
+    final KVUSerializer<String, Integer, Integer> kvuSerializer = tableComponents.getSerializer();
+    final Codec<String> keyCodec = kvuSerializer.getKeyCodec();
+    final Codec<Integer> valueCodec = kvuSerializer.getValueCodec();
 
     // we can know whether the access has been finished using 'replyLatch'
     final ResettingCountDownLatch replyLatch = new ResettingCountDownLatch(1);

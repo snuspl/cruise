@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,9 +27,10 @@ import java.util.Map.Entry;
  *
  * @param <K> type of the key for this table.
  * @param <V> type of the value for this table.
+ * @param <U> type of the update value for this table.
  */
 @DefaultImplementation(TableImpl.class)
-public interface Table<K, V> {
+public interface Table<K, V, U> {
   /**
    * Associates the specified value with the specified key.
    * @param key key with which value is to be associated
@@ -49,17 +50,17 @@ public interface Table<K, V> {
 
   /**
    * Update a value associated with the specified key using {@link UpdateFunction}.
-   * Specifically, it processes the value associated with key with {@code deltaValue} by
-   * {@link UpdateFunction#updateValue(K, V, V)}.
+   * Specifically, it processes the value associated with key with {@code updateValue} by
+   * {@link UpdateFunction#updateValue(K, V, U)}.
    * If there's no associated value, it uses the value from {@link UpdateFunction#initValue(K)} as oldValue.
    * To use this update method, users should provide their own implementation of {@link UpdateFunction}
    * and bind it to the interface.
    *
    * @param key global unique identifier of item
-   * @param deltaValue value
+   * @param updateValue update value
    * @return the updated value associated with the key
    */
-  V update(K key, V deltaValue);
+  V update(K key, U updateValue);
 
   /**
    * Removes association for the specified key.

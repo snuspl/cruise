@@ -36,12 +36,12 @@ import java.util.logging.Logger;
 final class BulkDataLoader<V> {
   private static final Logger LOG = Logger.getLogger(BulkDataLoader.class.getName());
 
-  private final Table<Long, V> table;
+  private final Table<Long, V, ?> table;
   private final DataParser<V> dataParser;
   private final LocalKeyGenerator localKeyGenerator;
 
   @Inject
-  private BulkDataLoader(final Table<Long, V> table,
+  private BulkDataLoader(final Table<Long, V, ?> table,
                          final DataParser<V> dataParser,
                          final LocalKeyGenerator localKeyGenerator) {
     this.table = table;

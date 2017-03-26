@@ -24,12 +24,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * An abstraction of each access to a remote table.
  */
-final class RemoteDataOp<K, V> {
+final class RemoteDataOp<K, V, U> {
 
   /**
    * Metadata of operation.
    */
-  private final DataOpMetadata<K, V> dataOp;
+  private final DataOpMetadata<K, V, U> dataOp;
 
   /**
    * A latch that will be released when the operation gets result.
@@ -55,15 +55,15 @@ final class RemoteDataOp<K, V> {
   RemoteDataOp(final String origExecutorId,
                final long operationId, final OpType operationType,
                final String tableId, final int blockId,
-               final K dataKey, @Nullable final V dataValue) {
+               final K dataKey, @Nullable final V dataValue, @Nullable final U updateValue) {
     this.dataOp = new DataOpMetadata<>(origExecutorId, operationId, operationType,
-        tableId, blockId, dataKey, dataValue);
+        tableId, blockId, dataKey, dataValue, updateValue);
   }
 
   /**
    * @return a {@link DataOpMetadata}
    */
-  DataOpMetadata<K, V> getMetadata() {
+  DataOpMetadata<K, V, U> getMetadata() {
     return dataOp;
   }
 

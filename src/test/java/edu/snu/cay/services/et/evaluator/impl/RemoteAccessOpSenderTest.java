@@ -93,6 +93,7 @@ public class RemoteAccessOpSenderTest {
         .setNumTotalBlocks(numTotalBlocks)
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
+        .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
         .setIsOrderedTable(false)
         .build();
@@ -119,8 +120,8 @@ public class RemoteAccessOpSenderTest {
 
     final int blockId = 0; // block id means nothing here, so just set it as 0
 
-    final RemoteDataOp<String, Integer> remoteDataOp =
-        remoteAccessOpSender.sendOpToRemote(OpType.PUT, TABLE_ID, blockId, key, value, RECEIVER_ID);
+    final RemoteDataOp<String, Integer, ?> remoteDataOp =
+        remoteAccessOpSender.sendOpToRemote(OpType.PUT, TABLE_ID, blockId, key, value, null, RECEIVER_ID);
 
     assertTrue("Operation should finish within timeout", remoteDataOp.waitRemoteOp(10000));
     assertTrue(remoteDataOp.isSuccess());
