@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Copyright (C) 2015 Seoul National University
+  Copyright (C) 2017 Seoul National University
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -365,6 +365,42 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.19.1</version>
+        <configuration>
+          <redirectTestOutputToFile>true</redirectTestOutputToFile>
+          <groups>${tests.groups}</groups>
+          <excludedGroups>${tests.excluded}</excludedGroups>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
+
+  <!-- default : All tests including Unit, Intensive, and Integration categories-->
+  <profiles>
+    <profile>
+      <!-- only Unit tests-->
+      <id>UnitTest</id>
+      <properties>
+        <tests.excluded>edu.snu.cay.utils.test.IntensiveTest, edu.snu.cay.utils.test.IntegrationTest</tests.excluded>
+      </properties>
+    </profile>
+    <profile>
+      <!-- Unit, Intensive tests-->
+      <id>IntensiveTest</id>
+      <properties>
+        <tests.excluded>edu.snu.cay.utils.test.IntegrationTest</tests.excluded>
+      </properties>
+    </profile>
+    <profile>
+      <!-- Only Integration tests-->
+      <id>IntegrationTest</id>
+      <properties>
+        <tests.groups>edu.snu.cay.utils.test.IntegrationTest</tests.groups>
+      </properties>
+    </profile>
+  </profiles>
+
 </project>

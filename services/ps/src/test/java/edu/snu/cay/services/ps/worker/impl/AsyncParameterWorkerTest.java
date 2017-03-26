@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.EnforceLoggingLevelRule;
 import edu.snu.cay.utils.ThreadUtils;
+import edu.snu.cay.utils.test.IntensiveTest;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -36,6 +37,7 @@ import org.htrace.SpanReceiver;
 import org.htrace.TraceInfo;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -101,6 +103,7 @@ public final class AsyncParameterWorkerTest {
    * Test that {@link AsyncParameterWorker#close(long)} does indeed block further operations from being processed.
    */
   @Test
+  @Category(IntensiveTest.class)
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
     prepare(TIMEOUT_NO_RETRY);
@@ -191,6 +194,7 @@ public final class AsyncParameterWorkerTest {
    * Tests whether worker correctly restart the pull operation, when the server does not respond within timeout.
    */
   @Test
+  @Category(IntensiveTest.class)
   public void testPullTimeoutAndRetry()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
     prepare(ParameterWorkerTestUtil.PULL_RETRY_TIMEOUT_MS);

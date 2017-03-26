@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,10 @@ package edu.snu.cay.dolphin.async.integration;
 import edu.snu.cay.dolphin.async.examples.addvector.AddVectorREEF;
 import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
+import edu.snu.cay.utils.test.IntegrationTest;
 import org.apache.reef.client.LauncherStatus;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,6 +35,7 @@ import static org.junit.Assert.assertEquals;
  * It runs the app with several optimization plans that add and delete servers
  * to confirm that this migration protocol preserves data values during migration correctly.
  */
+@Category(IntegrationTest.class)
 public final class OwnershipFirstMigrationTest {
 
   @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.remote;
 
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.examples.remote.RemoteEMREEF;
+import edu.snu.cay.utils.test.IntegrationTest;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
@@ -26,6 +27,7 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.assertEquals;
 
@@ -35,6 +37,7 @@ import static org.junit.Assert.assertEquals;
  * This test completely depends on the RemoteEMREEF example.
  * So it's better to modify the RemoteEMREEF example, when you wanna change the test.
  */
+@Category(IntegrationTest.class)
 public class RemoteAccessTest {
 
   private static final int TIMEOUT_MS = 100000;

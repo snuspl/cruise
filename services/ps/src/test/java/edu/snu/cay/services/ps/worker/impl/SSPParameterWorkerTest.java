@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
 import edu.snu.cay.services.ps.worker.parameters.StalenessBound;
 import edu.snu.cay.utils.ThreadUtils;
+import edu.snu.cay.utils.test.IntensiveTest;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -45,6 +46,7 @@ import org.apache.reef.wake.IdentifierFactory;
 import org.htrace.TraceInfo;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -158,6 +160,7 @@ public final class SSPParameterWorkerTest {
    * Test that {@link SSPParameterWorker#close(long)} does indeed block further operations from being processed.
    */
   @Test
+  @Category(IntensiveTest.class)
   public void testClose()
       throws InterruptedException, TimeoutException, ExecutionException, NetworkException, InjectionException {
     prepare(TIMEOUT_NO_RETRY);
@@ -244,6 +247,7 @@ public final class SSPParameterWorkerTest {
    * Tests whether worker correctly restart the pull operation, when the server does not respond within timeout.
    */
   @Test
+  @Category(IntensiveTest.class)
   public void testPullTimeoutAndRetry()
       throws NetworkException, InterruptedException, TimeoutException, ExecutionException, InjectionException {
     prepare(ParameterWorkerTestUtil.PULL_RETRY_TIMEOUT_MS);
@@ -311,6 +315,7 @@ public final class SSPParameterWorkerTest {
    * When worker threads request pull operations, they are blocked or released according to their staleness condition.
    */
   @Test(timeout = 30000)
+  @Category(IntensiveTest.class)
   public void testWorkerStalenessCheck() throws NetworkException, InterruptedException, BrokenBarrierException,
       InjectionException {
     prepare(TIMEOUT_NO_RETRY);

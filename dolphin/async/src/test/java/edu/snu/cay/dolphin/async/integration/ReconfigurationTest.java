@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,12 @@ import edu.snu.cay.dolphin.async.examples.addinteger.AddIntegerREEF;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.utils.TestLoggingConfig;
+import edu.snu.cay.utils.test.IntegrationTest;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.assertEquals;
 
@@ -31,6 +33,7 @@ import static org.junit.Assert.assertEquals;
  * It runs the app with {@link TestingOrchestrator} that runs several optimization plans
  * to confirm that dolphin reconfigures the system correctly and reliably.
  */
+@Category(IntegrationTest.class)
 public final class ReconfigurationTest {
 
   @Test

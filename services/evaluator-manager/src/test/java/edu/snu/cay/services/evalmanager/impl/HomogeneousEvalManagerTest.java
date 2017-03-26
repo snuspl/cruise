@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,11 @@
  */
 package edu.snu.cay.services.evalmanager.impl;
 
+import edu.snu.cay.utils.test.IntensiveTest;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 /**
  * Tests that {@link HomogeneousEvalManager} requests for evaluators and handles REEF events correctly.
@@ -53,6 +55,7 @@ public final class HomogeneousEvalManagerTest {
    * Checks that context stack is built correctly.
    */
   @Test
+  @Category(IntensiveTest.class)
   public void testMultiplePlanMultipleContext() {
     evaluatorManagerTestHelper.testMultiplePlanMultipleContext();
   }
