@@ -54,7 +54,8 @@ final class WorkerGlobalBarrier {
     this.codec = codec;
   }
 
-  private void reportToDriver() {
+  private void sendMsgToDriver() {
+    LOG.log(Level.INFO, "Sending a synchronization message to the driver");
     final byte[] data = codec.encode(stateMachine.getCurrentState());
     aggregationSlave.send(WorkerStateManager.AGGREGATION_CLIENT_NAME, data);
   }
@@ -78,7 +79,7 @@ final class WorkerGlobalBarrier {
       throw new RuntimeException("Invalid state");
     }
 
-    reportToDriver();
+    sendMsgToDriver();
     countDownLatch.awaitAndReset(1);
   }
 
