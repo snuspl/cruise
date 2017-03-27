@@ -55,7 +55,7 @@ import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TAB
 import static edu.snu.cay.dolphin.async.ETWorkerTask.TASK_ID_PREFIX;
 
 /**
- * Driver code for simple example.
+ * Driver code for Dolphin on ET.
  */
 @Unit
 public final class ETDolphinDriver {

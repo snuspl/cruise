@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 package edu.snu.cay.dolphin.async;
-
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
@@ -51,7 +50,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Main entry point for launching a {@code dolphin-async} application.
+ * Main entry point for launching a Dolphin on ET application.
  * See {@link ETDolphinLauncher#launch(String, String[], ETDolphinConfiguration)}.
  */
 @ClientSide
@@ -77,7 +76,7 @@ public final class ETDolphinLauncher {
   }
 
   /**
-   * Launch an application on the {@code dolphin-async} framework with an additional configuration for the driver.
+   * Launch an application on the Dolphin on ET framework with an additional configuration for the driver.
    * @param jobName string identifier of this application
    * @param args command line arguments
    * @param dolphinConf job configuration of this application
@@ -146,7 +145,7 @@ public final class ETDolphinLauncher {
   }
 
   /**
-   * Launch an application on the {@code dolphin-async} framework.
+   * Launch an application on the Dolphin on ET framework.
    * @param jobName string identifier of this application
    * @param args command line arguments
    * @param etDolphinConfiguration job configuration of this application

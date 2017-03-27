@@ -22,6 +22,7 @@ import java.util.List;
 
 /**
  * An {@link ModelAccessor} implementation based on ET.
+ * TODO #1066: implement ET model accessor
  */
 public class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   static final String MODEL_TABLE_ID = "model_table";

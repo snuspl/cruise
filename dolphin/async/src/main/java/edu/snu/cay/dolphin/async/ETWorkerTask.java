@@ -28,7 +28,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * REEF Task for a trainer thread of {@code dolphin-async} applications.
+ * REEF Task for running Dolphin trainers on ET.
  */
 final class ETWorkerTask<K, V> implements Task {
   private static final Logger LOG = Logger.getLogger(ETWorkerTask.class.getName());
