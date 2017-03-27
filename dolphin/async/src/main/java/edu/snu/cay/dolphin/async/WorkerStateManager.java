@@ -34,10 +34,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A driver-side component that coordinates synchronization messages between the driver and workerIds.
- * It is used to synchronize workerIds in two points: after initialization (STATE_INIT -> STATE_RUN)
+ * A driver-side component that coordinates synchronization between the driver and workers.
+ * It is used to synchronize workers in two points: after initialization (STATE_INIT -> STATE_RUN)
  * and before cleanup (STATE_RUN -> STATE_CLEANUP).
- * To achieve this, it maintains a global state that all workerIds should match with their own local states.
+ * To achieve this, it maintains a global state to be matched with their own local states.
  */
 @DriverSide
 @Unit
@@ -56,12 +56,12 @@ final class WorkerStateManager {
   private final StateMachine stateMachine;
 
   /**
-   * A set of workerIds to be synchronized.
+   * A set of ids of workers to be synchronized.
    */
   private final Set<String> workerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
-   * A set that maintains workerIds that have sent a sync msg for the barrier.
+   * A set maintaining worker ids of whom have sent a sync msg for the barrier.
    */
   @GuardedBy("this")
   private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());

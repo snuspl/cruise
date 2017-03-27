@@ -63,7 +63,7 @@ final class WorkerGlobalBarrier {
   /**
    * Worker waits on a global synchronization barrier.
    * When all threads have been observed at the barrier,
-   * It sends sends a synchronization message to the driver and blocks until
+   * it sends a synchronization message to the driver and waits until
    * a response message arrives from the driver.
    * After receiving the reply, this {@link WorkerGlobalBarrier} releases worker to progress.
    */
@@ -76,7 +76,7 @@ final class WorkerGlobalBarrier {
       break;
     case CLEANUP:
     default:
-      throw new RuntimeException("Invalid state");
+      throw new RuntimeException("Invalid state: await() cannot be called in the CLEANUP state");
     }
 
     sendMsgToDriver();
