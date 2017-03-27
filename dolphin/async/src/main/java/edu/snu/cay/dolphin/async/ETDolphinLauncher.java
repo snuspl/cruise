@@ -112,6 +112,8 @@ public final class ETDolphinLauncher {
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(Trainer.class, dolphinConf.getTrainerClass())
               .bindImplementation(DataParser.class, dolphinConf.getInputParserClass())
+              .bindImplementation(TrainingDataProvider.class, ETTrainingDataProvider.class)
+              .bindImplementation(ModelAccessor.class, ETModelAccessor.class)
               .bindNamedParameter(KeyCodec.class, dolphinConf.getInputKeyCodecClass())
               .bindNamedParameter(ValueCodec.class, dolphinConf.getInputValueCodecClass())
               .build());
