@@ -72,6 +72,11 @@ public final class ClockManager {
    */
   private int globalMinimumClock;
 
+  /**
+   *
+   */
+  private final List<EventHandler<Integer>> callbacks = new ArrayList<>();
+
   @Inject
   private ClockManager(final AggregationMaster aggregationMaster,
                        final ClockMsgCodec codec,
@@ -82,6 +87,14 @@ public final class ClockManager {
     this.globalMinimumClock = INITIAL_GLOBAL_MINIMUM_CLOCK;
     workerClockMap = new HashMap<>();
     minimumClockWorkers = new ArrayList<>();
+  }
+
+  /**
+   *
+   * @param callback
+   */
+  public void addClockListener(final EventHandler<Integer> callback) {
+    callbacks.add(callback);
   }
 
   /**
@@ -199,6 +212,8 @@ public final class ClockManager {
     if (minimumClockWorkers.remove(workerId)) {
       if (minimumClockWorkers.size() == 0) {
         globalMinimumClock++;
+
+        callbacks.forEach(callback -> callback.onNext(globalMinimumClock));
         broadcastGlobalMinimumClock();
       }
     }

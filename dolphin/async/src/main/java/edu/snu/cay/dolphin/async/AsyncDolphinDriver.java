@@ -49,6 +49,7 @@ import edu.snu.cay.utils.trace.HTrace;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.ProgressProvider;
+import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ClosedContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -283,6 +284,8 @@ public final class AsyncDolphinDriver {
    */
   private final ExecutorService optimizationTriggerExecutor = Executors.newSingleThreadExecutor();
 
+  private final JobMessageObserver jobMessageObserver;
+
   /**
    * Injectable constructor.
    *
@@ -293,6 +296,7 @@ public final class AsyncDolphinDriver {
    */
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
+                             final JobMessageObserver jobMessageObserver,
                              final DataLoadingService dataLoadingService,
                              final SynchronizationManager synchronizationManager,
                              final ClockManager clockManager,
@@ -318,6 +322,7 @@ public final class AsyncDolphinDriver {
                              final HTrace hTrace) throws IOException {
     hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
+    this.jobMessageObserver = jobMessageObserver;
     this.dataLoadingService = dataLoadingService;
     this.synchronizationManager = synchronizationManager;
     this.clockManager = clockManager;
@@ -339,6 +344,11 @@ public final class AsyncDolphinDriver {
     this.traceParameters = traceParameters;
     this.optimizationIntervalMs = optimizationIntervalMs;
     this.maxNumEpochs = maxNumEpochs;
+
+    this.clockManager.addClockListener(epochIdx -> {
+      final byte[] bytes = null; // encode epochIdx
+      jobMessageObserver.sendMessageToClient(bytes);
+    });
 
     try {
       final Injector workerInjector = injector.forkInjector();
