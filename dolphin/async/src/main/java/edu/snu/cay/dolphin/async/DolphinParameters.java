@@ -36,4 +36,40 @@ public final class DolphinParameters {
       short_name = "num_trainer_threads", default_value = "1")
   public final class NumTrainerThreads implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "Desired memory size for each evaluator (MBs)",
+                  short_name = "worker_mem_size",
+                  default_value = "128")
+  public final class WorkerMemSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "Desired memory size for each evaluator (MBs)",
+                  short_name = "server_mem_size",
+                  default_value = "128")
+  public final class ServerMemSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of CPU cores for each evaluator",
+                  short_name = "num_workers",
+                  default_value = "1")
+  public final class NumWorkers implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of CPU cores for each evaluator",
+                  short_name = "num_servers",
+                  default_value = "1")
+  public final class NumServers implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of CPU cores for each evaluator",
+                  short_name = "num_worker_cores",
+                  default_value = "1")
+  public final class NumWorkerCores implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of CPU cores for each evaluator",
+                  short_name = "num_server_cores",
+                  default_value = "1")
+  public final class NumServerCores implements Name<Integer> {
+  }
 }
