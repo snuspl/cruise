@@ -111,10 +111,40 @@ public final class TableImpl<K, V, U> implements Table<K, V, U>, TableComponents
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V, U> operation = remoteAccessOpSender.sendOpToRemote(
-        OpType.PUT, tableId, blockId, key, value, null, remoteIdOptional.get());
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.PUT, tableId, blockId, key, value, null, remoteIdOptional.get(), true);
 
-    return operation.getOutputData();
+    return opResult.getOutputData();
+  }
+
+  @Override
+  public DataOpResult<V> putAsync(final K key, final V value) {
+
+    final int blockId = blockPartitioner.getBlockId(key);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    try {
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final Block<K, V> block = blockStore.get(blockId);
+        final V result = block.put(key, value);
+        return new DataOpResultImpl<>(result, true);
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
+    }
+
+    // send operation to remote
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.PUT, tableId, blockId, key, value, null, remoteIdOptional.get(), false);
+
+    return opResult;
   }
 
   @Override
@@ -139,10 +169,39 @@ public final class TableImpl<K, V, U> implements Table<K, V, U>, TableComponents
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V, U> operation = remoteAccessOpSender.sendOpToRemote(
-        OpType.GET, tableId, blockId, key, null, null, remoteIdOptional.get());
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.GET, tableId, blockId, key, null, null, remoteIdOptional.get(), true);
 
-    return operation.getOutputData();
+    return opResult.getOutputData();
+  }
+
+  @Override
+  public DataOpResult<V> getAsync(final K key) {
+    final int blockId = blockPartitioner.getBlockId(key);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    try {
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final Block<K, V> block = blockStore.get(blockId);
+        final V result = block.get(key);
+        return new DataOpResultImpl<>(result, true);
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
+    }
+
+    // send operation to remote and wait until operation is finished
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.GET, tableId, blockId, key, null, null, remoteIdOptional.get(), false);
+
+    return opResult;
   }
 
   @Override
@@ -167,10 +226,39 @@ public final class TableImpl<K, V, U> implements Table<K, V, U>, TableComponents
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V, U> operation = remoteAccessOpSender.sendOpToRemote(
-        OpType.UPDATE, tableId, blockId, key, null, updateValue, remoteIdOptional.get());
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.UPDATE, tableId, blockId, key, null, updateValue, remoteIdOptional.get(), true);
 
-    return operation.getOutputData();
+    return opResult.getOutputData();
+  }
+
+  @Override
+  public DataOpResult<V> updateAsync(final K key, final U updateValue) {
+    final int blockId = blockPartitioner.getBlockId(key);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    try {
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final Block<K, V> block = blockStore.get(blockId);
+        final V result = block.update(key, updateValue, updateFunction);
+        return new DataOpResultImpl<>(result, true);
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
+    }
+
+    // send operation to remote and wait until operation is finished
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.UPDATE, tableId, blockId, key, null, updateValue, remoteIdOptional.get(), false);
+
+    return opResult;
   }
 
   @Override
@@ -195,10 +283,39 @@ public final class TableImpl<K, V, U> implements Table<K, V, U>, TableComponents
     }
 
     // send operation to remote and wait until operation is finished
-    final RemoteDataOp<K, V, U> operation = remoteAccessOpSender.sendOpToRemote(
-        OpType.REMOVE, tableId, blockId, key, null, null, remoteIdOptional.get());
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.REMOVE, tableId, blockId, key, null, null, remoteIdOptional.get(), true);
 
-    return operation.getOutputData();
+    return opResult.getOutputData();
+  }
+
+  @Override
+  public DataOpResult<V> removeAsync(final K key) {
+    final int blockId = blockPartitioner.getBlockId(key);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    try {
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final Block<K, V> block = blockStore.get(blockId);
+        final V result = block.remove(key);
+        return new DataOpResultImpl<>(result, true);
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
+    }
+
+    // send operation to remote and wait until operation is finished
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.REMOVE, tableId, blockId, key, null, null, remoteIdOptional.get(), false);
+
+    return opResult;
   }
 
   @Override

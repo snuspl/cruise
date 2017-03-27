@@ -40,6 +40,15 @@ public interface Table<K, V, U> {
   V put(K key, V value);
 
   /**
+   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
+   * allows users to retrieve the result from the object when the request is complete.
+   * @param key key with which value is to be associated
+   * @param value value to be associated with the specified key
+   * @return {@link DataOpResult} that will provide the value that {@link #put(K, V)} method returns
+   */
+  DataOpResult<V> putAsync(K key, V value);
+
+  /**
    * Returns the value to which the specified key is associated,
    * or {@code null} if this table contains no value for the key.
    * @param key the key whose associated value is to be returned
@@ -47,6 +56,14 @@ public interface Table<K, V, U> {
    *         or {@code null} if no value is associated with the given key
    */
   V get(K key);
+
+  /**
+   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
+   * allows users to retrieve the result from the object when the request is complete.
+   * @param key key with which value is to be associated
+   * @return {@link DataOpResult} that will provide the value that {@link #get(K)} method returns
+   */
+  DataOpResult<V> getAsync(K key);
 
   /**
    * Update a value associated with the specified key using {@link UpdateFunction}.
@@ -63,11 +80,28 @@ public interface Table<K, V, U> {
   V update(K key, U updateValue);
 
   /**
+   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
+   * allows users to retrieve the result from the object when the request is complete.
+   * @param key global unique identifier of item
+   * @param updateValue update value
+   * @return {@link DataOpResult} that will provide the value that {@link #update(K, U)} method returns
+   */
+  DataOpResult<V> updateAsync(K key, U updateValue);
+
+  /**
    * Removes association for the specified key.
    * @param key key with which value is to be deleted
    * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
    */
   V remove(K key);
+
+  /**
+   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
+   * allows users to retrieve the result from the object when the request is complete.
+   * @param key key with which value is to be associated
+   * @return {@link DataOpResult} that will provide the value that {@link #remove(K)} method returns
+   */
+  DataOpResult<V> removeAsync(K key);
 
   /**
    * Returns a map that contains key-value mapping of all local data.

@@ -23,6 +23,7 @@ import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.driver.impl.BlockManager;
+import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerUpdateFunction;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
@@ -106,7 +107,7 @@ public class RemoteAccessOpSenderTest {
       final DataValue dataValue = invocation.getArgumentAt(6, DataValue.class);
 
       final TableAccessResMsg tableAccessResMsg = TableAccessResMsg.newBuilder()
-          .setDataValue(dataValue) // just set output value as its input
+          .setDataValue(dataValue) // For simplicity, we assume that previous value to be same as input value.
           .setIsSuccess(true)
           .build();
 
@@ -120,11 +121,19 @@ public class RemoteAccessOpSenderTest {
 
     final int blockId = 0; // block id means nothing here, so just set it as 0
 
-    final RemoteDataOp<String, Integer, ?> remoteDataOp =
-        remoteAccessOpSender.sendOpToRemote(OpType.PUT, TABLE_ID, blockId, key, value, null, RECEIVER_ID);
+    final DataOpResult<Integer> syncOpResult =
+        remoteAccessOpSender.sendOpToRemote(OpType.PUT, TABLE_ID, blockId, key, value, null, RECEIVER_ID, true);
 
-    assertTrue("Operation should finish within timeout", remoteDataOp.waitRemoteOp(10000));
-    assertTrue(remoteDataOp.isSuccess());
-    assertEquals("output value should be same with input value", value, remoteDataOp.getOutputData());
+    assertTrue(syncOpResult.isSuccess());
+    assertEquals("output value should be same with input value", value, syncOpResult.getOutputData());
+
+    // async put
+    final DataOpResult<Integer> asyncOpResult =
+        remoteAccessOpSender.sendOpToRemote(OpType.PUT, TABLE_ID, blockId, key, value, null, RECEIVER_ID, false);
+
+    // wait by itself
+    assertTrue("Operation should finish within timeout", asyncOpResult.waitRemoteOp(10000));
+    assertTrue(asyncOpResult.isSuccess());
+    assertEquals("output value should be same with input value", value, asyncOpResult.getOutputData());
   }
 }
