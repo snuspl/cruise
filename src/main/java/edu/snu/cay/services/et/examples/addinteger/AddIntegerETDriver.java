@@ -132,8 +132,8 @@ public final class AddIntegerETDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, RES_CONF, null);
-      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, RES_CONF, null);
+      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, RES_CONF, null, null);
+      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, RES_CONF, null, null);
 
       final AllocatedTable modelTable = etMaster.createTable(tableConf, servers);
 

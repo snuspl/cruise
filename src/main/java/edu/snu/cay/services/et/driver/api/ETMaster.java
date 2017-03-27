@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,10 +37,13 @@ public interface ETMaster {
    * Allocates new {@code num} executors of the equal resource specification.
    * @param num the number of executors
    * @param resConf resource configuration
-   * @param userConf a user's configuration
+   * @param userContextConf a context configuration specified by user
+   * @param userServiceConf a service configuration specified by user
    * @return a list of {@link AllocatedExecutor}s
    */
-  List<AllocatedExecutor> addExecutors(int num, ResourceConfiguration resConf, @Nullable Configuration userConf);
+  List<AllocatedExecutor> addExecutors(int num, ResourceConfiguration resConf,
+                                       @Nullable Configuration userContextConf,
+                                       @Nullable Configuration userServiceConf);
 
   /**
    * Creates a table using the given table configuration.

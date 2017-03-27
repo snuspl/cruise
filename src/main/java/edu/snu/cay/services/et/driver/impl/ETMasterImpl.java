@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 
@@ -35,6 +36,8 @@ import java.util.List;
  */
 @DriverSide
 public final class ETMasterImpl implements ETMaster {
+  private static final Configuration EMPTY_CONFIG = Tang.Factory.getTang().newConfigurationBuilder().build();
+
   private final ExecutorManager executorManager;
   private final TableManager tableManager;
 
@@ -50,8 +53,13 @@ public final class ETMasterImpl implements ETMaster {
 
   @Override
   public List<AllocatedExecutor> addExecutors(final int num, final ResourceConfiguration resConf,
-                                              @Nullable final Configuration userConf) {
-    return executorManager.addExecutors(num, resConf, userConf);
+                                              @Nullable final Configuration userContextConf,
+                                              @Nullable final Configuration userServiceConf) {
+    // use an empty configuration when given configurations are null
+    final Configuration contextConf = userContextConf != null ? userContextConf : EMPTY_CONFIG;
+    final Configuration serviceConf = userServiceConf != null ? userServiceConf : EMPTY_CONFIG;
+
+    return executorManager.addExecutors(num, resConf, contextConf, serviceConf);
   }
 
   @Override

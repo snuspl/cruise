@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -93,11 +92,13 @@ final class ExecutorManager {
    * It returns when requested executors are allocated.
    * @param num the number of executors
    * @param resConf resource configuration
-   * @param userConf a user's configuration
+   * @param userContextConf a context configuration specified by user
+   * @param userServiceConf a service configuration specified by user
    * @return a list of allocated executors
    */
   List<AllocatedExecutor> addExecutors(final int num, final ResourceConfiguration resConf,
-                                       @Nullable final Configuration userConf) {
+                                       final Configuration userContextConf,
+                                       final Configuration userServiceConf) {
     final int numCores = resConf.getNumCores();
     final int memSizeInMB = resConf.getMemSizeInMB();
 
@@ -117,7 +118,7 @@ final class ExecutorManager {
     });
 
     evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores,
-        new AllocatedEvalHandler(userConf), activeCtxHandlers);
+        new AllocatedEvalHandler(userContextConf, userServiceConf), activeCtxHandlers);
 
     // wait until all requested executors are allocated.
     try {
@@ -140,21 +141,28 @@ final class ExecutorManager {
    * Submits ET context, including user's configuration, which will setup executor when evaluator is allocated.
    */
   private final class AllocatedEvalHandler implements EventHandler<AllocatedEvaluator> {
-    private final Configuration userConf;
+    private final Configuration userContextConf;
+    private final Configuration userServiceConf;
 
     /**
-     * @param userConf a user configuration, it allows null
+     * @param userContextConf a context configuration specified by user
+     * @param userServiceConf a service configuration specified by user
      */
-    AllocatedEvalHandler(final Configuration userConf) {
-      this.userConf = userConf;
+    AllocatedEvalHandler(final Configuration userContextConf, final Configuration userServiceConf) {
+      this.userContextConf = userContextConf;
+      this.userServiceConf = userServiceConf;
     }
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      final Configuration contextConfiguration = ContextConfiguration.CONF
+      final Configuration contextConfiguration;
+
+      final Configuration baseContextConfiguration = ContextConfiguration.CONF
           .set(ContextConfiguration.IDENTIFIER, CONTEXT_PREFIX + contextIdCounter.getAndIncrement())
           .set(ContextConfiguration.ON_CONTEXT_STARTED, ContextStartHandler.class)
           .build();
+
+      contextConfiguration = Configurations.merge(baseContextConfiguration, userContextConf);
 
       // different from context configuration, service configuration will be inherited by upper contexts
       final Configuration serviceConfiguration;
@@ -168,9 +176,7 @@ final class ExecutorManager {
           .set(ExecutorConfiguration.DRIVER_IDENTIFIER, driverIdentifier)
           .build();
 
-      serviceConfiguration = userConf == null ?
-          executorConfiguration :
-          Configurations.merge(executorConfiguration, userConf);
+      serviceConfiguration = Configurations.merge(executorConfiguration, userServiceConf);
 
       allocatedEvaluator.submitContextAndService(contextConfiguration, serviceConfiguration);
       LOG.log(Level.FINE, "Submitted context to evaluator {0}", allocatedEvaluator.getId());
