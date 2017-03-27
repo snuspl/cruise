@@ -43,7 +43,7 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider 
 
   private final int miniBatchSize;
 
-  private final Table<K, V> trainingDataTable;
+  private final Table<K, V, ?> trainingDataTable;
 
   @Inject
   private ETTrainingDataProvider(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
