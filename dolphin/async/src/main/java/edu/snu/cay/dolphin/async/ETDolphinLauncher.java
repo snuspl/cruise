@@ -47,6 +47,7 @@ import org.apache.reef.wake.IdentifierFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -96,20 +97,23 @@ public final class ETDolphinLauncher {
 
       final Configuration clientParamConf = configurations.get(0);
       final Configuration driverParamConf = configurations.get(1);
-      final Configuration workerParamConf = configurations.get(2);
-      final Configuration userParamConf = configurations.get(3);
+      final Configuration serverParamConf = configurations.get(2);
+      final Configuration workerParamConf = configurations.get(3);
+      final Configuration userParamConf = configurations.get(4);
 
       // server conf
-      final Configuration serverConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(UpdateFunction.class, dolphinConf.getModelUpdateFunctionClass())
-          .bindNamedParameter(KeyCodec.class, dolphinConf.getModelKeyCodecClass())
-          .bindNamedParameter(ValueCodec.class, dolphinConf.getModelValueCodecClass())
-          .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
-          .build();
+      final Configuration serverConf = Configurations.merge(
+          serverParamConf, userParamConf,
+          Tang.Factory.getTang().newConfigurationBuilder()
+              .bindImplementation(UpdateFunction.class, dolphinConf.getModelUpdateFunctionClass())
+              .bindNamedParameter(KeyCodec.class, dolphinConf.getModelKeyCodecClass())
+              .bindNamedParameter(ValueCodec.class, dolphinConf.getModelValueCodecClass())
+              .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
+              .build());
 
       // worker conf
       final Configuration workerConf = Configurations.merge(
-          workerParamConf,
+          workerParamConf, userParamConf,
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(Trainer.class, dolphinConf.getTrainerClass())
               .bindImplementation(DataParser.class, dolphinConf.getInputParserClass())
@@ -136,8 +140,7 @@ public final class ETDolphinLauncher {
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
 
       status = DriverLauncher.getLauncher(runTimeConf)
-          .run(Configurations.merge(driverConf, driverParamConf, customDriverConf), timeout);
-
+          .run(Configurations.merge(driverConf, driverParamConf, customDriverConf, userParamConf), timeout);
     } catch (final Exception e) {
       status = LauncherStatus.failed(e);
       // This log is for giving more detailed info about failure, which status object does not show
@@ -171,12 +174,16 @@ public final class ETDolphinLauncher {
         NumServers.class, ServerMemSize.class, NumServerCores.class,
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class);
 
+    // it's empty now
+    final List<Class<? extends Name<?>>> serverParamList = Collections.emptyList();
+
     final List<Class<? extends Name<?>>> workerParamList = Arrays.asList(
         NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class);
 
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
     driverParamList.forEach(cl::registerShortNameOfClass);
+    serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
     cl.registerShortNameOfClass(InputDir.class); // handle inputPath separately to process it through processInputDir()
     userParamList.forEach(cl::registerShortNameOfClass);
@@ -184,6 +191,7 @@ public final class ETDolphinLauncher {
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);
     final Configuration driverConf = extractParameterConf(driverParamList, commandLineConf);
+    final Configuration serverConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
 
@@ -196,8 +204,8 @@ public final class ETDolphinLauncher {
         .bindNamedParameter(InputDir.class, processedInputPath)
         .build();
 
-    return Arrays.asList(clientConf, Configurations.merge(driverConf, userConf),
-        Configurations.merge(workerConf, userConf, inputPathConf), userConf);
+    return Arrays.asList(clientConf, driverConf, serverConf,
+        Configurations.merge(workerConf, inputPathConf), userConf);
   }
 
   /**
