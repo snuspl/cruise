@@ -56,7 +56,7 @@ public final class DolphinParameters {
   }
 
   @NamedParameter(doc = "The number of servers",
-                  short_name = "num_servers",
+                  short_name = "number_servers",
                   default_value = "1")
   public final class NumServers implements Name<Integer> {
   }
