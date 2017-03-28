@@ -51,7 +51,6 @@ public final class ETDolphinConfiguration {
   private final Configuration workerConfiguration;
   private final Configuration serverConfiguration;
 
-
   private ETDolphinConfiguration(final Class<? extends Trainer> trainerClass,
                                  final Class<? extends DataParser> inputParserClass,
                                  final Class<? extends Codec> inputKeyCodecClass,
@@ -120,7 +119,6 @@ public final class ETDolphinConfiguration {
     return serverConfiguration;
   }
 
-
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -139,7 +137,6 @@ public final class ETDolphinConfiguration {
     private List<Class<? extends Name<?>>> parameterClassList = new LinkedList<>();
     private Configuration workerConfiguration = Tang.Factory.getTang().newConfigurationBuilder().build();
     private Configuration serverConfiguration = Tang.Factory.getTang().newConfigurationBuilder().build();
-
 
     public Builder setTrainerClass(final Class<? extends Trainer> trainerClass) {
       this.trainerClass = trainerClass;
