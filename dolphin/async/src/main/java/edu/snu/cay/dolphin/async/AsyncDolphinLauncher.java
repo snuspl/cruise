@@ -56,9 +56,7 @@ import edu.snu.cay.utils.trace.parameters.ReceiverHost;
 import edu.snu.cay.utils.trace.parameters.ReceiverPort;
 import edu.snu.cay.utils.trace.parameters.ReceiverType;
 import org.apache.reef.annotations.audience.ClientSide;
-import org.apache.reef.client.DriverConfiguration;
-import org.apache.reef.client.DriverLauncher;
-import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.client.*;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
@@ -143,7 +141,6 @@ public final class AsyncDolphinLauncher {
               basicParameterInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class),
               basicParameterInjector.getNamedInstance(JVMHeapSlack.class)) :
           getYarnRuntimeConfiguration(basicParameterInjector.getNamedInstance(JVMHeapSlack.class));
-
       // configuration for the parameter server
       final boolean dynamic = basicParameterInjector.getNamedInstance(Dynamic.class);
       final Class<? extends PSManager> managerClass = dynamic ?
@@ -210,12 +207,12 @@ public final class AsyncDolphinLauncher {
       // driver-side configurations
       final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
-
-      final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
+      final LauncherStatus status = DolphinDriverLauncher.getLauncher(runTimeConf).run(
           Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
               serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf,
               dashboardConf),
           timeout);
+
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
       return status;
 
@@ -448,4 +445,6 @@ public final class AsyncDolphinLauncher {
     final File inputFile = new File(inputDir);
     return "file:///" + inputFile.getAbsolutePath();
   }
+
+
 }

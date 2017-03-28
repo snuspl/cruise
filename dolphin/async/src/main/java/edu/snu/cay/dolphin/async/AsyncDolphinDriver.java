@@ -80,6 +80,7 @@ import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -284,6 +285,9 @@ public final class AsyncDolphinDriver {
    */
   private final ExecutorService optimizationTriggerExecutor = Executors.newSingleThreadExecutor();
 
+  /**
+   * Send progress information to Client.
+   */
   private final JobMessageObserver jobMessageObserver;
 
   /**
@@ -345,9 +349,15 @@ public final class AsyncDolphinDriver {
     this.optimizationIntervalMs = optimizationIntervalMs;
     this.maxNumEpochs = maxNumEpochs;
 
-    this.clockManager.addClockListener(epochIdx -> {
-      final byte[] bytes = null; // encode epochIdx
-      jobMessageObserver.sendMessageToClient(bytes);
+    this.clockManager.addProgressUpdateListener(epochIdx -> {
+      // encode progress information : epochIdx, maxNumEpochs
+      final int[] progressInfo = {epochIdx, maxNumEpochs};
+      final byte[] encodedProgressInfo = ByteBuffer.allocate(4 * progressInfo.length)
+          .putInt(epochIdx)
+          .putInt(maxNumEpochs)
+          .array();
+      jobMessageObserver.sendMessageToClient(encodedProgressInfo);
+      LOG.log(Level.INFO, "Epoch event is triggered! epoch index : {0}", epochIdx);
     });
 
     try {
