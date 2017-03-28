@@ -22,6 +22,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
@@ -56,6 +57,11 @@ final class WorkerStateManager {
   private final StateMachine stateMachine;
 
   /**
+   * The total number of workers.
+   */
+  private final int numWorkers;
+
+  /**
    * A set of ids of workers to be synchronized.
    */
   private final Set<String> workerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -68,8 +74,10 @@ final class WorkerStateManager {
 
   @Inject
   private WorkerStateManager(final AggregationMaster aggregationMaster,
+                             @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
                              final SerializableCodec<State> codec) {
     this.aggregationMaster = aggregationMaster;
+    this.numWorkers = numWorkers;
     this.codec = codec;
     this.stateMachine = initStateMachine();
   }
@@ -138,14 +146,36 @@ final class WorkerStateManager {
   /**
    * Blocks this worker. It can be released by {@link #releaseWorkers()} later.
    * @param workerId a worker id
-   * @return True if all workers are blocked
    */
-  private synchronized boolean blockWorker(final String workerId) {
+  private synchronized void blockWorker(final String workerId) {
     blockedWorkerIds.add(workerId);
     LOG.log(Level.INFO, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
         new Object[]{workerId, blockedWorkerIds.size(), blockedWorkerIds.size()});
+  }
 
-    return blockedWorkerIds.containsAll(workerIds);
+  private synchronized void handleInitStateWorker(final String workerId) {
+   // block worker to sync with other workers
+    blockWorker(workerId);
+
+    // collect worker ids until it reaches NumWorkers
+    workerIds.add(workerId);
+
+    // all worker finishes their initialization and is waiting for response to enter the run stage
+    if (workerIds.size() == numWorkers) {
+      transitState(stateMachine);
+      releaseWorkers();
+    }
+  }
+
+  private synchronized void handleRunStateWorker(final String workerId) {
+    // block worker to sync with other workers
+    blockWorker(workerId);
+
+    // all worker finishes their main iteration and is waiting for response to enter the cleanup stage
+    if (blockedWorkerIds.containsAll(workerIds)) {
+      transitState(stateMachine);
+      releaseWorkers();
+    }
   }
 
   /**
@@ -159,24 +189,14 @@ final class WorkerStateManager {
     switch (globalState) {
     case INIT:
       if (localState.equals(State.INIT)) {
-        workerIds.add(workerId);
-
-        // worker finishes their initialization and is waiting for response to enter the run stage
-        if (blockWorker(workerId)) {
-          transitState(stateMachine);
-          releaseWorkers();
-        }
+        handleInitStateWorker(workerId);
       } else {
         throw new RuntimeException(String.format("Worker %s is in invalid state: %s", workerId, localState));
       }
       break;
     case RUN:
       if (localState.equals(State.RUN)) {
-        // worker finishes their main iteration and is waiting for response to enter the cleanup stage
-        if (blockWorker(workerId)) {
-          transitState(stateMachine);
-          releaseWorkers();
-        }
+        handleRunStateWorker(workerId);
       } else {
         throw new RuntimeException(String.format("Worker %s is in invalid state: %s", workerId, localState));
       }
