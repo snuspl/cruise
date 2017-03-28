@@ -37,7 +37,7 @@ public final class DolphinParameters {
   public final class NumTrainerThreads implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The number of CPU cores for each evaluator",
+  @NamedParameter(doc = "The number of workers",
       short_name = "num_workers",
       default_value = "1")
   public final class NumWorkers implements Name<Integer> {
