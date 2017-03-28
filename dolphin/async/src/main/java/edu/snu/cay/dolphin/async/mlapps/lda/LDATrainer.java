@@ -19,7 +19,6 @@ import com.google.common.collect.Table;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -43,7 +42,7 @@ final class LDATrainer implements Trainer<Document> {
 
   private final List<Integer> vocabList;
 
-  private final MemoryStore<Long> memoryStore;
+  private final TrainingDataProvider<Long, Document> trainingDataProvider;
 
   private final ModelAccessor<Integer, int[], int[]> modelAccessor;
 
@@ -66,7 +65,7 @@ final class LDATrainer implements Trainer<Document> {
   @Inject
   private LDATrainer(final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
-                     final MemoryStore<Long> memoryStore,
+                     final TrainingDataProvider<Long, Document> trainingDataProvider,
                      final ModelAccessor<Integer, int[], int[]> modelAccessor,
                      final ModelHolder<LDAModel> modelHolder,
                      @Parameter(NumVocabs.class) final int numVocabs,
@@ -75,7 +74,7 @@ final class LDATrainer implements Trainer<Document> {
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads) {
     this.sampler = sampler;
     this.statCalculator = statCalculator;
-    this.memoryStore = memoryStore;
+    this.trainingDataProvider = trainingDataProvider;
     this.modelAccessor = modelAccessor;
     this.numVocabs = numVocabs;
     this.numTrainerThreads = numTrainerThreads;
@@ -101,7 +100,7 @@ final class LDATrainer implements Trainer<Document> {
   public void initGlobalSettings() {
     // In LDA, topic counts should be initialized by pushing values before running.
     final TopicChanges topicChanges = new TopicChanges();
-    final Map<Long, Document> data = memoryStore.getAll();
+    final Map<Long, Document> data = trainingDataProvider.getEpochData();
     for (final Document document : data.values()) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
