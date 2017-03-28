@@ -80,6 +80,7 @@ public final class ETDolphinDriver {
 
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
+                          final ConfigurationSerializer confSerializer,
                           final WorkerStateManager workerStateManager,
                           final AggregationManager aggregationManager,
                           @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
@@ -88,28 +89,25 @@ public final class ETDolphinDriver {
       throws IOException, InjectionException {
     this.etMaster = etMaster;
 
-    final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
-
-    this.workerConf = confSerializer.fromString(serializedWorkerConf);
-    final Configuration serverConf = confSerializer.fromString(serializedServerConf);
+    // configuration commonly used in both workers and servers
     final Configuration userParamConf = confSerializer.fromString(serializedParamConf);
 
+    // initialize worker-side configurations
+    this.workerConf = confSerializer.fromString(serializedWorkerConf);
     final Injector workerInjector = Tang.Factory.getTang().newInjector(workerConf);
-    final Injector serverInjector = Tang.Factory.getTang().newInjector(serverConf);
-
     this.numWorkers = workerInjector.getNamedInstance(NumWorkers.class);
-    this.numServers = serverInjector.getNamedInstance(NumServers.class);
-
-    workerStateManager.init(numWorkers);
-
     this.workerResourceConf = buildWorkerResourceConf(workerInjector);
-    this.serverResourceConf = buildServerResourceConf(serverInjector);
-
     this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
-    this.serverTableConf = buildServerTableConf(serverInjector, userParamConf);
-
     this.aggrContextConf = aggregationManager.getContextConfiguration();
     this.aggrServiceConf = aggregationManager.getServiceConfigurationWithoutNameResolver();
+    workerStateManager.init(numWorkers);
+
+    // initialize server-side configurations
+    final Configuration serverConf = confSerializer.fromString(serializedServerConf);
+    final Injector serverInjector = Tang.Factory.getTang().newInjector(serverConf);
+    this.numServers = serverInjector.getNamedInstance(NumServers.class);
+    this.serverResourceConf = buildServerResourceConf(serverInjector);
+    this.serverTableConf = buildServerTableConf(serverInjector, userParamConf);
   }
 
   private static ResourceConfiguration buildWorkerResourceConf(final Injector workerInjector)
@@ -125,8 +123,8 @@ public final class ETDolphinDriver {
 
   private static ResourceConfiguration buildServerResourceConf(final Injector serverInjector)
       throws InjectionException {
-    final int numCores = serverInjector.getNamedInstance(NumWorkerCores.class);
-    final int memSize = serverInjector.getNamedInstance(WorkerMemSize.class);
+    final int numCores = serverInjector.getNamedInstance(NumServerCores.class);
+    final int memSize = serverInjector.getNamedInstance(ServerMemSize.class);
 
     return ResourceConfiguration.newBuilder()
         .setNumCores(numCores)
