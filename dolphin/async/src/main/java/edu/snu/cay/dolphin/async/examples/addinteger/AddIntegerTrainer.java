@@ -76,7 +76,7 @@ final class AddIntegerTrainer implements Trainer {
                             @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                             @Parameter(ExampleParameters.DeltaValue.class) final int delta,
                             @Parameter(ExampleParameters.NumKeys.class) final int numberOfKeys,
-                            @Parameter(ExampleParameters.NumWorkers.class) final int numberOfWorkers,
+                            @Parameter(DolphinParameters.NumWorkers.class) final int numberOfWorkers,
                             @Parameter(ExampleParameters.ComputeTimeMs.class) final long computeTime,
                             @Parameter(ExampleParameters.NumTrainingData.class) final int numTrainingData) {
     this.modelAccessor = modelAccessor;

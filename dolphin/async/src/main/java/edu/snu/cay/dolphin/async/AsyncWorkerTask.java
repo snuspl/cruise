@@ -126,7 +126,7 @@ final class AsyncWorkerTask<K, V> implements Task {
 
       int miniBatchIdx = 0;
       while (true) {
-        final Collection<V> miniBatchData = trainingDataProvider.getNextTrainingData().values();
+        final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData().values();
         if (miniBatchData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
         }
