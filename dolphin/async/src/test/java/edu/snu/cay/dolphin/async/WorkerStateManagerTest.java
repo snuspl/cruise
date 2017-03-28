@@ -68,9 +68,7 @@ public class WorkerStateManagerTest {
   }
 
   /**
-   * Set up driver.
-   * @throws InjectionException
-   * @throws NetworkException
+   * Set up the Driver. The mocked message handler for aggregation service pretends the actual messages to be exchanged.
    */
   private void setupDriver(final int numWorkers) throws InjectionException, NetworkException {
     final Injector injector = Tang.Factory.getTang().newInjector();
@@ -104,10 +102,9 @@ public class WorkerStateManagerTest {
   }
 
   /**
-   * Set up worker.
-   * Should be invoked after {@link #setupDriver(int)}.
-   * @param workerId an worker id
-   * @throws InjectionException
+   * Set up a worker. The mocked message handler for aggregation service pretends the actual messages to be exchanged.
+   * This method should be called after {@link #setupDriver(int)}.
+   * @param workerId a worker id
    */
   private void setupWorker(final String workerId) throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
@@ -142,8 +139,6 @@ public class WorkerStateManagerTest {
    * Prepare {@link WorkerStateManager}-related components of driver and workers.
    * @param numInitialWorkers the number of initial workers
    * @return a list of worker ids
-   * @throws NetworkException
-   * @throws InjectionException
    */
   private List<String> prepare(final int numInitialWorkers) throws NetworkException, InjectionException {
     setupDriver(numInitialWorkers);
@@ -163,22 +158,22 @@ public class WorkerStateManagerTest {
 
     // 1. INIT -> RUN : all workers should be synchronized
     final CountDownLatch firstLatch = callGlobalBarrier(workerIds.get(0), workerIds.get(1));
-    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS, // should wait worker-2
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS, // should wait worker-2, thus await() returns false
         firstLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
     assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, 2, firstLatch.getCount()); // worker-0, worker-1 are waiting
 
-    final CountDownLatch latch2 = callGlobalBarrier(workerIds.get(2));
-    assertTrue(MSG_SHOULD_RELEASE_WORKERS, latch2.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    final CountDownLatch firstLatchAllWorkers = callGlobalBarrier(workerIds.get(2));
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS, firstLatchAllWorkers.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
     assertTrue(MSG_SHOULD_RELEASE_WORKERS, firstLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
 
     // 2. RUN -> CLEANUP : all workers should be synchronized and driver should allow them to enter the next state
     final CountDownLatch secondLatch = callGlobalBarrier(workerIds.get(1), workerIds.get(2));
-    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS, // should wait worker-0
+    assertFalse(MSG_SHOULD_WAIT_OTHER_WORKERS, // should wait worker-0, thus await() returns false
         secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
     assertEquals(MSG_SHOULD_WAIT_OTHER_WORKERS, 2, secondLatch.getCount()); // worker-1, worker-2 are waiting
 
-    final CountDownLatch latch0 = callGlobalBarrier(workerIds.get(0));
-    assertTrue(MSG_SHOULD_RELEASE_WORKERS, latch0.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
+    final CountDownLatch secondLatchAllWorkers = callGlobalBarrier(workerIds.get(0));
+    assertTrue(MSG_SHOULD_RELEASE_WORKERS, secondLatchAllWorkers.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
     assertTrue(MSG_SHOULD_RELEASE_WORKERS, secondLatch.await(SYNC_WAIT_TIME_MS, TimeUnit.MILLISECONDS));
   }
 
@@ -199,6 +194,11 @@ public class WorkerStateManagerTest {
     }
   }
 
+  /**
+   * Requests a global barrier to synchronize workers.
+   * @param workerIds a set of worker ids to be synchronized
+   * @return a latch that indicates whether the workers passed the global barrier.
+   */
   private CountDownLatch callGlobalBarrier(final String ... workerIds) throws InterruptedException {
     final CountDownLatch latch = new CountDownLatch(workerIds.length);
 
