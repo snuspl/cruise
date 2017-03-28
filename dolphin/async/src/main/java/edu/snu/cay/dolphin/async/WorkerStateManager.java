@@ -64,7 +64,7 @@ final class WorkerStateManager {
   /**
    * A set of ids of workers to be synchronized.
    */
-  private final Set<String> workerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<String> runningWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   /**
    * A set maintaining worker ids of whom have sent a sync msg for the barrier.
@@ -125,9 +125,9 @@ final class WorkerStateManager {
    * Release all blocked workers.
    */
   private synchronized void releaseWorkers() {
-    LOG.log(Level.INFO, "Send response message to {0} blocked workerIds: {1}",
+    LOG.log(Level.INFO, "Send response message to {0} blocked workers: {1}",
         new Object[]{blockedWorkerIds.size(), blockedWorkerIds});
-    // broadcast responses to blocked workerIds
+    // broadcast responses to blocked workers
     for (final String workerId : blockedWorkerIds) {
       sendResponseMessage(workerId);
     }
@@ -158,10 +158,10 @@ final class WorkerStateManager {
     blockWorker(workerId);
 
     // collect worker ids until it reaches NumWorkers
-    workerIds.add(workerId);
+    runningWorkerIds.add(workerId);
 
     // all worker finishes their initialization and is waiting for response to enter the run stage
-    if (workerIds.size() == numWorkers) {
+    if (runningWorkerIds.size() == numWorkers) {
       transitState(stateMachine);
       releaseWorkers();
     }
@@ -171,8 +171,8 @@ final class WorkerStateManager {
     // block worker to sync with other workers
     blockWorker(workerId);
 
-    // all worker finishes their main iteration and is waiting for response to enter the cleanup stage
-    if (blockedWorkerIds.containsAll(workerIds)) {
+    // all running worker finish their main iteration and are waiting for response to enter the cleanup stage
+    if (blockedWorkerIds.containsAll(runningWorkerIds)) {
       transitState(stateMachine);
       releaseWorkers();
     }
@@ -181,7 +181,7 @@ final class WorkerStateManager {
   /**
    * Handles messages from workers.
    * @param workerId a worker id
-   * @param localState a state of worker
+   * @param localState the worker's local state
    */
   private synchronized void onWorkerMsg(final String workerId, final State localState) {
     final State globalState = (State) stateMachine.getCurrentState();
