@@ -30,7 +30,7 @@ public interface TrainingDataProvider<K, V> {
   void loadData();
 
   /**
-   * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextTrainingData()}.
+   * Prepares the data to process in the next epoch, accessible with calls to {@link #getNextBatchData()}.
    */
   void prepareDataForEpoch();
 
@@ -38,5 +38,7 @@ public interface TrainingDataProvider<K, V> {
    * Provides the training data instances to compute in the next mini-batch.
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
-  Map<K, V> getNextTrainingData();
+  Map<K, V> getNextBatchData();
+
+  Map<K, V> getEpochData();
 }
