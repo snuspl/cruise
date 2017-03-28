@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Job configuration of a {@code dolphin-async} application.
+ * Job configuration of a Dolphin on ET application.
  *
  * Call {@code newBuilder} and supply classes for {@link Trainer}, {@link UpdateFunction}, {@link DataParser}, codecs,
  * parameters, configuration for workers, and configuration for servers.
