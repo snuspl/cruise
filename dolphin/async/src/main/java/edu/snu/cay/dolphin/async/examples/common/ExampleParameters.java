@@ -30,10 +30,6 @@ public final class ExampleParameters {
   public final class NumKeys implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "The number of workers", short_name = "num_workers")
-  public final class NumWorkers implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "The time to sleep (per training data instance) to simulate the computation in workers",
       short_name = "compute_time_ms", default_value = "300")
   public final class ComputeTimeMs implements Name<Long> {

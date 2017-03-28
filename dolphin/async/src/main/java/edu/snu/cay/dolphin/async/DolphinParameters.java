@@ -36,4 +36,10 @@ public final class DolphinParameters {
       short_name = "num_trainer_threads", default_value = "1")
   public final class NumTrainerThreads implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "The number of workers",
+      short_name = "num_workers",
+      default_value = "1")
+  public final class NumWorkers implements Name<Integer> {
+  }
 }
