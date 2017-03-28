@@ -26,9 +26,6 @@ import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.IntBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.logging.Level;
@@ -264,21 +261,6 @@ public final class DolphinDriverLauncher implements AutoCloseable {
       LOG.log(Level.SEVERE, "Received a resource manager error", error.getReason());
       theJob = null;
       setStatusAndNotify(LauncherStatus.failed(error.getReason()));
-    }
-  }
-
-  /**
-   * Log progress report to client.
-   */
-  final class JobMessageHandler implements EventHandler<JobMessage> {
-    @Override
-    public void onNext(final JobMessage message) {
-      final IntBuffer ib = ByteBuffer.wrap(message.get()).order(ByteOrder.BIG_ENDIAN).asIntBuffer();
-      final int[] decodedProgressInfo = new int[ib.capacity()];
-      ib.get(decodedProgressInfo);
-      final int epochIdx = decodedProgressInfo[0];
-      final int maxNumEpochs = decodedProgressInfo[1];
-      LOG.log(Level.INFO, "Progressed epoch count is :  [{0} / {1}]", new Object[] {epochIdx, maxNumEpochs});
     }
   }
 }
