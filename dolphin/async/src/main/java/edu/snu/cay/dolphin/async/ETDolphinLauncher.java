@@ -17,7 +17,9 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
+import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
+import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
@@ -104,6 +106,7 @@ public final class ETDolphinLauncher {
               .bindImplementation(UpdateFunction.class, dolphinConf.getModelUpdateFunctionClass())
               .bindNamedParameter(KeyCodec.class, dolphinConf.getModelKeyCodecClass())
               .bindNamedParameter(ValueCodec.class, dolphinConf.getModelValueCodecClass())
+              .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
               .build());
 
       // worker conf
@@ -244,17 +247,17 @@ public final class ETDolphinLauncher {
         .set(DriverConfiguration.ON_DRIVER_STARTED, ETDolphinDriver.StartHandler.class)
         .build();
 
-    final Configuration etMasterConfiguration = DriverConfiguration.CONF.build();
+    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
-    final AggregationConfiguration aggregationConf = AggregationConfiguration.newBuilder()
-        .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
+    final AggregationConfiguration aggrServiceConf = AggregationConfiguration.newBuilder()
+        .addAggregationClient(WorkerStateManager.AGGREGATION_CLIENT_NAME,
             WorkerStateManager.MessageHandler.class,
             WorkerGlobalBarrier.MessageHandler.class)
         .build();
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 
-    return Configurations.merge(driverConf, etMasterConfiguration, aggregationConf.getDriverConfiguration(),
+    return Configurations.merge(driverConf, etMasterConfiguration, aggrServiceConf.getDriverConfiguration(),
         getNCSConfiguration(), customDriverConfiguration,
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedServerConf.class, confSerializer.toString(serverConf))

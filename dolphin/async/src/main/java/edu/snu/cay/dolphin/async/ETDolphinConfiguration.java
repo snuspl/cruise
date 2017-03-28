@@ -45,6 +45,7 @@ public final class ETDolphinConfiguration {
   private final Class<? extends UpdateFunction> modelUpdateFunctionClass;
   private final Class<? extends Codec> modelKeyCodecClass;
   private final Class<? extends Codec> modelValueCodecClass;
+  private final Class<? extends Codec> modelUpdateValueCodecClass;
 
   private final List<Class<? extends Name<?>>> parameterClassList;
   private final Configuration workerConfiguration;
@@ -58,6 +59,7 @@ public final class ETDolphinConfiguration {
                                  final Class<? extends UpdateFunction> modelUpdateFunctionClass,
                                  final Class<? extends Codec> modelKeyCodecClass,
                                  final Class<? extends Codec> modelValueCodecClass,
+                                 final Class<? extends Codec> modelUpdateValueCodecClass,
                                  final List<Class<? extends Name<?>>> parameterClassList,
                                  final Configuration workerConfiguration,
                                  final Configuration serverConfiguration) {
@@ -68,6 +70,7 @@ public final class ETDolphinConfiguration {
     this.modelUpdateFunctionClass = modelUpdateFunctionClass;
     this.modelKeyCodecClass = modelKeyCodecClass;
     this.modelValueCodecClass = modelValueCodecClass;
+    this.modelUpdateValueCodecClass = modelUpdateValueCodecClass;
     this.parameterClassList = parameterClassList;
     this.workerConfiguration = workerConfiguration;
     this.serverConfiguration = serverConfiguration;
@@ -101,6 +104,10 @@ public final class ETDolphinConfiguration {
     return modelValueCodecClass;
   }
 
+  public Class<? extends Codec> getModelUpdateValueCodecClass() {
+    return modelUpdateValueCodecClass;
+  }
+
   public List<Class<? extends Name<?>>> getParameterClassList() {
     return parameterClassList;
   }
@@ -127,6 +134,7 @@ public final class ETDolphinConfiguration {
     private Class<? extends UpdateFunction> modelUpdateFunctionClass;
     private Class<? extends Codec> modelKeyCodecClass = SerializableCodec.class;
     private Class<? extends Codec> modelValueCodecClass = SerializableCodec.class;
+    private Class<? extends Codec> modelUpdateValueCodecClass = SerializableCodec.class;
 
     private List<Class<? extends Name<?>>> parameterClassList = new LinkedList<>();
     private Configuration workerConfiguration = Tang.Factory.getTang().newConfigurationBuilder().build();
@@ -168,6 +176,11 @@ public final class ETDolphinConfiguration {
       return this;
     }
 
+    public Builder setModelUpdateValueCodecClass(final Class<? extends Codec> modelUpdateValueCodecClass) {
+      this.modelUpdateValueCodecClass = modelUpdateValueCodecClass;
+      return this;
+    }
+
     public Builder addParameterClass(final Class<? extends Name<?>> parameterClass) {
       this.parameterClassList.add(parameterClass);
       return this;
@@ -190,7 +203,7 @@ public final class ETDolphinConfiguration {
       BuilderUtils.notNull(modelUpdateFunctionClass);
 
       return new ETDolphinConfiguration(trainerClass, inputParserClass, inputKeyCodecClass, inputValueCodecClass,
-          modelUpdateFunctionClass, modelKeyCodecClass, modelValueCodecClass,
+          modelUpdateFunctionClass, modelKeyCodecClass, modelValueCodecClass, modelUpdateValueCodecClass,
           parameterClassList, workerConfiguration, serverConfiguration);
     }
   }

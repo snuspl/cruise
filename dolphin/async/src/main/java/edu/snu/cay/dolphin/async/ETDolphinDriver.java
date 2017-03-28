@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
+import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
@@ -30,6 +31,7 @@ import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
@@ -47,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -77,6 +80,7 @@ public final class ETDolphinDriver {
 
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
+                          final WorkerStateManager workerStateManager,
                           final AggregationManager aggregationManager,
                           @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
                           @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
@@ -95,6 +99,8 @@ public final class ETDolphinDriver {
 
     this.numWorkers = workerInjector.getNamedInstance(NumWorkers.class);
     this.numServers = serverInjector.getNamedInstance(NumServers.class);
+
+    workerStateManager.init(numWorkers);
 
     this.workerResourceConf = buildWorkerResourceConf(workerInjector);
     this.serverResourceConf = buildServerResourceConf(serverInjector);
@@ -139,6 +145,7 @@ public final class ETDolphinDriver {
         .setId(TRAINING_DATA_TABLE_ID)
         .setKeyCodecClass(keyCodec.getClass())
         .setValueCodecClass(valueCodec.getClass())
+        .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
         .setIsOrderedTable(true)
         .setFilePath(inputPath)
@@ -151,12 +158,14 @@ public final class ETDolphinDriver {
                                                          final Configuration userParamConf) throws InjectionException {
     final Codec keyCodec = serverInjector.getNamedInstance(KeyCodec.class);
     final Codec valueCodec = serverInjector.getNamedInstance(ValueCodec.class);
+    final Codec updateValueCodec = serverInjector.getNamedInstance(UpdateValueCodec.class);
     final UpdateFunction updateFunction = serverInjector.getInstance(UpdateFunction.class);
 
     return TableConfiguration.newBuilder()
         .setId(MODEL_TABLE_ID)
         .setKeyCodecClass(keyCodec.getClass())
         .setValueCodecClass(valueCodec.getClass())
+        .setUpdateValueCodecClass(updateValueCodec.getClass())
         .setUpdateFunctionClass(updateFunction.getClass())
         .setIsOrderedTable(false)
         .setUserParamConf(userParamConf)
@@ -173,22 +182,24 @@ public final class ETDolphinDriver {
       final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, workerResourceConf,
           aggrContextConf, aggrServiceConf);
 
-      etMaster.createTable(serverTableConf, servers).subscribe(workers);
-      etMaster.createTable(workerTableConf, workers);
+      Executors.newSingleThreadExecutor().submit(() -> {
+        etMaster.createTable(serverTableConf, servers).subscribe(workers);
+        etMaster.createTable(workerTableConf, workers);
 
-      final AtomicInteger taskIdCount = new AtomicInteger(0);
+        final AtomicInteger taskIdCount = new AtomicInteger(0);
 
-      final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
-      workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(
-          Configurations.merge(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, ETWorkerTask.class)
-              .build(), workerConf))));
+        final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
+        workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(
+            Configurations.merge(TaskConfiguration.CONF
+                .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                .set(TaskConfiguration.TASK, ETWorkerTask.class)
+                .build(), workerConf))));
 
-      waitAndCheckTaskResult(taskResultFutureList);
+        waitAndCheckTaskResult(taskResultFutureList);
 
-      workers.forEach(AllocatedExecutor::close);
-      servers.forEach(AllocatedExecutor::close);
+        workers.forEach(AllocatedExecutor::close);
+        servers.forEach(AllocatedExecutor::close);
+      });
     }
   }
 
