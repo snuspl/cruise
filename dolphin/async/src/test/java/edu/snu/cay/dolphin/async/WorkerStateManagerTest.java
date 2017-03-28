@@ -72,12 +72,12 @@ public class WorkerStateManagerTest {
    */
   private void setupDriver(final int numWorkers) throws InjectionException, NetworkException {
     final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileParameter(DolphinParameters.NumWorkers.class, numWorkers);
 
     final AggregationMaster mockedAggregationMaster = mock(AggregationMaster.class);
     injector.bindVolatileInstance(AggregationMaster.class, mockedAggregationMaster);
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
-    workerStateManager.init(numWorkers);
 
     final EventHandler<AggregationMessage> driverSideMsgHandler =
         injector.getInstance(WorkerStateManager.MessageHandler.class);
