@@ -110,11 +110,11 @@ public class EMTrainingDataProviderTest {
 
     trainingDataProvider.prepareDataForEpoch();
     testGetNextTrainingData(numTotalInstances);
-    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextBatchData().isEmpty());
 
     trainingDataProvider.prepareDataForEpoch();
     testGetNextTrainingData(numTotalInstances);
-    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextBatchData().isEmpty());
   }
 
   /**
@@ -130,11 +130,11 @@ public class EMTrainingDataProviderTest {
 
     trainingDataProvider.prepareDataForEpoch();
     testGetNextTrainingData(numTotalInstances);
-    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextBatchData().isEmpty());
 
     trainingDataProvider.prepareDataForEpoch();
     testGetNextTrainingData(numTotalInstances);
-    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextBatchData().isEmpty());
   }
 
   /**
@@ -150,7 +150,7 @@ public class EMTrainingDataProviderTest {
   }
 
   /**
-   * Test {@link TrainingDataProvider#getNextTrainingData()} gives right size of training data for each mini-batch
+   * Test {@link TrainingDataProvider#getNextBatchData()} gives right size of training data for each mini-batch
    * and provides training data for the exact number of mini-batches, total number of instances / mini-batch size
    * (or +1 depending on whether total number of instances is divisible by mini-batch size or not).
    * @param numTotalInstances the number of instances {@link TrainingDataProvider} currently has.
@@ -163,7 +163,7 @@ public class EMTrainingDataProviderTest {
 
     int miniBatchIdx = 0;
 
-    Map<Long, Integer> trainingData = trainingDataProvider.getNextTrainingData();
+    Map<Long, Integer> trainingData = trainingDataProvider.getNextBatchData();
     while (!trainingData.isEmpty()) {
       for (final Long key : trainingData.keySet()) {
         assertEquals(memoryStore.get(key).getSecond(), trainingData.get(key));
@@ -178,7 +178,7 @@ public class EMTrainingDataProviderTest {
         fail("The total number of mini-batches is larger than expectation");
       }
 
-      trainingData = trainingDataProvider.getNextTrainingData();
+      trainingData = trainingDataProvider.getNextBatchData();
       miniBatchIdx++;
     }
     assertEquals("The total number of mini-batches is different from expectation",
@@ -222,13 +222,13 @@ public class EMTrainingDataProviderTest {
     trainingDataProvider.prepareDataForEpoch(); // prepare training data for the epoch
     putBlockToMemoryStore(blockId, dataSet); // add a block to the MemoryStore
     testGetNextTrainingData(numInitialInstances + dataSet.size()); // verify the result of block addition
-    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextBatchData().isEmpty());
 
     // remove the added block from TrainingDataProvider at the beginning of epoch
     trainingDataProvider.prepareDataForEpoch(); // preparing training data for the epoch
     removeBlockFromMemoryStore(blockId); // remove a block from the MemoryStore
     testGetNextTrainingData(numInitialInstances); // verify the result of block removal
-    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextBatchData().isEmpty());
   }
 
   /**
@@ -246,12 +246,12 @@ public class EMTrainingDataProviderTest {
     trainingDataProvider.prepareDataForEpoch();
     final List <Pair<Integer, Map<Long, Integer>>> addedBlockList =
         testGetNextTrainingDataWithBlockAdditions(numTotalInstances);
-    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextBatchData().isEmpty());
 
     // remove the added blocks from the MemoryStore during an epoch
     trainingDataProvider.prepareDataForEpoch();
     testGetNextTrainingDataWithBlockRemovals(addedBlockList);
-    assertTrue("Data should be exhausted", trainingDataProvider.getNextTrainingData().isEmpty());
+    assertTrue("Data should be exhausted", trainingDataProvider.getNextBatchData().isEmpty());
   }
 
   /**
@@ -273,7 +273,7 @@ public class EMTrainingDataProviderTest {
     int numRemovedInstances = 0;
     int numUsedInstances = 0;
 
-    Map<Long, Integer> trainingData = trainingDataProvider.getNextTrainingData();
+    Map<Long, Integer> trainingData = trainingDataProvider.getNextBatchData();
     while (!trainingData.isEmpty()) {
       // compare the given training data with the expected data set
       final Set<Long> keySet = trainingData.keySet();
@@ -307,7 +307,7 @@ public class EMTrainingDataProviderTest {
       }
 
       // load the next training data from the TrainingDataProvider
-      trainingData = trainingDataProvider.getNextTrainingData();
+      trainingData = trainingDataProvider.getNextBatchData();
       miniBatchIdx++;
     }
 
@@ -343,7 +343,7 @@ public class EMTrainingDataProviderTest {
     int numUsedInstances = 0;
     int addedBlockCount = 0;
 
-    Map<Long, Integer> trainingData = trainingDataProvider.getNextTrainingData();
+    Map<Long, Integer> trainingData = trainingDataProvider.getNextBatchData();
     while (!trainingData.isEmpty()) {
       // add a new block to the MemoryStore every third mini-batch including 0th
       if ((miniBatchIdx % 3 == 0) && (addedBlockCount < numBlocksToAdd)) {
@@ -364,7 +364,7 @@ public class EMTrainingDataProviderTest {
       // update the number of used instances by the size of training data
       sizeOfCurrentMiniBatch = trainingData.size();
       numUsedInstances += sizeOfCurrentMiniBatch;
-      trainingData = trainingDataProvider.getNextTrainingData();
+      trainingData = trainingDataProvider.getNextBatchData();
       miniBatchIdx++;
     }
 

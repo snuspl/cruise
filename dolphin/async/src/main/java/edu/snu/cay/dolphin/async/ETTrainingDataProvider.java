@@ -35,7 +35,7 @@ import java.util.logging.Logger;
  */
 @TaskSide
 @ThreadSafe
-public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider {
+public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(ETTrainingDataProvider.class.getName());
   static final String TRAINING_DATA_TABLE_ID = "training_data_table";
 
@@ -71,7 +71,7 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider 
    * @return a map of training data instances, which can be an empty Map if all data has been processed.
    */
   @Override
-  public Map<K, V> getNextTrainingData() {
+  public Map<K, V> getNextBatchData() {
     final List<K> nextTrainingDataKeyList;
     synchronized (trainingDataKeys) {
       if (trainingDataKeys.isEmpty()) {
@@ -102,5 +102,10 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider 
     }
 
     return nextTrainingData;
+  }
+
+  @Override
+  public Map<K, V> getEpochData() {
+    return trainingDataTable.getLocalDataMap();
   }
 }

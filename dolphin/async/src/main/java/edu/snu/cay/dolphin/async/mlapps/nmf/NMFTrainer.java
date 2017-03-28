@@ -21,7 +21,6 @@ import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -63,8 +62,6 @@ final class NMFTrainer implements Trainer<NMFData> {
    */
   private final int decayPeriod;
 
-  private final MemoryStore<Long> memoryStore;
-
   /**
    * Executes the Trainer threads.
    */
@@ -79,6 +76,8 @@ final class NMFTrainer implements Trainer<NMFData> {
    * Allows to access and update the latest model.
    */
   private final ModelHolder<NMFModel> modelHolder;
+
+  private final TrainingDataProvider<Long, NMFData> trainingDataProvider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final Tracer pushTracer;
@@ -98,7 +97,7 @@ final class NMFTrainer implements Trainer<NMFData> {
                      @Parameter(DolphinParameters.NumTrainerThreads.class) final int numTrainerThreads,
                      final ModelHolder<NMFModel> modelHolder,
                      final NMFModelGenerator modelGenerator,
-                     final MemoryStore<Long> memoryStore) {
+                     final TrainingDataProvider<Long, NMFData> trainingDataProvider) {
     this.modelAccessor = modelAccessor;
     this.vectorFactory = vectorFactory;
     this.rank = rank;
@@ -114,7 +113,7 @@ final class NMFTrainer implements Trainer<NMFData> {
     }
     this.printMatrices = printMatrices;
     this.modelGenerator = modelGenerator;
-    this.memoryStore = memoryStore;
+    this.trainingDataProvider = trainingDataProvider;
 
     this.modelHolder = modelHolder;
     this.numTrainerThreads = numTrainerThreads;
@@ -228,7 +227,7 @@ final class NMFTrainer implements Trainer<NMFData> {
       return;
     }
     // print L matrix
-    final Map<Long, NMFData> workloadMap = memoryStore.getAll();
+    final Map<Long, NMFData> workloadMap = trainingDataProvider.getEpochData();
     final Collection<NMFData> workload = workloadMap.values();
 
     final StringBuilder lsb = new StringBuilder();

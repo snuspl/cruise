@@ -90,7 +90,7 @@ final class EMTrainingDataProvider<K, V> implements TrainingDataProvider<K, V> {
   }
 
   @Override
-  public Map<K, V> getNextTrainingData() {
+  public Map<K, V> getNextBatchData() {
     final List<K> nextTrainingDataKeyList;
     synchronized (trainingDataKeys) {
       if (trainingDataKeys.isEmpty()) {
@@ -122,6 +122,11 @@ final class EMTrainingDataProvider<K, V> implements TrainingDataProvider<K, V> {
     }
 
     return nextTrainingData;
+  }
+
+  @Override
+  public Map<K, V> getEpochData() {
+    return memoryStore.getAll();
   }
 
   /**
