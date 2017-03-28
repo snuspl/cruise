@@ -207,12 +207,12 @@ public final class AsyncDolphinLauncher {
       // driver-side configurations
       final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
+
       final LauncherStatus status = DolphinDriverLauncher.getLauncher(runTimeConf).run(
           Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
               serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf,
               dashboardConf),
           timeout);
-
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
       return status;
 
@@ -445,6 +445,4 @@ public final class AsyncDolphinLauncher {
     final File inputFile = new File(inputDir);
     return "file:///" + inputFile.getAbsolutePath();
   }
-
-
 }

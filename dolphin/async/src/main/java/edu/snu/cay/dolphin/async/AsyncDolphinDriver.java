@@ -286,11 +286,6 @@ public final class AsyncDolphinDriver {
   private final ExecutorService optimizationTriggerExecutor = Executors.newSingleThreadExecutor();
 
   /**
-   * Send progress information to Client.
-   */
-  private final JobMessageObserver jobMessageObserver;
-
-  /**
    * Injectable constructor.
    *
    * The {@code metricManager} parameter is placed here to make sure that {@link OptimizationOrchestratorImpl},
@@ -326,7 +321,6 @@ public final class AsyncDolphinDriver {
                              final HTrace hTrace) throws IOException {
     hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
-    this.jobMessageObserver = jobMessageObserver;
     this.dataLoadingService = dataLoadingService;
     this.synchronizationManager = synchronizationManager;
     this.clockManager = clockManager;
@@ -356,6 +350,8 @@ public final class AsyncDolphinDriver {
           .putInt(epochIdx)
           .putInt(maxNumEpochs)
           .array();
+
+      // send JobMessage to client
       jobMessageObserver.sendMessageToClient(encodedProgressInfo);
       LOG.log(Level.INFO, "Epoch event is triggered! epoch index : {0}", epochIdx);
     });

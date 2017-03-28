@@ -73,7 +73,7 @@ public final class ClockManager {
   private int globalMinimumClock;
 
   /**
-   *
+   * The list of EventHandler about progress update.
    */
   private final List<EventHandler<Integer>> progressUpdateCallbacks = new ArrayList<>();
 
