@@ -15,34 +15,59 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import org.apache.commons.lang.NotImplementedException;
+import edu.snu.cay.services.et.evaluator.api.DataOpResult;
+import edu.snu.cay.services.et.evaluator.api.Table;
+import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * An {@link ModelAccessor} implementation based on ET.
- * TODO #1066: implement ET model accessor
  */
-public class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
+public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   static final String MODEL_TABLE_ID = "model_table";
 
+  private final Table<K, V, P> modelTable;
+
   @Inject
-  ETModelAccessor() {
+  ETModelAccessor(final TableAccessor tableAccessor) throws TableNotExistException {
+    this.modelTable = tableAccessor.get(MODEL_TABLE_ID);
   }
 
   @Override
   public void push(final K key, final P deltaValue) {
-    throw new NotImplementedException();
+    modelTable.updateAsync(key, deltaValue);
   }
 
   @Override
   public V pull(final K key) {
-    throw new NotImplementedException();
+    return modelTable.get(key);
   }
 
   @Override
   public List<V> pull(final List<K> keys) {
-    throw new NotImplementedException();
+    final List<DataOpResult<V>> resultList = new ArrayList<>(keys.size());
+
+    keys.forEach(key -> resultList.add(modelTable.getAsync(key)));
+
+    final List<V> resultValues = new ArrayList<>(keys.size());
+    for (final DataOpResult<V> opResult : resultList) {
+      boolean completed = false;
+      while (!completed) {
+        try {
+          opResult.waitRemoteOp();
+          completed = true;
+        } catch (InterruptedException e) {
+          // ignore interrupt
+        }
+      }
+
+      resultValues.add(opResult.getOutputData());
+    }
+
+    return resultValues;
   }
 }
