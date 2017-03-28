@@ -80,51 +80,42 @@ public final class ETDolphinDriver {
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
                           final ConfigurationSerializer confSerializer,
-                          final WorkerStateManager workerStateManager,
                           final AggregationManager aggregationManager,
+                          @Parameter(NumServers.class) final int numServers,
+                          @Parameter(ServerMemSize.class) final int serverMemSize,
+                          @Parameter(NumServerCores.class) final int numServerCores,
+                          @Parameter(NumWorkers.class) final int numWorkers,
+                          @Parameter(WorkerMemSize.class) final int workerMemSize,
+                          @Parameter(NumWorkerCores.class) final int numWorkerCores,
                           @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
                           @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
                           @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
+    this.numWorkers = numWorkers;
+    this.numServers = numServers;
 
     // configuration commonly used in both workers and servers
     final Configuration userParamConf = confSerializer.fromString(serializedParamConf);
 
-    // initialize worker-side configurations
-    this.workerConf = confSerializer.fromString(serializedWorkerConf);
-    final Injector workerInjector = Tang.Factory.getTang().newInjector(workerConf);
-    this.numWorkers = workerInjector.getNamedInstance(NumWorkers.class);
-    this.workerResourceConf = buildWorkerResourceConf(workerInjector);
-    this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
-    this.aggrContextConf = aggregationManager.getContextConfiguration();
-    this.aggrServiceConf = aggregationManager.getServiceConfigurationWithoutNameResolver();
-    workerStateManager.init(numWorkers);
-
     // initialize server-side configurations
     final Configuration serverConf = confSerializer.fromString(serializedServerConf);
     final Injector serverInjector = Tang.Factory.getTang().newInjector(serverConf);
-    this.numServers = serverInjector.getNamedInstance(NumServers.class);
-    this.serverResourceConf = buildServerResourceConf(serverInjector);
+    this.serverResourceConf = buildResourceConf(numServerCores, serverMemSize);
     this.serverTableConf = buildServerTableConf(serverInjector, userParamConf);
+
+    // initialize worker-side configurations
+    this.workerConf = confSerializer.fromString(serializedWorkerConf);
+    final Injector workerInjector = Tang.Factory.getTang().newInjector(workerConf);
+    this.workerResourceConf = buildResourceConf(numWorkerCores, workerMemSize);
+    this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
+
+    // configuration for worker executors
+    this.aggrContextConf = aggregationManager.getContextConfiguration();
+    this.aggrServiceConf = aggregationManager.getServiceConfigurationWithoutNameResolver();
   }
 
-  private static ResourceConfiguration buildWorkerResourceConf(final Injector workerInjector)
-      throws InjectionException {
-    final int numCores = workerInjector.getNamedInstance(NumWorkerCores.class);
-    final int memSize = workerInjector.getNamedInstance(WorkerMemSize.class);
-
-    return ResourceConfiguration.newBuilder()
-        .setNumCores(numCores)
-        .setMemSizeInMB(memSize)
-        .build();
-  }
-
-  private static ResourceConfiguration buildServerResourceConf(final Injector serverInjector)
-      throws InjectionException {
-    final int numCores = serverInjector.getNamedInstance(NumServerCores.class);
-    final int memSize = serverInjector.getNamedInstance(ServerMemSize.class);
-
+  private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {
     return ResourceConfiguration.newBuilder()
         .setNumCores(numCores)
         .setMemSizeInMB(memSize)

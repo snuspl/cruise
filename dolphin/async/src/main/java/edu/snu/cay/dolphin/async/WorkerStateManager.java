@@ -22,6 +22,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
@@ -73,8 +74,11 @@ final class WorkerStateManager {
 
   @Inject
   private WorkerStateManager(final AggregationMaster aggregationMaster,
+                             @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
                              final SerializableCodec<State> codec) {
     this.aggregationMaster = aggregationMaster;
+    this.numWorkers = numWorkers;
+    LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
     this.codec = codec;
     this.stateMachine = initStateMachine();
   }
@@ -94,15 +98,6 @@ final class WorkerStateManager {
         .addTransition(State.RUN, State.CLEANUP, "The task execution is finished, time to clean up the task")
         .setInitialState(State.INIT)
         .build();
-  }
-
-  /**
-   * Initialize {@link WorkerStateManager} by setting {@link #numWorkers}.
-   * @param numInitialWorkers the number of workers
-   */
-  void init(final int numInitialWorkers) {
-    this.numWorkers = numInitialWorkers;
-    LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numInitialWorkers);
   }
 
   /**

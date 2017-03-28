@@ -95,19 +95,17 @@ public final class ETDolphinLauncher {
       final List<Configuration> configurations = parseCommandLine(args, dolphinConf.getParameterClassList());
 
       final Configuration clientParamConf = configurations.get(0);
-      final Configuration serverParamConf = configurations.get(1);
+      final Configuration driverParamConf = configurations.get(1);
       final Configuration workerParamConf = configurations.get(2);
       final Configuration userParamConf = configurations.get(3);
 
       // server conf
-      final Configuration serverConf = Configurations.merge(
-          serverParamConf,
-          Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(UpdateFunction.class, dolphinConf.getModelUpdateFunctionClass())
-              .bindNamedParameter(KeyCodec.class, dolphinConf.getModelKeyCodecClass())
-              .bindNamedParameter(ValueCodec.class, dolphinConf.getModelValueCodecClass())
-              .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
-              .build());
+      final Configuration serverConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindImplementation(UpdateFunction.class, dolphinConf.getModelUpdateFunctionClass())
+          .bindNamedParameter(KeyCodec.class, dolphinConf.getModelKeyCodecClass())
+          .bindNamedParameter(ValueCodec.class, dolphinConf.getModelValueCodecClass())
+          .bindNamedParameter(UpdateValueCodec.class, dolphinConf.getModelUpdateValueCodecClass())
+          .build();
 
       // worker conf
       final Configuration workerConf = Configurations.merge(
@@ -133,11 +131,12 @@ public final class ETDolphinLauncher {
       // driver configuration
       final Configuration driverConf = getDriverConfiguration(jobName,
           clientParameterInjector.getNamedInstance(DriverMemory.class),
-          customDriverConf, serverConf, workerConf, userParamConf);
+          serverConf, workerConf, userParamConf);
 
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
 
-      status = DriverLauncher.getLauncher(runTimeConf).run(driverConf, timeout);
+      status = DriverLauncher.getLauncher(runTimeConf)
+          .run(Configurations.merge(driverConf, driverParamConf, customDriverConf), timeout);
 
     } catch (final Exception e) {
       status = LauncherStatus.failed(e);
@@ -168,23 +167,23 @@ public final class ETDolphinLauncher {
     final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
         OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class);
 
-    final List<Class<? extends Name<?>>> serverParamList = Arrays.asList(
-        NumServers.class, ServerMemSize.class, NumServerCores.class);
+    final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
+        NumServers.class, ServerMemSize.class, NumServerCores.class,
+        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class);
 
     final List<Class<? extends Name<?>>> workerParamList = Arrays.asList(
-        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class, NumTrainerThreads.class,
-        MaxNumEpochs.class, MiniBatchSize.class);
+        NumTrainerThreads.class, MaxNumEpochs.class, MiniBatchSize.class);
 
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
-    serverParamList.forEach(cl::registerShortNameOfClass);
+    driverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
     cl.registerShortNameOfClass(InputDir.class); // handle inputPath separately to process it through processInputDir()
     userParamList.forEach(cl::registerShortNameOfClass);
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);
-    final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
+    final Configuration driverConf = extractParameterConf(driverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
 
@@ -197,7 +196,7 @@ public final class ETDolphinLauncher {
         .bindNamedParameter(InputDir.class, processedInputPath)
         .build();
 
-    return Arrays.asList(clientConf, Configurations.merge(serverConf, userConf),
+    return Arrays.asList(clientConf, Configurations.merge(driverConf, userConf),
         Configurations.merge(workerConf, userConf, inputPathConf), userConf);
   }
 
@@ -236,7 +235,6 @@ public final class ETDolphinLauncher {
 
   private static Configuration getDriverConfiguration(final String jobName,
                                                       final int driverMemSize,
-                                                      final Configuration customDriverConfiguration,
                                                       final Configuration serverConf,
                                                       final Configuration workerConf,
                                                       final Configuration userParamConf) {
@@ -257,8 +255,8 @@ public final class ETDolphinLauncher {
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 
-    return Configurations.merge(driverConf, etMasterConfiguration, aggrServiceConf.getDriverConfiguration(),
-        getNCSConfiguration(), customDriverConfiguration,
+    return Configurations.merge(driverConf, etMasterConfiguration,
+        aggrServiceConf.getDriverConfiguration(), getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedServerConf.class, confSerializer.toString(serverConf))
             .bindNamedParameter(SerializedWorkerConf.class, confSerializer.toString(workerConf))
