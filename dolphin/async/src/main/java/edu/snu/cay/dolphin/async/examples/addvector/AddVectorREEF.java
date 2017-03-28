@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.examples.addvector;
 
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
+import edu.snu.cay.dolphin.async.DolphinParameters;
 import edu.snu.cay.dolphin.async.examples.common.ExampleDataParser;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
@@ -50,7 +51,7 @@ public final class AddVectorREEF {
         .setServerSerializerClass(DenseVectorSerializer.class)
         .addParameterClass(ExampleParameters.DeltaValue.class)
         .addParameterClass(ExampleParameters.NumKeys.class)
-        .addParameterClass(ExampleParameters.NumWorkers.class)
+        .addParameterClass(DolphinParameters.NumWorkers.class)
         .addParameterClass(ExampleParameters.ComputeTimeMs.class)
         .addParameterClass(ExampleParameters.NumTrainingData.class)
         .addParameterClass(VectorSize.class)
