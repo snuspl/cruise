@@ -191,7 +191,7 @@ public final class ETDolphinLauncher {
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);
     final Configuration driverConf = extractParameterConf(driverParamList, commandLineConf);
-    final Configuration serverConf = extractParameterConf(workerParamList, commandLineConf);
+    final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
 
