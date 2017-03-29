@@ -78,7 +78,6 @@ public class WorkerStateManagerTest {
     injector.bindVolatileInstance(AggregationMaster.class, mockedAggregationMaster);
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
-
     final EventHandler<AggregationMessage> driverSideMsgHandler =
         injector.getInstance(WorkerStateManager.MessageHandler.class);
 

@@ -59,7 +59,7 @@ final class WorkerStateManager {
   /**
    * The total number of workers.
    */
-  private volatile int numWorkers;
+  private final int numWorkers;
 
   /**
    * A set of ids of workers to be synchronized.
