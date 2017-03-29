@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async;
+package edu.snu.cay.common;
 
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.annotations.audience.Public;
@@ -37,9 +37,9 @@ import java.util.logging.Logger;
 @Public
 @ClientSide
 @Unit
-public final class DolphinDriverLauncher implements AutoCloseable {
+public final class DriverLauncher implements AutoCloseable {
 
-  private static final Logger LOG = Logger.getLogger(DolphinDriverLauncher.class.getName());
+  private static final Logger LOG = Logger.getLogger(DriverLauncher.class.getName());
 
   private static final Configuration CLIENT_CONFIG = ClientConfiguration.CONF
       .set(ClientConfiguration.ON_JOB_SUBMITTED, SubmittedJobHandler.class)
@@ -57,7 +57,7 @@ public final class DolphinDriverLauncher implements AutoCloseable {
   private RunningJob theJob;
 
   @Inject
-  private DolphinDriverLauncher(final REEF reef) {
+  private DriverLauncher(final REEF reef) {
     this.reef = reef;
   }
 
@@ -65,27 +65,27 @@ public final class DolphinDriverLauncher implements AutoCloseable {
    * Instantiate a launcher for the given Configuration.
    *
    * @param runtimeConfiguration the resourcemanager configuration to be used
-   * @return a DolphinDriverLauncher based on the given resourcemanager configuration
+   * @return a DriverLauncher based on the given resourcemanager configuration
    * @throws InjectionException on configuration errors
    */
-  public static DolphinDriverLauncher getLauncher(final Configuration runtimeConfiguration) throws InjectionException {
+  public static DriverLauncher getLauncher(final Configuration runtimeConfiguration) throws InjectionException {
     return Tang.Factory.getTang()
         .newInjector(runtimeConfiguration, CLIENT_CONFIG)
-        .getInstance(DolphinDriverLauncher.class);
+        .getInstance(DriverLauncher.class);
   }
 
   /**
    * Intantiate a launcher for the given Configuration.
    * @param runtimeConfiguration the resourcemanager configuration to be used
    * @param clientConfiguration the client configuration to be used
-   * @return a DolphinDriverLauncher based on the given configuration
+   * @return a DriverLauncher based on the given configuration
    * @throws InjectionException on configuration errors
    */
-  public static DolphinDriverLauncher getLauncher(final Configuration runtimeConfiguration,
-                                                  final Configuration clientConfiguration) throws InjectionException {
+  public static DriverLauncher getLauncher(final Configuration runtimeConfiguration,
+                                           final Configuration clientConfiguration) throws InjectionException {
     return Tang.Factory.getTang()
         .newInjector(runtimeConfiguration, clientConfiguration)
-        .getInstance(DolphinDriverLauncher.class);
+        .getInstance(DriverLauncher.class);
   }
 
   /**
@@ -200,7 +200,7 @@ public final class DolphinDriverLauncher implements AutoCloseable {
 
   @Override
   public String toString() {
-    return String.format("DolphinDriverLauncher: { jobId: %s, status: %s }", this.jobId, this.status);
+    return String.format("DriverLauncher: { jobId: %s, status: %s }", this.jobId, this.status);
   }
 
   /**

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.client;
+package edu.snu.cay.dolphin.async;
 
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.JobMessage;
@@ -25,7 +25,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Log progress report to client.
+ * Handler of {@link JobMessage} from driver.
+ * It logs progress report to console.
  */
 @ClientSide
 public final class ProgressMessageHandler implements EventHandler<JobMessage> {
@@ -39,6 +40,6 @@ public final class ProgressMessageHandler implements EventHandler<JobMessage> {
   @Override
   public void onNext(final JobMessage message) {
     final String decodedMessage = new String(message.get(), StandardCharsets.UTF_8);
-    LOG.log(Level.INFO, decodedMessage);
+    LOG.log(Level.INFO, "Job message: {0}", decodedMessage);
   }
 }

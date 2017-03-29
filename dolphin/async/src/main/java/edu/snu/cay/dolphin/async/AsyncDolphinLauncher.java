@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.common.DriverLauncher;
 import edu.snu.cay.common.dataloader.TextInputFormat;
-import edu.snu.cay.dolphin.async.client.ProgressMessageHandler;
 import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.dashboard.DashboardConfProvider;
 import edu.snu.cay.dolphin.async.dashboard.DashboardLauncher;
@@ -211,15 +211,15 @@ public final class AsyncDolphinLauncher {
 
       // client-side configurations
       final Configuration clientConf = ClientConfiguration.CONF
-          .set(ClientConfiguration.ON_JOB_SUBMITTED, DolphinDriverLauncher.SubmittedJobHandler.class)
-          .set(ClientConfiguration.ON_JOB_RUNNING, DolphinDriverLauncher.RunningJobHandler.class)
-          .set(ClientConfiguration.ON_JOB_COMPLETED, DolphinDriverLauncher.CompletedJobHandler.class)
-          .set(ClientConfiguration.ON_JOB_FAILED, DolphinDriverLauncher.FailedJobHandler.class)
-          .set(ClientConfiguration.ON_RUNTIME_ERROR, DolphinDriverLauncher.RuntimeErrorHandler.class)
+          .set(ClientConfiguration.ON_JOB_SUBMITTED, DriverLauncher.SubmittedJobHandler.class)
+          .set(ClientConfiguration.ON_JOB_RUNNING, DriverLauncher.RunningJobHandler.class)
+          .set(ClientConfiguration.ON_JOB_COMPLETED, DriverLauncher.CompletedJobHandler.class)
+          .set(ClientConfiguration.ON_JOB_FAILED, DriverLauncher.FailedJobHandler.class)
+          .set(ClientConfiguration.ON_RUNTIME_ERROR, DriverLauncher.RuntimeErrorHandler.class)
           .set(ClientConfiguration.ON_JOB_MESSAGE, ProgressMessageHandler.class)
           .build();
 
-      final LauncherStatus status = DolphinDriverLauncher.getLauncher(runTimeConf, clientConf).run(
+      final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf, clientConf).run(
           Configurations.merge(basicParameterConf, parameterServerConf, serializedServerConf,
               serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf,
               dashboardConf),
