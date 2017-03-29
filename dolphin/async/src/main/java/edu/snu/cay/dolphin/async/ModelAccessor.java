@@ -25,6 +25,8 @@ import java.util.List;
  */
 public interface ModelAccessor<K, P, V> {
 
+  void init(K key, V initValue);
+
   /**
    * Updates value associated with a {@code key} using a {@code deltaValue}.
    * @param key key of model parameter
