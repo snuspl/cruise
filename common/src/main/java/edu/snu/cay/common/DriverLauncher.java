@@ -26,6 +26,7 @@ import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.logging.Level;
@@ -47,6 +48,7 @@ public final class DriverLauncher implements AutoCloseable {
       .set(ClientConfiguration.ON_JOB_COMPLETED, CompletedJobHandler.class)
       .set(ClientConfiguration.ON_JOB_FAILED, FailedJobHandler.class)
       .set(ClientConfiguration.ON_RUNTIME_ERROR, RuntimeErrorHandler.class)
+      .set(ClientConfiguration.ON_JOB_MESSAGE, StringJobMessageHandler.class)
       .build();
 
   private final REEF reef;
@@ -71,20 +73,6 @@ public final class DriverLauncher implements AutoCloseable {
   public static DriverLauncher getLauncher(final Configuration runtimeConfiguration) throws InjectionException {
     return Tang.Factory.getTang()
         .newInjector(runtimeConfiguration, CLIENT_CONFIG)
-        .getInstance(DriverLauncher.class);
-  }
-
-  /**
-   * Intantiate a launcher for the given Configuration.
-   * @param runtimeConfiguration the resourcemanager configuration to be used
-   * @param clientConfiguration the client configuration to be used
-   * @return a DriverLauncher based on the given configuration
-   * @throws InjectionException on configuration errors
-   */
-  public static DriverLauncher getLauncher(final Configuration runtimeConfiguration,
-                                           final Configuration clientConfiguration) throws InjectionException {
-    return Tang.Factory.getTang()
-        .newInjector(runtimeConfiguration, clientConfiguration)
         .getInstance(DriverLauncher.class);
   }
 
@@ -261,6 +249,19 @@ public final class DriverLauncher implements AutoCloseable {
       LOG.log(Level.SEVERE, "Received a resource manager error", error.getReason());
       theJob = null;
       setStatusAndNotify(LauncherStatus.failed(error.getReason()));
+    }
+  }
+
+  /**
+  * Handler of {@link JobMessage} from driver.
+  * It logs progress report to console.
+  */
+  public final class StringJobMessageHandler implements EventHandler<JobMessage> {
+
+    @Override
+    public void onNext(final JobMessage message) {
+      final String decodedMessage = new String(message.get(), StandardCharsets.UTF_8);
+      LOG.log(Level.INFO, "Job message: {0}", decodedMessage);
     }
   }
 }
