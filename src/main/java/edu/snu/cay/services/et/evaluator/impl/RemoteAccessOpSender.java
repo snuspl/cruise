@@ -107,7 +107,7 @@ final class RemoteAccessOpSender {
       final ByteBuffer encodedKey = ByteBuffer.wrap(keyCodec.encode(opMetadata.getKey()));
 
       final DataValue dataValue;
-      if (opMetadata.getOpType().equals(OpType.PUT)) {
+      if (opMetadata.getOpType().equals(OpType.PUT) || opMetadata.getOpType().equals(OpType.PUT_IF_ABSENT)) {
         if (!opMetadata.getValue().isPresent()) {
           throw new RuntimeException("Data value is empty for PUT");
         }

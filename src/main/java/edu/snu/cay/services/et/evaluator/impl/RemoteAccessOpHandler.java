@@ -130,6 +130,9 @@ final class RemoteAccessOpHandler {
             case PUT:
               output = block.put(operation.getKey(), operation.getValue().get());
               break;
+            case PUT_IF_ABSENT:
+              output = block.putIfAbsent(operation.getKey(), operation.getValue().get());
+              break;
             case GET:
               output = block.get(operation.getKey());
               break;
@@ -192,7 +195,7 @@ final class RemoteAccessOpHandler {
       final K decodedKey = keyCodec.decode(dataKey.getKey().array());
 
       // decode data values
-      final V decodedValue = opType.equals(OpType.PUT) ?
+      final V decodedValue = opType.equals(OpType.PUT) || opType.equals(OpType.PUT_IF_ABSENT) ?
           valueCodec.decode(dataValue.getValue().array()) : null;
 
       // decode update data value

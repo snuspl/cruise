@@ -34,6 +34,15 @@ public interface Block<K, V> extends Iterable<Entry<K, V>> {
   V put(K key, V value);
 
   /**
+   * If the specified key is not already associated
+   * with a value, associate it with the given value.
+   * @param key key with which value is to be associated
+   * @param value value to be associated with the specified key
+   * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
+   */
+  V putIfAbsent(K key, V value);
+
+  /**
    * Returns the value to which the specified key is associated,
    * or {@code null} if this table contains no value for the key.
    * @param key the key whose associated value is to be returned

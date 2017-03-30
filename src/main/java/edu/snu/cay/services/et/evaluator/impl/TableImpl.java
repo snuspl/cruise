@@ -148,6 +148,63 @@ public final class TableImpl<K, V, U> implements Table<K, V, U>, TableComponents
   }
 
   @Override
+  public V putIfAbsent(final K key, final V value) {
+    final int blockId = blockPartitioner.getBlockId(key);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    try {
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final Block<K, V> block = blockStore.get(blockId);
+        return block.putIfAbsent(key, value);
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
+    }
+
+    // send operation to remote and wait until operation is finished
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.PUT_IF_ABSENT, tableId, blockId, key, value, null, remoteIdOptional.get(), true);
+
+    return opResult.getOutputData();
+  }
+
+  @Override
+  public DataOpResult<V> putIfAbsentAsync(final K key, final V value) {
+    final int blockId = blockPartitioner.getBlockId(key);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    try {
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final Block<K, V> block = blockStore.get(blockId);
+        final V result = block.putIfAbsent(key, value);
+        return new DataOpResultImpl<>(result, true);
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
+    }
+
+    // send operation to remote
+    final DataOpResult<V> opResult = remoteAccessOpSender.sendOpToRemote(
+        OpType.PUT_IF_ABSENT, tableId, blockId, key, value, null, remoteIdOptional.get(), false);
+
+    return opResult;
+  }
+
+  @Override
   public V get(final K key) {
     final int blockId = blockPartitioner.getBlockId(key);
     final Optional<String> remoteIdOptional;

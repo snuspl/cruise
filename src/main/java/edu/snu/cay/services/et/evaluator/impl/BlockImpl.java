@@ -44,6 +44,11 @@ final class BlockImpl<K, V> implements Block<K, V> {
   }
 
   @Override
+  public V putIfAbsent(final K key, final V value) {
+    return subDataMap.putIfAbsent(key, value);
+  }
+
+  @Override
   public V get(final K key) {
     return subDataMap.get(key);
   }

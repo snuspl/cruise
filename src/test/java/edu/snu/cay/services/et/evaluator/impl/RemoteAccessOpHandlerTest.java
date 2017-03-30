@@ -145,6 +145,7 @@ public final class RemoteAccessOpHandlerTest {
 
     final Pair<DataKey, DataValue> dataPair = getDataPair(key, value, keyCodec, valueCodec);
 
+    // 1. put value
     final AtomicInteger opIdCounter = new AtomicInteger(0);
     final TableAccessReqMsg putMsg = TableAccessReqMsg.newBuilder()
         .setOrigId(ORIG_EXECUTOR_ID)
@@ -158,6 +159,7 @@ public final class RemoteAccessOpHandlerTest {
     replyLatch.awaitAndReset(1); // replyLatch must have been released while the event was handle
     assertEquals(null, reply.get());
 
+    // 2. get value to confirm that put request has been done successfully
     final TableAccessReqMsg getMsg = TableAccessReqMsg.newBuilder()
         .setOrigId(ORIG_EXECUTOR_ID)
         .setOpType(OpType.GET)
@@ -170,6 +172,7 @@ public final class RemoteAccessOpHandlerTest {
     replyLatch.awaitAndReset(1); // replyLatch must have been released while the event was handle
     assertEquals(value, reply.get());
 
+    // 3. update value based on the value put by the first request
     final TableAccessReqMsg updateMsg = TableAccessReqMsg.newBuilder()
         .setOrigId(ORIG_EXECUTOR_ID)
         .setOpType(OpType.UPDATE)
@@ -182,6 +185,25 @@ public final class RemoteAccessOpHandlerTest {
     replyLatch.awaitAndReset(1); // replyLatch must have been released while the event was handled
     assertEquals(Integer.valueOf(value + value), reply.get());
 
+    // 4. check that putIfAbsent request is ignored when there exists the associated value
+    final TableAccessReqMsg putIfAbsentMsg = TableAccessReqMsg.newBuilder()
+        .setOrigId(ORIG_EXECUTOR_ID)
+        .setOpType(OpType.PUT_IF_ABSENT)
+        .setTableId(TABLE_ID)
+        .setDataKey(dataPair.getKey())
+        .setDataValue(dataPair.getValue())
+        .build();
+
+    remoteAccessOpHandler.onTableAccessReqMsg(opIdCounter.getAndIncrement(), putIfAbsentMsg);
+    replyLatch.awaitAndReset(1); // replyLatch must have been released while the event was handle
+    assertEquals(Integer.valueOf(value + value), reply.get()); // putIfAbsent cannot overwrite value
+
+    // 5. get value to confirm that value does not change by putIfAbsent request
+    remoteAccessOpHandler.onTableAccessReqMsg(opIdCounter.getAndIncrement(), getMsg);
+    replyLatch.awaitAndReset(1); // replyLatch must have been released while the event was handle
+    assertEquals(Integer.valueOf(value + value), reply.get());
+
+    // 6. remove value
     final TableAccessReqMsg removeMsg = TableAccessReqMsg.newBuilder()
         .setOrigId(ORIG_EXECUTOR_ID)
         .setOpType(OpType.REMOVE)
@@ -194,11 +216,12 @@ public final class RemoteAccessOpHandlerTest {
     replyLatch.awaitAndReset(1); // replyLatch must have been released while the event was handle
     assertEquals(Integer.valueOf(value + value), reply.get());
 
+    // 7. get value to confirm that value has been deleted by remove request
     remoteAccessOpHandler.onTableAccessReqMsg(opIdCounter.getAndIncrement(), getMsg);
     replyLatch.awaitAndReset(1); // replyLatch must have been released while the event was handle
     assertEquals(null, reply.get());
 
-    verify(mockMsgSender, times(5))
+    verify(mockMsgSender, times(7))
         .sendTableAccessResMsg(anyString(), anyLong(), anyObject(), anyBoolean());
   }
 

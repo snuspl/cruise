@@ -52,7 +52,7 @@
   [
     {"name": "origId", "type": "string"},
     {"name": "opType", "type": {"type": "enum",
-        "name": "OpType", "symbols": ["PUT", "GET", "REMOVE", "UPDATE"]}},
+        "name": "OpType", "symbols": ["PUT", "PUT_IF_ABSENT", "GET", "REMOVE", "UPDATE"]}},
     {"name": "tableId", "type": "string"},
     {"name": "dataKey", "type": "DataKey"},
     {"name": "dataValue", "type": ["null", "DataValue"]}
