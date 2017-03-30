@@ -25,10 +25,15 @@ import java.util.List;
  */
 public interface ModelAccessor<K, P, V> {
 
+  /**
+   * Initializes a value associated with a {@code key} using a {@code initValue}.
+   * @param key key of model parameter
+   * @param initValue value to be associated with a given key
+   */
   void init(K key, V initValue);
 
   /**
-   * Updates value associated with a {@code key} using a {@code deltaValue}.
+   * Updates a value associated with a {@code key} using a {@code deltaValue}.
    * @param key key of model parameter
    * @param deltaValue value to push to the servers
    */
