@@ -78,6 +78,7 @@ final class WorkerStateManager {
                              final SerializableCodec<State> codec) {
     this.aggregationMaster = aggregationMaster;
     this.numWorkers = numWorkers;
+    LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
     this.codec = codec;
     this.stateMachine = initStateMachine();
   }
