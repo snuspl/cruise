@@ -15,8 +15,11 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
+import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
+import org.apache.hadoop.util.hash.MurmurHash;
+import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -27,20 +30,23 @@ import javax.inject.Inject;
  * @param <K> The type of key. User should provide its {@code hashCode} properly.
  */
 public final class HashBasedBlockPartitioner<K> implements BlockPartitioner<K> {
-
   /**
    * A class that partitions key space into disjoint ranges that have same length.
    */
   private final KeySpacePartitioner keySpacePartitioner;
 
+  private final Codec<K> keyCodec;
+
   @Inject
-  private HashBasedBlockPartitioner(@Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
+  private HashBasedBlockPartitioner(@Parameter(NumTotalBlocks.class) final int numTotalBlocks,
+                                    @Parameter(KeyCodec.class) final Codec<K> keyCodec) {
     this.keySpacePartitioner = new KeySpacePartitioner(0, Integer.MAX_VALUE, numTotalBlocks);
+    this.keyCodec = keyCodec;
   }
 
   @Override
   public int getBlockId(final K key) {
-    final int hashed = Math.abs(key.hashCode());
+    final int hashed = Math.abs(MurmurHash.getInstance().hash(keyCodec.encode(key)));
     return keySpacePartitioner.getPartitionId(hashed);
   }
 }
