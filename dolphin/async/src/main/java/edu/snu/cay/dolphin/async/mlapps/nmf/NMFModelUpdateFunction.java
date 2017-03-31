@@ -41,7 +41,6 @@ public final class NMFModelUpdateFunction implements UpdateFunction<Integer, Vec
     this.stepSize = stepSize;
   }
 
-
   @Override
   public Vector initValue(final Integer key) {
     return modelGenerator.createRandomVector();
