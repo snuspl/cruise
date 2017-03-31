@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.simple;
 
+import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
@@ -57,9 +58,12 @@ final class SimpleETDriver {
   static final String ORDERED_TABLE_ID = "Ordered_Table";
   static final String ORDERED_TABLE_WITH_FILE_ID = "Ordered_Table_With_File";
 
-  private static final ResourceConfiguration RES_CONF = ResourceConfiguration.newBuilder()
-      .setNumCores(1)
-      .setMemSizeInMB(128)
+  private static final ExecutorConfiguration EXECUTOR_CONF = ExecutorConfiguration.newBuilder()
+      .setResourceConf(
+          ResourceConfiguration.newBuilder()
+              .setNumCores(1)
+              .setMemSizeInMB(128)
+              .build())
       .build();
 
   private final ETMaster etMaster;
@@ -97,14 +101,14 @@ final class SimpleETDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> associators = etMaster.addExecutors(NUM_ASSOCIATORS, RES_CONF, null, null);
+      final List<AllocatedExecutor> associators = etMaster.addExecutors(NUM_ASSOCIATORS, EXECUTOR_CONF);
 
       final AllocatedTable hashedTable = etMaster.createTable(buildTableConf(HASHED_TABLE_ID,
           SimpleET.TableInputPath.EMPTY, false), associators);
       final AllocatedTable orderedTable = etMaster.createTable(buildTableConf(ORDERED_TABLE_ID,
           SimpleET.TableInputPath.EMPTY, true), associators);
 
-      final List<AllocatedExecutor> subscribers = etMaster.addExecutors(NUM_SUBSCRIBERS, RES_CONF, null, null);
+      final List<AllocatedExecutor> subscribers = etMaster.addExecutors(NUM_SUBSCRIBERS, EXECUTOR_CONF);
       hashedTable.subscribe(subscribers);
       orderedTable.subscribe(subscribers);
 

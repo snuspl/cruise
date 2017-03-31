@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.addinteger;
 
+import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
@@ -57,9 +58,11 @@ public final class AddIntegerETDriver {
 
   static final String MODEL_TABLE_ID = "Model_Table";
 
-  private static final ResourceConfiguration RES_CONF = ResourceConfiguration.newBuilder()
-      .setNumCores(1)
-      .setMemSizeInMB(128)
+  private static final ExecutorConfiguration EXECUTOR_CONF = ExecutorConfiguration.newBuilder()
+      .setResourceConf(ResourceConfiguration.newBuilder()
+          .setNumCores(1)
+          .setMemSizeInMB(128)
+          .build())
       .build();
 
   private final ETMaster etMaster;
@@ -132,8 +135,8 @@ public final class AddIntegerETDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, RES_CONF, null, null);
-      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, RES_CONF, null, null);
+      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, EXECUTOR_CONF);
+      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, EXECUTOR_CONF);
 
       final AllocatedTable modelTable = etMaster.createTable(tableConf, servers);
 

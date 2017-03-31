@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,51 +15,92 @@
  */
 package edu.snu.cay.services.et.configuration;
 
-import edu.snu.cay.services.et.common.api.MessageHandler;
-import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
-import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.services.et.evaluator.impl.MessageHandlerImpl;
-import org.apache.reef.annotations.audience.Private;
-import org.apache.reef.driver.parameters.DriverIdentifier;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
-import org.apache.reef.tang.formats.ConfigurationModule;
-import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
-import org.apache.reef.tang.formats.RequiredImpl;
-import org.apache.reef.tang.formats.RequiredParameter;
-import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.util.BuilderUtils;
 
 /**
- * A builder for configuration required for launching executor.
+ * A configuration required for adding an executor.
  */
-@Private
-public final class ExecutorConfiguration extends ConfigurationModuleBuilder {
+public final class ExecutorConfiguration {
+  private final ResourceConfiguration resourceConf;
+  private final Configuration userContextConf;
+  private final Configuration userServiceConf;
 
-  public static final RequiredParameter<String> ET_IDENTIFIER = new RequiredParameter<>();
-  public static final RequiredParameter<String> IDENTIFIER = new RequiredParameter<>();
+  private ExecutorConfiguration(final ResourceConfiguration resourceConf,
+                                final Configuration userContextConf,
+                                final Configuration userServiceConf) {
+    this.resourceConf = resourceConf;
+    this.userContextConf = userContextConf;
+    this.userServiceConf = userServiceConf;
+  }
+
+  public ResourceConfiguration getResourceConf() {
+    return resourceConf;
+  }
+
+  public Configuration getUserContextConf() {
+    return userContextConf;
+  }
+
+  public Configuration getUserServiceConf() {
+    return userServiceConf;
+  }
+
+  public static Builder newBuilder() {
+    return new Builder();
+  }
 
   /**
-   * Parameters required for NameResolverConfiguration.
+   * A builder of {@link ExecutorConfiguration}.
    */
-  public static final RequiredParameter<String> NAME_SERVICE_HOST = new RequiredParameter<>();
-  public static final RequiredParameter<Integer> NAME_SERVICE_PORT = new RequiredParameter<>();
+  public static final class Builder implements org.apache.reef.util.Builder<ExecutorConfiguration> {
+    /**
+     * Required parameters.
+     */
+    private ResourceConfiguration resourceConf;
 
-  /**
-   * Parameters required for identification.
-   */
-  public static final RequiredImpl<IdentifierFactory> IDENTIFIER_FACTORY = new RequiredImpl<>();
-  public static final RequiredParameter<String> DRIVER_IDENTIFIER = new RequiredParameter<>();
+    /**
+     * Optional parameters.
+     */
+    private Configuration userContextConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
+    private Configuration userServiceConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
 
-  /**
-   * ConfigurationModule.
-   */
-  public static final ConfigurationModule CONF = new ExecutorConfiguration()
-      .bindNamedParameter(ETIdentifier.class, ET_IDENTIFIER)
-      .bindNamedParameter(ExecutorIdentifier.class, IDENTIFIER)
-      .bindNamedParameter(NameResolverNameServerAddr.class, NAME_SERVICE_HOST)
-      .bindNamedParameter(NameResolverNameServerPort.class, NAME_SERVICE_PORT)
-      .bindImplementation(IdentifierFactory.class, IDENTIFIER_FACTORY)
-      .bindImplementation(MessageHandler.class, MessageHandlerImpl.class)
-      .bindNamedParameter(DriverIdentifier.class, DRIVER_IDENTIFIER)
-      .build();
+    private Builder() {
+    }
+
+    /**
+     * @param resourceConf resource configuration
+     * @return
+     */
+    public Builder setResourceConf(final ResourceConfiguration resourceConf) {
+      this.resourceConf = resourceConf;
+      return this;
+    }
+
+    /**
+     * @param userContextConf a context configuration specified by user
+     * @return
+     */
+    public Builder setUserContextConf(final Configuration userContextConf) {
+      this.userContextConf = userContextConf;
+      return this;
+    }
+
+    /**
+     * @param userServiceConf a service configuration specified by user
+     * @return
+     */
+    public Builder setUserServiceConf(final Configuration userServiceConf) {
+      this.userServiceConf = userServiceConf;
+      return this;
+    }
+
+    @Override
+    public ExecutorConfiguration build() {
+      BuilderUtils.notNull(resourceConf);
+
+      return new ExecutorConfiguration(resourceConf, userContextConf, userServiceConf);
+    }
+  }
 }

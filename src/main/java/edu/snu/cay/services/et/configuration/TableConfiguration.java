@@ -22,7 +22,6 @@ import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
 import edu.snu.cay.services.et.evaluator.impl.HashBasedBlockPartitioner;
 import edu.snu.cay.services.et.evaluator.impl.OrderingBasedBlockPartitioner;
-import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
@@ -32,9 +31,8 @@ import org.apache.reef.util.BuilderUtils;
 import java.util.Optional;
 
 /**
- * A builder for configuration required for creating table.
+ * A configuration required for creating a table.
  */
-@Private
 public final class TableConfiguration {
   private final String id;
   private final Class<? extends Codec> keyCodecClass;

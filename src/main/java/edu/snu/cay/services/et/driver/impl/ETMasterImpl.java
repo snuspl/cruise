@@ -16,18 +16,15 @@
 package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.common.api.NetworkConnection;
-import edu.snu.cay.services.et.configuration.ResourceConfiguration;
+import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.List;
 
@@ -36,8 +33,6 @@ import java.util.List;
  */
 @DriverSide
 public final class ETMasterImpl implements ETMaster {
-  private static final Configuration EMPTY_CONFIG = Tang.Factory.getTang().newConfigurationBuilder().build();
-
   private final ExecutorManager executorManager;
   private final TableManager tableManager;
 
@@ -52,14 +47,8 @@ public final class ETMasterImpl implements ETMaster {
   }
 
   @Override
-  public List<AllocatedExecutor> addExecutors(final int num, final ResourceConfiguration resConf,
-                                              @Nullable final Configuration userContextConf,
-                                              @Nullable final Configuration userServiceConf) {
-    // use an empty configuration when given configurations are null
-    final Configuration contextConf = userContextConf != null ? userContextConf : EMPTY_CONFIG;
-    final Configuration serviceConf = userServiceConf != null ? userServiceConf : EMPTY_CONFIG;
-
-    return executorManager.addExecutors(num, resConf, contextConf, serviceConf);
+  public List<AllocatedExecutor> addExecutors(final int num, final ExecutorConfiguration executorConf) {
+    return executorManager.addExecutors(num, executorConf);
   }
 
   @Override

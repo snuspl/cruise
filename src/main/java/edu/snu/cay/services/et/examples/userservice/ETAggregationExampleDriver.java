@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.examples.userservice;
 
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
@@ -24,7 +25,6 @@ import edu.snu.cay.services.et.driver.impl.TaskResult;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -54,16 +54,10 @@ public final class ETAggregationExampleDriver {
 
   private static final String TASK_PREFIX = "Worker-Task-";
 
-  private static final ResourceConfiguration RES_CONF = ResourceConfiguration.newBuilder()
-      .setNumCores(1)
-      .setMemSizeInMB(128)
-      .build();
+  private final ExecutorConfiguration executorConf;
 
   private final ETMaster etMaster;
   private final DriverSideMsgHandler driverSideMsgHandler;
-
-  private final Configuration userContextConf;
-  private final Configuration userServiceConf;
 
   private final int splits;
 
@@ -74,8 +68,15 @@ public final class ETAggregationExampleDriver {
                                      final ETMaster etMaster,
                                      final DriverSideMsgHandler driverSideMsgHandler,
                                      @Parameter(Parameters.Splits.class) final int splits) {
-    this.userContextConf = aggregationManager.getContextConfiguration();
-    this.userServiceConf = aggregationManager.getServiceConfigurationWithoutNameResolver();
+    this.executorConf = ExecutorConfiguration.newBuilder()
+        .setResourceConf(
+            ResourceConfiguration.newBuilder()
+                .setNumCores(1)
+                .setMemSizeInMB(128)
+                .build())
+        .setUserContextConf(aggregationManager.getContextConfiguration())
+        .setUserServiceConf(aggregationManager.getServiceConfigurationWithoutNameResolver())
+        .build();
 
     this.etMaster = etMaster;
     this.driverSideMsgHandler = driverSideMsgHandler;
@@ -86,8 +87,7 @@ public final class ETAggregationExampleDriver {
     @Override
     public void onNext(final StartTime startTime) {
 
-      final List<AllocatedExecutor> executors = etMaster.addExecutors(splits, RES_CONF,
-          userContextConf, userServiceConf);
+      final List<AllocatedExecutor> executors = etMaster.addExecutors(splits, executorConf);
 
       // start update tasks on worker executors
       final AtomicInteger taskIdCount = new AtomicInteger(0);

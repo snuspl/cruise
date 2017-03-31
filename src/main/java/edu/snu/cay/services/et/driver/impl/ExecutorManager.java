@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.common.impl.CallbackRegistry;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
+import edu.snu.cay.services.et.configuration.ExecutorServiceConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
@@ -91,14 +92,14 @@ final class ExecutorManager {
    * Allocates new {@code num} executors of the equal resource specification.
    * It returns when requested executors are allocated.
    * @param num the number of executors
-   * @param resConf resource configuration
-   * @param userContextConf a context configuration specified by user
-   * @param userServiceConf a service configuration specified by user
+   * @param executorConf executor configuration
    * @return a list of allocated executors
    */
-  List<AllocatedExecutor> addExecutors(final int num, final ResourceConfiguration resConf,
-                                       final Configuration userContextConf,
-                                       final Configuration userServiceConf) {
+  List<AllocatedExecutor> addExecutors(final int num, final ExecutorConfiguration executorConf) {
+    final ResourceConfiguration resConf = executorConf.getResourceConf();
+    final Configuration userContextConf = executorConf.getUserContextConf();
+    final Configuration userServiceConf = executorConf.getUserServiceConf();
+
     final int numCores = resConf.getNumCores();
     final int memSizeInMB = resConf.getMemSizeInMB();
 
@@ -167,13 +168,13 @@ final class ExecutorManager {
       // different from context configuration, service configuration will be inherited by upper contexts
       final Configuration serviceConfiguration;
 
-      final Configuration executorConfiguration = ExecutorConfiguration.CONF
-          .set(ExecutorConfiguration.ET_IDENTIFIER, etIdentifier)
-          .set(ExecutorConfiguration.IDENTIFIER, allocatedEvaluator.getId()) // use evaluatorId as executorId
-          .set(ExecutorConfiguration.NAME_SERVICE_HOST, localAddressProvider.getLocalAddress())
-          .set(ExecutorConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
-          .set(ExecutorConfiguration.IDENTIFIER_FACTORY, identifierFactory.getClass())
-          .set(ExecutorConfiguration.DRIVER_IDENTIFIER, driverIdentifier)
+      final Configuration executorConfiguration = ExecutorServiceConfiguration.CONF
+          .set(ExecutorServiceConfiguration.ET_IDENTIFIER, etIdentifier)
+          .set(ExecutorServiceConfiguration.IDENTIFIER, allocatedEvaluator.getId()) // use evaluatorId as executorId
+          .set(ExecutorServiceConfiguration.NAME_SERVICE_HOST, localAddressProvider.getLocalAddress())
+          .set(ExecutorServiceConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
+          .set(ExecutorServiceConfiguration.IDENTIFIER_FACTORY, identifierFactory.getClass())
+          .set(ExecutorServiceConfiguration.DRIVER_IDENTIFIER, driverIdentifier)
           .build();
 
       serviceConfiguration = Configurations.merge(executorConfiguration, userServiceConf);
