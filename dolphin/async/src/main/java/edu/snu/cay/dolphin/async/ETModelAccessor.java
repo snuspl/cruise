@@ -38,6 +38,11 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   }
 
   @Override
+  public void init(final K key, final V initValue) {
+    modelTable.putIfAbsentAsync(key, initValue);
+  }
+
+  @Override
   public void push(final K key, final P deltaValue) {
     modelTable.updateAsync(key, deltaValue);
   }
