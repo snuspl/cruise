@@ -34,7 +34,7 @@ public class PSModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
   @Override
   public void init(final K key, final V initValue) {
-    // PS does not require model init step
+    // PS initializes the model parameters internally while processing pull
   }
 
   @Override
