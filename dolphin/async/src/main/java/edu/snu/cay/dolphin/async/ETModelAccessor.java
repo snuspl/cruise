@@ -34,7 +34,7 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
   @Inject
   ETModelAccessor(final TableAccessor tableAccessor) throws TableNotExistException {
-    this.modelTable = tableAccessor.get(MODEL_TABLE_ID);
+    this.modelTable = tableAccessor.getTable(MODEL_TABLE_ID);
   }
 
   @Override
