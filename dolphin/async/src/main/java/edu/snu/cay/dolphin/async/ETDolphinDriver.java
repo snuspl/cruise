@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
+import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
@@ -166,9 +167,16 @@ public final class ETDolphinDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, serverResourceConf, null, null);
-      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, workerResourceConf,
-          aggrContextConf, aggrServiceConf);
+      final ExecutorConfiguration serverExecutorConf = ExecutorConfiguration.newBuilder()
+          .setResourceConf(serverResourceConf)
+          .build();
+      final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
+          .setResourceConf(workerResourceConf)
+          .setUserContextConf(aggrContextConf)
+          .setUserServiceConf(aggrServiceConf)
+          .build();
+      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, serverExecutorConf);
+      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, workerExecutorConf);
 
       Executors.newSingleThreadExecutor().submit(() -> {
         etMaster.createTable(serverTableConf, servers).subscribe(workers);
