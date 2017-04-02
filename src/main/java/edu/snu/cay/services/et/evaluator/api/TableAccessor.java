@@ -33,5 +33,5 @@ public interface TableAccessor {
    * @return a table whose id is tableId
    * @throws TableNotExistException when there's no table with the specified id
    */
-  Table get(String tableId) throws TableNotExistException;
+  <K, V, U> Table<K, V, U> getTable(String tableId) throws TableNotExistException;
 }

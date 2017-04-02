@@ -19,7 +19,6 @@ import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.configuration.parameters.NumRemoteOpsHandlerThreads;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
-import edu.snu.cay.services.et.evaluator.api.TableComponents;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.commons.lang3.tuple.Pair;
@@ -112,7 +111,7 @@ final class RemoteAccessOpHandler {
           new Object[]{operation.getOpId(), operation.getOrigId(), blockId});
 
       try {
-        final TableComponents<K, V, U> tableComponents = tablesFuture.get().get(tableId);
+        final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
         final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
         final BlockStore<K, V> blockStore = tableComponents.getBlockStore();
 
@@ -184,7 +183,7 @@ final class RemoteAccessOpHandler {
     final DataValue dataValue = msg.getDataValue();
 
     try {
-      final TableComponents<K, V, U> tableComponents = tablesFuture.get().get(tableId);
+      final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
       final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
       final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
       final Codec<V> valueCodec = kvuSerializer.getValueCodec();
@@ -230,7 +229,7 @@ final class RemoteAccessOpHandler {
 
     final TableComponents<K, V, ?> tableComponents;
     try {
-      tableComponents = tablesFuture.get().get(tableId);
+      tableComponents = tablesFuture.get().getTableComponents(tableId);
 
       final Codec<V> valueCodec = tableComponents.getSerializer().getValueCodec();
       final String origEvalId = operation.getOrigId();

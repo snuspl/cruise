@@ -17,7 +17,6 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
-import edu.snu.cay.services.et.evaluator.api.TableComponents;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
@@ -110,7 +109,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final List<Integer> blockIds = msg.getBlockIds();
 
     try {
-      final TableComponents<K, V, ?> tableComponents = tablesFuture.get().get(tableId);
+      final TableComponents<K, V, ?> tableComponents = tablesFuture.get().getTableComponents(tableId);
 
       final Migration<K, V> migration = new Migration<>(operationId, tableId, blockIds,
           senderId, receiverId, tableComponents);
@@ -133,7 +132,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final String newOwnerId = ownershipMsg.getNewOwnerId();
 
     try {
-      final OwnershipCache ownershipCache = tablesFuture.get().get(tableId).getOwnershipCache();
+      final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(tableId).getOwnershipCache();
 
       // should run asynchronously to prevent deadlock in ownershipCache.updateOwnership()
       ownershipMsgHandlerExecutor.submit(() -> {
@@ -155,7 +154,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final String tableId = ownershipAckMsg.getTableId();
 
     try {
-      final OwnershipCache ownershipCache = tablesFuture.get().get(tableId).getOwnershipCache();
+      final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(tableId).getOwnershipCache();
       final Migration migration = ongoingMigrations.get(operationId);
       if (migration == null) {
         throw new RuntimeException("No ongoing migration for id: " + operationId);
@@ -185,7 +184,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final String receiverId = dataMsg.getReceiverId();
 
     try {
-      final TableComponents<K, V, ?> tableComponents = tablesFuture.get().get(tableId);
+      final TableComponents<K, V, ?> tableComponents = tablesFuture.get().getTableComponents(tableId);
       final BlockStore<K, V> blockStore = tableComponents.getBlockStore();
       final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
       final KVUSerializer<K, V, ?> kvuSerializer = tableComponents.getSerializer();
@@ -222,7 +221,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     }
 
     try {
-      final BlockStore blockStore = tablesFuture.get().get(tableId).getBlockStore();
+      final BlockStore blockStore = tablesFuture.get().getTableComponents(tableId).getBlockStore();
 
       dataMsgHandlerExecutor.submit(() -> {
         // After the data is migrated, it's safe to remove the local data block.

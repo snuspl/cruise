@@ -15,34 +15,30 @@
  */
 package edu.snu.cay.services.et.evaluator.api;
 
-import edu.snu.cay.services.et.evaluator.impl.TableImpl;
+import edu.snu.cay.services.et.evaluator.impl.TabletImpl;
+import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+
 /**
- * Abstraction for access to collection of key-value pairs distributed across executors.
+ * Abstraction representing a local portion of table.
  *
  * @param <K> type of the key for this table.
  * @param <V> type of the value for this table.
  * @param <U> type of the update value for this table.
  */
-@DefaultImplementation(TableImpl.class)
-public interface Table<K, V, U> {
-  /**
+@DefaultImplementation(TabletImpl.class)
+public interface Tablet<K, V, U> {
+    /**
    * Associates the specified value with the specified key.
    * @param key key with which value is to be associated
    * @param value value to be associated with the specified key
    * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
    */
-  V put(K key, V value);
-
-  /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
-   * allows users to retrieve the result from the object when the request is complete.
-   * @param key key with which value is to be associated
-   * @param value value to be associated with the specified key
-   * @return {@link DataOpResult} that will provide the value that {@link #put(K, V)} method returns
-   */
-  DataOpResult<V> putAsync(K key, V value);
+  V put(int blockId, K key, V value) throws BlockNotExistsException;
 
   /**
    * Associates the given value with the specified key only when the key is not associated with any value.
@@ -50,16 +46,7 @@ public interface Table<K, V, U> {
    * @param value value to be associated with the specified key
    * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
    */
-  V putIfAbsent(K key, V value);
-
-  /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
-   * allows users to retrieve the result from the object when the request is complete.
-   * @param key key with which value is to be associated
-   * @param value value to be associated with the specified key
-   * @return {@link DataOpResult} that will provide the value that {@link #putIfAbsent(K, V)} method returns
-   */
-  DataOpResult<V> putIfAbsentAsync(K key, V value);
+  V putIfAbsent(int blockId, K key, V value) throws BlockNotExistsException;
 
   /**
    * Returns the value to which the specified key is associated,
@@ -68,15 +55,7 @@ public interface Table<K, V, U> {
    * @return the value to which the specified key is associated,
    *         or {@code null} if no value is associated with the given key
    */
-  V get(K key);
-
-  /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
-   * allows users to retrieve the result from the object when the request is complete.
-   * @param key key with which value is to be associated
-   * @return {@link DataOpResult} that will provide the value that {@link #get(K)} method returns
-   */
-  DataOpResult<V> getAsync(K key);
+  V get(int blockId, K key) throws BlockNotExistsException;
 
   /**
    * Update a value associated with the specified key using {@link UpdateFunction}.
@@ -90,34 +69,29 @@ public interface Table<K, V, U> {
    * @param updateValue update value
    * @return the updated value associated with the key
    */
-  V update(K key, U updateValue);
-
-  /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
-   * allows users to retrieve the result from the object when the request is complete.
-   * @param key global unique identifier of item
-   * @param updateValue update value
-   * @return {@link DataOpResult} that will provide the value that {@link #update(K, U)} method returns
-   */
-  DataOpResult<V> updateAsync(K key, U updateValue);
+  V update(int blockId, K key, U updateValue) throws BlockNotExistsException;
 
   /**
    * Removes association for the specified key.
    * @param key key with which value is to be deleted
    * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
    */
-  V remove(K key);
+  V remove(int blockId, K key) throws BlockNotExistsException;
 
   /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
-   * allows users to retrieve the result from the object when the request is complete.
-   * @param key key with which value is to be associated
-   * @return {@link DataOpResult} that will provide the value that {@link #remove(K)} method returns
+   * Returns a map that contains key-value mapping of all local data.
+   * The returned map is a shallow copy of the internal data structure.
+   * @return a map of data keys and the corresponding data values.
+   *         This map may be empty if no data exists.
    */
-  DataOpResult<V> removeAsync(K key);
+  Map<K, V> getDataMap();
 
   /**
-   * @return a local {@link Tablet}
+   * Gets an iterator of local data, which can react to background data migration.
+   * Specifically, new items can be added to this iterator and the existing items can be deleted, for the items that
+   * have not been consumed by this iterator yet.
+   * Consistency of iterator depends on the implementation of Table.
+   * @return an iterator of {@link Entry} of local data key-value pairs
    */
-  Tablet<K, V, U> getLocalTablet();
+  Iterator<Entry<K, V>> getDataIterator();
 }

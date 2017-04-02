@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
+import edu.snu.cay.services.et.evaluator.api.Tablet;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
@@ -57,10 +58,12 @@ final class ScanTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Hello, {0}! I am an executor id {1}", new Object[]{elasticTableId, executorId});
-    final Table<Long, String, ?> orderedTableWithFile = tableAccessor.get(ORDERED_TABLE_WITH_FILE_ID);
+    final Table<Long, String, ?> orderedTableWithFile = tableAccessor.getTable(ORDERED_TABLE_WITH_FILE_ID);
 
-    final Map<Long, String> localDataMap = orderedTableWithFile.getLocalDataMap();
-    final Iterator<Entry<Long, String>> localDataIter = orderedTableWithFile.getLocalDataIterator();
+    final Tablet<Long, String, ?> localTablet = orderedTableWithFile.getLocalTablet();
+
+    final Map<Long, String> localDataMap = localTablet.getDataMap();
+    final Iterator<Entry<Long, String>> localDataIter = localTablet.getDataIterator();
 
     // validate that data obtained with both ways are same
     // it's true only when there's no background data migration

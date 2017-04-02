@@ -98,7 +98,8 @@ final class RemoteAccessOpSender {
     registerOp(operation);
 
     try {
-      final KVUSerializer<K, V, U> kvuSerializer = tablesFuture.get().get(tableId).getSerializer();
+      final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
+      final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
       final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
       final Codec<V> valueCodec = kvuSerializer.getValueCodec();
       final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
@@ -167,7 +168,8 @@ final class RemoteAccessOpSender {
 
     final String tableId = operation.getMetadata().getTableId();
     try {
-      final Codec<V> valueCodec = tablesFuture.get().get(tableId).getSerializer().getValueCodec();
+      final Codec<V> valueCodec = (Codec<V>) tablesFuture.get().getTableComponents(tableId)
+          .getSerializer().getValueCodec();
 
       // decode data value
       final V decodedValue = isSuccess && remoteOutput != null ?

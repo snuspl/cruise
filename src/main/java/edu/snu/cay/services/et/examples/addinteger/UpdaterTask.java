@@ -66,7 +66,7 @@ public final class UpdaterTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Task.call() commencing...");
-    final Table<Integer, Integer, Integer> modelTable = tableAccessor.get(MODEL_TABLE_ID);
+    final Table<Integer, Integer, Integer> modelTable = tableAccessor.getTable(MODEL_TABLE_ID);
 
     for (int i = 0; i < numUpdates; i++) {
       final int keyToUpdate = startKey + (i % numKeys);

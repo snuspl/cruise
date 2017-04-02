@@ -24,7 +24,6 @@ import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.driver.impl.BlockManager;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
-import edu.snu.cay.services.et.evaluator.api.TableComponents;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerUpdateFunction;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.commons.lang3.tuple.Pair;
@@ -110,7 +109,7 @@ public final class RemoteAccessOpHandlerTest {
 
   @Test
   public void testRemoteAccess() throws TableNotExistException, InterruptedException {
-    final TableComponents<String, Integer, Integer> tableComponents = tables.get(TABLE_ID);
+    final TableComponents<String, Integer, Integer> tableComponents = tables.getTableComponents(TABLE_ID);
     final KVUSerializer<String, Integer, Integer> kvuSerializer = tableComponents.getSerializer();
     final Codec<String> keyCodec = kvuSerializer.getKeyCodec();
     final Codec<Integer> valueCodec = kvuSerializer.getValueCodec();

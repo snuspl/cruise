@@ -134,7 +134,7 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private void onOwnershipUpdateMsg(final OwnershipUpdateMsg msg) {
     try {
-      final OwnershipCache ownershipCache = tablesFuture.get().get(msg.getTableId()).getOwnershipCache();
+      final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(msg.getTableId()).getOwnershipCache();
       ownershipCache.update(msg.getBlockId(), msg.getOldOwnerId(), msg.getNewOwnerId());
     } catch (final TableNotExistException e) {
       throw new RuntimeException(e);

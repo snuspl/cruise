@@ -19,11 +19,12 @@ import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.FilePath;
 import edu.snu.cay.services.et.configuration.parameters.IsOrderedTable;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
+import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
-import edu.snu.cay.services.et.evaluator.api.TableComponents;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.KeyGenerationException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.Configuration;
@@ -55,7 +56,7 @@ public final class Tables implements TableAccessor {
   /**
    * A mapping with tableIds and the corresponding {@link TableImpl}s.
    */
-  private final Map<String, TableImpl> tables = new ConcurrentHashMap<>();
+  private final Map<String, Pair<Table, TableComponents>> tables = new ConcurrentHashMap<>();
 
   @Inject
   private Tables(final Injector tableBaseInjector,
@@ -88,11 +89,11 @@ public final class Tables implements TableAccessor {
 
     // Initialize a table
     LOG.log(Level.INFO, "Initializing a table. tableId: {0}", tableId);
+    final TableComponents tableComponents = tableInjector.getInstance(TableComponents.class);
+    initTableComponents(tableComponents, blockOwners);
+
     final TableImpl table = tableInjector.getInstance(TableImpl.class);
-
-    initTableComponents(table, blockOwners);
-
-    tables.put(tableId, table);
+    tables.put(tableId, Pair.of(table, tableComponents));
     return tableId;
   }
 
@@ -116,9 +117,9 @@ public final class Tables implements TableAccessor {
 
     // Initialize a table
     LOG.log(Level.INFO, "Initializing a table. tableId: {0}", tableId);
-    final TableImpl table = tableInjector.getInstance(TableImpl.class);
+    final TableComponents tableComponents = tableInjector.getInstance(TableComponents.class);
 
-    initTableComponents(table, blockOwners);
+    initTableComponents(tableComponents, blockOwners);
 
     // Load a file into table
     if (serializedHdfsSplitInfo != null) {
@@ -141,7 +142,8 @@ public final class Tables implements TableAccessor {
       }
     }
 
-    tables.put(tableId, table);
+    final Table table = tableInjector.getInstance(Table.class);
+    tables.put(tableId, Pair.of(table, tableComponents));
     return tableId;
   }
 
@@ -176,19 +178,35 @@ public final class Tables implements TableAccessor {
     tables.remove(tableId);
   }
 
-  /**
-   * Return an initialized local table.
-   * @param tableId the identifier of the table
-   * @return the corresponding {@link TableImpl} object
-   */
   @Override
-  public synchronized TableImpl get(final String tableId) throws TableNotExistException {
-    final TableImpl table = tables.get(tableId);
-    if (table == null) {
+  @SuppressWarnings("unchecked")
+  public synchronized <K, V, U> Table<K, V, U> getTable(final String tableId) throws TableNotExistException {
+    final Pair<Table, TableComponents> tablePair = tables.get(tableId);
+    if (tablePair == null) {
       // cannot access such table.
       // 1) table does not exist or 2) it's not associated or subscribed by this executor.
       throw new TableNotExistException();
     }
-    return table;
+
+    return tablePair.getLeft();
+  }
+
+  /**
+   * Return a {@link TableComponents}, which contains all internal components of a table.
+   * Note that this method is used by the system internally and should not be exposed to users.
+   * @param tableId the identifier of the table
+   * @return the corresponding {@link TableComponents} object
+   * @throws TableNotExistException when there's no table with the specified id
+   */
+  @SuppressWarnings("unchecked")
+  synchronized <K, V, U> TableComponents<K, V, U> getTableComponents(final String tableId)
+      throws TableNotExistException {
+    final Pair<Table, TableComponents> tablePair = tables.get(tableId);
+    if (tablePair == null) {
+      // cannot access such table.
+      // 1) table does not exist or 2) it's not associated or subscribed by this executor.
+      throw new TableNotExistException();
+    }
+    return tablePair.getRight();
   }
 }
