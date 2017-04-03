@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Common classes.
+ * Common client classes.
  */
-package edu.snu.cay.common;
+package edu.snu.cay.common.client;

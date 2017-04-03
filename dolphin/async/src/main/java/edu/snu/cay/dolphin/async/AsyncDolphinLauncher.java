@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.DriverLauncher;
+import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.dashboard.DashboardConfProvider;

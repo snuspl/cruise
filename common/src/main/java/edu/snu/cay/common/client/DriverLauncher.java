@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common;
+package edu.snu.cay.common.client;
 
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.annotations.audience.Public;
@@ -33,7 +33,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A launcher for Dolphin driver.
+ * Improve version of DriverLauncher in REEF.
+ * It has JobMessageHandler which handles string messages from Driver.
  */
 @Public
 @ClientSide
@@ -179,7 +180,9 @@ public final class DriverLauncher implements AutoCloseable {
     return this.status;
   }
 
-  /** Update job status and notify the waiting thread. */
+  /**
+   * Update job status and notify the waiting thread.
+   */
   public synchronized void setStatusAndNotify(final LauncherStatus newStatus) {
     LOG.log(Level.FINEST, "Set status: {0} -> {1}", new Object[] {this.status, newStatus});
     this.status = newStatus;
@@ -253,9 +256,9 @@ public final class DriverLauncher implements AutoCloseable {
   }
 
   /**
-  * Handler of {@link JobMessage} from driver.
-  * It logs progress report to console.
-  */
+   * Handler of {@link JobMessage} from driver.
+   * It logs progress report to console.
+   */
   public final class StringJobMessageHandler implements EventHandler<JobMessage> {
 
     @Override

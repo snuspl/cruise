@@ -73,9 +73,9 @@ public final class ClockManager {
   private int globalMinimumClock;
 
   /**
-   * The list of EventHandler about progress update.
+   * The list of listeners for the update of {@link #globalMinimumClock}.
    */
-  private final List<EventHandler<Integer>> progressUpdateCallbacks = new ArrayList<>();
+  private final List<EventHandler<Integer>> clockUpdateListeners = new ArrayList<>();
 
   @Inject
   private ClockManager(final AggregationMaster aggregationMaster,
@@ -93,8 +93,8 @@ public final class ClockManager {
    * Add listener to progress update list.
    * @param callback when #globalMinimumClock increases, callback functions in list are called.
    */
-  public void addProgressUpdateListener(final EventHandler<Integer> callback) {
-    progressUpdateCallbacks.add(callback);
+  public void addClockUpdateListener(final EventHandler<Integer> callback) {
+    clockUpdateListeners.add(callback);
   }
 
   /**
@@ -213,7 +213,7 @@ public final class ClockManager {
       if (minimumClockWorkers.size() == 0) {
         globalMinimumClock++;
         broadcastGlobalMinimumClock();
-        progressUpdateCallbacks.forEach(callback -> callback.onNext(globalMinimumClock));
+        clockUpdateListeners.forEach(callback -> callback.onNext(globalMinimumClock));
       }
     }
   }
