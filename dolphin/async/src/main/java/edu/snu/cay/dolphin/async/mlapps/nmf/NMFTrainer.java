@@ -130,6 +130,8 @@ final class NMFTrainer implements Trainer<NMFData> {
 
   @Override
   public void initGlobalSettings() {
+    final List<Integer> keys = getKeys(trainingDataProvider.getEpochData().values());
+    keys.forEach(key -> modelAccessor.init(key, modelGenerator.createRandomVector()));
   }
 
   @Override
