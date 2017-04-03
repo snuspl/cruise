@@ -171,7 +171,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     final List<EvaluatorSummary> serverSummaries =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
             param -> {
-              final String hostname= ((ServerMetrics) param.getMetrics()).getHostname().toString();
+              final String hostname = ((ServerMetrics) param.getMetrics()).getHostname().toString();
               final double bandwidth = hostnameToBandwidth.getOrDefault(hostname, defaultNetworkBandwidth);
               LOG.log(Level.INFO, "Bandwidth of {0} is {1}", new Object[] {hostname, bandwidth});
               return 1D / bandwidth;
