@@ -170,29 +170,18 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     final List<EvaluatorSummary> serverSummaries =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> {
-              final String hostname = ((ServerMetrics) param.getMetrics()).getHostname().toString();
-              final double bandwidth = hostnameToBandwidth.getOrDefault(hostname, defaultNetworkBandwidth);
-              LOG.log(Level.INFO, "Bandwidth of {0} is {1}", new Object[] {hostname, bandwidth});
-              return 1D / bandwidth;
-            },
-            param ->
-              hostnameToBandwidth
-                  .getOrDefault(((ServerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
+            param -> 1D / hostnameToBandwidth
+                .getOrDefault(((ServerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
+            param -> hostnameToBandwidth
+                .getOrDefault(((ServerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
             NEW_SERVER_ID_PREFIX);
 
     final List<EvaluatorSummary> workerSummaries =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
             param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime() /
                 (double) ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount(),
-            param -> {
-              final String hostname = ((WorkerMetrics) param.getMetrics()).getHostname().toString();
-              final double bandwidth = hostnameToBandwidth
-                  .getOrDefault(hostname, defaultNetworkBandwidth);
-              LOG.log(Level.INFO, "Bandwidth of {0} is {1}", new Object[] {hostname, bandwidth});
-              return bandwidth;
-
-            },
+            param -> hostnameToBandwidth
+                .getOrDefault(((WorkerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
             NEW_WORKER_ID_PREFIX);
 
     final double currEstmCost;
