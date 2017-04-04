@@ -22,6 +22,7 @@ import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
+import edu.snu.cay.utils.HostnameResolver;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
@@ -58,8 +59,7 @@ final class AsyncWorkerTask<K, V> implements Task {
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final WorkerClock workerClock;
   private final boolean addedEval;
-
-  private String hostname = null;
+  private final String hostname;
 
   /**
    * A boolean flag shared among all trainer threads.
@@ -90,12 +90,7 @@ final class AsyncWorkerTask<K, V> implements Task {
     this.trainer = trainer;
     this.metricsMsgSender = metricsMsgSender;
     this.workerClock = workerClock;
-
-    try {
-      this.hostname = Inet4Address.getLocalHost().getHostName();
-    } catch (UnknownHostException e) {
-      LOG.log(Level.WARNING, "Failed to get the local hostname");
-    }
+    this.hostname = HostnameResolver.resolve();
   }
 
   @Override
