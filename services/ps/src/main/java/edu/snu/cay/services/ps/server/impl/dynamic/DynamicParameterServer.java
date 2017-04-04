@@ -39,8 +39,6 @@ import org.htrace.TraceScope;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.net.Inet4Address;
-import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -151,7 +149,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
   private int windowIndex = 0;
 
   /**
-   * Hostname of the machine which this server runs on
+   * Hostname of the machine which this server runs on.
    */
   private final String hostname;
 
