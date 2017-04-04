@@ -31,6 +31,7 @@ class DataOpMetadata<K, V, U> {
   private final String origExecutorId;
   private final long operationId;
   private final OpType operationType;
+  private final boolean replyRequired;
   private final String tableId;
   private final int blockId;
   private final K dataKey;
@@ -42,6 +43,7 @@ class DataOpMetadata<K, V, U> {
    * @param origExecutorId an id of the original evaluator where the operation is generated.
    * @param operationId an id of operation
    * @param operationType a type of operation
+   * @param replyRequired a boolean representing that the operation requires reply or not
    * @param tableId an id of table
    * @param blockId an id of block
    * @param dataKey a key of data
@@ -51,6 +53,7 @@ class DataOpMetadata<K, V, U> {
    */
   DataOpMetadata(final String origExecutorId,
                  final long operationId, final OpType operationType,
+                 final boolean replyRequired,
                  final String tableId, final int blockId,
                  final K dataKey,
                  @Nullable final V dataValue,
@@ -58,6 +61,7 @@ class DataOpMetadata<K, V, U> {
     this.origExecutorId = origExecutorId;
     this.operationId = operationId;
     this.operationType = operationType;
+    this.replyRequired = replyRequired;
     this.tableId = tableId;
     this.blockId = blockId;
     this.dataKey = dataKey;
@@ -86,6 +90,10 @@ class DataOpMetadata<K, V, U> {
     return operationType;
   }
 
+  boolean isReplyRequired() {
+    return replyRequired;
+  }
+
   /**
    * @return an id of a table
    */
@@ -108,12 +116,15 @@ class DataOpMetadata<K, V, U> {
   }
 
   /**
-   * @return an Optional with value of data. It's empty when the type of operation is GET or REMOVE
+   * @return an Optional with value of data. It's empty when the type of operation is not PUT or PUT_IF_ABSENT
    */
   Optional<V> getValue() {
     return Optional.ofNullable(dataValue);
   }
 
+  /**
+   * @return an Optional with update value. It's empty when the type of operation is not UPDATE
+   */
   Optional<U> getUpdateValue() {
     return Optional.ofNullable(updateValue);
   }

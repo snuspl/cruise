@@ -17,7 +17,6 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.io.serialization.Codec;
@@ -38,12 +37,11 @@ import java.util.logging.Logger;
  */
 final class RemoteAccessOpSender {
   private static final Logger LOG = Logger.getLogger(RemoteAccessOpSender.class.getName());
-  private static final long TIMEOUT_MS = 40000;
 
   /**
    * A counter for issuing ids for operations sent to remote executors.
    */
-  private final AtomicLong remoteOpIdCounter = new AtomicLong(0);
+  private final AtomicLong opIdCounter = new AtomicLong(0);
 
   /**
    * A map holding ongoing operations until they finish.
@@ -73,7 +71,7 @@ final class RemoteAccessOpSender {
    * @param value a data value, which can be null
    * @param updateValue an update date value, which can be null
    * @param targetEvalId a target evaluator
-   * @param sync an boolean representing whether this method returns after waiting for the result or not
+   * @param replyRequired a boolean representing that the operation requires reply or not
    * @param <K> a type of key
    * @param <V> a type of value
    * @param <U> a type of update value
@@ -85,20 +83,28 @@ final class RemoteAccessOpSender {
                                            @Nullable final V value,
                                            @Nullable final U updateValue,
                                            final String targetEvalId,
-                                           final boolean sync) {
-    final long operationId = remoteOpIdCounter.getAndIncrement();
-    final String origId = executorId;
-    final RemoteDataOp<K, V, U> operation = new RemoteDataOp<>(origId, operationId, opType,
+                                           final boolean replyRequired) {
+    final long operationId = opIdCounter.getAndIncrement();
+    final RemoteDataOp<K, V, U> operation = new RemoteDataOp<>(executorId, operationId, opType, replyRequired,
         tableId, blockId, key, value, updateValue);
     final DataOpMetadata<K, V, U> opMetadata = operation.getMetadata();
 
     LOG.log(Level.FINEST, "Send op to remote. OpId: {0}, OpType: {1}, targetId: {2}",
         new Object[]{opMetadata.getOpId(), opMetadata.getOpType(), targetEvalId});
 
-    registerOp(operation);
+    if (replyRequired) {
+      registerOp(operation);
+    }
 
+    encodeAndSendRequestMsg(opMetadata, targetEvalId);
+
+    return operation.getDataOpResult();
+  }
+
+  private <K, V, U> void encodeAndSendRequestMsg(final DataOpMetadata<K, V, U> opMetadata,
+                                                 final String targetEvalId) {
     try {
-      final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
+      final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(opMetadata.getTableId());
       final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
       final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
       final Codec<V> valueCodec = kvuSerializer.getValueCodec();
@@ -127,26 +133,10 @@ final class RemoteAccessOpSender {
         dataValue = null;
       }
 
-      msgSenderFuture.get().sendTableAccessReqMsg(origId, targetEvalId, opMetadata.getOpId(),
-          tableId, opType, new DataKey(encodedKey), dataValue);
+      msgSenderFuture.get().sendTableAccessReqMsg(opMetadata.getOrigId(), targetEvalId, opMetadata.getOpId(),
+          opMetadata.getTableId(), opMetadata.getOpType(), opMetadata.isReplyRequired(),
+          new DataKey(encodedKey), dataValue);
 
-      final DataOpResult<V> opResult = operation.getDataOpResult();
-      if (sync) {
-        // TODO #421: handle failures of operation (timeout, failed to locate).
-        try {
-          if (!opResult.waitRemoteOp(TIMEOUT_MS)) {
-            LOG.log(Level.SEVERE, "Operation timeout. OpId: {0}", opMetadata.getOpId());
-          } else {
-            LOG.log(Level.FINE, "Operation successfully finished. OpId: {0}", opMetadata.getOpId());
-          }
-        } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Interrupted while waiting for executing remote operation", e);
-        } finally {
-          deregisterOp(opMetadata.getOpId());
-        }
-      }
-
-      return opResult;
     } catch (final TableNotExistException e) {
       throw new RuntimeException(e);
     }

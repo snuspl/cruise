@@ -27,18 +27,19 @@ final class RemoteDataOp<K, V, U> {
   /**
    * Metadata of operation.
    */
-  private final DataOpMetadata<K, V, U> dataOp;
+  private final DataOpMetadata<K, V, U> dataOpMetadata;
 
   /**
    * Result of the operation.
    */
-  private final DataOpResultImpl<V> dataOpResult;
+  private final DataOpResult<V> dataOpResult;
 
   /**
    * A constructor for an operation.
    * @param origExecutorId an id of the original evaluator where the operation is generated.
    * @param operationId an id of operation
    * @param operationType a type of operation
+   * @param replyRequired a boolean representing whether this operation requires reply or not
    * @param tableId an id of table
    * @param blockId an id of block
    * @param dataKey a key of data
@@ -47,24 +48,25 @@ final class RemoteDataOp<K, V, U> {
    */
   RemoteDataOp(final String origExecutorId,
                final long operationId, final OpType operationType,
+               final boolean replyRequired,
                final String tableId, final int blockId,
                final K dataKey, @Nullable final V dataValue, @Nullable final U updateValue) {
-    this.dataOp = new DataOpMetadata<>(origExecutorId, operationId, operationType,
+    this.dataOpMetadata = new DataOpMetadata<>(origExecutorId, operationId, operationType, replyRequired,
         tableId, blockId, dataKey, dataValue, updateValue);
-    this.dataOpResult = new DataOpResultImpl<>();
+    this.dataOpResult = new DataOpResult<>();
   }
 
   /**
    * @return a {@link DataOpMetadata}
    */
   DataOpMetadata<K, V, U> getMetadata() {
-    return dataOp;
+    return dataOpMetadata;
   }
 
   /**
-   * @return a {@link DataOpResultImpl}
+   * @return a {@link DataOpResult}
    */
-  DataOpResultImpl<V> getDataOpResult() {
+  DataOpResult<V> getDataOpResult() {
     return dataOpResult;
   }
 }

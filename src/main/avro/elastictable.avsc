@@ -55,7 +55,8 @@
         "name": "OpType", "symbols": ["PUT", "PUT_IF_ABSENT", "GET", "REMOVE", "UPDATE"]}},
     {"name": "tableId", "type": "string"},
     {"name": "dataKey", "type": "DataKey"},
-    {"name": "dataValue", "type": ["null", "DataValue"]}
+    {"name": "dataValue", "type": ["null", "DataValue"]},
+    {"name": "replyRequired", "type": "boolean", "default": true}
   ]
 },
 

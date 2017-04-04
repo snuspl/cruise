@@ -70,7 +70,7 @@ public final class UpdaterTask implements Task {
 
     for (int i = 0; i < numUpdates; i++) {
       final int keyToUpdate = startKey + (i % numKeys);
-      final Integer updatedValue = modelTable.update(keyToUpdate, deltaValue);
+      final Integer updatedValue = modelTable.update(keyToUpdate, deltaValue).get();
       LOG.log(Level.INFO, "Update result for key {0}: {1}", new Object[]{keyToUpdate, updatedValue});
     }
 
@@ -78,7 +78,7 @@ public final class UpdaterTask implements Task {
 
     for (int k = 0; k < numKeys; k++) {
       final int key = startKey + k;
-      final Integer getResult = modelTable.get(key);
+      final Integer getResult = modelTable.get(key).get();
       LOG.log(Level.INFO, "Get result for key {0}: {1}", new Object[]{key, getResult});
     }
     return null;

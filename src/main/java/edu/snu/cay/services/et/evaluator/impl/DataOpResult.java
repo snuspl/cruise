@@ -15,17 +15,16 @@
  */
 package edu.snu.cay.services.et.evaluator.impl;
 
-import edu.snu.cay.services.et.evaluator.api.DataOpResult;
+import edu.snu.cay.services.et.exceptions.DataAccessFailedException;
 
 import javax.annotation.Nullable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
- * An implementation of {@link DataOpResult}.
+ * A class representing the result of table data operation.
  * @param <V> a type of data value
  */
-class DataOpResultImpl<V> implements DataOpResult<V> {
+class DataOpResult<V> implements Future<V> {
 
   /**
    * A latch that will be released when the operation gets result.
@@ -38,13 +37,13 @@ class DataOpResultImpl<V> implements DataOpResult<V> {
   private volatile boolean isSuccess;
   private volatile V outputData;
 
-  DataOpResultImpl() {
+  DataOpResult() {
     this.isSuccess = false;
     this.outputData = null;
     this.completedLatch = new CountDownLatch(1);
   }
 
-  DataOpResultImpl(final V outputData, final boolean isSuccess) {
+  DataOpResult(final V outputData, final boolean isSuccess) {
     this.isSuccess = isSuccess;
     this.outputData = outputData;
     this.completedLatch = new CountDownLatch(0);
@@ -52,7 +51,7 @@ class DataOpResultImpl<V> implements DataOpResult<V> {
 
   /**
    * Commit the result of operation.
-   * It releases a latch in {@link #waitRemoteOp(long)}.
+   * It releases a latch in {@link #get()} and {@link #get(long, TimeUnit)}.
    * @param output an output data
    * @param success a boolean that indicates whether the operation is succeeded or not
    */
@@ -63,22 +62,36 @@ class DataOpResultImpl<V> implements DataOpResult<V> {
   }
 
   @Override
-  public V getOutputData() {
+  public boolean cancel(final boolean mayInterruptIfRunning) {
+    return false;
+  }
+
+  @Override
+  public boolean isCancelled() {
+    return false;
+  }
+
+  @Override
+  public boolean isDone() {
+    return completedLatch.getCount() == 0;
+  }
+
+  @Override
+  public V get() throws InterruptedException, ExecutionException {
+    completedLatch.await();
+    if (!isSuccess) {
+      throw new DataAccessFailedException("Fail to execute table access operation");
+    }
     return outputData;
   }
 
   @Override
-  public boolean isSuccess() {
-    return isSuccess;
-  }
-
-  @Override
-  public void waitRemoteOp() throws InterruptedException {
-    completedLatch.await();
-  }
-
-  @Override
-  public boolean waitRemoteOp(final long timeout) throws InterruptedException {
-    return completedLatch.await(timeout, TimeUnit.MILLISECONDS);
+  public V get(final long timeout, final TimeUnit unit)
+      throws InterruptedException, ExecutionException, TimeoutException {
+    completedLatch.await(timeout, unit);
+    if (!isSuccess) {
+      throw new DataAccessFailedException("Fail to execute table access operation");
+    }
+    return outputData;
   }
 }

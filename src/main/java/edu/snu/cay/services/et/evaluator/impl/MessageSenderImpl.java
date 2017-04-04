@@ -50,7 +50,7 @@ public final class MessageSenderImpl implements MessageSender {
   @Override
   public void sendTableAccessReqMsg(final String origId, final String destId,
                                     final long opId, final String tableId,
-                                    final OpType opType,
+                                    final OpType opType, final boolean replyRequired,
                                     final DataKey dataKey, @Nullable final DataValue dataValue) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
@@ -63,6 +63,7 @@ public final class MessageSenderImpl implements MessageSender {
                         .setOrigId(origId)
                         .setTableId(tableId)
                         .setOpType(opType)
+                        .setReplyRequired(replyRequired)
                         .setDataKey(dataKey)
                         .setDataValue(dataValue)
                         .build()

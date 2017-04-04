@@ -18,6 +18,8 @@ package edu.snu.cay.services.et.evaluator.api;
 import edu.snu.cay.services.et.evaluator.impl.TableImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.util.concurrent.Future;
+
 /**
  * Abstraction for access to collection of key-value pairs distributed across executors.
  *
@@ -29,54 +31,52 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 public interface Table<K, V, U> {
   /**
    * Associates the specified value with the specified key.
+   * It returns a {@link Future} of result, which
+   * allows users to retrieve the result when the request is complete.
    * @param key key with which value is to be associated
    * @param value value to be associated with the specified key
-   * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
+   * @return {@link Future} that will provide the previous value associated with the key,
+   *         or {@code null} if there was no mapping for the key
    */
-  V put(K key, V value);
+  Future<V> put(K key, V value);
 
   /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
-   * allows users to retrieve the result from the object when the request is complete.
+   * See {@link #put}.
+   * It returns immediately without waiting for the result.
    * @param key key with which value is to be associated
    * @param value value to be associated with the specified key
-   * @return {@link DataOpResult} that will provide the value that {@link #put(K, V)} method returns
    */
-  DataOpResult<V> putAsync(K key, V value);
+  void putNoReply(K key, V value);
 
   /**
    * Associates the given value with the specified key only when the key is not associated with any value.
+   * It returns a {@link Future} of result, which
+   * allows users to retrieve the result from the object when the request is complete.
+   * @param key key with which value is to be associated
+   * @param value value to be associated with the specified key
+   * @return {@link Future} that will provide the previous value associated with the key,
+   *         or {@code null} if there was no mapping for the key
+   */
+  Future<V> putIfAbsent(K key, V value);
+
+  /**
+   * See {@link #putIfAbsent}.
+   * It returns immediately without waiting for the result.
    * @param key key with which value is associated
    * @param value value to be associated with the specified key
-   * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
    */
-  V putIfAbsent(K key, V value);
+  void putIfAbsentNoReply(K key, V value);
 
   /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
+   * Retrieves the value to which the specified key is associated,
+   * or {@code null} if this table contains no value for the key.
+   * It returns a {@link Future} of result, which
    * allows users to retrieve the result from the object when the request is complete.
    * @param key key with which value is to be associated
-   * @param value value to be associated with the specified key
-   * @return {@link DataOpResult} that will provide the value that {@link #putIfAbsent(K, V)} method returns
-   */
-  DataOpResult<V> putIfAbsentAsync(K key, V value);
-
-  /**
-   * Returns the value to which the specified key is associated,
-   * or {@code null} if this table contains no value for the key.
-   * @param key the key whose associated value is to be returned
-   * @return the value to which the specified key is associated,
+   * @return {@link Future} that will provide the value to which the specified key is associated,
    *         or {@code null} if no value is associated with the given key
    */
-  V get(K key);
-
-  /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
-   * allows users to retrieve the result from the object when the request is complete.
-   * @param key key with which value is to be associated
-   * @return {@link DataOpResult} that will provide the value that {@link #get(K)} method returns
-   */
-  DataOpResult<V> getAsync(K key);
+  Future<V> get(K key);
 
   /**
    * Update a value associated with the specified key using {@link UpdateFunction}.
@@ -86,35 +86,38 @@ public interface Table<K, V, U> {
    * To use this update method, users should provide their own implementation of {@link UpdateFunction}
    * and bind it to the interface.
    *
-   * @param key global unique identifier of item
-   * @param updateValue update value
-   * @return the updated value associated with the key
-   */
-  V update(K key, U updateValue);
-
-  /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
+   * It returns a {@link Future} of result, which
    * allows users to retrieve the result from the object when the request is complete.
    * @param key global unique identifier of item
    * @param updateValue update value
-   * @return {@link DataOpResult} that will provide the value that {@link #update(K, U)} method returns
+   * @return {@link Future} that will provide the updated value associated with the key
    */
-  DataOpResult<V> updateAsync(K key, U updateValue);
+  Future<V> update(K key, U updateValue);
+
+  /**
+   * See {@link #update}.
+   * It returns immediately without waiting for the result.
+   * @param key global unique identifier of item
+   * @param updateValue update value
+   */
+  void updateNoReply(K key, U updateValue);
 
   /**
    * Removes association for the specified key.
-   * @param key key with which value is to be deleted
-   * @return the previous value associated with the key, or {@code null} if there was no mapping for the key
-   */
-  V remove(K key);
-
-  /**
-   * This method works similar to {@link java.util.concurrent.Future}; it returns a {@link DataOpResult} and
+   * It returns a {@link Future} of result, which
    * allows users to retrieve the result from the object when the request is complete.
    * @param key key with which value is to be associated
-   * @return {@link DataOpResult} that will provide the value that {@link #remove(K)} method returns
+   * @return {@link Future} that will provide the previous value associated with the key,
+   *         or {@code null} if there was no mapping for the key
    */
-  DataOpResult<V> removeAsync(K key);
+  Future<V> remove(K key);
+
+  /**
+   * See {@link #remove}.
+   * It returns immediately without waiting for the result.
+   * @param key key with which value is to be deleted
+   */
+  void removeNoReply(K key);
 
   /**
    * @return a local {@link Tablet}

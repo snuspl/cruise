@@ -60,9 +60,9 @@ final class PutTask implements Task {
     final Table<Long, String, ?> hashedTable = tableAccessor.getTable(HASHED_TABLE_ID);
     final Table<Long, String, ?> orderedTable = tableAccessor.getTable(ORDERED_TABLE_ID);
 
-    final String prevValue00 = hashedTable.put(KEY0, VALUE0);
+    final String prevValue00 = hashedTable.put(KEY0, VALUE0).get();
     LOG.log(Level.INFO, "Put value {0} to key {1} in hashedTable", new Object[]{VALUE0, KEY0});
-    final String prevValue11 = orderedTable.put(KEY1, VALUE1);
+    final String prevValue11 = orderedTable.put(KEY1, VALUE1).get();
     LOG.log(Level.INFO, "Put value {0} to key {1} in orderedTable", new Object[]{VALUE1, KEY1});
 
     LOG.log(Level.INFO, "Prev value for key {0} in a hashedTable is {1}", new Object[]{KEY0, prevValue00});

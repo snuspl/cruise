@@ -38,10 +38,12 @@ public interface MessageSender {
    * process a remote access, parceling request metadata into the message.
    * Since the request can be transmitted multiple times through the multiple executors,
    * the message retains {@code origId}, an id of the executor where the operation is generated at the beginning.
+   * If {@code replyRequired} is True, the target executor will send the result through {@link #sendTableAccessResMsg}.
    * The operation should be given a unique {@code opId}.
    */
   void sendTableAccessReqMsg(String origId, String destId, long opId,
-                             String tableId, OpType opType, DataKey dataKey, @Nullable DataValue dataValue);
+                             String tableId, OpType opType, boolean replyRequired,
+                             DataKey dataKey, @Nullable DataValue dataValue);
 
   /**
    * Sends a RemoteOpResultMsg that contains the result of the data operation.

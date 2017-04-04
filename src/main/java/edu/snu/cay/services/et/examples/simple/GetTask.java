@@ -58,10 +58,10 @@ final class GetTask implements Task {
     final Table<Long, String, ?> hashedTable = tableAccessor.getTable(HASHED_TABLE_ID);
     final Table<Long, String, ?> orderedTable = tableAccessor.getTable(ORDERED_TABLE_ID);
 
-    final String value00 = hashedTable.get(KEY0);
-    final String value01 = hashedTable.get(KEY1);
-    final String value10 = orderedTable.get(KEY0);
-    final String value11 = orderedTable.get(KEY1);
+    final String value00 = hashedTable.get(KEY0).get();
+    final String value01 = hashedTable.get(KEY1).get();
+    final String value10 = orderedTable.get(KEY0).get();
+    final String value11 = orderedTable.get(KEY1).get();
 
     LOG.log(Level.INFO, "value for key {0} in a hashedTable is {1}", new Object[]{KEY0, value00});
     LOG.log(Level.INFO, "value for key {0} in a hashedTable is {1}", new Object[]{KEY1, value01});

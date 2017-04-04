@@ -117,38 +117,41 @@ final class RemoteAccessOpHandler {
 
         final Pair<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
         try {
+          final V output;
+          boolean isSuccess = true;
+
           final Optional<String> remoteEvalIdOptional = remoteEvalIdWithLock.getKey();
           final boolean isLocal = !remoteEvalIdOptional.isPresent();
           if (isLocal) {
-            final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+            try {
+              final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
 
-            final V output;
-            boolean isSuccess = true;
-            final OpType opType = operation.getOpType();
-            switch (opType) {
-            case PUT:
-              output = block.put(operation.getKey(), operation.getValue().get());
-              break;
-            case PUT_IF_ABSENT:
-              output = block.putIfAbsent(operation.getKey(), operation.getValue().get());
-              break;
-            case GET:
-              output = block.get(operation.getKey());
-              break;
-            case REMOVE:
-              output = block.remove(operation.getKey());
-              break;
-            case UPDATE:
-              output = block.update(operation.getKey(), operation.getUpdateValue().get(),
-                  tableComponents.getUpdateFunction());
-              break;
-            default:
-              LOG.log(Level.WARNING, "Undefined type of operation.");
-              output = null;
-              isSuccess = false;
+              final OpType opType = operation.getOpType();
+              switch (opType) {
+              case PUT:
+                output = block.put(operation.getKey(), operation.getValue().get());
+                break;
+              case PUT_IF_ABSENT:
+                output = block.putIfAbsent(operation.getKey(), operation.getValue().get());
+                break;
+              case GET:
+                output = block.get(operation.getKey());
+                break;
+              case REMOVE:
+                output = block.remove(operation.getKey());
+                break;
+              case UPDATE:
+                output = block.update(operation.getKey(), operation.getUpdateValue().get(),
+                    tableComponents.getUpdateFunction());
+                break;
+              default:
+                LOG.log(Level.WARNING, "Undefined type of operation.");
+                output = null;
+                isSuccess = false;
+              }
+            } catch (final BlockNotExistsException e) {
+              throw new RuntimeException(e);
             }
-
-            sendResultToOrigin(operation, output, isSuccess);
           } else {
             LOG.log(Level.WARNING,
                 "Failed to execute operation {0} requested by remote executor {2}." +
@@ -158,10 +161,13 @@ final class RemoteAccessOpHandler {
                     operation.getOrigId(), remoteEvalIdOptional.get()});
 
             // send the failed result
-            sendResultToOrigin(operation, null, false);
+            output = null;
+            isSuccess = false;
           }
-        } catch (final BlockNotExistsException e) {
-          throw new RuntimeException(e);
+
+          if (operation.isReplyRequired()) {
+            sendResultToOrigin(operation, output, isSuccess);
+          }
         } finally {
           final Lock ownershipLock = remoteEvalIdWithLock.getValue();
           ownershipLock.unlock();
@@ -178,6 +184,7 @@ final class RemoteAccessOpHandler {
   <K, V, U> void onTableAccessReqMsg(final long opId, final TableAccessReqMsg msg) {
     final String origEvalId = msg.getOrigId();
     final OpType opType = msg.getOpType();
+    final boolean replyRequired = msg.getReplyRequired();
     final String tableId = msg.getTableId();
     final DataKey dataKey = msg.getDataKey();
     final DataValue dataValue = msg.getDataValue();
@@ -203,7 +210,7 @@ final class RemoteAccessOpHandler {
 
       final int blockId = blockPartitioner.getBlockId(decodedKey);
       final DataOpMetadata<K, V, U> operation = new DataOpMetadata<>(origEvalId,
-          opId, opType, tableId, blockId, decodedKey, decodedValue, decodedUpdateValue);
+          opId, opType, replyRequired, tableId, blockId, decodedKey, decodedValue, decodedUpdateValue);
 
       LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}", operation.getOpId());
       try {

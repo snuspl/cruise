@@ -24,6 +24,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -90,12 +91,13 @@ public final class ValidatorTask implements Task {
     return null;
   }
 
-  private boolean validate(final int expectedResult) throws IntegerValidationException, TableNotExistException {
+  private boolean validate(final int expectedResult)
+      throws IntegerValidationException, TableNotExistException, ExecutionException, InterruptedException {
     final Table<Integer, Integer, ?> modelTable = tableAccessor.getTable(MODEL_TABLE_ID);
 
     for (int i = 0; i < numKeys; i++) {
       final int key = startKey + i;
-      final int result = modelTable.get(key);
+      final int result = modelTable.get(key).get();
 
       if (expectedResult != result) {
         LOG.log(Level.WARNING, "For key {0}, expected value {1} but received {2}",
