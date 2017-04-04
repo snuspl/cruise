@@ -33,8 +33,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Improve version of DriverLauncher in REEF.
- * It has JobMessageHandler which handles string messages from Driver.
+ * Improved version of {@link org.apache.reef.client.DriverLauncher}.
+ * It supports {@link StringJobMessageHandler}, which logs {@link JobMessage}
+ * with the assumption that the message type is String.
  */
 @Public
 @ClientSide
@@ -257,7 +258,7 @@ public final class DriverLauncher implements AutoCloseable {
 
   /**
    * Handler of {@link JobMessage} from driver.
-   * It logs progress report to console.
+   * It logs job message to console.
    */
   public final class StringJobMessageHandler implements EventHandler<JobMessage> {
 

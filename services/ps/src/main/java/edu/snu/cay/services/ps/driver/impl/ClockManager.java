@@ -90,8 +90,8 @@ public final class ClockManager {
   }
 
   /**
-   * Add listener to progress update list.
-   * @param callback when #globalMinimumClock increases, callback functions in list are called.
+   * Add a listener for the update of minimum clock.
+   * @param callback a callback to be invoked when {@link #globalMinimumClock} increases
    */
   public void addClockUpdateListener(final EventHandler<Integer> callback) {
     clockUpdateListeners.add(callback);

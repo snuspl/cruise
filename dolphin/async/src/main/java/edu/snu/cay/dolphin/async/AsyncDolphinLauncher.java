@@ -142,7 +142,7 @@ public final class AsyncDolphinLauncher {
               basicParameterInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class),
               basicParameterInjector.getNamedInstance(JVMHeapSlack.class)) :
           getYarnRuntimeConfiguration(basicParameterInjector.getNamedInstance(JVMHeapSlack.class));
-              
+
       // configuration for the parameter server
       final boolean dynamic = basicParameterInjector.getNamedInstance(Dynamic.class);
       final Class<? extends PSManager> managerClass = dynamic ?

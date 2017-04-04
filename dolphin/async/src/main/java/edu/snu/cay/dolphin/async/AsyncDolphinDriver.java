@@ -343,7 +343,8 @@ public final class AsyncDolphinDriver {
     this.optimizationIntervalMs = optimizationIntervalMs;
     this.maxNumEpochs = maxNumEpochs;
 
-    // send JobMessage to client
+    // send JobMessage about epoch progress to client
+    // it utilizes the minimum clock maintained by ClockManager
     this.clockManager.addClockUpdateListener(epochIdx -> {
       final String progressMessage = String.format("Progress epoch count is [%d / %d]", epochIdx, maxNumEpochs);
       final byte[] encodedProgressMessage = progressMessage.getBytes(StandardCharsets.UTF_8);
