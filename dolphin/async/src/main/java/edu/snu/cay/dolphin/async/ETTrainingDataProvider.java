@@ -48,7 +48,7 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<
   @Inject
   private ETTrainingDataProvider(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                                final TableAccessor tableAccessor) throws TableNotExistException {
-    this.trainingDataTable = tableAccessor.get(TRAINING_DATA_TABLE_ID);
+    this.trainingDataTable = tableAccessor.getTable(TRAINING_DATA_TABLE_ID);
     this.miniBatchSize = miniBatchSize;
   }
 
@@ -60,7 +60,7 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<
   @Override
   public void prepareDataForEpoch() {
     synchronized (trainingDataKeys) {
-      trainingDataKeys.addAll(trainingDataTable.getLocalDataMap().keySet());
+      trainingDataKeys.addAll(trainingDataTable.getLocalTablet().getDataMap().keySet());
       Collections.shuffle(trainingDataKeys);
       LOG.log(Level.INFO, "training data key set size = {0}", trainingDataKeys.size());
     }
@@ -106,6 +106,6 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<
 
   @Override
   public Map<K, V> getEpochData() {
-    return trainingDataTable.getLocalDataMap();
+    return trainingDataTable.getLocalTablet().getDataMap();
   }
 }
