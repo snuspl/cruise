@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.services.et.evaluator.api.DataOpResult;
 import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
@@ -23,6 +22,8 @@ import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * An {@link ModelAccessor} implementation based on ET.
@@ -39,38 +40,49 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
   @Override
   public void init(final K key, final V initValue) {
-    modelTable.putIfAbsentAsync(key, initValue);
+    modelTable.putIfAbsentNoReply(key, initValue);
   }
 
   @Override
   public void push(final K key, final P deltaValue) {
-    modelTable.updateAsync(key, deltaValue);
+    modelTable.updateNoReply(key, deltaValue);
   }
 
   @Override
   public V pull(final K key) {
-    return modelTable.get(key);
+    final Future<V> future = modelTable.get(key);
+    while (true) {
+      try {
+        return future.get();
+      } catch (InterruptedException e) {
+        // ignore and keep waiting
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   @Override
   public List<V> pull(final List<K> keys) {
-    final List<DataOpResult<V>> resultList = new ArrayList<>(keys.size());
+    final List<Future<V>> resultList = new ArrayList<>(keys.size());
 
-    keys.forEach(key -> resultList.add(modelTable.getAsync(key)));
+    keys.forEach(key -> resultList.add(modelTable.get(key)));
 
     final List<V> resultValues = new ArrayList<>(keys.size());
-    for (final DataOpResult<V> opResult : resultList) {
-      boolean completed = false;
-      while (!completed) {
+    for (final Future<V> opResult : resultList) {
+      V result;
+      while (true) {
         try {
-          opResult.waitRemoteOp();
-          completed = true;
+          result = opResult.get();
+          break;
         } catch (InterruptedException e) {
-          // ignore interrupt
+          // ignore and keep waiting
+        } catch (ExecutionException e) {
+          throw new RuntimeException(e);
         }
       }
 
-      resultValues.add(opResult.getOutputData());
+      resultValues.add(result);
     }
 
     return resultValues;
