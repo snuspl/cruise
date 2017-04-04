@@ -71,41 +71,10 @@ public final class HeterogeneousOptimizer implements Optimizer {
                                  final double optBenefitThreshold) {
     this.miniBatchSize = miniBatchSize;
     // convert bits per second to bytes per second
-    this.defaultNetworkBandwidth = defaultNetworkBandwidth / 8D;
+    this.defaultNetworkBandwidth = defaultNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
-    this.hostnameToBandwidth = parseBandwidthMapping(hostBandwidthFilePath);
-    LOG.log(Level.INFO, "Hostname to bandwidth: {0}", hostnameToBandwidth);
-  }
-
-  private Map<String, Double> parseBandwidthMapping(final String hostnameToBandwidthFilePath) {
-    if (hostnameToBandwidthFilePath.equals("")) {
-      return Collections.emptyMap();
-    }
-
-    final Map<String, Double> mapping = new HashMap<>();
-
-    final HdfsSplitInfo[] infoArr =
-        HdfsSplitManager.getSplits(hostnameToBandwidthFilePath, TextInputFormat.class.getName(), 1);
-
-    assert infoArr.length == 1; // infoArr's length is always 1(NUM_SPLIT == 1).
-    final HdfsSplitInfo info = infoArr[0];
-    try {
-      final Iterator<Pair<LongWritable, Text>> iterator = HdfsSplitFetcher.fetchData(info);
-      while (iterator.hasNext()) {
-        final String text = iterator.next().getValue().toString().trim();
-        if (!text.startsWith("#") && text.length() != 0) { // comments and empty lines
-          final String[] split = text.split("\\s+");
-          assert split.length == 2;
-          final String hostname = split[0];
-          final double bandwidth = Double.parseDouble(split[1]);
-          mapping.put(hostname, bandwidth);
-        }
-      }
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-
-    return mapping;
+    this.hostnameToBandwidth = parseBandwidthInfo(hostBandwidthFilePath);
+    LOG.log(Level.INFO, "Hostname to bandwidth (bps): {0}", hostnameToBandwidth);
   }
 
   /**
@@ -170,18 +139,15 @@ public final class HeterogeneousOptimizer implements Optimizer {
 
     final List<EvaluatorSummary> serverSummaries =
         sortEvaluatorsByThroughput(serverParams, availableEvaluators,
-            param -> 1D / hostnameToBandwidth
-                .getOrDefault(((ServerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
-            param -> hostnameToBandwidth
-                .getOrDefault(((ServerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
+            param -> 1D / getBandwidth(param),
+            this::getBandwidth,
             NEW_SERVER_ID_PREFIX);
 
     final List<EvaluatorSummary> workerSummaries =
         sortEvaluatorsByThroughput(workerParams, availableEvaluators,
             param -> ((WorkerMetrics) param.getMetrics()).getTotalCompTime() /
                 (double) ((WorkerMetrics) param.getMetrics()).getProcessedDataItemCount(),
-            param -> hostnameToBandwidth
-                .getOrDefault(((WorkerMetrics) param.getMetrics()).getHostname(), defaultNetworkBandwidth),
+            this::getBandwidth,
             NEW_WORKER_ID_PREFIX);
 
     final double currEstmCost;
@@ -493,7 +459,10 @@ public final class HeterogeneousOptimizer implements Optimizer {
     // We can add up to (availableEvaluators - runningEvaluators - 1) evaluators in each namespace,
     // and reserve at least one evaluator for the other namespace.
     for (int index = 0; index < availableEvaluators - params.size() - 1; ++index) {
-      nodes.add(new EvaluatorSummary(newNodeIdPrefix + index, new DataInfoImpl(), throughput, bandwidth));
+      final EvaluatorSummary summary =
+          new EvaluatorSummary(newNodeIdPrefix + index, new DataInfoImpl(), throughput, bandwidth);
+      LOG.log(Level.INFO, "Add {0}-th summary: {1}", new Object[] {index, summary});
+      nodes.add(summary);
     }
 
     return nodes;
@@ -562,6 +531,65 @@ public final class HeterogeneousOptimizer implements Optimizer {
         sender.setNumBlocks(sender.getNumBlocks() - numToMove);
         senderPriorityQueue.add(sender);
       }
+    }
+  }
+
+  /**
+   * @param hostnameToBandwidthFilePath path of the file that consists of (hostname, bandwidth) information.
+   * @return the mapping between the hostname and bandwidth of machines
+   */
+  private Map<String, Double> parseBandwidthInfo(final String hostnameToBandwidthFilePath) {
+    if (hostnameToBandwidthFilePath.equals("")) {
+      return Collections.emptyMap();
+    }
+
+    final Map<String, Double> mapping = new HashMap<>();
+
+    final HdfsSplitInfo[] infoArr =
+        HdfsSplitManager.getSplits(hostnameToBandwidthFilePath, TextInputFormat.class.getName(), 1);
+
+    assert infoArr.length == 1; // infoArr's length is always 1(NUM_SPLIT == 1).
+    final HdfsSplitInfo info = infoArr[0];
+    try {
+      final Iterator<Pair<LongWritable, Text>> iterator = HdfsSplitFetcher.fetchData(info);
+      while (iterator.hasNext()) {
+        final String text = iterator.next().getValue().toString().trim();
+        if (!text.startsWith("#") && text.length() != 0) { // comments and empty lines
+          final String[] split = text.split("\\s+");
+          assert split.length == 2;
+          final String hostname = split[0];
+          final double bandwidth = Double.parseDouble(split[1]);
+          mapping.put(hostname, bandwidth);
+        }
+      }
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    return mapping;
+  }
+
+  /**
+   * @param param EvaluatorParameter that consists of metrics
+   * @return the network bandwidth (in bytes per second)
+   */
+  private double getBandwidth(final EvaluatorParameters param) {
+    if (param.getMetrics() instanceof WorkerMetrics) {
+      final WorkerMetrics workerMetrics = (WorkerMetrics) param.getMetrics();
+      final String hostname = workerMetrics.getHostname().toString();
+      final double bandwidth = hostnameToBandwidth.getOrDefault(hostname, defaultNetworkBandwidth) / 8D;
+      LOG.log(Level.INFO, "Host: {0}, Bandwidth (Bps): {1}", new Object[] {hostname, bandwidth});
+      return bandwidth;
+
+    } else if (param.getMetrics() instanceof ServerMetrics) {
+      final ServerMetrics serverMetrics = (ServerMetrics) param.getMetrics();
+      final String hostname = serverMetrics.getHostname().toString();
+      final double bandwidth = hostnameToBandwidth.getOrDefault(hostname, defaultNetworkBandwidth) / 8D;
+      LOG.log(Level.INFO, "Host: {0}, Bandwidth (Bps): {1}", new Object[] {hostname, bandwidth});
+      return bandwidth;
+
+    } else {
+      throw new RuntimeException("Unknown type of EvaluatorParameters: " + param);
     }
   }
 
