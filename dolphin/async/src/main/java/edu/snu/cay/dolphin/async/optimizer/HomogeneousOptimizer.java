@@ -342,7 +342,7 @@ public final class HomogeneousOptimizer implements Optimizer {
     final int numServer = availableEvaluators - numWorker;
 
     final double commCost = avgPullSize * (numWorker / numServer < 1 ? 1 : numWorker / numServer)
-        * 8 / defNetworkBandwidth * numTotalDataInstances / numWorker / miniBatchSize;
+        * 8D / defNetworkBandwidth * numTotalDataInstances / numWorker / miniBatchSize;
 
     final double totalCost = compCost + commCost;
     sb.append(String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +

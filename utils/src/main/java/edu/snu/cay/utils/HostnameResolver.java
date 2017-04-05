@@ -25,6 +25,7 @@ import java.util.logging.Logger;
  */
 public final class HostnameResolver {
   private static final Logger LOG = Logger.getLogger(HostnameResolver.class.getName());
+  private static final String EMPTY = "";
 
   /**
    * Utility class should not be instantiated.
@@ -33,7 +34,7 @@ public final class HostnameResolver {
   }
 
   /**
-   * @return the hostname if found, and return {@code null} when failed.
+   * @return the hostname if found, and return an empty string when failed.
    */
   public static String resolve() {
     try {
@@ -42,6 +43,6 @@ public final class HostnameResolver {
       LOG.log(Level.WARNING, "Failed to get the local hostname");
     }
 
-    return null;
+    return EMPTY;
   }
 }

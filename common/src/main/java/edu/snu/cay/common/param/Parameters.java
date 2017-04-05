@@ -82,15 +82,16 @@ public final class Parameters {
   public final class OptimizationBenefitThreshold implements Name<Double> {
   }
 
-  @NamedParameter(doc = "Network bandwidth of machines to be used if not specified (in bits per sec)",
+  @NamedParameter(doc = "Network bandwidth of machines to be used if not specified, which is 1G (approx. 1.07E9) bps.",
       short_name = "default_bandwidth",
-      default_value = "1e9")
+      default_value = "1.07e9")
   public final class DefaultNetworkBandwidth implements Name<Double> {
   }
 
   @NamedParameter(doc = "A file path of which contains a mapping from hostname to network bandwidth (in bits per sec).",
       short_name = "host_to_bandwidth_file_path",
-      default_value = "")
+      default_value = HostToBandwidthFilePath.NONE)
   public final class HostToBandwidthFilePath implements Name<String> {
+    public static final String NONE = "";
   }
 }

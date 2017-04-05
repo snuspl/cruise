@@ -535,7 +535,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
    * @return the mapping between the hostname and bandwidth of machines
    */
   private Map<String, Double> parseBandwidthInfo(final String hostnameToBandwidthFilePath) {
-    if (hostnameToBandwidthFilePath.equals("")) {
+    if (hostnameToBandwidthFilePath.equals(Parameters.HostToBandwidthFilePath.NONE)) {
       return Collections.emptyMap();
     }
 
