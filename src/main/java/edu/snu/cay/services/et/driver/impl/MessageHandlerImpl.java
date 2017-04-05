@@ -15,10 +15,7 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
-import edu.snu.cay.services.et.avro.ETMsg;
-import edu.snu.cay.services.et.avro.MigrationMsg;
-import edu.snu.cay.services.et.avro.TableControlMsg;
-import edu.snu.cay.services.et.avro.TableInitAckMsg;
+import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -35,7 +32,7 @@ import java.util.Set;
  */
 @DriverSide
 public final class MessageHandlerImpl implements MessageHandler {
-  private final InjectionFuture<TableInitializer> tableInitializerFuture;
+  private final InjectionFuture<TableControlAgent> tableInitializerFuture;
   private final InjectionFuture<MigrationManager> migrationManagerFuture;
 
   /**
@@ -46,7 +43,7 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final Set<Integer> migrationMsgArrivedBlockIds = Collections.synchronizedSet(new HashSet<>());
 
   @Inject
-  private MessageHandlerImpl(final InjectionFuture<TableInitializer> tableInitializerFuture,
+  private MessageHandlerImpl(final InjectionFuture<TableControlAgent> tableInitializerFuture,
                              final InjectionFuture<MigrationManager> migrationManagerFuture) {
     this.tableInitializerFuture = tableInitializerFuture;
     this.migrationManagerFuture = migrationManagerFuture;
@@ -74,6 +71,9 @@ public final class MessageHandlerImpl implements MessageHandler {
     case TableInitAckMsg:
       onTableInitAckMsg(msg.getTableInitAckMsg());
       break;
+    case TableDropAckMsg:
+      onTableDropAckMsg(msg.getTableDropAckMsg());
+      break;
 
     default:
       throw new RuntimeException("Unexpected message: " + msg);
@@ -82,6 +82,10 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   private void onTableInitAckMsg(final TableInitAckMsg msg) {
     tableInitializerFuture.get().onTableInitAck(msg.getTableId(), msg.getExecutorId());
+  }
+
+  private void onTableDropAckMsg(final TableDropAckMsg msg) {
+    tableInitializerFuture.get().onTableDropAck(msg.getTableId(), msg.getExecutorId());
   }
 
   /**

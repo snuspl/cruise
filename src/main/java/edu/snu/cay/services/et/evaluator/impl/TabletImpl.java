@@ -88,6 +88,11 @@ public final class TabletImpl<K, V, U> implements Tablet<K, V, U> {
   }
 
   @Override
+  public void clear() {
+    blockStore.forEach(Block::clear);
+  }
+
+  @Override
   public Map<K, V> getDataMap() {
     Map<K, V> result = null;
 

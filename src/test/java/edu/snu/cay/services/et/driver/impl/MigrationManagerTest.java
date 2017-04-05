@@ -305,6 +305,11 @@ public final class MigrationManagerTest {
     }
 
     @Override
+    public void sendTableDropMsg(final String executorId, final String tableId) {
+
+    }
+
+    @Override
     public void sendOwnershipUpdateMsg(final String executorId,
                                        final String tableId, final int blockId,
                                        final String oldOwnerId, final String newOwnerId) {

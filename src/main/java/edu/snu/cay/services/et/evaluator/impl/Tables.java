@@ -168,14 +168,18 @@ public final class Tables implements TableAccessor {
   }
 
   /**
-   * Remove a local table.
+   * Remove a table from this executor and a local tablet.
    * @param tableId the identifier of the the table
    */
   public synchronized void remove(final String tableId) {
     if (!tables.containsKey(tableId)) {
       throw new RuntimeException(tableId + " does not exist");
     }
-    tables.remove(tableId);
+
+    // remove table and clear contents in local tablet
+    // it assumes that there's no ongoing migration
+    final Table removedTable = tables.remove(tableId).getLeft();
+    removedTable.getLocalTablet().clear();
   }
 
   @Override

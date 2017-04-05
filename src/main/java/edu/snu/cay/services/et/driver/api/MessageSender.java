@@ -42,6 +42,12 @@ public interface MessageSender {
                         @Nullable HdfsSplitInfo fileSplit);
 
   /**
+   * Sends a TableDropMsg that deletes the table from the executor.
+   */
+  void sendTableDropMsg(String executorId,
+                        String tableId);
+
+  /**
    * Sends a OwnershipUpdateMsg that notifies ownership update in other executors.
    */
   void sendOwnershipUpdateMsg(String executorId,

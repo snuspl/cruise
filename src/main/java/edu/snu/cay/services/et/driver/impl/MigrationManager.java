@@ -65,7 +65,7 @@ final class MigrationManager {
   }
 
   /**
-   * Registers subscribers for the update of partition status of a table whose id is {@code tableId}.
+   * Registers a subscriber for the update of partition status of a table whose id is {@code tableId}.
    * Whenever a block has been moved, the executor with {@code executorId} will be notified.
    * @param tableId a table id
    * @param executorId a executor id
@@ -82,8 +82,7 @@ final class MigrationManager {
   }
 
   /**
-   * Registers subscribers for the update of partition status of a table whose id is {@code tableId}.
-   * Whenever a block has been moved, the executor with {@code executorId} will be notified.
+   * Unregisters a subscriber for the update of partition status of a table whose id is {@code tableId}.
    * @param tableId a table id
    * @param executorId a executor id
    */
@@ -98,6 +97,15 @@ final class MigrationManager {
 
       return executorIdSet.isEmpty() ? null : executorIdSet;
     });
+  }
+
+  /**
+   * Unregisters all subscribers of a table with id {@code tableId}.
+   * @param tableId a table id
+   * @return a set of unregistered executor ids
+   */
+  Set<String> unregisterSubscribers(final String tableId) {
+    return subscribersPerTable.remove(tableId);
   }
 
   /**

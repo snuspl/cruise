@@ -30,20 +30,22 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A table initializer class that initializes table at executors.
- * Initialization info includes basic immutable table configurations
+ * An agent class that takes charge of initializing and deleting tables at executors.
+ * Initialization installs table metadata in executors; it includes basic immutable table configurations
  * (e.g., key/value codec, partition function, num total blocks) and mutable ownership status.
+ * Drop operation removes the above metadata and tablets that contain actual data from executors.
  */
 @DriverSide
-final class TableInitializer {
-  private static final Logger LOG = Logger.getLogger(TableInitializer.class.getName());
+final class TableControlAgent {
+  private static final Logger LOG = Logger.getLogger(TableControlAgent.class.getName());
 
   private final MessageSender msgSender;
 
   private final Map<String, CountDownLatch> pendingInit = new ConcurrentHashMap<>();
+  private final Map<String, CountDownLatch> pendingDrop = new ConcurrentHashMap<>();
 
   @Inject
-  private TableInitializer(final MessageSender msgSender) {
+  private TableControlAgent(final MessageSender msgSender) {
     this.msgSender = msgSender;
   }
 
@@ -89,6 +91,8 @@ final class TableInitializer {
       initLatch.await();
     } catch (final InterruptedException e) {
       throw new RuntimeException("Interrupted while waiting for table to be initialized.", e);
+    } finally {
+      pendingInit.remove(tableConf.getId());
     }
   }
 
@@ -104,5 +108,43 @@ final class TableInitializer {
       throw new RuntimeException("There's no ongoing init for table. tableId: " + tableId);
     }
     initLatch.countDown();
+  }
+
+  /**
+   * Deletes a table, which consists of metadata and tablets in executors.
+   * Be aware that the contents in tablets will be lost.
+   * @param tableId a table id
+   * @param executorIdSet a set of executor ids
+   */
+  void dropTable(final String tableId,
+                 final Set<String> executorIdSet) {
+    LOG.log(Level.INFO, "Drop table {0} in executors: {1}", new Object[]{tableId, executorIdSet});
+
+    final CountDownLatch dropLatch = new CountDownLatch(executorIdSet.size());
+    pendingDrop.put(tableId, dropLatch);
+
+    executorIdSet.forEach(executorId -> msgSender.sendTableDropMsg(executorId, tableId));
+
+    try {
+      dropLatch.await();
+    } catch (final InterruptedException e) {
+      throw new RuntimeException("Interrupted while waiting for table to be deleted.", e);
+    } finally {
+      pendingDrop.remove(tableId);
+    }
+  }
+
+  /**
+   * Marks that a table drop started by {@link #dropTable} has been done in an executor.
+   * @param tableId a table id
+   * @param executorId an executor id
+   */
+  synchronized void onTableDropAck(final String tableId, final String executorId) {
+    LOG.log(Level.INFO, "Table {0} in executor {1} is dropped.", new Object[]{tableId, executorId});
+    final CountDownLatch dropLatch = pendingDrop.get(tableId);
+    if (dropLatch == null || dropLatch.getCount() == 0) {
+      throw new RuntimeException("There's no ongoing drop for table. tableId: " + tableId);
+    }
+    dropLatch.countDown();
   }
 }

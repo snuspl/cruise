@@ -116,10 +116,10 @@ public final class BlockManager {
   }
 
   /**
-   * @return a list of ids of associated executors
+   * @return a set of ids of associated executors
    */
-  synchronized List<String> getAssociatedExecutorIds() {
-    return new ArrayList<>(executorIdToBlockIds.keySet());
+  synchronized Set<String> getAssociatedExecutorIds() {
+    return new HashSet<>(executorIdToBlockIds.keySet());
   }
 
   /**

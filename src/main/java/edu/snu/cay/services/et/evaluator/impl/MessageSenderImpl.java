@@ -124,6 +124,28 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
+  public void sendTableDropAckMsg(final String tableId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableControlMsg)
+        .setTableControlMsg(
+            TableControlMsg.newBuilder()
+                .setType(TableControlMsgType.TableDropAckMsg)
+                .setTableDropAckMsg(
+                    TableDropAckMsg.newBuilder()
+                        .setExecutorId(executorId)
+                        .setTableId(tableId)
+                        .build()
+                ).build()
+        ).build();
+
+    try {
+      networkConnection.send(driverId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending TableDropAck message", e);
+    }
+  }
+
+  @Override
   public void sendOwnershipMsg(final long opId, final String tableId, final int blockId,
                                final String oldOwnerId, final String newOwnerId) {
     final ETMsg msg = ETMsg.newBuilder()

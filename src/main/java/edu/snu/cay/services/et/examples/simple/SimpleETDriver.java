@@ -121,7 +121,7 @@ final class SimpleETDriver {
           .set(TaskConfiguration.TASK, PutTask.class)
           .build()));
 
-      waitAndCheckTaskResult(taskResultFutureList);
+      waitAndCheckTaskResult(taskResultFutureList, true);
 
       // 2. Then run get tasks in all executors
       taskResultFutureList.clear();
@@ -136,7 +136,7 @@ final class SimpleETDriver {
           .set(TaskConfiguration.TASK, GetTask.class)
           .build())));
 
-      waitAndCheckTaskResult(taskResultFutureList);
+      waitAndCheckTaskResult(taskResultFutureList, true);
 
       // 3. migrate blocks between associators
       final CountDownLatch migrationLatch1 = new CountDownLatch(2);
@@ -174,13 +174,37 @@ final class SimpleETDriver {
           .set(TaskConfiguration.TASK, GetTask.class)
           .build())));
 
-      waitAndCheckTaskResult(taskResultFutureList);
+      waitAndCheckTaskResult(taskResultFutureList, true);
 
-      // 5. create a table with input file
+      try {
+        Thread.sleep(5000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
+      // 5. drop tables and run get tasks again to confirm that tasks fail
+      hashedTable.drop();
+      orderedTable.drop();
+
+      taskResultFutureList.clear();
+
+      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          .set(TaskConfiguration.TASK, GetTask.class)
+          .build())));
+
+      subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+          .set(TaskConfiguration.TASK, GetTask.class)
+          .build())));
+
+      waitAndCheckTaskResult(taskResultFutureList, false);
+
+      // 6. create a table with input file
       final AllocatedTable orderedTableWithFile = etMaster.createTable(buildTableConf(ORDERED_TABLE_WITH_FILE_ID,
           tableInputPath, true), associators);
 
-      // 6. start scan tasks in associator executors
+      // 7. start scan tasks in associator executors
       taskResultFutureList.clear();
 
       associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
@@ -188,9 +212,9 @@ final class SimpleETDriver {
           .set(TaskConfiguration.TASK, ScanTask.class)
           .build())));
 
-      waitAndCheckTaskResult(taskResultFutureList);
+      waitAndCheckTaskResult(taskResultFutureList, true);
 
-      // 7. migrate blocks between associators
+      // 8. migrate blocks between associators
       final CountDownLatch migrationLatch2 = new CountDownLatch(1);
       final EventHandler<MigrationResult> migrationCallback2 = migrationResult -> {
         LOG.log(Level.INFO, "Migration has been finished: {0}, {1}, {2}",
@@ -209,7 +233,7 @@ final class SimpleETDriver {
         throw new RuntimeException(e);
       }
 
-      // 8. start scan tasks again after migration
+      // 9. start scan tasks again after migration
       taskResultFutureList.clear();
 
       associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
@@ -217,19 +241,21 @@ final class SimpleETDriver {
           .set(TaskConfiguration.TASK, ScanTask.class)
           .build())));
 
-      waitAndCheckTaskResult(taskResultFutureList);
+      waitAndCheckTaskResult(taskResultFutureList, true);
 
-      // 9. close executors
+      orderedTableWithFile.drop(); // not required step
+
+      // 10. close executors
       subscribers.forEach(AllocatedExecutor::close);
       associators.forEach(AllocatedExecutor::close);
     }
   }
 
-  private void waitAndCheckTaskResult(final List<Future<TaskResult>> taskResultFutureList) {
+  private void waitAndCheckTaskResult(final List<Future<TaskResult>> taskResultFutureList, final boolean success) {
     taskResultFutureList.forEach(taskResultFuture -> {
       try {
         final TaskResult taskResult = taskResultFuture.get();
-        if (!taskResult.isSuccess()) {
+        if (taskResult.isSuccess() != success) {
           final String taskId = taskResult.getFailedTask().get().getId();
           throw new RuntimeException(String.format("Task %s has been failed", taskId));
         }
@@ -238,5 +264,4 @@ final class SimpleETDriver {
       }
     });
   }
-
 }

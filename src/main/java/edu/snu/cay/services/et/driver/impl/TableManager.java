@@ -44,13 +44,13 @@ final class TableManager {
 
   @Inject
   private TableManager(final MigrationManager migrationManager,
-                       final TableInitializer tableInitializer) throws InjectionException {
+                       final TableControlAgent tableControlAgent) throws InjectionException {
     this.baseTableInjector = Tang.Factory.getTang().newInjector();
     baseTableInjector.bindVolatileInstance(MigrationManager.class, migrationManager);
-    baseTableInjector.bindVolatileInstance(TableInitializer.class, tableInitializer);
+    baseTableInjector.bindVolatileInstance(TableControlAgent.class, tableControlAgent);
 
-    // MigrationManager and TableInitializer should be instantiated although they are not actually accessed.
-    // This is intentional. Otherwise MigrationManager and TableInitializer are created per Table, which we want
+    // MigrationManager and TableControlAgent should be instantiated although they are not actually accessed.
+    // This is intentional. Otherwise MigrationManager and TableControlAgent are created per Table, which we want
     // to keep singleton.
   }
 

@@ -104,6 +104,10 @@ public final class MessageHandlerImpl implements MessageHandler {
       onTableInitMsg(msg.getTableInitMsg());
       break;
 
+    case TableDropMsg:
+      onTableDropMsg(msg.getTableDropMsg());
+      break;
+
     case OwnershipUpdateMsg:
       onOwnershipUpdateMsg(msg.getOwnershipUpdateMsg());
       break;
@@ -130,6 +134,12 @@ public final class MessageHandlerImpl implements MessageHandler {
     } catch (final InjectionException e) {
       throw new RuntimeException("Table configuration is incomplete to initialize a table", e);
     }
+  }
+
+  private void onTableDropMsg(final TableDropMsg msg) {
+    tablesFuture.get().remove(msg.getTableId());
+
+    msgSenderFuture.get().sendTableDropAckMsg(msg.getTableId());
   }
 
   private void onOwnershipUpdateMsg(final OwnershipUpdateMsg msg) {

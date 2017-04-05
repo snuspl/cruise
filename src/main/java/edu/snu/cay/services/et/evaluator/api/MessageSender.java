@@ -58,6 +58,11 @@ public interface MessageSender {
   void sendTableInitAckMsg(String tableId);
 
   /**
+   * Sends a TableDropAckMsg that responds to TableDropMsg.
+   */
+  void sendTableDropAckMsg(String tableId);
+
+  /**
    * Sends a message transferring ownership of a block from sender to receiver of migration.
    * The operation should be given a unique {@code opId}.
    */

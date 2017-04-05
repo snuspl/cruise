@@ -78,6 +78,8 @@ public interface Tablet<K, V, U> {
    */
   V remove(int blockId, K key) throws BlockNotExistsException;
 
+  void clear();
+
   /**
    * Returns a map that contains key-value mapping of all local data.
    * The returned map is a shallow copy of the internal data structure.

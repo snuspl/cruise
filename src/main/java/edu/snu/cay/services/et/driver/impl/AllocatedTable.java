@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.wake.EventHandler;
 
@@ -40,17 +41,37 @@ public final class AllocatedTable {
 
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
-  private final TableInitializer tableInitializer;
+  private final TableControlAgent tableControlAgent;
+
+  private StateMachine stateMachine;
 
   private TableConfiguration tableConf;
+
+  private enum State {
+    UNINITIALIZED,
+    INITIALIZED,
+    DROPPED
+  }
 
   @Inject
   private AllocatedTable(final BlockManager blockManager,
                          final MigrationManager migrationManager,
-                         final TableInitializer tableInitializer) {
+                         final TableControlAgent tableControlAgent) {
     this.blockManager = blockManager;
     this.migrationManager = migrationManager;
-    this.tableInitializer = tableInitializer;
+    this.tableControlAgent = tableControlAgent;
+    this.stateMachine = initStateMachine();
+  }
+
+  private StateMachine initStateMachine() {
+    return StateMachine.newBuilder()
+        .addState(State.UNINITIALIZED, "Table is not initialized. It only has configuration info.")
+        .addState(State.INITIALIZED, "Table is initialized. Blocks are distributed in executors.")
+        .addState(State.DROPPED, "Table is dropped. All blocks and contents are deleted.")
+        .addTransition(State.UNINITIALIZED, State.INITIALIZED, "Table is initialized with initial executors")
+        .addTransition(State.INITIALIZED, State.DROPPED, "Table is deleted")
+        .setInitialState(State.UNINITIALIZED)
+        .build();
   }
 
   /**
@@ -62,6 +83,8 @@ public final class AllocatedTable {
    */
   synchronized void init(final TableConfiguration tableConfiguration,
                          final List<AllocatedExecutor> initialAssociators) {
+    stateMachine.checkState(State.UNINITIALIZED);
+
     tableConf = tableConfiguration;
 
     final Set<String> executorIds = new HashSet<>(initialAssociators.size());
@@ -72,7 +95,9 @@ public final class AllocatedTable {
 
     // partition table into blocks and initialize them in associators
     blockManager.init(executorIds);
-    tableInitializer.initTable(tableConfiguration, executorIds, blockManager.getOwnershipStatus(), true);
+    tableControlAgent.initTable(tableConfiguration, executorIds, blockManager.getOwnershipStatus(), true);
+
+    stateMachine.setState(State.INITIALIZED);
   }
 
   /**
@@ -80,13 +105,15 @@ public final class AllocatedTable {
    * @param executors a list of executors
    */
   public synchronized void subscribe(final List<AllocatedExecutor> executors) {
+    stateMachine.checkState(State.INITIALIZED);
+
     final Set<String> executorIdSet = new HashSet<>(executors.size());
     executors.forEach(executor -> {
       migrationManager.registerSubscription(tableConf.getId(), executor.getId());
       executorIdSet.add(executor.getId());
     });
 
-    tableInitializer.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
+    tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
   }
 
   /**
@@ -95,22 +122,28 @@ public final class AllocatedTable {
    */
   public synchronized void associate(final List<AllocatedExecutor> executors) {
     final Set<String> executorIdSet = new HashSet<>(executors.size());
-    executors.forEach(executor -> {
-      blockManager.registerExecutor(executor.getId());
-      migrationManager.registerSubscription(tableConf.getId(), executor.getId());
-      executorIdSet.add(executor.getId());
+    executors.forEach(executor -> executorIdSet.add(executor.getId()));
+
+    associate(executorIdSet);
+  }
+
+  private synchronized void associate(final Set<String> executorIdSet) {
+    stateMachine.checkState(State.INITIALIZED);
+
+    executorIdSet.forEach(executorId -> {
+      blockManager.registerExecutor(executorId);
+      migrationManager.registerSubscription(tableConf.getId(), executorId);
+      executorIdSet.add(executorId);
     });
 
-    tableInitializer.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
+    tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
   }
 
   private synchronized void associate(final String executorId) {
     final Set<String> executorIdSet = new HashSet<>(1);
-    blockManager.registerExecutor(executorId);
-    migrationManager.registerSubscription(tableConf.getId(), executorId);
     executorIdSet.add(executorId);
 
-    tableInitializer.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
+    associate(executorIdSet);
   }
 
   /**
@@ -124,7 +157,9 @@ public final class AllocatedTable {
                                       final String dstExecutorId,
                                       final int numBlocks,
                                       @Nullable final EventHandler<MigrationResult> callback) {
-    // if it's not associated explicitly, do it now
+    stateMachine.checkState(State.INITIALIZED);
+
+    // if it's not associated with dst executor, do it now
     if (!blockManager.getAssociatedExecutorIds().contains(dstExecutorId)) {
       associate(dstExecutorId);
     }
@@ -147,6 +182,24 @@ public final class AllocatedTable {
   }
 
   /**
+   * Drops {@link this} table by removing tablets and table metadata from all executors.
+   * This method should be called after initialized.
+   * After this method, the table is completely removed from the system (e.g., master and executors).
+   */
+  public synchronized void drop() {
+    stateMachine.checkState(State.INITIALIZED);
+
+    final Set<String> executorsToDeleteTable = blockManager.getAssociatedExecutorIds();
+    final Set<String> subscribers = migrationManager.unregisterSubscribers(tableConf.getId());
+
+    executorsToDeleteTable.addAll(subscribers);
+
+    tableControlAgent.dropTable(tableConf.getId(), executorsToDeleteTable);
+
+    stateMachine.setState(State.DROPPED);
+  }
+
+  /**
    * @return a configuration of the table
    */
   TableConfiguration getTableConfiguration() {
@@ -154,9 +207,9 @@ public final class AllocatedTable {
   }
 
   /**
-   * @return a list of executors associated with the table
+   * @return a set of executors associated with the table
    */
-  List<String> getAssociatedExecutorIds() {
+  Set<String> getAssociatedExecutorIds() {
     return blockManager.getAssociatedExecutorIds();
   }
 }
