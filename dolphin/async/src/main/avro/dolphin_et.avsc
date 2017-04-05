@@ -101,7 +101,7 @@
   "name": "ETMetrics",
   "fields":
   [
-    {"name": "numBlocks", "type": ["null", "int"], "default": null}
+    {"name": "numBlocks", "type": "int"}
   ]
 },
 
