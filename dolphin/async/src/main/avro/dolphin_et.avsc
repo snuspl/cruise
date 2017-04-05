@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 [
-
 {
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
@@ -27,7 +26,7 @@
     // mini-batch index
     {"name": "batchIdx", "type": "int"},
 
-    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
+    // a field with type of Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // This field consists of custom metrics in the batch (ex. DvT).
     {"name": "batchCustomMetrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
 
@@ -57,7 +56,7 @@
     // epoch index
     {"name": "epochIdx", "type": "int"},
 
-    // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
+    // a field with type of Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // This field consists of custom metrics in the epoch (ex. Loss, Log-likelihood).
     {"name": "epochCustomMetrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
 
