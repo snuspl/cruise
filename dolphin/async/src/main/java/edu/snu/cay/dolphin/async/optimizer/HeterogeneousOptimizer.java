@@ -70,7 +70,6 @@ public final class HeterogeneousOptimizer implements Optimizer {
                                  @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                  final double optBenefitThreshold) {
     this.miniBatchSize = miniBatchSize;
-    // convert bits per second to bytes per second
     this.defaultNetworkBandwidth = defaultNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
     this.hostnameToBandwidth = parseBandwidthInfo(hostBandwidthFilePath);
@@ -459,10 +458,7 @@ public final class HeterogeneousOptimizer implements Optimizer {
     // We can add up to (availableEvaluators - runningEvaluators - 1) evaluators in each namespace,
     // and reserve at least one evaluator for the other namespace.
     for (int index = 0; index < availableEvaluators - params.size() - 1; ++index) {
-      final EvaluatorSummary summary =
-          new EvaluatorSummary(newNodeIdPrefix + index, new DataInfoImpl(), throughput, bandwidth);
-      LOG.log(Level.INFO, "Add {0}-th summary: {1}", new Object[] {index, summary});
-      nodes.add(summary);
+      nodes.add(new EvaluatorSummary(newNodeIdPrefix + index, new DataInfoImpl(), throughput, bandwidth));
     }
 
     return nodes;
@@ -580,14 +576,12 @@ public final class HeterogeneousOptimizer implements Optimizer {
       final WorkerMetrics workerMetrics = (WorkerMetrics) param.getMetrics();
       final String hostname = workerMetrics.getHostname().toString();
       final double bandwidth = hostnameToBandwidth.getOrDefault(hostname, defaultNetworkBandwidth) / 8D;
-      LOG.log(Level.INFO, "Host: {0}, Bandwidth (Bps): {1}", new Object[] {hostname, bandwidth});
       return bandwidth;
 
     } else if (param.getMetrics() instanceof ServerMetrics) {
       final ServerMetrics serverMetrics = (ServerMetrics) param.getMetrics();
       final String hostname = serverMetrics.getHostname().toString();
       final double bandwidth = hostnameToBandwidth.getOrDefault(hostname, defaultNetworkBandwidth) / 8D;
-      LOG.log(Level.INFO, "Host: {0}, Bandwidth (Bps): {1}", new Object[] {hostname, bandwidth});
       return bandwidth;
 
     } else {
