@@ -22,29 +22,29 @@
   "fields":
   [
     // epoch index
-    {"name": "epochIdx", "type": "int", "default": 0},
+    {"name": "epochIdx", "type": "int"},
 
     // mini-batch index
-    {"name": "batchIdx", "type": ["null", "int"], "default": null},
+    {"name": "batchIdx", "type": "int"},
 
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // This field consists of custom metrics in the batch (ex. DvT).
     {"name": "batchCustomMetrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
 
     // total elapsed time for this batch
-    {"name": "batchTimeSec", "type": ["null", "double"], "default": null},
+    {"name": "batchTimeSec", "type": "double"},
 
     // total computation time for this batch
-    {"name": "batchCompTimeSec", "type": ["null", "double"], "default": null},
+    {"name": "batchCompTimeSec", "type": "double"},
 
     // total push time for this batch
-    {"name": "batchPullTimeSec", "type": ["null", "double"], "default": null},
+    {"name": "batchPullTimeSec", "type": "double"},
 
     // total pull time for this batch
-    {"name": "batchPushTimeSec", "type": ["null", "double"], "default": null},
+    {"name": "batchPushTimeSec", "type": "double"},
 
     // number of data instances processed in the batch
-    {"name": "numBatchDataInstances", "type": "int", "default": 0}
+    {"name": "numBatchDataInstances", "type": "int"}
   ]
 },
 
@@ -55,30 +55,30 @@
   "fields":
   [
     // epoch index
-    {"name": "epochIdx", "type": "int", "default": 0},
+    {"name": "epochIdx", "type": "int"},
 
     // Metrics should not be at the end of fields, since AvroUtils fails to decode the message.
     // This field consists of custom metrics in the epoch (ex. Loss, Log-likelihood).
     {"name": "epochCustomMetrics", "type": ["null", "edu.snu.cay.common.metric.avro.Metrics"], "default": null},
 
     // total elapsed time for this epoch
-    {"name": "epochTimeSec", "type": ["null", "double"], "default": null},
+    {"name": "epochTimeSec", "type": "double"},
 
     // total computation time for this epoch
     // required for optimization cost model
-    {"name": "epochCompTimeSec", "type": ["null", "double"], "default": null},
+    {"name": "epochCompTimeSec", "type": "double"},
 
     // total push time for this epoch
-    {"name": "epochPullTimeSec", "type": ["null", "double"], "default": null},
+    {"name": "epochPullTimeSec", "type": "double"},
 
     // total pull time for this epoch
-    {"name": "epochPushTimeSec", "type": ["null", "double"], "default": null},
+    {"name": "epochPushTimeSec", "type": "double"},
 
     // number of mini-batches for this epoch
-    {"name": "numMiniBatchForEpoch", "type": ["null", "int"], "default": null},
+    {"name": "numBatchesForEpoch", "type": "int"},
 
     // number of data instances processed in the epoch
-    {"name": "numEpochDataInstances", "type": "int", "default": 0}
+    {"name": "numEpochDataInstances", "type": "int"}
   ]
 },
 
