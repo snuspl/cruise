@@ -113,6 +113,7 @@
     {"name": "type", "type": {"type": "enum", "name": "MetricsType",
       "symbols": ["DolphinWorkerMetrics", "DolphinServerMetrics"]}},
     {"name": "workerMetrics", "type": ["null", "DolphinWorkerMetrics"], "default": null},
+    // serverMetrics is temporarily empty because the current cost model does not use server-specific metrics.
     {"name": "serverMetrics", "type": "null"},
     {"name": "etMetrics", "type": "ETMetrics"},
     {"name": "hostname", "type": "string", "default": ""}
