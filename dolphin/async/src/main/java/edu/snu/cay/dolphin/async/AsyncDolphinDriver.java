@@ -49,6 +49,7 @@ import edu.snu.cay.utils.trace.HTrace;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.ProgressProvider;
+import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ClosedContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -79,6 +80,7 @@ import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -293,6 +295,7 @@ public final class AsyncDolphinDriver {
    */
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
+                             final JobMessageObserver jobMessageObserver,
                              final DataLoadingService dataLoadingService,
                              final SynchronizationManager synchronizationManager,
                              final ClockManager clockManager,
@@ -339,6 +342,14 @@ public final class AsyncDolphinDriver {
     this.traceParameters = traceParameters;
     this.optimizationIntervalMs = optimizationIntervalMs;
     this.maxNumEpochs = maxNumEpochs;
+
+    // send JobMessage about epoch progress to client
+    // it utilizes the minimum clock maintained by ClockManager
+    this.clockManager.addClockUpdateListener(epochIdx -> {
+      final String progressMessage = String.format("Progress epoch count is [%d / %d]", epochIdx, maxNumEpochs);
+      final byte[] encodedProgressMessage = progressMessage.getBytes(StandardCharsets.UTF_8);
+      jobMessageObserver.sendMessageToClient(encodedProgressMessage);
+    });
 
     try {
       final Injector workerInjector = injector.forkInjector();

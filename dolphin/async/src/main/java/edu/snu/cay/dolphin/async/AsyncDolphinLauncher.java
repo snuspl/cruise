@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.dashboard.DashboardConfProvider;
@@ -56,9 +57,7 @@ import edu.snu.cay.utils.trace.parameters.ReceiverHost;
 import edu.snu.cay.utils.trace.parameters.ReceiverPort;
 import edu.snu.cay.utils.trace.parameters.ReceiverType;
 import org.apache.reef.annotations.audience.ClientSide;
-import org.apache.reef.client.DriverConfiguration;
-import org.apache.reef.client.DriverLauncher;
-import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.client.*;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
