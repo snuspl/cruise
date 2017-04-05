@@ -57,20 +57,20 @@ public final class HeterogeneousOptimizer implements Optimizer {
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
   private final int miniBatchSize;
-  private final double defaultNetworkBandwidth;
+  private final double defNetworkBandwidth;
   private final double optBenefitThreshold;
 
   private final Map<String, Double> hostnameToBandwidth;
 
   @Inject
   private HeterogeneousOptimizer(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
-                                 @Parameter(Parameters.NetworkBandwidth.class) final double defaultNetworkBandwidth,
+                                 @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
                                  @Parameter(Parameters.HostToBandwidthFilePath.class)
                                    final String hostBandwidthFilePath,
                                  @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                  final double optBenefitThreshold) {
     this.miniBatchSize = miniBatchSize;
-    this.defaultNetworkBandwidth = defaultNetworkBandwidth;
+    this.defNetworkBandwidth = defNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
     this.hostnameToBandwidth = parseBandwidthInfo(hostBandwidthFilePath);
     LOG.log(Level.INFO, "Hostname to bandwidth (bps): {0}", hostnameToBandwidth);
@@ -575,14 +575,12 @@ public final class HeterogeneousOptimizer implements Optimizer {
     if (param.getMetrics() instanceof WorkerMetrics) {
       final WorkerMetrics workerMetrics = (WorkerMetrics) param.getMetrics();
       final String hostname = workerMetrics.getHostname().toString();
-      final double bandwidth = hostnameToBandwidth.getOrDefault(hostname, defaultNetworkBandwidth) / 8D;
-      return bandwidth;
+      return hostnameToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
 
     } else if (param.getMetrics() instanceof ServerMetrics) {
       final ServerMetrics serverMetrics = (ServerMetrics) param.getMetrics();
       final String hostname = serverMetrics.getHostname().toString();
-      final double bandwidth = hostnameToBandwidth.getOrDefault(hostname, defaultNetworkBandwidth) / 8D;
-      return bandwidth;
+      return hostnameToBandwidth.getOrDefault(hostname, defNetworkBandwidth) / 8D;
 
     } else {
       throw new RuntimeException("Unknown type of EvaluatorParameters: " + param);
