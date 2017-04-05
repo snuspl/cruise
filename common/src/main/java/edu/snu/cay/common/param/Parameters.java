@@ -93,5 +93,8 @@ public final class Parameters {
       default_value = HostToBandwidthFilePath.NONE)
   public final class HostToBandwidthFilePath implements Name<String> {
     public static final String NONE = "";
+
+    private HostToBandwidthFilePath() {
+    }
   }
 }
