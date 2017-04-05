@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.slave.AggregationSlave;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -56,9 +56,9 @@ public class WorkerStateManagerTest {
       "Cannot enter next state before all workers reach the same global barrier";
   private static final String MSG_SHOULD_RELEASE_WORKERS = "All workers should be released";
 
-  private Tuple3<WorkerStateManager, AggregationMaster, EventHandler<AggregationMessage>> driverComponents;
+  private Tuple3<WorkerStateManager, AggregationMaster, EventHandler<CentCommMsg>> driverComponents;
 
-  private Map<String, Tuple3<WorkerGlobalBarrier, AggregationSlave, EventHandler<AggregationMessage>>>
+  private Map<String, Tuple3<WorkerGlobalBarrier, AggregationSlave, EventHandler<CentCommMsg>>>
       workerIdToWorkerComponents = new HashMap<>();
 
   @Before
@@ -78,7 +78,7 @@ public class WorkerStateManagerTest {
     injector.bindVolatileInstance(AggregationMaster.class, mockedAggregationMaster);
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
-    final EventHandler<AggregationMessage> driverSideMsgHandler =
+    final EventHandler<CentCommMsg> driverSideMsgHandler =
         injector.getInstance(WorkerStateManager.MessageHandler.class);
 
     driverComponents = new Tuple3<>(workerStateManager, mockedAggregationMaster, driverSideMsgHandler);
@@ -86,14 +86,14 @@ public class WorkerStateManagerTest {
     doAnswer(invocation -> {
       final byte[] data = invocation.getArgumentAt(2, byte[].class);
 
-      final AggregationMessage msg = AggregationMessage.newBuilder()
+      final CentCommMsg msg = CentCommMsg.newBuilder()
           .setSourceId("")
           .setClientClassName("")
           .setData(ByteBuffer.wrap(data))
           .build();
 
       final String workerId = invocation.getArgumentAt(1, String.class);
-      final EventHandler<AggregationMessage> workerSideMsgHandler =
+      final EventHandler<CentCommMsg> workerSideMsgHandler =
           workerIdToWorkerComponents.get(workerId).getThird();
 
       workerSideMsgHandler.onNext(msg);
@@ -113,7 +113,7 @@ public class WorkerStateManagerTest {
     injector.bindVolatileInstance(AggregationSlave.class, mockedAggregationSlave);
 
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
-    final EventHandler<AggregationMessage> workerSideMsgHandler =
+    final EventHandler<CentCommMsg> workerSideMsgHandler =
         injector.getInstance(WorkerGlobalBarrier.MessageHandler.class);
 
     workerIdToWorkerComponents.put(workerId,
@@ -122,13 +122,13 @@ public class WorkerStateManagerTest {
     doAnswer(invocation -> {
       final byte[] data = invocation.getArgumentAt(1, byte[].class);
 
-      final AggregationMessage msg = AggregationMessage.newBuilder()
+      final CentCommMsg msg = CentCommMsg.newBuilder()
           .setSourceId(workerId)
           .setClientClassName("")
           .setData(ByteBuffer.wrap(data))
           .build();
 
-      final EventHandler<AggregationMessage> driverSideMsgHandler = driverComponents.getThird();
+      final EventHandler<CentCommMsg> driverSideMsgHandler = driverComponents.getThird();
 
       driverSideMsgHandler.onNext(msg);
       return null;

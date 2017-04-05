@@ -15,8 +15,9 @@
  */
 package edu.snu.cay.common.aggregation;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.ns.AggregationMsgHandler;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.ns.AggregationMsgHandler;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.io.network.impl.NSMessage;
 import org.apache.reef.tang.Configuration;
@@ -65,12 +66,12 @@ public final class AggregationMsgHandlerTest {
    */
   @Test
   public void testMultipleAggregationClients() {
-    final Message<AggregationMessage> mockedMessageA = new NSMessage(null, null, AggregationMessage.newBuilder()
+    final Message<CentCommMsg> mockedMessageA = new NSMessage(null, null, CentCommMsg.newBuilder()
         .setSourceId("")
         .setClientClassName(MockedMasterMsgHandlerA.class.getName())
         .setData(ByteBuffer.wrap(DATA_A))
         .build());
-    final Message<AggregationMessage> mockedMessageB = new NSMessage(null, null, AggregationMessage.newBuilder()
+    final Message<CentCommMsg> mockedMessageB = new NSMessage(null, null, CentCommMsg.newBuilder()
         .setSourceId("")
         .setClientClassName(MockedMasterMsgHandlerB.class.getName())
         .setData(ByteBuffer.wrap(DATA_B))
@@ -79,34 +80,34 @@ public final class AggregationMsgHandlerTest {
     aggregationMsgHandler.onNext(mockedMessageB);
   }
 
-  final class MockedMasterMsgHandlerA implements EventHandler<AggregationMessage> {
+  final class MockedMasterMsgHandlerA implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final AggregationMessage message) {
+    public void onNext(final CentCommMsg message) {
       Assert.assertArrayEquals(message.getData().array(), DATA_A);
     }
   }
 
-  final class MockedMasterMsgHandlerB implements EventHandler<AggregationMessage> {
+  final class MockedMasterMsgHandlerB implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final AggregationMessage message) {
+    public void onNext(final CentCommMsg message) {
       Assert.assertArrayEquals(message.getData().array(), DATA_B);
     }
   }
 
-  final class MockedSlaveMsgHandlerA implements EventHandler<AggregationMessage> {
+  final class MockedSlaveMsgHandlerA implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final AggregationMessage message) {
+    public void onNext(final CentCommMsg message) {
       // do nothing
     }
   }
 
-  final class MockedSlaveMsgHandlerB implements EventHandler<AggregationMessage> {
+  final class MockedSlaveMsgHandlerB implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final AggregationMessage message) {
+    public void onNext(final CentCommMsg message) {
       // do nothing
     }
   }

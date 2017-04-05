@@ -15,12 +15,12 @@
  */
 [
 /**
- * Message for Aggregation Service.
+ * Message for Centralized Communication (CentComm) Service.
  */
 {
-  "namespace": "edu.snu.cay.common.aggregation.avro",
+  "namespace": "edu.snu.cay.common.centcomm.avro",
   "type": "record",
-  "name": "AggregationMessage",
+  "name": "CentCommMsg",
   "fields":
   [
     {"name": "clientClassName", "type": "string"},

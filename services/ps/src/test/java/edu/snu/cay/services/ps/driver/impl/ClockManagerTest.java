@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.slave.AggregationSlave;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.avro.RequestInitClockMsg;
@@ -85,7 +85,7 @@ public final class ClockManagerTest {
       // because mockAggregationSlave couldn't send its source id(no network connection).
       final String workerId = invocation.getArgumentAt(0, String.class);
       final byte[] data = invocation.getArgumentAt(1, byte[].class);
-      final AggregationMessage aggregationMessage = getTestAggregationMessage(workerId, data);
+      final CentCommMsg aggregationMessage = getTestCentCommMsg(workerId, data);
 
       clockMessageHandler.onNext(aggregationMessage);
       return null;
@@ -256,8 +256,8 @@ public final class ClockManagerTest {
     assertEquals(expectedMinimumClock, clockManager.getGlobalMinimumClock());
   }
 
-  private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
-    return AggregationMessage.newBuilder()
+  private CentCommMsg getTestCentCommMsg(final String workerId, final byte[] data) {
+    return CentCommMsg.newBuilder()
         .setSourceId(workerId)
         .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
 import edu.snu.cay.services.ps.metric.ServerMetricsMsgCodec;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -27,10 +27,10 @@ import java.util.logging.Logger;
 
 /**
  * Driver-side message handler.
- * Receives AggregationMessage from Servers and hands over them to optimizer.
+ * Receives CentCommMsg from Servers and hands over them to optimizer.
  */
 @DriverSide
-public final class DriverSideMetricsMsgHandlerForServer implements EventHandler<AggregationMessage> {
+public final class DriverSideMetricsMsgHandlerForServer implements EventHandler<CentCommMsg> {
   private static final Logger LOG = Logger.getLogger(DriverSideMetricsMsgHandlerForServer.class.getName());
 
   private final ServerMetricsMsgCodec metricsMessageCodec;
@@ -44,7 +44,7 @@ public final class DriverSideMetricsMsgHandlerForServer implements EventHandler<
   }
 
   @Override
-  public void onNext(final AggregationMessage msg) {
+  public void onNext(final CentCommMsg msg) {
     LOG.entering(DriverSideMetricsMsgHandlerForServer.class.getSimpleName(), "onNext");
     final ServerMetrics metricsMessage = metricsMessageCodec.decode(msg.getData().array());
 

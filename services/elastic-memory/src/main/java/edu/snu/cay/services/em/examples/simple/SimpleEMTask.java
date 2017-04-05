@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.examples.simple;
 
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.slave.AggregationSlave;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.examples.simple.parameters.NumMoves;

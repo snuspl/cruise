@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.examples.remote;
 
-import edu.snu.cay.common.aggregation.driver.AggregationManager;
+import edu.snu.cay.common.centcomm.driver.AggregationManager;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.EMConfProvider;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;

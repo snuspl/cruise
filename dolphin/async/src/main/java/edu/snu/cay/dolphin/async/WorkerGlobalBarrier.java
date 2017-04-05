@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.slave.AggregationSlave;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
@@ -83,10 +83,10 @@ final class WorkerGlobalBarrier {
     countDownLatch.awaitAndReset(1);
   }
 
-  final class MessageHandler implements EventHandler<AggregationMessage> {
+  final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public synchronized void onNext(final AggregationMessage aggregationMessage) {
+    public synchronized void onNext(final CentCommMsg aggregationMessage) {
       LOG.log(Level.INFO, "Received a response message from the driver");
 
       transitState(stateMachine);

@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.driver;
+package edu.snu.cay.common.centcomm.driver;
 
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
-import edu.snu.cay.common.aggregation.params.SerializedAggregationSlavesConf;
-import edu.snu.cay.common.aggregation.ns.MasterId;
-import edu.snu.cay.common.aggregation.ns.NetworkContextRegister;
+import edu.snu.cay.common.centcomm.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.params.SerializedAggregationSlavesConf;
+import edu.snu.cay.common.centcomm.ns.MasterId;
+import edu.snu.cay.common.centcomm.ns.NetworkContextRegister;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.driver.parameters.DriverIdentifier;

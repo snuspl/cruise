@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.wake.EventHandler;
 
@@ -29,14 +29,14 @@ import javax.inject.Inject;
  * for example, pull-based metric aggregation.
  */
 @EvaluatorSide
-public final class EvalSideMetricsMsgHandlerForWorker implements EventHandler<AggregationMessage> {
+public final class EvalSideMetricsMsgHandlerForWorker implements EventHandler<CentCommMsg> {
 
   @Inject
   private EvalSideMetricsMsgHandlerForWorker() {
   }
 
   @Override
-  public void onNext(final AggregationMessage msg) {
+  public void onNext(final CentCommMsg msg) {
     throw new RuntimeException("Evaluators are not intended to receive messages for now.");
   }
 }

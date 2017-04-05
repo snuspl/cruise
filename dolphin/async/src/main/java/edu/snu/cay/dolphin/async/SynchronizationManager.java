@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -283,10 +283,10 @@ final class SynchronizationManager {
     tryReleaseWorkers();
   }
 
-  final class MessageHandler implements EventHandler<AggregationMessage> {
+  final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final AggregationMessage aggregationMessage) {
+    public void onNext(final CentCommMsg aggregationMessage) {
       synchronized (SynchronizationManager.this) {
         final String workerId = aggregationMessage.getSourceId().toString();
         final State localState = (State) codec.decode(aggregationMessage.getData().array());

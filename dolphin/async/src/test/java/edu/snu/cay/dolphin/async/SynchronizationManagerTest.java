@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.slave.AggregationSlave;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -57,9 +57,9 @@ public class SynchronizationManagerTest {
   private static final String MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP = "Cannot enter CLEANUP state before being allowed";
   private static final String MSG_SHOULD_RELEASE_WORKERS = "All workers should be released";
 
-  private Tuple3<SynchronizationManager, AggregationMaster, EventHandler<AggregationMessage>> driverComponents;
+  private Tuple3<SynchronizationManager, AggregationMaster, EventHandler<CentCommMsg>> driverComponents;
 
-  private Map<String, Tuple3<WorkerSynchronizer, AggregationSlave, EventHandler<AggregationMessage>>>
+  private Map<String, Tuple3<WorkerSynchronizer, AggregationSlave, EventHandler<CentCommMsg>>>
       workerIdToWorkerComponents = new HashMap<>();
 
   @Before
@@ -86,7 +86,7 @@ public class SynchronizationManagerTest {
     when(mockedDataLoadingService.getNumberOfPartitions()).thenReturn(numInitialWorkers);
 
     final SynchronizationManager synchronizationManager = injector.getInstance(SynchronizationManager.class);
-    final EventHandler<AggregationMessage> driverSideMsgHandler =
+    final EventHandler<CentCommMsg> driverSideMsgHandler =
         injector.getInstance(SynchronizationManager.MessageHandler.class);
 
     driverComponents = new Tuple3<>(synchronizationManager, mockedAggregationMaster, driverSideMsgHandler);
@@ -96,14 +96,14 @@ public class SynchronizationManagerTest {
       public Object answer(final InvocationOnMock invocation) throws Throwable {
         final byte[] data = invocation.getArgumentAt(2, byte[].class);
 
-        final AggregationMessage msg = AggregationMessage.newBuilder()
+        final CentCommMsg msg = CentCommMsg.newBuilder()
             .setSourceId("")
             .setClientClassName("")
             .setData(ByteBuffer.wrap(data))
             .build();
 
         final String workerId = invocation.getArgumentAt(1, String.class);
-        final EventHandler<AggregationMessage> workerSideMsgHandler =
+        final EventHandler<CentCommMsg> workerSideMsgHandler =
             workerIdToWorkerComponents.get(workerId).getThird();
 
         workerSideMsgHandler.onNext(msg);
@@ -125,7 +125,7 @@ public class SynchronizationManagerTest {
     injector.bindVolatileInstance(AggregationSlave.class, mockedAggregationSlave);
 
     final WorkerSynchronizer workerSynchronizer = injector.getInstance(WorkerSynchronizer.class);
-    final EventHandler<AggregationMessage> workerSideMsgHandler =
+    final EventHandler<CentCommMsg> workerSideMsgHandler =
         injector.getInstance(WorkerSynchronizer.MessageHandler.class);
 
     workerIdToWorkerComponents.put(workerId,
@@ -136,13 +136,13 @@ public class SynchronizationManagerTest {
       public Object answer(final InvocationOnMock invocation) throws Throwable {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
 
-        final AggregationMessage msg = AggregationMessage.newBuilder()
+        final CentCommMsg msg = CentCommMsg.newBuilder()
             .setSourceId(workerId)
             .setClientClassName("")
             .setData(ByteBuffer.wrap(data))
             .build();
 
-        final EventHandler<AggregationMessage> driverSideMsgHandler = driverComponents.getThird();
+        final EventHandler<CentCommMsg> driverSideMsgHandler = driverComponents.getThird();
 
         driverSideMsgHandler.onNext(msg);
         return null;

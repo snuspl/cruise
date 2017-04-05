@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.driver;
+package edu.snu.cay.common.centcomm.driver;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.ns.AggregationNetworkSetup;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.ns.AggregationNetworkSetup;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -34,7 +34,7 @@ import java.nio.ByteBuffer;
 public final class AggregationMaster {
 
   /**
-   * A network setup instance for AggregationMessage. It should be wrapped with InjectionFuture
+   * A network setup instance for CentCommMsg. It should be wrapped with InjectionFuture
    * since there would be a loopy constructor when users use AggregationMaster in their
    * aggregation message handlers.
    */
@@ -62,12 +62,12 @@ public final class AggregationMaster {
    * @throws NetworkException when target slave has been unregistered
    */
   public void send(final String clientClassName, final String slaveId, final byte[] data) throws NetworkException {
-    final AggregationMessage msg = AggregationMessage.newBuilder()
+    final CentCommMsg msg = CentCommMsg.newBuilder()
         .setSourceId(aggregationNetworkSetup.get().getMyId().toString())
         .setClientClassName(clientClassName)
         .setData(ByteBuffer.wrap(data))
         .build();
-    final Connection<AggregationMessage> conn = aggregationNetworkSetup.get().getConnectionFactory()
+    final Connection<CentCommMsg> conn = aggregationNetworkSetup.get().getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(slaveId));
     conn.open();
     conn.write(msg);

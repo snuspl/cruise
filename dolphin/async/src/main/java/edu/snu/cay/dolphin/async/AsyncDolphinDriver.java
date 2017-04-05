@@ -24,7 +24,7 @@ import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.NumInitialResources;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
-import edu.snu.cay.common.aggregation.driver.AggregationManager;
+import edu.snu.cay.common.centcomm.driver.AggregationManager;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;

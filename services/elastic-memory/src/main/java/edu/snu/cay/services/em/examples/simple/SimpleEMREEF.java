@@ -16,7 +16,7 @@
 
 package edu.snu.cay.services.em.examples.simple;
 
-import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.AggregationConfiguration;
 import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;

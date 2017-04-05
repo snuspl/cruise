@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.slave.AggregationSlave;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
@@ -93,7 +93,7 @@ public class SSPWorkerClockTest {
         final AvroClockMsg initClockMsg =
             ClockManager.getReplyInitialClockMessage(INIT_GLOBAL_MIN_CLOCK, INIT_WORKER_CLOCK);
         final byte[] replyData = codec.encode(initClockMsg);
-        final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", replyData);
+        final CentCommMsg aggregationMessage = getTestCentCommMsg("worker", replyData);
         sspWorkerClockMessageHandler.onNext(aggregationMessage);
       } else if (sendMsg.getType() == ClockMsgType.TickMsg) {
         numberOfTickMsgCalls.incrementAndGet();
@@ -138,7 +138,7 @@ public class SSPWorkerClockTest {
 
     doAnswer(invocation -> {
       final byte[] data = invocation.getArgumentAt(2, byte[].class);
-      final AggregationMessage aggregationMessage = getTestAggregationMessage("worker", data);
+      final CentCommMsg aggregationMessage = getTestCentCommMsg("worker", data);
       sspWorkerClockMessageHandler.onNext(aggregationMessage);
       return null;
     }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
@@ -218,7 +218,7 @@ public class SSPWorkerClockTest {
     globalMinimumClock++;
     final byte[] broadcastClockMsgToKeepWait =
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
-    sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToKeepWait));
+    sspWorkerClockMessageHandler.onNext(getTestCentCommMsg("worker", broadcastClockMsgToKeepWait));
     assertTrue(isStale(sspWorkerClock, globalMinimumClock));
 
     // since threads are still blocked in waitIfExceedingStalenessBound(),
@@ -231,15 +231,15 @@ public class SSPWorkerClockTest {
     globalMinimumClock++;
     final byte[] broadcastClockMsgToTerminate =
         codec.encode(ClockManager.getBroadcastMinClockMessage(globalMinimumClock));
-    sspWorkerClockMessageHandler.onNext(getTestAggregationMessage("worker", broadcastClockMsgToTerminate));
+    sspWorkerClockMessageHandler.onNext(getTestCentCommMsg("worker", broadcastClockMsgToTerminate));
     assertFalse(isStale(sspWorkerClock, globalMinimumClock));
 
     // now all thread are released out of waitIfExceedingStalenessBound() and waiting at the barrier.
     barrier.await();
   }
 
-  private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
-    return AggregationMessage.newBuilder()
+  private CentCommMsg getTestCentCommMsg(final String workerId, final byte[] data) {
+    return CentCommMsg.newBuilder()
         .setSourceId(workerId)
         .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))

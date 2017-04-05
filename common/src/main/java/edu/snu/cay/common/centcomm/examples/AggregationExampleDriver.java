@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.examples;
+package edu.snu.cay.common.centcomm.examples;
 
-import edu.snu.cay.common.aggregation.driver.AggregationManager;
+import edu.snu.cay.common.centcomm.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ContextConfiguration;

@@ -13,31 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.ns;
+package edu.snu.cay.common.centcomm.ns;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
 /**
- * Codec for AggregationMessage.
+ * Codec for CentCommMsg.
  * Simply uses AvroUtils to encode and decode messages.
  */
-public final class AggregationMsgCodec implements Codec<AggregationMessage> {
+public final class AggregationMsgCodec implements Codec<CentCommMsg> {
 
   @Inject
   private AggregationMsgCodec() {
   }
 
   @Override
-  public byte[] encode(final AggregationMessage msg) {
-    return AvroUtils.toBytes(msg, AggregationMessage.class);
+  public byte[] encode(final CentCommMsg msg) {
+    return AvroUtils.toBytes(msg, CentCommMsg.class);
   }
 
   @Override
-  public AggregationMessage decode(final byte[] data) {
-    return AvroUtils.fromBytes(data, AggregationMessage.class);
+  public CentCommMsg decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, CentCommMsg.class);
   }
 }

@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Slave classes for Aggregation Service.
+ * Driver classes for Aggregation Service.
  */
-package edu.snu.cay.common.aggregation.slave;
+package edu.snu.cay.common.centcomm.driver;

@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes for Aggregation Service.
+ * NCS related classes for Aggregation Service.
  */
-package edu.snu.cay.common.aggregation;
+package edu.snu.cay.common.centcomm.ns;

@@ -16,7 +16,7 @@
 
 package edu.snu.cay.services.em.examples.remote;
 
-import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.AggregationConfiguration;
 import edu.snu.cay.services.em.common.parameters.EMParameters;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.EMConfProvider;

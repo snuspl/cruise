@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.ns;
+package edu.snu.cay.common.centcomm.ns;
 
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.tang.annotations.Parameter;

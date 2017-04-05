@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Parameters for Aggregation Service.
+ * Example applications using aggregation service.
  */
-package edu.snu.cay.common.aggregation.params;
+package edu.snu.cay.common.centcomm.examples;

@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.em.examples.simple;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
 import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.EMMaster;
@@ -41,7 +41,7 @@ import java.util.logging.Logger;
  * Also it runs Move between two evaluators randomly chosen when all evaluators say they are READY
  * and sends the result to all evaluators.
  */
-public final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
+public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
   private static final Random RANDOM = new Random();
 
@@ -78,7 +78,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
    * @throws RuntimeException if the received message is incorrect
    */
   @Override
-  public void onNext(final AggregationMessage message) {
+  public void onNext(final CentCommMsg message) {
     // let's assume that the message is always the READY msg
 
     LOG.log(Level.INFO, "Received message {0} from eval", message);

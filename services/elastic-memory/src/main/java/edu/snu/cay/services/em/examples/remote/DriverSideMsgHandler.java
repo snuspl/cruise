@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.em.examples.remote;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
@@ -38,7 +38,7 @@ import java.util.logging.Logger;
  * It sends response messages to all tasks when all messages from the tasks arrive.
  */
 @DriverSide
-final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
+final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
 
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
 
@@ -69,7 +69,7 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
    * @throws RuntimeException if the received message is incorrect
    */
   @Override
-  public void onNext(final AggregationMessage message) {
+  public void onNext(final CentCommMsg message) {
     LOG.log(Level.INFO, "Received aggregation message {0}", message);
     final String workerId = message.getSourceId().toString();
     final String data = codec.decode(message.getData().array());

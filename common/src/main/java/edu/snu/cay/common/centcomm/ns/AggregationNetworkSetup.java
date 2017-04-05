@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.ns;
+package edu.snu.cay.common.centcomm.ns;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.NetworkConnectionService;
@@ -34,7 +34,7 @@ public final class AggregationNetworkSetup {
   private final Identifier connectionFactoryIdentifier;
   private final AggregationMsgCodec codec;
   private final AggregationMsgHandler handler;
-  private ConnectionFactory<AggregationMessage> connectionFactory;
+  private ConnectionFactory<CentCommMsg> connectionFactory;
 
   @Inject
   private AggregationNetworkSetup(final NetworkConnectionService networkConnectionService,
@@ -47,7 +47,7 @@ public final class AggregationNetworkSetup {
     this.handler = handler;
   }
 
-  public ConnectionFactory<AggregationMessage> registerConnectionFactory(final Identifier localEndPointId) {
+  public ConnectionFactory<CentCommMsg> registerConnectionFactory(final Identifier localEndPointId) {
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryIdentifier,
         codec, handler, null, localEndPointId);
     return connectionFactory;
@@ -57,7 +57,7 @@ public final class AggregationNetworkSetup {
     networkConnectionService.unregisterConnectionFactory(connectionFactoryIdentifier);
   }
 
-  public ConnectionFactory<AggregationMessage> getConnectionFactory() {
+  public ConnectionFactory<CentCommMsg> getConnectionFactory() {
     if (connectionFactory == null) {
       throw new RuntimeException("A connection factory has not been registered yet.");
     }

@@ -23,7 +23,7 @@ import edu.snu.cay.dolphin.async.dashboard.DashboardLauncher;
 import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardEnabled;
 import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardPort;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
-import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;

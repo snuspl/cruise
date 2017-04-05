@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.BroadcastMinClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
@@ -255,10 +255,10 @@ public final class ClockManager {
     }
   }
 
-  public final class MessageHandler implements EventHandler<AggregationMessage> {
+  public final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final AggregationMessage aggregationMessage) {
+    public void onNext(final CentCommMsg aggregationMessage) {
       final AvroClockMsg rcvMsg = codec.decode(aggregationMessage.getData().array());
       final String workerId = aggregationMessage.getSourceId().toString();
       switch (rcvMsg.getType()) {

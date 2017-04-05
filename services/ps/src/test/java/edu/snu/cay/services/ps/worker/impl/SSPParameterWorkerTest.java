@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.slave.AggregationSlave;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
@@ -26,8 +26,8 @@ import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.EnforceLoggingLevelRule;
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
@@ -136,7 +136,7 @@ public final class SSPParameterWorkerTest {
     final AvroClockMsg initClockMsg =
         ClockManager.getReplyInitialClockMessage(INIT_GLOBAL_MIN_CLOCK, INIT_WORKER_CLOCK);
     final byte[] replyData = codec.encode(initClockMsg);
-    final AggregationMessage aggregationMessage = getTestAggregationMessage(DRIVER_ID, replyData);
+    final CentCommMsg aggregationMessage = getTestCentCommMsg(DRIVER_ID, replyData);
     sspWorkerClockMessageHandler.onNext(aggregationMessage);
   }
 
@@ -150,7 +150,7 @@ public final class SSPParameterWorkerTest {
     // The message handler responds to the Aggregation message from Driver, which consists of the global minimum clock.
     doAnswer(invocation -> {
       final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
-      final AggregationMessage aggregationMessage = getTestAggregationMessage(DRIVER_ID, initClockMsgData);
+      final CentCommMsg aggregationMessage = getTestCentCommMsg(DRIVER_ID, initClockMsgData);
       sspWorkerClockMessageHandler.onNext(aggregationMessage);
       return null;
     }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
@@ -441,8 +441,8 @@ public final class SSPParameterWorkerTest {
     executorService.shutdownNow();
   }
 
-  private AggregationMessage getTestAggregationMessage(final String senderId, final byte[] data) {
-    return AggregationMessage.newBuilder()
+  private CentCommMsg getTestCentCommMsg(final String senderId, final byte[] data) {
+    return CentCommMsg.newBuilder()
         .setSourceId(senderId)
         .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))

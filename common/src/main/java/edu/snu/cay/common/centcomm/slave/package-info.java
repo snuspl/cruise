@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Example applications using aggregation service.
+ * Slave classes for Aggregation Service.
  */
-package edu.snu.cay.common.aggregation.examples;
+package edu.snu.cay.common.centcomm.slave;

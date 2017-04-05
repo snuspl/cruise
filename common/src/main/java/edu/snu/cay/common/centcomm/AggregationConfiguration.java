@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation;
+package edu.snu.cay.common.centcomm;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.ns.NetworkDriverRegister;
-import edu.snu.cay.common.aggregation.params.AggregationClientHandlers;
-import edu.snu.cay.common.aggregation.params.AggregationClientInfo;
-import edu.snu.cay.common.aggregation.params.SerializedAggregationSlavesConf;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.ns.NetworkDriverRegister;
+import edu.snu.cay.common.centcomm.params.AggregationClientHandlers;
+import edu.snu.cay.common.centcomm.params.AggregationClientInfo;
+import edu.snu.cay.common.centcomm.params.SerializedAggregationSlavesConf;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.driver.parameters.DriverStartHandler;
 import org.apache.reef.io.network.util.Pair;
@@ -53,17 +53,17 @@ public final class AggregationConfiguration {
   /**
    * Master-side message handlers for each client.
    */
-  private final List<Class<? extends EventHandler<AggregationMessage>>> masterSideMsgHandlers;
+  private final List<Class<? extends EventHandler<CentCommMsg>>> masterSideMsgHandlers;
 
   /**
    * Slave-side message handlers for each client.
    */
-  private final List<Class<? extends EventHandler<AggregationMessage>>> slaveSideMsgHandlers;
+  private final List<Class<? extends EventHandler<CentCommMsg>>> slaveSideMsgHandlers;
 
   private AggregationConfiguration(
       final List<String> aggregationClientNames,
-      final List<Class<? extends EventHandler<AggregationMessage>>> masterSideMsgHandlers,
-      final List<Class<? extends EventHandler<AggregationMessage>>> slaveSideMsgHandlers) {
+      final List<Class<? extends EventHandler<CentCommMsg>>> masterSideMsgHandlers,
+      final List<Class<? extends EventHandler<CentCommMsg>>> slaveSideMsgHandlers) {
     this.aggregationClientNames = aggregationClientNames;
     this.masterSideMsgHandlers = masterSideMsgHandlers;
     this.slaveSideMsgHandlers = slaveSideMsgHandlers;
@@ -109,8 +109,8 @@ public final class AggregationConfiguration {
   }
 
   public static class Builder implements org.apache.reef.util.Builder<AggregationConfiguration> {
-    private Map<String, Pair<Class<? extends EventHandler<AggregationMessage>>,
-        Class<? extends EventHandler<AggregationMessage>>>> aggregationClients = new HashMap<>();
+    private Map<String, Pair<Class<? extends EventHandler<CentCommMsg>>,
+        Class<? extends EventHandler<CentCommMsg>>>> aggregationClients = new HashMap<>();
 
     /**
      * Add a new client of Aggregation Service.
@@ -120,20 +120,20 @@ public final class AggregationConfiguration {
      * @return Builder
      */
     public Builder addAggregationClient(final String clientName,
-                                        final Class<? extends EventHandler<AggregationMessage>> masterSideMsgHandler,
-                                        final Class<? extends EventHandler<AggregationMessage>> slaveSideMsgHandler) {
+                                        final Class<? extends EventHandler<CentCommMsg>> masterSideMsgHandler,
+                                        final Class<? extends EventHandler<CentCommMsg>> slaveSideMsgHandler) {
       this.aggregationClients.put(clientName,
-          new Pair<Class<? extends EventHandler<AggregationMessage>>,
-              Class<? extends EventHandler<AggregationMessage>>>(masterSideMsgHandler, slaveSideMsgHandler));
+          new Pair<Class<? extends EventHandler<CentCommMsg>>,
+              Class<? extends EventHandler<CentCommMsg>>>(masterSideMsgHandler, slaveSideMsgHandler));
       return this;
     }
 
     @Override
     public AggregationConfiguration build() {
       final List<String> aggregationClientNames = new ArrayList<>(aggregationClients.size());
-      final List<Class<? extends EventHandler<AggregationMessage>>> aggregationMasterHandlers
+      final List<Class<? extends EventHandler<CentCommMsg>>> aggregationMasterHandlers
           = new ArrayList<>(aggregationClients.size());
-      final List<Class<? extends EventHandler<AggregationMessage>>> aggregationSlaveHandlers
+      final List<Class<? extends EventHandler<CentCommMsg>>> aggregationSlaveHandlers
           = new ArrayList<>(aggregationClients.size());
       for (final String key : aggregationClients.keySet()) {
         aggregationClientNames.add(key);

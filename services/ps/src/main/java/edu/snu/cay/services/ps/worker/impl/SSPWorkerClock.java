@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.slave.AggregationSlave;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.avro.RequestInitClockMsg;
@@ -149,10 +149,10 @@ public final class SSPWorkerClock implements WorkerClock {
     notifyAll();
   }
 
-  public final class MessageHandler implements EventHandler<AggregationMessage> {
+  public final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final AggregationMessage aggregationMessage) {
+    public void onNext(final CentCommMsg aggregationMessage) {
       final AvroClockMsg avroClockMsg = codec.decode(aggregationMessage.getData().array());
       switch (avroClockMsg.getType()) {
       case ReplyInitClockMsg:

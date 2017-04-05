@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.examples;
+package edu.snu.cay.common.centcomm.examples;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.driver.AggregationMaster;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -40,7 +40,7 @@ import java.util.logging.Logger;
  * It sends response messages to all tasks when all messages from the tasks arrive.
  */
 @DriverSide
-public final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
+public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
 
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
 
@@ -67,7 +67,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
    * @throws RuntimeException if the received message is incorrect
    */
   @Override
-  public void onNext(final AggregationMessage message) {
+  public void onNext(final CentCommMsg message) {
     LOG.log(Level.INFO, "Received aggregation message {0}", message);
     final String slaveId = message.getSourceId().toString();
     final String data = codec.decode(message.getData().array());

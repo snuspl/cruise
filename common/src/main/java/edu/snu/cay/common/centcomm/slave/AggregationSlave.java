@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.slave;
+package edu.snu.cay.common.centcomm.slave;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.ns.AggregationNetworkSetup;
-import edu.snu.cay.common.aggregation.ns.MasterId;
+import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.ns.AggregationNetworkSetup;
+import edu.snu.cay.common.centcomm.ns.MasterId;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -37,7 +37,7 @@ import java.nio.ByteBuffer;
 public final class AggregationSlave {
 
   /**
-   * A network setup instance for AggregationMessage. It should be wrapped with InjectionFuture
+   * A network setup instance for CentCommMsg. It should be wrapped with InjectionFuture
    * since there would be a loopy constructor when users use AggregationSlave in their
    * aggregation message handlers.
    */
@@ -62,12 +62,12 @@ public final class AggregationSlave {
    * @param data data which is encoded as a byte array
    */
   public void send(final String clientClassName, final byte[] data) {
-    final AggregationMessage msg = AggregationMessage.newBuilder()
+    final CentCommMsg msg = CentCommMsg.newBuilder()
         .setSourceId(aggregationNetworkSetup.get().getMyId().toString())
         .setClientClassName(clientClassName)
         .setData(ByteBuffer.wrap(data))
         .build();
-    final Connection<AggregationMessage> conn = aggregationNetworkSetup.get().
+    final Connection<CentCommMsg> conn = aggregationNetworkSetup.get().
         getConnectionFactory().newConnection(masterId);
     try {
       conn.open();
