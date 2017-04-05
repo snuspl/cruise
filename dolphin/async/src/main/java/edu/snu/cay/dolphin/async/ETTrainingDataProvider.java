@@ -24,6 +24,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -87,7 +89,20 @@ public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<
 
     final Map<K, V> nextTrainingData = new HashMap<>();
     for (final K key : nextTrainingDataKeyList) {
-      final V value = trainingDataTable.get(key);
+      final Future<V> future = trainingDataTable.get(key);
+
+      V value;
+      while (true) {
+        try {
+          value = future.get();
+          break;
+        } catch (InterruptedException e) {
+          // ignore and keep waiting
+        } catch (ExecutionException e) {
+          throw new RuntimeException(e);
+        }
+      }
+
       if (value == null) {
         continue;
       }
