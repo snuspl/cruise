@@ -82,9 +82,10 @@ public final class Parameters {
   public final class OptimizationBenefitThreshold implements Name<Double> {
   }
 
-  @NamedParameter(doc = "Network bandwidth of machines to be used if not specified, which is 1G (approx. 1.07E9) bps.",
+  @NamedParameter(doc = "Network bandwidth of machines to be used if not specified. " +
+      "Its default value is 1G (approx. 1.07E9) bps.",
       short_name = "default_bandwidth",
-      default_value = "1.07e9")
+      default_value = "1.074e9")
   public final class DefaultNetworkBandwidth implements Name<Double> {
   }
 

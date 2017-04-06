@@ -13,6 +13,6 @@
 # limitations under the License.
 
 # name: sample_host_to_bandwidth
-# description: A sample file that consists of a mapping from host to bandwidth.
-# 						 Each line should be written as "hostname bandwidth" (see below).
-localhost 1.073e9
+# description: A sample file that consists of a mapping from hostname to network bandwidth.
+# Each line should be written as "hostname bandwidth" (see below).
+localhost 1.074e9
