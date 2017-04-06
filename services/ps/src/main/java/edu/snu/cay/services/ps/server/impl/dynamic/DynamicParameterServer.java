@@ -27,6 +27,7 @@ import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.parameters.ServerMetricsWindowMs;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
+import edu.snu.cay.utils.HostnameResolver;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -147,6 +148,10 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
    */
   private int windowIndex = 0;
 
+  /**
+   * Hostname of the machine which this server runs on.
+   */
+  private final String hostname;
 
   @Inject
   private DynamicParameterServer(final MemoryStore<HashedKey<K>> memoryStore,
@@ -172,6 +177,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
     this.pullWaitStats = Statistics.newInstances(numThreads);
     this.metricsMsgSender = metricsMsgSender;
     this.metricsWindowMs = metricsWindowMs;
+    this.hostname = HostnameResolver.resolve();
 
     // Execute a thread to send metrics.
     Executors.newSingleThreadExecutor().submit(this::sendMetrics);
@@ -266,6 +272,7 @@ public final class DynamicParameterServer<K, P, V> implements ParameterServer<K,
             .setTotalPushProcessingTimeSec(totalPushStat.getSecond() / 1e9D)
             .setTotalPullWaitingTimeSec(totalPullWaitStats.getSecond() / 1e9D)
             .setTotalPushWaitingTimeSec(totalPushWaitStats.getSecond() / 1e9D)
+            .setHostname(hostname)
             .build();
 
         LOG.log(Level.FINE, "Sending ServerMetrics {0}", metricsMessage);
