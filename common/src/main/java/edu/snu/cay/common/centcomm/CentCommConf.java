@@ -40,7 +40,7 @@ import java.util.Map;
  * Configuration class for CeneComm Service.
  * Provides configuration for REEF driver.
  * Current implementation assumes that the driver is the master of Cent Comm Service.
- * A client of Aggregation Service is a user of this service, which is different from REEF client.
+ * A client of CentComm Service is a user of this service, which is different from REEF client.
  */
 @ClientSide
 public final class CentCommConf {
