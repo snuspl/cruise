@@ -22,6 +22,7 @@ import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
+import edu.snu.cay.utils.HostnameResolver;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
@@ -56,6 +57,7 @@ final class AsyncWorkerTask<K, V> implements Task {
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
   private final WorkerClock workerClock;
   private final boolean addedEval;
+  private final String hostname;
 
   /**
    * A boolean flag shared among all trainer threads.
@@ -86,6 +88,7 @@ final class AsyncWorkerTask<K, V> implements Task {
     this.trainer = trainer;
     this.metricsMsgSender = metricsMsgSender;
     this.workerClock = workerClock;
+    this.hostname = HostnameResolver.resolve();
   }
 
   @Override
@@ -186,6 +189,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         .setAvgPullTime(miniBatchResult.getAvgPullTime())
         .setAvgPushTime(miniBatchResult.getAvgPushTime())
         .setParameterWorkerMetrics(parameterWorker.buildAndResetMetrics())
+        .setHostname(hostname)
         .build();
 
     LOG.log(Level.INFO, "MiniBatchMetrics {0}", miniBatchMetric);
@@ -205,6 +209,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         .setProcessedDataItemCount(processedDataItemCount)
         .setNumDataBlocks(numDataBlocks)
         .setTotalTime(epochElapsedTime)
+        .setHostname(hostname)
         .build();
 
     LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
