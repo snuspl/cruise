@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -51,7 +51,7 @@ final class SynchronizationManager {
 
   private static final byte[] EMPTY_DATA = new byte[0];
 
-  static final String AGGREGATION_CLIENT_NAME = SynchronizationManager.class.getName();
+  static final String CENT_COMM_CLIENT_NAME = SynchronizationManager.class.getName();
 
   /**
    * A latch that releases waiting threads when workers finish initialization.
@@ -69,7 +69,7 @@ final class SynchronizationManager {
    */
   private boolean allowCleanup = false;
 
-  private final AggregationMaster aggregationMaster;
+  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
 
   private final Codec<Enum> codec;
 
@@ -94,10 +94,10 @@ final class SynchronizationManager {
   private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Inject
-  private SynchronizationManager(final AggregationMaster aggregationMaster,
+  private SynchronizationManager(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
                                  final SerializableCodec<Enum> codec,
                                  final DataLoadingService dataLoadingService) {
-    this.aggregationMaster = aggregationMaster;
+    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.codec = codec;
 
     // TODO #452: Decouple numWorkers from data input splits
@@ -269,7 +269,7 @@ final class SynchronizationManager {
 
   private void sendResponseMessage(final String workerId, final byte[] data) {
     try {
-      aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
+      masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, workerId, data);
     } catch (final NetworkException e) {
       LOG.log(Level.INFO, "Target worker has been removed.", e);
     }
@@ -286,10 +286,10 @@ final class SynchronizationManager {
   final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final CentCommMsg aggregationMessage) {
+    public void onNext(final CentCommMsg centCommMsg) {
       synchronized (SynchronizationManager.this) {
-        final String workerId = aggregationMessage.getSourceId().toString();
-        final State localState = (State) codec.decode(aggregationMessage.getData().array());
+        final String workerId = centCommMsg.getSourceId().toString();
+        final State localState = (State) codec.decode(centCommMsg.getData().array());
         final State globalState = (State) globalStateMachine.getCurrentState();
 
         // In case when a worker's local state is behind the globally synchronized state,

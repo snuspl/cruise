@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.centcomm.driver.AggregationManager;
+import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
@@ -81,7 +81,7 @@ public final class ETDolphinDriver {
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
                           final ConfigurationSerializer confSerializer,
-                          final AggregationManager aggregationManager,
+                          final CentCommConfProvider centCommConfProvider,
                           @Parameter(NumServers.class) final int numServers,
                           @Parameter(ServerMemSize.class) final int serverMemSize,
                           @Parameter(NumServerCores.class) final int numServerCores,
@@ -112,8 +112,8 @@ public final class ETDolphinDriver {
     this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
 
     // configuration for worker executors
-    this.aggrContextConf = aggregationManager.getContextConfiguration();
-    this.aggrServiceConf = aggregationManager.getServiceConfigurationWithoutNameResolver();
+    this.aggrContextConf = centCommConfProvider.getContextConfiguration();
+    this.aggrServiceConf = centCommConfProvider.getServiceConfWithoutNameResolver();
   }
 
   private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {

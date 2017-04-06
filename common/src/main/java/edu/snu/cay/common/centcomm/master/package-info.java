@@ -13,14 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.centcomm.params;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-import java.util.Set;
-
-@NamedParameter(doc = "Information for Aggregation Service clients." +
-    "Encoded as ClientClassName//MasterHandlerClassName//SlaveHandlerClassName")
-public final class AggregationClientInfo implements Name<Set<String>> {
-}
+/**
+ * Driver classes for Aggregation Service.
+ */
+package edu.snu.cay.common.centcomm.master;

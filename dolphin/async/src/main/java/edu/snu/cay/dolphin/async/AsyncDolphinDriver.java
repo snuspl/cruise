@@ -24,7 +24,7 @@ import edu.snu.cay.dolphin.async.metric.WorkerMetricsMsgSender;
 import edu.snu.cay.dolphin.async.optimizer.*;
 import edu.snu.cay.dolphin.async.optimizer.parameters.NumInitialResources;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
-import edu.snu.cay.common.centcomm.driver.AggregationManager;
+import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
@@ -131,7 +131,7 @@ public final class AsyncDolphinDriver {
   /**
    * Exchange messages between the driver and evaluators.
    */
-  private final AggregationManager aggregationManager;
+  private final CentCommConfProvider centCommConfProvider;
 
   /**
    * Manage metrics (drop metrics if inappropriate) from evaluators.
@@ -302,7 +302,7 @@ public final class AsyncDolphinDriver {
                              final Injector injector,
                              final IdentifierFactory identifierFactory,
                              @Parameter(DriverIdentifier.class) final String driverIdStr,
-                             final AggregationManager aggregationManager,
+                             final CentCommConfProvider centCommConfProvider,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
                              @Parameter(SerializedServerConfiguration.class) final String serializedServerConf,
@@ -330,7 +330,7 @@ public final class AsyncDolphinDriver {
     this.initServerCount = numServers;
     this.identifierFactory = identifierFactory;
     this.driverIdStr = driverIdStr;
-    this.aggregationManager = aggregationManager;
+    this.centCommConfProvider = centCommConfProvider;
     this.metricManager = metricManager;
 
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
@@ -551,7 +551,7 @@ public final class AsyncDolphinDriver {
                 .build(),
             psDriver.getServerContextConfiguration(),
             serverEMWrapper.getConfProvider().getContextConfiguration(),
-            aggregationManager.getContextConfiguration());
+            centCommConfProvider.getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getServerServiceConfiguration(contextId),
             Tang.Factory.getTang().newConfigurationBuilder(
@@ -559,7 +559,7 @@ public final class AsyncDolphinDriver {
                     .getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
                 .build(),
-            aggregationManager.getServiceConfigurationWithoutNameResolver(),
+            centCommConfProvider.getServiceConfWithoutNameResolver(),
             getMetricsCollectionServiceConfForServer());
 
         final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
@@ -611,12 +611,12 @@ public final class AsyncDolphinDriver {
                 .build(),
             psDriver.getWorkerContextConfiguration(),
             workerEMWrapper.getConfProvider().getContextConfiguration(),
-            aggregationManager.getContextConfiguration());
+            centCommConfProvider.getContextConfiguration());
 
         final Configuration serviceConf = Configurations.merge(
             psDriver.getWorkerServiceConfiguration(contextId),
             getEMServiceConfForWorker(contextId, addedEval),
-            aggregationManager.getServiceConfigurationWithoutNameResolver(),
+            centCommConfProvider.getServiceConfWithoutNameResolver(),
             getMetricsCollectionServiceConfForWorker());
         final Configuration traceConf = traceParameters.getConfiguration();
 

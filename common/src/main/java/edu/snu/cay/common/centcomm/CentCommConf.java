@@ -15,11 +15,11 @@
  */
 package edu.snu.cay.common.centcomm;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.common.centcomm.ns.NetworkDriverRegister;
-import edu.snu.cay.common.centcomm.params.AggregationClientHandlers;
-import edu.snu.cay.common.centcomm.params.AggregationClientInfo;
-import edu.snu.cay.common.centcomm.params.SerializedAggregationSlavesConf;
+import edu.snu.cay.common.centcomm.params.CentCommClientHandlers;
+import edu.snu.cay.common.centcomm.params.CentCommClientInfo;
+import edu.snu.cay.common.centcomm.params.SerializedCentCommSlavesConf;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.driver.parameters.DriverStartHandler;
 import org.apache.reef.io.network.util.Pair;
@@ -43,12 +43,12 @@ import java.util.Map;
  * A client of Aggregation Service is a user of this service, which is different from REEF client.
  */
 @ClientSide
-public final class AggregationConfiguration {
+public final class CentCommConf {
 
   /**
    * Names of the clients of Aggregation Service.
    */
-  private final List<String> aggregationClientNames;
+  private final List<String> centCommClientNames;
 
   /**
    * Master-side message handlers for each client.
@@ -60,11 +60,11 @@ public final class AggregationConfiguration {
    */
   private final List<Class<? extends EventHandler<CentCommMsg>>> slaveSideMsgHandlers;
 
-  private AggregationConfiguration(
-      final List<String> aggregationClientNames,
+  private CentCommConf(
+      final List<String> centCommClientNames,
       final List<Class<? extends EventHandler<CentCommMsg>>> masterSideMsgHandlers,
       final List<Class<? extends EventHandler<CentCommMsg>>> slaveSideMsgHandlers) {
-    this.aggregationClientNames = aggregationClientNames;
+    this.centCommClientNames = centCommClientNames;
     this.masterSideMsgHandlers = masterSideMsgHandlers;
     this.slaveSideMsgHandlers = slaveSideMsgHandlers;
   }
@@ -84,63 +84,62 @@ public final class AggregationConfiguration {
 
     // To match clients' name and handlers, encode the class names of handlers and the client name
     // using delimiter "//" which cannot be included in Java class name.
-    for (int i = 0; i < aggregationClientNames.size(); i++) {
-      commonConfBuilder.bindSetEntry(AggregationClientInfo.class,
+    for (int i = 0; i < centCommClientNames.size(); i++) {
+      commonConfBuilder.bindSetEntry(CentCommClientInfo.class,
           String.format("%s//%s//%s",
-              aggregationClientNames.get(i),
+              centCommClientNames.get(i),
               masterSideMsgHandlers.get(i).getName(),
               slaveSideMsgHandlers.get(i).getName()));
-      driverConfBuilder.bindSetEntry(AggregationClientHandlers.class, masterSideMsgHandlers.get(i));
-      slaveConfBuilder.bindSetEntry(AggregationClientHandlers.class, slaveSideMsgHandlers.get(i));
+      driverConfBuilder.bindSetEntry(CentCommClientHandlers.class, masterSideMsgHandlers.get(i));
+      slaveConfBuilder.bindSetEntry(CentCommClientHandlers.class, slaveSideMsgHandlers.get(i));
     }
 
     final Configuration commonConf = commonConfBuilder.build();
     final String serializedSlaveConf
         = confSerializer.toString(Configurations.merge(commonConf, slaveConfBuilder.build()));
-    driverConfBuilder.bindNamedParameter(SerializedAggregationSlavesConf.class, serializedSlaveConf);
+    driverConfBuilder.bindNamedParameter(SerializedCentCommSlavesConf.class, serializedSlaveConf);
     return Configurations.merge(commonConf, driverConfBuilder.build());
   }
 
   /**
-   * @return new builder for {@link AggregationConfiguration}
+   * @return new builder for {@link CentCommConf}
    */
   public static Builder newBuilder() {
     return new Builder();
   }
 
-  public static class Builder implements org.apache.reef.util.Builder<AggregationConfiguration> {
+  public static class Builder implements org.apache.reef.util.Builder<CentCommConf> {
     private Map<String, Pair<Class<? extends EventHandler<CentCommMsg>>,
-        Class<? extends EventHandler<CentCommMsg>>>> aggregationClients = new HashMap<>();
+        Class<? extends EventHandler<CentCommMsg>>>> centCommClients = new HashMap<>();
 
     /**
      * Add a new client of Aggregation Service.
      * @param clientName name of Aggregation Service client, used to identify messages from different clients
-     * @param masterSideMsgHandler message handler for aggregation master
-     * @param slaveSideMsgHandler message handler for aggregation slave
+     * @param masterSideMsgHandler message handler for CentComm master
+     * @param slaveSideMsgHandler message handler for CentComm slave
      * @return Builder
      */
-    public Builder addAggregationClient(final String clientName,
-                                        final Class<? extends EventHandler<CentCommMsg>> masterSideMsgHandler,
-                                        final Class<? extends EventHandler<CentCommMsg>> slaveSideMsgHandler) {
-      this.aggregationClients.put(clientName,
-          new Pair<Class<? extends EventHandler<CentCommMsg>>,
-              Class<? extends EventHandler<CentCommMsg>>>(masterSideMsgHandler, slaveSideMsgHandler));
+    public Builder addCentCommClient(final String clientName,
+                                     final Class<? extends EventHandler<CentCommMsg>> masterSideMsgHandler,
+                                     final Class<? extends EventHandler<CentCommMsg>> slaveSideMsgHandler) {
+      this.centCommClients.put(clientName,
+          new Pair<>(masterSideMsgHandler, slaveSideMsgHandler));
       return this;
     }
 
     @Override
-    public AggregationConfiguration build() {
-      final List<String> aggregationClientNames = new ArrayList<>(aggregationClients.size());
-      final List<Class<? extends EventHandler<CentCommMsg>>> aggregationMasterHandlers
-          = new ArrayList<>(aggregationClients.size());
-      final List<Class<? extends EventHandler<CentCommMsg>>> aggregationSlaveHandlers
-          = new ArrayList<>(aggregationClients.size());
-      for (final String key : aggregationClients.keySet()) {
-        aggregationClientNames.add(key);
-        aggregationMasterHandlers.add(aggregationClients.get(key).getFirst());
-        aggregationSlaveHandlers.add(aggregationClients.get(key).getSecond());
+    public CentCommConf build() {
+      final List<String> centCommClientNames = new ArrayList<>(centCommClients.size());
+      final List<Class<? extends EventHandler<CentCommMsg>>> centCommMasterHandlers
+          = new ArrayList<>(centCommClients.size());
+      final List<Class<? extends EventHandler<CentCommMsg>>> centCommSlaveHandlers
+          = new ArrayList<>(centCommClients.size());
+      for (final String key : centCommClients.keySet()) {
+        centCommClientNames.add(key);
+        centCommMasterHandlers.add(centCommClients.get(key).getFirst());
+        centCommSlaveHandlers.add(centCommClients.get(key).getSecond());
       }
-      return new AggregationConfiguration(aggregationClientNames, aggregationMasterHandlers, aggregationSlaveHandlers);
+      return new CentCommConf(centCommClientNames, centCommMasterHandlers, centCommSlaveHandlers);
     }
   }
 }

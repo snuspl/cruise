@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.avro.RequestInitClockMsg;
@@ -46,7 +46,7 @@ import java.util.logging.Logger;
 public final class SSPWorkerClock implements WorkerClock {
   private static final Logger LOG = Logger.getLogger(SSPWorkerClock.class.getName());
 
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
 
   private final ClockMsgCodec codec;
 
@@ -73,10 +73,10 @@ public final class SSPWorkerClock implements WorkerClock {
 
   @Inject
   private SSPWorkerClock(@Parameter(StalenessBound.class) final int stalenessBound,
-                         final AggregationSlave aggregationSlave,
+                         final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
                          final ClockMsgCodec codec) {
     this.stalenessBound = stalenessBound;
-    this.aggregationSlave = aggregationSlave;
+    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.codec = codec;
     this.initLatch = new CountDownLatch(1);
     this.workerClock = -1;
@@ -93,7 +93,7 @@ public final class SSPWorkerClock implements WorkerClock {
         .build();
     final byte[] data = codec.encode(avroClockMsg);
     final long beginTime = System.currentTimeMillis();
-    aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
 
     // wait until to get current global minimum clock and initial worker clock
     try {
@@ -114,7 +114,7 @@ public final class SSPWorkerClock implements WorkerClock {
             .build();
     final byte[] data = codec.encode(avroClockMsg);
     final long beginTime = System.currentTimeMillis();
-    aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
     clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
   }
 
@@ -152,8 +152,8 @@ public final class SSPWorkerClock implements WorkerClock {
   public final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final CentCommMsg aggregationMessage) {
-      final AvroClockMsg avroClockMsg = codec.decode(aggregationMessage.getData().array());
+    public void onNext(final CentCommMsg centCommMsg) {
+      final AvroClockMsg avroClockMsg = codec.decode(centCommMsg.getData().array());
       switch (avroClockMsg.getType()) {
       case ReplyInitClockMsg:
         globalMinimumClock = avroClockMsg.getReplyInitClockMsg().getGlobalMinClock();

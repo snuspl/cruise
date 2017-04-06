@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.common.centcomm.examples;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -35,7 +35,7 @@ import java.util.logging.Logger;
 
 /**
  * Driver-side message handler.
- * This receives aggregation messages, since driver is an aggregation master.
+ * This receives CentComm messages, since driver is an CentComm master.
  * Provides a way to check whether all messages have arrived or not via {@code validate()} method.
  * It sends response messages to all tasks when all messages from the tasks arrive.
  */
@@ -46,16 +46,16 @@ public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
 
   public static final String MSG_FROM_DRIVER = "MSG_FROM_DRIVER";
 
-  private final AggregationMaster aggregationMaster;
+  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
   private final Codec<String> codec;
   private final CountDownLatch msgCountDown;
   private final Set<String> slaveIds;
 
   @Inject
-  private DriverSideMsgHandler(final AggregationMaster aggregationMaster,
+  private DriverSideMsgHandler(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
                                @Parameter(Parameters.Splits.class) final int split,
                                final SerializableCodec<String> codec) {
-    this.aggregationMaster = aggregationMaster;
+    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.codec = codec;
     this.msgCountDown = new CountDownLatch(split);
     this.slaveIds = Collections.synchronizedSet(new HashSet<String>(split));
@@ -63,12 +63,12 @@ public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
 
   /**
    * Aggregation message handling logic.
-   * @param message received aggregation message
+   * @param message received CentComm message
    * @throws RuntimeException if the received message is incorrect
    */
   @Override
   public void onNext(final CentCommMsg message) {
-    LOG.log(Level.INFO, "Received aggregation message {0}", message);
+    LOG.log(Level.INFO, "Received CentComm message {0}", message);
     final String slaveId = message.getSourceId().toString();
     final String data = codec.decode(message.getData().array());
 
@@ -80,10 +80,10 @@ public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
 
     // checks that slaveId of the message is WORKER_CONTEXT_PREFIX + index,
     // and data of the message is TASK_PREFIX + index.
-    if (slaveId.startsWith(AggregationExampleDriver.WORKER_CONTEXT_PREFIX)
-        && data.startsWith(AggregationExampleDriver.TASK_PREFIX)
-        && slaveId.substring(AggregationExampleDriver.WORKER_CONTEXT_PREFIX.length())
-        .equals(data.substring(AggregationExampleDriver.TASK_PREFIX.length()))) {
+    if (slaveId.startsWith(CentCommExampleDriver.WORKER_CONTEXT_PREFIX)
+        && data.startsWith(CentCommExampleDriver.TASK_PREFIX)
+        && slaveId.substring(CentCommExampleDriver.WORKER_CONTEXT_PREFIX.length())
+        .equals(data.substring(CentCommExampleDriver.TASK_PREFIX.length()))) {
       msgCountDown.countDown();
     } else {
       throw new RuntimeException(String.format("SlaveId %s should not send message with data %s.", slaveId, data));
@@ -110,7 +110,8 @@ public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
     for (final String slaveId : slaveIds) {
       LOG.log(Level.INFO, "Sending a message to {0}", slaveId);
       try {
-        aggregationMaster.send(AggregationExampleDriver.AGGREGATION_CLIENT_ID, slaveId, codec.encode(MSG_FROM_DRIVER));
+        masterSideCentCommMsgSender.send(CentCommExampleDriver.CENT_COMM_CLIENT_ID, slaveId,
+            codec.encode(MSG_FROM_DRIVER));
       } catch (final NetworkException e) {
         throw new RuntimeException(e);
       }

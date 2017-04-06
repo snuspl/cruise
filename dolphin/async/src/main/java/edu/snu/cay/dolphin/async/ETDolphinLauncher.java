@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 package edu.snu.cay.dolphin.async;
-import edu.snu.cay.common.centcomm.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.CentCommConf;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
@@ -255,8 +255,8 @@ public final class ETDolphinLauncher {
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
-    final AggregationConfiguration aggrServiceConf = AggregationConfiguration.newBuilder()
-        .addAggregationClient(WorkerStateManager.AGGREGATION_CLIENT_NAME,
+    final CentCommConf aggrServiceConf = CentCommConf.newBuilder()
+        .addCentCommClient(WorkerStateManager.AGGREGATION_CLIENT_NAME,
             WorkerStateManager.MessageHandler.class,
             WorkerGlobalBarrier.MessageHandler.class)
         .build();

@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -49,7 +49,7 @@ final class WorkerStateManager {
 
   static final String AGGREGATION_CLIENT_NAME = WorkerStateManager.class.getName();
 
-  private final AggregationMaster aggregationMaster;
+  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
 
   private final Codec<State> codec;
 
@@ -73,10 +73,10 @@ final class WorkerStateManager {
   private final Set<String> blockedWorkerIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Inject
-  private WorkerStateManager(final AggregationMaster aggregationMaster,
+  private WorkerStateManager(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
                              @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers,
                              final SerializableCodec<State> codec) {
-    this.aggregationMaster = aggregationMaster;
+    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.numWorkers = numWorkers;
     LOG.log(Level.INFO, "Initialized with NumWorkers: {0}", numWorkers);
     this.codec = codec;
@@ -138,7 +138,7 @@ final class WorkerStateManager {
 
   private void sendResponseMessage(final String workerId) {
     try {
-      aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, EMPTY_DATA);
+      masterSideCentCommMsgSender.send(AGGREGATION_CLIENT_NAME, workerId, EMPTY_DATA);
     } catch (final NetworkException e) {
       LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
     }
@@ -212,9 +212,9 @@ final class WorkerStateManager {
   final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final CentCommMsg aggregationMessage) {
-      final String workerId = aggregationMessage.getSourceId().toString();
-      final State localState = codec.decode(aggregationMessage.getData().array());
+    public void onNext(final CentCommMsg centCommMsg) {
+      final String workerId = centCommMsg.getSourceId().toString();
+      final State localState = codec.decode(centCommMsg.getData().array());
 
       onWorkerMsg(workerId, localState);
     }

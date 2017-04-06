@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.common.centcomm.examples;
 
-import edu.snu.cay.common.centcomm.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.CentCommConf;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -39,11 +39,11 @@ import java.util.logging.Logger;
 /**
  * Aggregation Service Example.
  */
-public final class AggregationExampleREEF {
-  private static final Logger LOG = Logger.getLogger(AggregationExampleREEF.class.getName());
+public final class CentCommExampleREEF {
+  private static final Logger LOG = Logger.getLogger(CentCommExampleREEF.class.getName());
 
   @Inject
-  private AggregationExampleREEF() {
+  private CentCommExampleREEF() {
   }
 
   public static void main(final String[] args) {
@@ -75,15 +75,15 @@ public final class AggregationExampleREEF {
 
   private static Configuration getDriverConfiguration(final Configuration commandLineConf) {
     final Configuration driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AggregationExampleDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(CentCommExampleDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, "AggregationExample")
-        .set(DriverConfiguration.ON_DRIVER_STARTED, AggregationExampleDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AggregationExampleDriver.EvaluatorAllocatedHandler.class)
-        .set(DriverConfiguration.ON_TASK_RUNNING, AggregationExampleDriver.RunningTaskHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, CentCommExampleDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, CentCommExampleDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_TASK_RUNNING, CentCommExampleDriver.RunningTaskHandler.class)
         .build();
 
-    final Configuration aggregationConf = AggregationConfiguration.newBuilder()
-        .addAggregationClient(AggregationExampleDriver.AGGREGATION_CLIENT_ID,
+    final Configuration centCommConf = CentCommConf.newBuilder()
+        .addCentCommClient(CentCommExampleDriver.CENT_COMM_CLIENT_ID,
             DriverSideMsgHandler.class,
             EvalSideMsgHandler.class)
         .build()
@@ -93,7 +93,7 @@ public final class AggregationExampleREEF {
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
 
-    return Configurations.merge(driverConf, commandLineConf, aggregationConf, idFactoryConf,
+    return Configurations.merge(driverConf, commandLineConf, centCommConf, idFactoryConf,
         NameServerConfiguration.CONF.build(), LocalNameResolverConfiguration.CONF.build());
   }
 

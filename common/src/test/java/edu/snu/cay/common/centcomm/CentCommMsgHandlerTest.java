@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation;
+package edu.snu.cay.common.centcomm;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.AggregationConfiguration;
-import edu.snu.cay.common.centcomm.ns.AggregationMsgHandler;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.ns.CentCommMsgHandler;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.io.network.impl.NSMessage;
 import org.apache.reef.tang.Configuration;
@@ -33,39 +32,39 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 
 /**
- * Tests {@link AggregationMsgHandler}.
- * Checks that {@link AggregationMsgHandler} hands over NCS messages to correct client-side handlers.
+ * Tests {@link CentCommMsgHandler}.
+ * Checks that {@link CentCommMsgHandler} hands over NCS messages to correct client-side handlers.
  */
 @Unit
-public final class AggregationMsgHandlerTest {
+public final class CentCommMsgHandlerTest {
   private static final byte[] DATA_A = new byte[]{0};
   private static final byte[] DATA_B = new byte[]{1};
-  private AggregationMsgHandler aggregationMsgHandler;
+  private CentCommMsgHandler centCommMsgHandler;
 
   @Inject
-  public AggregationMsgHandlerTest() {
+  public CentCommMsgHandlerTest() {
   }
 
   @Before
   public void setUp() throws InjectionException {
-    final Configuration driverConf = AggregationConfiguration.newBuilder()
-        .addAggregationClient(MockedMasterMsgHandlerA.class.getName(),
+    final Configuration driverConf = CentCommConf.newBuilder()
+        .addCentCommClient(MockedMasterMsgHandlerA.class.getName(),
             MockedMasterMsgHandlerA.class,
             MockedSlaveMsgHandlerA.class)
-        .addAggregationClient(MockedMasterMsgHandlerB.class.getName(),
+        .addCentCommClient(MockedMasterMsgHandlerB.class.getName(),
             MockedMasterMsgHandlerB.class,
             MockedSlaveMsgHandlerB.class)
         .build()
         .getDriverConfiguration();
 
-    aggregationMsgHandler = Tang.Factory.getTang().newInjector(driverConf).getInstance(AggregationMsgHandler.class);
+    centCommMsgHandler = Tang.Factory.getTang().newInjector(driverConf).getInstance(CentCommMsgHandler.class);
   }
 
   /**
-   * Uses multiple aggregation clients for test.
+   * Uses multiple CentComm clients for test.
    */
   @Test
-  public void testMultipleAggregationClients() {
+  public void testMultipleCentCommClients() {
     final Message<CentCommMsg> mockedMessageA = new NSMessage(null, null, CentCommMsg.newBuilder()
         .setSourceId("")
         .setClientClassName(MockedMasterMsgHandlerA.class.getName())
@@ -76,8 +75,8 @@ public final class AggregationMsgHandlerTest {
         .setClientClassName(MockedMasterMsgHandlerB.class.getName())
         .setData(ByteBuffer.wrap(DATA_B))
         .build());
-    aggregationMsgHandler.onNext(mockedMessageA);
-    aggregationMsgHandler.onNext(mockedMessageB);
+    centCommMsgHandler.onNext(mockedMessageA);
+    centCommMsgHandler.onNext(mockedMessageB);
   }
 
   final class MockedMasterMsgHandlerA implements EventHandler<CentCommMsg> {

@@ -15,10 +15,11 @@
  */
 package edu.snu.cay.common.centcomm.ns;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.params.AggregationClientHandlers;
-import edu.snu.cay.common.centcomm.params.AggregationClientInfo;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.params.CentCommClientHandlers;
+import edu.snu.cay.common.centcomm.params.CentCommClientInfo;
 import edu.snu.cay.utils.SingleMessageExtractor;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
@@ -30,26 +31,27 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 /**
- * Handler for CentCommMsg, which can be used for both aggregation master and slave.
+ * Handler for CentCommMsg, which can be used for both master and slaves.
  * Wraps clients' CentCommMsg handlers and routes message to right client handler.
- * Parse strings in {@link AggregationClientInfo} to route CentCommMsg to right handler.
+ * Parse strings in {@link CentCommClientInfo} to route CentCommMsg to right handler.
  */
 // TODO #352: After REEF-402 is resolved, we can simply use two parallel lists for routing.
-public final class AggregationMsgHandler implements EventHandler<Message<CentCommMsg>> {
-  private static final Logger LOG = Logger.getLogger(AggregationMsgHandler.class.getName());
+@Private
+public final class CentCommMsgHandler implements EventHandler<Message<CentCommMsg>> {
+  private static final Logger LOG = Logger.getLogger(CentCommMsgHandler.class.getName());
 
   private final Map<String, EventHandler<CentCommMsg>> innerHandlerMap;
 
   /**
-   * Constructor for aggregation message handler.
-   * If this class is on the aggregation master, {@code innerHandlers} are master-side message handlers.
+   * Constructor for CentComm message handler.
+   * If this class is on the CentComm master, {@code innerHandlers} are master-side message handlers.
    * Otherwise, {@code innerHandlers} are slave-side message handlers.
-   * @param clientInfo a set of strings which contains class names of each aggregation client and handlers
+   * @param clientInfo a set of strings which contains class names of each CentComm client and handlers
    * @param innerHandlers client message handlers, can be both master-side and slave-side handlers
    */
   @Inject
-  private AggregationMsgHandler(@Parameter(AggregationClientInfo.class) final Set<String> clientInfo,
-                                @Parameter(AggregationClientHandlers.class)
+  private CentCommMsgHandler(@Parameter(CentCommClientInfo.class) final Set<String> clientInfo,
+                             @Parameter(CentCommClientHandlers.class)
                                 final Set<EventHandler<CentCommMsg>> innerHandlers) {
     innerHandlerMap = new HashMap<>();
     for (final String s : clientInfo) {
@@ -70,16 +72,16 @@ public final class AggregationMsgHandler implements EventHandler<Message<CentCom
 
   @Override
   public void onNext(final Message<CentCommMsg> message) {
-    LOG.entering(AggregationMsgHandler.class.getSimpleName(), "onNext");
+    LOG.entering(CentCommMsgHandler.class.getSimpleName(), "onNext");
 
-    final CentCommMsg aggregationMessage = SingleMessageExtractor.extract(message);
+    final CentCommMsg centCommMsg = SingleMessageExtractor.extract(message);
     final EventHandler<CentCommMsg> handler
-        = innerHandlerMap.get(aggregationMessage.getClientClassName().toString());
+        = innerHandlerMap.get(centCommMsg.getClientClassName().toString());
     if (handler == null) {
-      throw new RuntimeException("Unknown aggregation service client " + aggregationMessage.getClientClassName());
+      throw new RuntimeException("Unknown centComm service client " + centCommMsg.getClientClassName());
     }
-    handler.onNext(aggregationMessage);
+    handler.onNext(centCommMsg);
 
-    LOG.exiting(AggregationMsgHandler.class.getSimpleName(), "onNext");
+    LOG.exiting(CentCommMsgHandler.class.getSimpleName(), "onNext");
   }
 }

@@ -18,6 +18,6 @@ package edu.snu.cay.common.centcomm.params;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Configuration for aggregation slaves, serialized as a string")
-public final class SerializedAggregationSlavesConf implements Name<String> {
+@NamedParameter(doc = "Configuration for CentComm slaves, serialized as a string")
+public final class SerializedCentCommSlavesConf implements Name<String> {
 }

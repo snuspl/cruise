@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Slave classes for Aggregation Service.
+ * Evaluator-side classes for Centralized Communication (CentComm) Service.
  */
 package edu.snu.cay.common.centcomm.slave;

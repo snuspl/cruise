@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.common.centcomm.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.avro.Metrics;
 
@@ -36,14 +36,14 @@ public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   private static final Logger LOG = Logger.getLogger(WorkerMetricsMsgSender.class.getName());
 
   private final WorkerMetricsMsgCodec workerMetricsMsgCodec;
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private Metrics metrics;
 
   @Inject
   private WorkerMetricsMsgSender(final WorkerMetricsMsgCodec workerMetricsMsgCodec,
-                                 final AggregationSlave aggregationSlave) {
+                                 final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender) {
     this.workerMetricsMsgCodec = workerMetricsMsgCodec;
-    this.aggregationSlave = aggregationSlave;
+    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
   }
 
   @Override
@@ -59,7 +59,7 @@ public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   @Override
   public void send(final WorkerMetrics message) {
     LOG.entering(WorkerMetricsMsgSender.class.getSimpleName(), "send");
-    aggregationSlave.send(WorkerConstants.AGGREGATION_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
+    slaveSideCentCommMsgSender.send(WorkerConstants.AGGREGATION_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
     LOG.exiting(WorkerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }

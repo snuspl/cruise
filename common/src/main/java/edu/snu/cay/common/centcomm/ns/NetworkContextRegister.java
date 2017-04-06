@@ -29,27 +29,27 @@ import javax.inject.Inject;
  */
 @Unit
 public final class NetworkContextRegister {
-  private final AggregationNetworkSetup aggregationNetworkSetup;
+  private final CentCommNetworkSetup centCommNetworkSetup;
   private final IdentifierFactory identifierFactory;
 
   @Inject
-  private NetworkContextRegister(final AggregationNetworkSetup aggregationNetworkSetup,
+  private NetworkContextRegister(final CentCommNetworkSetup centCommNetworkSetup,
                                  final IdentifierFactory identifierFactory) {
-    this.aggregationNetworkSetup = aggregationNetworkSetup;
+    this.centCommNetworkSetup = centCommNetworkSetup;
     this.identifierFactory = identifierFactory;
   }
 
   public final class RegisterContextHandler implements EventHandler<ContextStart> {
     @Override
     public void onNext(final ContextStart contextStart) {
-      aggregationNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
+      centCommNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
     }
   }
 
   public final class UnregisterContextHandler implements EventHandler<ContextStop> {
     @Override
     public void onNext(final ContextStop contextStop) {
-      aggregationNetworkSetup.unregisterConnectionFactory();
+      centCommNetworkSetup.unregisterConnectionFactory();
     }
   }
 }

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.centcomm.driver;
+package edu.snu.cay.common.centcomm.master;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.ns.AggregationNetworkSetup;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.ns.CentCommNetworkSetup;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -27,18 +27,18 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 
 /**
- * Master of Aggregation Service.
- * Sends messages to aggregation slaves.
+ * Master of CentComm Service.
+ * Sends messages to CentComm slaves.
  */
 @DriverSide
-public final class AggregationMaster {
+public final class MasterSideCentCommMsgSender {
 
   /**
    * A network setup instance for CentCommMsg. It should be wrapped with InjectionFuture
-   * since there would be a loopy constructor when users use AggregationMaster in their
-   * aggregation message handlers.
+   * since there would be a loopy constructor when users use MasterSideCentCommMsgSender in their
+   * CentComm message handlers.
    */
-  private final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup;
+  private final InjectionFuture<CentCommNetworkSetup> centCommNetworkSetup;
 
   /**
    * An identifier factory.
@@ -46,28 +46,28 @@ public final class AggregationMaster {
   private final IdentifierFactory identifierFactory;
 
   @Inject
-  private AggregationMaster(final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup,
-                            final IdentifierFactory identifierFactory) {
-    this.aggregationNetworkSetup = aggregationNetworkSetup;
+  private MasterSideCentCommMsgSender(final InjectionFuture<CentCommNetworkSetup> centCommNetworkSetup,
+                                      final IdentifierFactory identifierFactory) {
+    this.centCommNetworkSetup = centCommNetworkSetup;
     this.identifierFactory = identifierFactory;
   }
 
   /**
-   * Sends a message to an aggregation slave named slaveId. The user should specify
-   * class name of the aggregation service client.
+   * Sends a message to a CentComm slave named slaveId. The user should specify
+   * class name of the CentComm service client.
    *
-   * @param clientClassName class name of the aggregation service client
+   * @param clientClassName class name of the CentComm service client
    * @param slaveId an end point id of the slave
    * @param data data which is encoded as a byte array
    * @throws NetworkException when target slave has been unregistered
    */
   public void send(final String clientClassName, final String slaveId, final byte[] data) throws NetworkException {
     final CentCommMsg msg = CentCommMsg.newBuilder()
-        .setSourceId(aggregationNetworkSetup.get().getMyId().toString())
+        .setSourceId(centCommNetworkSetup.get().getMyId().toString())
         .setClientClassName(clientClassName)
         .setData(ByteBuffer.wrap(data))
         .build();
-    final Connection<CentCommMsg> conn = aggregationNetworkSetup.get().getConnectionFactory()
+    final Connection<CentCommMsg> conn = centCommNetworkSetup.get().getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(slaveId));
     conn.open();
     conn.write(msg);

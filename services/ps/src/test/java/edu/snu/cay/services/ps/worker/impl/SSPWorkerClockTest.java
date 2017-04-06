@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.driver.AggregationMaster;
-import edu.snu.cay.common.centcomm.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
@@ -55,14 +55,14 @@ import static org.mockito.Mockito.mock;
  * Tests for {@link SSPWorkerClock}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({AggregationSlave.class, AggregationMaster.class})
+@PrepareForTest({SlaveSideCentCommMsgSender.class, MasterSideCentCommMsgSender.class})
 public class SSPWorkerClockTest {
   private static final int STALENESS_BOUND = 4;
   private static final int INIT_GLOBAL_MIN_CLOCK = 10;
   private static final int INIT_WORKER_CLOCK = INIT_GLOBAL_MIN_CLOCK;
 
-  private AggregationSlave mockAggregationSlave;
-  private AggregationMaster mockAggregationMaster;
+  private SlaveSideCentCommMsgSender mockSlaveSideCentCommMsgSender;
+  private MasterSideCentCommMsgSender mockMasterSideCentCommMsgSender;
   private ClockMsgCodec codec;
   private SSPWorkerClock sspWorkerClock;
   private SSPWorkerClock.MessageHandler sspWorkerClockMessageHandler;
@@ -75,10 +75,10 @@ public class SSPWorkerClockTest {
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
-    mockAggregationSlave = mock(AggregationSlave.class);
-    injector.bindVolatileInstance(AggregationSlave.class, mockAggregationSlave);
-    mockAggregationMaster = mock(AggregationMaster.class);
-    injector.bindVolatileInstance(AggregationMaster.class, mockAggregationMaster);
+    mockSlaveSideCentCommMsgSender = mock(SlaveSideCentCommMsgSender.class);
+    injector.bindVolatileInstance(SlaveSideCentCommMsgSender.class, mockSlaveSideCentCommMsgSender);
+    mockMasterSideCentCommMsgSender = mock(MasterSideCentCommMsgSender.class);
+    injector.bindVolatileInstance(MasterSideCentCommMsgSender.class, mockMasterSideCentCommMsgSender);
 
     this.sspWorkerClock = injector.getInstance(SSPWorkerClock.class);
     this.sspWorkerClockMessageHandler = injector.getInstance(SSPWorkerClock.MessageHandler.class);
@@ -93,13 +93,13 @@ public class SSPWorkerClockTest {
         final AvroClockMsg initClockMsg =
             ClockManager.getReplyInitialClockMessage(INIT_GLOBAL_MIN_CLOCK, INIT_WORKER_CLOCK);
         final byte[] replyData = codec.encode(initClockMsg);
-        final CentCommMsg aggregationMessage = getTestCentCommMsg("worker", replyData);
-        sspWorkerClockMessageHandler.onNext(aggregationMessage);
+        final CentCommMsg centCommMsg = getTestCentCommMsg("worker", replyData);
+        sspWorkerClockMessageHandler.onNext(centCommMsg);
       } else if (sendMsg.getType() == ClockMsgType.TickMsg) {
         numberOfTickMsgCalls.incrementAndGet();
       }
       return null;
-    }).when(mockAggregationSlave).send(anyString(), anyObject());
+    }).when(mockSlaveSideCentCommMsgSender).send(anyString(), anyObject());
   }
 
   /**
@@ -138,15 +138,15 @@ public class SSPWorkerClockTest {
 
     doAnswer(invocation -> {
       final byte[] data = invocation.getArgumentAt(2, byte[].class);
-      final CentCommMsg aggregationMessage = getTestCentCommMsg("worker", data);
-      sspWorkerClockMessageHandler.onNext(aggregationMessage);
+      final CentCommMsg centCommMsg = getTestCentCommMsg("worker", data);
+      sspWorkerClockMessageHandler.onNext(centCommMsg);
       return null;
-    }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
+    }).when(mockMasterSideCentCommMsgSender).send(anyString(), anyString(), anyObject());
 
     // broadcast updated global minimum clock
     final byte[] data =
         codec.encode(ClockManager.getBroadcastMinClockMessage(updatedGlobalMinimumClock));
-    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", data);
+    mockMasterSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", data);
 
     assertEquals(updatedGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
   }

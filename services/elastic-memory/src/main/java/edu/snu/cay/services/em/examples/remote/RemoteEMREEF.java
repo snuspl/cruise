@@ -16,7 +16,7 @@
 
 package edu.snu.cay.services.em.examples.remote;
 
-import edu.snu.cay.common.centcomm.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.CentCommConf;
 import edu.snu.cay.services.em.common.parameters.EMParameters;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.EMConfProvider;
@@ -97,8 +97,8 @@ public final class RemoteEMREEF {
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, RemoteEMDriver.ActiveContextHandler.class)
         .build();
 
-    final Configuration aggregationConf = AggregationConfiguration.newBuilder()
-        .addAggregationClient(RemoteEMDriver.AGGREGATION_CLIENT_ID,
+    final Configuration centCommConf = CentCommConf.newBuilder()
+        .addCentCommClient(RemoteEMDriver.CENT_COMM_CLIENT_ID,
             DriverSideMsgHandler.class,
             EvalSideMsgHandler.class)
         .build()
@@ -107,7 +107,7 @@ public final class RemoteEMREEF {
     // spawn the name server at the driver
     return Configurations.merge(driverConfiguration,
         EMConfProvider.getDriverConfiguration(),
-        aggregationConf,
+        centCommConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         Tang.Factory.getTang().newConfigurationBuilder()

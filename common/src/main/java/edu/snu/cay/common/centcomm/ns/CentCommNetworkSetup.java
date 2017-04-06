@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.common.centcomm.ns;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.NetworkConnectionService;
@@ -27,22 +27,22 @@ import javax.inject.Inject;
 /**
  * Register and unregister driver and evaluators to/from Network Connection Service.
  */
-public final class AggregationNetworkSetup {
-  private static final String AGGREGATION_IDENTIFIER = "AGGREGATION";
+public final class CentCommNetworkSetup {
+  private static final String IDENTIFIER = "CENT_COMM";
 
   private final NetworkConnectionService networkConnectionService;
   private final Identifier connectionFactoryIdentifier;
-  private final AggregationMsgCodec codec;
-  private final AggregationMsgHandler handler;
+  private final CentCommMsgCodec codec;
+  private final CentCommMsgHandler handler;
   private ConnectionFactory<CentCommMsg> connectionFactory;
 
   @Inject
-  private AggregationNetworkSetup(final NetworkConnectionService networkConnectionService,
-                                  final IdentifierFactory identifierFactory,
-                                  final AggregationMsgCodec codec,
-                                  final AggregationMsgHandler handler) throws NetworkException {
+  private CentCommNetworkSetup(final NetworkConnectionService networkConnectionService,
+                               final IdentifierFactory identifierFactory,
+                               final CentCommMsgCodec codec,
+                               final CentCommMsgHandler handler) throws NetworkException {
     this.networkConnectionService = networkConnectionService;
-    this.connectionFactoryIdentifier = identifierFactory.getNewInstance(AGGREGATION_IDENTIFIER);
+    this.connectionFactoryIdentifier = identifierFactory.getNewInstance(IDENTIFIER);
     this.codec = codec;
     this.handler = handler;
   }

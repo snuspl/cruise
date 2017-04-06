@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.common.centcomm.ns;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 
@@ -25,10 +25,10 @@ import javax.inject.Inject;
  * Codec for CentCommMsg.
  * Simply uses AvroUtils to encode and decode messages.
  */
-public final class AggregationMsgCodec implements Codec<CentCommMsg> {
+public final class CentCommMsgCodec implements Codec<CentCommMsg> {
 
   @Inject
-  private AggregationMsgCodec() {
+  private CentCommMsgCodec() {
   }
 
   @Override

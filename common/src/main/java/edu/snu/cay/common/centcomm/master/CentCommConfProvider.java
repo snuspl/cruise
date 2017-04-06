@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.centcomm.driver;
+package edu.snu.cay.common.centcomm.master;
 
-import edu.snu.cay.common.centcomm.slave.AggregationSlave;
-import edu.snu.cay.common.centcomm.params.SerializedAggregationSlavesConf;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
+import edu.snu.cay.common.centcomm.params.SerializedCentCommSlavesConf;
 import edu.snu.cay.common.centcomm.ns.MasterId;
 import edu.snu.cay.common.centcomm.ns.NetworkContextRegister;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -40,11 +40,11 @@ import javax.inject.Inject;
 import java.io.IOException;
 
 /**
- * Manager for Aggregation Service.
+ * Configuration provider for CentComm Service.
  * Provides methods for getting context and service configurations.
  */
 @DriverSide
-public final class AggregationManager {
+public final class CentCommConfProvider {
 
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
@@ -52,7 +52,7 @@ public final class AggregationManager {
   private final String driverId;
 
   /**
-   * Constructor for the manager of Aggregation Service.
+   * Constructor for the manager of CentComm Service.
    * This class is instantiated by TANG.
    *
    * @param nameServer a NameServer for NCS, which provides NameServer port
@@ -63,11 +63,11 @@ public final class AggregationManager {
    * @throws IOException if there is a problem in deserializing slave configuration
    */
   @Inject
-  private AggregationManager(final NameServer nameServer,
-                             final LocalAddressProvider localAddressProvider,
-                             final ConfigurationSerializer configurationSerializer,
-                             @Parameter(SerializedAggregationSlavesConf.class) final String serializedSlaveConf,
-                             @Parameter(DriverIdentifier.class) final String driverId) throws IOException {
+  private CentCommConfProvider(final NameServer nameServer,
+                               final LocalAddressProvider localAddressProvider,
+                               final ConfigurationSerializer configurationSerializer,
+                               @Parameter(SerializedCentCommSlavesConf.class) final String serializedSlaveConf,
+                               @Parameter(DriverIdentifier.class) final String driverId) throws IOException {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.slaveConf = configurationSerializer.fromString(serializedSlaveConf);
@@ -86,10 +86,10 @@ public final class AggregationManager {
   }
 
   /**
-   * Return the service configuration for the Aggregation Service including NameResolver.
+   * Return the service configuration for the Cent Comm Service including NameResolver.
    * Note that if more than one service tries to submit service configuration with NameResolver,
    * TANG will throw an exception.
-   * @return service configuration for the Aggregation Service
+   * @return service configuration for the Cent Comm Service
    */
   public Configuration getServiceConfiguration() {
     final Configuration nameClientConf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -98,20 +98,20 @@ public final class AggregationManager {
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
 
-    return Configurations.merge(getServiceConfigurationWithoutNameResolver(), nameClientConf);
+    return Configurations.merge(getServiceConfWithoutNameResolver(), nameClientConf);
   }
 
   /**
-   * Return the service configuration for the Aggregation Service without NameResolver.
+   * Return the service configuration for the Cent Comm Service without NameResolver.
    * This method is required for the case when there are multiple services which use NameResolver.
    * In this situation, we should make sure that configurations for NameResolver is included only once.
    * Otherwise, TANG will throw an exception.
-   * @return service configuration for the Aggregation Service without NameResolver
+   * @return service configuration for the Cent Comm Service without NameResolver
    */
-  public Configuration getServiceConfigurationWithoutNameResolver() {
+  public Configuration getServiceConfWithoutNameResolver() {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
-                .set(ServiceConfiguration.SERVICES, AggregationSlave.class)
+                .set(ServiceConfiguration.SERVICES, SlaveSideCentCommMsgSender.class)
                 .build(),
             slaveConf)
         .bindNamedParameter(MasterId.class, driverId)

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.examples.remote;
 
-import edu.snu.cay.common.centcomm.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
@@ -79,7 +79,7 @@ final class RemoteEMTask implements Task {
    */
   private final long maxDataKey;
 
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final EvalSideMsgHandler msgHandler;
   private final SerializableCodec<String> codec;
 
@@ -91,7 +91,7 @@ final class RemoteEMTask implements Task {
   private RemoteEMTask(final MemoryStore<Long> memoryStore,
                        final OwnershipCache ownershipCache,
                        final BlockResolver<Long> blockResolver,
-                       final AggregationSlave aggregationSlave,
+                       final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
                        final EvalSideMsgHandler msgHandler,
                        final SerializableCodec<String> codec,
                        final DataIdFactory<Long> dataIdFactory,
@@ -103,7 +103,7 @@ final class RemoteEMTask implements Task {
     this.memoryStore = memoryStore;
     this.ownershipCache = ownershipCache;
     this.blockResolver = blockResolver;
-    this.aggregationSlave = aggregationSlave;
+    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.msgHandler = msgHandler;
     this.codec = codec;
     this.localDataIdFactory = dataIdFactory;
@@ -141,7 +141,8 @@ final class RemoteEMTask implements Task {
    * step.
    */
   private void synchronize() {
-    aggregationSlave.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, codec.encode(DriverSideMsgHandler.SYNC_WORKERS));
+    slaveSideCentCommMsgSender.send(RemoteEMDriver.CENT_COMM_CLIENT_ID,
+        codec.encode(DriverSideMsgHandler.SYNC_WORKERS));
     msgHandler.waitForMessage();
   }
 
@@ -151,7 +152,7 @@ final class RemoteEMTask implements Task {
    * Using this method, workers can share global state of memory stores.
    */
   private long syncGlobalCount(final long count) {
-    aggregationSlave.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, codec.encode(Long.toString(count)));
+    slaveSideCentCommMsgSender.send(RemoteEMDriver.CENT_COMM_CLIENT_ID, codec.encode(Long.toString(count)));
     return msgHandler.waitForMessage();
   }
 

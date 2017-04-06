@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.BroadcastMinClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
@@ -54,7 +54,7 @@ public final class ClockManager {
   private static final int MAXIMUM_RETRY_COUNTS = 5;
 
   private final int stalenessBound;
-  private final AggregationMaster aggregationMaster;
+  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
   private final ClockMsgCodec codec;
 
   /**
@@ -78,10 +78,10 @@ public final class ClockManager {
   private final List<EventHandler<Integer>> clockUpdateListeners = new ArrayList<>();
 
   @Inject
-  private ClockManager(final AggregationMaster aggregationMaster,
+  private ClockManager(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
                        final ClockMsgCodec codec,
                        @Parameter(StalenessBound.class) final int stalenessBound) {
-    this.aggregationMaster = aggregationMaster;
+    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.codec = codec;
     this.stalenessBound = stalenessBound;
     this.globalMinimumClock = INITIAL_GLOBAL_MINIMUM_CLOCK;
@@ -241,7 +241,7 @@ public final class ClockManager {
 
         try {
           final byte[] data = codec.encode(getBroadcastMinClockMessage(globalMinimumClock));
-          aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
+          masterSideCentCommMsgSender.send(AGGREGATION_CLIENT_NAME, workerId, data);
           break;
         } catch (final NetworkException e) {
           LOG.log(Level.INFO,
@@ -258,9 +258,9 @@ public final class ClockManager {
   public final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final CentCommMsg aggregationMessage) {
-      final AvroClockMsg rcvMsg = codec.decode(aggregationMessage.getData().array());
-      final String workerId = aggregationMessage.getSourceId().toString();
+    public void onNext(final CentCommMsg centCommMsg) {
+      final AvroClockMsg rcvMsg = codec.decode(centCommMsg.getData().array());
+      final String workerId = centCommMsg.getSourceId().toString();
       switch (rcvMsg.getType()) {
       case RequestInitClockMsg:
         final int workerClock = initializeWorkerClock(workerId);
@@ -274,7 +274,7 @@ public final class ClockManager {
           }
 
           try {
-            aggregationMaster.send(AGGREGATION_CLIENT_NAME, workerId, data);
+            masterSideCentCommMsgSender.send(AGGREGATION_CLIENT_NAME, workerId, data);
             break;
           } catch (final NetworkException e) {
             LOG.log(Level.INFO, String.format("ClockManager failed to send initialization message to %s", workerId), e);

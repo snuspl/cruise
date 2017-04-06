@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.dolphin.async.SynchronizationManager.State;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -48,7 +48,7 @@ final class WorkerSynchronizer {
   private final CyclicBarrier cyclicBarrier;
 
   @Inject
-  private WorkerSynchronizer(final AggregationSlave aggregationSlave,
+  private WorkerSynchronizer(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
                              final SerializableCodec<Enum> codec) {
     this.localStateMachine = SynchronizationManager.initStateMachine();
     // TODO #681: Need to add numWorkerThreads concept after multi-thread worker is enabled
@@ -58,7 +58,7 @@ final class WorkerSynchronizer {
         LOG.log(Level.INFO, "Sending a synchronization message to the driver");
 
         final byte[] data = codec.encode(localStateMachine.getCurrentState());
-        aggregationSlave.send(SynchronizationManager.AGGREGATION_CLIENT_NAME, data);
+        slaveSideCentCommMsgSender.send(SynchronizationManager.CENT_COMM_CLIENT_NAME, data);
         countDownLatch.awaitAndReset(1);
       }
     });
@@ -94,7 +94,7 @@ final class WorkerSynchronizer {
   final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final CentCommMsg aggregationMessage) {
+    public void onNext(final CentCommMsg centCommMsg) {
       LOG.log(Level.INFO, "Received a response message from the driver");
 
       SynchronizationManager.transitState(localStateMachine);

@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Example applications using aggregation service.
+ * Example applications using CentComm service.
  */
 package edu.snu.cay.common.centcomm.examples;

@@ -23,7 +23,7 @@ import edu.snu.cay.dolphin.async.dashboard.DashboardLauncher;
 import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardEnabled;
 import edu.snu.cay.dolphin.async.dashboard.parameters.DashboardPort;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
-import edu.snu.cay.common.centcomm.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.CentCommConf;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
@@ -382,7 +382,7 @@ public final class AsyncDolphinLauncher {
 
     final int stalenessBound = injector.getNamedInstance(StalenessBound.class);
     final boolean isSSPModel = stalenessBound >= 0;
-    final AggregationConfiguration aggregationServiceConf = isSSPModel ?
+    final CentCommConf centCommConf = isSSPModel ?
         getAggregationConfigurationForSSP() : getAggregationConfigurationDefault();
     // set up an optimizer configuration
     final Class<? extends Optimizer> optimizerClass;
@@ -401,7 +401,7 @@ public final class AsyncDolphinLauncher {
     return Configurations.merge(driverConfWithDataLoad,
         EMConfProvider.getDriverConfigurationWithoutRegisterDriver(),
         PSDriver.getDriverConfiguration(),
-        aggregationServiceConf.getDriverConfiguration(),
+        centCommConf.getDriverConfiguration(),
         HTraceParameters.getStaticConfiguration(),
         optimizerConf,
         NameServerConfiguration.CONF.build(),
@@ -411,30 +411,30 @@ public final class AsyncDolphinLauncher {
             .build());
   }
 
-  private static AggregationConfiguration.Builder getAggregationConfigurationDefaultBuilder() {
-    return AggregationConfiguration.newBuilder()
-        .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
+  private static CentCommConf.Builder getAggregationConfigurationDefaultBuilder() {
+    return CentCommConf.newBuilder()
+        .addCentCommClient(SynchronizationManager.CENT_COMM_CLIENT_NAME,
             SynchronizationManager.MessageHandler.class,
             WorkerSynchronizer.MessageHandler.class)
-        .addAggregationClient(WorkerConstants.AGGREGATION_CLIENT_NAME,
+        .addCentCommClient(WorkerConstants.AGGREGATION_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForWorker.class,
             EvalSideMetricsMsgHandlerForWorker.class)
-        .addAggregationClient(ServerConstants.AGGREGATION_CLIENT_NAME,
+        .addCentCommClient(ServerConstants.AGGREGATION_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForServer.class,
             EvalSideMetricsMsgHandlerForServer.class);
   }
 
-  private static AggregationConfiguration getAggregationConfigurationDefault() {
+  private static CentCommConf getAggregationConfigurationDefault() {
     return getAggregationConfigurationDefaultBuilder()
-        .addAggregationClient(ClockManager.AGGREGATION_CLIENT_NAME,
+        .addCentCommClient(ClockManager.AGGREGATION_CLIENT_NAME,
             ClockManager.MessageHandler.class,
             AsyncWorkerClock.MessageHandler.class)
         .build();
   }
 
-  private static AggregationConfiguration getAggregationConfigurationForSSP() {
+  private static CentCommConf getAggregationConfigurationForSSP() {
     return getAggregationConfigurationDefaultBuilder()
-        .addAggregationClient(ClockManager.AGGREGATION_CLIENT_NAME,
+        .addCentCommClient(ClockManager.AGGREGATION_CLIENT_NAME,
             ClockManager.MessageHandler.class,
             SSPWorkerClock.MessageHandler.class)
         .build();

@@ -15,13 +15,12 @@
  */
 package edu.snu.cay.common.centcomm.params;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
-import org.apache.reef.wake.EventHandler;
 
 import java.util.Set;
 
-@NamedParameter(doc = "Network message handlers for Aggregation Service clients")
-public final class AggregationClientHandlers implements Name<Set<EventHandler<CentCommMsg>>> {
+@NamedParameter(doc = "Information for Aggregation Service clients." +
+    "Encoded as ClientClassName//MasterHandlerClassName//SlaveHandlerClassName")
+public final class CentCommClientInfo implements Name<Set<String>> {
 }

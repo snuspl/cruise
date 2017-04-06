@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.common.centcomm.examples;
 
-import edu.snu.cay.common.centcomm.driver.AggregationManager;
+import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -37,8 +37,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The driver for aggregation service example.
- * Launch evaluators for workers which exchange aggregation messages with the driver.
+ * The driver for CentComm service example.
+ * Launch evaluators for workers which exchange CentComm messages with the driver.
  *
  * 1. Each task sends a message to the driver and waits for a response message.
  * 2. When all messages from the tasks has arrived, the driver sends response messages to the tasks.
@@ -46,15 +46,15 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @Unit
-public final class AggregationExampleDriver {
-  private static final Logger LOG = Logger.getLogger(AggregationExampleDriver.class.getName());
+public final class CentCommExampleDriver {
+  private static final Logger LOG = Logger.getLogger(CentCommExampleDriver.class.getName());
 
-  static final String AGGREGATION_CLIENT_ID = "AGGREGATION_CLIENT_ID";
+  static final String CENT_COMM_CLIENT_ID = "CENT_COMM_CLIENT_ID";
 
   static final String WORKER_CONTEXT_PREFIX = "Worker-Context-";
   static final String TASK_PREFIX = "Worker-Task-";
 
-  private final AggregationManager aggregationManager;
+  private final CentCommConfProvider centCommConfProvider;
   private final EvaluatorRequestor evalRequestor;
   private final DriverSideMsgHandler driverSideMsgHandler;
 
@@ -64,11 +64,11 @@ public final class AggregationExampleDriver {
   private final AtomicInteger taskRunningCounter = new AtomicInteger(0);
 
   @Inject
-  private AggregationExampleDriver(final AggregationManager aggregationManager,
-                                   final EvaluatorRequestor evalRequestor,
-                                   final DriverSideMsgHandler driverSideMsgHandler,
-                                   @Parameter(Parameters.Splits.class) final int splits) {
-    this.aggregationManager = aggregationManager;
+  private CentCommExampleDriver(final CentCommConfProvider centCommConfProvider,
+                                final EvaluatorRequestor evalRequestor,
+                                final DriverSideMsgHandler driverSideMsgHandler,
+                                @Parameter(Parameters.Splits.class) final int splits) {
+    this.centCommConfProvider = centCommConfProvider;
     this.evalRequestor = evalRequestor;
     this.driverSideMsgHandler = driverSideMsgHandler;
     this.splits = splits;
@@ -93,11 +93,11 @@ public final class AggregationExampleDriver {
           ContextConfiguration.CONF
               .set(ContextConfiguration.IDENTIFIER, WORKER_CONTEXT_PREFIX + workerIndex)
               .build(),
-          aggregationManager.getContextConfiguration());
-      final Configuration serviceConf = aggregationManager.getServiceConfiguration();
+          centCommConfProvider.getContextConfiguration());
+      final Configuration serviceConf = centCommConfProvider.getServiceConfiguration();
       final Configuration taskConf = TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + workerIndex)
-          .set(TaskConfiguration.TASK, AggregationSlaveTask.class)
+          .set(TaskConfiguration.TASK, CentCommSlaveTask.class)
           .build();
 
       allocatedEvaluator.submitContextAndServiceAndTask(contextConf, serviceConf, taskConf);

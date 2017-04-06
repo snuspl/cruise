@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.common.centcomm.examples;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.wake.EventHandler;

@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.em.examples.remote;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
@@ -33,7 +33,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver-side message handler that receives aggregation messages as an aggregation master.
+ * Driver-side message handler that receives CentComm messages as an CentComm master.
  * Provides a way to synchronize all worker tasks by checking all workers have sent the messages.
  * It sends response messages to all tasks when all messages from the tasks arrive.
  */
@@ -44,7 +44,7 @@ final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
 
   static final String SYNC_WORKERS = "SYNC_WORKERS";
 
-  private final AggregationMaster aggregationMaster;
+  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
   private final Codec<String> codec;
   private CountDownLatch msgCountDown;
   private final Set<String> workerIds;
@@ -54,9 +54,9 @@ final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
   private AtomicLong countAggregator = new AtomicLong(0);
 
   @Inject
-  private DriverSideMsgHandler(final AggregationMaster aggregationMaster,
+  private DriverSideMsgHandler(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
                                final SerializableCodec<String> codec) {
-    this.aggregationMaster = aggregationMaster;
+    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.codec = codec;
     this.msgCountDown = new CountDownLatch(RemoteEMDriver.EVAL_NUM);
     this.workerIds = Collections.synchronizedSet(new HashSet<String>(RemoteEMDriver.EVAL_NUM));
@@ -64,13 +64,13 @@ final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
   }
 
   /**
-   * Aggregation message handling logic.
-   * @param message received aggregation message
+   * CentComm message handling logic.
+   * @param message received CentComm message
    * @throws RuntimeException if the received message is incorrect
    */
   @Override
   public void onNext(final CentCommMsg message) {
-    LOG.log(Level.INFO, "Received aggregation message {0}", message);
+    LOG.log(Level.INFO, "Received CentComm message {0}", message);
     final String workerId = message.getSourceId().toString();
     final String data = codec.decode(message.getData().array());
 
@@ -127,7 +127,7 @@ final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
       for (final String slaveId : workerIds) {
         LOG.log(Level.INFO, "Sending a message to {0}", slaveId);
         try {
-          aggregationMaster.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, slaveId,
+          masterSideCentCommMsgSender.send(RemoteEMDriver.CENT_COMM_CLIENT_ID, slaveId,
               codec.encode(Long.toString(aggregatedCount)));
         } catch (final NetworkException e) {
           throw new RuntimeException(e);

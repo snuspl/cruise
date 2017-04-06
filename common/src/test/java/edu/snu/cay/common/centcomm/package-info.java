@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Tests for aggregation service.
+ * Tests for CentComm service.
  */
-package edu.snu.cay.common.aggregation;
+package edu.snu.cay.common.centcomm;

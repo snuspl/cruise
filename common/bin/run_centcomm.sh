@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_aggregation.sh -local true -split 4 -timeout 100000
+# ./run_centcomm.sh -local true -split 4 -timeout 100000
 
 SELF_JAR=`echo ../target/cay-common-*-shaded.jar`
 
@@ -24,7 +24,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.common.aggregation.examples.AggregationExampleREEF
+ALG=edu.snu.cay.common.centcomm.examples.CentCommExampleREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD

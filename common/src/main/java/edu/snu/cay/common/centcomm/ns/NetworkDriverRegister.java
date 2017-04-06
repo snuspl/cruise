@@ -31,21 +31,21 @@ import javax.inject.Inject;
 @Unit
 public final class NetworkDriverRegister {
 
-  private final AggregationNetworkSetup aggregationNetworkSetup;
+  private final CentCommNetworkSetup centCommNetworkSetup;
   private final Identifier driverId;
 
   @Inject
-  private NetworkDriverRegister(final AggregationNetworkSetup aggregationNetworkSetup,
+  private NetworkDriverRegister(final CentCommNetworkSetup centCommNetworkSetup,
                                 final IdentifierFactory identifierFactory,
                                 @Parameter(DriverIdentifier.class) final String driverIdStr) {
-    this.aggregationNetworkSetup = aggregationNetworkSetup;
+    this.centCommNetworkSetup = centCommNetworkSetup;
     this.driverId = identifierFactory.getNewInstance(driverIdStr);
   }
 
   public final class RegisterDriverHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      aggregationNetworkSetup.registerConnectionFactory(driverId);
+      centCommNetworkSetup.registerConnectionFactory(driverId);
     }
   }
 }

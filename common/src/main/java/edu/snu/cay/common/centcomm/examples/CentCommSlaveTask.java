@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.common.centcomm.examples;
 
-import edu.snu.cay.common.centcomm.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.serialization.Codec;
@@ -28,24 +28,24 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The aggregation slave task that runs on all Workers.
- * Sends aggregation message to aggregation master(driver) and waits for a message from the driver.
+ * The CentComm slave task that runs on all Workers.
+ * Sends a CentComm message to CentComm master(driver) and waits for a message from the driver.
  */
 @TaskSide
-public final class AggregationSlaveTask implements Task {
-  private static final Logger LOG = Logger.getLogger(AggregationSlaveTask.class.getName());
+public final class CentCommSlaveTask implements Task {
+  private static final Logger LOG = Logger.getLogger(CentCommSlaveTask.class.getName());
 
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final Codec<String> codec;
   private final String taskId;
   private final EvalSideMsgHandler msgHandler;
 
   @Inject
-  private AggregationSlaveTask(final AggregationSlave aggregationSlave,
-                               final SerializableCodec<String> codec,
-                               @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
-                               final EvalSideMsgHandler msgHandler) {
-    this.aggregationSlave = aggregationSlave;
+  private CentCommSlaveTask(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
+                            final SerializableCodec<String> codec,
+                            @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
+                            final EvalSideMsgHandler msgHandler) {
+    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.codec = codec;
     this.taskId = taskId;
     this.msgHandler = msgHandler;
@@ -54,7 +54,7 @@ public final class AggregationSlaveTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
-    aggregationSlave.send(AggregationExampleDriver.AGGREGATION_CLIENT_ID, codec.encode(taskId));
+    slaveSideCentCommMsgSender.send(CentCommExampleDriver.CENT_COMM_CLIENT_ID, codec.encode(taskId));
     LOG.log(Level.INFO, "A message was sent. Waiting for response from the driver");
     msgHandler.waitForMessage();
     return null;

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.wake.EventHandler;
 
@@ -26,7 +26,7 @@ import javax.inject.Inject;
  * Currently does nothing. This class is mainly for NCS configuration
  * which needs handlers in both sender and receiver side.
  * In the future, we may implement this class for additional features,
- * for example, pull-based metric aggregation.
+ * for example, pull-based metric collection.
  */
 @EvaluatorSide
 public final class EvalSideMetricsMsgHandlerForWorker implements EventHandler<CentCommMsg> {

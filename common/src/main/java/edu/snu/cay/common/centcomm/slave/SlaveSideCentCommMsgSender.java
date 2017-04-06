@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.common.centcomm.slave;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.ns.AggregationNetworkSetup;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.ns.CentCommNetworkSetup;
 import edu.snu.cay.common.centcomm.ns.MasterId;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -30,18 +30,18 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 
 /**
- * Slave of Aggregation Service.
- * Sends messages to aggregation master.
+ * Slave of CentComm Service.
+ * Sends messages to CentComm master.
  */
 @EvaluatorSide
-public final class AggregationSlave {
+public final class SlaveSideCentCommMsgSender {
 
   /**
    * A network setup instance for CentCommMsg. It should be wrapped with InjectionFuture
-   * since there would be a loopy constructor when users use AggregationSlave in their
-   * aggregation message handlers.
+   * since there would be a loopy constructor when users use SlaveSideCentCommMsgSender in their
+   * CentComm message handlers.
    */
-  private final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup;
+  private final InjectionFuture<CentCommNetworkSetup> centCommNetworkSetup;
 
   /**
    * An identifier of the master.
@@ -49,31 +49,31 @@ public final class AggregationSlave {
   private final Identifier masterId;
 
   @Inject
-  private AggregationSlave(final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup,
-                           @Parameter(MasterId.class) final String masterIdStr,
-                           final IdentifierFactory identifierFactory) {
-    this.aggregationNetworkSetup = aggregationNetworkSetup;
+  private SlaveSideCentCommMsgSender(final InjectionFuture<CentCommNetworkSetup> centCommNetworkSetup,
+                                     @Parameter(MasterId.class) final String masterIdStr,
+                                     final IdentifierFactory identifierFactory) {
+    this.centCommNetworkSetup = centCommNetworkSetup;
     this.masterId = identifierFactory.getNewInstance(masterIdStr);
   }
 
   /**
-   * Sends message to aggregation master. The user should specify class name of the aggregation service client.
-   * @param clientClassName class name of the aggregation service client
+   * Sends message to CentComm master. The user should specify class name of the CentComm service client.
+   * @param clientClassName class name of the CentComm service client
    * @param data data which is encoded as a byte array
    */
   public void send(final String clientClassName, final byte[] data) {
     final CentCommMsg msg = CentCommMsg.newBuilder()
-        .setSourceId(aggregationNetworkSetup.get().getMyId().toString())
+        .setSourceId(centCommNetworkSetup.get().getMyId().toString())
         .setClientClassName(clientClassName)
         .setData(ByteBuffer.wrap(data))
         .build();
-    final Connection<CentCommMsg> conn = aggregationNetworkSetup.get().
+    final Connection<CentCommMsg> conn = centCommNetworkSetup.get().
         getConnectionFactory().newConnection(masterId);
     try {
       conn.open();
       conn.write(msg);
     } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException during AggregationSlave.send()", e);
+      throw new RuntimeException("NetworkException during SlaveSideCentCommMsgSender.send()", e);
     }
   }
 }

@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.CentCommMsg;
-import edu.snu.cay.common.centcomm.driver.AggregationMaster;
-import edu.snu.cay.common.centcomm.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -47,7 +47,7 @@ import static org.mockito.Mockito.*;
  * and workers are synchronized correctly during their lifecycle (INIT -> RUN -> CLEANUP).
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({AggregationMaster.class, AggregationSlave.class})
+@PrepareForTest({MasterSideCentCommMsgSender.class, SlaveSideCentCommMsgSender.class})
 public class WorkerStateManagerTest {
   private static final String WORKER_ID_PREFIX = "worker-";
   private static final long SYNC_WAIT_TIME_MS = 1000;
@@ -56,9 +56,9 @@ public class WorkerStateManagerTest {
       "Cannot enter next state before all workers reach the same global barrier";
   private static final String MSG_SHOULD_RELEASE_WORKERS = "All workers should be released";
 
-  private Tuple3<WorkerStateManager, AggregationMaster, EventHandler<CentCommMsg>> driverComponents;
+  private Tuple3<WorkerStateManager, MasterSideCentCommMsgSender, EventHandler<CentCommMsg>> driverComponents;
 
-  private Map<String, Tuple3<WorkerGlobalBarrier, AggregationSlave, EventHandler<CentCommMsg>>>
+  private Map<String, Tuple3<WorkerGlobalBarrier, SlaveSideCentCommMsgSender, EventHandler<CentCommMsg>>>
       workerIdToWorkerComponents = new HashMap<>();
 
   @Before
@@ -68,20 +68,20 @@ public class WorkerStateManagerTest {
   }
 
   /**
-   * Set up the Driver. The mocked message handler for aggregation service pretends the actual messages to be exchanged.
+   * Set up the Driver. The mocked message handler for CentComm service pretends the actual messages to be exchanged.
    */
   private void setupDriver(final int numWorkers) throws InjectionException, NetworkException {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(DolphinParameters.NumWorkers.class, numWorkers);
 
-    final AggregationMaster mockedAggregationMaster = mock(AggregationMaster.class);
-    injector.bindVolatileInstance(AggregationMaster.class, mockedAggregationMaster);
+    final MasterSideCentCommMsgSender mockedMasterSideCentCommMsgSender = mock(MasterSideCentCommMsgSender.class);
+    injector.bindVolatileInstance(MasterSideCentCommMsgSender.class, mockedMasterSideCentCommMsgSender);
 
     final WorkerStateManager workerStateManager = injector.getInstance(WorkerStateManager.class);
     final EventHandler<CentCommMsg> driverSideMsgHandler =
         injector.getInstance(WorkerStateManager.MessageHandler.class);
 
-    driverComponents = new Tuple3<>(workerStateManager, mockedAggregationMaster, driverSideMsgHandler);
+    driverComponents = new Tuple3<>(workerStateManager, mockedMasterSideCentCommMsgSender, driverSideMsgHandler);
 
     doAnswer(invocation -> {
       final byte[] data = invocation.getArgumentAt(2, byte[].class);
@@ -98,26 +98,26 @@ public class WorkerStateManagerTest {
 
       workerSideMsgHandler.onNext(msg);
       return null;
-    }).when(mockedAggregationMaster).send(anyString(), anyString(), any(byte[].class));
+    }).when(mockedMasterSideCentCommMsgSender).send(anyString(), anyString(), any(byte[].class));
   }
 
   /**
-   * Set up a worker. The mocked message handler for aggregation service pretends the actual messages to be exchanged.
+   * Set up a worker. The mocked message handler for CentComm service pretends the actual messages to be exchanged.
    * This method should be called after {@link #setupDriver(int)}.
    * @param workerId a worker id
    */
   private void setupWorker(final String workerId) throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
 
-    final AggregationSlave mockedAggregationSlave = mock(AggregationSlave.class);
-    injector.bindVolatileInstance(AggregationSlave.class, mockedAggregationSlave);
+    final SlaveSideCentCommMsgSender mockedSlaveSideCentCommMsgSender = mock(SlaveSideCentCommMsgSender.class);
+    injector.bindVolatileInstance(SlaveSideCentCommMsgSender.class, mockedSlaveSideCentCommMsgSender);
 
     final WorkerGlobalBarrier workerGlobalBarrier = injector.getInstance(WorkerGlobalBarrier.class);
     final EventHandler<CentCommMsg> workerSideMsgHandler =
         injector.getInstance(WorkerGlobalBarrier.MessageHandler.class);
 
     workerIdToWorkerComponents.put(workerId,
-        new Tuple3<>(workerGlobalBarrier, mockedAggregationSlave, workerSideMsgHandler));
+        new Tuple3<>(workerGlobalBarrier, mockedSlaveSideCentCommMsgSender, workerSideMsgHandler));
 
     doAnswer(invocation -> {
       final byte[] data = invocation.getArgumentAt(1, byte[].class);
@@ -132,7 +132,7 @@ public class WorkerStateManagerTest {
 
       driverSideMsgHandler.onNext(msg);
       return null;
-    }).when(mockedAggregationSlave).send(anyString(), any(byte[].class));
+    }).when(mockedSlaveSideCentCommMsgSender).send(anyString(), any(byte[].class));
   }
 
   /**
