@@ -55,16 +55,16 @@ public final class HomogeneousOptimizer implements Optimizer {
   private static final String NEW_SERVER_ID_PREFIX = "NewServer-";
 
   private final int miniBatchSize;
-  private final double networkBandwidth;
+  private final double defNetworkBandwidth;
   private final double optBenefitThreshold;
 
   @Inject
   private HomogeneousOptimizer(@Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
-                               @Parameter(Parameters.NetworkBandwidth.class) final double networkBandwidth,
+                               @Parameter(Parameters.DefaultNetworkBandwidth.class) final double defNetworkBandwidth,
                                @Parameter(Parameters.OptimizationBenefitThreshold.class)
                                final double optBenefitThreshold) {
     this.miniBatchSize = miniBatchSize;
-    this.networkBandwidth = networkBandwidth;
+    this.defNetworkBandwidth = defNetworkBandwidth;
     this.optBenefitThreshold = optBenefitThreshold;
   }
 
@@ -342,7 +342,7 @@ public final class HomogeneousOptimizer implements Optimizer {
     final int numServer = availableEvaluators - numWorker;
 
     final double commCost = avgPullSize * (numWorker / numServer < 1 ? 1 : numWorker / numServer)
-        * 8 / networkBandwidth * numTotalDataInstances / numWorker / miniBatchSize;
+        * 8D / defNetworkBandwidth * numTotalDataInstances / numWorker / miniBatchSize;
 
     final double totalCost = compCost + commCost;
     sb.append(String.format("{\"numServer\": %d, \"numWorker\": %d, \"totalCost\": %f, " +

@@ -99,6 +99,11 @@ public final class MetricProcessor {
       aggregatedMetricBuilder.setTotalPushProcessingTimeSec(serverMetric.stream().mapToDouble(
           param -> ((ServerEvaluatorParameters) param).getMetrics().getTotalPushProcessingTimeSec()).sum());
 
+      if (serverMetric.size() > 0) {
+        // As the metrics are grouped by server, hostname is always same; so we will get the first element's hostname
+        aggregatedMetricBuilder.setHostname(((ServerMetrics) serverMetric.get(0).getMetrics()).getHostname());
+      }
+
       final ServerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
       // This server did not send metrics meaningful enough for optimization.
@@ -155,6 +160,11 @@ public final class MetricProcessor {
       aggregatedMetricBuilder.setAvgPushTime(calculateExponentialMovingAverage(workerMetric,
           param -> ((WorkerEvaluatorParameters) param).getMetrics().getAvgPushTime(),
           metricWeightFactor, movingAvgWindowSize));
+
+      if (workerMetric.size() > 0) {
+        // As the metrics are grouped by worker, hostname is always same; so we will get the first element's hostname
+        aggregatedMetricBuilder.setHostname(((WorkerMetrics) workerMetric.get(0).getMetrics()).getHostname());
+      }
 
       final WorkerMetrics aggregatedMetric = aggregatedMetricBuilder.build();
 
