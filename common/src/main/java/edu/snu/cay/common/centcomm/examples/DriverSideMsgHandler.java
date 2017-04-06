@@ -62,7 +62,7 @@ public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
   }
 
   /**
-   * Aggregation message handling logic.
+   * CentComm message handling logic.
    * @param message received CentComm message
    * @throws RuntimeException if the received message is incorrect
    */

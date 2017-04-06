@@ -37,7 +37,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Aggregation Service Example.
+ * CentComm Service Example.
  */
 public final class CentCommExampleREEF {
   private static final Logger LOG = Logger.getLogger(CentCommExampleREEF.class.getName());
@@ -76,7 +76,7 @@ public final class CentCommExampleREEF {
   private static Configuration getDriverConfiguration(final Configuration commandLineConf) {
     final Configuration driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(CentCommExampleDriver.class))
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "AggregationExample")
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "CentCommExample")
         .set(DriverConfiguration.ON_DRIVER_STARTED, CentCommExampleDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, CentCommExampleDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_TASK_RUNNING, CentCommExampleDriver.RunningTaskHandler.class)

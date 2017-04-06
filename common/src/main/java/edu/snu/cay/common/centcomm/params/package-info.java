@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Parameters for Aggregation Service.
+ * Parameters for Centralized Communication (CentComm) Service.
  */
 package edu.snu.cay.common.centcomm.params;

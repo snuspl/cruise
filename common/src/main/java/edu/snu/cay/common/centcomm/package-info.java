@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes for Aggregation Service.
+ * Classes for Centralized Communication (CentComm) Service.
  */
 package edu.snu.cay.common.centcomm;

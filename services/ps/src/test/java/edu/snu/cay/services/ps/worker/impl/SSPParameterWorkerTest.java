@@ -147,7 +147,7 @@ public final class SSPParameterWorkerTest {
    */
   private void setupClockUpdateHandler() throws NetworkException {
     // Stub to simulate the behavior of SSPWorkerClock.MessageHandler.
-    // The message handler responds to the Aggregation message from Driver, which consists of the global minimum clock.
+    // The message handler responds to the CentComm message from Driver, which consists of the global minimum clock.
     doAnswer(invocation -> {
       final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
       final CentCommMsg centCommMsg = getTestCentCommMsg(DRIVER_ID, initClockMsgData);
@@ -296,7 +296,7 @@ public final class SSPParameterWorkerTest {
     final int deltaGlobalMinClock = 1;
     final byte[] initClockMsgData =
         codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaGlobalMinClock));
-    mockMasterSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
+    mockMasterSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, WORKER_ID, initClockMsgData);
     assertEquals(workerClock.getWorkerClock(), workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
 
     // The following for statement makes the number of times sendPullMsg() call increased by the number of keys.
@@ -389,7 +389,7 @@ public final class SSPParameterWorkerTest {
     final int deltaClock = 1;
     final byte[] initClockMsgData =
         codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaClock));
-    mockMasterSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
+    mockMasterSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, WORKER_ID, initClockMsgData);
 
     assertEquals(oldGlobalMinimumClock + deltaClock, workerClock.getGlobalMinimumClock());
     assertTrue(workerClock.getWorkerClock() <= workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
@@ -444,7 +444,7 @@ public final class SSPParameterWorkerTest {
   private CentCommMsg getTestCentCommMsg(final String senderId, final byte[] data) {
     return CentCommMsg.newBuilder()
         .setSourceId(senderId)
-        .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
+        .setClientClassName(ClockManager.CENT_COMM_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))
         .build();
   }

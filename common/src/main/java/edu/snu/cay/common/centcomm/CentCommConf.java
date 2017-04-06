@@ -37,16 +37,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Configuration class for Aggregation Service.
+ * Configuration class for CeneComm Service.
  * Provides configuration for REEF driver.
- * Current implementation assumes that the driver is the master of Aggregation Service.
+ * Current implementation assumes that the driver is the master of Cent Comm Service.
  * A client of Aggregation Service is a user of this service, which is different from REEF client.
  */
 @ClientSide
 public final class CentCommConf {
 
   /**
-   * Names of the clients of Aggregation Service.
+   * Names of the clients of CentComm Service.
    */
   private final List<String> centCommClientNames;
 
@@ -70,7 +70,7 @@ public final class CentCommConf {
   }
 
   /**
-   * Configuration for REEF driver when using Aggregation Service.
+   * Configuration for REEF driver when using Cent Comm Service.
    * Binds NetworkConnectionService registration handlers.
    * @return configuration that should be submitted with a DriverConfiguration
    */
@@ -113,8 +113,8 @@ public final class CentCommConf {
         Class<? extends EventHandler<CentCommMsg>>>> centCommClients = new HashMap<>();
 
     /**
-     * Add a new client of Aggregation Service.
-     * @param clientName name of Aggregation Service client, used to identify messages from different clients
+     * Add a new client of CentComm Service.
+     * @param clientName name of CentComm Service client, used to identify messages from different clients
      * @param masterSideMsgHandler message handler for CentComm master
      * @param slaveSideMsgHandler message handler for CentComm slave
      * @return Builder

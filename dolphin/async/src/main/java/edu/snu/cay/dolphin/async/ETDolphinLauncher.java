@@ -256,7 +256,7 @@ public final class ETDolphinLauncher {
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
     final CentCommConf aggrServiceConf = CentCommConf.newBuilder()
-        .addCentCommClient(WorkerStateManager.AGGREGATION_CLIENT_NAME,
+        .addCentCommClient(WorkerStateManager.CENT_COMM_CLIENT_NAME,
             WorkerStateManager.MessageHandler.class,
             WorkerGlobalBarrier.MessageHandler.class)
         .build();

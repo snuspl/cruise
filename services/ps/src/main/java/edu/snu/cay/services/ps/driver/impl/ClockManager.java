@@ -48,7 +48,7 @@ import java.util.logging.Logger;
 @Unit
 @Private
 public final class ClockManager {
-  public static final String AGGREGATION_CLIENT_NAME = ClockManager.class.getName();
+  public static final String CENT_COMM_CLIENT_NAME = ClockManager.class.getName();
   private static final Logger LOG = Logger.getLogger(ClockManager.class.getName());
   private static final int INITIAL_GLOBAL_MINIMUM_CLOCK = 0;
   private static final int MAXIMUM_RETRY_COUNTS = 5;
@@ -241,7 +241,7 @@ public final class ClockManager {
 
         try {
           final byte[] data = codec.encode(getBroadcastMinClockMessage(globalMinimumClock));
-          masterSideCentCommMsgSender.send(AGGREGATION_CLIENT_NAME, workerId, data);
+          masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, workerId, data);
           break;
         } catch (final NetworkException e) {
           LOG.log(Level.INFO,
@@ -274,7 +274,7 @@ public final class ClockManager {
           }
 
           try {
-            masterSideCentCommMsgSender.send(AGGREGATION_CLIENT_NAME, workerId, data);
+            masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, workerId, data);
             break;
           } catch (final NetworkException e) {
             LOG.log(Level.INFO, String.format("ClockManager failed to send initialization message to %s", workerId), e);

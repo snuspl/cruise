@@ -26,7 +26,7 @@ import javax.inject.Inject;
 import java.util.logging.Logger;
 
 /**
- * A MetricsHandler implementation that sends a WorkerMetricsMsg via Aggregation Service.
+ * A MetricsHandler implementation that sends a WorkerMetricsMsg via CentComm Service.
  * The metrics are set via MetricsHandler. The other message parts must be
  * set via the setters for each worker's epochs or mini-batches.
  * The built MetricsMessage is passed through {@code send()} when sending the network message.
@@ -59,7 +59,7 @@ public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   @Override
   public void send(final WorkerMetrics message) {
     LOG.entering(WorkerMetricsMsgSender.class.getSimpleName(), "send");
-    slaveSideCentCommMsgSender.send(WorkerConstants.AGGREGATION_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
+    slaveSideCentCommMsgSender.send(WorkerConstants.CENT_COMM_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
     LOG.exiting(WorkerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }

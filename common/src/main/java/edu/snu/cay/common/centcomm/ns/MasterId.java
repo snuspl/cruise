@@ -18,6 +18,6 @@ package edu.snu.cay.common.centcomm.ns;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Network Connection Service identifier of the Aggregation Master")
+@NamedParameter(doc = "Network Connection Service identifier of the CentComm Master")
 public final class MasterId implements Name<String> {
 }

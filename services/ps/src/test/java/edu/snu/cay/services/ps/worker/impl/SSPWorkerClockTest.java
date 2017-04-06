@@ -146,7 +146,7 @@ public class SSPWorkerClockTest {
     // broadcast updated global minimum clock
     final byte[] data =
         codec.encode(ClockManager.getBroadcastMinClockMessage(updatedGlobalMinimumClock));
-    mockMasterSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, "worker", data);
+    mockMasterSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, "worker", data);
 
     assertEquals(updatedGlobalMinimumClock, sspWorkerClock.getGlobalMinimumClock());
   }
@@ -241,7 +241,7 @@ public class SSPWorkerClockTest {
   private CentCommMsg getTestCentCommMsg(final String workerId, final byte[] data) {
     return CentCommMsg.newBuilder()
         .setSourceId(workerId)
-        .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
+        .setClientClassName(ClockManager.CENT_COMM_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))
         .build();
   }

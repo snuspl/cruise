@@ -57,7 +57,7 @@ final class WorkerGlobalBarrier {
   private void sendMsgToDriver() {
     LOG.log(Level.INFO, "Sending a synchronization message to the driver");
     final byte[] data = codec.encode(stateMachine.getCurrentState());
-    slaveSideCentCommMsgSender.send(WorkerStateManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(WorkerStateManager.CENT_COMM_CLIENT_NAME, data);
   }
 
   /**

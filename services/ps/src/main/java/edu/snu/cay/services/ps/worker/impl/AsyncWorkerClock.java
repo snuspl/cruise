@@ -71,7 +71,7 @@ public final class AsyncWorkerClock implements WorkerClock {
             .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
             .build();
     final byte[] data = codec.encode(avroClockMsg);
-    slaveSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, data);
 
     // wait until getting the initial worker clock
     try {
@@ -91,7 +91,7 @@ public final class AsyncWorkerClock implements WorkerClock {
             .setTickMsg(TickMsg.newBuilder().build())
             .build();
     final byte[] data = codec.encode(avroClockMsg);
-    slaveSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, data);
   }
 
   @Override

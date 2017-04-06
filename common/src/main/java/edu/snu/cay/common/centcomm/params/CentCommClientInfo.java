@@ -20,7 +20,7 @@ import org.apache.reef.tang.annotations.NamedParameter;
 
 import java.util.Set;
 
-@NamedParameter(doc = "Information for Aggregation Service clients." +
+@NamedParameter(doc = "Information for CentComm Service clients." +
     "Encoded as ClientClassName//MasterHandlerClassName//SlaveHandlerClassName")
 public final class CentCommClientInfo implements Name<Set<String>> {
 }

@@ -93,7 +93,7 @@ public final class SSPWorkerClock implements WorkerClock {
         .build();
     final byte[] data = codec.encode(avroClockMsg);
     final long beginTime = System.currentTimeMillis();
-    slaveSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, data);
 
     // wait until to get current global minimum clock and initial worker clock
     try {
@@ -114,7 +114,7 @@ public final class SSPWorkerClock implements WorkerClock {
             .build();
     final byte[] data = codec.encode(avroClockMsg);
     final long beginTime = System.currentTimeMillis();
-    slaveSideCentCommMsgSender.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, data);
     clockNetworkWaitingTime += System.currentTimeMillis() - beginTime;
   }
 

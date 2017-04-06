@@ -25,7 +25,7 @@ import javax.inject.Inject;
 import java.util.logging.Logger;
 
 /**
- * A MetricsHandler implementation that sends a ServerMetricsMsg via Aggregation Service.
+ * A MetricsHandler implementation that sends a ServerMetricsMsg via Cent Comm Service.
  * The metrics are set via MetricsHandler. The other message parts must be
  * set via the setters for each server window.
  * The built MetricsMessage is passed through {@code send()} when sending the network message.
@@ -58,7 +58,7 @@ public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   @Override
   public void send(final ServerMetrics message) {
     LOG.entering(ServerMetricsMsgSender.class.getSimpleName(), "send");
-    slaveSideCentCommMsgSender.send(ServerConstants.AGGREGATION_CLIENT_NAME, metricsMessageCodec.encode(message));
+    slaveSideCentCommMsgSender.send(ServerConstants.CENT_COMM_CLIENT_NAME, metricsMessageCodec.encode(message));
     LOG.exiting(ServerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }

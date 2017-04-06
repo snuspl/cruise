@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * NCS related classes for Aggregation Service.
+ * NCS related classes for Centralized Communication (CentComm) Service.
  */
 package edu.snu.cay.common.centcomm.ns;

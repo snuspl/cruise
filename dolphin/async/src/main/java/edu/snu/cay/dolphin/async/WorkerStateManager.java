@@ -47,7 +47,7 @@ final class WorkerStateManager {
 
   private static final byte[] EMPTY_DATA = new byte[0];
 
-  static final String AGGREGATION_CLIENT_NAME = WorkerStateManager.class.getName();
+  static final String CENT_COMM_CLIENT_NAME = WorkerStateManager.class.getName();
 
   private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
 
@@ -138,7 +138,7 @@ final class WorkerStateManager {
 
   private void sendResponseMessage(final String workerId) {
     try {
-      masterSideCentCommMsgSender.send(AGGREGATION_CLIENT_NAME, workerId, EMPTY_DATA);
+      masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, workerId, EMPTY_DATA);
     } catch (final NetworkException e) {
       LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
     }

@@ -259,7 +259,7 @@ public final class ClockManagerTest {
   private CentCommMsg getTestCentCommMsg(final String workerId, final byte[] data) {
     return CentCommMsg.newBuilder()
         .setSourceId(workerId)
-        .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
+        .setClientClassName(ClockManager.CENT_COMM_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))
         .build();
   }

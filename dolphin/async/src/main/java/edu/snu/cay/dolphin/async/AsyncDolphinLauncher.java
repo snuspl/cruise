@@ -383,7 +383,7 @@ public final class AsyncDolphinLauncher {
     final int stalenessBound = injector.getNamedInstance(StalenessBound.class);
     final boolean isSSPModel = stalenessBound >= 0;
     final CentCommConf centCommConf = isSSPModel ?
-        getAggregationConfigurationForSSP() : getAggregationConfigurationDefault();
+        getCentCommConfForSSP() : getDefaultCentCommConf();
     // set up an optimizer configuration
     final Class<? extends Optimizer> optimizerClass;
     final Class<? extends PlanExecutor> executorClass;
@@ -411,30 +411,30 @@ public final class AsyncDolphinLauncher {
             .build());
   }
 
-  private static CentCommConf.Builder getAggregationConfigurationDefaultBuilder() {
+  private static CentCommConf.Builder getCentCommConfDefaultBuilder() {
     return CentCommConf.newBuilder()
         .addCentCommClient(SynchronizationManager.CENT_COMM_CLIENT_NAME,
             SynchronizationManager.MessageHandler.class,
             WorkerSynchronizer.MessageHandler.class)
-        .addCentCommClient(WorkerConstants.AGGREGATION_CLIENT_NAME,
+        .addCentCommClient(WorkerConstants.CENT_COMM_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForWorker.class,
             EvalSideMetricsMsgHandlerForWorker.class)
-        .addCentCommClient(ServerConstants.AGGREGATION_CLIENT_NAME,
+        .addCentCommClient(ServerConstants.CENT_COMM_CLIENT_NAME,
             DriverSideMetricsMsgHandlerForServer.class,
             EvalSideMetricsMsgHandlerForServer.class);
   }
 
-  private static CentCommConf getAggregationConfigurationDefault() {
-    return getAggregationConfigurationDefaultBuilder()
-        .addCentCommClient(ClockManager.AGGREGATION_CLIENT_NAME,
+  private static CentCommConf getDefaultCentCommConf() {
+    return getCentCommConfDefaultBuilder()
+        .addCentCommClient(ClockManager.CENT_COMM_CLIENT_NAME,
             ClockManager.MessageHandler.class,
             AsyncWorkerClock.MessageHandler.class)
         .build();
   }
 
-  private static CentCommConf getAggregationConfigurationForSSP() {
-    return getAggregationConfigurationDefaultBuilder()
-        .addCentCommClient(ClockManager.AGGREGATION_CLIENT_NAME,
+  private static CentCommConf getCentCommConfForSSP() {
+    return getCentCommConfDefaultBuilder()
+        .addCentCommClient(ClockManager.CENT_COMM_CLIENT_NAME,
             ClockManager.MessageHandler.class,
             SSPWorkerClock.MessageHandler.class)
         .build();

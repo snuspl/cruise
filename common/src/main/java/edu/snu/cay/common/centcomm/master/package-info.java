@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Driver classes for Aggregation Service.
+ * Driver classes for Centralized Communication (CentComm) Service.
  */
 package edu.snu.cay.common.centcomm.master;

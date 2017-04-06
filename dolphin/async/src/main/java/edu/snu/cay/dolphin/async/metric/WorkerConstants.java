@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.metric;
 
 /**
- * Constants for Worker metrics, which consists of client name of AggregationService and
+ * Constants for Worker metrics, which consists of client name of CentComm service and
  * Keys to identify metrics.
  */
 public final class WorkerConstants {
@@ -27,6 +27,6 @@ public final class WorkerConstants {
   private WorkerConstants() {
   }
 
-  public static final String AGGREGATION_CLIENT_NAME =
+  public static final String CENT_COMM_CLIENT_NAME =
       "METRIC_COLLECTION_SERVICE_FOR_WORKER";
 }
