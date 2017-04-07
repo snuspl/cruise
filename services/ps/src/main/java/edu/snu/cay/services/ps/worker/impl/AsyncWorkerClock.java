@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.avro.RequestInitClockMsg;
@@ -44,7 +44,7 @@ import java.util.logging.Logger;
 public final class AsyncWorkerClock implements WorkerClock {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerClock.class.getName());
 
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
 
   private final ClockMsgCodec codec;
 
@@ -57,10 +57,10 @@ public final class AsyncWorkerClock implements WorkerClock {
   private volatile int workerClock;
 
   @Inject
-  private AsyncWorkerClock(final AggregationSlave aggregationSlave,
+  private AsyncWorkerClock(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
                            final ClockMsgCodec codec) {
     this.codec = codec;
-    this.aggregationSlave = aggregationSlave;
+    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
   }
 
   @Override
@@ -71,7 +71,7 @@ public final class AsyncWorkerClock implements WorkerClock {
             .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
             .build();
     final byte[] data = codec.encode(avroClockMsg);
-    aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, data);
 
     // wait until getting the initial worker clock
     try {
@@ -91,7 +91,7 @@ public final class AsyncWorkerClock implements WorkerClock {
             .setTickMsg(TickMsg.newBuilder().build())
             .build();
     final byte[] data = codec.encode(avroClockMsg);
-    aggregationSlave.send(ClockManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, data);
   }
 
   @Override
@@ -114,11 +114,11 @@ public final class AsyncWorkerClock implements WorkerClock {
     throw new UnsupportedOperationException();
   }
 
-  public final class MessageHandler implements EventHandler<AggregationMessage> {
+  public final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public void onNext(final AggregationMessage aggregationMessage) {
-      final AvroClockMsg avroClockMsg = codec.decode(aggregationMessage.getData().array());
+    public void onNext(final CentCommMsg centCommMsg) {
+      final AvroClockMsg avroClockMsg = codec.decode(centCommMsg.getData().array());
       switch (avroClockMsg.getType()) {
       case ReplyInitClockMsg:
         workerClock = avroClockMsg.getReplyInitClockMsg().getInitClock();

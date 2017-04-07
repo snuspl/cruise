@@ -16,7 +16,7 @@
 
 package edu.snu.cay.services.em.examples.simple;
 
-import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.CentCommConf;
 import edu.snu.cay.services.em.common.parameters.EMTraceEnabled;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
@@ -128,8 +128,8 @@ public final class SimpleEMREEF {
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, SimpleEMDriver.ActiveContextHandler.class)
         .build();
 
-    final Configuration aggregationConf = AggregationConfiguration.newBuilder()
-        .addAggregationClient(SimpleEMDriver.AGGREGATION_CLIENT_ID,
+    final Configuration centCommConf = CentCommConf.newBuilder()
+        .addCentCommClient(SimpleEMDriver.CENT_COMM_CLIENT_ID,
             DriverSideMsgHandler.class,
             EvalSideMsgHandler.class)
         .build()
@@ -138,7 +138,7 @@ public final class SimpleEMREEF {
     // spawn the name server at the driver
     return Configurations.merge(driverConfiguration,
         EMConfProvider.getDriverConfiguration(),
-        aggregationConf,
+        centCommConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         Tang.Factory.getTang().newConfigurationBuilder()

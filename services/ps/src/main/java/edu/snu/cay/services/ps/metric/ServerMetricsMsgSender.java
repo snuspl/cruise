@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.metric;
 
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
@@ -25,7 +25,7 @@ import javax.inject.Inject;
 import java.util.logging.Logger;
 
 /**
- * A MetricsHandler implementation that sends a ServerMetricsMsg via Aggregation Service.
+ * A MetricsHandler implementation that sends a ServerMetricsMsg via Cent Comm Service.
  * The metrics are set via MetricsHandler. The other message parts must be
  * set via the setters for each server window.
  * The built MetricsMessage is passed through {@code send()} when sending the network message.
@@ -36,13 +36,13 @@ public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgS
 
   private final ServerMetricsMsgCodec metricsMessageCodec;
   private Metrics metrics;
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
 
   @Inject
   private ServerMetricsMsgSender(final ServerMetricsMsgCodec metricsMessageCodec,
-                                 final AggregationSlave aggregationSlave) {
+                                 final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender) {
     this.metricsMessageCodec = metricsMessageCodec;
-    this.aggregationSlave = aggregationSlave;
+    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
   }
 
   @Override
@@ -58,7 +58,7 @@ public final class ServerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   @Override
   public void send(final ServerMetrics message) {
     LOG.entering(ServerMetricsMsgSender.class.getSimpleName(), "send");
-    aggregationSlave.send(ServerConstants.AGGREGATION_CLIENT_NAME, metricsMessageCodec.encode(message));
+    slaveSideCentCommMsgSender.send(ServerConstants.CENT_COMM_CLIENT_NAME, metricsMessageCodec.encode(message));
     LOG.exiting(ServerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }

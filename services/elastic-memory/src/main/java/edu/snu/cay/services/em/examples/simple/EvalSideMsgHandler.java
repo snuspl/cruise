@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.examples.simple;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.wake.EventHandler;
@@ -31,7 +31,7 @@ import java.util.logging.Logger;
  * A task waits a response from the driver through this class.
  */
 @EvaluatorSide
-final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
+final class EvalSideMsgHandler implements EventHandler<CentCommMsg> {
 
   private static final Logger LOG = Logger.getLogger(EvalSideMsgHandler.class.getName());
 
@@ -46,7 +46,7 @@ final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
   }
 
   @Override
-  public void onNext(final AggregationMessage message) {
+  public void onNext(final CentCommMsg message) {
     final String data = codec.decode(message.getData().array());
 
     LOG.log(Level.INFO, "Message from the driver: {0}", data);

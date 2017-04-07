@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.em.examples.simple;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.services.em.avro.MigrationMsg;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.EMMaster;
@@ -35,13 +35,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver-side message handler that receives aggregation messages as an aggregation master.
+ * Driver-side message handler that receives CentComm messages as a CentComm master.
  * In default, it synchronizes all tasks by checking all evaluators have sent the messages.
  * To make this happen, it sends response messages to all evaluators when messages from all evaluators arrive.
  * Also it runs Move between two evaluators randomly chosen when all evaluators say they are READY
  * and sends the result to all evaluators.
  */
-public final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
+public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
   private static final Random RANDOM = new Random();
 
@@ -50,7 +50,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
   private final EMMaster emMaster;
   private final BlockManager blockManager;
 
-  private final AggregationMaster aggregationMaster;
+  private final MasterSideCentCommMsgSender masterSideCentCommMsgSender;
   private final Codec<String> codec;
   private CountDownLatch msgCountDown = new CountDownLatch(SimpleEMDriver.NUM_EVAL);
   private final List<String> evalIds = new ArrayList<>(SimpleEMDriver.NUM_EVAL);
@@ -58,12 +58,12 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
   private final int numMoves;
 
   @Inject
-  private DriverSideMsgHandler(final AggregationMaster aggregationMaster,
+  private DriverSideMsgHandler(final MasterSideCentCommMsgSender masterSideCentCommMsgSender,
                                final EMMaster emMaster,
                                final BlockManager blockManager,
                                final SerializableCodec<String> codec,
                                @Parameter(NumMoves.class) final int numMoves) {
-    this.aggregationMaster = aggregationMaster;
+    this.masterSideCentCommMsgSender = masterSideCentCommMsgSender;
     this.emMaster = emMaster;
     this.blockManager = blockManager;
     this.codec = codec;
@@ -72,13 +72,13 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
   }
 
   /**
-   * Aggregation message handling logic.
+   * CentComm message handling logic.
    *
-   * @param message received aggregation message
+   * @param message received CentComm message
    * @throws RuntimeException if the received message is incorrect
    */
   @Override
-  public void onNext(final AggregationMessage message) {
+  public void onNext(final CentCommMsg message) {
     // let's assume that the message is always the READY msg
 
     LOG.log(Level.INFO, "Received message {0} from eval", message);
@@ -218,7 +218,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
 
         LOG.log(Level.INFO, "Sending the result ({0}) to {1}", new Object[]{numChangedBlocks, evalId});
         try {
-          aggregationMaster.send(SimpleEMDriver.AGGREGATION_CLIENT_ID, evalId,
+          masterSideCentCommMsgSender.send(SimpleEMDriver.CENT_COMM_CLIENT_ID, evalId,
               codec.encode(Long.toString(numChangedBlocks)));
         } catch (final NetworkException e) {
           throw new RuntimeException(e);
@@ -233,7 +233,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
       LOG.log(Level.INFO, "Sending response to all evals: {0}", evalIds);
       for (final String evalId : evalIds) {
         try {
-          aggregationMaster.send(SimpleEMDriver.AGGREGATION_CLIENT_ID, evalId, codec.encode(Long.toString(0)));
+          masterSideCentCommMsgSender.send(SimpleEMDriver.CENT_COMM_CLIENT_ID, evalId, codec.encode(Long.toString(0)));
         } catch (final NetworkException e) {
           throw new RuntimeException(e);
         }

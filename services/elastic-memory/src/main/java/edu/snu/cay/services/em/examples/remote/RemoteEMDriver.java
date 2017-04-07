@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.examples.remote;
 
-import edu.snu.cay.common.aggregation.driver.AggregationManager;
+import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.EMConfProvider;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -54,14 +54,14 @@ final class RemoteEMDriver {
   private static final Logger LOG = Logger.getLogger(RemoteEMDriver.class.getName());
 
   static final String TASK_ID_PREFIX = "Task-";
-  static final String AGGREGATION_CLIENT_ID = "AGGREGATION_CLIENT_ID";
+  static final String CENT_COMM_CLIENT_ID = "CENT_COMM_CLIENT_ID";
   static final String CONTEXT_ID_PREFIX = "Context-";
 
   static final int EVAL_NUM = 2;
 
   private final EvaluatorRequestor requestor;
 
-  private final AggregationManager aggregationManager;
+  private final CentCommConfProvider centCommConfProvider;
 
   private final EMConfProvider emConfProvider;
   private final HTraceParameters traceParameters;
@@ -70,12 +70,12 @@ final class RemoteEMDriver {
 
   @Inject
   private RemoteEMDriver(final EvaluatorRequestor requestor,
-                         final AggregationManager aggregationManager,
+                         final CentCommConfProvider centCommConfProvider,
                          final EMConfProvider emConfProvider,
                          final HTraceParameters traceParameters,
                          @Parameter(RangeSupport.class) final boolean rangeSupport) throws InjectionException {
     this.requestor = requestor;
-    this.aggregationManager = aggregationManager;
+    this.centCommConfProvider = centCommConfProvider;
     this.emConfProvider = emConfProvider;
     this.traceParameters = traceParameters;
     this.rangeSupport = rangeSupport;
@@ -117,11 +117,11 @@ final class RemoteEMDriver {
           .build();
 
       final Configuration contextConf = Configurations.merge(
-          partialContextConf, emConfProvider.getContextConfiguration(), aggregationManager.getContextConfiguration());
+          partialContextConf, emConfProvider.getContextConfiguration(), centCommConfProvider.getContextConfiguration());
 
       final Configuration serviceConf = Configurations.merge(
           emConfProvider.getServiceConfiguration(contextId, EVAL_NUM),
-          aggregationManager.getServiceConfigurationWithoutNameResolver(),
+          centCommConfProvider.getServiceConfWithoutNameResolver(),
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(EMUpdateFunction.class, EMUpdateFunctionImpl.class)
               .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)

@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
@@ -43,21 +43,21 @@ final class WorkerGlobalBarrier {
 
   private final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(1);
 
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final SerializableCodec<Enum> codec;
 
   @Inject
-  private WorkerGlobalBarrier(final AggregationSlave aggregationSlave,
+  private WorkerGlobalBarrier(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
                               final SerializableCodec<Enum> codec) {
     this.stateMachine = initStateMachine();
-    this.aggregationSlave = aggregationSlave;
+    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.codec = codec;
   }
 
   private void sendMsgToDriver() {
     LOG.log(Level.INFO, "Sending a synchronization message to the driver");
     final byte[] data = codec.encode(stateMachine.getCurrentState());
-    aggregationSlave.send(WorkerStateManager.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(WorkerStateManager.CENT_COMM_CLIENT_NAME, data);
   }
 
   /**
@@ -83,10 +83,10 @@ final class WorkerGlobalBarrier {
     countDownLatch.awaitAndReset(1);
   }
 
-  final class MessageHandler implements EventHandler<AggregationMessage> {
+  final class MessageHandler implements EventHandler<CentCommMsg> {
 
     @Override
-    public synchronized void onNext(final AggregationMessage aggregationMessage) {
+    public synchronized void onNext(final CentCommMsg centCommMsg) {
       LOG.log(Level.INFO, "Received a response message from the driver");
 
       transitState(stateMachine);

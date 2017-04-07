@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.avro.Metrics;
 
@@ -26,7 +26,7 @@ import javax.inject.Inject;
 import java.util.logging.Logger;
 
 /**
- * A MetricsHandler implementation that sends a WorkerMetricsMsg via Aggregation Service.
+ * A MetricsHandler implementation that sends a WorkerMetricsMsg via CentComm Service.
  * The metrics are set via MetricsHandler. The other message parts must be
  * set via the setters for each worker's epochs or mini-batches.
  * The built MetricsMessage is passed through {@code send()} when sending the network message.
@@ -36,14 +36,14 @@ public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   private static final Logger LOG = Logger.getLogger(WorkerMetricsMsgSender.class.getName());
 
   private final WorkerMetricsMsgCodec workerMetricsMsgCodec;
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private Metrics metrics;
 
   @Inject
   private WorkerMetricsMsgSender(final WorkerMetricsMsgCodec workerMetricsMsgCodec,
-                                 final AggregationSlave aggregationSlave) {
+                                 final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender) {
     this.workerMetricsMsgCodec = workerMetricsMsgCodec;
-    this.aggregationSlave = aggregationSlave;
+    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
   }
 
   @Override
@@ -59,7 +59,7 @@ public final class WorkerMetricsMsgSender implements MetricsHandler, MetricsMsgS
   @Override
   public void send(final WorkerMetrics message) {
     LOG.entering(WorkerMetricsMsgSender.class.getSimpleName(), "send");
-    aggregationSlave.send(WorkerConstants.AGGREGATION_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
+    slaveSideCentCommMsgSender.send(WorkerConstants.CENT_COMM_CLIENT_NAME, workerMetricsMsgCodec.encode(message));
     LOG.exiting(WorkerMetricsMsgSender.class.getSimpleName(), "send");
   }
 }

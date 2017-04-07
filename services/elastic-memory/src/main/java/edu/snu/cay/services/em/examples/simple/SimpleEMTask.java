@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.examples.simple;
 
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.examples.simple.parameters.NumMoves;
@@ -38,7 +38,7 @@ final class SimpleEMTask implements Task {
   private static final int NUM_DATA = 20;
 
   private final MemoryStore<Long> memoryStore;
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final Codec<String> codec;
   private final EvalSideMsgHandler msgHandler;
   private final int numMoves;
@@ -51,13 +51,13 @@ final class SimpleEMTask implements Task {
   @Inject
   private SimpleEMTask(
       final MemoryStore<Long> memoryStore,
-      final AggregationSlave aggregationSlave,
+      final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
       final SerializableCodec<String> codec,
       final EvalSideMsgHandler msgHandler,
       final DataIdFactory<Long> dataIdFactory,
       @Parameter(NumMoves.class) final int numMoves) throws IdGenerationException {
     this.memoryStore = memoryStore;
-    this.aggregationSlave = aggregationSlave;
+    this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.codec = codec;
     this.msgHandler = msgHandler;
     this.numMoves = numMoves;
@@ -83,7 +83,7 @@ final class SimpleEMTask implements Task {
 
     for (int i = 0; i < numMoves; i++) {
       // tell driver that I'm ready
-      aggregationSlave.send(SimpleEMDriver.AGGREGATION_CLIENT_ID, codec.encode(DriverSideMsgHandler.READY));
+      slaveSideCentCommMsgSender.send(SimpleEMDriver.CENT_COMM_CLIENT_ID, codec.encode(DriverSideMsgHandler.READY));
       LOG.log(Level.INFO, "Waiting for driver to finish {0}th move.", i + 1);
 
       // data is moving.
@@ -107,7 +107,7 @@ final class SimpleEMTask implements Task {
     }
 
     // need to sync here in order to guarantee that all evaluators are alive until all remote operations are finished
-    aggregationSlave.send(SimpleEMDriver.AGGREGATION_CLIENT_ID, codec.encode(DriverSideMsgHandler.READY));
+    slaveSideCentCommMsgSender.send(SimpleEMDriver.CENT_COMM_CLIENT_ID, codec.encode(DriverSideMsgHandler.READY));
     msgHandler.waitForMessage();
 
     LOG.info("Finishing SimpleEMTask...");

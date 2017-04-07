@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -47,7 +47,7 @@ import static org.mockito.Mockito.*;
  * regarding to EM's worker Add/Delete.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({AggregationMaster.class, AggregationSlave.class})
+@PrepareForTest({MasterSideCentCommMsgSender.class, SlaveSideCentCommMsgSender.class})
 public class SynchronizationManagerTest {
   private static final String WORKER_ID_PREFIX = "worker-";
   private static final long SYNC_WAIT_TIME_MS = 1000;
@@ -57,9 +57,9 @@ public class SynchronizationManagerTest {
   private static final String MSG_SHOULD_WAIT_ALLOW_OF_CLEANUP = "Cannot enter CLEANUP state before being allowed";
   private static final String MSG_SHOULD_RELEASE_WORKERS = "All workers should be released";
 
-  private Tuple3<SynchronizationManager, AggregationMaster, EventHandler<AggregationMessage>> driverComponents;
+  private Tuple3<SynchronizationManager, MasterSideCentCommMsgSender, EventHandler<CentCommMsg>> driverComponents;
 
-  private Map<String, Tuple3<WorkerSynchronizer, AggregationSlave, EventHandler<AggregationMessage>>>
+  private Map<String, Tuple3<WorkerSynchronizer, SlaveSideCentCommMsgSender, EventHandler<CentCommMsg>>>
       workerIdToWorkerComponents = new HashMap<>();
 
   @Before
@@ -77,8 +77,8 @@ public class SynchronizationManagerTest {
   private void setupDriver(final int numInitialWorkers) throws InjectionException, NetworkException {
     final Injector injector = Tang.Factory.getTang().newInjector();
 
-    final AggregationMaster mockedAggregationMaster = mock(AggregationMaster.class);
-    injector.bindVolatileInstance(AggregationMaster.class, mockedAggregationMaster);
+    final MasterSideCentCommMsgSender mockedMasterSideCentCommMsgSender = mock(MasterSideCentCommMsgSender.class);
+    injector.bindVolatileInstance(MasterSideCentCommMsgSender.class, mockedMasterSideCentCommMsgSender);
 
     // TODO #452: Decouple numWorkers from data input splits
     final DataLoadingService mockedDataLoadingService = mock(DataLoadingService.class);
@@ -86,30 +86,30 @@ public class SynchronizationManagerTest {
     when(mockedDataLoadingService.getNumberOfPartitions()).thenReturn(numInitialWorkers);
 
     final SynchronizationManager synchronizationManager = injector.getInstance(SynchronizationManager.class);
-    final EventHandler<AggregationMessage> driverSideMsgHandler =
+    final EventHandler<CentCommMsg> driverSideMsgHandler =
         injector.getInstance(SynchronizationManager.MessageHandler.class);
 
-    driverComponents = new Tuple3<>(synchronizationManager, mockedAggregationMaster, driverSideMsgHandler);
+    driverComponents = new Tuple3<>(synchronizationManager, mockedMasterSideCentCommMsgSender, driverSideMsgHandler);
 
     doAnswer(new Answer() {
       @Override
       public Object answer(final InvocationOnMock invocation) throws Throwable {
         final byte[] data = invocation.getArgumentAt(2, byte[].class);
 
-        final AggregationMessage msg = AggregationMessage.newBuilder()
+        final CentCommMsg msg = CentCommMsg.newBuilder()
             .setSourceId("")
             .setClientClassName("")
             .setData(ByteBuffer.wrap(data))
             .build();
 
         final String workerId = invocation.getArgumentAt(1, String.class);
-        final EventHandler<AggregationMessage> workerSideMsgHandler =
+        final EventHandler<CentCommMsg> workerSideMsgHandler =
             workerIdToWorkerComponents.get(workerId).getThird();
 
         workerSideMsgHandler.onNext(msg);
         return null;
       }
-    }).when(mockedAggregationMaster).send(anyString(), anyString(), any(byte[].class));
+    }).when(mockedMasterSideCentCommMsgSender).send(anyString(), anyString(), any(byte[].class));
   }
 
   /**
@@ -121,33 +121,33 @@ public class SynchronizationManagerTest {
   private void setupWorker(final String workerId) throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
 
-    final AggregationSlave mockedAggregationSlave = mock(AggregationSlave.class);
-    injector.bindVolatileInstance(AggregationSlave.class, mockedAggregationSlave);
+    final SlaveSideCentCommMsgSender mockedSlaveSideCentCommMsgSender = mock(SlaveSideCentCommMsgSender.class);
+    injector.bindVolatileInstance(SlaveSideCentCommMsgSender.class, mockedSlaveSideCentCommMsgSender);
 
     final WorkerSynchronizer workerSynchronizer = injector.getInstance(WorkerSynchronizer.class);
-    final EventHandler<AggregationMessage> workerSideMsgHandler =
+    final EventHandler<CentCommMsg> workerSideMsgHandler =
         injector.getInstance(WorkerSynchronizer.MessageHandler.class);
 
     workerIdToWorkerComponents.put(workerId,
-        new Tuple3<>(workerSynchronizer, mockedAggregationSlave, workerSideMsgHandler));
+        new Tuple3<>(workerSynchronizer, mockedSlaveSideCentCommMsgSender, workerSideMsgHandler));
 
     doAnswer(new Answer() {
       @Override
       public Object answer(final InvocationOnMock invocation) throws Throwable {
         final byte[] data = invocation.getArgumentAt(1, byte[].class);
 
-        final AggregationMessage msg = AggregationMessage.newBuilder()
+        final CentCommMsg msg = CentCommMsg.newBuilder()
             .setSourceId(workerId)
             .setClientClassName("")
             .setData(ByteBuffer.wrap(data))
             .build();
 
-        final EventHandler<AggregationMessage> driverSideMsgHandler = driverComponents.getThird();
+        final EventHandler<CentCommMsg> driverSideMsgHandler = driverComponents.getThird();
 
         driverSideMsgHandler.onNext(msg);
         return null;
       }
-    }).when(mockedAggregationSlave).send(anyString(), any(byte[].class));
+    }).when(mockedSlaveSideCentCommMsgSender).send(anyString(), any(byte[].class));
 
     // should be done after setting up driver
     final SynchronizationManager synchronizationManager = driverComponents.getFirst();

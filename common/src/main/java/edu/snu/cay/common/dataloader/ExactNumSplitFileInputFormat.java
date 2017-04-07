@@ -184,7 +184,7 @@ public abstract class ExactNumSplitFileInputFormat<K, V> extends FileInputFormat
 
       // NOTE: This code currently works only for one level of
       // hierarchy (rack/host). However, it is relatively easy
-      // to extend this to support aggregation at different
+      // to extend this to support CentComm at different
       // levels
 
       for (final String topo : allTopos) {

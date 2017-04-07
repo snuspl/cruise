@@ -15,7 +15,8 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.ps.PSParameters;
 import edu.snu.cay.services.ps.common.resolver.ServerResolver;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
@@ -26,8 +27,7 @@ import edu.snu.cay.services.ps.worker.parameters.PullRetryTimeoutMs;
 import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.worker.api.WorkerHandler;
 import edu.snu.cay.utils.EnforceLoggingLevelRule;
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.driver.impl.ClockManager;
 import edu.snu.cay.services.ps.ns.ClockMsgCodec;
@@ -66,7 +66,7 @@ import static org.mockito.Mockito.*;
  * Tests for {@link SSPParameterWorker}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({WorkerMsgSender.class, AggregationSlave.class, AggregationMaster.class})
+@PrepareForTest({WorkerMsgSender.class, SlaveSideCentCommMsgSender.class, MasterSideCentCommMsgSender.class})
 public final class SSPParameterWorkerTest {
   private static final int WORKER_QUEUE_SIZE = 2500;
   private static final int WORKER_NUM_THREADS = 2;
@@ -81,7 +81,7 @@ public final class SSPParameterWorkerTest {
   private ParameterWorker<Integer, Integer, Integer> parameterWorker;
   private WorkerHandler<Integer, Integer, Integer> workerHandler;
   private WorkerMsgSender<Integer, Integer> mockSender;
-  private AggregationMaster mockAggregationMaster;
+  private MasterSideCentCommMsgSender mockMasterSideCentCommMsgSender;
   private ClockMsgCodec codec;
   private SSPWorkerClock.MessageHandler sspWorkerClockMessageHandler;
   private WorkerClock workerClock;
@@ -113,9 +113,9 @@ public final class SSPParameterWorkerTest {
     injector.bindVolatileInstance(ParameterUpdater.class, mock(ParameterUpdater.class));
     injector.bindVolatileInstance(ServerResolver.class, mock(ServerResolver.class));
 
-    this.mockAggregationMaster = mock(AggregationMaster.class);
-    injector.bindVolatileInstance(AggregationMaster.class, this.mockAggregationMaster);
-    injector.bindVolatileInstance(AggregationSlave.class, mock(AggregationSlave.class));
+    this.mockMasterSideCentCommMsgSender = mock(MasterSideCentCommMsgSender.class);
+    injector.bindVolatileInstance(MasterSideCentCommMsgSender.class, this.mockMasterSideCentCommMsgSender);
+    injector.bindVolatileInstance(SlaveSideCentCommMsgSender.class, mock(SlaveSideCentCommMsgSender.class));
 
     this.workerClock = injector.getInstance(WorkerClock.class);
     this.sspWorkerClockMessageHandler = injector.getInstance(SSPWorkerClock.MessageHandler.class);
@@ -136,24 +136,24 @@ public final class SSPParameterWorkerTest {
     final AvroClockMsg initClockMsg =
         ClockManager.getReplyInitialClockMessage(INIT_GLOBAL_MIN_CLOCK, INIT_WORKER_CLOCK);
     final byte[] replyData = codec.encode(initClockMsg);
-    final AggregationMessage aggregationMessage = getTestAggregationMessage(DRIVER_ID, replyData);
-    sspWorkerClockMessageHandler.onNext(aggregationMessage);
+    final CentCommMsg sentCommMsg = getTestCentCommMsg(DRIVER_ID, replyData);
+    sspWorkerClockMessageHandler.onNext(sentCommMsg);
   }
 
   /**
-   * Mocks {@link AggregationMaster#send(String, String, byte[])}
+   * Mocks {@link MasterSideCentCommMsgSender#send(String, String, byte[])}
    * to update worker clock through {@link SSPWorkerClock.MessageHandler}
    * Required only by {@link #testDataStalenessCheck()} and {@link #testWorkerStalenessCheck()}.
    */
   private void setupClockUpdateHandler() throws NetworkException {
     // Stub to simulate the behavior of SSPWorkerClock.MessageHandler.
-    // The message handler responds to the Aggregation message from Driver, which consists of the global minimum clock.
+    // The message handler responds to the CentComm message from Driver, which consists of the global minimum clock.
     doAnswer(invocation -> {
       final byte[] initClockMsgData = invocation.getArgumentAt(2, byte[].class);
-      final AggregationMessage aggregationMessage = getTestAggregationMessage(DRIVER_ID, initClockMsgData);
-      sspWorkerClockMessageHandler.onNext(aggregationMessage);
+      final CentCommMsg centCommMsg = getTestCentCommMsg(DRIVER_ID, initClockMsgData);
+      sspWorkerClockMessageHandler.onNext(centCommMsg);
       return null;
-    }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
+    }).when(mockMasterSideCentCommMsgSender).send(anyString(), anyString(), anyObject());
   }
 
   /**
@@ -296,7 +296,7 @@ public final class SSPParameterWorkerTest {
     final int deltaGlobalMinClock = 1;
     final byte[] initClockMsgData =
         codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaGlobalMinClock));
-    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
+    mockMasterSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, WORKER_ID, initClockMsgData);
     assertEquals(workerClock.getWorkerClock(), workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
 
     // The following for statement makes the number of times sendPullMsg() call increased by the number of keys.
@@ -389,7 +389,7 @@ public final class SSPParameterWorkerTest {
     final int deltaClock = 1;
     final byte[] initClockMsgData =
         codec.encode(ClockManager.getBroadcastMinClockMessage(oldGlobalMinimumClock + deltaClock));
-    mockAggregationMaster.send(ClockManager.AGGREGATION_CLIENT_NAME, WORKER_ID, initClockMsgData);
+    mockMasterSideCentCommMsgSender.send(ClockManager.CENT_COMM_CLIENT_NAME, WORKER_ID, initClockMsgData);
 
     assertEquals(oldGlobalMinimumClock + deltaClock, workerClock.getGlobalMinimumClock());
     assertTrue(workerClock.getWorkerClock() <= workerClock.getGlobalMinimumClock() + STALENESS_BOUND);
@@ -441,10 +441,10 @@ public final class SSPParameterWorkerTest {
     executorService.shutdownNow();
   }
 
-  private AggregationMessage getTestAggregationMessage(final String senderId, final byte[] data) {
-    return AggregationMessage.newBuilder()
+  private CentCommMsg getTestCentCommMsg(final String senderId, final byte[] data) {
+    return CentCommMsg.newBuilder()
         .setSourceId(senderId)
-        .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
+        .setClientClassName(ClockManager.CENT_COMM_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))
         .build();
   }

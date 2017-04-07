@@ -16,7 +16,7 @@
 package edu.snu.cay.services.ps.metric;
 
 /**
- * Constants for PS metrics, which consists of client name of AggregationService and
+ * Constants for PS metrics, which consists of client name of CentComm Service and
  * Keys to identify metrics.
  */
 public final class ServerConstants {
@@ -27,6 +27,6 @@ public final class ServerConstants {
   private ServerConstants() {
   }
 
-  public static final String AGGREGATION_CLIENT_NAME =
+  public static final String CENT_COMM_CLIENT_NAME =
       "METRIC_COLLECTION_SERVICE_FOR_SERVER";
 }

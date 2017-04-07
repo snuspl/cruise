@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.services.ps.avro.AvroClockMsg;
 import edu.snu.cay.services.ps.avro.ClockMsgType;
 import edu.snu.cay.services.ps.avro.RequestInitClockMsg;
@@ -53,13 +53,13 @@ import static org.mockito.Mockito.mock;
  * Tests for {@link ClockManager}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({AggregationSlave.class, AggregationMaster.class})
+@PrepareForTest({SlaveSideCentCommMsgSender.class, MasterSideCentCommMsgSender.class})
 public final class ClockManagerTest {
   private static final int STALENESS_BOUND = 4;
   private static final int NUM_WORKERS = 10;
 
-  private AggregationSlave mockAggregationSlave;
-  private AggregationMaster mockAggregationMaster;
+  private SlaveSideCentCommMsgSender mockSlaveSideCentCommMsgSender;
+  private MasterSideCentCommMsgSender mockMasterSideCentCommMsgSender;
   private ClockManager clockManager;
   private ClockManager.MessageHandler clockMessageHandler;
   private ClockMsgCodec codec;
@@ -71,25 +71,25 @@ public final class ClockManagerTest {
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
-    mockAggregationSlave = mock(AggregationSlave.class);
-    injector.bindVolatileInstance(AggregationSlave.class, mockAggregationSlave);
-    mockAggregationMaster = mock(AggregationMaster.class);
-    injector.bindVolatileInstance(AggregationMaster.class, mockAggregationMaster);
+    mockSlaveSideCentCommMsgSender = mock(SlaveSideCentCommMsgSender.class);
+    injector.bindVolatileInstance(SlaveSideCentCommMsgSender.class, mockSlaveSideCentCommMsgSender);
+    mockMasterSideCentCommMsgSender = mock(MasterSideCentCommMsgSender.class);
+    injector.bindVolatileInstance(MasterSideCentCommMsgSender.class, mockMasterSideCentCommMsgSender);
 
     this.clockManager = injector.getInstance(ClockManager.class);
     this.clockMessageHandler = injector.getInstance(ClockManager.MessageHandler.class);
     this.codec = injector.getInstance(ClockMsgCodec.class);
 
     doAnswer(invocation -> {
-      // the first parameter of AggregationSlave::send() is classClientName but workerId is used instead
-      // because mockAggregationSlave couldn't send its source id(no network connection).
+      // the first parameter of SlaveSideCentCommMsgSender::send() is classClientName but workerId is used instead
+      // because mockSlaveSideCentCommMsgSender couldn't send its source id(no network connection).
       final String workerId = invocation.getArgumentAt(0, String.class);
       final byte[] data = invocation.getArgumentAt(1, byte[].class);
-      final AggregationMessage aggregationMessage = getTestAggregationMessage(workerId, data);
+      final CentCommMsg centCommMsg = getTestCentCommMsg(workerId, data);
 
-      clockMessageHandler.onNext(aggregationMessage);
+      clockMessageHandler.onNext(centCommMsg);
       return null;
-    }).when(mockAggregationSlave).send(anyString(), anyObject());
+    }).when(mockSlaveSideCentCommMsgSender).send(anyString(), anyObject());
   }
 
   /**
@@ -113,7 +113,7 @@ public final class ClockManagerTest {
               .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
               .build();
       final byte[] data = codec.encode(avroClockMsg);
-      mockAggregationSlave.send(workerId, data);
+      mockSlaveSideCentCommMsgSender.send(workerId, data);
 
       // new clock of worker which is not added by EM equals to globalMinimumClock;
       assertEquals(clockManager.getGlobalMinimumClock(), clockManager.getClockOf(workerId).intValue());
@@ -133,7 +133,7 @@ public final class ClockManagerTest {
               .setRequestInitClockMsg(RequestInitClockMsg.newBuilder().build())
               .build();
       final byte[] data = codec.encode(avroClockMsg);
-      mockAggregationSlave.send(workerId, data);
+      mockSlaveSideCentCommMsgSender.send(workerId, data);
 
       // new clock of worker which is added by EM is globalMinimumClock + staleness / 2 ;
       assertEquals(expectedClockOfWorkersAddedByEM, clockManager.getClockOf(workerId).intValue());
@@ -166,7 +166,7 @@ public final class ClockManagerTest {
                 .setTickMsg(TickMsg.newBuilder().build())
                 .build();
         final byte[] data = codec.encode(avroClockMsg);
-        mockAggregationSlave.send(workerId, data);
+        mockSlaveSideCentCommMsgSender.send(workerId, data);
       }
       assertEquals(initialGlobalMinimumClock + workerIdx, clockManager.getClockOf(workerId).intValue());
     }
@@ -207,7 +207,7 @@ public final class ClockManagerTest {
         numberOfBroadcastMessages.incrementAndGet();
       }
       return null;
-    }).when(mockAggregationMaster).send(anyString(), anyString(), anyObject());
+    }).when(mockMasterSideCentCommMsgSender).send(anyString(), anyString(), anyObject());
 
     // add workers first to set same initial clock to all workers
     for (int workerIdx = 0; workerIdx < NUM_WORKERS; workerIdx++) {
@@ -225,7 +225,7 @@ public final class ClockManagerTest {
                 .setTickMsg(TickMsg.newBuilder().build())
                 .build();
         final byte[] data = codec.encode(avroClockMsg);
-        mockAggregationSlave.send(workerId, data);
+        mockSlaveSideCentCommMsgSender.send(workerId, data);
       }
       workerClockMap.put(workerId, initialGlobalMinimumClock + workerIdx);
     }
@@ -243,7 +243,7 @@ public final class ClockManagerTest {
                 .setTickMsg(TickMsg.newBuilder().build())
                 .build();
         final byte[] data = codec.encode(avroClockMsg);
-        mockAggregationSlave.send(workerId, data);
+        mockSlaveSideCentCommMsgSender.send(workerId, data);
         workerClockMap.put(workerId, currentClock + 1);
       }
 
@@ -256,10 +256,10 @@ public final class ClockManagerTest {
     assertEquals(expectedMinimumClock, clockManager.getGlobalMinimumClock());
   }
 
-  private AggregationMessage getTestAggregationMessage(final String workerId, final byte[] data) {
-    return AggregationMessage.newBuilder()
+  private CentCommMsg getTestCentCommMsg(final String workerId, final byte[] data) {
+    return CentCommMsg.newBuilder()
         .setSourceId(workerId)
-        .setClientClassName(ClockManager.AGGREGATION_CLIENT_NAME)
+        .setClientClassName(ClockManager.CENT_COMM_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))
         .build();
   }
