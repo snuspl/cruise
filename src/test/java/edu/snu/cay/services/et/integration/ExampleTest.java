@@ -19,7 +19,7 @@ import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerET;
 import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import edu.snu.cay.services.et.examples.simple.SimpleET;
-import edu.snu.cay.services.et.examples.userservice.ETAggregationExample;
+import edu.snu.cay.services.et.examples.userservice.ETCentCommExample;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -56,13 +56,13 @@ public class ExampleTest {
   }
 
   @Test
-  public void testAggregationExampleET() throws InjectionException {
+  public void testCentCommExampleET() throws InjectionException {
     final Configuration commandLineConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(Parameters.OnLocal.class, Boolean.toString(true))
         .bindNamedParameter(Parameters.Splits.class, Integer.toString(3))
         .bindNamedParameter(Parameters.Timeout.class, Integer.toString(10000))
         .build();
 
-    ETAggregationExample.runAggregationExample(commandLineConf);
+    ETCentCommExample.runCentCommExample(commandLineConf);
   }
 }

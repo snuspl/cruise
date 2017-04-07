@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.et.examples.userservice;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
+import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -33,47 +33,46 @@ import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.services.et.examples.userservice.ETAggregationExample.AGGREGATION_CLIENT_ID;
+import static edu.snu.cay.services.et.examples.userservice.ETCentCommExample.CENT_COMM_CLIENT_ID;
 
 /**
- * Driver-side message handler.
- * This receives aggregation messages, since driver is an aggregation master.
- * Provides a way to check whether all messages have arrived or not via {@code validate()} method.
+ * Driver-side message handler that aggregates msgs from executors.
+ * It provides a way to check whether all messages have arrived or not via {@code validate()} method.
  * It sends response messages to all tasks when all messages from the tasks arrive.
  */
 @DriverSide
-public final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
+public final class DriverSideMsgHandler implements EventHandler<CentCommMsg> {
 
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
 
   static final String MSG_FROM_DRIVER = "MSG_FROM_DRIVER";
 
-  private final AggregationMaster aggregationMaster;
+  private final MasterSideCentCommMsgSender centCommMsgSender;
   private final Codec<String> codec;
   private final CountDownLatch msgCountDown;
   private final Set<String> slaveIds;
 
   @Inject
-  private DriverSideMsgHandler(final AggregationMaster aggregationMaster,
+  private DriverSideMsgHandler(final MasterSideCentCommMsgSender centCommMsgSender,
                                @Parameter(Parameters.Splits.class) final int splits,
                                final SerializableCodec<String> codec) {
-    this.aggregationMaster = aggregationMaster;
+    this.centCommMsgSender = centCommMsgSender;
     this.codec = codec;
     this.msgCountDown = new CountDownLatch(splits);
     this.slaveIds = Collections.synchronizedSet(new HashSet<String>(splits));
   }
 
   /**
-   * Aggregation message handling logic.
-   * @param message received aggregation message
+   * CentComm message handling logic.
+   * @param message received centComm message
    * @throws RuntimeException if the received message is incorrect
    */
   @Override
-  public void onNext(final AggregationMessage message) {
+  public void onNext(final CentCommMsg message) {
     final String slaveId = message.getSourceId().toString();
     final String data = codec.decode(message.getData().array());
 
-    LOG.log(Level.INFO, "Received aggregation message from {0}. data: {1}", new Object[]{slaveId, data});
+    LOG.log(Level.INFO, "Received centComm message from {0}. data: {1}", new Object[]{slaveId, data});
 
     if (slaveIds.contains(slaveId)) {
       throw new RuntimeException("Multiple messages were sent from " + slaveId);
@@ -104,7 +103,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
     for (final String slaveId : slaveIds) {
       LOG.log(Level.INFO, "Sending a message to {0}", slaveId);
       try {
-        aggregationMaster.send(AGGREGATION_CLIENT_ID, slaveId, codec.encode(MSG_FROM_DRIVER));
+        centCommMsgSender.send(CENT_COMM_CLIENT_ID, slaveId, codec.encode(MSG_FROM_DRIVER));
       } catch (final NetworkException e) {
         throw new RuntimeException(e);
       }

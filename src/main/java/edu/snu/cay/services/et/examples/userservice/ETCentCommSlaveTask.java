@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.userservice;
 
-import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.serialization.Codec;
@@ -27,27 +27,27 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.services.et.examples.userservice.ETAggregationExample.AGGREGATION_CLIENT_ID;
+import static edu.snu.cay.services.et.examples.userservice.ETCentCommExample.CENT_COMM_CLIENT_ID;
 
 /**
- * The aggregation slave task that runs on all executors.
- * Sends aggregation message to aggregation master(driver) and waits for a message from the driver.
+ * The CentComm slave task that runs on all executors.
+ * Sends a message to master(driver) and waits for a reply message.
  */
 @TaskSide
-public final class ETAggregationSlaveTask implements Task {
-  private static final Logger LOG = Logger.getLogger(ETAggregationSlaveTask.class.getName());
+public final class ETCentCommSlaveTask implements Task {
+  private static final Logger LOG = Logger.getLogger(ETCentCommSlaveTask.class.getName());
 
-  private final AggregationSlave aggregationSlave;
+  private final SlaveSideCentCommMsgSender centCommMsgSender;
   private final Codec<String> codec;
   private final String taskId;
   private final EvalSideMsgHandler msgHandler;
 
   @Inject
-  private ETAggregationSlaveTask(final AggregationSlave aggregationSlave,
-                                 final SerializableCodec<String> codec,
-                                 @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
-                                 final EvalSideMsgHandler msgHandler) {
-    this.aggregationSlave = aggregationSlave;
+  private ETCentCommSlaveTask(final SlaveSideCentCommMsgSender centCommMsgSender,
+                              final SerializableCodec<String> codec,
+                              @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
+                              final EvalSideMsgHandler msgHandler) {
+    this.centCommMsgSender = centCommMsgSender;
     this.codec = codec;
     this.taskId = taskId;
     this.msgHandler = msgHandler;
@@ -56,7 +56,7 @@ public final class ETAggregationSlaveTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
-    aggregationSlave.send(AGGREGATION_CLIENT_ID, codec.encode(taskId));
+    centCommMsgSender.send(CENT_COMM_CLIENT_ID, codec.encode(taskId));
     LOG.log(Level.INFO, "A message was sent. Waiting for response from the driver");
     msgHandler.waitForMessage();
     return null;

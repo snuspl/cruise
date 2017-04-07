@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.userservice;
 
-import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.common.centcomm.CentCommConf;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import org.apache.reef.client.DriverConfiguration;
@@ -38,23 +38,23 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Aggregation Service Example.
+ * Central Communication Service Example.
  */
-public final class ETAggregationExample {
-  private static final Logger LOG = Logger.getLogger(ETAggregationExample.class.getName());
-  static final String AGGREGATION_CLIENT_ID = "AGGREGATION_CLIENT_ID";
+public final class ETCentCommExample {
+  private static final Logger LOG = Logger.getLogger(ETCentCommExample.class.getName());
+  static final String CENT_COMM_CLIENT_ID = "CENT_COMM_CLIENT_ID";
 
   @Inject
-  private ETAggregationExample() {
+  private ETCentCommExample() {
   }
 
   public static void main(final String[] args) throws IOException, InjectionException {
     final Configuration clConf = parseCommandLine(args);
-    final LauncherStatus status = runAggregationExample(clConf);
-    LOG.log(Level.INFO, "REEF job completed: {0}", status);
+    final LauncherStatus status = runCentCommExample(clConf);
+    LOG.log(Level.INFO, "ET job completed: {0}", status);
   }
 
-  public static LauncherStatus runAggregationExample(final Configuration commandLineConf) throws InjectionException {
+  public static LauncherStatus runCentCommExample(final Configuration commandLineConf) throws InjectionException {
     final Injector commandLineInjector = Tang.Factory.getTang().newInjector(commandLineConf);
 
     final boolean onLocal = commandLineInjector.getNamedInstance(Parameters.OnLocal.class);
@@ -71,16 +71,16 @@ public final class ETAggregationExample {
 
   private static Configuration getDriverConfiguration(final Configuration commandLineConf) {
     final Configuration driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(ETAggregationExampleDriver.class))
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "ETAggregationExample")
-        .set(DriverConfiguration.ON_DRIVER_STARTED, ETAggregationExampleDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_TASK_RUNNING, ETAggregationExampleDriver.RunningTaskHandler.class)
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(ETCentCommExampleDriver.class))
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "ETCentCommExample")
+        .set(DriverConfiguration.ON_DRIVER_STARTED, ETCentCommExampleDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_TASK_RUNNING, ETCentCommExampleDriver.RunningTaskHandler.class)
         .build();
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
-    final Configuration aggregationConf = AggregationConfiguration.newBuilder()
-        .addAggregationClient(AGGREGATION_CLIENT_ID,
+    final Configuration centCommConf = CentCommConf.newBuilder()
+        .addCentCommClient(CENT_COMM_CLIENT_ID,
             DriverSideMsgHandler.class,
             EvalSideMsgHandler.class)
         .build()
@@ -90,7 +90,7 @@ public final class ETAggregationExample {
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
 
-    return Configurations.merge(driverConf, commandLineConf, etMasterConfiguration, aggregationConf, idFactoryConf,
+    return Configurations.merge(driverConf, commandLineConf, etMasterConfiguration, centCommConf, idFactoryConf,
         NameServerConfiguration.CONF.build(), LocalNameResolverConfiguration.CONF.build());
   }
 

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_aggregation.sh -local true -split 4 -timeout 100000
+# ./run_centcomm.sh -local true -split 4 -timeout 100000
 
 # RUNTIME
 SELF_JAR=`echo ../target/elastic-tables-*-SNAPSHOT-shaded.jar`
@@ -25,7 +25,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-JOB='edu.snu.cay.services.et.examples.userservice.ETAggregationExample'
+JOB='edu.snu.cay.services.et.examples.userservice.ETCentCommExample'
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $JOB $*"
 echo $CMD

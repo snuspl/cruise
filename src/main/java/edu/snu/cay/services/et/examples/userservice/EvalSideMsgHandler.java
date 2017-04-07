@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.userservice;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.wake.EventHandler;
@@ -30,7 +30,7 @@ import java.util.logging.Logger;
  * A task waits response from the driver through this class.
  */
 @EvaluatorSide
-public final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
+public final class EvalSideMsgHandler implements EventHandler<CentCommMsg> {
 
   private static final Logger LOG = Logger.getLogger(EvalSideMsgHandler.class.getName());
 
@@ -44,7 +44,7 @@ public final class EvalSideMsgHandler implements EventHandler<AggregationMessage
   }
 
   @Override
-  public void onNext(final AggregationMessage message) {
+  public void onNext(final CentCommMsg message) {
     final String data = codec.decode(message.getData().array());
     if (!data.equals(DriverSideMsgHandler.MSG_FROM_DRIVER)) {
       throw new RuntimeException("A wrong data " + data + " was sent from the driver but we expect " +

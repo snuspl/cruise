@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.userservice;
 
-import edu.snu.cay.common.aggregation.driver.AggregationManager;
+import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
@@ -34,14 +34,15 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The driver for aggregation service example.
- * Launch executors which exchange aggregation messages with the driver.
+ * The driver for central communication service example.
+ * Launch executors which exchange messages with the driver.
  *
  * 1. Each task sends a message to the driver and waits for a response message.
  * 2. When all messages from the tasks has arrived, the driver sends response messages to the tasks.
@@ -49,8 +50,8 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @Unit
-public final class ETAggregationExampleDriver {
-  private static final Logger LOG = Logger.getLogger(ETAggregationExampleDriver.class.getName());
+public final class ETCentCommExampleDriver {
+  private static final Logger LOG = Logger.getLogger(ETCentCommExampleDriver.class.getName());
 
   private static final String TASK_PREFIX = "Worker-Task-";
 
@@ -64,18 +65,18 @@ public final class ETAggregationExampleDriver {
   private final AtomicInteger taskRunningCounter = new AtomicInteger(0);
 
   @Inject
-  private ETAggregationExampleDriver(final AggregationManager aggregationManager,
-                                     final ETMaster etMaster,
-                                     final DriverSideMsgHandler driverSideMsgHandler,
-                                     @Parameter(Parameters.Splits.class) final int splits) {
+  private ETCentCommExampleDriver(final CentCommConfProvider centCommConfProvider,
+                                  final ETMaster etMaster,
+                                  final DriverSideMsgHandler driverSideMsgHandler,
+                                  @Parameter(Parameters.Splits.class) final int splits) {
     this.executorConf = ExecutorConfiguration.newBuilder()
         .setResourceConf(
             ResourceConfiguration.newBuilder()
                 .setNumCores(1)
                 .setMemSizeInMB(128)
                 .build())
-        .setUserContextConf(aggregationManager.getContextConfiguration())
-        .setUserServiceConf(aggregationManager.getServiceConfigurationWithoutNameResolver())
+        .setUserContextConf(centCommConfProvider.getContextConfiguration())
+        .setUserServiceConf(centCommConfProvider.getServiceConfWithoutNameResolver())
         .build();
 
     this.etMaster = etMaster;
@@ -86,21 +87,22 @@ public final class ETAggregationExampleDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-
       final List<AllocatedExecutor> executors = etMaster.addExecutors(splits, executorConf);
 
-      // start update tasks on worker executors
-      final AtomicInteger taskIdCount = new AtomicInteger(0);
-      final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(executors.size());
-      executors.forEach(executor -> taskResultFutureList.add(executor.submitTask(
-          TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, ETAggregationSlaveTask.class)
-              .build())));
+      Executors.newSingleThreadExecutor().submit(() -> {
+        // start update tasks on worker executors
+        final AtomicInteger taskIdCount = new AtomicInteger(0);
+        final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(executors.size());
+        executors.forEach(executor -> taskResultFutureList.add(executor.submitTask(
+            TaskConfiguration.CONF
+                .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIdCount.getAndIncrement())
+                .set(TaskConfiguration.TASK, ETCentCommSlaveTask.class)
+                .build())));
 
-      waitAndCheckTaskResult(taskResultFutureList);
+        waitAndCheckTaskResult(taskResultFutureList);
 
-      executors.forEach(AllocatedExecutor::close);
+        executors.forEach(AllocatedExecutor::close);
+      });
     }
   }
 
