@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
-import edu.snu.cay.dolphin.async.metric.avro.DolphinMetrics;
+import edu.snu.cay.dolphin.async.metric.avro.DolphinWorkerMetrics;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.io.network.impl.StreamingCodec;
 
@@ -25,15 +25,15 @@ import java.io.*;
 /**
  * Codec that (de-)serializes the Dolphin-specific metrics.
  */
-public final class ETDolphinMetricCodec implements StreamingCodec<DolphinMetrics> {
+public final class ETDolphinMetricCodec implements StreamingCodec<DolphinWorkerMetrics> {
   @Inject
   private ETDolphinMetricCodec() {
   }
 
   @Override
-  public void encodeToStream(final DolphinMetrics dolphinMetrics, final DataOutputStream dos) {
+  public void encodeToStream(final DolphinWorkerMetrics dolphinMetrics, final DataOutputStream dos) {
     try {
-      final byte[] encoded = AvroUtils.toBytes(dolphinMetrics, DolphinMetrics.class);
+      final byte[] encoded = AvroUtils.toBytes(dolphinMetrics, DolphinWorkerMetrics.class);
       dos.writeInt(encoded.length);
       dos.write(encoded);
     } catch (IOException e) {
@@ -42,7 +42,7 @@ public final class ETDolphinMetricCodec implements StreamingCodec<DolphinMetrics
   }
 
   @Override
-  public DolphinMetrics decodeFromStream(final DataInputStream dis) {
+  public DolphinWorkerMetrics decodeFromStream(final DataInputStream dis) {
     try {
       final int length = dis.readInt();
       final byte[] buffer = new byte[length];
@@ -54,12 +54,12 @@ public final class ETDolphinMetricCodec implements StreamingCodec<DolphinMetrics
   }
 
   @Override
-  public DolphinMetrics decode(final byte[] bytes) {
-    return AvroUtils.fromBytes(bytes, DolphinMetrics.class);
+  public DolphinWorkerMetrics decode(final byte[] bytes) {
+    return AvroUtils.fromBytes(bytes, DolphinWorkerMetrics.class);
   }
 
   @Override
-  public byte[] encode(final DolphinMetrics dolphinMetrics) {
-    return AvroUtils.toBytes(dolphinMetrics, DolphinMetrics.class);
+  public byte[] encode(final DolphinWorkerMetrics dolphinMetrics) {
+    return AvroUtils.toBytes(dolphinMetrics, DolphinWorkerMetrics.class);
   }
 }
