@@ -16,11 +16,14 @@
 package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
+import edu.snu.cay.common.metric.MetricsCollectionServiceConf;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
+import edu.snu.cay.dolphin.async.metric.ETDolphinMetricCodec;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.metric.MetricServiceExecutorConf;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
@@ -76,8 +79,10 @@ public final class ETDolphinDriver {
   private final TableConfiguration workerTableConf;
   private final TableConfiguration serverTableConf;
 
-  private final Configuration aggrContextConf;
-  private final Configuration aggrServiceConf;
+  private final Configuration workerContextConf;
+  private final Configuration workerServiceConf;
+
+  private final Configuration serverServiceConf;
 
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
@@ -113,8 +118,17 @@ public final class ETDolphinDriver {
     this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
 
     // configuration for worker executors
-    this.aggrContextConf = centCommConfProvider.getContextConfiguration();
-    this.aggrServiceConf = centCommConfProvider.getServiceConfWithoutNameResolver();
+    this.workerContextConf = centCommConfProvider.getContextConfiguration();
+    this.workerServiceConf = Configurations.merge(
+        centCommConfProvider.getServiceConfWithoutNameResolver(),
+        MetricServiceExecutorConf.CONF
+            .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricCodec.class)
+            .build());
+
+    this.serverServiceConf = MetricServiceExecutorConf.CONF
+        .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricCodec.class)
+        .set(MetricServiceExecutorConf.METRIC_SENDING_PERIOD_MS, -1)
+        .build();
   }
 
   private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {
@@ -171,11 +185,12 @@ public final class ETDolphinDriver {
       try {
         final ExecutorConfiguration serverExecutorConf = ExecutorConfiguration.newBuilder()
             .setResourceConf(serverResourceConf)
+            .setUserServiceConf(serverServiceConf)
             .build();
         final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
             .setResourceConf(workerResourceConf)
-            .setUserContextConf(aggrContextConf)
-            .setUserServiceConf(aggrServiceConf)
+            .setUserContextConf(workerContextConf)
+            .setUserServiceConf(workerServiceConf)
             .build();
 
         final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, serverExecutorConf).get();
