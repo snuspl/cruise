@@ -17,7 +17,9 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.centcomm.CentCommConf;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
+import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
+import edu.snu.cay.services.et.configuration.metric.MetricServiceDriverConf;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
@@ -190,7 +192,11 @@ public final class ETDolphinLauncher {
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);
-    final Configuration driverConf = extractParameterConf(driverParamList, commandLineConf);
+    final Configuration driverConf = Configurations.merge(
+        extractParameterConf(driverParamList, commandLineConf),
+        MetricServiceDriverConf.CONF
+            .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
+            .build());
     final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
