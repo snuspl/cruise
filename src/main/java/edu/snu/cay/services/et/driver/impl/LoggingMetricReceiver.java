@@ -33,7 +33,7 @@ public final class LoggingMetricReceiver implements MetricReceiver {
   }
 
   @Override
-  public void onNext(final MetricMsg metricMsg) {
-    LOG.log(Level.INFO, "Received a metric: {0}", metricMsg);
+  public void onMetricMsg(final String srcId, final MetricMsg msg) {
+    LOG.log(Level.INFO, "Received a metric from {0}: {1}", new Object[] {srcId, msg});
   }
 }

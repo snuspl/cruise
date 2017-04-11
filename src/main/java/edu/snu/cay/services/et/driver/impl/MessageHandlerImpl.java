@@ -66,7 +66,7 @@ public final class MessageHandlerImpl implements MessageHandler {
       break;
 
     case MetricMsg:
-      onMetricMsg(innerMsg.getMetricMsg());
+      onMetricMsg(msg.getSrcId().toString(), innerMsg.getMetricMsg());
       break;
 
     default:
@@ -74,8 +74,8 @@ public final class MessageHandlerImpl implements MessageHandler {
     }
   }
 
-  private void onMetricMsg(final MetricMsg metricMsg) {
-    metricReceiver.get().onNext(metricMsg);
+  private void onMetricMsg(final String srcId, final MetricMsg metricMsg) {
+    metricReceiver.get().onMetricMsg(srcId, metricMsg);
   }
 
   private void onTableControlMsg(final TableControlMsg msg) {

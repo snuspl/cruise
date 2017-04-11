@@ -18,11 +18,17 @@ package edu.snu.cay.services.et.driver.api;
 import edu.snu.cay.services.et.avro.MetricMsg;
 import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
 import org.apache.reef.tang.annotations.DefaultImplementation;
-import org.apache.reef.wake.EventHandler;
 
 /**
  * Receives metrics from Executors.
  */
 @DefaultImplementation(LoggingMetricReceiver.class)
-public interface MetricReceiver extends EventHandler<MetricMsg> {
+public interface MetricReceiver {
+
+  /**
+   * Called when a metric msg arrives from an executor.
+   * @param srcId The executor id that sent this metric.
+   * @param msg The message containing metrics.
+   */
+  void onMetricMsg(String srcId, MetricMsg msg);
 }
