@@ -26,6 +26,7 @@ import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
+import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
@@ -181,23 +182,31 @@ public final class ETDolphinDriver {
         final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, workerExecutorConf).get();
 
         Executors.newSingleThreadExecutor().submit(() -> {
-          etMaster.createTable(serverTableConf, servers).addListener(t -> t.subscribe(workers));
-          etMaster.createTable(workerTableConf, workers);
+          try {
+            final Future<AllocatedTable> modelTable = etMaster.createTable(serverTableConf, servers);
+            final Future<AllocatedTable> inputTable = etMaster.createTable(workerTableConf, workers);
 
-          final AtomicInteger taskIdCount = new AtomicInteger(0);
+            modelTable.get().subscribe(workers);
+            inputTable.get();
 
-          final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
-          workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(
-              Configurations.merge(TaskConfiguration.CONF
-                  .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-                  .set(TaskConfiguration.TASK, ETWorkerTask.class)
-                  .build(), workerConf))));
+            final AtomicInteger taskIdCount = new AtomicInteger(0);
 
-          waitAndCheckTaskResult(taskResultFutureList);
+            final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
+            workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(
+                Configurations.merge(TaskConfiguration.CONF
+                    .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                    .set(TaskConfiguration.TASK, ETWorkerTask.class)
+                    .build(), workerConf))));
 
-          workers.forEach(AllocatedExecutor::close);
-          servers.forEach(AllocatedExecutor::close);
+            waitAndCheckTaskResult(taskResultFutureList);
+
+            workers.forEach(AllocatedExecutor::close);
+            servers.forEach(AllocatedExecutor::close);
+          } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+          }
         });
+
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
