@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.api.NetworkConnection;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
@@ -47,13 +48,14 @@ public final class ETMasterImpl implements ETMaster {
   }
 
   @Override
-  public List<AllocatedExecutor> addExecutors(final int num, final ExecutorConfiguration executorConf) {
+  public ListenableFuture<List<AllocatedExecutor>> addExecutors(final int num,
+                                                                final ExecutorConfiguration executorConf) {
     return executorManager.addExecutors(num, executorConf);
   }
 
   @Override
-  public AllocatedTable createTable(final TableConfiguration tableConf,
-                                    final List<AllocatedExecutor> initialAssociators) {
+  public ListenableFuture<AllocatedTable> createTable(final TableConfiguration tableConf,
+                                                      final List<AllocatedExecutor> initialAssociators) {
     try {
       return tableManager.createTable(tableConf, initialAssociators);
     } catch (final InjectionException e) {

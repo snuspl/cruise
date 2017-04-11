@@ -87,21 +87,25 @@ public final class ETCentCommExampleDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> executors = etMaster.addExecutors(splits, executorConf);
-
       Executors.newSingleThreadExecutor().submit(() -> {
-        // start update tasks on worker executors
-        final AtomicInteger taskIdCount = new AtomicInteger(0);
-        final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(executors.size());
-        executors.forEach(executor -> taskResultFutureList.add(executor.submitTask(
-            TaskConfiguration.CONF
-                .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIdCount.getAndIncrement())
-                .set(TaskConfiguration.TASK, ETCentCommSlaveTask.class)
-                .build())));
+        try {
+          final List<AllocatedExecutor> executors = etMaster.addExecutors(splits, executorConf).get();
 
-        waitAndCheckTaskResult(taskResultFutureList);
+          // start update tasks on worker executors
+          final AtomicInteger taskIdCount = new AtomicInteger(0);
+          final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(executors.size());
+          executors.forEach(executor -> taskResultFutureList.add(executor.submitTask(
+              TaskConfiguration.CONF
+                  .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIdCount.getAndIncrement())
+                  .set(TaskConfiguration.TASK, ETCentCommSlaveTask.class)
+                  .build())));
 
-        executors.forEach(AllocatedExecutor::close);
+          waitAndCheckTaskResult(taskResultFutureList);
+
+          executors.forEach(AllocatedExecutor::close);
+        } catch (InterruptedException | ExecutionException e) {
+          throw new RuntimeException(e);
+        }
       });
     }
   }

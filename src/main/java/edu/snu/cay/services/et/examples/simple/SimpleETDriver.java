@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.simple;
 
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
@@ -39,7 +40,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -101,153 +101,130 @@ final class SimpleETDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> associators = etMaster.addExecutors(NUM_ASSOCIATORS, EXECUTOR_CONF);
-
-      final AllocatedTable hashedTable = etMaster.createTable(buildTableConf(HASHED_TABLE_ID,
-          SimpleET.TableInputPath.EMPTY, false), associators);
-      final AllocatedTable orderedTable = etMaster.createTable(buildTableConf(ORDERED_TABLE_ID,
-          SimpleET.TableInputPath.EMPTY, true), associators);
-
-      final List<AllocatedExecutor> subscribers = etMaster.addExecutors(NUM_SUBSCRIBERS, EXECUTOR_CONF);
-      hashedTable.subscribe(subscribers);
-      orderedTable.subscribe(subscribers);
-
-      final AtomicInteger taskIdCount = new AtomicInteger(0);
-      final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(associators.size() + subscribers.size());
-
-      // 1. First run a put task in a subscriber
-      taskResultFutureList.add(subscribers.get(0).submitTask(TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, PUT_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-          .set(TaskConfiguration.TASK, PutTask.class)
-          .build()));
-
-      waitAndCheckTaskResult(taskResultFutureList, true);
-
-      // 2. Then run get tasks in all executors
-      taskResultFutureList.clear();
-
-      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-          .set(TaskConfiguration.TASK, GetTask.class)
-          .build())));
-
-      subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-          .set(TaskConfiguration.TASK, GetTask.class)
-          .build())));
-
-      waitAndCheckTaskResult(taskResultFutureList, true);
-
-      // 3. migrate blocks between associators
-      final CountDownLatch migrationLatch1 = new CountDownLatch(2);
-      final EventHandler<MigrationResult> migrationCallback1 = migrationResult -> {
-        LOG.log(Level.INFO, "Migration has been finished: {0}, {1}, {2}",
-            new Object[]{migrationResult.isCompleted(), migrationResult.getMsg(), migrationResult.getMigratedBlocks()});
-        migrationLatch1.countDown();
-      };
-
-      // move all blocks of hashedTable in the first associator to the second associator
-      hashedTable.moveBlocks(associators.get(0).getId(), associators.get(1).getId(),
-          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback1);
-
-      // move all blocks of orderedTable in the second associator to the first associator
-      orderedTable.moveBlocks(associators.get(1).getId(), associators.get(0).getId(),
-          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback1);
-
-      // wait until migrations finish
       try {
-        migrationLatch1.await();
-      } catch (final InterruptedException e) {
+        final List<AllocatedExecutor> associators = etMaster.addExecutors(NUM_ASSOCIATORS, EXECUTOR_CONF).get();
+
+        final AllocatedTable hashedTable = etMaster.createTable(buildTableConf(HASHED_TABLE_ID,
+            SimpleET.TableInputPath.EMPTY, false), associators).get();
+        final AllocatedTable orderedTable = etMaster.createTable(buildTableConf(ORDERED_TABLE_ID,
+            SimpleET.TableInputPath.EMPTY, true), associators).get();
+
+        final List<AllocatedExecutor> subscribers = etMaster.addExecutors(NUM_SUBSCRIBERS, EXECUTOR_CONF).get();
+
+        hashedTable.subscribe(subscribers).get();
+        orderedTable.subscribe(subscribers).get();
+
+        final AtomicInteger taskIdCount = new AtomicInteger(0);
+        final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(associators.size() + subscribers.size());
+
+        // 1. First run a put task in a subscriber
+        taskResultFutureList.add(subscribers.get(0).submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, PUT_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, PutTask.class)
+            .build()));
+
+        waitAndCheckTaskResult(taskResultFutureList, true);
+
+        // 2. Then run get tasks in all executors
+        taskResultFutureList.clear();
+
+        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, GetTask.class)
+            .build())));
+
+        subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, GetTask.class)
+            .build())));
+
+        waitAndCheckTaskResult(taskResultFutureList, true);
+
+        // 3. migrate blocks between associators
+        // move all blocks of hashedTable in the first associator to the second associator
+        final ListenableFuture<MigrationResult> resultFuture0 = hashedTable.moveBlocks(
+            associators.get(0).getId(), associators.get(1).getId(), Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR));
+
+        // move all blocks of orderedTable in the second associator to the first associator
+        final ListenableFuture<MigrationResult> resultFuture1 = orderedTable.moveBlocks(
+            associators.get(1).getId(), associators.get(0).getId(), Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR));
+
+        waitAndCheckMigrationResult(resultFuture0);
+        waitAndCheckMigrationResult(resultFuture1);
+
+        // 4. run get tasks in all executors again after migration
+        taskResultFutureList.clear();
+
+        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, GetTask.class)
+            .build())));
+
+        subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, GetTask.class)
+            .build())));
+
+        waitAndCheckTaskResult(taskResultFutureList, true);
+
+        // 5. drop tables and run get tasks again to confirm that tasks fail
+        hashedTable.drop().get();
+        orderedTable.drop().get();
+
+        taskResultFutureList.clear();
+
+        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, GetTask.class)
+            .build())));
+
+        subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, GetTask.class)
+            .build())));
+
+        waitAndCheckTaskResult(taskResultFutureList, false);
+
+        // 6. create a table with input file
+        final AllocatedTable orderedTableWithFile = etMaster.createTable(buildTableConf(ORDERED_TABLE_WITH_FILE_ID,
+            tableInputPath, true), associators).get();
+
+        // 7. start scan tasks in associator executors
+        taskResultFutureList.clear();
+
+        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, ScanTask.class)
+            .build())));
+
+        waitAndCheckTaskResult(taskResultFutureList, true);
+
+        // 8. migrate blocks between associators
+        // move all blocks of orderedTableWithFile in the second associator to the first associator
+        final ListenableFuture<MigrationResult> resultFuture = orderedTableWithFile.moveBlocks(
+            associators.get(1).getId(), associators.get(0).getId(), Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR));
+
+        waitAndCheckMigrationResult(resultFuture);
+
+        // 9. start scan tasks again after migration
+        taskResultFutureList.clear();
+
+        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, ScanTask.class)
+            .build())));
+
+        waitAndCheckTaskResult(taskResultFutureList, true);
+
+        orderedTableWithFile.drop().get(); // not required step
+
+        // 10. close executors
+        subscribers.forEach(AllocatedExecutor::close);
+        associators.forEach(AllocatedExecutor::close);
+
+      } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
-
-      // 4. run get tasks in all executors again after migration
-      taskResultFutureList.clear();
-
-      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-          .set(TaskConfiguration.TASK, GetTask.class)
-          .build())));
-
-      subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-          .set(TaskConfiguration.TASK, GetTask.class)
-          .build())));
-
-      waitAndCheckTaskResult(taskResultFutureList, true);
-
-      try {
-        Thread.sleep(5000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-
-      // 5. drop tables and run get tasks again to confirm that tasks fail
-      hashedTable.drop();
-      orderedTable.drop();
-
-      taskResultFutureList.clear();
-
-      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-          .set(TaskConfiguration.TASK, GetTask.class)
-          .build())));
-
-      subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-          .set(TaskConfiguration.TASK, GetTask.class)
-          .build())));
-
-      waitAndCheckTaskResult(taskResultFutureList, false);
-
-      // 6. create a table with input file
-      final AllocatedTable orderedTableWithFile = etMaster.createTable(buildTableConf(ORDERED_TABLE_WITH_FILE_ID,
-          tableInputPath, true), associators);
-
-      // 7. start scan tasks in associator executors
-      taskResultFutureList.clear();
-
-      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-          .set(TaskConfiguration.TASK, ScanTask.class)
-          .build())));
-
-      waitAndCheckTaskResult(taskResultFutureList, true);
-
-      // 8. migrate blocks between associators
-      final CountDownLatch migrationLatch2 = new CountDownLatch(1);
-      final EventHandler<MigrationResult> migrationCallback2 = migrationResult -> {
-        LOG.log(Level.INFO, "Migration has been finished: {0}, {1}, {2}",
-            new Object[]{migrationResult.isCompleted(), migrationResult.getMsg(), migrationResult.getMigratedBlocks()});
-        migrationLatch2.countDown();
-      };
-
-      // move all blocks of orderedTableWithFile in the second associator to the first associator
-      orderedTableWithFile.moveBlocks(associators.get(1).getId(), associators.get(0).getId(),
-          Integer.parseInt(NumTotalBlocks.DEFAULT_VALUE_STR), migrationCallback2);
-
-      // wait until migration finish
-      try {
-        migrationLatch2.await();
-      } catch (final InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-
-      // 9. start scan tasks again after migration
-      taskResultFutureList.clear();
-
-      associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-          .set(TaskConfiguration.TASK, ScanTask.class)
-          .build())));
-
-      waitAndCheckTaskResult(taskResultFutureList, true);
-
-      orderedTableWithFile.drop(); // not required step
-
-      // 10. close executors
-      subscribers.forEach(AllocatedExecutor::close);
-      associators.forEach(AllocatedExecutor::close);
     }
   }
 
@@ -263,5 +240,16 @@ final class SimpleETDriver {
         throw new RuntimeException(e);
       }
     });
+  }
+
+  private void waitAndCheckMigrationResult(final ListenableFuture<MigrationResult> migrationResultFuture) {
+    try {
+      final MigrationResult migrationResult = migrationResultFuture.get();
+
+      LOG.log(Level.INFO, "Migration has been finished: {0}, {1}, {2}",
+          new Object[]{migrationResult.isCompleted(), migrationResult.getMsg(), migrationResult.getMigratedBlocks()});
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

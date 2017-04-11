@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,15 @@ package edu.snu.cay.services.et.driver.impl;
 import edu.snu.cay.common.dataloader.HdfsSplitInfo;
 import edu.snu.cay.common.dataloader.HdfsSplitManager;
 import edu.snu.cay.common.dataloader.TextInputFormat;
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.common.util.concurrent.AggregateFuture;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,8 +42,8 @@ final class TableControlAgent {
 
   private final MessageSender msgSender;
 
-  private final Map<String, CountDownLatch> pendingInit = new ConcurrentHashMap<>();
-  private final Map<String, CountDownLatch> pendingDrop = new ConcurrentHashMap<>();
+  private final Map<String, AggregateFuture<Void>> pendingInit = new ConcurrentHashMap<>();
+  private final Map<String, AggregateFuture<Void>> pendingDrop = new ConcurrentHashMap<>();
 
   @Inject
   private TableControlAgent(final MessageSender msgSender) {
@@ -59,10 +60,10 @@ final class TableControlAgent {
    * @param ownershipStatus a list of owner of each block
    * @param loadFile a boolean indicating whether to load a file whose path is specified in tableConf
    */
-  void initTable(final TableConfiguration tableConf,
-                 final Set<String> executorIds,
-                 final List<String> ownershipStatus,
-                 final boolean loadFile) {
+  ListenableFuture<?> initTable(final TableConfiguration tableConf,
+                                final Set<String> executorIds,
+                                final List<String> ownershipStatus,
+                                final boolean loadFile) {
     LOG.log(Level.INFO, "Initialize table {0} in executors: {1}", new Object[]{tableConf.getId(), executorIds});
 
     final Iterator<HdfsSplitInfo> splitIterator;
@@ -80,20 +81,14 @@ final class TableControlAgent {
       splitIterator = Collections.emptyIterator();
     }
 
-    final CountDownLatch initLatch = new CountDownLatch(executorIds.size());
-    pendingInit.put(tableConf.getId(), initLatch);
+    final AggregateFuture<Void> resultFuture = new AggregateFuture<>(executorIds.size());
+    pendingInit.put(tableConf.getId(), resultFuture);
 
     executorIds.forEach(executorId ->
         msgSender.sendTableInitMsg(executorId, tableConf, ownershipStatus,
             splitIterator.hasNext() ? splitIterator.next() : null));
 
-    try {
-      initLatch.await();
-    } catch (final InterruptedException e) {
-      throw new RuntimeException("Interrupted while waiting for table to be initialized.", e);
-    } finally {
-      pendingInit.remove(tableConf.getId());
-    }
+    return resultFuture;
   }
 
   /**
@@ -103,11 +98,15 @@ final class TableControlAgent {
    */
   synchronized void onTableInitAck(final String tableId, final String executorId) {
     LOG.log(Level.INFO, "Table {0} in executor {1} is initialized.", new Object[]{tableId, executorId});
-    final CountDownLatch initLatch = pendingInit.get(tableId);
-    if (initLatch == null || initLatch.getCount() == 0) {
+    final AggregateFuture<Void> resultFuture = pendingInit.get(tableId);
+    if (resultFuture == null || resultFuture.isDone()) {
       throw new RuntimeException("There's no ongoing init for table. tableId: " + tableId);
     }
-    initLatch.countDown();
+    resultFuture.onCompleted(null);
+
+    if (resultFuture.isDone()) {
+      pendingInit.remove(tableId);
+    }
   }
 
   /**
@@ -115,23 +114,19 @@ final class TableControlAgent {
    * Be aware that the contents in tablets will be lost.
    * @param tableId a table id
    * @param executorIdSet a set of executor ids
+   * @return a {@link ListenableFuture} of the result
    */
-  void dropTable(final String tableId,
-                 final Set<String> executorIdSet) {
+  ListenableFuture<?> dropTable(final String tableId,
+                             final Set<String> executorIdSet) {
     LOG.log(Level.INFO, "Drop table {0} in executors: {1}", new Object[]{tableId, executorIdSet});
 
-    final CountDownLatch dropLatch = new CountDownLatch(executorIdSet.size());
-    pendingDrop.put(tableId, dropLatch);
+
+    final AggregateFuture<Void> resultFuture = new AggregateFuture<>(executorIdSet.size());
+    pendingDrop.put(tableId, resultFuture);
 
     executorIdSet.forEach(executorId -> msgSender.sendTableDropMsg(executorId, tableId));
 
-    try {
-      dropLatch.await();
-    } catch (final InterruptedException e) {
-      throw new RuntimeException("Interrupted while waiting for table to be deleted.", e);
-    } finally {
-      pendingDrop.remove(tableId);
-    }
+    return resultFuture;
   }
 
   /**
@@ -141,10 +136,14 @@ final class TableControlAgent {
    */
   synchronized void onTableDropAck(final String tableId, final String executorId) {
     LOG.log(Level.INFO, "Table {0} in executor {1} is dropped.", new Object[]{tableId, executorId});
-    final CountDownLatch dropLatch = pendingDrop.get(tableId);
-    if (dropLatch == null || dropLatch.getCount() == 0) {
+    final AggregateFuture<Void> resultFuture = pendingDrop.get(tableId);
+    if (resultFuture == null || resultFuture.isDone()) {
       throw new RuntimeException("There's no ongoing drop for table. tableId: " + tableId);
     }
-    dropLatch.countDown();
+    resultFuture.onCompleted(null);
+
+    if (resultFuture.isDone()) {
+      pendingDrop.remove(tableId);
+    }
   }
 }

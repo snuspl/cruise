@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,10 @@
  */
 package edu.snu.cay.services.et.driver.api;
 
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
-
-import java.util.concurrent.Future;
 
 /**
  * Represents an allocated executor.
@@ -34,9 +33,9 @@ public interface AllocatedExecutor {
   /**
    * Assign task to executor.
    * @param taskConf task configuration.
-   * @return a future of {@link TaskResult}
+   * @return a {@link ListenableFuture} of {@link TaskResult}
    */
-  Future<TaskResult> submitTask(Configuration taskConf);
+  ListenableFuture<TaskResult> submitTask(Configuration taskConf);
 
   /**
    * Closes the executor.

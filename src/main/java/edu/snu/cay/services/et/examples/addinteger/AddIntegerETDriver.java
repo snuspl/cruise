@@ -135,37 +135,41 @@ public final class AddIntegerETDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, EXECUTOR_CONF);
-      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, EXECUTOR_CONF);
+      try {
+        final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, EXECUTOR_CONF).get();
+        final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, EXECUTOR_CONF).get();
 
-      final AllocatedTable modelTable = etMaster.createTable(tableConf, servers);
+        final AllocatedTable modelTable = etMaster.createTable(tableConf, servers).get();
 
-      modelTable.subscribe(workers);
+        modelTable.subscribe(workers).get();
 
-      // start update tasks on worker executors
-      final AtomicInteger taskIdCount = new AtomicInteger(0);
-      final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
-      workers.forEach(executor -> taskResultFutureList.add(executor.submitTask(
-          Configurations.merge(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, UpdaterTask.class)
-              .build(), updaterTaskParamConf))));
+        // start update tasks on worker executors
+        final AtomicInteger taskIdCount = new AtomicInteger(0);
+        final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
+        workers.forEach(executor -> taskResultFutureList.add(executor.submitTask(
+            Configurations.merge(TaskConfiguration.CONF
+                .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                .set(TaskConfiguration.TASK, UpdaterTask.class)
+                .build(), updaterTaskParamConf))));
 
-      waitAndCheckTaskResult(taskResultFutureList);
+        waitAndCheckTaskResult(taskResultFutureList);
 
-      // start validate tasks on worker executors
-      taskIdCount.set(0);
-      taskResultFutureList.clear();
-      workers.forEach(executor -> taskResultFutureList.add(executor.submitTask(
-          Configurations.merge(TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, VALIDATOR_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-              .set(TaskConfiguration.TASK, ValidatorTask.class)
-              .build(), validatorTaskParamConf))));
+        // start validate tasks on worker executors
+        taskIdCount.set(0);
+        taskResultFutureList.clear();
+        workers.forEach(executor -> taskResultFutureList.add(executor.submitTask(
+            Configurations.merge(TaskConfiguration.CONF
+                .set(TaskConfiguration.IDENTIFIER, VALIDATOR_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                .set(TaskConfiguration.TASK, ValidatorTask.class)
+                .build(), validatorTaskParamConf))));
 
-      waitAndCheckTaskResult(taskResultFutureList);
+        waitAndCheckTaskResult(taskResultFutureList);
 
-      workers.forEach(AllocatedExecutor::close);
-      servers.forEach(AllocatedExecutor::close);
+        workers.forEach(AllocatedExecutor::close);
+        servers.forEach(AllocatedExecutor::close);
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 

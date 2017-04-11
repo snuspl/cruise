@@ -15,15 +15,16 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.services.et.common.util.concurrent.CompletedFuture;
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.wake.EventHandler;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -80,9 +81,10 @@ public final class AllocatedTable {
    * This method should be called once before other methods.
    * @param tableConfiguration a table configuration
    * @param initialAssociators a list of initial executors to be associated to a table
+   * @return a {@link ListenableFuture} for notifying the completion
    */
-  synchronized void init(final TableConfiguration tableConfiguration,
-                         final List<AllocatedExecutor> initialAssociators) {
+  synchronized ListenableFuture<?> init(final TableConfiguration tableConfiguration,
+                                        final List<AllocatedExecutor> initialAssociators) {
     stateMachine.checkState(State.UNINITIALIZED);
 
     tableConf = tableConfiguration;
@@ -95,16 +97,18 @@ public final class AllocatedTable {
 
     // partition table into blocks and initialize them in associators
     blockManager.init(executorIds);
-    tableControlAgent.initTable(tableConfiguration, executorIds, blockManager.getOwnershipStatus(), true);
 
-    stateMachine.setState(State.INITIALIZED);
+    final ListenableFuture<?> initResultFuture =
+        tableControlAgent.initTable(tableConfiguration, executorIds, blockManager.getOwnershipStatus(), true);
+    initResultFuture.addListener(result -> stateMachine.setState(State.INITIALIZED));
+    return initResultFuture;
   }
 
   /**
    * Subscribes the table. The executors will receive the updates in ownership information for this table.
    * @param executors a list of executors
    */
-  public synchronized void subscribe(final List<AllocatedExecutor> executors) {
+  public synchronized ListenableFuture<?> subscribe(final List<AllocatedExecutor> executors) {
     stateMachine.checkState(State.INITIALIZED);
 
     final Set<String> executorIdSet = new HashSet<>(executors.size());
@@ -113,21 +117,21 @@ public final class AllocatedTable {
       executorIdSet.add(executor.getId());
     });
 
-    tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
+    return tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
   }
 
   /**
    * Associates with the table. The executors will take some blocks of this table.
    * @param executors a list of executors
    */
-  public synchronized void associate(final List<AllocatedExecutor> executors) {
+  public synchronized ListenableFuture<?> associate(final List<AllocatedExecutor> executors) {
     final Set<String> executorIdSet = new HashSet<>(executors.size());
     executors.forEach(executor -> executorIdSet.add(executor.getId()));
 
-    associate(executorIdSet);
+    return associate(executorIdSet);
   }
 
-  private synchronized void associate(final Set<String> executorIdSet) {
+  private synchronized ListenableFuture<?> associate(final Set<String> executorIdSet) {
     stateMachine.checkState(State.INITIALIZED);
 
     executorIdSet.forEach(executorId -> {
@@ -136,14 +140,14 @@ public final class AllocatedTable {
       executorIdSet.add(executorId);
     });
 
-    tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
+    return tableControlAgent.initTable(tableConf, executorIdSet, blockManager.getOwnershipStatus(), false);
   }
 
-  private synchronized void associate(final String executorId) {
+  private synchronized ListenableFuture<?> associate(final String executorId) {
     final Set<String> executorIdSet = new HashSet<>(1);
     executorIdSet.add(executorId);
 
-    associate(executorIdSet);
+    return associate(executorIdSet);
   }
 
   /**
@@ -151,17 +155,19 @@ public final class AllocatedTable {
    * @param srcExecutorId an id of src executor
    * @param dstExecutorId an id of dst executor
    * @param numBlocks the number of blocks to move
-   * @param callback a callback for the result of of migration
    */
-  public synchronized void moveBlocks(final String srcExecutorId,
-                                      final String dstExecutorId,
-                                      final int numBlocks,
-                                      @Nullable final EventHandler<MigrationResult> callback) {
+  public synchronized ListenableFuture<MigrationResult> moveBlocks(final String srcExecutorId,
+                                                                   final String dstExecutorId,
+                                                                   final int numBlocks) {
     stateMachine.checkState(State.INITIALIZED);
 
     // if it's not associated with dst executor, do it now
     if (!blockManager.getAssociatedExecutorIds().contains(dstExecutorId)) {
-      associate(dstExecutorId);
+      try {
+        associate(dstExecutorId).get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     final List<Integer> blocks = blockManager.chooseBlocksToMove(srcExecutorId, numBlocks);
@@ -171,14 +177,12 @@ public final class AllocatedTable {
     if (blocks.size() == 0) {
       final String msg = String.format("There is no block to move in %s of type." +
           " Requested numBlocks: %d", srcExecutorId, numBlocks);
-      if (callback != null) {
-        callback.onNext(new MigrationResult(false, msg, Collections.emptyList()));
-      }
+
       LOG.log(Level.WARNING, "moveBlocks() fails because executor {0} has no movable block", srcExecutorId);
-      return;
+      return new CompletedFuture<>(new MigrationResult(false, msg, Collections.emptyList()));
     }
 
-    migrationManager.startMigration(blockManager, tableConf.getId(), srcExecutorId, dstExecutorId, blocks, callback);
+    return migrationManager.startMigration(blockManager, tableConf.getId(), srcExecutorId, dstExecutorId, blocks);
   }
 
   /**
@@ -186,7 +190,7 @@ public final class AllocatedTable {
    * This method should be called after initialized.
    * After this method, the table is completely removed from the system (e.g., master and executors).
    */
-  public synchronized void drop() {
+  public synchronized ListenableFuture<?> drop() {
     stateMachine.checkState(State.INITIALIZED);
 
     final Set<String> executorsToDeleteTable = blockManager.getAssociatedExecutorIds();
@@ -194,9 +198,10 @@ public final class AllocatedTable {
 
     executorsToDeleteTable.addAll(subscribers);
 
-    tableControlAgent.dropTable(tableConf.getId(), executorsToDeleteTable);
-
-    stateMachine.setState(State.DROPPED);
+    final ListenableFuture<?> dropResultFuture =
+        tableControlAgent.dropTable(tableConf.getId(), executorsToDeleteTable);
+    dropResultFuture.addListener(result -> stateMachine.setState(State.DROPPED));
+    return dropResultFuture;
   }
 
   /**

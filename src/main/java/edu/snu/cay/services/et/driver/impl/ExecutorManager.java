@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.common.util.concurrent.AggregateFuture;
 import edu.snu.cay.services.et.common.impl.CallbackRegistry;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ExecutorServiceConfiguration;
@@ -38,12 +40,8 @@ import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -95,7 +93,7 @@ final class ExecutorManager {
    * @param executorConf executor configuration
    * @return a list of allocated executors
    */
-  List<AllocatedExecutor> addExecutors(final int num, final ExecutorConfiguration executorConf) {
+  ListenableFuture<List<AllocatedExecutor>> addExecutors(final int num, final ExecutorConfiguration executorConf) {
     final ResourceConfiguration resConf = executorConf.getResourceConf();
     final Configuration userContextConf = executorConf.getUserContextConf();
     final Configuration userServiceConf = executorConf.getUserServiceConf();
@@ -103,32 +101,22 @@ final class ExecutorManager {
     final int numCores = resConf.getNumCores();
     final int memSizeInMB = resConf.getMemSizeInMB();
 
-    final List<AllocatedExecutor> executorList = Collections.synchronizedList(new ArrayList<>(num));
-    final CountDownLatch latch = new CountDownLatch(num);
+    final ListenableFuture<List<AllocatedExecutor>> executorListFuture = new AggregateFuture<>(num);
 
+    final AtomicInteger executorIdxCounter = new AtomicInteger(0);
     final List<EventHandler<ActiveContext>> activeCtxHandlers = new ArrayList<>(1);
     activeCtxHandlers.add(activeContext -> {
       final AllocatedExecutor allocatedExecutor = new AllocatedExecutorImpl(activeContext, callbackRegistry);
-      LOG.log(Level.INFO, "Allocated executor: {0}", allocatedExecutor.getId());
-      synchronized (executorList) {
-        executorList.add(allocatedExecutor);
-        LOG.log(Level.INFO, "A new Executor is allocated ({0}/{1}).", new Object[]{executorList.size(), num});
-      }
+      ((AggregateFuture<AllocatedExecutor>) executorListFuture).onCompleted(allocatedExecutor);
+      LOG.log(Level.INFO, "A new Executor {0} is allocated ({1}/{2}).",
+          new Object[]{allocatedExecutor.getId(), executorIdxCounter.incrementAndGet(), num});
       executors.put(allocatedExecutor.getId(), allocatedExecutor);
-      latch.countDown();
     });
 
     evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores,
         new AllocatedEvalHandler(userContextConf, userServiceConf), activeCtxHandlers);
 
-    // wait until all requested executors are allocated.
-    try {
-      latch.await();
-    } catch (final InterruptedException e) {
-      throw new RuntimeException("Interrupted while waiting for executors to be allocated.", e);
-    }
-
-    return executorList;
+    return executorListFuture;
   }
 
   /**

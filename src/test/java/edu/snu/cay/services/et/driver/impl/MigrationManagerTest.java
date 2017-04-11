@@ -270,7 +270,8 @@ public final class MigrationManagerTest {
     @Override
     public void run() {
       final List<Integer> blockIdsToMove = blockManager.chooseBlocksToMove(srcId, numBlocksToMove);
-      migrationManager.startMigration(blockManager, tableId, srcId, destId, blockIdsToMove, finishedCallback);
+      migrationManager.startMigration(blockManager, tableId, srcId, destId, blockIdsToMove)
+          .addListener(finishedCallback);
     }
   }
 

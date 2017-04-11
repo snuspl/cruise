@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
@@ -60,8 +62,9 @@ final class TableManager {
    * @return an {@link AllocatedTable}, which represents table in driver-side
    * @throws InjectionException when the given configuration is incomplete
    */
-  synchronized AllocatedTable createTable(final TableConfiguration tableConf,
-                                          final List<AllocatedExecutor> initialAssociators) throws InjectionException {
+  synchronized ListenableFuture<AllocatedTable> createTable(final TableConfiguration tableConf,
+                                                            final List<AllocatedExecutor> initialAssociators)
+      throws InjectionException {
     if (initialAssociators.isEmpty()) {
       throw new RuntimeException("Table requires at least one associator");
     }
@@ -73,9 +76,14 @@ final class TableManager {
 
     final Injector tableInjector = baseTableInjector.forkInjector(tableConf.getConfiguration());
     final AllocatedTable allocatedTable = tableInjector.getInstance(AllocatedTable.class);
-    allocatedTable.init(tableConf, initialAssociators);
+
+    final ResultFuture<AllocatedTable> resultFuture = new ResultFuture<>();
+
+    allocatedTable.init(tableConf, initialAssociators)
+        .addListener(o -> resultFuture.onCompleted(allocatedTable));
+
     allocatedTableMap.put(tableId, allocatedTable);
-    return allocatedTable;
+    return resultFuture;
   }
 
   /**

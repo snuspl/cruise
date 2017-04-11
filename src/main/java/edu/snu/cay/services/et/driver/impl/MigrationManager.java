@@ -15,16 +15,17 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.impl.CallbackRegistry;
+import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.wake.EventHandler;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -117,20 +118,23 @@ final class MigrationManager {
    * @param srcExecutorId an id of src executor
    * @param dstExecutorId an id of dst executor
    * @param blockIds a list of block ids to move
-   * @param callback a callback that will be called upon the finish of migration
    */
-  synchronized void startMigration(final BlockManager blockManager,
-                                   final String tableId,
-                                   final String srcExecutorId, final String dstExecutorId,
-                                   final List<Integer> blockIds,
-                                   @Nullable final EventHandler<MigrationResult> callback) {
+  synchronized ListenableFuture<MigrationResult> startMigration(final BlockManager blockManager,
+                                                                final String tableId,
+                                                                final String srcExecutorId, final String dstExecutorId,
+                                                                final List<Integer> blockIds) {
     final long opId = opIdCounter.getAndIncrement();
     ongoingMigrations.put(opId, new Migration(srcExecutorId, dstExecutorId, tableId, blockIds, blockManager));
 
-    final EventHandler<MigrationResult> callbackToRegister = callback != null ? callback : LOGGING_CALLBACK;
+    final ResultFuture<MigrationResult> resultFuture = new ResultFuture<>();
+    resultFuture.addListener(LOGGING_CALLBACK);
+
+    final EventHandler<MigrationResult> callbackToRegister = resultFuture::onCompleted;
+
     callbackRegistry.register(MigrationResult.class, Long.toString(opId), callbackToRegister);
 
     msgSender.sendMoveInitMsg(opId, tableId, blockIds, srcExecutorId, dstExecutorId);
+    return resultFuture;
   }
 
   /**

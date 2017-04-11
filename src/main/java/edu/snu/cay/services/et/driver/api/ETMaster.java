@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.driver.api;
 
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
@@ -35,9 +36,9 @@ public interface ETMaster {
    * Allocates new {@code num} executors of the equal resource specification.
    * @param num the number of executors
    * @param executorConf executor configuration
-   * @return a list of {@link AllocatedExecutor}s
+   * @return a {@link ListenableFuture} for a list of {@link AllocatedExecutor}s
    */
-  List<AllocatedExecutor> addExecutors(int num, ExecutorConfiguration executorConf);
+  ListenableFuture<List<AllocatedExecutor>> addExecutors(int num, ExecutorConfiguration executorConf);
 
   /**
    * Creates a table using the given table configuration.
@@ -45,7 +46,9 @@ public interface ETMaster {
    * So it requires at least one executor to be associated with the table.
    * @param tableConf a configuration of table (See {@link TableConfiguration})
    * @param initialAssociators a list of executors to be associated to a table
-   * @return a {@link AllocatedTable}, master-side representation of Table allocated in the associated executors
+   * @return a {@link ListenableFuture} for a {@link AllocatedTable},
+   *         which is a master-side representation of Table allocated in the associated executors
    */
-  AllocatedTable createTable(TableConfiguration tableConf, List<AllocatedExecutor> initialAssociators);
+  ListenableFuture<AllocatedTable> createTable(TableConfiguration tableConf,
+                                               List<AllocatedExecutor> initialAssociators);
 }
