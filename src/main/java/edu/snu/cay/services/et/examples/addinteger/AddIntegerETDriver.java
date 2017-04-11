@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.examples.addinteger;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.metric.MetricServiceExecutorConf;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
@@ -57,14 +58,7 @@ public final class AddIntegerETDriver {
   private static final String VALIDATOR_TASK_ID_PREFIX = "Validator-Task-";
 
   static final String MODEL_TABLE_ID = "Model_Table";
-
-  private static final ExecutorConfiguration EXECUTOR_CONF = ExecutorConfiguration.newBuilder()
-      .setResourceConf(ResourceConfiguration.newBuilder()
-          .setNumCores(1)
-          .setMemSizeInMB(128)
-          .build())
-      .build();
-
+  
   private final ETMaster etMaster;
 
   private final int numServers;
@@ -82,6 +76,8 @@ public final class AddIntegerETDriver {
    */
   private final Configuration validatorTaskParamConf;
 
+  private final long metricFlushPeriodMs;
+
   @Inject
   private AddIntegerETDriver(final ETMaster etMaster,
                              @Parameter(NumServers.class) final int numServers,
@@ -90,7 +86,8 @@ public final class AddIntegerETDriver {
                              @Parameter(StartKey.class) final int startKey,
                              @Parameter(DeltaValue.class) final int deltaValue,
                              @Parameter(UpdateCoefficient.class) final int coefficient,
-                             @Parameter(NumKeys.class) final int numKeys) {
+                             @Parameter(NumKeys.class) final int numKeys,
+                             @Parameter(MetricFlushPeriodMs.class) final long metricFlushPeriodMs) {
     this.updaterTaskParamConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(StartKey.class, Integer.toString(startKey))
         .bindNamedParameter(DeltaValue.class, Integer.toString(deltaValue))
@@ -115,6 +112,8 @@ public final class AddIntegerETDriver {
     this.etMaster = etMaster;
     this.numServers = numServers;
     this.numWorkers = numWorkers;
+
+    this.metricFlushPeriodMs = metricFlushPeriodMs;
   }
 
   private TableConfiguration buildTableConf(final String tableId, final Configuration userTableParamConf) {
@@ -136,8 +135,8 @@ public final class AddIntegerETDriver {
     @Override
     public void onNext(final StartTime startTime) {
       try {
-        final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, EXECUTOR_CONF).get();
-        final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, EXECUTOR_CONF).get();
+        final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, getExecutorConf()).get();
+        final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, getExecutorConf()).get();
 
         final AllocatedTable modelTable = etMaster.createTable(tableConf, servers).get();
 
@@ -171,6 +170,18 @@ public final class AddIntegerETDriver {
         throw new RuntimeException(e);
       }
     }
+  }
+
+  private ExecutorConfiguration getExecutorConf() {
+    return ExecutorConfiguration.newBuilder()
+        .setResourceConf(ResourceConfiguration.newBuilder()
+            .setNumCores(1)
+            .setMemSizeInMB(128)
+            .build())
+        .setUserServiceConf(MetricServiceExecutorConf.CONF
+            .set(MetricServiceExecutorConf.METRIC_SENDING_PERIOD_MS, metricFlushPeriodMs)
+            .build())
+        .build();
   }
 
   private void waitAndCheckTaskResult(final List<Future<TaskResult>> taskResultFutureList) {

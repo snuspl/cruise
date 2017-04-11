@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.NetworkConnection;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
+import edu.snu.cay.utils.HostnameResolver;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -26,7 +27,9 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A message sender implementation.
@@ -297,6 +300,26 @@ public final class MessageSenderImpl implements MessageSender {
       networkConnection.send(driverId, msg);
     } catch (final NetworkException e) {
       throw new RuntimeException("NetworkException while sending DataMoved message", e);
+    }
+  }
+
+  @Override
+  public void sendMetricMsg(final Map<String, Integer> tableToNumBlocks,
+                            final byte[] encodedCustomMetrics) {
+    try {
+      final ETMsg msg = ETMsg.newBuilder()
+          .setType(ETMsgType.MetricMsg)
+          .setMetricMsg(
+              MetricMsg.newBuilder()
+                  .setTableToNumBlocks(tableToNumBlocks)
+                  .setHostname(HostnameResolver.resolve())
+                  .setCustomMetrics(ByteBuffer.wrap(encodedCustomMetrics))
+                  .build()
+          )
+          .build();
+      networkConnection.send(driverId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending Metric message", e);
     }
   }
 }

@@ -17,6 +17,8 @@ package edu.snu.cay.services.et.examples.addinteger;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
+import edu.snu.cay.services.et.configuration.metric.MetricServiceDriverConf;
+import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
 import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -71,11 +73,14 @@ public final class AddIntegerET {
     final Configuration implConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
+    final Configuration metricServiceConf = MetricServiceDriverConf.CONF
+        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, LoggingMetricReceiver.class)
+        .build();
 
     return DriverLauncher.getLauncher(runtimeConfiguration)
         .run(Configurations.merge(driverConfiguration,
         etMasterConfiguration, nameServerConfiguration, nameClientConfiguration,
-        implConfiguration, commandLineConf), injector.getNamedInstance(Parameters.Timeout.class));
+        implConfiguration, metricServiceConf, commandLineConf), injector.getNamedInstance(Parameters.Timeout.class));
   }
 
   private static Configuration parseCommandLine(final String[] args) throws IOException, InjectionException {
@@ -89,6 +94,7 @@ public final class AddIntegerET {
         .registerShortNameOfClass(UpdateCoefficient.class)
         .registerShortNameOfClass(NumWorkers.class)
         .registerShortNameOfClass(NumServers.class)
+        .registerShortNameOfClass(MetricFlushPeriodMs.class)
         .processCommandLine(args);
 
     final Configuration clConf = cb.build();

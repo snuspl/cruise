@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
+import edu.snu.cay.services.et.driver.api.MetricReceiver;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
@@ -34,6 +35,7 @@ import java.util.Set;
 public final class MessageHandlerImpl implements MessageHandler {
   private final InjectionFuture<TableControlAgent> tableInitializerFuture;
   private final InjectionFuture<MigrationManager> migrationManagerFuture;
+  private final InjectionFuture<MetricReceiver> metricReceiver;
 
   /**
    * A map for tracking which migration message (e.g., OwnershipMovedMsg, DataMovedMsg)
@@ -44,7 +46,9 @@ public final class MessageHandlerImpl implements MessageHandler {
 
   @Inject
   private MessageHandlerImpl(final InjectionFuture<TableControlAgent> tableInitializerFuture,
-                             final InjectionFuture<MigrationManager> migrationManagerFuture) {
+                             final InjectionFuture<MigrationManager> migrationManagerFuture,
+                             final InjectionFuture<MetricReceiver> metricReceiver) {
+    this.metricReceiver = metricReceiver;
     this.tableInitializerFuture = tableInitializerFuture;
     this.migrationManagerFuture = migrationManagerFuture;
   }
@@ -61,9 +65,17 @@ public final class MessageHandlerImpl implements MessageHandler {
       onMigrationMsg(innerMsg.getMigrationMsg());
       break;
 
+    case MetricMsg:
+      onMetricMsg(innerMsg.getMetricMsg());
+      break;
+
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
+  }
+
+  private void onMetricMsg(final MetricMsg metricMsg) {
+    metricReceiver.get().onNext(metricMsg);
   }
 
   private void onTableControlMsg(final TableControlMsg msg) {

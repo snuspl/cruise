@@ -15,16 +15,14 @@
  */
 package edu.snu.cay.services.et.evaluator.api;
 
-import edu.snu.cay.services.et.avro.OpType;
-import edu.snu.cay.services.et.avro.DataKey;
-import edu.snu.cay.services.et.avro.DataValue;
-import edu.snu.cay.services.et.avro.KVPair;
+import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.evaluator.impl.MessageSenderImpl;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Interface for executors to send messages to the master and other executors.
@@ -101,4 +99,9 @@ public interface MessageSender {
    * The operation should be given a unique {@code opId}.
    */
   void sendDataMovedMsg(long opId, String tableId, int blockId);
+
+  /**
+   * Sends a message to master, containing the collected metrics in the Executor.
+   */
+  void sendMetricMsg(Map<String, Integer> tableToNumBlocks, byte[] encodedCustomMetrics);
 }

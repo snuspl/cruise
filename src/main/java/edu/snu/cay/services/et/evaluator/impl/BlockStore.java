@@ -92,6 +92,13 @@ public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
   }
 
   /**
+   * @return the number of blocks in the store.
+   */
+  int getNumBlocks() {
+    return blocks.size();
+  }
+
+  /**
    * Return the specified block.
    * @param blockId index of the block
    * @return block with the specified index

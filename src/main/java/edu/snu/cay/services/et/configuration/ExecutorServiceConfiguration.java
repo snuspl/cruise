@@ -23,10 +23,7 @@ import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
-import org.apache.reef.tang.formats.ConfigurationModule;
-import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
-import org.apache.reef.tang.formats.RequiredImpl;
-import org.apache.reef.tang.formats.RequiredParameter;
+import org.apache.reef.tang.formats.*;
 import org.apache.reef.wake.IdentifierFactory;
 
 /**

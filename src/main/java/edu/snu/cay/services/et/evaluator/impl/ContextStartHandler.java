@@ -33,17 +33,21 @@ import javax.inject.Inject;
 @EvaluatorSide
 public final class ContextStartHandler implements EventHandler<ContextStart> {
   private final NetworkConnection<ETMsg> networkConnection;
+  private final MetricCollector metricCollector;
   private final String evaluatorId;
 
   @Inject
   private ContextStartHandler(final NetworkConnection<ETMsg> networkConnection,
+                              final MetricCollector metricCollector,
                               @Parameter(EvaluatorIdentifier.class) final String evaluatorId) {
     this.networkConnection = networkConnection;
     this.evaluatorId = evaluatorId;
+    this.metricCollector = metricCollector;
   }
 
   @Override
   public void onNext(final ContextStart contextStart) {
     networkConnection.setup(evaluatorId);
+    metricCollector.start();
   }
 }

@@ -337,11 +337,28 @@
 },
 
 /**
+ * The message protocol used for collecting metrics.
+ * Custom metrics can be defined and plugged in as a byte array.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "MetricMsg",
+  "fields":
+  [
+    {"name": "tableToNumBlocks", "type": {"type": "map", "values": "int"}},
+    {"name": "hostname", "type": "string", "default": ""},
+    {"name": "customMetrics", "type": "bytes"}
+  ]
+},
+
+/**
  * The message protocol used for Elastic Table.
- * Messages are categorized into three types:
- * (1) TableAccessMsg: Messages regarding remote table access,
- * (2) TableControlMsg: Messages to manage tables in executors,
+ * Messages are categorized into following types:
+ * (1) TableAccessMsg: Messages regarding remote table access.
+ * (2) TableControlMsg: Messages to manage tables in executors.
  * (3) MigrationMsg: Messages used for data migration.
+ * (4) MetricMsg: Messages for collecting metrics from executors.
  * They are all included as nullable fields, and an enum type indicates which field is not null.
  */
 {
@@ -351,10 +368,11 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "ETMsgType",
-        "symbols": ["TableAccessMsg", "TableControlMsg", "MigrationMsg"]}},
+        "symbols": ["TableAccessMsg", "TableControlMsg", "MigrationMsg", "MetricMsg"]}},
     {"name": "tableAccessMsg", "type": ["null", "TableAccessMsg"], "default": null},
     {"name": "tableControlMsg", "type": ["null", "TableControlMsg"], "default": null},
-    {"name": "migrationMsg", "type": ["null", "MigrationMsg"], "default": null}
+    {"name": "migrationMsg", "type": ["null", "MigrationMsg"], "default": null},
+    {"name": "metricMsg", "type": ["null", "MetricMsg"], "default": null}
   ]
 }
 ]

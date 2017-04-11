@@ -35,8 +35,7 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -212,5 +211,23 @@ public final class Tables implements TableAccessor {
       throw new TableNotExistException();
     }
     return tablePair.getRight();
+  }
+
+  /**
+   * @return the number of blocks of each Table.
+   */
+  public synchronized Map<String, Integer> getTableToNumBlocks() {
+    final Map<String, Integer> tableIdToNumBlocks = new HashMap<>();
+
+    tables.keySet().forEach(tableId -> {
+          try {
+            final TableComponents components = getTableComponents(tableId);
+            tableIdToNumBlocks.put(tableId, components.getBlockStore().getNumBlocks());
+          } catch (TableNotExistException e) {
+            throw new RuntimeException(e);
+          }
+        }
+    );
+    return tableIdToNumBlocks;
   }
 }
