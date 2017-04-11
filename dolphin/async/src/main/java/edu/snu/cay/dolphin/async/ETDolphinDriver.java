@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
-import edu.snu.cay.common.metric.MetricsCollectionServiceConf;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricCodec;
@@ -82,8 +81,6 @@ public final class ETDolphinDriver {
   private final Configuration workerContextConf;
   private final Configuration workerServiceConf;
 
-  private final Configuration serverServiceConf;
-
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
                           final ConfigurationSerializer confSerializer,
@@ -124,11 +121,6 @@ public final class ETDolphinDriver {
         MetricServiceExecutorConf.CONF
             .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricCodec.class)
             .build());
-
-    this.serverServiceConf = MetricServiceExecutorConf.CONF
-        .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricCodec.class)
-        .set(MetricServiceExecutorConf.METRIC_SENDING_PERIOD_MS, -1)
-        .build();
   }
 
   private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {
@@ -185,7 +177,6 @@ public final class ETDolphinDriver {
       try {
         final ExecutorConfiguration serverExecutorConf = ExecutorConfiguration.newBuilder()
             .setResourceConf(serverResourceConf)
-            .setUserServiceConf(serverServiceConf)
             .build();
         final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
             .setResourceConf(workerResourceConf)
