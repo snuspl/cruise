@@ -258,10 +258,10 @@ final class WorkerStateManager {
     switch (globalState) {
     case INIT:
       if (localState.equals(WorkerGlobalBarrier.State.INIT)) {
+        blockWorker(workerId);
+
         // collect worker ids until it reaches NumWorkers
         runningWorkerIds.add(workerId);
-
-        blockWorker(workerId);
 
         LOG.log(Level.INFO, "Worker {0} is initialized. [{1} / {2}]",
             new Object[]{workerId, runningWorkerIds.size(), numWorkers});
