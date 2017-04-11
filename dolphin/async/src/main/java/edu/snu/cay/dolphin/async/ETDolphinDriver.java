@@ -167,35 +167,40 @@ public final class ETDolphinDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      final ExecutorConfiguration serverExecutorConf = ExecutorConfiguration.newBuilder()
-          .setResourceConf(serverResourceConf)
-          .build();
-      final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
-          .setResourceConf(workerResourceConf)
-          .setUserContextConf(aggrContextConf)
-          .setUserServiceConf(aggrServiceConf)
-          .build();
-      final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, serverExecutorConf);
-      final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, workerExecutorConf);
+      try {
+        final ExecutorConfiguration serverExecutorConf = ExecutorConfiguration.newBuilder()
+            .setResourceConf(serverResourceConf)
+            .build();
+        final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
+            .setResourceConf(workerResourceConf)
+            .setUserContextConf(aggrContextConf)
+            .setUserServiceConf(aggrServiceConf)
+            .build();
 
-      Executors.newSingleThreadExecutor().submit(() -> {
-        etMaster.createTable(serverTableConf, servers).subscribe(workers);
-        etMaster.createTable(workerTableConf, workers);
+        final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, serverExecutorConf).get();
+        final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, workerExecutorConf).get();
 
-        final AtomicInteger taskIdCount = new AtomicInteger(0);
+        Executors.newSingleThreadExecutor().submit(() -> {
+          etMaster.createTable(serverTableConf, servers).addListener(t -> t.subscribe(workers));
+          etMaster.createTable(workerTableConf, workers);
 
-        final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
-        workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(
-            Configurations.merge(TaskConfiguration.CONF
-                .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-                .set(TaskConfiguration.TASK, ETWorkerTask.class)
-                .build(), workerConf))));
+          final AtomicInteger taskIdCount = new AtomicInteger(0);
 
-        waitAndCheckTaskResult(taskResultFutureList);
+          final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
+          workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(
+              Configurations.merge(TaskConfiguration.CONF
+                  .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                  .set(TaskConfiguration.TASK, ETWorkerTask.class)
+                  .build(), workerConf))));
 
-        workers.forEach(AllocatedExecutor::close);
-        servers.forEach(AllocatedExecutor::close);
-      });
+          waitAndCheckTaskResult(taskResultFutureList);
+
+          workers.forEach(AllocatedExecutor::close);
+          servers.forEach(AllocatedExecutor::close);
+        });
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
