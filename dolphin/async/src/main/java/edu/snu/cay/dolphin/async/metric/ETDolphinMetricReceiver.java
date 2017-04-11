@@ -18,12 +18,23 @@ package edu.snu.cay.dolphin.async.metric;
 import edu.snu.cay.services.et.avro.MetricMsg;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
 
+import javax.inject.Inject;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * Implementation of Metric receiver for Dolphin on ET.
  */
-public class ETDolphinMetricReceiver implements MetricReceiver {
+public final class ETDolphinMetricReceiver implements MetricReceiver {
+  private static final Logger LOG = Logger.getLogger(ETDolphinMetricReceiver.class.getName());
+
+  @Inject
+  ETDolphinMetricReceiver() {
+  }
+
   @Override
   public void onNext(final MetricMsg metricMsg) {
     // TODO #1071: How do we?
+    LOG.log(Level.INFO, "Received metric: {0}", metricMsg);
   }
 }
