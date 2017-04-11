@@ -97,16 +97,6 @@
 {
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
-  "name": "ETMetrics",
-  "fields":
-  [
-    {"name": "numBlocks", "type": "int"}
-  ]
-},
-
-{
-  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
-  "type": "record",
   "name": "DolphinMetrics",
   "fields":
   [
@@ -115,7 +105,6 @@
     {"name": "workerMetrics", "type": ["null", "DolphinWorkerMetrics"], "default": null},
     // serverMetrics is temporarily empty because the current cost model does not use server-specific metrics.
     {"name": "serverMetrics", "type": "null"},
-    {"name": "etMetrics", "type": "ETMetrics"},
     {"name": "hostname", "type": "string", "default": ""}
   ]
 }
