@@ -25,7 +25,7 @@ import java.io.*;
 /**
  * Codec that (de-)serializes the Dolphin-specific metrics.
  */
-public class ETDolphinMetricCodec implements StreamingCodec<DolphinMetrics> {
+public final class ETDolphinMetricCodec implements StreamingCodec<DolphinMetrics> {
   @Inject
   private ETDolphinMetricCodec() {
   }
