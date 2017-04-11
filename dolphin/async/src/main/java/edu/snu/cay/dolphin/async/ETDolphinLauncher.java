@@ -174,7 +174,8 @@ public final class ETDolphinLauncher {
 
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
         NumServers.class, ServerMemSize.class, NumServerCores.class,
-        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class);
+        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
+        ServerMetricFlushPeriodMs.class);
 
     // it's empty now
     final List<Class<? extends Name<?>>> serverParamList = Collections.emptyList();

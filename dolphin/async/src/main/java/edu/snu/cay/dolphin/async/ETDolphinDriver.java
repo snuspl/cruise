@@ -81,6 +81,8 @@ public final class ETDolphinDriver {
   private final Configuration workerContextConf;
   private final Configuration workerServiceConf;
 
+  private final Configuration serverServiceConf;
+
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
                           final ConfigurationSerializer confSerializer,
@@ -91,6 +93,7 @@ public final class ETDolphinDriver {
                           @Parameter(NumWorkers.class) final int numWorkers,
                           @Parameter(WorkerMemSize.class) final int workerMemSize,
                           @Parameter(NumWorkerCores.class) final int numWorkerCores,
+                          @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                           @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
                           @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
                           @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
@@ -120,6 +123,11 @@ public final class ETDolphinDriver {
         centCommConfProvider.getServiceConfWithoutNameResolver(),
         MetricServiceExecutorConf.CONF
             .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricCodec.class)
+            .build());
+
+    this.serverServiceConf = Configurations.merge(
+        MetricServiceExecutorConf.CONF
+            .set(MetricServiceExecutorConf.METRIC_SENDING_PERIOD_MS, serverMetricFlushPeriodMs)
             .build());
   }
 
@@ -177,6 +185,7 @@ public final class ETDolphinDriver {
       try {
         final ExecutorConfiguration serverExecutorConf = ExecutorConfiguration.newBuilder()
             .setResourceConf(serverResourceConf)
+            .setUserServiceConf(serverServiceConf)
             .build();
         final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
             .setResourceConf(workerResourceConf)
