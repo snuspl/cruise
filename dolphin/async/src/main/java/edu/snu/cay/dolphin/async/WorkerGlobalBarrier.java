@@ -24,6 +24,7 @@ import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,6 +36,7 @@ import static edu.snu.cay.dolphin.async.WorkerStateManager.*;
  * It is used to synchronize the local worker with other workers in two points: after initialization and before cleanup.
  */
 @EvaluatorSide
+@NotThreadSafe
 @Unit
 final class WorkerGlobalBarrier {
   private static final Logger LOG = Logger.getLogger(WorkerGlobalBarrier.class.getName());
@@ -70,7 +72,6 @@ final class WorkerGlobalBarrier {
         .setInitialState(State.INIT)
         .build();
   }
-
 
   private void sendMsgToDriver() {
     LOG.log(Level.INFO, "Sending a synchronization message to the driver");

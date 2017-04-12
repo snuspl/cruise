@@ -27,6 +27,7 @@ import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.Collections;
 import java.util.Set;
@@ -42,6 +43,7 @@ import java.util.logging.Logger;
  * To achieve this, it maintains a global state to be matched with their own local states.
  */
 @DriverSide
+@ThreadSafe
 @Unit
 final class WorkerStateManager {
   private static final Logger LOG = Logger.getLogger(WorkerStateManager.class.getName());
@@ -155,9 +157,8 @@ final class WorkerStateManager {
                                                   final Set<String> deletedWorkers) {
     stateMachine.checkState(State.OPTIMIZE);
 
-    LOG.log(Level.INFO, "NumAddedWorkers: {0}, NumDeletedWorkers: {1}",
-        new Object[]{addedWorkers.size(), deletedWorkers.size()});
-    LOG.log(Level.FINE, "AddedWorkers: {0}, DeletedWorkers: {1}", new Object[]{addedWorkers, deletedWorkers});
+    LOG.log(Level.INFO, "Added {0} Workers: {1}", new Object[] {addedWorkers.size(), addedWorkers});
+    LOG.log(Level.INFO, "Deleted {0} Workers: {1}", new Object[] {deletedWorkers.size(), deletedWorkers});
 
     if (!runningWorkerIds.containsAll(deletedWorkers) ||
         !Collections.disjoint(addedWorkers, deletedWorkers) ||
@@ -185,7 +186,7 @@ final class WorkerStateManager {
   /**
    * Progress to the next state.
    */
-  private void transitToNextState() {
+  private synchronized void transitToNextState() {
     final State currentState = (State) stateMachine.getCurrentState();
 
     switch (currentState) {
