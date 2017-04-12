@@ -305,7 +305,7 @@ public final class MessageSenderImpl implements MessageSender {
 
   @Override
   public void sendMetricMsg(final Map<String, Integer> tableToNumBlocks,
-                            final byte[] encodedCustomMetrics) {
+                            final List<ByteBuffer> encodedCustomMetrics) {
     try {
       final ETMsg msg = ETMsg.newBuilder()
           .setType(ETMsgType.MetricMsg)
@@ -313,7 +313,7 @@ public final class MessageSenderImpl implements MessageSender {
               MetricMsg.newBuilder()
                   .setTableToNumBlocks(tableToNumBlocks)
                   .setHostname(HostnameResolver.resolve())
-                  .setCustomMetrics(ByteBuffer.wrap(encodedCustomMetrics))
+                  .setCustomMetrics(encodedCustomMetrics)
                   .build()
           )
           .build();

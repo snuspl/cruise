@@ -19,13 +19,12 @@ import edu.snu.cay.services.et.configuration.parameters.metric.CustomMetricCodec
 import edu.snu.cay.services.et.configuration.parameters.metric.MetricFlushPeriodMs;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.io.network.impl.StreamingCodec;
+import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -45,13 +44,13 @@ public final class MetricCollector<M> {
   private final MessageSender msgSender;
 
   private final List<M> customMetrics;
-  private final StreamingCodec<M> customMetricCodec;
+  private final Codec<M> customMetricCodec;
   private final ScheduledExecutorService executor;
   private final long metricSendingPeriodMs;
 
   @Inject
   private MetricCollector(@Parameter(MetricFlushPeriodMs.class) final long metricSendingPeriodMs,
-                          @Parameter(CustomMetricCodec.class) final StreamingCodec<M> customMetricCodec,
+                          @Parameter(CustomMetricCodec.class) final Codec<M> customMetricCodec,
                           final Tables tables,
                           final MessageSender msgSender) {
     this.tables = tables;
@@ -112,13 +111,10 @@ public final class MetricCollector<M> {
     customMetrics.add(metric);
   }
 
-  private byte[] encodeCustomMetrics() {
-    try (ByteArrayOutputStream bStream = new ByteArrayOutputStream();
-         DataOutputStream dStream = new DataOutputStream(bStream)) {
-      customMetrics.forEach(m -> customMetricCodec.encodeToStream(m, dStream));
-      return bStream.toByteArray();
-    } catch (IOException e) {
-      throw new RuntimeException("IOException during serializing custom metrics", e);
-    }
+  private List<ByteBuffer> encodeCustomMetrics() {
+    final List<ByteBuffer> encodedMetrics = new ArrayList<>(customMetrics.size());
+    customMetrics.forEach(m -> encodedMetrics.add(ByteBuffer.wrap(customMetricCodec.encode(m))));
+
+    return encodedMetrics;
   }
 }

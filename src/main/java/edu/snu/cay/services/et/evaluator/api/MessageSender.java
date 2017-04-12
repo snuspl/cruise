@@ -21,6 +21,7 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
@@ -103,5 +104,5 @@ public interface MessageSender {
   /**
    * Sends a message to master, containing the collected metrics in the Executor.
    */
-  void sendMetricMsg(Map<String, Integer> tableToNumBlocks, byte[] encodedCustomMetrics);
+  void sendMetricMsg(Map<String, Integer> tableToNumBlocks, List<ByteBuffer> encodedCustomMetrics);
 }

@@ -18,7 +18,7 @@ package edu.snu.cay.services.et.configuration.metric;
 import edu.snu.cay.services.et.configuration.parameters.metric.CustomMetricCodec;
 import edu.snu.cay.services.et.configuration.parameters.metric.MetricFlushPeriodMs;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.io.network.impl.StreamingCodec;
+import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.OptionalParameter;
@@ -28,7 +28,7 @@ import org.apache.reef.tang.formats.OptionalParameter;
  */
 @DriverSide
 public final class MetricServiceExecutorConf extends ConfigurationModuleBuilder {
-  public static final OptionalParameter<StreamingCodec> CUSTOM_METRIC_CODEC = new OptionalParameter<>();
+  public static final OptionalParameter<Codec> CUSTOM_METRIC_CODEC = new OptionalParameter<>();
   public static final OptionalParameter<Long> METRIC_SENDING_PERIOD_MS = new OptionalParameter<>();
 
   public static final ConfigurationModule CONF = new MetricServiceExecutorConf()

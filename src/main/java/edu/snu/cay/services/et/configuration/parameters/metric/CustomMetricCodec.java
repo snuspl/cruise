@@ -15,10 +15,11 @@
  */
 package edu.snu.cay.services.et.configuration.parameters.metric;
 
-import org.apache.reef.io.network.impl.StreamingCodec;
+import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "A codec for custom metrics", default_class = EmptyMetricCodec.class)
-public final class CustomMetricCodec implements Name<StreamingCodec> {
+@NamedParameter(doc = "A codec for custom metrics", default_class = SerializableCodec.class)
+public final class CustomMetricCodec implements Name<Codec> {
 }

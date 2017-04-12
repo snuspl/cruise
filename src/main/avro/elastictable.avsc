@@ -348,7 +348,7 @@
   [
     {"name": "tableToNumBlocks", "type": {"type": "map", "values": "int"}},
     {"name": "hostname", "type": "string", "default": ""},
-    {"name": "customMetrics", "type": "bytes"}
+    {"name": "customMetrics", "type": {"type": "array", "items": "bytes"}}
   ]
 },
 
