@@ -17,40 +17,16 @@ package edu.snu.cay.dolphin.async.metric;
 
 import edu.snu.cay.dolphin.async.metric.avro.DolphinWorkerMetrics;
 import edu.snu.cay.utils.AvroUtils;
-import org.apache.reef.io.network.impl.StreamingCodec;
+import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
-import java.io.*;
 
 /**
  * Codec that (de-)serializes the Dolphin-specific metrics.
  */
-public final class ETDolphinMetricCodec implements StreamingCodec<DolphinWorkerMetrics> {
+public final class ETDolphinMetricMsgCodec implements Codec<DolphinWorkerMetrics> {
   @Inject
-  private ETDolphinMetricCodec() {
-  }
-
-  @Override
-  public void encodeToStream(final DolphinWorkerMetrics dolphinMetrics, final DataOutputStream dos) {
-    try {
-      final byte[] encoded = AvroUtils.toBytes(dolphinMetrics, DolphinWorkerMetrics.class);
-      dos.writeInt(encoded.length);
-      dos.write(encoded);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  @Override
-  public DolphinWorkerMetrics decodeFromStream(final DataInputStream dis) {
-    try {
-      final int length = dis.readInt();
-      final byte[] buffer = new byte[length];
-      dis.readFully(buffer);
-      return decode(buffer);
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
+  private ETDolphinMetricMsgCodec() {
   }
 
   @Override

@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
-import edu.snu.cay.dolphin.async.metric.ETDolphinMetricCodec;
+import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
@@ -122,7 +122,7 @@ public final class ETDolphinDriver {
     this.workerServiceConf = Configurations.merge(
         centCommConfProvider.getServiceConfWithoutNameResolver(),
         MetricServiceExecutorConf.CONF
-            .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricCodec.class)
+            .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricMsgCodec.class)
             .build());
 
     this.serverServiceConf = Configurations.merge(
