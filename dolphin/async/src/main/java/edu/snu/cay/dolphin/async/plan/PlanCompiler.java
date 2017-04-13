@@ -139,7 +139,7 @@ public final class PlanCompiler {
 
   private void handleSwitch(final Map<String, Collection<String>> dstNamespaceToEvalsToSwitch,
                             final DAG<Op> dag) {
-    // only worker needs Start and Stop ops
+    // only workers need Start and Stop ops
     for (final Map.Entry<String, Collection<String>> entry : dstNamespaceToEvalsToSwitch.entrySet()) {
       final String dstNamespace = entry.getKey();
       final Collection<String> executors = entry.getValue();
