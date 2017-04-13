@@ -29,7 +29,7 @@ import java.util.concurrent.Future;
  * An {@link ModelAccessor} implementation based on ET.
  */
 public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
-  static final String MODEL_TABLE_ID = "model_table";
+  public static final String MODEL_TABLE_ID = "model_table";
 
   private final Table<K, V, P> modelTable;
 
