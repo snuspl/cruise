@@ -20,6 +20,8 @@ import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.ETMasterImpl;
+import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -51,4 +53,20 @@ public interface ETMaster {
    */
   ListenableFuture<AllocatedTable> createTable(TableConfiguration tableConf,
                                                List<AllocatedExecutor> initialAssociators);
+
+  /**
+   * Return an existing executor whose id is {@code executorId}.
+   * @param executorId an executor id
+   * @return {@link AllocatedExecutor} whose id is {@code executorId}
+   * @throws ExecutorNotExistException when there's no existing executor with {@code executorId}
+   */
+  AllocatedExecutor getExecutor(String executorId) throws ExecutorNotExistException;
+
+  /**
+   * Return a existing table whose id is {@code tableId}.
+   * @param tableId a table id
+   * @return {@link AllocatedTable} whose id is {@code tableId}
+   * @throws TableNotExistException when there's no existing table with {@code tableId}
+   */
+  AllocatedTable getTable(String tableId) throws TableNotExistException;
 }

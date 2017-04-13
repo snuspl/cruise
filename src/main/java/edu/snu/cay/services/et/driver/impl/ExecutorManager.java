@@ -25,6 +25,7 @@ import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.evaluator.impl.ContextStartHandler;
 import edu.snu.cay.services.et.evaluator.impl.ContextStopHandler;
+import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
@@ -123,8 +124,12 @@ final class ExecutorManager {
   /**
    * @return AllocatedExecutor whose id is {@code executorId}
    */
-  AllocatedExecutor getExecutor(final String executorId) {
-    return executors.get(executorId);
+  AllocatedExecutor getExecutor(final String executorId) throws ExecutorNotExistException {
+    final AllocatedExecutor executor = executors.get(executorId);
+    if (executor == null) {
+      throw new ExecutorNotExistException(executorId + " does not exist.");
+    }
+    return executor;
   }
 
   /**

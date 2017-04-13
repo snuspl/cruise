@@ -16,10 +16,11 @@
 package edu.snu.cay.services.et.exceptions;
 
 /**
- * Indicates that a table does not exist.
+ * An exception while executing {@link edu.snu.cay.services.et.plan.api.Op},
+ * which is executed by {@link edu.snu.cay.services.et.plan.api.PlanExecutor}.
  */
-public final class TableNotExistException extends Exception {
-  public TableNotExistException(final String msg) {
-    super(msg);
+public class PlanOpExecutionException extends Exception {
+  public PlanOpExecutionException(final String msg, final Throwable cause) {
+    super(msg, cause);
   }
 }

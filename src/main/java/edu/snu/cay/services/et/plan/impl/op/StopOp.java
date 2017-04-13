@@ -1,0 +1,50 @@
+/*
+ * Copyright (C) 2017 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package edu.snu.cay.services.et.plan.impl.op;
+
+import edu.snu.cay.services.et.common.util.concurrent.CompletedFuture;
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.driver.api.ETMaster;
+import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * An operation for stopping a running task on an executor.
+ */
+public final class StopOp extends AbstractOp {
+  private static final Logger LOG = Logger.getLogger(StopOp.class.getName());
+  private final String executorId;
+
+  public StopOp(final String executorId) {
+    this.executorId = executorId;
+  }
+
+  @Override
+  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
+    LOG.log(Level.WARNING, "StopOp has not been implemented yet (TODO #92).");
+    // TODO #92: implement task stop routine
+    return new CompletedFuture<>(null);
+  }
+
+  @Override
+  public String toString() {
+    return "StopOp{" +
+        "executorId='" + executorId + '\'' +
+        '}';
+  }
+}

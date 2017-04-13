@@ -13,13 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.exceptions;
-
 /**
- * Indicates that a table does not exist.
+ * Implementations of ET plans and plan executors.
  */
-public final class TableNotExistException extends Exception {
-  public TableNotExistException(final String msg) {
-    super(msg);
-  }
-}
+package edu.snu.cay.services.et.plan.impl;

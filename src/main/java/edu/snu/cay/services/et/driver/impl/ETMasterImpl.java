@@ -21,6 +21,8 @@ import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
+import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
+import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
@@ -61,5 +63,15 @@ public final class ETMasterImpl implements ETMaster {
     } catch (final InjectionException e) {
       throw new RuntimeException("The given table configuration is incomplete", e);
     }
+  }
+
+  @Override
+  public AllocatedExecutor getExecutor(final String executorId) throws ExecutorNotExistException {
+    return executorManager.getExecutor(executorId);
+  }
+
+  @Override
+  public AllocatedTable getTable(final String tableId) throws TableNotExistException {
+    return tableManager.getAllocatedTable(tableId);
   }
 }

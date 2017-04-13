@@ -16,10 +16,10 @@
 package edu.snu.cay.services.et.exceptions;
 
 /**
- * Indicates that a table does not exist.
+ * Indicates that an executor does not exist.
  */
-public final class TableNotExistException extends Exception {
-  public TableNotExistException(final String msg) {
+public final class ExecutorNotExistException extends Exception {
+  public ExecutorNotExistException(final String msg) {
     super(msg);
   }
 }

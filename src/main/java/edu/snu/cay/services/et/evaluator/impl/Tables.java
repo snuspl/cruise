@@ -187,8 +187,7 @@ public final class Tables implements TableAccessor {
     final Pair<Table, TableComponents> tablePair = tables.get(tableId);
     if (tablePair == null) {
       // cannot access such table.
-      // 1) table does not exist or 2) it's not associated or subscribed by this executor.
-      throw new TableNotExistException();
+      throw new TableNotExistException(tableId + " does not exist or this executor did not associate or subscribe it");
     }
 
     return tablePair.getLeft();
@@ -207,8 +206,7 @@ public final class Tables implements TableAccessor {
     final Pair<Table, TableComponents> tablePair = tables.get(tableId);
     if (tablePair == null) {
       // cannot access such table.
-      // 1) table does not exist or 2) it's not associated or subscribed by this executor.
-      throw new TableNotExistException();
+      throw new TableNotExistException(tableId + " does not exist or this executor did not associate or subscribe it");
     }
     return tablePair.getRight();
   }

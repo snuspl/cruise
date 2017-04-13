@@ -94,7 +94,7 @@ final class TableManager {
   synchronized AllocatedTable getAllocatedTable(final String tableId) throws TableNotExistException {
     final AllocatedTable table = allocatedTableMap.get(tableId);
     if (table == null) {
-      throw new TableNotExistException();
+      throw new TableNotExistException(tableId + " does not exist.");
     }
     return table;
   }
