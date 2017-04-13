@@ -38,7 +38,7 @@ import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE
 /**
  * A plan compiler that compiles down Dolphin's plan to {@link ETPlan}.
  */
-public class PlanCompiler {
+public final class PlanCompiler {
   private static final Logger LOG = Logger.getLogger(PlanCompiler.class.getName());
 
   private final ETDolphinDriver etDolphinDriver;
@@ -54,7 +54,7 @@ public class PlanCompiler {
    * @param numAvailableExtraEvals an
    * @return a {@link ETPlan}
    */
-  public ETPlan compile(Plan dolphinPlan, int numAvailableExtraEvals) {
+  public ETPlan compile(final Plan dolphinPlan, final int numAvailableExtraEvals) {
     final Map<String, Collection<String>> namespaceToEvalsToAdd = new HashMap<>();
     namespaceToEvalsToAdd.put(NAMESPACE_WORKER, dolphinPlan.getEvaluatorsToAdd(NAMESPACE_WORKER));
     namespaceToEvalsToAdd.put(NAMESPACE_SERVER, dolphinPlan.getEvaluatorsToAdd(NAMESPACE_SERVER));
@@ -69,15 +69,15 @@ public class PlanCompiler {
     namespaceToTransferSteps.put(NAMESPACE_WORKER, dolphinPlan.getTransferSteps(NAMESPACE_WORKER));
     namespaceToTransferSteps.put(NAMESPACE_SERVER, dolphinPlan.getTransferSteps(NAMESPACE_SERVER));
 
-    return buildETPlan(namespaceToEvalsToAdd, namespaceToEvalsToDel, namespaceToEvalsToSwitch,
+    return buildPlan(namespaceToEvalsToAdd, namespaceToEvalsToDel, namespaceToEvalsToSwitch,
         namespaceToTransferSteps, numAvailableExtraEvals);
   }
 
-  private ETPlan buildETPlan(final Map<String, Collection<String>> namespaceToEvalsToAdd,
-                             final Map<String, Collection<String>> namespaceToEvalsToDel,
-                             final Map<String, Collection<String>> dstNamespaceToEvalsToSwitch,
-                             final Map<String, Collection<TransferStep>> namespaceToTransferSteps,
-                             final int numAvailableExtraEvals) {
+  private ETPlan buildPlan(final Map<String, Collection<String>> namespaceToEvalsToAdd,
+                           final Map<String, Collection<String>> namespaceToEvalsToDel,
+                           final Map<String, Collection<String>> dstNamespaceToEvalsToSwitch,
+                           final Map<String, Collection<TransferStep>> namespaceToTransferSteps,
+                           final int numAvailableExtraEvals) {
     final DAG<Op> dag = new DAGImpl<>();
 
     final Map<String, AllocateOp> allocateOps = new HashMap<>();
@@ -87,11 +87,83 @@ public class PlanCompiler {
     final Map<String, StopOp> stopOps = new HashMap<>();
 
     final Map<String, SubscribeOp> subscribeOps = new HashMap<>();
-    final Map<String, UnsubscribeOp> unsubscriptionOps = new HashMap<>();
+    final Map<String, UnsubscribeOp> unsubscribeOps = new HashMap<>();
 
     final List<MoveOp> moveOps = new LinkedList<>();
 
-    // handle Delete
+    handleDelete(namespaceToEvalsToDel, dag, deallocateOps, stopOps, unsubscribeOps);
+    
+    handleAdd(namespaceToEvalsToAdd, dag, allocateOps, startOps, subscribeOps);
+
+    resolveAddDelDependency(numAvailableExtraEvals, dag, allocateOps, deallocateOps);
+
+    handleSwitch(dstNamespaceToEvalsToSwitch, dag);
+
+    handleMove(namespaceToTransferSteps, dag, allocateOps, deallocateOps, moveOps, stopOps, startOps);
+
+    final int numTotalOps = allocateOps.size() + deallocateOps.size()
+        + moveOps.size()
+        + startOps.size() + stopOps.size()
+        + subscribeOps.size() + unsubscribeOps.size();
+
+    return new ETPlan(dag, numTotalOps);
+  }
+
+  private void resolveAddDelDependency(final int numAvailableExtraEvals,
+                                       final DAG<Op> dag,
+                                       final Map<String, AllocateOp> allocateOps,
+                                       final Map<String, DeallocateOp> deallocateOps) {
+    // We need one Delete for each Add as much as the number of extra evaluators slots
+    // is smaller than the number of evaluators to Add.
+    // The current strategy simply maps one Delete and one Add that is not necessarily relevant with.
+    final int numRequiredExtraEvals = allocateOps.size() - deallocateOps.size();
+    if (numRequiredExtraEvals > numAvailableExtraEvals) {
+      throw new RuntimeException("Infeasible plan; it tries to use more resources than allowed.");
+    }
+
+    final int numAddsShouldFollowDel = allocateOps.size() - numAvailableExtraEvals;
+    if (numAddsShouldFollowDel > 0) {
+      LOG.log(Level.FINE, "{0} Allocates should follow the same number of Deallocates.", numAddsShouldFollowDel);
+
+      final Iterator<DeallocateOp> deallocateOpsItr = deallocateOps.values().iterator();
+      final Iterator<AllocateOp> allocateOpsItr = allocateOps.values().iterator();
+
+      // pick each add/del operations with no special ordering
+      for (int i = 0; i < numAddsShouldFollowDel; i++) {
+        final Op addOp = allocateOpsItr.next();
+        final Op delOp = deallocateOpsItr.next();
+        dag.addEdge(delOp, addOp);
+      }
+    }
+  }
+
+  private void handleSwitch(final Map<String, Collection<String>> dstNamespaceToEvalsToSwitch,
+                            final DAG<Op> dag) {
+    // only worker needs Start and Stop ops
+    for (final Map.Entry<String, Collection<String>> entry : dstNamespaceToEvalsToSwitch.entrySet()) {
+      final String dstNamespace = entry.getKey();
+      final Collection<String> executors = entry.getValue();
+
+      // server -> worker
+      if (dstNamespace.equals(NAMESPACE_WORKER)) {
+        for (final String executor : executors) {
+          dag.addVertex(new StartOp(executor, etDolphinDriver.getWorkerTaskConf()));
+        }
+
+      // worker -> server
+      } else {
+        for (final String executor : executors) {
+          dag.addVertex(new StopOp(executor));
+        }
+      }
+    }
+  }
+
+  private void handleDelete(final Map<String, Collection<String>> namespaceToEvalsToDel,
+                            final DAG<Op> dag,
+                            final Map<String, DeallocateOp> deallocateOps,
+                            final Map<String, StopOp> stopOps,
+                            final Map<String, UnsubscribeOp> unsubscriptionOps) {
     for (final Map.Entry<String, Collection<String>> entry : namespaceToEvalsToDel.entrySet()) {
       final String namespace = entry.getKey();
 
@@ -114,8 +186,13 @@ public class PlanCompiler {
         }
       }
     }
+  }
 
-    // handle Add
+  private void handleAdd(final Map<String, Collection<String>> namespaceToEvalsToAdd,
+                         final DAG<Op> dag,
+                         final Map<String, AllocateOp> allocateOps,
+                         final Map<String, StartOp> startOps,
+                         final Map<String, SubscribeOp> subscribeOps)  {
     for (final Map.Entry<String, Collection<String>> entry : namespaceToEvalsToAdd.entrySet()) {
       final String namespace = entry.getKey();
       final Collection<String> evalsToAdd = entry.getValue();
@@ -140,51 +217,13 @@ public class PlanCompiler {
         }
       }
     }
+  }
 
-    // 1. del -> add dependency
-    // We need one Delete for each Add as much as the number of extra evaluators slots
-    // is smaller than the number of evaluators to Add.
-    // The current strategy simply maps one Delete and one Add that is not necessarily relevant with.
-    final int numRequiredExtraEvals = allocateOps.size() - deallocateOps.size();
-    if (numRequiredExtraEvals > numAvailableExtraEvals) {
-      throw new RuntimeException("Plan is infeasible, because it violates the resource limit");
-    }
-
-    final int numAddsShouldFollowDel = allocateOps.size() - numAvailableExtraEvals;
-    if (numAddsShouldFollowDel > 0) {
-      LOG.log(Level.FINE, "{0} Allocates should follow each one Deallocate.", numAddsShouldFollowDel);
-
-      final Iterator<DeallocateOp> deallocateOpsItr = deallocateOps.values().iterator();
-      final Iterator<AllocateOp> allocateOpsItr = allocateOps.values().iterator();
-
-      // pick each add/del operations with no special ordering
-      for (int i = 0; i < numAddsShouldFollowDel; i++) {
-        final Op addOp = allocateOpsItr.next();
-        final Op delOp = deallocateOpsItr.next();
-        dag.addEdge(delOp, addOp);
-      }
-    }
-
-    // handle Switch
-    // only worker needs Start and Stop ops
-    for (final Map.Entry<String, Collection<String>> entry : dstNamespaceToEvalsToSwitch.entrySet()) {
-      final String dstNamespace = entry.getKey();
-      final Collection<String> executors = entry.getValue();
-
-      // server -> worker
-      if (dstNamespace.equals(NAMESPACE_WORKER)) {
-        for (final String executor : executors) {
-          dag.addVertex(new StartOp(executor, etDolphinDriver.getWorkerTaskConf()));
-        }
-
-        // worker -> server
-      } else {
-        for (final String executor : executors) {
-          dag.addVertex(new StopOp(executor));
-        }
-      }
-    }
-
+  private void handleMove(final Map<String, Collection<TransferStep>> namespaceToTransferSteps,
+                          final DAG<Op> dag,
+                          final Map<String, AllocateOp> allocateOps, final Map<String, DeallocateOp> deallocateOps,
+                          final List<MoveOp> moveOps,
+                          final Map<String, StopOp> stopOps, final Map<String, StartOp> startOps) {
     // add vertices of Move
     for (final Map.Entry<String, Collection<TransferStep>> entry : namespaceToTransferSteps.entrySet()) {
       final String namespace = entry.getKey();
@@ -200,12 +239,12 @@ public class PlanCompiler {
       }
     }
 
-    // add dependencies of Move
+    // resolve dependencies of Move
     for (final MoveOp moveOp : moveOps) {
       final String srcId = moveOp.getSrcExecutorId();
       final String dstId = moveOp.getDstExecutorId();
 
-      // add -> move dependency
+      // allocate -> move dependency
       if (allocateOps.containsKey(dstId)) {
         final AllocateOp allocateOp = allocateOps.get(dstId);
         dag.addEdge(allocateOp, moveOp);
@@ -217,7 +256,7 @@ public class PlanCompiler {
         dag.addEdge(moveOp, startOp);
       }
 
-      // move -> del dependency
+      // move -> deallocate dependency
       if (deallocateOps.containsKey(srcId)) {
         final DeallocateOp deallocateOp = deallocateOps.get(srcId);
         dag.addEdge(moveOp, deallocateOp);
@@ -229,12 +268,5 @@ public class PlanCompiler {
         dag.addEdge(stopOp, moveOp);
       }
     }
-
-    final int numTotalOps = allocateOps.size() + deallocateOps.size()
-        + moveOps.size()
-        + startOps.size() + stopOps.size()
-        + subscribeOps.size() + unsubscriptionOps.size();
-
-    return new ETPlan(dag, numTotalOps);
   }
 }
