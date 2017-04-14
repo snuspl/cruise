@@ -347,6 +347,8 @@
   "fields":
   [
     {"name": "tableToNumBlocks", "type": {"type": "map", "values": "int"}},
+    {"name": "countSentGetReq", "type": {"type": "map", "values": "int"}},
+    {"name": "bytesReceivedGetResp", "type": {"type": "map", "values": "long"}},
     {"name": "hostname", "type": "string", "default": ""},
     {"name": "customMetrics", "type": {"type": "array", "items": "bytes"}}
   ]

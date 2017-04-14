@@ -22,12 +22,10 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,12 +34,15 @@ import java.util.logging.Logger;
  * Collects Metrics from ET and the customized Metrics running on ET.
  */
 @EvaluatorSide
+@ThreadSafe
 public final class MetricCollector<M> {
   private static final Logger LOG = Logger.getLogger(MetricCollector.class.getName());
-  
+
   private final Tables tables;
 
   private final MessageSender msgSender;
+
+  private final RemoteAccessOpStat remoteAccessOpStat;
 
   private final List<M> customMetrics;
   private final Codec<M> customMetricCodec;
@@ -52,13 +53,15 @@ public final class MetricCollector<M> {
   private MetricCollector(@Parameter(MetricFlushPeriodMs.class) final long metricSendingPeriodMs,
                           @Parameter(CustomMetricCodec.class) final Codec<M> customMetricCodec,
                           final Tables tables,
-                          final MessageSender msgSender) {
+                          final MessageSender msgSender,
+                          final RemoteAccessOpStat remoteAccessOpStat) {
     this.tables = tables;
     this.msgSender = msgSender;
-    this.customMetrics = new LinkedList<>();
+    this.remoteAccessOpStat = remoteAccessOpStat;
+    this.customMetrics = Collections.synchronizedList(new LinkedList<>());
     this.customMetricCodec = customMetricCodec;
     this.metricSendingPeriodMs = metricSendingPeriodMs;
-    this.executor =  Executors.newSingleThreadScheduledExecutor();
+    this.executor = Executors.newSingleThreadScheduledExecutor();
   }
 
   /**
@@ -81,8 +84,8 @@ public final class MetricCollector<M> {
    * It flushes out all unsent metrics.
    */
   void stop() {
-    flush();
     executor.shutdownNow();
+    flush();
     LOG.log(Level.INFO, "Metric collection has finished");
   }
 
@@ -92,16 +95,25 @@ public final class MetricCollector<M> {
    */
   public void flush() {
     final Map<String, Integer> tableIdToNumBlocks = tables.getTableToNumBlocks();
+    final Map<String, Long> bytesReceivedGetResp = remoteAccessOpStat.getBytesReceivedGetResp();
+    final Map<String, Integer> countsSentGetReq = remoteAccessOpStat.getCountsSentGetReq();
+
+    final List<M> copiedMetrics;
+    synchronized (customMetrics) {
+      copiedMetrics = new ArrayList<>(customMetrics);
+      customMetrics.clear();
+    }
 
     LOG.log(Level.INFO, "Sending a metric containing {0} custom metrics: (tableToNumBlocks: {1}, customMetrics: {2})",
-        new Object[] {customMetrics.size(), tableIdToNumBlocks, customMetrics});
+        new Object[] {copiedMetrics.size(), tableIdToNumBlocks, copiedMetrics});
+
 
     try {
-      msgSender.sendMetricMsg(tableIdToNumBlocks, encodeCustomMetrics());
+      msgSender.sendMetricMsg(tableIdToNumBlocks, bytesReceivedGetResp, countsSentGetReq,
+          encodeCustomMetrics(copiedMetrics));
     } catch (Exception e) {
       LOG.log(Level.SEVERE, "Exception occurred", e);
     }
-    customMetrics.clear();
   }
 
   /**
@@ -111,10 +123,9 @@ public final class MetricCollector<M> {
     customMetrics.add(metric);
   }
 
-  private List<ByteBuffer> encodeCustomMetrics() {
-    final List<ByteBuffer> encodedMetrics = new ArrayList<>(customMetrics.size());
-    customMetrics.forEach(m -> encodedMetrics.add(ByteBuffer.wrap(customMetricCodec.encode(m))));
-
+  private List<ByteBuffer> encodeCustomMetrics(final List<M> metrics) {
+    final List<ByteBuffer> encodedMetrics = new ArrayList<>(metrics.size());
+    metrics.forEach(m -> encodedMetrics.add(ByteBuffer.wrap(customMetricCodec.encode(m))));
     return encodedMetrics;
   }
 }

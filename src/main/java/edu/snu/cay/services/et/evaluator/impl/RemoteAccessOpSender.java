@@ -52,14 +52,17 @@ final class RemoteAccessOpSender {
   private final InjectionFuture<Tables> tablesFuture;
   private final String executorId;
   private final InjectionFuture<MessageSender> msgSenderFuture;
+  private final InjectionFuture<RemoteAccessOpStat> networkUsageStatFuture;
 
   @Inject
   private RemoteAccessOpSender(final InjectionFuture<Tables> tablesFuture,
                                @Parameter(ExecutorIdentifier.class) final String executorId,
-                               final InjectionFuture<MessageSender> msgSenderFuture) {
+                               final InjectionFuture<MessageSender> msgSenderFuture,
+                               final InjectionFuture<RemoteAccessOpStat> networkUsageStatFuture) {
     this.tablesFuture = tablesFuture;
     this.executorId = executorId;
     this.msgSenderFuture = msgSenderFuture;
+    this.networkUsageStatFuture = networkUsageStatFuture;
   }
 
   /**
@@ -132,6 +135,11 @@ final class RemoteAccessOpSender {
       } else  {
         dataValue = null;
       }
+      
+      // TODO #106: Collect metrics about all remote access operations
+      if (opMetadata.getOpType().equals(OpType.GET)) {
+        networkUsageStatFuture.get().incCountSentGetReq(opMetadata.getTableId());
+      }
 
       msgSenderFuture.get().sendTableAccessReqMsg(opMetadata.getOrigId(), targetEvalId, opMetadata.getOpId(),
           opMetadata.getTableId(), opMetadata.getOpType(), opMetadata.isReplyRequired(),
@@ -164,6 +172,12 @@ final class RemoteAccessOpSender {
       // decode data value
       final V decodedValue = isSuccess && remoteOutput != null ?
           valueCodec.decode(remoteOutput.getValue().array()) : null;
+
+      // TODO #106: Collect metrics about all remote access operations
+      if (operation.getMetadata().getOpType().equals(OpType.GET)
+          && remoteOutput != null && remoteOutput.getValue() != null) {
+        networkUsageStatFuture.get().incBytesReceivedGetResp(tableId, remoteOutput.getValue().array().length);
+      }
 
       operation.getDataOpResult().commitResult(decodedValue, isSuccess);
 

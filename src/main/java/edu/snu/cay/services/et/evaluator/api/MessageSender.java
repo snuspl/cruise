@@ -104,5 +104,8 @@ public interface MessageSender {
   /**
    * Sends a message to master, containing the collected metrics in the Executor.
    */
-  void sendMetricMsg(Map<String, Integer> tableToNumBlocks, List<ByteBuffer> encodedCustomMetrics);
+  void sendMetricMsg(Map<String, Integer> tableToNumBlocks,
+                     Map<String, Long> bytesReceivedGetResp,
+                     Map<String, Integer> countSentGetReq,
+                     List<ByteBuffer> encodedCustomMetrics);
 }
