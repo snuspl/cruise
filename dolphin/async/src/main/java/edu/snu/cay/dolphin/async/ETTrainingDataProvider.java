@@ -39,7 +39,7 @@ import java.util.logging.Logger;
 @ThreadSafe
 public final class ETTrainingDataProvider<K, V> implements TrainingDataProvider<K, V> {
   private static final Logger LOG = Logger.getLogger(ETTrainingDataProvider.class.getName());
-  static final String TRAINING_DATA_TABLE_ID = "training_data_table";
+  public static final String TRAINING_DATA_TABLE_ID = "training_data_table";
 
   private final List<K> trainingDataKeys = Collections.synchronizedList(new LinkedList<>());
 

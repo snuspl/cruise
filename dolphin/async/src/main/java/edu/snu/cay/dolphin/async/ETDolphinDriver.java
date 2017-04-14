@@ -79,6 +79,8 @@ public final class ETDolphinDriver {
   private final Configuration aggrContextConf;
   private final Configuration aggrServiceConf;
 
+  private final AtomicInteger taskIdCount = new AtomicInteger(0);
+
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
                           final ConfigurationSerializer confSerializer,
@@ -162,6 +164,27 @@ public final class ETDolphinDriver {
         .build();
   }
 
+  public Configuration getWorkerTaskConf() {
+    return Configurations.merge(TaskConfiguration.CONF
+        .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+        .set(TaskConfiguration.TASK, ETWorkerTask.class)
+        .build(), workerConf);
+  }
+
+  public ExecutorConfiguration getWorkerExecutorConf() {
+    return ExecutorConfiguration.newBuilder()
+        .setResourceConf(workerResourceConf)
+        .setUserContextConf(aggrContextConf)
+        .setUserServiceConf(aggrServiceConf)
+        .build();
+  }
+
+  public ExecutorConfiguration getServerExecutorConf() {
+    return ExecutorConfiguration.newBuilder()
+        .setResourceConf(serverResourceConf)
+        .build();
+  }
+
   /**
    * A driver start handler for requesting executors.
    */
@@ -169,17 +192,8 @@ public final class ETDolphinDriver {
     @Override
     public void onNext(final StartTime startTime) {
       try {
-        final ExecutorConfiguration serverExecutorConf = ExecutorConfiguration.newBuilder()
-            .setResourceConf(serverResourceConf)
-            .build();
-        final ExecutorConfiguration workerExecutorConf = ExecutorConfiguration.newBuilder()
-            .setResourceConf(workerResourceConf)
-            .setUserContextConf(aggrContextConf)
-            .setUserServiceConf(aggrServiceConf)
-            .build();
-
-        final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, serverExecutorConf).get();
-        final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, workerExecutorConf).get();
+        final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, getServerExecutorConf()).get();
+        final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, getWorkerExecutorConf()).get();
 
         Executors.newSingleThreadExecutor().submit(() -> {
           try {
@@ -189,14 +203,8 @@ public final class ETDolphinDriver {
             modelTable.get().subscribe(workers);
             inputTable.get();
 
-            final AtomicInteger taskIdCount = new AtomicInteger(0);
-
             final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
-            workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(
-                Configurations.merge(TaskConfiguration.CONF
-                    .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-                    .set(TaskConfiguration.TASK, ETWorkerTask.class)
-                    .build(), workerConf))));
+            workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(getWorkerTaskConf())));
 
             waitAndCheckTaskResult(taskResultFutureList);
 
