@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.async.optimizer.SampleOptimizers;
 import edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor;
 import edu.snu.cay.utils.test.IntegrationTest;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.tang.Tang;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -58,8 +59,9 @@ public final class OwnershipFirstMigrationTest {
     argList.addAll(defaultArgList);
     argList.addAll(argListForDeletingOneServer);
 
-    final String[] args = argList.toArray(new String[defaultArgList.size() + argListForDeletingOneServer.size()]);
-    assertEquals("The job has been failed", LauncherStatus.COMPLETED, AddVectorREEF.runAddVector(args));
+    final String[] args = argList.toArray(new String[argList.size()]);
+    assertEquals("The job has been failed", LauncherStatus.COMPLETED,
+        AddVectorREEF.runAddVector(args, Tang.Factory.getTang().newConfigurationBuilder().build()));
   }
 
   @Test
@@ -82,8 +84,9 @@ public final class OwnershipFirstMigrationTest {
     argList.addAll(defaultArgList);
     argList.addAll(argListForAddingOneServer);
 
-    final String[] args = argList.toArray(new String[defaultArgList.size() + argListForAddingOneServer.size()]);
-    assertEquals("The job has been failed", LauncherStatus.COMPLETED, AddVectorREEF.runAddVector(args));
+    final String[] args = argList.toArray(new String[argList.size()]);
+    assertEquals("The job has been failed", LauncherStatus.COMPLETED,
+        AddVectorREEF.runAddVector(args, Tang.Factory.getTang().newConfigurationBuilder().build()));
   }
 
   private List<String> getDefaultArguments() {
