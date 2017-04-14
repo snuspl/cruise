@@ -37,7 +37,6 @@ final class ETWorkerTask<K, V> implements Task {
 
   private final String taskId;
   private final int maxNumEpochs;
-  private final int batchSize;
 
   private final WorkerGlobalBarrier workerGlobalBarrier;
   private final TrainingDataProvider<K, V> trainingDataProvider;
@@ -49,14 +48,12 @@ final class ETWorkerTask<K, V> implements Task {
   @Inject
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
-                       @Parameter(DolphinParameters.MiniBatchSize.class) final int batchSize,
                        final WorkerGlobalBarrier workerGlobalBarrier,
                        final TrainingDataProvider<K, V> trainingDataProvider,
                        final Trainer<V> trainer,
                        final MetricCollector<DolphinWorkerMetrics> metricCollector) {
     this.taskId = taskId;
     this.maxNumEpochs = maxNumEpochs;
-    this.batchSize = batchSize;
     this.workerGlobalBarrier = workerGlobalBarrier;
     this.trainingDataProvider = trainingDataProvider;
     this.trainer = trainer;
@@ -134,7 +131,6 @@ final class ETWorkerTask<K, V> implements Task {
                         .setData(miniBatchResult.getAppMetrics())
                         .build())
                 .setNumBatchDataInstances(processedDataItemCount)
-                .setBatchSize(batchSize)
                 .setBatchIdx(miniBatchIdx)
                 .setEpochIdx(epochIdx)
                 .setBatchPushTimeSec(batchPushTime)
@@ -164,7 +160,6 @@ final class ETWorkerTask<K, V> implements Task {
                         .setData(epochResult.getAppMetrics())
                         .build())
                 .setEpochIdx(epochIdx)
-                .setBatchSize(batchSize)
                 .setEpochPullTimeSec(epochTime.getTotalPullTime())
                 .setEpochPushTimeSec(epochTime.getTotalPushTime())
                 .setEpochTimeSec(epochElapsedTime)
