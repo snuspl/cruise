@@ -38,6 +38,14 @@ public final class MoveOp extends AbstractOp {
     this.numBlocks = numBlocks;
   }
 
+  public String getSrcExecutorId() {
+    return srcExecutorId;
+  }
+
+  public String getDstExecutorId() {
+    return dstExecutorId;
+  }
+
   @Override
   public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
     final AllocatedTable table;
