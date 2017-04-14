@@ -67,7 +67,7 @@ public final class ETDolphinLauncher {
   }
 
   @NamedParameter(doc = "configuration for worker class, serialized as a string")
-  final class SerializedWorkerConf implements Name<String> {
+  public final class SerializedWorkerConf implements Name<String> {
   }
 
   @NamedParameter(doc = "configuration for server class, serialized as a string")

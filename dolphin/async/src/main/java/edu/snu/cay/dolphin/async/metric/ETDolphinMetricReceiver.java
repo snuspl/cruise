@@ -15,31 +15,51 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
+import edu.snu.cay.dolphin.async.DolphinParameters;
+import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.metric.avro.*;
 import edu.snu.cay.services.et.avro.MetricMsg;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.ConfigurationSerializer;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.logging.Logger;
+
+import static edu.snu.cay.dolphin.async.ETModelAccessor.MODEL_TABLE_ID;
+import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
 
 /**
  * Implementation of Metric receiver for Dolphin on ET.
  */
 public final class ETDolphinMetricReceiver implements MetricReceiver {
-  private static final Logger LOG = Logger.getLogger(ETDolphinMetricReceiver.class.getName());
+  private static final Tang TANG = Tang.Factory.getTang();
 
   private final ETDolphinMetricMsgCodec metricMsgCodec;
 
   private final MetricManager metricManager;
 
+  private final int miniBatchSize;
+
   @Inject
   ETDolphinMetricReceiver(final ETDolphinMetricMsgCodec metricMsgCodec,
-                          final MetricManager metricManager) {
+                          final MetricManager metricManager,
+                          @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
+    try {
+      final Configuration workerConf = TANG.newInjector().getInstance(ConfigurationSerializer.class)
+          .fromString(serializedWorkerConf);
+      this.miniBatchSize = TANG.newInjector(workerConf).getNamedInstance(DolphinParameters.MiniBatchSize.class);
+    } catch (IOException | InjectionException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -70,11 +90,11 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
       switch (workerMetrics.getType()) {
       case BatchMetrics:
         final BatchMetrics batchMetrics = workerMetrics.getBatchMetrics();
-        final WorkerMetrics workerMetrics2 = WorkerMetrics.newBuilder()
-            .setNumDataBlocks(tableToNumBlocks.get("training_data_table"))
+        final WorkerMetrics convertedBatchMetrics = WorkerMetrics.newBuilder()
+            .setNumDataBlocks(tableToNumBlocks.get(TRAINING_DATA_TABLE_ID))
             .setEpochIdx(batchMetrics.getEpochIdx())
             .setMiniBatchIdx(batchMetrics.getBatchIdx())
-            .setMiniBatchSize(batchMetrics.getBatchSize())
+            .setMiniBatchSize(miniBatchSize)
             .setProcessedDataItemCount(batchMetrics.getNumBatchDataInstances())
             .setTotalTime(batchMetrics.getBatchTimeSec())
             .setTotalCompTime(batchMetrics.getBatchCompTimeSec())
@@ -82,41 +102,37 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
             .setTotalPushTime(batchMetrics.getBatchPushTimeSec())
             .setParameterWorkerMetrics(
                 ParameterWorkerMetrics.newBuilder()
-                    .setTotalPullCount(
-                        metricMsg.getGetNetworkStat()
-                            .getNumSentReqCount().getOrDefault("model_table", 0))
-                    .setTotalReceivedBytes(
-                        metricMsg.getGetNetworkStat()
-                            .getNumReceivedBytes().getOrDefault("model_table", 0L))
-                    .build())
+                    .setTotalPullCount(metricMsg.getCountSentGetReq().getOrDefault(MODEL_TABLE_ID, 0))
+                    .setTotalReceivedBytes(metricMsg.getBytesReceivedGetResp().getOrDefault(MODEL_TABLE_ID, 0L)
+                    )
+                    .build()
+            )
             .setHostname(hostname)
             .build();
-        metricManager.storeWorkerMetrics(srcId, workerMetrics2);
+        metricManager.storeWorkerMetrics(srcId, convertedBatchMetrics);
         break;
       case EpochMetrics:
         final EpochMetrics epochMetrics = workerMetrics.getEpochMetrics();
-        final WorkerMetrics workerMetrics1 = WorkerMetrics.newBuilder()
+        final WorkerMetrics convertedEpochMetrics = WorkerMetrics.newBuilder()
             .setEpochIdx(epochMetrics.getEpochIdx())
-            .setMiniBatchSize(epochMetrics.getBatchSize())
+            .setMiniBatchSize(miniBatchSize)
             .setNumMiniBatchForEpoch(epochMetrics.getNumBatchesForEpoch())
             .setProcessedDataItemCount(epochMetrics.getNumEpochDataInstances())
-            .setNumDataBlocks(metricMsg.getTableToNumBlocks().get("training_data_table                                                                  "))
+            .setNumDataBlocks(metricMsg.getTableToNumBlocks().get(TRAINING_DATA_TABLE_ID))
             .setTotalTime(epochMetrics.getEpochTimeSec())
             .setTotalCompTime(epochMetrics.getEpochCompTimeSec())
             .setTotalPullTime(epochMetrics.getEpochPullTimeSec())
             .setTotalPushTime(epochMetrics.getEpochPushTimeSec())
             .setParameterWorkerMetrics(
                 ParameterWorkerMetrics.newBuilder()
-                    .setTotalPullCount(
-                        metricMsg.getGetNetworkStat()
-                            .getNumSentReqCount().getOrDefault("model_table", 0))
-                    .setTotalReceivedBytes(
-                        metricMsg.getGetNetworkStat()
-                            .getNumReceivedBytes().getOrDefault("model_table", 0L))
-                    .build())
+                    .setTotalPullCount(metricMsg.getCountSentGetReq().getOrDefault(MODEL_TABLE_ID, 0))
+                    .setTotalReceivedBytes(metricMsg.getBytesReceivedGetResp().getOrDefault(MODEL_TABLE_ID, 0L)
+                    )
+                    .build()
+            )
             .setHostname(hostname)
             .build();
-        metricManager.storeWorkerMetrics(srcId, workerMetrics1);
+        metricManager.storeWorkerMetrics(srcId, convertedEpochMetrics);
         break;
       default:
         throw new RuntimeException("Unknown message type");
