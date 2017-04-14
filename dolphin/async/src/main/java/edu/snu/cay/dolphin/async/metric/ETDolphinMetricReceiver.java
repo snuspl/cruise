@@ -68,17 +68,24 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
       return;
     }
 
-    if (metricMsg.getCustomMetrics() != null) { // worker
-      processWorkerMetrics(srcId, metricMsg);
-    } else {
+    if (isServerMetrics(metricMsg)) {
       final String hostname = metricMsg.getHostname();
       final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
-          .setNumModelBlocks(metricMsg.getTableToNumBlocks().getOrDefault("model_table", 0))
+          .setNumModelBlocks(metricMsg.getTableToNumBlocks().getOrDefault(MODEL_TABLE_ID, 0))
           .setHostname(hostname)
           .build();
       metricManager.storeServerMetrics(srcId, serverMetrics);
-
+    } else {
+      processWorkerMetrics(srcId, metricMsg);
     }
+  }
+
+  /**
+   * Currently we can recognize the server metrics if the message does not contain custom metrics.
+   * Later we may have to introduce type for Dolphin-specific messages if we want custom metrics for servers as well.
+   */
+  private boolean isServerMetrics(final MetricMsg metricMsg) {
+    return metricMsg.getCustomMetrics() == null;
   }
 
   private void processWorkerMetrics(final String srcId, final MetricMsg metricMsg) {
