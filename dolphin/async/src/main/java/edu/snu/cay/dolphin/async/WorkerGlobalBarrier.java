@@ -29,8 +29,6 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.dolphin.async.WorkerStateManager.*;
-
 /**
  * Synchronizes all workers by exchanging synchronization messages with the driver.
  * It is used to synchronize the local worker with other workers in two points: after initialization and before cleanup.

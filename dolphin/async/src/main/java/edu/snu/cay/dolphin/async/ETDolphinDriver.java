@@ -47,12 +47,13 @@ import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static edu.snu.cay.dolphin.async.ETModelAccessor.MODEL_TABLE_ID;
 import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
@@ -63,7 +64,10 @@ import static edu.snu.cay.dolphin.async.ETWorkerTask.TASK_ID_PREFIX;
  */
 @Unit
 public final class ETDolphinDriver {
+  private static final Logger LOG = Logger.getLogger(ETDolphinDriver.class.getName());
+
   private final ETMaster etMaster;
+  private final WorkerTaskRunner workerTaskRunner;
 
   private final int numWorkers;
   private final int numServers;
@@ -83,6 +87,7 @@ public final class ETDolphinDriver {
 
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
+                          final WorkerTaskRunner workerTaskRunner,
                           final ConfigurationSerializer confSerializer,
                           final CentCommConfProvider centCommConfProvider,
                           @Parameter(NumServers.class) final int numServers,
@@ -96,6 +101,7 @@ public final class ETDolphinDriver {
                           @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
       throws IOException, InjectionException {
     this.etMaster = etMaster;
+    this.workerTaskRunner = workerTaskRunner;
     this.numWorkers = numWorkers;
     this.numServers = numServers;
 
@@ -203,14 +209,13 @@ public final class ETDolphinDriver {
             modelTable.get().subscribe(workers);
             inputTable.get();
 
-            final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
-            workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(getWorkerTaskConf())));
-
-            waitAndCheckTaskResult(taskResultFutureList);
+            final List<TaskResult> taskResults = workerTaskRunner.runWithOptimization(workers);
+            checkTaskResults(taskResults);
 
             workers.forEach(AllocatedExecutor::close);
             servers.forEach(AllocatedExecutor::close);
-          } catch (InterruptedException | ExecutionException e) {
+          } catch (Exception e) {
+            LOG.log(Level.SEVERE, "Exception while running a job", e);
             throw new RuntimeException(e);
           }
         });
@@ -221,16 +226,11 @@ public final class ETDolphinDriver {
     }
   }
 
-  private void waitAndCheckTaskResult(final List<Future<TaskResult>> taskResultFutureList) {
-    taskResultFutureList.forEach(taskResultFuture -> {
-      try {
-        final TaskResult taskResult = taskResultFuture.get();
-        if (!taskResult.isSuccess()) {
-          final String taskId = taskResult.getFailedTask().get().getId();
-          throw new RuntimeException(String.format("Task %s has been failed", taskId));
-        }
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
+  private void checkTaskResults(final List<TaskResult> taskResultList) {
+    taskResultList.forEach(taskResult -> {
+      if (!taskResult.isSuccess()) {
+        final String taskId = taskResult.getFailedTask().get().getId();
+        throw new RuntimeException(String.format("Task %s has been failed", taskId));
       }
     });
   }
