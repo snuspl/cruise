@@ -62,7 +62,7 @@ public final class BlockManagerTest {
   public void testRegisterExecutors() {
     // 1. Confirm that all blocks are assigned to the executors
     assertEquals("Fail to correctly initialize TableManager",
-        NUM_INIT_EXECUTORS, blockManager.getAssociatedExecutorIds().size());
+        NUM_INIT_EXECUTORS, blockManager.getPartitionInfo().size());
 
     // check the number of block are as expected
     int numTotalBlocks = 0;
@@ -102,7 +102,7 @@ public final class BlockManagerTest {
       blockManager.registerExecutor(EXECUTOR_ID_PREFIX + idx);
     }
     assertEquals("Wrong number of registered evaluators",
-        NUM_INIT_EXECUTORS + NUM_EXECUTORS_TO_ADD, blockManager.getAssociatedExecutorIds().size());
+        NUM_INIT_EXECUTORS + NUM_EXECUTORS_TO_ADD, blockManager.getPartitionInfo().size());
 
     // check the number of blocks are as expected
     numTotalBlocks = 0;
@@ -119,7 +119,7 @@ public final class BlockManagerTest {
       blockManager.deregisterExecutor(EXECUTOR_ID_PREFIX + idx);
     }
     assertEquals("Wrong number of registered evaluators",
-        NUM_INIT_EXECUTORS, blockManager.getAssociatedExecutorIds().size());
+        NUM_INIT_EXECUTORS, blockManager.getPartitionInfo().size());
   }
 
   /**

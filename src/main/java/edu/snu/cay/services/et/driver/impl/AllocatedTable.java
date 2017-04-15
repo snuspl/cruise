@@ -162,7 +162,7 @@ public final class AllocatedTable {
     stateMachine.checkState(State.INITIALIZED);
 
     // if it's not associated with dst executor, do it now
-    if (!blockManager.getAssociatedExecutorIds().contains(dstExecutorId)) {
+    if (!blockManager.getPartitionInfo().containsKey(dstExecutorId)) {
       try {
         associate(dstExecutorId).get();
       } catch (InterruptedException | ExecutionException e) {
@@ -186,6 +186,14 @@ public final class AllocatedTable {
   }
 
   /**
+   * Returns a partition information of this table.
+   * @return a map between an executor id and a set of block ids
+   */
+  public Map<String, Set<Integer>> getPartitionInfo() {
+    return blockManager.getPartitionInfo();
+  }
+
+  /**
    * Drops {@link this} table by removing tablets and table metadata from all executors.
    * This method should be called after initialized.
    * After this method, the table is completely removed from the system (e.g., master and executors).
@@ -193,9 +201,10 @@ public final class AllocatedTable {
   public synchronized ListenableFuture<?> drop() {
     stateMachine.checkState(State.INITIALIZED);
 
-    final Set<String> executorsToDeleteTable = blockManager.getAssociatedExecutorIds();
+    final Set<String> associators = blockManager.getPartitionInfo().keySet();
     final Set<String> subscribers = migrationManager.unregisterSubscribers(tableConf.getId());
 
+    final Set<String> executorsToDeleteTable = new HashSet<>(associators);
     executorsToDeleteTable.addAll(subscribers);
 
     final ListenableFuture<?> dropResultFuture =
@@ -215,6 +224,6 @@ public final class AllocatedTable {
    * @return a set of executors associated with the table
    */
   Set<String> getAssociatedExecutorIds() {
-    return blockManager.getAssociatedExecutorIds();
+    return blockManager.getPartitionInfo().keySet();
   }
 }
