@@ -23,6 +23,7 @@ import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
 import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
@@ -115,30 +116,30 @@ final class SimpleETDriver {
         orderedTable.subscribe(subscribers).get();
 
         final AtomicInteger taskIdCount = new AtomicInteger(0);
-        final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(associators.size() + subscribers.size());
+        final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(associators.size() + subscribers.size());
 
         // 1. First run a put task in a subscriber
-        taskResultFutureList.add(subscribers.get(0).submitTask(TaskConfiguration.CONF
+        taskFutureList.add(subscribers.get(0).submitTask(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, PUT_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, PutTask.class)
             .build()));
 
-        waitAndCheckTaskResult(taskResultFutureList, true);
+        waitAndCheckTaskResult(taskFutureList, true);
 
         // 2. Then run get tasks in all executors
-        taskResultFutureList.clear();
+        taskFutureList.clear();
 
-        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+        associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, GetTask.class)
             .build())));
 
-        subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+        subscribers.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, GetTask.class)
             .build())));
 
-        waitAndCheckTaskResult(taskResultFutureList, true);
+        waitAndCheckTaskResult(taskFutureList, true);
 
         // 3. migrate blocks between associators
         // move all blocks of hashedTable in the first associator to the second associator
@@ -153,51 +154,51 @@ final class SimpleETDriver {
         waitAndCheckMigrationResult(resultFuture1);
 
         // 4. run get tasks in all executors again after migration
-        taskResultFutureList.clear();
+        taskFutureList.clear();
 
-        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+        associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, GetTask.class)
             .build())));
 
-        subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+        subscribers.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, GetTask.class)
             .build())));
 
-        waitAndCheckTaskResult(taskResultFutureList, true);
+        waitAndCheckTaskResult(taskFutureList, true);
 
         // 5. drop tables and run get tasks again to confirm that tasks fail
         hashedTable.drop().get();
         orderedTable.drop().get();
 
-        taskResultFutureList.clear();
+        taskFutureList.clear();
 
-        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+        associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, GetTask.class)
             .build())));
 
-        subscribers.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+        subscribers.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, GET_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, GetTask.class)
             .build())));
 
-        waitAndCheckTaskResult(taskResultFutureList, false);
+        waitAndCheckTaskResult(taskFutureList, false);
 
         // 6. create a table with input file
         final AllocatedTable orderedTableWithFile = etMaster.createTable(buildTableConf(ORDERED_TABLE_WITH_FILE_ID,
             tableInputPath, true), associators).get();
 
         // 7. start scan tasks in associator executors
-        taskResultFutureList.clear();
+        taskFutureList.clear();
 
-        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+        associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, ScanTask.class)
             .build())));
 
-        waitAndCheckTaskResult(taskResultFutureList, true);
+        waitAndCheckTaskResult(taskFutureList, true);
 
         // 8. migrate blocks between associators
         // move all blocks of orderedTableWithFile in the second associator to the first associator
@@ -207,14 +208,14 @@ final class SimpleETDriver {
         waitAndCheckMigrationResult(resultFuture);
 
         // 9. start scan tasks again after migration
-        taskResultFutureList.clear();
+        taskFutureList.clear();
 
-        associators.forEach(executor -> taskResultFutureList.add(executor.submitTask(TaskConfiguration.CONF
+        associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, SCAN_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
             .set(TaskConfiguration.TASK, ScanTask.class)
             .build())));
 
-        waitAndCheckTaskResult(taskResultFutureList, true);
+        waitAndCheckTaskResult(taskFutureList, true);
 
         orderedTableWithFile.drop().get(); // not required step
 
@@ -228,10 +229,10 @@ final class SimpleETDriver {
     }
   }
 
-  private void waitAndCheckTaskResult(final List<Future<TaskResult>> taskResultFutureList, final boolean success) {
-    taskResultFutureList.forEach(taskResultFuture -> {
+  private void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskFutureList, final boolean success) {
+    taskFutureList.forEach(taskResultFuture -> {
       try {
-        final TaskResult taskResult = taskResultFuture.get();
+        final TaskResult taskResult = taskResultFuture.get().getTaskResult();
         if (taskResult.isSuccess() != success) {
           final String taskId = taskResult.getFailedTask().get().getId();
           throw new RuntimeException(String.format("Task %s has been failed", taskId));

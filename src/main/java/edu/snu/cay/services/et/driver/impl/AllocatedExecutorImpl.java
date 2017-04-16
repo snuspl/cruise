@@ -15,16 +15,19 @@
  */
 package edu.snu.cay.services.et.driver.impl;
 
-import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.impl.CallbackRegistry;
+import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+
+import java.util.Optional;
 
 /**
  * Implementation for {@link AllocatedExecutor}.
@@ -34,6 +37,7 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
   private final ActiveContext etContext;
   private final String identifier;
   private final CallbackRegistry callbackRegistry;
+  private volatile SubmittedTask runningTask;
 
   AllocatedExecutorImpl(final ActiveContext etContext,
                         final CallbackRegistry callbackRegistry) {
@@ -48,21 +52,37 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
   }
 
   @Override
-  public ListenableFuture<TaskResult> submitTask(final Configuration taskConf) {
+  public ListenableFuture<SubmittedTask> submitTask(final Configuration taskConf) {
     try {
       final String taskId = Tang.Factory.getTang().newInjector(taskConf)
           .getNamedInstance(TaskConfigurationOptions.Identifier.class);
 
+      final ResultFuture<SubmittedTask> submittedTaskFuture = new ResultFuture<>();
+      callbackRegistry.register(SubmittedTask.class, taskId, submittedTaskFuture::onCompleted);
+
       final ResultFuture<TaskResult> resultFuture = new ResultFuture<>();
+      resultFuture.addListener(taskResult -> runningTask = null);
       callbackRegistry.register(TaskResult.class, taskId, resultFuture::onCompleted);
+
+      final ResultFuture<RunningTask> runningTaskFuture = new ResultFuture<>();
+      runningTaskFuture.addListener(task -> {
+        final SubmittedTask submittedTask = new SubmittedTask(task, resultFuture);
+        runningTask = submittedTask;
+        callbackRegistry.onCompleted(SubmittedTask.class, taskId, submittedTask);
+      });
+      callbackRegistry.register(RunningTask.class, taskId, runningTaskFuture::onCompleted);
 
       etContext.submitTask(taskConf);
 
-      return resultFuture;
-
+      return submittedTaskFuture;
     } catch (final InjectionException e) {
       throw new RuntimeException("Task id should exist within task configuration", e);
     }
+  }
+
+  @Override
+  public Optional<SubmittedTask> getRunningTask() {
+    return Optional.ofNullable(runningTask);
   }
 
   @Override

@@ -17,17 +17,18 @@ package edu.snu.cay.services.et.plan.impl.op;
 
 import edu.snu.cay.services.et.common.util.concurrent.CompletedFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
+import edu.snu.cay.services.et.driver.impl.SubmittedTask;
+import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Optional;
 
 /**
  * An operation for stopping a running task on an executor.
  */
 public final class StopOp extends AbstractOp {
-  private static final Logger LOG = Logger.getLogger(StopOp.class.getName());
   private final String executorId;
 
   public StopOp(final String executorId) {
@@ -36,8 +37,19 @@ public final class StopOp extends AbstractOp {
 
   @Override
   public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
-    LOG.log(Level.WARNING, "StopOp has not been implemented yet (TODO #92).");
-    // TODO #92: implement task stop routine
+    final AllocatedExecutor executor;
+    try {
+      executor = etMaster.getExecutor(executorId);
+    } catch (ExecutorNotExistException e) {
+      throw new PlanOpExecutionException(e);
+    }
+
+    final Optional<SubmittedTask> task = executor.getRunningTask();
+    if (!task.isPresent()) {
+      throw new PlanOpExecutionException("No running task on the executor " + executorId);
+    }
+
+    task.get().stop();
     return new CompletedFuture<>(null);
   }
 

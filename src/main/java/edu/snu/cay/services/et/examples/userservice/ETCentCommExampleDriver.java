@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
+import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.task.RunningTask;
@@ -93,14 +94,14 @@ public final class ETCentCommExampleDriver {
 
           // start update tasks on worker executors
           final AtomicInteger taskIdCount = new AtomicInteger(0);
-          final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(executors.size());
-          executors.forEach(executor -> taskResultFutureList.add(executor.submitTask(
+          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(executors.size());
+          executors.forEach(executor -> taskFutureList.add(executor.submitTask(
               TaskConfiguration.CONF
                   .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + taskIdCount.getAndIncrement())
                   .set(TaskConfiguration.TASK, ETCentCommSlaveTask.class)
                   .build())));
 
-          waitAndCheckTaskResult(taskResultFutureList);
+          waitAndCheckTaskResult(taskFutureList);
 
           executors.forEach(AllocatedExecutor::close);
         } catch (InterruptedException | ExecutionException e) {
@@ -110,10 +111,10 @@ public final class ETCentCommExampleDriver {
     }
   }
 
-  private void waitAndCheckTaskResult(final List<Future<TaskResult>> taskResultFutureList) {
+  private void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskResultFutureList) {
     taskResultFutureList.forEach(taskResultFuture -> {
       try {
-        final TaskResult taskResult = taskResultFuture.get();
+        final TaskResult taskResult = taskResultFuture.get().getTaskResult();
         if (!taskResult.isSuccess()) {
           final String taskId = taskResult.getFailedTask().get().getId();
           throw new RuntimeException(String.format("Task %s has been failed", taskId));

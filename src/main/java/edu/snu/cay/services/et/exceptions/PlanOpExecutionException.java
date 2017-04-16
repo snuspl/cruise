@@ -19,7 +19,15 @@ package edu.snu.cay.services.et.exceptions;
  * An exception while executing {@link edu.snu.cay.services.et.plan.api.Op},
  * which is executed by {@link edu.snu.cay.services.et.plan.api.PlanExecutor}.
  */
-public class PlanOpExecutionException extends Exception {
+public final class PlanOpExecutionException extends Exception {
+  public PlanOpExecutionException(final String msg) {
+    super(msg);
+  }
+
+  public PlanOpExecutionException(final Throwable cause) {
+    super(cause);
+  }
+
   public PlanOpExecutionException(final String msg, final Throwable cause) {
     super(msg, cause);
   }
