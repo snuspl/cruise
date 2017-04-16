@@ -43,8 +43,6 @@ final class ETWorkerTask<K, V> implements Task {
   private final Trainer<V> trainer;
   private final MetricCollector<DolphinWorkerMetrics> metricCollector;
 
-  private EpochTime epochTime = new EpochTime();
-
   @Inject
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
@@ -62,6 +60,7 @@ final class ETWorkerTask<K, V> implements Task {
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
+    final PerOpTimeInEpoch perOpTimeInEpoch = new PerOpTimeInEpoch();
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
     trainingDataProvider.loadData();
@@ -91,7 +90,7 @@ final class ETWorkerTask<K, V> implements Task {
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
         sendBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
-            miniBatchData.size(), miniBatchElapsedTime);
+            miniBatchData.size(), miniBatchElapsedTime, perOpTimeInEpoch);
 
         epochData.addAll(miniBatchData);
         miniBatchIdx++;
@@ -101,7 +100,7 @@ final class ETWorkerTask<K, V> implements Task {
       final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
       sendEpochMetrics(epochResult, epochIdx, miniBatchIdx,
-          epochData.size(), epochElapsedTime);
+          epochData.size(), epochElapsedTime, perOpTimeInEpoch);
     }
 
     // Synchronize all workers before cleanup for workers
@@ -115,16 +114,16 @@ final class ETWorkerTask<K, V> implements Task {
   private void sendBatchMetrics(final MiniBatchResult miniBatchResult,
                                 final int epochIdx, final int miniBatchIdx,
                                 final int processedDataItemCount,
-                                final double miniBatchElapsedTime) {
+                                final double miniBatchElapsedTime,
+                                final PerOpTimeInEpoch perOpTimeInEpoch) {
+    // Accumulate the batch time to compute the total elapsed time in the epoch.
     final double batchComputeTime = miniBatchResult.getComputeTime();
     final double batchPullTime = miniBatchResult.getTotalPullTime();
     final double batchPushTime = miniBatchResult.getTotalPushTime();
-    epochTime.addRecord(batchComputeTime, batchPullTime, batchPushTime);
+    perOpTimeInEpoch.accumulate(batchComputeTime, batchPullTime, batchPushTime);
 
-    final DolphinWorkerMetrics batchMetric = DolphinWorkerMetrics.newBuilder()
-        .setType(WorkerMetricsType.BatchMetrics)
-        .setBatchMetrics(
-            BatchMetrics.newBuilder()
+    // Build metrics in the batch
+    final BatchMetrics batchMetrics = BatchMetrics.newBuilder()
                 .setBatchTimeSec(miniBatchElapsedTime)
                 .setBatchCustomMetrics(
                     Metrics.newBuilder()
@@ -136,70 +135,83 @@ final class ETWorkerTask<K, V> implements Task {
                 .setBatchPushTimeSec(batchPushTime)
                 .setBatchPullTimeSec(batchPullTime)
                 .setBatchCompTimeSec(batchComputeTime)
-                .build()
-        )
+                .build();
+
+    // Encapsulate the metrics for ET
+    final DolphinWorkerMetrics encapsulatedMetrics = DolphinWorkerMetrics.newBuilder()
+        .setType(WorkerMetricsType.BatchMetrics)
+        .setBatchMetrics(batchMetrics)
         .build();
 
-    metricCollector.addCustomMetric(batchMetric);
+    metricCollector.addCustomMetric(encapsulatedMetrics);
     metricCollector.flush();
 
-    LOG.log(Level.INFO, "MiniBatchMetrics {0}", batchMetric);
-  }
-
-  private void sendEpochMetrics(final EpochResult epochResult,
-                                final int epochIdx, final int miniBatchIdx,
-                                final int processedDataItemCount,
-                                final double epochElapsedTime) {
-    final DolphinWorkerMetrics epochMetric = DolphinWorkerMetrics.newBuilder()
-        .setType(WorkerMetricsType.EpochMetrics)
-        .setEpochMetrics(
-            EpochMetrics.newBuilder()
-                .setEpochCompTimeSec(epochTime.getTotalCompTime())
-                .setEpochCustomMetrics(
-                    Metrics.newBuilder()
-                        .setData(epochResult.getAppMetrics())
-                        .build())
-                .setEpochIdx(epochIdx)
-                .setEpochPullTimeSec(epochTime.getTotalPullTime())
-                .setEpochPushTimeSec(epochTime.getTotalPushTime())
-                .setEpochTimeSec(epochElapsedTime)
-                .setNumBatchesForEpoch(miniBatchIdx)
-                .setNumEpochDataInstances(processedDataItemCount)
-                .build()
-        )
-        .build();
-    epochTime.reset();
-
-    metricCollector.addCustomMetric(epochMetric);
-    metricCollector.flush();
-
-    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetric);
+    LOG.log(Level.INFO, "MiniBatchMetrics {0}", batchMetrics);
   }
 
   /**
-   * Encapsulates the elapsed time for operations (compute, push, pull) in an epoch.
+   * @param epochResult Encapsulates the result of an epoch.
+   * @param epochIdx Index of the epoch
+   * @param miniBatchIdx Index of the mini-batch
+   * @param processedDataItemCount The number of items processed in the epoch
+   * @param epochElapsedTime The elapsed time in the epoch in total, including time for computing the objective value.
+   * @param perOpTimeInEpoch The elapsed time per operation in the epoch (i.e., computation, pull and push)
    */
-  private class EpochTime {
+  private void sendEpochMetrics(final EpochResult epochResult,
+                                final int epochIdx, final int miniBatchIdx,
+                                final int processedDataItemCount,
+                                final double epochElapsedTime,
+                                final PerOpTimeInEpoch perOpTimeInEpoch) {
+    // Build App-specific metrics (e.g., Loss, log-likelihood)
+    final Metrics appMetrics = Metrics.newBuilder()
+        .setData(epochResult.getAppMetrics())
+        .build();
+
+    // Build metrics in the epoch
+    final EpochMetrics epochMetrics = EpochMetrics.newBuilder()
+        .setEpochCompTimeSec(perOpTimeInEpoch.getTotalCompTime())
+        .setEpochCustomMetrics(appMetrics)
+        .setEpochIdx(epochIdx)
+        .setEpochPullTimeSec(perOpTimeInEpoch.getTotalPullTime())
+        .setEpochPushTimeSec(perOpTimeInEpoch.getTotalPushTime())
+        .setEpochTimeSec(epochElapsedTime)
+        .setNumBatchesForEpoch(miniBatchIdx)
+        .setNumEpochDataInstances(processedDataItemCount)
+        .build();
+
+    // Encapsulate the metrics for ET
+    final DolphinWorkerMetrics encapsulatedMetrics = DolphinWorkerMetrics.newBuilder()
+        .setType(WorkerMetricsType.EpochMetrics)
+        .setEpochMetrics(epochMetrics)
+        .build();
+
+    metricCollector.addCustomMetric(encapsulatedMetrics);
+    metricCollector.flush();
+
+    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetrics);
+  }
+
+  /**
+   * Encapsulates the elapsed time per operation (i.e., compute, push, pull) in an epoch.
+   */
+  private class PerOpTimeInEpoch {
     private double totalCompTime;
     private double totalPullTime;
     private double totalPushTime;
 
-    EpochTime() {
+    PerOpTimeInEpoch() {
       this.totalCompTime = 0d;
       this.totalPullTime = 0d;
       this.totalPushTime = 0d;
     }
 
-    void addRecord(final double compTime, final double pullTime, final double pushTime) {
+    /**
+     * Accumulate the batch time to compute the total elapsed time per operation in the epoch.
+     */
+    void accumulate(final double compTime, final double pullTime, final double pushTime) {
       totalCompTime += compTime;
       totalPullTime += pullTime;
       totalPushTime += pushTime;
-    }
-
-    void reset() {
-      this.totalCompTime = 0d;
-      this.totalPullTime = 0d;
-      this.totalPushTime = 0d;
     }
 
     private double getTotalCompTime() {

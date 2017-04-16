@@ -69,25 +69,23 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
     }
 
     if (isServerMetrics(metricMsg)) {
-      final String hostname = metricMsg.getHostname();
-      final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
-          .setNumModelBlocks(metricMsg.getTableToNumBlocks().getOrDefault(MODEL_TABLE_ID, 0))
-          .setHostname(hostname)
-          .build();
-      metricManager.storeServerMetrics(srcId, serverMetrics);
+      processServerMetrics(srcId, metricMsg);
     } else {
       processWorkerMetrics(srcId, metricMsg);
     }
   }
 
   /**
-   * Currently we can recognize the server metrics if the message does not contain custom metrics.
-   * Later we may have to introduce type for Dolphin-specific messages if we want custom metrics for servers as well.
+   * Distinguishes the server metrics if the metrics consist of information of the model table.
    */
   private boolean isServerMetrics(final MetricMsg metricMsg) {
-    return metricMsg.getCustomMetrics() == null;
+    return metricMsg.getTableToNumBlocks().containsKey(MODEL_TABLE_ID);
   }
 
+  /**
+   * Processes worker metrics and passes them to the {@link MetricManager}.
+   * For now the worker metrics are converted to be compatible to the EM's Optimizers.
+   */
   private void processWorkerMetrics(final String srcId, final MetricMsg metricMsg) {
     for (final ByteBuffer encodedBuffer : metricMsg.getCustomMetrics()) {
       final DolphinWorkerMetrics workerMetrics = metricMsgCodec.decode(encodedBuffer.array());
@@ -145,5 +143,20 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
         throw new RuntimeException("Unknown message type");
       }
     }
+  }
+
+  /**
+   * Processes server metrics and passes them to the {@link MetricManager}.
+   * For now the server metrics only contain ET-level information, because the current cost model does not use
+   * any server-specific information.
+   */
+  // TODO #1104: Collect metrics from Servers in Dolphin-on-ET
+  private void processServerMetrics(final String srcId, final MetricMsg metricMsg) {
+    final String hostname = metricMsg.getHostname();
+    final ServerMetrics serverMetrics = ServerMetrics.newBuilder()
+        .setNumModelBlocks(metricMsg.getTableToNumBlocks().getOrDefault(MODEL_TABLE_ID, 0))
+        .setHostname(hostname)
+        .build();
+    metricManager.storeServerMetrics(srcId, serverMetrics);
   }
 }
