@@ -204,10 +204,10 @@ public final class ETDolphinDriver {
             modelTable.get().subscribe(workers);
             inputTable.get();
 
-            final List<Future<SubmittedTask>> taskResultFutureList = new ArrayList<>(workers.size());
-            workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(getWorkerTaskConf())));
+            final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(workers.size());
+            workers.forEach(worker -> taskFutureList.add(worker.submitTask(getWorkerTaskConf())));
 
-            waitAndCheckTaskResult(taskResultFutureList);
+            waitAndCheckTaskResult(taskFutureList);
 
             workers.forEach(AllocatedExecutor::close);
             servers.forEach(AllocatedExecutor::close);
