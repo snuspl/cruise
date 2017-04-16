@@ -17,6 +17,8 @@ package edu.snu.cay.dolphin.async.optimizer;
 
 import edu.snu.cay.dolphin.async.ETModelAccessor;
 import edu.snu.cay.dolphin.async.ETTrainingDataProvider;
+import edu.snu.cay.dolphin.async.WorkerStateManager;
+import edu.snu.cay.dolphin.async.WorkerTaskRunner;
 import edu.snu.cay.dolphin.async.metric.MetricManager;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
@@ -30,7 +32,6 @@ import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
-import edu.snu.cay.services.et.plan.impl.ETPlanResult;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -57,9 +58,15 @@ public final class ETOptimizationOrchestrator {
 
   private final MetricManager metricManager;
 
+  private final WorkerStateManager workerStateManager;
+
+  private final WorkerTaskRunner workerTaskRunner;
+
   private final AtomicInteger optimizationCounter = new AtomicInteger(0);
 
   private final ExecutorService optimizationThreadPool = Executors.newSingleThreadExecutor();
+
+  private final long optimizationIntervalMs;
 
   /**
    * A delay after completion of optimization to wait the system to be stable.
@@ -89,6 +96,9 @@ public final class ETOptimizationOrchestrator {
                                      final PlanExecutor planExecutor,
                                      final MetricManager metricManager,
                                      final PlanCompiler planCompiler,
+                                     final WorkerTaskRunner workerTaskRunner,
+                                     final WorkerStateManager workerStateManager,
+                                     @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                                      @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                      @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
                                      @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
@@ -100,6 +110,9 @@ public final class ETOptimizationOrchestrator {
     this.planCompiler = planCompiler;
     this.metricManager = metricManager;
     this.etMaster = etMaster;
+    this.workerTaskRunner = workerTaskRunner;
+    this.workerStateManager = workerStateManager;
+    this.optimizationIntervalMs = optimizationIntervalMs;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
     this.metricWeightFactor = metricWeightFactor;
     this.movingAvgWindowSize = movingAvgWindowSize;
@@ -126,6 +139,31 @@ public final class ETOptimizationOrchestrator {
   }
 
   /**
+   * Start optimization in background.
+   */
+  public void start() {
+    Executors.newSingleThreadExecutor().submit(() -> {
+      workerStateManager.waitWorkersToFinishInitStage();
+
+      while (workerStateManager.tryEnterOptimization()) {
+        final Pair<Set<String>, Set<String>> changesInWorkers = optimize();
+
+        // should notify workerTaskRunner first
+        workerTaskRunner.updateTaskEntry(changesInWorkers.getLeft(), changesInWorkers.getRight());
+        workerStateManager.onOptimizationFinished(changesInWorkers.getLeft(), changesInWorkers.getRight());
+
+        try {
+          LOG.log(Level.INFO, "Sleep {0} ms for next optimization", optimizationIntervalMs);
+          Thread.sleep(optimizationIntervalMs);
+        } catch (InterruptedException e) {
+          LOG.log(Level.WARNING, "Interrupted while sleeping for next optimization try." +
+              " Let's try optimization now.", e);
+        }
+      }
+    });
+  }
+
+  /**
    * Runs optimization based on the metrics from {@link MetricManager} in the following steps.
    * 1) Check that metrics have arrived from all evaluators.
    * 2) Process the received metrics (e.g., calculate the EMA of metrics).
@@ -136,7 +174,7 @@ public final class ETOptimizationOrchestrator {
    * 6) Execute the obtained plan.
    * 7) Once the execution is complete, restart metric collection.
    */
-  public synchronized Pair<Set<String>, Set<String>> optimize() {
+  private synchronized Pair<Set<String>, Set<String>> optimize() {
     // 1) Model params may need to be updated. Simply clear the map, and put the updated values.
     optimizerModelParams.clear();
 
@@ -230,7 +268,7 @@ public final class ETOptimizationOrchestrator {
       try {
         LOG.log(Level.INFO, "Start executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
 
-        final ListenableFuture<ETPlanResult> planExecutionResultFuture = planExecutor.execute(etPlan);
+        final ListenableFuture<?> planExecutionResultFuture = planExecutor.execute(etPlan);
         try {
           planExecutionResultFuture.get();
           LOG.log(Level.INFO, "Finish executing {0}-th plan: {1}", new Object[]{optimizationCount});

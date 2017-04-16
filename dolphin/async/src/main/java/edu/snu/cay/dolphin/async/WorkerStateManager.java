@@ -19,6 +19,7 @@ import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -43,6 +44,7 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @ThreadSafe
+@Private
 @Unit
 public final class WorkerStateManager {
   private static final Logger LOG = Logger.getLogger(WorkerStateManager.class.getName());
@@ -64,9 +66,14 @@ public final class WorkerStateManager {
   private final StateMachine stateMachine;
 
   /**
-   * A latch that will be released when workers finish Init stage.
+   * A latch that will be released when workers finish INIT stage.
    */
-  private final CountDownLatch initLatch = new CountDownLatch(1);
+  private final CountDownLatch finishInitLatch = new CountDownLatch(1);
+
+  /**
+   * A latch that will be released when workers finish RUN stage.
+   */
+  private final CountDownLatch finishRunLatch = new CountDownLatch(1);
 
   /**
    * A set of ids of workers to be synchronized.
@@ -121,7 +128,21 @@ public final class WorkerStateManager {
   public void waitWorkersToFinishInitStage() {
     while (true) {
       try {
-        initLatch.await();
+        finishInitLatch.await();
+        break;
+      } catch (InterruptedException e) {
+        // ignore and keep waiting
+      }
+    }
+  }
+
+  /**
+   * Waits until workers to finish RUN stage.
+   */
+  public void waitWorkersToFinishRunStage() {
+    while (true) {
+      try {
+        finishRunLatch.await();
         break;
       } catch (InterruptedException e) {
         // ignore and keep waiting
@@ -190,11 +211,12 @@ public final class WorkerStateManager {
 
     switch (currentState) {
     case INIT:
-      initLatch.countDown();
+      finishInitLatch.countDown();
       stateMachine.setState(State.RUN);
       LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.INIT, State.RUN));
       break;
     case RUN:
+      finishRunLatch.countDown();
       stateMachine.setState(State.RUN_FINISHING);
       LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN, State.RUN_FINISHING));
       break;

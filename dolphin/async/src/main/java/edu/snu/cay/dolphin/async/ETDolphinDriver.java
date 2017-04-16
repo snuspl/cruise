@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
+import edu.snu.cay.dolphin.async.optimizer.ETOptimizationOrchestrator;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
@@ -87,6 +88,7 @@ public final class ETDolphinDriver {
 
   @Inject
   private ETDolphinDriver(final ETMaster etMaster,
+                          final ETOptimizationOrchestrator optimizationOrchestrator,
                           final WorkerTaskRunner workerTaskRunner,
                           final ConfigurationSerializer confSerializer,
                           final CentCommConfProvider centCommConfProvider,
@@ -123,6 +125,8 @@ public final class ETDolphinDriver {
     // configuration for worker executors
     this.aggrContextConf = centCommConfProvider.getContextConfiguration();
     this.aggrServiceConf = centCommConfProvider.getServiceConfWithoutNameResolver();
+
+    optimizationOrchestrator.start();
   }
 
   private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {
@@ -209,7 +213,7 @@ public final class ETDolphinDriver {
             modelTable.get().subscribe(workers);
             inputTable.get();
 
-            final List<TaskResult> taskResults = workerTaskRunner.runWithOptimization(workers);
+            final List<TaskResult> taskResults = workerTaskRunner.run(workers);
             checkTaskResults(taskResults);
 
             workers.forEach(AllocatedExecutor::close);
