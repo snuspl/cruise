@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
+import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -30,6 +31,7 @@ import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -63,6 +65,12 @@ final class WorkerStateManager {
 
   @GuardedBy("this")
   private final StateMachine stateMachine;
+
+  /**
+   * A map between worker id and its network identifier.
+   * It's required when worker id and network id is different.
+   */
+  private final Map<String, String> workerIdToNetworkId = new ConcurrentHashMap<>();
 
   /**
    * A set of ids of workers to be synchronized.
@@ -225,7 +233,12 @@ final class WorkerStateManager {
 
   private void sendResponseMessage(final String workerId) {
     try {
-      masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, workerId, EMPTY_DATA);
+      final String networkId = workerIdToNetworkId.get(workerId);
+      if (networkId == null) {
+        throw new RuntimeException("Network id should exist");
+      }
+
+      masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, networkId, EMPTY_DATA);
     } catch (final NetworkException e) {
       LOG.log(Level.INFO, String.format("Fail to send msg to worker %s.", workerId), e);
     }
@@ -253,7 +266,8 @@ final class WorkerStateManager {
    * @param workerId a worker id
    * @param localState the worker's local state
    */
-  private synchronized void onWorkerMsg(final String workerId, final WorkerGlobalBarrier.State localState) {
+  private synchronized void onWorkerMsg(final String workerId,
+                                        final WorkerGlobalBarrier.State localState) {
     final State globalState = (State) stateMachine.getCurrentState();
 
     switch (globalState) {
@@ -323,9 +337,17 @@ final class WorkerStateManager {
 
     @Override
     public void onNext(final CentCommMsg centCommMsg) {
-      final String workerId = centCommMsg.getSourceId().toString();
-      final WorkerGlobalBarrier.State localState = codec.decode(centCommMsg.getData().array());
+      final byte[] data = centCommMsg.getData().array();
 
+      final SyncMsg syncMsg = AvroUtils.fromBytes(data, SyncMsg.class);
+
+      final String networkId = centCommMsg.getSourceId().toString();
+      final String workerId = syncMsg.getExecutorId().toString();
+      final WorkerGlobalBarrier.State localState = codec.decode(syncMsg.getSerializedState().array());
+
+      workerIdToNetworkId.putIfAbsent(workerId, networkId);
+
+      LOG.log(Level.FINE, "Sync msg from worker {0}: {1}", new Object[]{workerId, localState});
       onWorkerMsg(workerId, localState);
     }
   }
