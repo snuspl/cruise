@@ -85,11 +85,6 @@ public final class ETOptimizationOrchestrator {
    */
   private final int movingAvgWindowSize;
 
-  /**
-   * A map containing parameters that may be required for the optimization model.
-   */
-  private final Map<String, Double> optimizerModelParams;
-
   @Inject
   private ETOptimizationOrchestrator(final Optimizer optimizer,
                                      final ETMaster etMaster,
@@ -116,7 +111,6 @@ public final class ETOptimizationOrchestrator {
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
     this.metricWeightFactor = metricWeightFactor;
     this.movingAvgWindowSize = movingAvgWindowSize;
-    this.optimizerModelParams = new HashMap<>();
     this.numAvailableEvals = numInitialResources;
 
     // Dynamic resource availability only works if the number of extra resources and its period are set positive.
@@ -175,20 +169,13 @@ public final class ETOptimizationOrchestrator {
    * 7) Once the execution is complete, restart metric collection.
    */
   private synchronized Pair<Set<String>, Set<String>> optimize() {
-    // 1) Model params may need to be updated. Simply clear the map, and put the updated values.
-    optimizerModelParams.clear();
-
-    // 2) Check that metrics have arrived from all evaluators.
+    // 1) Check that metrics have arrived from all evaluators.
     // Servers: for each window / Workers: for each epoch, but mini-batch metrics are used for the actual optimization.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
     final Map<String, List<EvaluatorParameters>> currentWorkerEpochMetrics =
         metricManager.getWorkerEpochMetrics();
     final Map<String, List<EvaluatorParameters>> currentWorkerMiniBatchMetrics =
         metricManager.getWorkerMiniBatchMetrics();
-
-    // Optimization is skipped if there are missing epoch metrics,
-    final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
-    final int numWorkerMetricSources = getNumMetricSources(currentWorkerEpochMetrics);
 
     final AllocatedTable modelTable;
     final AllocatedTable inputTable;
@@ -198,6 +185,10 @@ public final class ETOptimizationOrchestrator {
     } catch (TableNotExistException e) {
       throw new RuntimeException(e);
     }
+
+    // Optimization is skipped if there are missing epoch metrics,
+    final int numServerMetricSources = getNumMetricSources(currentServerMetrics);
+    final int numWorkerMetricSources = getNumMetricSources(currentWorkerEpochMetrics);
 
     final int numRunningServers = modelTable.getPartitionInfo().size();
     final int numRunningWorkers = inputTable.getPartitionInfo().size();
@@ -211,13 +202,13 @@ public final class ETOptimizationOrchestrator {
       return Pair.of(Collections.emptySet(), Collections.emptySet());
     }
 
-    // 3) Process the received metrics (e.g., calculate the EMA of metrics).
+    // 2) Process the received metrics (e.g., calculate the EMA of metrics).
     final List<EvaluatorParameters> processedServerMetrics = MetricProcessor.processServerMetrics(
         currentServerMetrics, metricWeightFactor, movingAvgWindowSize);
     final List<EvaluatorParameters> processedWorkerMetrics = MetricProcessor.processWorkerMetrics(
         currentWorkerMiniBatchMetrics, metricWeightFactor, movingAvgWindowSize);
 
-    // 4) Check that the processed metrics suffice to undergo an optimization cycle.
+    // 3) Check that the processed metrics suffice to undergo an optimization cycle.
     // processed metrics of size less than the number of evaluators running in each space implies that
     // there were only metrics not enough for this optimization cycle to be executed.
     if (processedServerMetrics.size() < numRunningServers || processedWorkerMetrics.size() < numRunningWorkers) {
@@ -225,12 +216,15 @@ public final class ETOptimizationOrchestrator {
       return Pair.of(Collections.emptySet(), Collections.emptySet());
     }
 
-    // 5) Calculate the total number of data instances distributed across workers,
+    // Calculate the total number of data instances distributed across workers,
     // as this is used by the optimization model in AsyncDolphinOptimizer.
     final int numTotalDataInstances = getTotalNumDataInstances(currentWorkerEpochMetrics);
     final double numTotalKeys = getTotalPullsPerMiniBatch(currentWorkerMiniBatchMetrics);
     final double numAvgPullSize = getAvgPullSizePerMiniBatch(currentWorkerMiniBatchMetrics);
     final double numAvgMiniBatch = getAvgNumMiniBatchPerEpoch(currentWorkerEpochMetrics);
+
+    // A map containing additional parameters for optimizer.
+    final Map<String, Double> optimizerModelParams = new HashMap<>();
     optimizerModelParams.put(Constants.TOTAL_DATA_INSTANCES, (double) numTotalDataInstances);
     optimizerModelParams.put(Constants.TOTAL_PULLS_PER_MINI_BATCH, numTotalKeys);
     optimizerModelParams.put(Constants.AVG_PULL_SIZE_PER_MINI_BATCH, numAvgPullSize);
@@ -239,8 +233,6 @@ public final class ETOptimizationOrchestrator {
     final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
     evaluatorParameters.put(Constants.NAMESPACE_WORKER, processedWorkerMetrics);
-
-    optimizationThreadPool.submit((Callable<Pair<Set<String>, Set<String>>>) () -> null);
 
     final Future<Pair<Set<String>, Set<String>>> future = optimizationThreadPool.submit(() -> {
       final int optimizationCount = optimizationCounter.getAndIncrement();
