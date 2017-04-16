@@ -67,8 +67,8 @@ final class WorkerStateManager {
   private final StateMachine stateMachine;
 
   /**
-   * A map between worker id and its network identifier.
-   * It's required when worker id and network id is different.
+   * A map between a worker's identifier and its network identifier.
+   * It's required when two ids are different.
    */
   private final Map<String, String> workerIdToNetworkId = new ConcurrentHashMap<>();
 
@@ -235,7 +235,7 @@ final class WorkerStateManager {
     try {
       final String networkId = workerIdToNetworkId.get(workerId);
       if (networkId == null) {
-        throw new RuntimeException("Network id should exist");
+        throw new RuntimeException(String.format("The network id of %s is missing.", workerId));
       }
 
       masterSideCentCommMsgSender.send(CENT_COMM_CLIENT_NAME, networkId, EMPTY_DATA);
