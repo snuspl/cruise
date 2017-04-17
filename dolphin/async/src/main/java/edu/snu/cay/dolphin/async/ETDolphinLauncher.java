@@ -17,7 +17,9 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.centcomm.CentCommConf;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
+import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
+import edu.snu.cay.services.et.configuration.metric.MetricServiceDriverConf;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
@@ -65,7 +67,7 @@ public final class ETDolphinLauncher {
   }
 
   @NamedParameter(doc = "configuration for worker class, serialized as a string")
-  final class SerializedWorkerConf implements Name<String> {
+  public final class SerializedWorkerConf implements Name<String> {
   }
 
   @NamedParameter(doc = "configuration for server class, serialized as a string")
@@ -172,7 +174,8 @@ public final class ETDolphinLauncher {
 
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
         NumServers.class, ServerMemSize.class, NumServerCores.class,
-        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class);
+        NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
+        ServerMetricFlushPeriodMs.class);
 
     // it's empty now
     final List<Class<? extends Name<?>>> serverParamList = Collections.emptyList();
@@ -255,7 +258,11 @@ public final class ETDolphinLauncher {
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
-    final CentCommConf aggrServiceConf = CentCommConf.newBuilder()
+    final Configuration metricServiceConf = MetricServiceDriverConf.CONF
+        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
+        .build();
+
+    final CentCommConf centCommServiceConf = CentCommConf.newBuilder()
         .addCentCommClient(WorkerStateManager.CENT_COMM_CLIENT_NAME,
             WorkerStateManager.MessageHandler.class,
             WorkerGlobalBarrier.MessageHandler.class)
@@ -263,8 +270,8 @@ public final class ETDolphinLauncher {
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 
-    return Configurations.merge(driverConf, etMasterConfiguration,
-        aggrServiceConf.getDriverConfiguration(), getNCSConfiguration(),
+    return Configurations.merge(driverConf, etMasterConfiguration, metricServiceConf,
+        centCommServiceConf.getDriverConfiguration(), getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedServerConf.class, confSerializer.toString(serverConf))
             .bindNamedParameter(SerializedWorkerConf.class, confSerializer.toString(workerConf))
