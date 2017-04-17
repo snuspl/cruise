@@ -193,11 +193,7 @@ public final class ETDolphinLauncher {
 
     final Configuration commandLineConf = cl.processCommandLine(args).getBuilder().build();
     final Configuration clientConf = extractParameterConf(clientParamList, commandLineConf);
-    final Configuration driverConf = Configurations.merge(
-        extractParameterConf(driverParamList, commandLineConf),
-        MetricServiceDriverConf.CONF
-            .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
-            .build());
+    final Configuration driverConf = extractParameterConf(driverParamList, commandLineConf);
     final Configuration serverConf = extractParameterConf(serverParamList, commandLineConf);
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
@@ -262,7 +258,11 @@ public final class ETDolphinLauncher {
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
 
-    final CentCommConf aggrServiceConf = CentCommConf.newBuilder()
+    final Configuration metricServiceConf = MetricServiceDriverConf.CONF
+        .set(MetricServiceDriverConf.METRIC_RECEIVER_IMPL, ETDolphinMetricReceiver.class)
+        .build();
+
+    final CentCommConf centCommServiceConf = CentCommConf.newBuilder()
         .addCentCommClient(WorkerStateManager.CENT_COMM_CLIENT_NAME,
             WorkerStateManager.MessageHandler.class,
             WorkerGlobalBarrier.MessageHandler.class)
@@ -270,8 +270,8 @@ public final class ETDolphinLauncher {
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
 
-    return Configurations.merge(driverConf, etMasterConfiguration,
-        aggrServiceConf.getDriverConfiguration(), getNCSConfiguration(),
+    return Configurations.merge(driverConf, etMasterConfiguration, metricServiceConf,
+        centCommServiceConf.getDriverConfiguration(), getNCSConfiguration(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindNamedParameter(SerializedServerConf.class, confSerializer.toString(serverConf))
             .bindNamedParameter(SerializedWorkerConf.class, confSerializer.toString(workerConf))
