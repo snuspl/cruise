@@ -151,7 +151,7 @@ public final class WorkerStateManager {
   }
 
   /**
-   * Tries to enter the optimization state, it's possible when workers are in RUN phase.
+   * Tries to enter the optimization state, which is possible when all workers are in RUN phase.
    * So at the first try, it's good to call {@link #waitWorkersToFinishInitStage()}.
    * Once turning into OPTIMIZATION state, workers cannot enter CLEANUP, even all existing workers finish RUN phase.
    * @return True if it succeeds to enter optimization phase

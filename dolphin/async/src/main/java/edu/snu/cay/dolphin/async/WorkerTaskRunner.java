@@ -60,7 +60,7 @@ public final class WorkerTaskRunner {
 
   /**
    * Runs tasks on worker executors. It returns when all the worker task finish.
-   * With optimization the number of workers varies during runtime.
+   * With optimization, the number of workers changes during runtime by {@link #updateTaskEntry(Set, Set)}.
    * @param workers a set of initial worker executors
    * @return a list of {@link TaskResult}
    */
@@ -85,7 +85,8 @@ public final class WorkerTaskRunner {
   }
 
   /**
-   * Updates the entry of worker tasks.
+   * Updates the entry of worker tasks, which is called by the Optimization orchestrator.
+   * }
    * @param addedWorkers a set of added worker tasks
    * @param deletedWorkers a set of deleted worker tasks
    */
@@ -96,7 +97,7 @@ public final class WorkerTaskRunner {
       try {
         final Optional<SubmittedTask> taskOptional = etMaster.getExecutor(addedExecutorId).getRunningTask();
         if (!taskOptional.isPresent()) {
-          throw new RuntimeException("Task should be running on the executor");
+          throw new RuntimeException(String.format("Task is not running on the executor %s", addedExecutorId));
         }
         task = taskOptional.get();
       } catch (ExecutorNotExistException e) {
