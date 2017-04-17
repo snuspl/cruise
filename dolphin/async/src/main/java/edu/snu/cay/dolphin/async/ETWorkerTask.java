@@ -90,8 +90,10 @@ final class ETWorkerTask<K, V> implements Task {
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
         sendBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
-            miniBatchData.size(), miniBatchElapsedTime, perOpTimeInEpoch);
+            miniBatchData.size(), miniBatchElapsedTime);
 
+        perOpTimeInEpoch.accumulate(miniBatchResult.getComputeTime(),
+            miniBatchResult.getAvgPullTime(), miniBatchResult.getAvgPushTime());
         epochData.addAll(miniBatchData);
         miniBatchIdx++;
       }
@@ -114,14 +116,7 @@ final class ETWorkerTask<K, V> implements Task {
   private void sendBatchMetrics(final MiniBatchResult miniBatchResult,
                                 final int epochIdx, final int miniBatchIdx,
                                 final int processedDataItemCount,
-                                final double miniBatchElapsedTime,
-                                final PerOpTimeInEpoch perOpTimeInEpoch) {
-    // Accumulate the batch time to compute the total elapsed time in the epoch.
-    final double batchComputeTime = miniBatchResult.getComputeTime();
-    final double batchPullTime = miniBatchResult.getTotalPullTime();
-    final double batchPushTime = miniBatchResult.getTotalPushTime();
-    perOpTimeInEpoch.accumulate(batchComputeTime, batchPullTime, batchPushTime);
-
+                                final double miniBatchElapsedTime) {
     // Build metrics in the batch
     final BatchMetrics batchMetrics = BatchMetrics.newBuilder()
                 .setBatchTimeSec(miniBatchElapsedTime)
@@ -132,9 +127,9 @@ final class ETWorkerTask<K, V> implements Task {
                 .setNumBatchDataInstances(processedDataItemCount)
                 .setBatchIdx(miniBatchIdx)
                 .setEpochIdx(epochIdx)
-                .setBatchPushTimeSec(batchPushTime)
-                .setBatchPullTimeSec(batchPullTime)
-                .setBatchCompTimeSec(batchComputeTime)
+                .setBatchPushTimeSec(miniBatchResult.getTotalPushTime())
+                .setBatchPullTimeSec(miniBatchResult.getTotalPullTime())
+                .setBatchCompTimeSec(miniBatchResult.getComputeTime())
                 .build();
 
     // Encapsulate the metrics for ET
@@ -214,15 +209,15 @@ final class ETWorkerTask<K, V> implements Task {
       totalPushTime += pushTime;
     }
 
-    private double getTotalCompTime() {
+    double getTotalCompTime() {
       return totalCompTime;
     }
 
-    private double getTotalPullTime() {
+    double getTotalPullTime() {
       return totalPullTime;
     }
 
-    private double getTotalPushTime() {
+    double getTotalPushTime() {
       return totalPushTime;
     }
   }
