@@ -263,7 +263,7 @@ public final class ETOptimizationOrchestrator {
         final ListenableFuture<?> planExecutionResultFuture = planExecutor.execute(etPlan);
         try {
           planExecutionResultFuture.get();
-          LOG.log(Level.INFO, "Finish executing {0}-th plan: {1}", new Object[]{optimizationCount});
+          LOG.log(Level.INFO, "Finish executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
 
           final Set<String> workersAfterOpt = new HashSet<>(inputTable.getPartitionInfo().keySet());
 
