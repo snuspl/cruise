@@ -60,7 +60,6 @@ final class ETWorkerTask<K, V> implements Task {
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
-    final PerOpTimeInEpoch perOpTimeInEpoch = new PerOpTimeInEpoch();
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
     trainingDataProvider.loadData();
@@ -74,6 +73,7 @@ final class ETWorkerTask<K, V> implements Task {
     for (int epochIdx = 0; epochIdx < maxNumEpochs; ++epochIdx) {
       LOG.log(Level.INFO, "Starting epoch {0}", epochIdx);
       final long epochStartTime = System.currentTimeMillis();
+      final PerOpTimeInEpoch perOpTimeInEpoch = new PerOpTimeInEpoch();
       trainingDataProvider.prepareDataForEpoch();
 
       final Collection<V> epochData = new LinkedList<>();

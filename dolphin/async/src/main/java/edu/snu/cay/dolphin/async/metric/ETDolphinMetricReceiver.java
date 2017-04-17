@@ -105,13 +105,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
             .setTotalCompTime(batchMetrics.getBatchCompTimeSec())
             .setTotalPullTime(batchMetrics.getBatchPullTimeSec())
             .setTotalPushTime(batchMetrics.getBatchPushTimeSec())
-            .setParameterWorkerMetrics(
-                ParameterWorkerMetrics.newBuilder()
-                    .setTotalPullCount(metricMsg.getCountSentGetReq().getOrDefault(MODEL_TABLE_ID, 0))
-                    .setTotalReceivedBytes(metricMsg.getBytesReceivedGetResp().getOrDefault(MODEL_TABLE_ID, 0L)
-                    )
-                    .build()
-            )
+            .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricMsg))
             .setHostname(hostname)
             .build();
         metricManager.storeWorkerMetrics(srcId, convertedBatchMetrics);
@@ -128,13 +122,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
             .setTotalCompTime(epochMetrics.getEpochCompTimeSec())
             .setTotalPullTime(epochMetrics.getEpochPullTimeSec())
             .setTotalPushTime(epochMetrics.getEpochPushTimeSec())
-            .setParameterWorkerMetrics(
-                ParameterWorkerMetrics.newBuilder()
-                    .setTotalPullCount(metricMsg.getCountSentGetReq().getOrDefault(MODEL_TABLE_ID, 0))
-                    .setTotalReceivedBytes(metricMsg.getBytesReceivedGetResp().getOrDefault(MODEL_TABLE_ID, 0L)
-                    )
-                    .build()
-            )
+            .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricMsg))
             .setHostname(hostname)
             .build();
         metricManager.storeWorkerMetrics(srcId, convertedEpochMetrics);
@@ -143,6 +131,18 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
         throw new RuntimeException("Unknown message type");
       }
     }
+  }
+
+  /**
+   * Build a ParameterWorkerMetrics that Dolphin-on-PS uses.
+   * Note that this method will be removed when we fix the workaround of using the Dolphin-on-PS's metrics.
+   */
+  // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
+  private ParameterWorkerMetrics buildParameterWorkerMetrics(final MetricMsg metricMsg) {
+    return ParameterWorkerMetrics.newBuilder()
+        .setTotalPullCount(metricMsg.getCountSentGetReq().getOrDefault(MODEL_TABLE_ID, 0))
+        .setTotalReceivedBytes(metricMsg.getBytesReceivedGetResp().getOrDefault(MODEL_TABLE_ID, 0L))
+        .build();
   }
 
   /**
