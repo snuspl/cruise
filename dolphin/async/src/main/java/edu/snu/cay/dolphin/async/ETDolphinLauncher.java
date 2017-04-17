@@ -146,7 +146,9 @@ public final class ETDolphinLauncher {
       final int timeout = clientParameterInjector.getNamedInstance(Timeout.class);
 
       status = DriverLauncher.getLauncher(runTimeConf)
-          .run(Configurations.merge(driverConf, driverParamConf, customDriverConf, userParamConf), timeout);
+          .run(Configurations.merge(driverConf, customDriverConf,
+              driverParamConf, workerParamConf, serverParamConf, userParamConf), timeout);
+
     } catch (final Exception e) {
       status = LauncherStatus.failed(e);
       // This log is for giving more detailed info about failure, which status object does not show
