@@ -15,6 +15,17 @@
  */
 [
 {
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "SyncMsg",
+  "fields":
+  [
+    {"name": "executorId", "type": "string"},
+    {"name": "serializedState", "type": "bytes"}
+  ]
+},
+
+{
   "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
   "name": "BatchMetrics",

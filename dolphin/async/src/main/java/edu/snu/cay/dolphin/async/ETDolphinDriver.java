@@ -29,6 +29,7 @@ import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
+import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
@@ -218,10 +219,10 @@ public final class ETDolphinDriver {
             modelTable.get().subscribe(workers);
             inputTable.get();
 
-            final List<Future<TaskResult>> taskResultFutureList = new ArrayList<>(workers.size());
-            workers.forEach(worker -> taskResultFutureList.add(worker.submitTask(getWorkerTaskConf())));
+            final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(workers.size());
+            workers.forEach(worker -> taskFutureList.add(worker.submitTask(getWorkerTaskConf())));
 
-            waitAndCheckTaskResult(taskResultFutureList);
+            waitAndCheckTaskResult(taskFutureList);
 
             workers.forEach(AllocatedExecutor::close);
             servers.forEach(AllocatedExecutor::close);
@@ -236,10 +237,10 @@ public final class ETDolphinDriver {
     }
   }
 
-  private void waitAndCheckTaskResult(final List<Future<TaskResult>> taskResultFutureList) {
-    taskResultFutureList.forEach(taskResultFuture -> {
+  private void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskFutureList) {
+    taskFutureList.forEach(taskFuture -> {
       try {
-        final TaskResult taskResult = taskResultFuture.get();
+        final TaskResult taskResult = taskFuture.get().getTaskResult();
         if (!taskResult.isSuccess()) {
           final String taskId = taskResult.getFailedTask().get().getId();
           throw new RuntimeException(String.format("Task %s has been failed", taskId));
