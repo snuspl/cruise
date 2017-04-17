@@ -21,6 +21,8 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 
+import java.util.Map;
+
 /**
  * An operation for deallocating the existing executor.
  */
@@ -32,7 +34,8 @@ public final class DeallocateOp extends AbstractOp {
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
+  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException {
     try {
       etMaster.getExecutor(executorId).close();
     } catch (ExecutorNotExistException e) {

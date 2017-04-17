@@ -24,6 +24,7 @@ import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -40,12 +41,15 @@ public final class CreateOp extends AbstractOp {
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
+  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException {
     final List<AllocatedExecutor> executorList = new ArrayList<>(executorIds.size());
 
     for (final String executorId : executorIds) {
       try {
-        executorList.add(etMaster.getExecutor(executorId));
+        final String actualId = virtualIdToActualId.containsKey(executorId) ?
+            virtualIdToActualId.get(executorId) : executorId;
+        executorList.add(etMaster.getExecutor(actualId));
       } catch (ExecutorNotExistException e) {
         throw new PlanOpExecutionException("Exception while executing " + toString(), e);
       }

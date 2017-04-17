@@ -23,6 +23,7 @@ import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -36,7 +37,8 @@ public final class StopOp extends AbstractOp {
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
+  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException {
     final AllocatedExecutor executor;
     try {
       executor = etMaster.getExecutor(executorId);

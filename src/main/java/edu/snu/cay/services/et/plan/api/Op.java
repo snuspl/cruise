@@ -20,6 +20,8 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
 
+import java.util.Map;
+
 /**
  * An operation of ET, which composes {@link ETPlan}.
  */
@@ -28,8 +30,13 @@ public interface Op {
   /**
    * Executes operation with a given {@link ETMaster}.
    * @param etMaster an interface for manipulating executor, table, and task of ET
+   * @param virtualIdToActualId a mapping of virtual executor id, which is for executors to be allocated
+   *                            within this plan, to actual id. AllocateOp should update this map
+   *                            and other operations (e.g., Move, Create, Subscribe, Start)
+   *                            that can follow AllocateOp should read this map.
    * @return a {@link ListenableFuture} that completes when execution is finished
    * @throws PlanOpExecutionException when exception happens while executing a plan
    */
-  ListenableFuture<?> execute(ETMaster etMaster) throws PlanOpExecutionException;
+  ListenableFuture<?> execute(ETMaster etMaster, Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException;
 }

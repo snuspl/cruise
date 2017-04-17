@@ -20,6 +20,7 @@ import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,7 +40,8 @@ public final class UnsubscribeOp extends AbstractOp {
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
+  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException {
     LOG.log(Level.WARNING, "UnsubscribeOp has not been implemented yet (TODO #93).");
     // TODO #93: implement unsubscription routine
     return new CompletedFuture<>(null);

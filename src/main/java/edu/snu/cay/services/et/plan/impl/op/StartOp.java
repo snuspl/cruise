@@ -22,6 +22,8 @@ import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import org.apache.reef.tang.Configuration;
 
+import java.util.Map;
+
 /**
  * An operation for starting a task on an executor.
  */
@@ -36,10 +38,13 @@ public final class StartOp extends AbstractOp {
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
+  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException {
     final AllocatedExecutor executor;
     try {
-      executor = etMaster.getExecutor(executorId);
+      final String actualId = virtualIdToActualId.containsKey(executorId) ?
+          virtualIdToActualId.get(executorId) : executorId;
+      executor = etMaster.getExecutor(actualId);
     } catch (ExecutorNotExistException e) {
       throw new PlanOpExecutionException("Exception while executing " + toString(), e);
     }

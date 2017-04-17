@@ -25,6 +25,7 @@ import edu.snu.cay.services.et.plan.api.Op;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;
 
 import javax.inject.Inject;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -84,6 +85,8 @@ public final class PlanExecutorImpl implements PlanExecutor {
     final ResultFuture<Void> resultFuture = new ResultFuture<>();
 
     Executors.newSingleThreadExecutor().submit(() -> {
+      // a map for virtual ids of new executors within this plan
+      final Map<String, String> virtualIdToActualId = new ConcurrentHashMap<>();
 
       final int numTotalOps = plan.getNumTotalOps();
       int numStartedOps = 0;
@@ -106,7 +109,7 @@ public final class PlanExecutorImpl implements PlanExecutor {
           // executes operations in parallel, because they have no dependency between them
           nextOps.forEach(op -> {
             try {
-              op.execute(etMaster)
+              op.execute(etMaster, virtualIdToActualId)
                   .addListener(x -> onOpComplete(op));
             } catch (PlanOpExecutionException e) {
               throw new RuntimeException(e);

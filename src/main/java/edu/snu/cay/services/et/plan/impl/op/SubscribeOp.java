@@ -24,6 +24,7 @@ import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 
 import java.util.Collections;
+import java.util.Map;
 
 /**
  * An operation for making an executor subscribe ownership changes of a table.
@@ -39,12 +40,16 @@ public final class SubscribeOp extends AbstractOp {
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
+  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException {
     final AllocatedTable table;
     final AllocatedExecutor executor;
     try {
       table = etMaster.getTable(tableId);
-      executor = etMaster.getExecutor(executorId);
+
+      final String actualId = virtualIdToActualId.containsKey(executorId) ?
+          virtualIdToActualId.get(executorId) : executorId;
+      executor = etMaster.getExecutor(actualId);
     } catch (ExecutorNotExistException | TableNotExistException e) {
       throw new PlanOpExecutionException("Exception while executing " + toString(), e);
     }

@@ -21,6 +21,8 @@ import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 
+import java.util.Map;
+
 /**
  * An operation for dropping the existing table.
  */
@@ -32,7 +34,8 @@ public final class DropOp extends AbstractOp {
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
+  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException {
     final AllocatedTable table;
     try {
       table = etMaster.getTable(tableId);

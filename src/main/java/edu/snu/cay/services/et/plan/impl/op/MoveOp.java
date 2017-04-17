@@ -21,6 +21,8 @@ import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 
+import java.util.Map;
+
 /**
  * An operation for moving table blocks between executors.
  */
@@ -47,7 +49,8 @@ public final class MoveOp extends AbstractOp {
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
+  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException {
     final AllocatedTable table;
     try {
       table = etMaster.getTable(tableId);
@@ -55,7 +58,12 @@ public final class MoveOp extends AbstractOp {
       throw new PlanOpExecutionException("Exception while executing " + toString(), e);
     }
 
-    return table.moveBlocks(srcExecutorId, dstExecutorId, numBlocks);
+    final String actualSrcId = virtualIdToActualId.containsKey(srcExecutorId) ?
+        virtualIdToActualId.get(srcExecutorId) : srcExecutorId;
+    final String actualDstId = virtualIdToActualId.containsKey(dstExecutorId) ?
+        virtualIdToActualId.get(dstExecutorId) : dstExecutorId;
+
+    return table.moveBlocks(actualSrcId, actualDstId, numBlocks);
   }
 
   @Override

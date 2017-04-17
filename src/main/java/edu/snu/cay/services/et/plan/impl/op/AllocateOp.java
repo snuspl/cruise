@@ -17,21 +17,39 @@ package edu.snu.cay.services.et.plan.impl.op;
 
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
+
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * An operation for allocating a new executor.
  */
 public final class AllocateOp extends AbstractOp {
+  private static final Logger LOG = Logger.getLogger(AllocateOp.class.getName());
+
+  private final String virtualId;
   private final ExecutorConfiguration executorConf;
 
-  public AllocateOp(final ExecutorConfiguration executorConf) {
+  public AllocateOp(final String virtualId, final ExecutorConfiguration executorConf) {
+    this.virtualId = virtualId;
     this.executorConf = executorConf;
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster) throws PlanOpExecutionException {
-    return etMaster.addExecutors(1, executorConf);
+  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+      throws PlanOpExecutionException {
+    final ListenableFuture<List<AllocatedExecutor>> executorFuture = etMaster.addExecutors(1, executorConf);
+    executorFuture.addListener(allocatedExecutorList -> {
+      final AllocatedExecutor allocatedExecutor = allocatedExecutorList.get(0);
+      virtualIdToActualId.put(virtualId, allocatedExecutor.getId());
+      LOG.log(Level.INFO, "virtualId: {0}, actualId: {1}", new Object[]{virtualId, allocatedExecutor.getId()});
+    });
+
+    return executorFuture;
   }
 }
