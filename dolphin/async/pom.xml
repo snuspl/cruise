@@ -30,6 +30,16 @@
 
   <dependencies>
     <dependency>
+      <groupId>org.bytedeco.javacpp-presets</groupId>
+      <artifactId>tensorflow-platform</artifactId>
+      <version>0.11.0-1.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>javacpp</artifactId>
+      <version>1.3</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-common</artifactId>
     </dependency>
@@ -105,10 +115,6 @@
     <dependency>
       <groupId>org.jblas</groupId>
       <artifactId>jblas</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.bytedeco</groupId>
-      <artifactId>javacpp</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
