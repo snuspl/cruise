@@ -17,15 +17,19 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
+import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
+import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.serialization.SerializableCodec;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
+import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,13 +47,17 @@ final class WorkerGlobalBarrier {
 
   private final ResettingCountDownLatch countDownLatch = new ResettingCountDownLatch(1);
 
+  private final String executorId;
+
   private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final SerializableCodec<State> codec;
 
   @Inject
-  private WorkerGlobalBarrier(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
+  private WorkerGlobalBarrier(@Parameter(ExecutorIdentifier.class) final String executorId,
+                              final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
                               final SerializableCodec<State> codec) {
     this.stateMachine = initStateMachine();
+    this.executorId = executorId;
     this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.codec = codec;
   }
@@ -73,8 +81,15 @@ final class WorkerGlobalBarrier {
 
   private void sendMsgToDriver() {
     LOG.log(Level.INFO, "Sending a synchronization message to the driver");
-    final byte[] data = codec.encode((State) stateMachine.getCurrentState());
-    slaveSideCentCommMsgSender.send(WorkerStateManager.CENT_COMM_CLIENT_NAME, data);
+    final byte[] serializedState = codec.encode((State) stateMachine.getCurrentState());
+
+    final SyncMsg syncMsg = SyncMsg.newBuilder()
+        .setExecutorId(executorId)
+        .setSerializedState(ByteBuffer.wrap(serializedState))
+        .build();
+
+    slaveSideCentCommMsgSender.send(WorkerStateManager.CENT_COMM_CLIENT_NAME,
+        AvroUtils.toBytes(syncMsg, SyncMsg.class));
   }
 
   /**
@@ -86,6 +101,7 @@ final class WorkerGlobalBarrier {
    */
   void await() {
     final State currentState = (State) stateMachine.getCurrentState();
+    LOG.log(Level.INFO, "Start waiting other workers to reach barrier: {0}", currentState);
 
     switch (currentState) {
     case INIT:
@@ -98,6 +114,7 @@ final class WorkerGlobalBarrier {
 
     sendMsgToDriver();
     countDownLatch.awaitAndReset(1);
+    LOG.log(Level.INFO, "Release from barrier");
   }
 
   /**
@@ -126,7 +143,7 @@ final class WorkerGlobalBarrier {
 
     @Override
     public synchronized void onNext(final CentCommMsg centCommMsg) {
-      LOG.log(Level.INFO, "Received a response message from the driver");
+      LOG.log(Level.FINE, "Received a response message from the driver");
 
       transitToNextState();
       countDownLatch.countDown();
