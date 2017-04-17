@@ -68,18 +68,18 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
       return;
     }
 
-    if (isServerMetrics(metricMsg)) {
-      processServerMetrics(srcId, metricMsg);
-    } else {
+    if (isWorkerMetrics(metricMsg)) {
       processWorkerMetrics(srcId, metricMsg);
+    } else {
+      processServerMetrics(srcId, metricMsg);
     }
   }
 
   /**
-   * Distinguishes the server metrics if the metrics consist of information of the model table.
+   * Distinguishes the metrics from workers if the metrics consist of information of the training data table.
    */
-  private boolean isServerMetrics(final MetricMsg metricMsg) {
-    return metricMsg.getTableToNumBlocks().containsKey(MODEL_TABLE_ID);
+  private boolean isWorkerMetrics(final MetricMsg metricMsg) {
+    return metricMsg.getTableToNumBlocks().containsKey(TRAINING_DATA_TABLE_ID);
   }
 
   /**
