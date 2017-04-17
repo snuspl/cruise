@@ -16,19 +16,13 @@
 package edu.snu.cay.dolphin.async.metric;
 
 import edu.snu.cay.dolphin.async.DolphinParameters;
-import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.metric.avro.*;
 import edu.snu.cay.services.et.avro.MetricMsg;
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
 import edu.snu.cay.services.ps.metric.avro.ServerMetrics;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.tang.formats.ConfigurationSerializer;
 
 import javax.inject.Inject;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -39,8 +33,6 @@ import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TAB
  * Implementation of Metric receiver for Dolphin on ET.
  */
 public final class ETDolphinMetricReceiver implements MetricReceiver {
-  private static final Tang TANG = Tang.Factory.getTang();
-
   private final ETDolphinMetricMsgCodec metricMsgCodec;
 
   private final MetricManager metricManager;
@@ -50,16 +42,10 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
   @Inject
   ETDolphinMetricReceiver(final ETDolphinMetricMsgCodec metricMsgCodec,
                           final MetricManager metricManager,
-                          @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf) {
+                          @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize) {
     this.metricMsgCodec = metricMsgCodec;
     this.metricManager = metricManager;
-    try {
-      final Configuration workerConf = TANG.newInjector().getInstance(ConfigurationSerializer.class)
-          .fromString(serializedWorkerConf);
-      this.miniBatchSize = TANG.newInjector(workerConf).getNamedInstance(DolphinParameters.MiniBatchSize.class);
-    } catch (IOException | InjectionException e) {
-      throw new RuntimeException(e);
-    }
+    this.miniBatchSize = miniBatchSize;
   }
 
   @Override
