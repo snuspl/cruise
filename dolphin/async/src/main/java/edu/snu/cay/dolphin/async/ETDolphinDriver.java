@@ -120,7 +120,7 @@ public final class ETDolphinDriver {
     this.workerResourceConf = buildResourceConf(numWorkerCores, workerMemSize);
     this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
 
-    // configuration for worker executors
+    // user configuration for worker executors
     this.workerContextConf = centCommConfProvider.getContextConfiguration();
     this.workerServiceConf = Configurations.merge(
         centCommConfProvider.getServiceConfWithoutNameResolver(),
@@ -128,10 +128,10 @@ public final class ETDolphinDriver {
             .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricMsgCodec.class)
             .build());
 
-    this.serverServiceConf = Configurations.merge(
-        MetricServiceExecutorConf.CONF
-            .set(MetricServiceExecutorConf.METRIC_SENDING_PERIOD_MS, serverMetricFlushPeriodMs)
-            .build());
+    // user configuration for server executors
+    this.serverServiceConf = MetricServiceExecutorConf.CONF
+        .set(MetricServiceExecutorConf.METRIC_SENDING_PERIOD_MS, serverMetricFlushPeriodMs)
+        .build();
   }
 
   private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {
