@@ -86,6 +86,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
    * Processes worker metrics and passes them to the {@link MetricManager}.
    * For now the worker metrics are converted to be compatible to the EM's Optimizers.
    */
+  // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
   private void processWorkerMetrics(final String srcId, final MetricMsg metricMsg) {
     for (final ByteBuffer encodedBuffer : metricMsg.getCustomMetrics()) {
       final DolphinWorkerMetrics workerMetrics = metricMsgCodec.decode(encodedBuffer.array());
@@ -95,42 +96,66 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
       switch (workerMetrics.getType()) {
       case BatchMetrics:
         final BatchMetrics batchMetrics = workerMetrics.getBatchMetrics();
-        final WorkerMetrics convertedBatchMetrics = WorkerMetrics.newBuilder()
-            .setNumDataBlocks(tableToNumBlocks.get(TRAINING_DATA_TABLE_ID))
-            .setEpochIdx(batchMetrics.getEpochIdx())
-            .setMiniBatchIdx(batchMetrics.getBatchIdx())
-            .setMiniBatchSize(miniBatchSize)
-            .setProcessedDataItemCount(batchMetrics.getNumBatchDataInstances())
-            .setTotalTime(batchMetrics.getBatchTimeSec())
-            .setTotalCompTime(batchMetrics.getBatchCompTimeSec())
-            .setTotalPullTime(batchMetrics.getBatchPullTimeSec())
-            .setTotalPushTime(batchMetrics.getBatchPushTimeSec())
-            .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricMsg))
-            .setHostname(hostname)
-            .build();
+        final WorkerMetrics convertedBatchMetrics =
+            convertBatchMetrics(metricMsg, tableToNumBlocks, hostname, batchMetrics);
         metricManager.storeWorkerMetrics(srcId, convertedBatchMetrics);
         break;
       case EpochMetrics:
         final EpochMetrics epochMetrics = workerMetrics.getEpochMetrics();
-        final WorkerMetrics convertedEpochMetrics = WorkerMetrics.newBuilder()
-            .setEpochIdx(epochMetrics.getEpochIdx())
-            .setMiniBatchSize(miniBatchSize)
-            .setNumMiniBatchForEpoch(epochMetrics.getNumBatchesForEpoch())
-            .setProcessedDataItemCount(epochMetrics.getNumEpochDataInstances())
-            .setNumDataBlocks(metricMsg.getTableToNumBlocks().get(TRAINING_DATA_TABLE_ID))
-            .setTotalTime(epochMetrics.getEpochTimeSec())
-            .setTotalCompTime(epochMetrics.getEpochCompTimeSec())
-            .setTotalPullTime(epochMetrics.getEpochPullTimeSec())
-            .setTotalPushTime(epochMetrics.getEpochPushTimeSec())
-            .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricMsg))
-            .setHostname(hostname)
-            .build();
+        final WorkerMetrics convertedEpochMetrics = convertEpochMetrics(metricMsg, hostname, epochMetrics);
         metricManager.storeWorkerMetrics(srcId, convertedEpochMetrics);
         break;
       default:
         throw new RuntimeException("Unknown message type");
       }
     }
+  }
+
+  /**
+   * Convert the metrics collected in an epoch to that is compatible with Dolphin-on-PS's.
+   * Note that this method will be removed when we fix the workaround of using the Dolphin-on-PS's metrics.
+   */
+  // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
+  private WorkerMetrics convertEpochMetrics(final MetricMsg metricMsg,
+                                            final String hostname,
+                                            final EpochMetrics epochMetrics) {
+    return WorkerMetrics.newBuilder()
+              .setEpochIdx(epochMetrics.getEpochIdx())
+              .setMiniBatchSize(miniBatchSize)
+              .setNumMiniBatchForEpoch(epochMetrics.getNumBatchesForEpoch())
+              .setProcessedDataItemCount(epochMetrics.getNumEpochDataInstances())
+              .setNumDataBlocks(metricMsg.getTableToNumBlocks().get(TRAINING_DATA_TABLE_ID))
+              .setTotalTime(epochMetrics.getEpochTimeSec())
+              .setTotalCompTime(epochMetrics.getEpochCompTimeSec())
+              .setTotalPullTime(epochMetrics.getEpochPullTimeSec())
+              .setTotalPushTime(epochMetrics.getEpochPushTimeSec())
+              .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricMsg))
+              .setHostname(hostname)
+              .build();
+  }
+
+  /**
+   * Convert the metrics collected in a batch to that is compatible with Dolphin-on-PS's.
+   * Note that this method will be removed when we fix the workaround of using the Dolphin-on-PS's metrics.
+   */
+  // TODO #1072: Make the entire optimization pipeline use the Dolphin-on-ET-specific metrics
+  private WorkerMetrics convertBatchMetrics(final MetricMsg metricMsg,
+                                            final Map<String, Integer> tableToNumBlocks,
+                                            final String hostname,
+                                            final BatchMetrics batchMetrics) {
+    return WorkerMetrics.newBuilder()
+              .setNumDataBlocks(tableToNumBlocks.get(TRAINING_DATA_TABLE_ID))
+              .setEpochIdx(batchMetrics.getEpochIdx())
+              .setMiniBatchIdx(batchMetrics.getBatchIdx())
+              .setMiniBatchSize(miniBatchSize)
+              .setProcessedDataItemCount(batchMetrics.getNumBatchDataInstances())
+              .setTotalTime(batchMetrics.getBatchTimeSec())
+              .setTotalCompTime(batchMetrics.getBatchCompTimeSec())
+              .setTotalPullTime(batchMetrics.getBatchPullTimeSec())
+              .setTotalPushTime(batchMetrics.getBatchPushTimeSec())
+              .setParameterWorkerMetrics(buildParameterWorkerMetrics(metricMsg))
+              .setHostname(hostname)
+              .build();
   }
 
   /**
