@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_nmf_et.sh -max_num_epochs 500 -local true -number_servers 1 -num_workers 4 -max_num_eval_local 5 -input sample_nmf -mini_batch_size 4 -rank 30 -step_size 0.01 -print_mat true -timeout 300000 -decay_period 5 -decay_rate 0.9 -num_trainer_threads 1 -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_faxtor 0.0
+# ./run_nmf_et.sh -max_num_epochs 500 -local true -number_servers 1 -num_workers 4 -max_num_eval_local 5 -input sample_nmf -mini_batch_size 4 -rank 30 -step_size 0.01 -print_mat true -timeout 300000 -decay_period 5 -decay_rate 0.9 -num_trainer_threads 1 -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -server_metric_flush_period_ms 1000 -moving_avg_window_size 0 -metric_weight_factor 0.0
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
