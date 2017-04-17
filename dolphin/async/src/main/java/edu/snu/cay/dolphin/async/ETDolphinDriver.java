@@ -18,9 +18,11 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
+import edu.snu.cay.dolphin.async.metric.ETDolphinMetricMsgCodec;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
+import edu.snu.cay.services.et.configuration.metric.MetricServiceExecutorConf;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
@@ -77,8 +79,10 @@ public final class ETDolphinDriver {
   private final TableConfiguration workerTableConf;
   private final TableConfiguration serverTableConf;
 
-  private final Configuration aggrContextConf;
-  private final Configuration aggrServiceConf;
+  private final Configuration workerContextConf;
+  private final Configuration workerServiceConf;
+
+  private final Configuration serverServiceConf;
 
   private final AtomicInteger taskIdCount = new AtomicInteger(0);
 
@@ -92,6 +96,7 @@ public final class ETDolphinDriver {
                           @Parameter(NumWorkers.class) final int numWorkers,
                           @Parameter(WorkerMemSize.class) final int workerMemSize,
                           @Parameter(NumWorkerCores.class) final int numWorkerCores,
+                          @Parameter(ServerMetricFlushPeriodMs.class) final long serverMetricFlushPeriodMs,
                           @Parameter(ETDolphinLauncher.SerializedParamConf.class) final String serializedParamConf,
                           @Parameter(ETDolphinLauncher.SerializedWorkerConf.class) final String serializedWorkerConf,
                           @Parameter(ETDolphinLauncher.SerializedServerConf.class) final String serializedServerConf)
@@ -115,9 +120,18 @@ public final class ETDolphinDriver {
     this.workerResourceConf = buildResourceConf(numWorkerCores, workerMemSize);
     this.workerTableConf = buildWorkerTableConf(workerInjector, userParamConf);
 
-    // configuration for worker executors
-    this.aggrContextConf = centCommConfProvider.getContextConfiguration();
-    this.aggrServiceConf = centCommConfProvider.getServiceConfWithoutNameResolver();
+    // user configuration for worker executors
+    this.workerContextConf = centCommConfProvider.getContextConfiguration();
+    this.workerServiceConf = Configurations.merge(
+        centCommConfProvider.getServiceConfWithoutNameResolver(),
+        MetricServiceExecutorConf.CONF
+            .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricMsgCodec.class)
+            .build());
+
+    // user configuration for server executors
+    this.serverServiceConf = MetricServiceExecutorConf.CONF
+        .set(MetricServiceExecutorConf.METRIC_SENDING_PERIOD_MS, serverMetricFlushPeriodMs)
+        .build();
   }
 
   private static ResourceConfiguration buildResourceConf(final int numCores, final int memSize) {
@@ -175,14 +189,15 @@ public final class ETDolphinDriver {
   public ExecutorConfiguration getWorkerExecutorConf() {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
-        .setUserContextConf(aggrContextConf)
-        .setUserServiceConf(aggrServiceConf)
+        .setUserContextConf(workerContextConf)
+        .setUserServiceConf(workerServiceConf)
         .build();
   }
 
   public ExecutorConfiguration getServerExecutorConf() {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(serverResourceConf)
+        .setUserServiceConf(serverServiceConf)
         .build();
   }
 
