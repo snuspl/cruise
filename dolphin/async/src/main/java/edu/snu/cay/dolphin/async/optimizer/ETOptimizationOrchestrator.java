@@ -137,22 +137,41 @@ public final class ETOptimizationOrchestrator {
    */
   public void start() {
     Executors.newSingleThreadExecutor().submit(() -> {
-      workerStateManager.waitWorkersToFinishInitStage();
+      try {
+        workerStateManager.waitWorkersToFinishInitStage();
 
-      while (workerStateManager.tryEnterOptimization()) {
-        final Pair<Set<String>, Set<String>> changesInWorkers = optimize();
-
-        // should notify workerTaskRunner first
-        workerTaskRunner.updateTaskEntry(changesInWorkers.getLeft(), changesInWorkers.getRight());
-        workerStateManager.onOptimizationFinished(changesInWorkers.getLeft(), changesInWorkers.getRight());
-
+        final AllocatedTable modelTable;
+        final AllocatedTable inputTable;
         try {
-          LOG.log(Level.INFO, "Sleep {0} ms for next optimization", optimizationIntervalMs);
-          Thread.sleep(optimizationIntervalMs);
-        } catch (InterruptedException e) {
-          LOG.log(Level.WARNING, "Interrupted while sleeping for next optimization try." +
-              " Let's try optimization now.", e);
+          modelTable = etMaster.getTable(ETModelAccessor.MODEL_TABLE_ID);
+          inputTable = etMaster.getTable(ETTrainingDataProvider.TRAINING_DATA_TABLE_ID);
+        } catch (TableNotExistException e) {
+          throw new RuntimeException(e);
         }
+
+        metricManager.loadMetricValidationInfo(
+            getValidationInfo(inputTable.getPartitionInfo()), getValidationInfo(modelTable.getPartitionInfo()));
+        metricManager.startMetricCollection();
+
+        while (workerStateManager.tryEnterOptimization()) {
+          final Pair<Set<String>, Set<String>> changesInWorkers = optimize();
+
+          // should notify workerTaskRunner first
+          workerTaskRunner.updateTaskEntry(changesInWorkers.getLeft(), changesInWorkers.getRight());
+          workerStateManager.onOptimizationFinished(changesInWorkers.getLeft(), changesInWorkers.getRight());
+
+          try {
+            LOG.log(Level.INFO, "Sleep {0} ms for next optimization", optimizationIntervalMs);
+            Thread.sleep(optimizationIntervalMs);
+          } catch (InterruptedException e) {
+            LOG.log(Level.WARNING, "Interrupted while sleeping for next optimization try." +
+                " Let's try optimization now.", e);
+          }
+        }
+
+        metricManager.stopMetricCollection();
+      } catch (Exception e) {
+        LOG.log(Level.INFO, "Exception in optimization thread", e);
       }
     });
   }
@@ -203,10 +222,12 @@ public final class ETOptimizationOrchestrator {
     }
 
     // 2) Process the received metrics (e.g., calculate the EMA of metrics).
-    final List<EvaluatorParameters> processedServerMetrics = MetricProcessor.processServerMetrics(
-        currentServerMetrics, metricWeightFactor, movingAvgWindowSize);
-    final List<EvaluatorParameters> processedWorkerMetrics = MetricProcessor.processWorkerMetrics(
-        currentWorkerMiniBatchMetrics, metricWeightFactor, movingAvgWindowSize);
+    final List<EvaluatorParameters> processedServerMetrics = new ArrayList<>(currentServerMetrics.size());
+    currentServerMetrics.forEach((serverId, metricList) -> processedServerMetrics.add(metricList.get(0)));
+
+    final List<EvaluatorParameters> processedWorkerMetrics = new ArrayList<>(currentWorkerMiniBatchMetrics.size());
+    currentWorkerMiniBatchMetrics.forEach((workerId, metricList) ->
+        processedWorkerMetrics.add(metricList.get(metricList.size() - 1)));
 
     // 3) Check that the processed metrics suffice to undergo an optimization cycle.
     // processed metrics of size less than the number of evaluators running in each space implies that
@@ -285,7 +306,7 @@ public final class ETOptimizationOrchestrator {
       } finally {
         // 7) Once the execution is complete, restart metric collection.
         metricManager.loadMetricValidationInfo(
-            getValidationInfo(modelTable.getPartitionInfo()), getValidationInfo(inputTable.getPartitionInfo()));
+            getValidationInfo(inputTable.getPartitionInfo()), getValidationInfo(modelTable.getPartitionInfo()));
         metricManager.startMetricCollection();
       }
     });

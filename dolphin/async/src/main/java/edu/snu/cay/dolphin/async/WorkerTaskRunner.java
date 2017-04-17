@@ -77,6 +77,8 @@ public final class WorkerTaskRunner {
       }
     });
 
+    LOG.log(Level.INFO, "Wait for workers to finish run stage");
+
     workerStateManager.waitWorkersToFinishRunStage();
 
     LOG.log(Level.INFO, "Wait and get task results");
@@ -86,7 +88,6 @@ public final class WorkerTaskRunner {
 
   /**
    * Updates the entry of worker tasks, which is called by the Optimization orchestrator.
-   * }
    * @param addedWorkers a set of added worker tasks
    * @param deletedWorkers a set of deleted worker tasks
    */

@@ -203,8 +203,9 @@ public final class WorkerStateManager {
         new Object[]{numRunningWorkersBefore, runningWorkerIds.size()});
 
     stateMachine.setState(State.RUN);
+    LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.OPTIMIZE, State.RUN));
     if (!blockedWorkerIds.isEmpty()) {
-      stateMachine.setState(State.RUN_FINISHING);
+      transitToNextState();
     }
 
     tryReleasingWorkers();
