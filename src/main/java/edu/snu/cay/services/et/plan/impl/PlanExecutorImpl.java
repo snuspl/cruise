@@ -16,6 +16,7 @@
 package edu.snu.cay.services.et.plan.impl;
 
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.common.util.concurrent.CompletedFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.PlanAlreadyExecutingException;
@@ -62,6 +63,10 @@ public final class PlanExecutorImpl implements PlanExecutor {
       throw new PlanAlreadyExecutingException("Executing more than one plan simultaneously is not allowed.");
     }
 
+    if (plan.getNumTotalOps() == 0) {
+      return new CompletedFuture<>(null);
+    }
+
     // TODO #97: need to validate plan
 
     executingPlan.set(new ExecutingPlan(plan));
@@ -83,6 +88,7 @@ public final class PlanExecutorImpl implements PlanExecutor {
       final int numTotalOps = plan.getNumTotalOps();
       int numStartedOps = 0;
 
+      LOG.log(Level.INFO, "Num total ops: {0}", numTotalOps);
       // loop until it launches all ops
       while (numStartedOps < numTotalOps) {
         Set<Op> nextOps;
