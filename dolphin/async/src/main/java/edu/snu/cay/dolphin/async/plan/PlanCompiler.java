@@ -200,7 +200,7 @@ public final class PlanCompiler {
       final ExecutorConfiguration executorConf = namespace.equals(NAMESPACE_WORKER) ?
           etDolphinDriver.getWorkerExecutorConf() : etDolphinDriver.getServerExecutorConf();
       for (final String evalToAdd : evalsToAdd) {
-        final AllocateOp allocateOp = new AllocateOp(executorConf);
+        final AllocateOp allocateOp = new AllocateOp(evalToAdd, executorConf);
         allocateOps.put(evalToAdd, allocateOp);
         dag.addVertex(allocateOp);
 
