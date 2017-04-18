@@ -109,6 +109,7 @@ public final class PlanExecutorImpl implements PlanExecutor {
           // executes operations in parallel, because they have no dependency between them
           nextOps.forEach(op -> {
             try {
+              LOG.log(Level.INFO, "Start executing op: {0}", op);
               op.execute(etMaster, virtualIdToActualId)
                   .addListener(x -> onOpComplete(op));
             } catch (PlanOpExecutionException e) {
@@ -137,6 +138,8 @@ public final class PlanExecutorImpl implements PlanExecutor {
     if (ongoingPlan == null) {
       throw new RuntimeException("There's no ongoing plan");
     }
+
+    LOG.log(Level.INFO, "Finish executing op: {0}", op);
 
     // enqueue next operations enabled by the completion of this op
     final Set<Op> nextOps = ongoingPlan.getNextOps(op);
