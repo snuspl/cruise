@@ -16,68 +16,52 @@
 package edu.snu.cay.services.et.plan.impl.op;
 
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
-import edu.snu.cay.services.et.exceptions.NotAssociatedException;
+import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 
+import java.util.Collections;
 import java.util.Map;
 
 /**
- * An operation for moving table blocks between executors.
+ * An operation for associating an executor with a table.
  */
-public final class MoveOp extends AbstractOp {
-  private final String srcExecutorId;
-  private final String dstExecutorId;
+public final class AssociateOp extends AbstractOp {
+  private final String executorId;
   private final String tableId;
-  private final int numBlocks;
 
-  public MoveOp(final String srcExecutorId, final String dstExecutorId,
-                final String tableId, final int numBlocks) {
-    this.srcExecutorId = srcExecutorId;
-    this.dstExecutorId = dstExecutorId;
+  public AssociateOp(final String executorId,
+                     final String tableId) {
+    this.executorId = executorId;
     this.tableId = tableId;
-    this.numBlocks = numBlocks;
-  }
-
-  public String getSrcExecutorId() {
-    return srcExecutorId;
-  }
-
-  public String getDstExecutorId() {
-    return dstExecutorId;
   }
 
   @Override
   public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException {
     final AllocatedTable table;
+    final AllocatedExecutor executor;
     try {
       table = etMaster.getTable(tableId);
-    } catch (TableNotExistException e) {
+
+      final String actualId = virtualIdToActualId.containsKey(executorId) ?
+          virtualIdToActualId.get(executorId) : executorId;
+      executor = etMaster.getExecutor(actualId);
+    } catch (ExecutorNotExistException | TableNotExistException e) {
       throw new PlanOpExecutionException("Exception while executing " + toString(), e);
     }
 
-    final String actualSrcId = virtualIdToActualId.containsKey(srcExecutorId) ?
-        virtualIdToActualId.get(srcExecutorId) : srcExecutorId;
-    final String actualDstId = virtualIdToActualId.containsKey(dstExecutorId) ?
-        virtualIdToActualId.get(dstExecutorId) : dstExecutorId;
-
-    try {
-      return table.moveBlocks(actualSrcId, actualDstId, numBlocks);
-    } catch (NotAssociatedException e) {
-      throw new PlanOpExecutionException(e);
-    }
+    return table.associate(Collections.singletonList(executor));
   }
 
   @Override
   public String toString() {
-    return "MoveOp{" +
-        "srcExecutorId='" + srcExecutorId + '\'' +
-        ", dstExecutorId='" + dstExecutorId + '\'' +
+    return "AssociateOp{" +
+        "executorId='" + executorId + '\'' +
         ", tableId='" + tableId + '\'' +
-        ", numBlocks=" + numBlocks +
         '}';
   }
 }

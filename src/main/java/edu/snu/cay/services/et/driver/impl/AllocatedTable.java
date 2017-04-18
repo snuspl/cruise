@@ -19,12 +19,12 @@ import edu.snu.cay.services.et.common.util.concurrent.CompletedFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
+import edu.snu.cay.services.et.exceptions.NotAssociatedException;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -163,6 +163,21 @@ public final class AllocatedTable {
   }
 
   /**
+   * Decouples the table from the executor. As a result, the executor will not have any blocks nor receive any updates
+   * of ownership information.
+   * Note that all blocks of the table should be emptied out first, before this method is called.
+   * @param executorId id of the executor to un-associate with the table
+   */
+  public synchronized ListenableFuture<?> unassociate(final String executorId) {
+    stateMachine.checkState(State.INITIALIZED);
+
+    blockManager.deregisterExecutor(executorId);
+    migrationManager.unregisterSubscription(tableConf.getId(), executorId);
+
+    return tableControlAgent.dropTable(tableConf.getId(), Collections.singleton(executorId));
+  }
+
+  /**
    * Moves the {@code numBlocks} number of blocks from src executor to dst executor.
    * @param srcExecutorId an id of src executor
    * @param dstExecutorId an id of dst executor
@@ -170,16 +185,12 @@ public final class AllocatedTable {
    */
   public synchronized ListenableFuture<MigrationResult> moveBlocks(final String srcExecutorId,
                                                                    final String dstExecutorId,
-                                                                   final int numBlocks) {
+                                                                   final int numBlocks) throws NotAssociatedException {
     stateMachine.checkState(State.INITIALIZED);
 
     // if it's not associated with dst executor, do it now
     if (!blockManager.getPartitionInfo().containsKey(dstExecutorId)) {
-      try {
-        associate(dstExecutorId).get();
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
+      throw new NotAssociatedException(tableConf.getId(), dstExecutorId);
     }
 
     final List<Integer> blocks = blockManager.chooseBlocksToMove(srcExecutorId, numBlocks);

@@ -28,6 +28,7 @@ import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
 import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.services.et.exceptions.NotAssociatedException;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Parameter;
@@ -223,7 +224,7 @@ final class SimpleETDriver {
         subscribers.forEach(AllocatedExecutor::close);
         associators.forEach(AllocatedExecutor::close);
 
-      } catch (InterruptedException | ExecutionException e) {
+      } catch (InterruptedException | ExecutionException | NotAssociatedException e) {
         throw new RuntimeException(e);
       }
     }
