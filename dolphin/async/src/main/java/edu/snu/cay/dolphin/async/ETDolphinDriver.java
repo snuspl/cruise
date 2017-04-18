@@ -229,7 +229,7 @@ public final class ETDolphinDriver {
             modelTable.get().subscribe(workers);
             inputTable.get();
 
-            final List<TaskResult> taskResults = workerTaskRunner.run(workers);
+            final List<TaskResult> taskResults = workerTaskRunner.run(workers, servers);
             checkTaskResults(taskResults);
 
             workers.forEach(AllocatedExecutor::close);
@@ -253,5 +253,6 @@ public final class ETDolphinDriver {
         throw new RuntimeException(String.format("Task %s has been failed", taskId));
       }
     });
+    LOG.log(Level.INFO, "Worker tasks completes successfully");
   }
 }

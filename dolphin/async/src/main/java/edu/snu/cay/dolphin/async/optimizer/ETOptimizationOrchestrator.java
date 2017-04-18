@@ -154,10 +154,17 @@ public final class ETOptimizationOrchestrator {
         metricManager.startMetricCollection();
 
         while (workerStateManager.tryEnterOptimization()) {
-          final Pair<Set<String>, Set<String>> changesInWorkers = optimize();
+          final Map<String, Pair<Set<String>, Set<String>>> namespaceToexecutorChange = optimize();
+
+          final Pair<Set<String>, Set<String>> changesInServers =
+              namespaceToexecutorChange.get(Constants.NAMESPACE_SERVER);
+
+          final Pair<Set<String>, Set<String>> changesInWorkers =
+              namespaceToexecutorChange.get(Constants.NAMESPACE_WORKER);
 
           // should notify workerTaskRunner first
-          workerTaskRunner.updateTaskEntry(changesInWorkers.getLeft(), changesInWorkers.getRight());
+          workerTaskRunner.updateExecutorEntry(changesInWorkers.getLeft(), changesInWorkers.getRight(),
+              changesInServers.getLeft(), changesInServers.getRight());
           workerStateManager.onOptimizationFinished(changesInWorkers.getLeft(), changesInWorkers.getRight());
 
           try {
@@ -187,7 +194,11 @@ public final class ETOptimizationOrchestrator {
    * 6) Execute the obtained plan.
    * 7) Once the execution is complete, restart metric collection.
    */
-  private synchronized Pair<Set<String>, Set<String>> optimize() {
+  private synchronized Map<String, Pair<Set<String>, Set<String>>> optimize() {
+    final Map<String, Pair<Set<String>, Set<String>>> emptyResult = new HashMap<>();
+    emptyResult.put(Constants.NAMESPACE_WORKER, Pair.of(Collections.emptySet(), Collections.emptySet()));
+    emptyResult.put(Constants.NAMESPACE_SERVER, Pair.of(Collections.emptySet(), Collections.emptySet()));
+
     // 1) Check that metrics have arrived from all evaluators.
     // Servers: for each window / Workers: for each epoch, but mini-batch metrics are used for the actual optimization.
     final Map<String, List<EvaluatorParameters>> currentServerMetrics = metricManager.getServerMetrics();
@@ -218,7 +229,7 @@ public final class ETOptimizationOrchestrator {
               " Metrics from Servers: {0} / {1}, from Workers: {2} / {3}",
           new Object[]{numServerMetricSources, numRunningServers, numWorkerMetricSources, numRunningWorkers});
       // Just return and wait for more metrics to be collected
-      return Pair.of(Collections.emptySet(), Collections.emptySet());
+      return emptyResult;
     }
 
     // 2) Process the received metrics (e.g., calculate the EMA of metrics).
@@ -234,7 +245,7 @@ public final class ETOptimizationOrchestrator {
     // there were only metrics not enough for this optimization cycle to be executed.
     if (processedServerMetrics.size() < numRunningServers || processedWorkerMetrics.size() < numRunningWorkers) {
       LOG.log(Level.INFO, "Skip this round, because the metrics do not suffice to undergo an optimization cycle.");
-      return Pair.of(Collections.emptySet(), Collections.emptySet());
+      return emptyResult;
     }
 
     // Calculate the total number of data instances distributed across workers,
@@ -255,7 +266,7 @@ public final class ETOptimizationOrchestrator {
     evaluatorParameters.put(Constants.NAMESPACE_SERVER, processedServerMetrics);
     evaluatorParameters.put(Constants.NAMESPACE_WORKER, processedWorkerMetrics);
 
-    final Future<Pair<Set<String>, Set<String>>> future = optimizationThreadPool.submit(() -> {
+    final Future<Map<String, Pair<Set<String>, Set<String>>>> future = optimizationThreadPool.submit(() -> {
       final int optimizationCount = optimizationCounter.getAndIncrement();
       LOG.log(Level.INFO, "Start {0}-th optimization", optimizationCount);
       LOG.log(Level.INFO, "Calculate {0}-th optimal plan with metrics: {1}",
@@ -267,7 +278,7 @@ public final class ETOptimizationOrchestrator {
         plan = optimizer.optimize(evaluatorParameters, numAvailableEvals, optimizerModelParams);
       } catch (final RuntimeException e) {
         LOG.log(Level.SEVERE, "RuntimeException while calculating the optimal plan", e);
-        return Pair.of(Collections.emptySet(), Collections.emptySet());
+        return emptyResult;
       }
 
       // 5) Pause metric collection.
@@ -276,6 +287,7 @@ public final class ETOptimizationOrchestrator {
       final ETPlan etPlan = planCompiler.compile(plan, numAvailableEvals);
 
       final Set<String> workersBeforeOpt = new HashSet<>(inputTable.getPartitionInfo().keySet());
+      final Set<String> serversBeforeOpt = new HashSet<>(modelTable.getPartitionInfo().keySet());
 
       // 6) Execute the obtained plan.
       try {
@@ -287,17 +299,27 @@ public final class ETOptimizationOrchestrator {
           LOG.log(Level.INFO, "Finish executing {0}-th plan: {1}", new Object[]{optimizationCount, plan});
 
           final Set<String> workersAfterOpt = new HashSet<>(inputTable.getPartitionInfo().keySet());
+          final Set<String> serversAfterOpt = new HashSet<>(modelTable.getPartitionInfo().keySet());
 
           final Set<String> addedWorkers = new HashSet<>(workersAfterOpt);
           addedWorkers.removeAll(workersBeforeOpt);
+          final Set<String> addedServers = new HashSet<>(serversAfterOpt);
+          addedServers.removeAll(serversBeforeOpt);
 
           final Set<String> deletedWorkers = new HashSet<>(workersBeforeOpt);
           deletedWorkers.removeAll(workersAfterOpt);
+          final Set<String> deletedServers = new HashSet<>(serversBeforeOpt);
+          deletedServers.removeAll(serversAfterOpt);
 
           // sleep for the system to be stable after executing a plan
           Thread.sleep(delayAfterOptimizationMs);
 
-          return Pair.of(addedWorkers, deletedWorkers);
+
+          final Map<String, Pair<Set<String>, Set<String>>> namespaceToExecutorChanges = new HashMap<>();
+          namespaceToExecutorChanges.put(Constants.NAMESPACE_WORKER, Pair.of(addedWorkers, deletedWorkers));
+          namespaceToExecutorChanges.put(Constants.NAMESPACE_SERVER, Pair.of(addedServers, deletedServers));
+
+          return namespaceToExecutorChanges;
 
         } catch (final InterruptedException | ExecutionException e) {
           throw new RuntimeException("Exception while waiting for the plan execution to be completed", e);

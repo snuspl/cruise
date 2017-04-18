@@ -45,6 +45,9 @@ public final class WorkerTaskRunner {
 
   private final WorkerStateManager workerStateManager;
 
+  private final Map<String, AllocatedExecutor> workerExecutors = new ConcurrentHashMap<>();
+  private final Map<String, AllocatedExecutor> serverExecutors = new ConcurrentHashMap<>();
+
   private final Map<String, SubmittedTask> executorIdToTask = new ConcurrentHashMap<>();
 
   @Inject
@@ -60,11 +63,15 @@ public final class WorkerTaskRunner {
 
   /**
    * Runs tasks on worker executors. It returns when all the worker task finish.
-   * With optimization, the number of workers changes during runtime by {@link #updateTaskEntry(Set, Set)}.
+   * With optimization, the number of workers changes during runtime by {@link #updateExecutorEntry}.
    * @param workers a set of initial worker executors
    * @return a list of {@link TaskResult}
    */
-  public List<TaskResult> run(final List<AllocatedExecutor> workers) {
+  public List<TaskResult> run(final List<AllocatedExecutor> workers,
+                              final List<AllocatedExecutor> servers) {
+    workers.forEach(worker -> workerExecutors.put(worker.getId(), worker));
+    servers.forEach(server -> serverExecutors.put(server.getId(), server));
+
     final Map<String, Future<SubmittedTask>> executorIdToTaskFuture = new HashMap<>(workers.size());
     workers.forEach(worker -> executorIdToTaskFuture.put(worker.getId(),
         worker.submitTask(etDolphinDriverFuture.get().getWorkerTaskConf())));
@@ -81,6 +88,12 @@ public final class WorkerTaskRunner {
 
     workerStateManager.waitWorkersToFinishRunStage();
 
+    workers.clear();
+    workers.addAll(workerExecutors.values());
+
+    servers.clear();
+    servers.addAll(serverExecutors.values());
+
     LOG.log(Level.INFO, "Wait and get task results");
     // waiting for to complete
     return waitAndGetTaskResult();
@@ -91,21 +104,40 @@ public final class WorkerTaskRunner {
    * @param addedWorkers a set of added worker tasks
    * @param deletedWorkers a set of deleted worker tasks
    */
-  public void updateTaskEntry(final Set<String> addedWorkers,
-                              final Set<String> deletedWorkers) {
-    for (final String addedExecutorId : addedWorkers) {
+  public void updateExecutorEntry(final Set<String> addedWorkers,
+                                  final Set<String> deletedWorkers,
+                                  final Set<String> addedServers,
+                                  final Set<String> deletedServers) {
+    for (final String addedWorker : addedWorkers) {
       final SubmittedTask task;
+      final AllocatedExecutor executor;
       try {
-        final Optional<SubmittedTask> taskOptional = etMaster.getExecutor(addedExecutorId).getRunningTask();
+        executor = etMaster.getExecutor(addedWorker);
+        final Optional<SubmittedTask> taskOptional = executor.getRunningTask();
         if (!taskOptional.isPresent()) {
-          throw new RuntimeException(String.format("Task is not running on the executor %s", addedExecutorId));
+          throw new RuntimeException(String.format("Task is not running on the executor %s", addedWorker));
         }
         task = taskOptional.get();
       } catch (ExecutorNotExistException e) {
         throw new RuntimeException(e);
       }
-      executorIdToTask.put(addedExecutorId, task);
+
+      workerExecutors.put(executor.getId(), executor);
+      executorIdToTask.put(addedWorker, task);
     }
+
+    for (final String addedServer : addedServers) {
+      final AllocatedExecutor executor;
+      try {
+        executor = etMaster.getExecutor(addedServer);
+      } catch (ExecutorNotExistException e) {
+        throw new RuntimeException(e);
+      }
+      serverExecutors.put(executor.getId(), executor);
+    }
+
+    workerExecutors.keySet().removeAll(deletedWorkers);
+    serverExecutors.keySet().removeAll(deletedServers);
     executorIdToTask.keySet().removeAll(deletedWorkers);
   }
 
