@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
-import org.apache.reef.task.events.TaskStop;
+import org.apache.reef.task.events.CloseEvent;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -23,16 +23,16 @@ import javax.inject.Inject;
 /**
  * Handles the event to stop the task.
  */
-public final class ETTaskStopHandler implements EventHandler<TaskStop> {
+public final class ETTaskCloseHandler implements EventHandler<CloseEvent> {
   private final ETWorkerTask task;
 
   @Inject
-  private ETTaskStopHandler(final ETWorkerTask task) {
+  private ETTaskCloseHandler(final ETWorkerTask task) {
     this.task = task;
   }
 
   @Override
-  public void onNext(final TaskStop taskStop) {
-    task.stop();
+  public void onNext(final CloseEvent closeEvent) {
+    task.close();
   }
 }

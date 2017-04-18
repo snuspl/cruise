@@ -46,7 +46,7 @@ final class ETWorkerTask<K, V> implements Task {
 
   /**
    * A boolean flag shared among all trainer threads.
-   * Trainer threads end when this flag becomes true when {@link #stop()} is called.
+   * Trainer threads end when this flag becomes true when {@link #close()} is called.
    */
   private final AtomicBoolean abortFlag = new AtomicBoolean(false);
 
@@ -199,11 +199,11 @@ final class ETWorkerTask<K, V> implements Task {
   }
 
   /**
-   * Called when the Task is requested to stop.
+   * Called when the Task is requested to close.
    * The {@link #abortFlag} is set true, so the threads can terminate execution.
    */
-  public void stop() {
-    LOG.log(Level.INFO, "Requested to stop!");
+  public void close() {
+    LOG.log(Level.INFO, "Requested to close!");
     abortFlag.set(true);
   }
 
