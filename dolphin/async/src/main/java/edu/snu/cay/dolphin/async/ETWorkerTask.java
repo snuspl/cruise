@@ -45,8 +45,8 @@ final class ETWorkerTask<K, V> implements Task {
   private final MetricCollector<DolphinWorkerMetrics> metricCollector;
 
   /**
-   * A boolean flag shared among all trainer threads.
-   * Trainer threads end when this flag becomes true when {@link #stop()} is called.
+   * A boolean flag that becomes true when {@link #stop()} is called, which consequently
+   * terminates all the running Trainer threads.
    */
   private final AtomicBoolean abortFlag = new AtomicBoolean(false);
 
