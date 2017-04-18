@@ -193,6 +193,7 @@ public final class ETDolphinDriver {
     return Configurations.merge(TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
         .set(TaskConfiguration.TASK, ETWorkerTask.class)
+        .set(TaskConfiguration.ON_CLOSE, ETTaskCloseHandler.class)
         .build(), workerConf);
   }
 
