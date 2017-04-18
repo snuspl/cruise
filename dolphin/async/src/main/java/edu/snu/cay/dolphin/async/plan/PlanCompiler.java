@@ -87,24 +87,28 @@ public final class PlanCompiler {
     final Map<String, StartOp> startOps = new HashMap<>();
     final Map<String, StopOp> stopOps = new HashMap<>();
 
+    final Map<String, AssociateOp> associateOps = new HashMap<>();
+    final Map<String, UnassociateOp> unassociateOps = new HashMap<>();
+
     final Map<String, SubscribeOp> subscribeOps = new HashMap<>();
     final Map<String, UnsubscribeOp> unsubscribeOps = new HashMap<>();
 
     final List<MoveOp> moveOps = new LinkedList<>();
 
-    handleDelete(namespaceToEvalsToDel, dag, deallocateOps, stopOps, unsubscribeOps);
+    handleDelete(namespaceToEvalsToDel, dag, deallocateOps, stopOps, unassociateOps, unsubscribeOps);
     
-    handleAdd(namespaceToEvalsToAdd, dag, allocateOps, startOps, subscribeOps);
+    handleAdd(namespaceToEvalsToAdd, dag, allocateOps, startOps, associateOps, subscribeOps);
 
     resolveAddDelDependency(numAvailableExtraEvals, dag, allocateOps, deallocateOps);
 
     handleSwitch(dstNamespaceToEvalsToSwitch, dag);
 
-    handleMove(namespaceToTransferSteps, dag, allocateOps, deallocateOps, moveOps, stopOps, startOps);
+    handleMove(namespaceToTransferSteps, dag, associateOps, unassociateOps, moveOps, stopOps, startOps);
 
     final int numTotalOps = allocateOps.size() + deallocateOps.size()
         + moveOps.size()
         + startOps.size() + stopOps.size()
+        + associateOps.size() + unassociateOps.size()
         + subscribeOps.size() + unsubscribeOps.size();
 
     return new ETPlan(dag, numTotalOps);
@@ -164,9 +168,12 @@ public final class PlanCompiler {
                             final DAG<Op> dag,
                             final Map<String, DeallocateOp> deallocateOps,
                             final Map<String, StopOp> stopOps,
-                            final Map<String, UnsubscribeOp> unsubscriptionOps) {
+                            final Map<String, UnassociateOp> unassociateOps,
+                            final Map<String, UnsubscribeOp> unsubscribeOps) {
     for (final Map.Entry<String, Collection<String>> entry : namespaceToEvalsToDel.entrySet()) {
       final String namespace = entry.getKey();
+
+      final String tableIdToUnassociate = namespace.equals(NAMESPACE_WORKER) ? TRAINING_DATA_TABLE_ID : MODEL_TABLE_ID;
 
       final Collection<String> evalsToDel = entry.getValue();
       for (final String evalToDel : evalsToDel) {
@@ -174,11 +181,16 @@ public final class PlanCompiler {
         deallocateOps.put(evalToDel, deallocateOp);
         dag.addVertex(deallocateOp);
 
+        final UnassociateOp unassociateOp = new UnassociateOp(evalToDel, tableIdToUnassociate);
+        unassociateOps.put(evalToDel, unassociateOp);
+        dag.addVertex(unassociateOp);
+        dag.addEdge(unassociateOp, deallocateOp);
+
         if (namespace.equals(NAMESPACE_WORKER)) {
           final StopOp stopOp = new StopOp(evalToDel);
           stopOps.put(evalToDel, stopOp);
           final UnsubscribeOp unsubscribeOp = new UnsubscribeOp(evalToDel, MODEL_TABLE_ID);
-          unsubscriptionOps.put(evalToDel, unsubscribeOp);
+          unsubscribeOps.put(evalToDel, unsubscribeOp);
 
           dag.addVertex(stopOp);
           dag.addVertex(unsubscribeOp);
@@ -193,6 +205,7 @@ public final class PlanCompiler {
                          final DAG<Op> dag,
                          final Map<String, AllocateOp> allocateOps,
                          final Map<String, StartOp> startOps,
+                         final Map<String, AssociateOp> associateOps,
                          final Map<String, SubscribeOp> subscribeOps)  {
     for (final Map.Entry<String, Collection<String>> entry : namespaceToEvalsToAdd.entrySet()) {
       final String namespace = entry.getKey();
@@ -200,10 +213,17 @@ public final class PlanCompiler {
 
       final ExecutorConfiguration executorConf = namespace.equals(NAMESPACE_WORKER) ?
           etDolphinDriverFuture.get().getWorkerExecutorConf() : etDolphinDriverFuture.get().getServerExecutorConf();
+      final String tableIdToAssociate = namespace.equals(NAMESPACE_WORKER) ? TRAINING_DATA_TABLE_ID : MODEL_TABLE_ID;
+
       for (final String evalToAdd : evalsToAdd) {
         final AllocateOp allocateOp = new AllocateOp(evalToAdd, executorConf);
         allocateOps.put(evalToAdd, allocateOp);
         dag.addVertex(allocateOp);
+
+        final AssociateOp associateOp = new AssociateOp(evalToAdd, tableIdToAssociate);
+        associateOps.put(evalToAdd, associateOp);
+        dag.addVertex(associateOp);
+        dag.addEdge(allocateOp, associateOp);
 
         if (namespace.equals(NAMESPACE_WORKER)) {
           final StartOp startOp = new StartOp(evalToAdd, etDolphinDriverFuture.get().getWorkerTaskConf());
@@ -222,7 +242,7 @@ public final class PlanCompiler {
 
   private void handleMove(final Map<String, Collection<TransferStep>> namespaceToTransferSteps,
                           final DAG<Op> dag,
-                          final Map<String, AllocateOp> allocateOps, final Map<String, DeallocateOp> deallocateOps,
+                          final Map<String, AssociateOp> associateOps, final Map<String, UnassociateOp> unassociateOps,
                           final List<MoveOp> moveOps,
                           final Map<String, StopOp> stopOps, final Map<String, StartOp> startOps) {
     // add vertices of Move
@@ -245,10 +265,10 @@ public final class PlanCompiler {
       final String srcId = moveOp.getSrcExecutorId();
       final String dstId = moveOp.getDstExecutorId();
 
-      // allocate -> move dependency
-      if (allocateOps.containsKey(dstId)) {
-        final AllocateOp allocateOp = allocateOps.get(dstId);
-        dag.addEdge(allocateOp, moveOp);
+      // associate -> move dependency
+      if (associateOps.containsKey(dstId)) {
+        final AssociateOp associateOp = associateOps.get(dstId);
+        dag.addEdge(associateOp, moveOp);
       }
 
       // move -> start dependency
@@ -257,10 +277,10 @@ public final class PlanCompiler {
         dag.addEdge(moveOp, startOp);
       }
 
-      // move -> deallocate dependency
-      if (deallocateOps.containsKey(srcId)) {
-        final DeallocateOp deallocateOp = deallocateOps.get(srcId);
-        dag.addEdge(moveOp, deallocateOp);
+      // move -> unassociate dependency
+      if (unassociateOps.containsKey(srcId)) {
+        final UnassociateOp unassociateOp = unassociateOps.get(srcId);
+        dag.addEdge(moveOp, unassociateOp);
       }
 
       // stop -> move dependency
