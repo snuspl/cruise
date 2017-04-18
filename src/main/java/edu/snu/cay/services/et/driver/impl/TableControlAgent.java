@@ -117,7 +117,7 @@ final class TableControlAgent {
    * @return a {@link ListenableFuture} of the result
    */
   ListenableFuture<?> dropTable(final String tableId,
-                             final Set<String> executorIdSet) {
+                                final Set<String> executorIdSet) {
     LOG.log(Level.INFO, "Drop table {0} in executors: {1}", new Object[]{tableId, executorIdSet});
 
 

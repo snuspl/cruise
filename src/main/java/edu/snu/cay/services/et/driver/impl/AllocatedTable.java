@@ -121,6 +121,18 @@ public final class AllocatedTable {
   }
 
   /**
+   * Unsubscribes the table. The executor will not receive ownership update of table anymore.
+   * @param executorId an executor id
+   */
+  public synchronized ListenableFuture<?> unsubscribe(final String executorId) {
+    stateMachine.checkState(State.INITIALIZED);
+
+    migrationManager.unregisterSubscription(tableConf.getId(), executorId);
+
+    return tableControlAgent.dropTable(tableConf.getId(), Collections.singleton(executorId));
+  }
+
+  /**
    * Associates with the table. The executors will take some blocks of this table.
    * @param executors a list of executors
    */
