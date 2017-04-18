@@ -88,10 +88,10 @@ public final class ETCentCommExampleDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      Executors.newSingleThreadExecutor().submit(() -> {
-        try {
-          final List<AllocatedExecutor> executors = etMaster.addExecutors(splits, executorConf).get();
+      try {
+        final List<AllocatedExecutor> executors = etMaster.addExecutors(splits, executorConf).get();
 
+        Executors.newSingleThreadExecutor().submit(() -> {
           // start update tasks on worker executors
           final AtomicInteger taskIdCount = new AtomicInteger(0);
           final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(executors.size());
@@ -104,10 +104,10 @@ public final class ETCentCommExampleDriver {
           waitAndCheckTaskResult(taskFutureList);
 
           executors.forEach(AllocatedExecutor::close);
-        } catch (InterruptedException | ExecutionException e) {
-          throw new RuntimeException(e);
-        }
-      });
+        });
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 

@@ -48,7 +48,7 @@ public final class OrderingBasedBlockPartitioner implements BlockPartitioner<Lon
    * @param blockId a range id
    * @return a pair of min and max key, a keyspace of a block whose id is blockId.
    */
-  Pair<Long, Long> getKeySpace(final int blockId) {
+  public Pair<Long, Long> getKeySpace(final int blockId) {
     return keySpacePartitioner.getKeySpace(blockId);
   }
 }
