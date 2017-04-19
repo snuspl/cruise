@@ -56,6 +56,7 @@ final class LassoTrainer implements Trainer<LassoData> {
   private final int numFeatures;
   private final double lambda;
   private double stepSize;
+  private double modelGaussian;
   private final double decayRate;
   private final int decayPeriod;
 
@@ -95,6 +96,7 @@ final class LassoTrainer implements Trainer<LassoData> {
                        @Parameter(Lambda.class) final double lambda,
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
+                       @Parameter(ModelGaussian.class) final double modelGaussian,
                        @Parameter(DecayRate.class) final double decayRate,
                        @Parameter(DecayPeriod.class) final int decayPeriod,
                        @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
@@ -104,6 +106,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     this.numFeatures = numFeatures;
     this.lambda = lambda;
     this.stepSize = stepSize;
+    this.modelGaussian = modelGaussian;
     this.decayRate = decayRate;
     if (decayRate <= 0.0 || decayRate > 1.0) {
       throw new IllegalArgumentException("decay_rate must be larger than 0 and less than or equal to 1");
@@ -132,6 +135,12 @@ final class LassoTrainer implements Trainer<LassoData> {
 
   @Override
   public void initGlobalSettings() {
+    final Random random = new Random();
+    for (final int modelPartitionIdx : modelPartitionIndices) {
+      final double[] features = new double[numFeaturesPerPartition];
+      features[modelPartitionIdx] = random.nextGaussian() * modelGaussian;
+      modelAccessor.init(modelPartitionIdx, vectorFactory.createDense(features));
+    }
   }
 
   /**
