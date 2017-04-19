@@ -37,7 +37,7 @@ public final class RemoteAccessOpStat {
    * @param tableId a table id
    */
   public void incCountSentGetReq(final String tableId) {
-    countsSentGetReq.merge(tableId, 0, (key, prevCount) -> prevCount + 1);
+    countsSentGetReq.merge(tableId, 0, (oldValue, unused) -> oldValue + 1);
   }
 
   /**
@@ -46,7 +46,7 @@ public final class RemoteAccessOpStat {
    * @param numBytes the number of bytes of Get responses
    */
   public void incBytesReceivedGetResp(final String tableId, final long numBytes) {
-    bytesReceivedGetResp.merge(tableId, 0L, (key, prevNumBytes) -> prevNumBytes + numBytes);
+    bytesReceivedGetResp.merge(tableId, 0L, (oldValue, unused) -> oldValue + numBytes);
   }
 
   /**
