@@ -25,6 +25,7 @@ import org.apache.reef.task.Task;
 import javax.inject.Inject;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,6 +43,12 @@ final class ETWorkerTask<K, V> implements Task {
   private final TrainingDataProvider<K, V> trainingDataProvider;
   private final Trainer<V> trainer;
   private final MetricCollector<DolphinWorkerMetrics> metricCollector;
+
+  /**
+   * A boolean flag that becomes true when {@link #close()} is called,
+   * which consequently stops the task from training and terminates it.
+   */
+  private final AtomicBoolean abortFlag = new AtomicBoolean(false);
 
   @Inject
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
@@ -96,6 +103,11 @@ final class ETWorkerTask<K, V> implements Task {
             miniBatchResult.getAvgPullTime(), miniBatchResult.getAvgPushTime());
         epochData.addAll(miniBatchData);
         miniBatchIdx++;
+
+        if (abortFlag.get()) {
+          LOG.log(Level.INFO, "The task is getting closed.");
+          return null;
+        }
       }
 
       final EpochResult epochResult = trainer.onEpochFinished(epochData, epochIdx);
@@ -184,6 +196,15 @@ final class ETWorkerTask<K, V> implements Task {
     metricCollector.flush();
 
     LOG.log(Level.INFO, "EpochMetrics {0}", epochMetrics);
+  }
+
+  /**
+   * Called when the Task is requested to close.
+   * The {@link #abortFlag} is set true, so the task terminates execution.
+   */
+  public void close() {
+    LOG.log(Level.INFO, "Requested to close!");
+    abortFlag.set(true);
   }
 
   /**
