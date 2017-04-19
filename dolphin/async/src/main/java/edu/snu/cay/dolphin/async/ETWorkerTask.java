@@ -45,8 +45,8 @@ final class ETWorkerTask<K, V> implements Task {
   private final MetricCollector<DolphinWorkerMetrics> metricCollector;
 
   /**
-   * A boolean flag that becomes true when {@link #close()} is called, which consequently
-   * terminates all the running Trainer threads.
+   * A boolean flag that becomes true when {@link #close()} is called,
+   * which consequently stops the task from training and terminates it.
    */
   private final AtomicBoolean abortFlag = new AtomicBoolean(false);
 
@@ -200,7 +200,7 @@ final class ETWorkerTask<K, V> implements Task {
 
   /**
    * Called when the Task is requested to close.
-   * The {@link #abortFlag} is set true, so the threads can terminate execution.
+   * The {@link #abortFlag} is set true, so the task terminates execution.
    */
   public void close() {
     LOG.log(Level.INFO, "Requested to close!");
