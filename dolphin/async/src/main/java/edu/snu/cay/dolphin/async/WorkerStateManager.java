@@ -170,6 +170,7 @@ public final class WorkerStateManager {
       return false;
     } else {
       stateMachine.setState(State.OPTIMIZE);
+      LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN, State.OPTIMIZE));
       return true;
     }
   }

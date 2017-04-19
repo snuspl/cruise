@@ -75,16 +75,6 @@ public final class ETOptimizationOrchestrator {
 
   private volatile int numAvailableEvals;
 
-  /**
-   * Weight decreasing factor used for metric EMA.
-   */
-  private final double metricWeightFactor;
-
-  /**
-   * Window size for applying EMA to metrics. This value set to 0 uses all the collected metrics.
-   */
-  private final int movingAvgWindowSize;
-
   @Inject
   private ETOptimizationOrchestrator(final Optimizer optimizer,
                                      final ETMaster etMaster,
@@ -95,8 +85,6 @@ public final class ETOptimizationOrchestrator {
                                      final WorkerStateManager workerStateManager,
                                      @Parameter(OptimizationIntervalMs.class) final long optimizationIntervalMs,
                                      @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
-                                     @Parameter(MetricWeightFactor.class) final double metricWeightFactor,
-                                     @Parameter(MovingAverageWindowSize.class) final int movingAvgWindowSize,
                                      @Parameter(ExtraResourcesPeriodSec.class) final long extraResourcesPeriodSec,
                                      @Parameter(NumExtraResources.class) final int numExtraResources,
                                      @Parameter(NumInitialResources.class) final int numInitialResources) {
@@ -109,8 +97,6 @@ public final class ETOptimizationOrchestrator {
     this.workerStateManager = workerStateManager;
     this.optimizationIntervalMs = optimizationIntervalMs;
     this.delayAfterOptimizationMs = delayAfterOptimizationMs;
-    this.metricWeightFactor = metricWeightFactor;
-    this.movingAvgWindowSize = movingAvgWindowSize;
     this.numAvailableEvals = numInitialResources;
 
     // Dynamic resource availability only works if the number of extra resources and its period are set positive.
