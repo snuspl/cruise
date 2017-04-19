@@ -39,6 +39,7 @@ final class LDATrainer implements Trainer<Document> {
   private final LDAStatCalculator statCalculator;
   private final int numVocabs;
   private final int numTopics;
+  private final int[] emptyArray;
 
   private final List<Integer> vocabList;
 
@@ -85,6 +86,7 @@ final class LDATrainer implements Trainer<Document> {
       vocabList.add(i);
     }
     this.numTopics = numTopics;
+    this.emptyArray = new int[numTopics + 1];
 
     this.modelHolder = modelHolder;
     this.pushTracer = new Tracer();
@@ -98,6 +100,8 @@ final class LDATrainer implements Trainer<Document> {
 
   @Override
   public void initGlobalSettings() {
+    LOG.log(Level.INFO, "Initialize the global settings");
+
     // In LDA, topic counts should be initialized by pushing values before running.
     final TopicChanges topicChanges = new TopicChanges();
     final Map<Long, Document> data = trainingDataProvider.getEpochData();
@@ -108,6 +112,10 @@ final class LDATrainer implements Trainer<Document> {
         // numVocabs-th row represents the total word-topic assignment count vector
         topicChanges.increment(numVocabs, document.getAssignment(i), 1);
       }
+    }
+
+    for (final int wordIdx : topicChanges.getTable().rowKeySet()) {
+      modelAccessor.init(wordIdx, emptyArray);
     }
     pushAndResetGradients(topicChanges);
   }
