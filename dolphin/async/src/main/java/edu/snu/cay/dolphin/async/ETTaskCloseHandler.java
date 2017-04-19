@@ -21,7 +21,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 
 /**
- * Handles the event to close the task.
+ * Handles the event to stop the task.
  */
 public final class ETTaskCloseHandler implements EventHandler<CloseEvent> {
   private final ETWorkerTask task;
