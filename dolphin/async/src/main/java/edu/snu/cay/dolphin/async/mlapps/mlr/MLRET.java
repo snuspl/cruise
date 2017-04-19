@@ -34,12 +34,12 @@ public final class MLRET {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("MatrixFactorizationET", args, ETDolphinConfiguration.newBuilder()
+    ETDolphinLauncher.launch("MLRET", args, ETDolphinConfiguration.newBuilder()
         .setTrainerClass(MLRTrainer.class)
         .setInputParserClass(MLRETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)
         .setInputValueCodecClass(MLRDataCodec.class)
-        .setModelUpdateFunctionClass(MLRModelUpdateFunction.class)
+        .setModelUpdateFunctionClass(MLRETModelUpdateFunction.class)
         .setModelKeyCodecClass(SerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)

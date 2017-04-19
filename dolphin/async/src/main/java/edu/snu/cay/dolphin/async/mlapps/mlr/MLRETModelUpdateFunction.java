@@ -23,12 +23,14 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.Random;
 
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
+
 /**
  * An UpdateFunction for the MLR application.
  * Simply adds delta vectors to the old vectors stored in this server.
  * Vectors are initialized with values drawn from the normal distribution.
  */
-public final class MLRModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
+public final class MLRETModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
 
   private final int numFeaturesPerPartition;
   private final double modelGaussian;
@@ -36,9 +38,9 @@ public final class MLRModelUpdateFunction implements UpdateFunction<Integer, Vec
   private final Random random;
 
   @Inject
-  private MLRModelUpdateFunction(@Parameter(MLRParameters.NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                                 @Parameter(MLRParameters.ModelGaussian.class) final double modelGaussian,
-                                 final VectorFactory vectorFactory) {
+  private MLRETModelUpdateFunction(@Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
+                                   @Parameter(ModelGaussian.class) final double modelGaussian,
+                                   final VectorFactory vectorFactory) {
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     this.modelGaussian = modelGaussian;
     this.vectorFactory = vectorFactory;

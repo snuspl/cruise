@@ -68,6 +68,11 @@ final class MLRTrainer implements Trainer<MLRData> {
   private final double lambda;
 
   /**
+   * Standard deviation of the gaussian distribution used for initializing model parameters.
+   */
+  private final double modelGaussian;
+
+  /**
    * Object for creating {@link Vector} instances.
    */
   private final VectorFactory vectorFactory;
@@ -119,6 +124,7 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                      @Parameter(InitialStepSize.class) final double initStepSize,
                      @Parameter(Lambda.class) final double lambda,
+                     @Parameter(ModelGaussian.class) final double modelGaussian,
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
@@ -134,6 +140,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     this.numPartitionsPerClass = numFeatures / numFeaturesPerPartition;
     this.stepSize = initStepSize;
     this.lambda = lambda;
+    this.modelGaussian = modelGaussian;
     this.vectorFactory = vectorFactory;
     this.oldParams = new Vector[numClasses];
 
@@ -164,14 +171,24 @@ final class MLRTrainer implements Trainer<MLRData> {
       }
     }
 
+    LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
-    LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
   }
 
   @Override
   public void initGlobalSettings() {
+    final double[] features = new double[numFeaturesPerPartition];
+    final Random random = new Random();
+
+    for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
+      features[featureIndex] = random.nextGaussian() * modelGaussian;
+    }
+
+    for (final int key : classPartitionIndices) {
+      modelAccessor.init(key, vectorFactory.createDense(features));
+    }
   }
 
   @Override
