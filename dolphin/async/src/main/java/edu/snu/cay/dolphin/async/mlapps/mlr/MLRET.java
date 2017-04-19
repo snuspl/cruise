@@ -13,40 +13,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.nmf;
+package edu.snu.cay.dolphin.async.mlapps.mlr;
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
 import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
-import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
+import static edu.snu.cay.dolphin.async.mlapps.mlr.MLRParameters.*;
 
 /**
  * Client for non-negative matrix factorization via SGD.
  */
-public final class NMFET {
+public final class MLRET {
 
   /**
    * Should not be instantiated.
    */
-  private NMFET() {
+  private MLRET() {
   }
 
   public static void main(final String[] args) {
     ETDolphinLauncher.launch("MatrixFactorizationET", args, ETDolphinConfiguration.newBuilder()
-        .setTrainerClass(NMFTrainer.class)
-        .setInputParserClass(NMFETDataParser.class)
+        .setTrainerClass(MLRTrainer.class)
+        .setInputParserClass(MLRETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)
-        .setInputValueCodecClass(NMFDataCodec.class)
-        .setModelUpdateFunctionClass(NMFETModelUpdateFunction.class)
+        .setInputValueCodecClass(MLRDataCodec.class)
+        .setModelUpdateFunctionClass(MLRModelUpdateFunction.class)
         .setModelKeyCodecClass(SerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
-        .addParameterClass(Rank.class)
-        .addParameterClass(StepSize.class)
+        .addParameterClass(NumClasses.class)
+        .addParameterClass(NumFeatures.class)
+        .addParameterClass(InitialStepSize.class)
         .addParameterClass(Lambda.class)
-        .addParameterClass(PrintMatrices.class)
+        .addParameterClass(NumFeaturesPerPartition.class)
+        .addParameterClass(ModelGaussian.class)
         .addParameterClass(DecayPeriod.class)
         .addParameterClass(DecayRate.class)
         .build());
