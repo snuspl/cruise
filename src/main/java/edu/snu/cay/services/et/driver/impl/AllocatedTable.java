@@ -43,6 +43,7 @@ public final class AllocatedTable {
   private final BlockManager blockManager;
   private final MigrationManager migrationManager;
   private final TableControlAgent tableControlAgent;
+  private final TableManager tableManager;
 
   private StateMachine stateMachine;
 
@@ -57,10 +58,12 @@ public final class AllocatedTable {
   @Inject
   private AllocatedTable(final BlockManager blockManager,
                          final MigrationManager migrationManager,
-                         final TableControlAgent tableControlAgent) {
+                         final TableControlAgent tableControlAgent,
+                         final TableManager tableManager) {
     this.blockManager = blockManager;
     this.migrationManager = migrationManager;
     this.tableControlAgent = tableControlAgent;
+    this.tableManager = tableManager;
     this.stateMachine = initStateMachine();
   }
 
@@ -232,7 +235,10 @@ public final class AllocatedTable {
 
     final ListenableFuture<?> dropResultFuture =
         tableControlAgent.dropTable(tableConf.getId(), executorsToDeleteTable);
-    dropResultFuture.addListener(result -> stateMachine.setState(State.DROPPED));
+    dropResultFuture.addListener(result -> {
+      stateMachine.setState(State.DROPPED);
+      tableManager.onDropTable(tableConf.getId());
+    });
     return dropResultFuture;
   }
 

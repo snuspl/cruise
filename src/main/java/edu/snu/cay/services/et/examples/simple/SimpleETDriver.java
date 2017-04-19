@@ -59,6 +59,7 @@ final class SimpleETDriver {
   static final String HASHED_TABLE_ID = "Hashed_Table";
   static final String ORDERED_TABLE_ID = "Ordered_Table";
   static final String ORDERED_TABLE_WITH_FILE_ID = "Ordered_Table_With_File";
+  static final String DROP_TEST_TABLE_ID = "Drop_Test_Table";
 
   private static final ExecutorConfiguration EXECUTOR_CONF = ExecutorConfiguration.newBuilder()
       .setResourceConf(
@@ -220,7 +221,15 @@ final class SimpleETDriver {
 
         orderedTableWithFile.drop().get(); // not required step
 
-        // 10. close executors
+        // 10. drop a table and create another table with the same identifier
+        AllocatedTable dropTestTable = etMaster.createTable(buildTableConf(DROP_TEST_TABLE_ID,
+            SimpleET.TableInputPath.EMPTY, true), associators).get();
+        dropTestTable.drop().get();
+        dropTestTable = etMaster.createTable(buildTableConf(DROP_TEST_TABLE_ID,
+            SimpleET.TableInputPath.EMPTY, false), associators).get();
+        dropTestTable.drop().get();
+
+        // 11. close executors
         subscribers.forEach(AllocatedExecutor::close);
         associators.forEach(AllocatedExecutor::close);
 

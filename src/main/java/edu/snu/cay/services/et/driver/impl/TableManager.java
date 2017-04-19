@@ -50,6 +50,7 @@ final class TableManager {
     this.baseTableInjector = Tang.Factory.getTang().newInjector();
     baseTableInjector.bindVolatileInstance(MigrationManager.class, migrationManager);
     baseTableInjector.bindVolatileInstance(TableControlAgent.class, tableControlAgent);
+    baseTableInjector.bindVolatileInstance(TableManager.class, this);
 
     // MigrationManager and TableControlAgent should be instantiated although they are not actually accessed.
     // This is intentional. Otherwise MigrationManager and TableControlAgent are created per Table, which we want
@@ -84,6 +85,18 @@ final class TableManager {
 
     allocatedTableMap.put(tableId, allocatedTable);
     return resultFuture;
+  }
+
+  /**
+   * Removes a table entry from {@link #allocatedTableMap}.
+   * It should be called only by {@link AllocatedTable#drop()}.
+   * @param tableId an identifier of a table
+   */
+  synchronized void onDropTable(final String tableId) {
+    if (!allocatedTableMap.containsKey(tableId)) {
+      throw new RuntimeException(String.format("Table %s does not exist.", tableId));
+    }
+    allocatedTableMap.remove(tableId);
   }
 
   /**
