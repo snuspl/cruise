@@ -18,6 +18,6 @@ package edu.snu.cay.services.et.configuration.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "The number of threads for serving remote access.", default_value = "4")
+@NamedParameter(doc = "The number of threads for serving remote access.", default_value = "2")
 public final class NumRemoteOpsHandlerThreads implements Name<Integer> {
 }

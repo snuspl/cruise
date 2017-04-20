@@ -13,26 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.evaluator.api;
+package edu.snu.cay.services.et.configuration.parameters;
 
-import edu.snu.cay.services.et.evaluator.impl.EncodedKey;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * A class that partitions keys into blocks.
- */
-public interface BlockPartitioner<K> {
-
-  /**
-   * Get an id of block which contains a given key.
-   * @param key a key
-   * @return a block id
-   */
-  int getBlockId(K key);
-
-  /**
-   * Get an id of block which contains a key of a given {@link EncodedKey}.
-   * @param encodedKey an encoded key
-   * @return a block id
-   */
-  int getBlockId(EncodedKey<K> encodedKey);
+@NamedParameter(doc = "Max number of ops that can be queued for each sender thread", default_value = "1024")
+public final class SenderQueueSize implements Name<Integer> {
 }

@@ -16,11 +16,13 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.OpType;
+import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
 import edu.snu.cay.services.et.evaluator.api.*;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -41,6 +43,11 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
    * Table identifier.
    */
   private final String tableId;
+
+  /**
+   * A key codec.
+   */
+  private final Codec<K> keyCodec;
 
   /**
    * Local cache for ownership mapping.
@@ -64,11 +71,13 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
   @Inject
   private TableImpl(@Parameter(TableIdentifier.class) final String tableId,
+                    @Parameter(KeyCodec.class) final Codec<K> keyCodec,
                     final OwnershipCache ownershipCache,
                     final Tablet<K, V, U> tablet,
                     final RemoteAccessOpSender remoteAccessOpSender,
                     final BlockPartitioner<K> blockPartitioner) {
     this.tableId = tableId;
+    this.keyCodec = keyCodec;
     this.ownershipCache = ownershipCache;
     this.tablet = tablet;
     this.remoteAccessOpSender = remoteAccessOpSender;
@@ -86,7 +95,9 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   private DataOpResult<V> putInternal(final K key, final V value, final boolean replyRequired) {
-    final int blockId = blockPartitioner.getBlockId(key);
+    final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
+
+    final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
     final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -107,7 +118,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
     // send operation to remote
     return remoteAccessOpSender.sendOpToRemote(
-        OpType.PUT, tableId, blockId, key, value, null, remoteIdOptional.get(), replyRequired);
+        OpType.PUT, tableId, blockId, encodedKey, value, null,
+        remoteIdOptional.get(), replyRequired);
   }
 
   @Override
@@ -121,7 +133,9 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   private DataOpResult<V> putIfAbsentInternal(final K key, final V value, final boolean replyRequired) {
-    final int blockId = blockPartitioner.getBlockId(key);
+    final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
+
+    final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
     final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -142,12 +156,15 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
     // send operation to remote
     return remoteAccessOpSender.sendOpToRemote(
-        OpType.PUT_IF_ABSENT, tableId, blockId, key, value, null, remoteIdOptional.get(), replyRequired);
+        OpType.PUT_IF_ABSENT, tableId, blockId, encodedKey, value, null,
+        remoteIdOptional.get(), replyRequired);
   }
 
   @Override
   public DataOpResult<V> get(final K key) {
-    final int blockId = blockPartitioner.getBlockId(key);
+    final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
+
+    final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
     final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -168,7 +185,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
     // send operation to remote
     return remoteAccessOpSender.sendOpToRemote(
-        OpType.GET, tableId, blockId, key, null, null, remoteIdOptional.get(), true);
+        OpType.GET, tableId, blockId, encodedKey, null, null,
+        remoteIdOptional.get(), true);
   }
 
   @Override
@@ -182,7 +200,9 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   private DataOpResult<V> updateInternal(final K key, final U updateValue, final boolean replyRequired) {
-    final int blockId = blockPartitioner.getBlockId(key);
+    final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
+
+    final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
     final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -203,7 +223,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
     // send operation to remote
     return remoteAccessOpSender.sendOpToRemote(
-        OpType.UPDATE, tableId, blockId, key, null, updateValue, remoteIdOptional.get(), replyRequired);
+        OpType.UPDATE, tableId, blockId, encodedKey, null,
+        updateValue, remoteIdOptional.get(), replyRequired);
   }
 
   @Override
@@ -217,7 +238,9 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
   }
 
   private DataOpResult<V> removeInternal(final K key, final boolean replyRequired) {
-    final int blockId = blockPartitioner.getBlockId(key);
+    final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
+
+    final int blockId = blockPartitioner.getBlockId(encodedKey);
     final Optional<String> remoteIdOptional;
 
     final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
@@ -238,7 +261,8 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
 
     // send operation to remote
     return remoteAccessOpSender.sendOpToRemote(
-        OpType.REMOVE, tableId, blockId, key, null, null, remoteIdOptional.get(), replyRequired);
+        OpType.REMOVE, tableId, blockId, encodedKey, null,
+        null, remoteIdOptional.get(), replyRequired);
   }
 
   @Override

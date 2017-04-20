@@ -44,6 +44,11 @@ public final class OrderingBasedBlockPartitioner implements BlockPartitioner<Lon
     return keySpacePartitioner.getPartitionId(key);
   }
 
+  @Override
+  public int getBlockId(final EncodedKey<Long> encodedKey) {
+    return keySpacePartitioner.getPartitionId(encodedKey.getKey());
+  }
+
   /**
    * @param blockId a range id
    * @return a pair of min and max key, a keyspace of a block whose id is blockId.

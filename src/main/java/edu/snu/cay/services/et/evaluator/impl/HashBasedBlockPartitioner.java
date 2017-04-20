@@ -18,7 +18,6 @@ package edu.snu.cay.services.et.evaluator.impl;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
-import org.apache.hadoop.util.hash.MurmurHash;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -46,7 +45,12 @@ public final class HashBasedBlockPartitioner<K> implements BlockPartitioner<K> {
 
   @Override
   public int getBlockId(final K key) {
-    final int hashed = Math.abs(MurmurHash.getInstance().hash(keyCodec.encode(key)));
-    return keySpacePartitioner.getPartitionId(hashed);
+    final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
+    return keySpacePartitioner.getPartitionId(encodedKey.getHash());
+  }
+
+  @Override
+  public int getBlockId(final EncodedKey<K> encodedKey) {
+    return keySpacePartitioner.getPartitionId(encodedKey.getHash());
   }
 }
