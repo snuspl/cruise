@@ -79,12 +79,13 @@ public final class MessageHandlerImpl implements MessageHandler {
   }
 
   private void onTableControlMsg(final TableControlMsg msg) {
+    final Long opId = msg.getOperationId();
     switch (msg.getType()) {
     case TableInitAckMsg:
-      onTableInitAckMsg(msg.getTableInitAckMsg());
+      onTableInitAckMsg(opId, msg.getTableInitAckMsg());
       break;
     case TableDropAckMsg:
-      onTableDropAckMsg(msg.getTableDropAckMsg());
+      onTableDropAckMsg(opId, msg.getTableDropAckMsg());
       break;
 
     default:
@@ -92,12 +93,12 @@ public final class MessageHandlerImpl implements MessageHandler {
     }
   }
 
-  private void onTableInitAckMsg(final TableInitAckMsg msg) {
-    tableInitializerFuture.get().onTableInitAck(msg.getTableId(), msg.getExecutorId());
+  private void onTableInitAckMsg(final long opId, final TableInitAckMsg msg) {
+    tableInitializerFuture.get().onTableInitAck(opId, msg.getTableId(), msg.getExecutorId());
   }
 
-  private void onTableDropAckMsg(final TableDropAckMsg msg) {
-    tableInitializerFuture.get().onTableDropAck(msg.getTableId(), msg.getExecutorId());
+  private void onTableDropAckMsg(final long opId, final TableDropAckMsg msg) {
+    tableInitializerFuture.get().onTableDropAck(opId, msg.getTableId(), msg.getExecutorId());
   }
 
   /**

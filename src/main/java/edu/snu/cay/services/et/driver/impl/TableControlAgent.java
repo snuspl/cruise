@@ -27,6 +27,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,10 +41,12 @@ import java.util.logging.Logger;
 final class TableControlAgent {
   private static final Logger LOG = Logger.getLogger(TableControlAgent.class.getName());
 
+  private final AtomicLong operationIdCounter = new AtomicLong(0);
+
   private final MessageSender msgSender;
 
-  private final Map<String, AggregateFuture<Void>> pendingInit = new ConcurrentHashMap<>();
-  private final Map<String, AggregateFuture<Void>> pendingDrop = new ConcurrentHashMap<>();
+  private final Map<Long, AggregateFuture<Void>> pendingInit = new ConcurrentHashMap<>();
+  private final Map<Long, AggregateFuture<Void>> pendingDrop = new ConcurrentHashMap<>();
 
   @Inject
   private TableControlAgent(final MessageSender msgSender) {
@@ -64,7 +67,9 @@ final class TableControlAgent {
                                 final Set<String> executorIds,
                                 final List<String> ownershipStatus,
                                 final boolean loadFile) {
-    LOG.log(Level.INFO, "Initialize table {0} in executors: {1}", new Object[]{tableConf.getId(), executorIds});
+    final long opId = operationIdCounter.getAndIncrement();
+    LOG.log(Level.INFO, "Initialize table {0} in executors: {1}. opId: {2}",
+        new Object[]{tableConf.getId(), executorIds, opId});
 
     final Iterator<HdfsSplitInfo> splitIterator;
 
@@ -82,10 +87,10 @@ final class TableControlAgent {
     }
 
     final AggregateFuture<Void> resultFuture = new AggregateFuture<>(executorIds.size());
-    pendingInit.put(tableConf.getId(), resultFuture);
+    pendingInit.put(opId, resultFuture);
 
     executorIds.forEach(executorId ->
-        msgSender.sendTableInitMsg(executorId, tableConf, ownershipStatus,
+        msgSender.sendTableInitMsg(opId, executorId, tableConf, ownershipStatus,
             splitIterator.hasNext() ? splitIterator.next() : null));
 
     return resultFuture;
@@ -96,16 +101,17 @@ final class TableControlAgent {
    * @param tableId a table id
    * @param executorId an executor id
    */
-  synchronized void onTableInitAck(final String tableId, final String executorId) {
-    LOG.log(Level.INFO, "Table {0} in executor {1} is initialized.", new Object[]{tableId, executorId});
-    final AggregateFuture<Void> resultFuture = pendingInit.get(tableId);
+  synchronized void onTableInitAck(final long opId, final String tableId, final String executorId) {
+    LOG.log(Level.INFO, "Table {0} in executor {1} is initialized.",
+        new Object[]{tableId, executorId});
+    final AggregateFuture<Void> resultFuture = pendingInit.get(opId);
     if (resultFuture == null || resultFuture.isDone()) {
-      throw new RuntimeException("There's no ongoing init for table. tableId: " + tableId);
+      throw new RuntimeException("There's no ongoing init for table. opId: " + opId);
     }
     resultFuture.onCompleted(null);
 
     if (resultFuture.isDone()) {
-      pendingInit.remove(tableId);
+      pendingInit.remove(opId);
     }
   }
 
@@ -118,13 +124,13 @@ final class TableControlAgent {
    */
   ListenableFuture<?> dropTable(final String tableId,
                                 final Set<String> executorIdSet) {
-    LOG.log(Level.INFO, "Drop table {0} in executors: {1}", new Object[]{tableId, executorIdSet});
-
+    final long opId = operationIdCounter.getAndIncrement();
+    LOG.log(Level.INFO, "Drop table {0} in executors: {1}. opId: {2}", new Object[]{tableId, executorIdSet, opId});
 
     final AggregateFuture<Void> resultFuture = new AggregateFuture<>(executorIdSet.size());
-    pendingDrop.put(tableId, resultFuture);
+    pendingDrop.put(opId, resultFuture);
 
-    executorIdSet.forEach(executorId -> msgSender.sendTableDropMsg(executorId, tableId));
+    executorIdSet.forEach(executorId -> msgSender.sendTableDropMsg(opId, executorId, tableId));
 
     return resultFuture;
   }
@@ -134,16 +140,16 @@ final class TableControlAgent {
    * @param tableId a table id
    * @param executorId an executor id
    */
-  synchronized void onTableDropAck(final String tableId, final String executorId) {
+  synchronized void onTableDropAck(final long opId, final String tableId, final String executorId) {
     LOG.log(Level.INFO, "Table {0} in executor {1} is dropped.", new Object[]{tableId, executorId});
-    final AggregateFuture<Void> resultFuture = pendingDrop.get(tableId);
+    final AggregateFuture<Void> resultFuture = pendingDrop.get(opId);
     if (resultFuture == null || resultFuture.isDone()) {
-      throw new RuntimeException("There's no ongoing drop for table. tableId: " + tableId);
+      throw new RuntimeException("There's no ongoing drop for table. opId: " + opId);
     }
     resultFuture.onCompleted(null);
 
     if (resultFuture.isDone()) {
-      pendingDrop.remove(tableId);
+      pendingDrop.remove(opId);
     }
   }
 }

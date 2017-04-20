@@ -300,13 +300,13 @@ public final class MigrationManagerTest {
     }
 
     @Override
-    public void sendTableInitMsg(final String executorId, final TableConfiguration tableConf,
+    public void sendTableInitMsg(final long opId, final String executorId, final TableConfiguration tableConf,
                                  final List<String> blockOwnerList, @Nullable final HdfsSplitInfo fileSplit) {
 
     }
 
     @Override
-    public void sendTableDropMsg(final String executorId, final String tableId) {
+    public void sendTableDropMsg(final long opId, final String executorId, final String tableId) {
 
     }
 

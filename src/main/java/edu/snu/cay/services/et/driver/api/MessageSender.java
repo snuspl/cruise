@@ -36,7 +36,7 @@ public interface MessageSender {
    * It includes metadata for initializing a table.
    * If {@code fileSplit} is present, the executor will load file into initialized local blocks.
    */
-  void sendTableInitMsg(String executorId,
+  void sendTableInitMsg(long opId, String executorId,
                         TableConfiguration tableConf,
                         List<String> blockOwnerList,
                         @Nullable HdfsSplitInfo fileSplit);
@@ -44,7 +44,7 @@ public interface MessageSender {
   /**
    * Sends a TableDropMsg that deletes the table from the executor.
    */
-  void sendTableDropMsg(String executorId,
+  void sendTableDropMsg(long opId, String executorId,
                         String tableId);
 
   /**

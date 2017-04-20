@@ -54,12 +54,12 @@ public interface MessageSender {
   /**
    * Sends a TableInitAckMsg that responds to TableInitMsg.
    */
-  void sendTableInitAckMsg(String tableId);
+  void sendTableInitAckMsg(long opId, String tableId);
 
   /**
    * Sends a TableDropAckMsg that responds to TableDropMsg.
    */
-  void sendTableDropAckMsg(String tableId);
+  void sendTableDropAckMsg(long opId, String tableId);
 
   /**
    * Sends a message transferring ownership of a block from sender to receiver of migration.

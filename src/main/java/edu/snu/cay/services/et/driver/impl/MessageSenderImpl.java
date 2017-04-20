@@ -45,7 +45,7 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendTableInitMsg(final String executorId,
+  public void sendTableInitMsg(final long opId, final String executorId,
                                final TableConfiguration tableConf,
                                final List<String> blockOwnerList,
                                @Nullable final HdfsSplitInfo fileSplit) {
@@ -54,6 +54,7 @@ public final class MessageSenderImpl implements MessageSender {
         .setTableControlMsg(
             TableControlMsg.newBuilder()
                 .setType(TableControlMsgType.TableInitMsg)
+                .setOperationId(opId)
                 .setTableInitMsg(
                     TableInitMsg.newBuilder()
                         .setTableConf(confSerializer.toString(tableConf.getConfiguration()))
@@ -71,12 +72,13 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendTableDropMsg(final String executorId, final String tableId) {
+  public void sendTableDropMsg(final long opId, final String executorId, final String tableId) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
         .setTableControlMsg(
             TableControlMsg.newBuilder()
                 .setType(TableControlMsgType.TableDropMsg)
+                .setOperationId(opId)
                 .setTableDropMsg(
                     TableDropMsg.newBuilder()
                         .setTableId(tableId)

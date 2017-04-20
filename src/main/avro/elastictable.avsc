@@ -181,6 +181,7 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "TableControlMsgType",
         "symbols": ["TableInitMsg", "TableInitAckMsg", "TableDropMsg", "TableDropAckMsg", "OwnershipUpdateMsg"]}},
+    {"name": "operationId", "type": ["null", "long"], "default": null},
     {"name": "tableInitMsg", "type": ["null", "TableInitMsg"], "default": null},
     {"name": "tableInitAckMsg", "type": ["null", "TableInitAckMsg"], "default": null},
     {"name": "tableDropMsg", "type": ["null", "TableDropMsg"], "default": null},

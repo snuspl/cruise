@@ -105,12 +105,13 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendTableInitAckMsg(final String tableId) {
+  public void sendTableInitAckMsg(final long opId, final String tableId) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
         .setTableControlMsg(
             TableControlMsg.newBuilder()
                 .setType(TableControlMsgType.TableInitAckMsg)
+                .setOperationId(opId)
                 .setTableInitAckMsg(
                     TableInitAckMsg.newBuilder()
                         .setExecutorId(executorId)
@@ -127,12 +128,13 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendTableDropAckMsg(final String tableId) {
+  public void sendTableDropAckMsg(final long opId, final String tableId) {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
         .setTableControlMsg(
             TableControlMsg.newBuilder()
                 .setType(TableControlMsgType.TableDropAckMsg)
+                .setOperationId(opId)
                 .setTableDropAckMsg(
                     TableDropAckMsg.newBuilder()
                         .setExecutorId(executorId)

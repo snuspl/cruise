@@ -83,7 +83,7 @@ public final class MessageHandlerImpl implements MessageHandler {
   }
 
   private void onTableAccessMsg(final TableAccessMsg msg) {
-    final long opId = msg.getOperationId();
+    final Long opId = msg.getOperationId();
     switch (msg.getType()) {
     case TableAccessReqMsg:
       remoteAccessHandlerFuture.get().onTableAccessReqMsg(opId, msg.getTableAccessReqMsg());
@@ -99,13 +99,14 @@ public final class MessageHandlerImpl implements MessageHandler {
   }
 
   private void onTableControlMsg(final TableControlMsg msg) {
+    final Long opId = msg.getOperationId();
     switch (msg.getType()) {
     case TableInitMsg:
-      onTableInitMsg(msg.getTableInitMsg());
+      onTableInitMsg(opId, msg.getTableInitMsg());
       break;
 
     case TableDropMsg:
-      onTableDropMsg(msg.getTableDropMsg());
+      onTableDropMsg(opId, msg.getTableDropMsg());
       break;
 
     case OwnershipUpdateMsg:
@@ -117,7 +118,7 @@ public final class MessageHandlerImpl implements MessageHandler {
     }
   }
 
-  private void onTableInitMsg(final TableInitMsg msg) {
+  private void onTableInitMsg(final long opId, final TableInitMsg msg) {
     try {
       final Configuration tableConf = confSerializer.fromString(msg.getTableConf());
       final List<String> blockOwners = msg.getBlockOwners();
@@ -127,7 +128,7 @@ public final class MessageHandlerImpl implements MessageHandler {
           tablesFuture.get().initTable(tableConf, blockOwners) :
           tablesFuture.get().initTable(tableConf, blockOwners, serializedHdfsSplitInfo);
 
-      msgSenderFuture.get().sendTableInitAckMsg(tableId);
+      msgSenderFuture.get().sendTableInitAckMsg(opId, tableId);
 
     } catch (final IOException e) {
       throw new RuntimeException("IOException while initializing a table", e);
@@ -136,10 +137,10 @@ public final class MessageHandlerImpl implements MessageHandler {
     }
   }
 
-  private void onTableDropMsg(final TableDropMsg msg) {
+  private void onTableDropMsg(final long opId, final TableDropMsg msg) {
     tablesFuture.get().remove(msg.getTableId());
 
-    msgSenderFuture.get().sendTableDropAckMsg(msg.getTableId());
+    msgSenderFuture.get().sendTableDropAckMsg(opId, msg.getTableId());
   }
 
   private void onOwnershipUpdateMsg(final OwnershipUpdateMsg msg) {
