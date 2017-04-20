@@ -26,6 +26,7 @@ import edu.snu.cay.services.et.driver.impl.BlockManager;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerUpdateFunction;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
@@ -107,7 +108,7 @@ public class RemoteAccessOpSenderTest {
   }
 
   @Test
-  public void testOpSend() throws TableNotExistException, InterruptedException {
+  public void testOpSend() throws TableNotExistException, InterruptedException, NetworkException {
     doAnswer(invocation -> {
       final long opId = invocation.getArgumentAt(2, Long.class);
       final DataValue dataValue = invocation.getArgumentAt(7, DataValue.class);

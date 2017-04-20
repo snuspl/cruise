@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.configuration.parameters.NumRemoteOpsSenderThread
 import edu.snu.cay.services.et.configuration.parameters.SenderQueueSize;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -30,6 +31,7 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
@@ -42,6 +44,7 @@ import java.util.logging.Logger;
 final class RemoteAccessOpSender {
   private static final Logger LOG = Logger.getLogger(RemoteAccessOpSender.class.getName());
   private static final int QUEUE_TIMEOUT_MS = 3000;
+  private static final long RESEND_INTERVAL_MS = 100;
 
   /**
    * A counter for issuing ids for operations sent to remote executors.
@@ -176,7 +179,7 @@ final class RemoteAccessOpSender {
         throw new RuntimeException(e);
       }
 
-      encodeAndSendRequestMsg(opMetadata, op.getTargetId(), tableComponents, msgSenderFuture.get());
+      encodeAndSendRequestMsg(opMetadata, op.getTargetId(), executorId, tableComponents, msgSenderFuture.get());
     }
 
     /**
@@ -200,12 +203,13 @@ final class RemoteAccessOpSender {
   /**
    * Encode values and send a request message to a target executor.
    * @param opMetadata {@link DataOpMetadata}
-   * @param targetId a target executor Id
+   * @param targetExecutorId a target executor Id
    * @param tableComponents {@link TableComponents}
    * @param msgSender {@link MessageSender}
    */
   static <K, V, U> void encodeAndSendRequestMsg(final DataOpMetadata<K, V, U> opMetadata,
-                                                final String targetId,
+                                                final String targetExecutorId,
+                                                final String localExecutorId,
                                                 final TableComponents<K, V, U> tableComponents,
                                                 final MessageSender msgSender) {
     final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
@@ -236,9 +240,33 @@ final class RemoteAccessOpSender {
       dataValue = null;
     }
 
-    msgSender.sendTableAccessReqMsg(opMetadata.getOrigId(), targetId, opMetadata.getOpId(),
-        opMetadata.getTableId(), opMetadata.getOpType(), opMetadata.isReplyRequired(),
-        new DataKey(encodedKey), dataValue);
+    // send to targetExecutorId at first try
+    String executorIdToSendMsg = targetExecutorId;
+    final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
+    while (true) {
+      try {
+        msgSender.sendTableAccessReqMsg(opMetadata.getOrigId(), executorIdToSendMsg, opMetadata.getOpId(),
+            opMetadata.getTableId(), opMetadata.getOpType(), opMetadata.isReplyRequired(),
+            new DataKey(encodedKey), dataValue);
+        break;
+      } catch (NetworkException e) {
+        LOG.log(Level.WARNING, "NetworkException while sending a msg. Resend", e);
+      }
+
+      LOG.log(Level.INFO, "Wait {0} ms before resending a msg", RESEND_INTERVAL_MS);
+      try {
+        // may not sleep for RESEND_INTERVAL_MS due to interrupt
+        Thread.sleep(RESEND_INTERVAL_MS);
+      } catch (final InterruptedException e) {
+        LOG.log(Level.FINEST, "Interrupted while waiting for ownership cache to be updated", e);
+      }
+
+      // re-resolve target executor id on fail
+      final Optional<String> targetIdOptional = ownershipCache.resolveExecutor(opMetadata.getBlockId());
+
+      // send to local when it's migrated into local
+      executorIdToSendMsg = targetIdOptional.orElse(localExecutorId);
+    }
   }
 
   /**

@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
 
@@ -140,7 +141,11 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
         // It waits until all operations release a read-lock on ownershipCache and acquires write-lock
         ownershipCache.update(blockId, oldOwnerId, newOwnerId);
 
-        msgSender.sendOwnershipAckMsg(operationId, tableId, blockId, oldOwnerId, newOwnerId);
+        try {
+          msgSender.sendOwnershipAckMsg(operationId, tableId, blockId, oldOwnerId, newOwnerId);
+        } catch (NetworkException e) {
+          throw new RuntimeException(e);
+        }
       });
     } catch (final TableNotExistException e) {
       throw new RuntimeException(e);
@@ -170,7 +175,11 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
         migration.sendBlockData(blockId);
 
         // send ownershipMoved msg to driver
-        msgSender.sendOwnershipMovedMsg(operationId, tableId, blockId);
+        try {
+          msgSender.sendOwnershipMovedMsg(operationId, tableId, blockId);
+        } catch (NetworkException e) {
+          throw new RuntimeException(e);
+        }
       });
     } catch (final TableNotExistException e) {
       throw new RuntimeException(e);
@@ -197,7 +206,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
           blockStore.putBlock(blockId, dataMap);
           ownershipCache.allowAccessToBlock(blockId);
           msgSender.sendDataAckMsg(operationId, tableId, blockId, senderId, receiverId);
-        } catch (final BlockAlreadyExistsException e) {
+        } catch (final BlockAlreadyExistsException | NetworkException e) {
           throw new RuntimeException(e);
         }
       });
@@ -228,7 +237,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
         try {
           blockStore.removeBlock(blockId);
           msgSender.sendDataMovedMsg(operationId, tableId, blockId);
-        } catch (final BlockNotExistsException e) {
+        } catch (final BlockNotExistsException | NetworkException e) {
           throw new RuntimeException(e);
         }
       });
@@ -282,20 +291,22 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
                 " senderId: {2}, receiverId: {3}, blockId: {4}",
             new Object[]{blockIds.size(), blockIdxToSend, senderId, receiverId, blockIdToMigrate});
 
-        msgSender.sendOwnershipMsg(operationId, tableId, blockIdToMigrate, senderId, receiverId);
+        try {
+          msgSender.sendOwnershipMsg(operationId, tableId, blockIdToMigrate, senderId, receiverId);
+        } catch (NetworkException e) {
+          throw new RuntimeException(e);
+        }
 
         blockIdxToSend = blockIdxCounter.getAndIncrement();
       }
     }
 
     private void sendBlockData(final int blockId) {
-      final Map<K, V> blockData;
       try {
-        blockData = tableComponents.getBlockStore().getBlock(blockId);
+        final Map<K, V> blockData = tableComponents.getBlockStore().getBlock(blockId);
         final List<KVPair> keyValuePairs = toKeyValuePairs(blockData, tableComponents.getSerializer());
         msgSender.sendDataMsg(operationId, tableId, blockId, keyValuePairs, senderId, receiverId);
-
-      } catch (final BlockNotExistsException e) {
+      } catch (final BlockNotExistsException | NetworkException e) {
         throw new RuntimeException(e);
       }
     }

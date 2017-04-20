@@ -16,6 +16,7 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.*;
+import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.HandlerQueueSize;
 import edu.snu.cay.services.et.configuration.parameters.NumRemoteOpsHandlerThreads;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
@@ -23,6 +24,7 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -51,15 +53,18 @@ final class RemoteAccessOpHandler {
 
   private volatile boolean closeFlag = false;
 
+  private final String executorId;
   private final InjectionFuture<Tables> tablesFuture;
   private final InjectionFuture<MessageSender> msgSenderFuture;
 
   @Inject
   private RemoteAccessOpHandler(final InjectionFuture<Tables> tablesFuture,
+                                @Parameter(ExecutorIdentifier.class) final String executorId,
                                 @Parameter(HandlerQueueSize.class) final int queueSize,
                                 @Parameter(NumRemoteOpsHandlerThreads.class) final int numRemoteThreads,
                                 final InjectionFuture<MessageSender> msgSenderFuture) {
     this.operationQueue = new ArrayBlockingQueue<>(queueSize);
+    this.executorId = executorId;
     this.tablesFuture = tablesFuture;
     this.msgSenderFuture = msgSenderFuture;
     initExecutor(numRemoteThreads);
@@ -182,7 +187,8 @@ final class RemoteAccessOpHandler {
 
       LOG.log(Level.FINE, "Redirect Op for TableId: {0} / key: {1} to {2}",
           new Object[]{opMetadata.getTableId(), opMetadata.getKey(), targetId});
-      RemoteAccessOpSender.encodeAndSendRequestMsg(opMetadata, targetId, tableComponents, msgSenderFuture.get());
+      RemoteAccessOpSender.encodeAndSendRequestMsg(opMetadata, targetId, executorId,
+          tableComponents, msgSenderFuture.get());
 
     } catch (TableNotExistException e) {
       throw new RuntimeException(e);
@@ -244,13 +250,13 @@ final class RemoteAccessOpHandler {
         new Object[]{operation.getOpId(), operation.getOrigId()});
 
     final String tableId = operation.getTableId();
+    final String origEvalId = operation.getOrigId();
 
     final TableComponents<K, V, ?> tableComponents;
     try {
       tableComponents = tablesFuture.get().getTableComponents(tableId);
 
       final Codec<V> valueCodec = tableComponents.getSerializer().getValueCodec();
-      final String origEvalId = operation.getOrigId();
 
       final DataValue dataValue;
       if (localOutput != null) {
@@ -263,6 +269,8 @@ final class RemoteAccessOpHandler {
 
     } catch (final TableNotExistException e) {
       throw new RuntimeException(e);
+    } catch (NetworkException e) {
+      LOG.log(Level.INFO, "The origin {0} has been removed, so the message is just discarded", origEvalId);
     }
   }
 }

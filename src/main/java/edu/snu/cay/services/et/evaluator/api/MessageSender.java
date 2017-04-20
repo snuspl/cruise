@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.evaluator.api;
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.evaluator.impl.MessageSenderImpl;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
@@ -42,44 +43,44 @@ public interface MessageSender {
    */
   void sendTableAccessReqMsg(String origId, String destId, long opId,
                              String tableId, OpType opType, boolean replyRequired,
-                             DataKey dataKey, @Nullable DataValue dataValue);
+                             DataKey dataKey, @Nullable DataValue dataValue) throws NetworkException;
 
   /**
    * Sends a RemoteOpResultMsg that contains the result of the data operation.
    * The operation should be given a unique {@code opId}.
    */
   void sendTableAccessResMsg(String destId, long opId,
-                             @Nullable DataValue dataValue, boolean isSuccess);
+                             @Nullable DataValue dataValue, boolean isSuccess) throws NetworkException;
 
   /**
    * Sends a TableInitAckMsg that responds to TableInitMsg.
    */
-  void sendTableInitAckMsg(long opId, String tableId);
+  void sendTableInitAckMsg(long opId, String tableId) throws NetworkException;
 
   /**
    * Sends a TableDropAckMsg that responds to TableDropMsg.
    */
-  void sendTableDropAckMsg(long opId, String tableId);
+  void sendTableDropAckMsg(long opId, String tableId) throws NetworkException;
 
   /**
    * Sends a message transferring ownership of a block from sender to receiver of migration.
    * The operation should be given a unique {@code opId}.
    */
   void sendOwnershipMsg(long opId, String tableId, int blockId,
-                        String oldOwnerId, String newOwnerId);
+                        String oldOwnerId, String newOwnerId) throws NetworkException;
 
   /**
    * Sends a response message for OwnershipMsg from receiver to sender of migration.
    * The operation should be given a unique {@code opId}.
    */
   void sendOwnershipAckMsg(long opId, String tableId, int blockId,
-                           String oldOwnerId, String newOwnerId);
+                           String oldOwnerId, String newOwnerId) throws NetworkException;
 
   /**
    * Sends a message to master to notify that the ownership of a block has been migrated successfully.
    * The operation should be given a unique {@code opId}.
    */
-  void sendOwnershipMovedMsg(long opId, String tableId, int blockId);
+  void sendOwnershipMovedMsg(long opId, String tableId, int blockId) throws NetworkException;
 
   /**
    * Sends a message transferring data of a block from sender to receiver of migration.
@@ -87,19 +88,19 @@ public interface MessageSender {
    */
   void sendDataMsg(long opId, String tableId, int blockId,
                    List<KVPair> kvPairs,
-                   String senderId, String receiverId);
+                   String senderId, String receiverId) throws NetworkException;
 
   /**
    * Sends a response message for DataMsg from receiver to sender of migration.
    * The operation should be given a unique {@code opId}.
    */
   void sendDataAckMsg(long opId, String tableId, int blockId,
-                      String senderId, String receiverId);
+                      String senderId, String receiverId) throws NetworkException;
   /**
    * Sends a message to master to notify that the ownership of a block has been migrated successfully.
    * The operation should be given a unique {@code opId}.
    */
-  void sendDataMovedMsg(long opId, String tableId, int blockId);
+  void sendDataMovedMsg(long opId, String tableId, int blockId) throws NetworkException;
 
   /**
    * Sends a message to master, containing the collected metrics in the Executor.
@@ -107,5 +108,5 @@ public interface MessageSender {
   void sendMetricMsg(Map<String, Integer> tableToNumBlocks,
                      Map<String, Long> bytesReceivedGetResp,
                      Map<String, Integer> countSentGetReq,
-                     List<ByteBuffer> encodedCustomMetrics);
+                     List<ByteBuffer> encodedCustomMetrics) throws NetworkException;
 }

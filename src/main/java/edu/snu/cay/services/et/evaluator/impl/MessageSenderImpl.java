@@ -54,7 +54,8 @@ public final class MessageSenderImpl implements MessageSender {
   public void sendTableAccessReqMsg(final String origId, final String destId,
                                     final long opId, final String tableId,
                                     final OpType opType, final boolean replyRequired,
-                                    final DataKey dataKey, @Nullable final DataValue dataValue) {
+                                    final DataKey dataKey, @Nullable final DataValue dataValue)
+      throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
         .setTableAccessMsg(
@@ -73,16 +74,13 @@ public final class MessageSenderImpl implements MessageSender {
                 ).build()
         ).build();
 
-    try {
-      networkConnection.send(destId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending TableAccessReq message", e);
-    }
+    networkConnection.send(destId, msg);
   }
 
   @Override
   public void sendTableAccessResMsg(final String destId, final long opId,
-                                    @Nullable final DataValue dataValue, final boolean isSuccess) {
+                                    @Nullable final DataValue dataValue, final boolean isSuccess)
+      throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableAccessMsg)
         .setTableAccessMsg(
@@ -97,15 +95,11 @@ public final class MessageSenderImpl implements MessageSender {
                 ).build()
         ).build();
 
-    try {
-      networkConnection.send(destId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending TableAccessReq message", e);
-    }
+    networkConnection.send(destId, msg);
   }
 
   @Override
-  public void sendTableInitAckMsg(final long opId, final String tableId) {
+  public void sendTableInitAckMsg(final long opId, final String tableId) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
         .setTableControlMsg(
@@ -120,15 +114,11 @@ public final class MessageSenderImpl implements MessageSender {
                 ).build()
         ).build();
 
-    try {
-      networkConnection.send(driverId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending TableInitAck message", e);
-    }
+    networkConnection.send(driverId, msg);
   }
 
   @Override
-  public void sendTableDropAckMsg(final long opId, final String tableId) {
+  public void sendTableDropAckMsg(final long opId, final String tableId) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.TableControlMsg)
         .setTableControlMsg(
@@ -143,16 +133,12 @@ public final class MessageSenderImpl implements MessageSender {
                 ).build()
         ).build();
 
-    try {
-      networkConnection.send(driverId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending TableDropAck message", e);
-    }
+    networkConnection.send(driverId, msg);
   }
 
   @Override
   public void sendOwnershipMsg(final long opId, final String tableId, final int blockId,
-                               final String oldOwnerId, final String newOwnerId) {
+                               final String oldOwnerId, final String newOwnerId) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
         .setMigrationMsg(
@@ -169,16 +155,12 @@ public final class MessageSenderImpl implements MessageSender {
                 ).build()
         ).build();
 
-    try {
-      networkConnection.send(newOwnerId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending Ownership message", e);
-    }
+    networkConnection.send(newOwnerId, msg);
   }
 
   @Override
   public void sendOwnershipAckMsg(final long opId, final String tableId, final int blockId,
-                                  final String oldOwnerId, final String newOwnerId) {
+                                  final String oldOwnerId, final String newOwnerId) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
         .setMigrationMsg(
@@ -195,15 +177,11 @@ public final class MessageSenderImpl implements MessageSender {
                 ).build()
         ).build();
 
-    try {
-      networkConnection.send(oldOwnerId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending OwnershipAck message", e);
-    }
+    networkConnection.send(oldOwnerId, msg);
   }
 
   @Override
-  public void sendOwnershipMovedMsg(final long opId, final String tableId, final int blockId) {
+  public void sendOwnershipMovedMsg(final long opId, final String tableId, final int blockId) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
         .setMigrationMsg(
@@ -218,17 +196,13 @@ public final class MessageSenderImpl implements MessageSender {
                 ).build()
         ).build();
 
-    try {
-      networkConnection.send(driverId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending OwnershipMoved message", e);
-    }
+    networkConnection.send(driverId, msg);
   }
 
   @Override
   public void sendDataMsg(final long opId, final String tableId, final int blockId,
                           final List<KVPair> kvPairs,
-                          final String senderId, final String receiverId) {
+                          final String senderId, final String receiverId) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
         .setMigrationMsg(
@@ -246,16 +220,12 @@ public final class MessageSenderImpl implements MessageSender {
                 ).build()
         ).build();
 
-    try {
-      networkConnection.send(receiverId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending Data message", e);
-    }
+    networkConnection.send(receiverId, msg);
   }
 
   @Override
   public void sendDataAckMsg(final long opId, final String tableId, final int blockId,
-                             final String senderId, final String receiverId) {
+                             final String senderId, final String receiverId) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
         .setMigrationMsg(
@@ -273,15 +243,11 @@ public final class MessageSenderImpl implements MessageSender {
                 .build())
         .build();
 
-    try {
-      networkConnection.send(senderId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending DataAck message", e);
-    }
+    networkConnection.send(senderId, msg);
   }
 
   @Override
-  public void sendDataMovedMsg(final long opId, final String tableId, final int blockId) {
+  public void sendDataMovedMsg(final long opId, final String tableId, final int blockId) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
         .setMigrationMsg(
@@ -298,34 +264,26 @@ public final class MessageSenderImpl implements MessageSender {
         )
         .build();
 
-    try {
-      networkConnection.send(driverId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending DataMoved message", e);
-    }
+    networkConnection.send(driverId, msg);
   }
 
   @Override
   public void sendMetricMsg(final Map<String, Integer> tableToNumBlocks,
                             final Map<String, Long> bytesReceivedGetResp,
                             final Map<String, Integer> countSentGetReq,
-                            final List<ByteBuffer> encodedCustomMetrics) {
-    try {
-      final ETMsg msg = ETMsg.newBuilder()
-          .setType(ETMsgType.MetricMsg)
-          .setMetricMsg(
-              MetricMsg.newBuilder()
-                  .setTableToNumBlocks(tableToNumBlocks)
-                  .setBytesReceivedGetResp(bytesReceivedGetResp)
-                  .setCountSentGetReq(countSentGetReq)
-                  .setHostname(HostnameResolver.resolve())
-                  .setCustomMetrics(encodedCustomMetrics)
-                  .build()
-          )
-          .build();
-      networkConnection.send(driverId, msg);
-    } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException while sending Metric message", e);
-    }
+                            final List<ByteBuffer> encodedCustomMetrics) throws NetworkException {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MetricMsg)
+        .setMetricMsg(
+            MetricMsg.newBuilder()
+                .setTableToNumBlocks(tableToNumBlocks)
+                .setBytesReceivedGetResp(bytesReceivedGetResp)
+                .setCountSentGetReq(countSentGetReq)
+                .setHostname(HostnameResolver.resolve())
+                .setCustomMetrics(encodedCustomMetrics)
+                .build()
+        )
+        .build();
+    networkConnection.send(driverId, msg);
   }
 }

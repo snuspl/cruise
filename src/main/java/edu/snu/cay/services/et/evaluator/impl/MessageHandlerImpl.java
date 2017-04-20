@@ -21,6 +21,7 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.InjectionFuture;
@@ -134,13 +135,19 @@ public final class MessageHandlerImpl implements MessageHandler {
       throw new RuntimeException("IOException while initializing a table", e);
     } catch (final InjectionException e) {
       throw new RuntimeException("Table configuration is incomplete to initialize a table", e);
+    } catch (final NetworkException e) {
+      throw new RuntimeException(e);
     }
   }
 
   private void onTableDropMsg(final long opId, final TableDropMsg msg) {
     tablesFuture.get().remove(msg.getTableId());
 
-    msgSenderFuture.get().sendTableDropAckMsg(opId, msg.getTableId());
+    try {
+      msgSenderFuture.get().sendTableDropAckMsg(opId, msg.getTableId());
+    } catch (NetworkException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private void onOwnershipUpdateMsg(final OwnershipUpdateMsg msg) {

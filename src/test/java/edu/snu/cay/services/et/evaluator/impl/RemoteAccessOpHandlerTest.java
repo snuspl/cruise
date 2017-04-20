@@ -27,6 +27,7 @@ import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.examples.addinteger.AddIntegerUpdateFunction;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.impl.utils.ResettingCountDownLatch;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -108,7 +109,7 @@ public final class RemoteAccessOpHandlerTest {
   }
 
   @Test
-  public void testRemoteAccess() throws TableNotExistException, InterruptedException {
+  public void testRemoteAccess() throws TableNotExistException, InterruptedException, NetworkException {
     final TableComponents<String, Integer, Integer> tableComponents = tables.getTableComponents(TABLE_ID);
     final KVUSerializer<String, Integer, Integer> kvuSerializer = tableComponents.getSerializer();
     final Codec<String> keyCodec = kvuSerializer.getKeyCodec();
