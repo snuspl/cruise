@@ -168,11 +168,6 @@ final class RemoteAccessOpSender {
       LOG.log(Level.FINEST, "Handle op: [OpId: {0}, origId: {1}, table: {2}]]",
           new Object[]{opMetadata.getOpId(), opMetadata.getOrigId(), tableId});
 
-      if (op.getMetadata().isReplyRequired()) {
-        // will be deregistered upon {@link onTableAccessResMsg()}
-        registerOp(op);
-      }
-
       encodeAndSendRequestMsg(op.getMetadata(), op.getTargetId());
     }
 
@@ -271,6 +266,7 @@ final class RemoteAccessOpSender {
         new Object[]{opMetadata.getOpId(), opMetadata.getOpType(), targetEvalId});
 
     if (replyRequired) {
+      // will be deregistered upon {@link onTableAccessResMsg()}
       registerOp(operation);
     }
 
