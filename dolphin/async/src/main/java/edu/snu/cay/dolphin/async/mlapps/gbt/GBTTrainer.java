@@ -156,6 +156,17 @@ final class GBTTrainer implements Trainer<GBTData> {
 
   @Override
   public void initGlobalSettings() {
+    if (valueType == FeatureType.CONTINUOUS) {
+      modelAccessor.init(CONTINUOUS_FEATURE, new LinkedList<>());
+    } else if (valueType == FeatureType.CATEGORICAL) {
+      for (int label = 0; label < valueTypeNum; label++) {
+        for (int key = 0; key < numKeys; key++) {
+          modelAccessor.init(label * numKeys + key, new LinkedList<>());
+        }
+      }
+    } else {
+      throw new IllegalArgumentException("valueType must be either numerical type or categorical type.");
+    }
   }
 
   @Override
