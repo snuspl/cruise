@@ -180,12 +180,21 @@ public final class ETDolphinLauncher {
         OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class);
 
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
+        // generic params
         NumServers.class, ServerMemSize.class, NumServerCores.class,
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
-        DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, // optimization params
-        MovingAverageWindowSize.class, MetricWeightFactor.class, // metric processing params
-        NumExtraResources.class, ExtraResourcesPeriodSec.class, // extra resource params
-        ServerMetricFlushPeriodMs.class); // metric collection params
+
+        // optimization params
+        DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
+
+        // metric processing params
+        MovingAverageWindowSize.class, MetricWeightFactor.class,
+
+        // extra resource params
+        NumExtraResources.class, ExtraResourcesPeriodSec.class,
+
+        // metric collection params
+        ServerMetricFlushPeriodMs.class);
 
     // it's empty now
     final List<Class<? extends Name<?>>> serverParamList = Collections.emptyList();
