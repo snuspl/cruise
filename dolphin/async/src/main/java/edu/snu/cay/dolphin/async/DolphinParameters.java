@@ -72,9 +72,4 @@ public final class DolphinParameters {
                   default_value = "1")
   public final class NumServerCores implements Name<Integer> {
   }
-
-  @NamedParameter(doc = "The period to flush server-side metrics (in millisecond)",
-                  short_name = "server_metric_flush_period_ms")
-  public final class ServerMetricFlushPeriodMs implements Name<Long> {
-  }
 }

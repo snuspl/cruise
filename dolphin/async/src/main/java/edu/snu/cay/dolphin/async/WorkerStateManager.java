@@ -20,6 +20,7 @@ import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -30,9 +31,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
@@ -46,8 +45,9 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @ThreadSafe
+@Private
 @Unit
-final class WorkerStateManager {
+public final class WorkerStateManager {
   private static final Logger LOG = Logger.getLogger(WorkerStateManager.class.getName());
 
   private static final byte[] EMPTY_DATA = new byte[0];
@@ -65,6 +65,16 @@ final class WorkerStateManager {
 
   @GuardedBy("this")
   private final StateMachine stateMachine;
+
+  /**
+   * A latch that will be released when workers finish INIT stage.
+   */
+  private final CountDownLatch finishInitLatch = new CountDownLatch(1);
+
+  /**
+   * A latch that will be released when workers finish RUN stage.
+   */
+  private final CountDownLatch finishRunLatch = new CountDownLatch(1);
 
   /**
    * A map between a worker's identifier and its network identifier.
@@ -120,17 +130,12 @@ final class WorkerStateManager {
   }
 
   /**
-   * A latch that will be released when workers enter RUN state.
+   * Waits until workers to finish INIT stage.
    */
-  private final CountDownLatch runStateLatch = new CountDownLatch(1);
-
-  /**
-   * Waits until workers to enter RUN state.
-   */
-  public void waitWorkersToEnterRunState() {
+  public void waitWorkersToFinishInitStage() {
     while (true) {
       try {
-        runStateLatch.await();
+        finishInitLatch.await();
         break;
       } catch (InterruptedException e) {
         // ignore and keep waiting
@@ -139,9 +144,23 @@ final class WorkerStateManager {
   }
 
   /**
-   * Tries to enter the optimization state.
-   * Workers cannot enter CLEANUP state, even all existing workers finish RUN phase.
-   * At the first try, it's good to call {@link #waitWorkersToEnterRunState()}.
+   * Waits until workers to finish RUN stage.
+   */
+  public void waitWorkersToFinishRunStage() {
+    while (true) {
+      try {
+        finishRunLatch.await();
+        break;
+      } catch (InterruptedException e) {
+        // ignore and keep waiting
+      }
+    }
+  }
+
+  /**
+   * Tries to enter the optimization state, which is possible when all workers are in RUN phase.
+   * So at the first try, it's good to call {@link #waitWorkersToFinishInitStage()}.
+   * Once turning into OPTIMIZATION state, workers cannot enter CLEANUP, even all existing workers finish RUN phase.
    * @return True if it succeeds to enter optimization phase
    */
   public synchronized boolean tryEnterOptimization() {
@@ -151,6 +170,7 @@ final class WorkerStateManager {
       return false;
     } else {
       stateMachine.setState(State.OPTIMIZE);
+      LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN, State.OPTIMIZE));
       return true;
     }
   }
@@ -184,8 +204,9 @@ final class WorkerStateManager {
         new Object[]{numRunningWorkersBefore, runningWorkerIds.size()});
 
     stateMachine.setState(State.RUN);
+    LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.OPTIMIZE, State.RUN));
     if (!blockedWorkerIds.isEmpty()) {
-      stateMachine.setState(State.RUN_FINISHING);
+      transitToNextState();
     }
 
     tryReleasingWorkers();
@@ -199,10 +220,12 @@ final class WorkerStateManager {
 
     switch (currentState) {
     case INIT:
+      finishInitLatch.countDown();
       stateMachine.setState(State.RUN);
       LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.INIT, State.RUN));
       break;
     case RUN:
+      finishRunLatch.countDown();
       stateMachine.setState(State.RUN_FINISHING);
       LOG.log(Level.INFO, String.format("State transition: %s -> %s", State.RUN, State.RUN_FINISHING));
       break;

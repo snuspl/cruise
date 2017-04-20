@@ -24,6 +24,7 @@ import edu.snu.cay.services.et.plan.impl.ETPlan;
 import edu.snu.cay.services.et.plan.impl.op.*;
 import edu.snu.cay.utils.DAG;
 import edu.snu.cay.utils.DAGImpl;
+import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -41,11 +42,11 @@ import static edu.snu.cay.dolphin.async.optimizer.parameters.Constants.NAMESPACE
 public final class PlanCompiler {
   private static final Logger LOG = Logger.getLogger(PlanCompiler.class.getName());
 
-  private final ETDolphinDriver etDolphinDriver;
+  private final InjectionFuture<ETDolphinDriver> etDolphinDriverFuture;
 
   @Inject
-  private PlanCompiler(final ETDolphinDriver etDolphinDriver) {
-    this.etDolphinDriver = etDolphinDriver;
+  private PlanCompiler(final InjectionFuture<ETDolphinDriver> etDolphinDriverFuture) {
+    this.etDolphinDriverFuture = etDolphinDriverFuture;
   }
 
   /**
@@ -151,7 +152,7 @@ public final class PlanCompiler {
       // server -> worker
       if (dstNamespace.equals(NAMESPACE_WORKER)) {
         for (final String executor : executors) {
-          dag.addVertex(new StartOp(executor, etDolphinDriver.getWorkerTaskConf()));
+          dag.addVertex(new StartOp(executor, etDolphinDriverFuture.get().getWorkerTaskConf()));
         }
 
       // worker -> server
@@ -211,7 +212,7 @@ public final class PlanCompiler {
       final Collection<String> evalsToAdd = entry.getValue();
 
       final ExecutorConfiguration executorConf = namespace.equals(NAMESPACE_WORKER) ?
-          etDolphinDriver.getWorkerExecutorConf() : etDolphinDriver.getServerExecutorConf();
+          etDolphinDriverFuture.get().getWorkerExecutorConf() : etDolphinDriverFuture.get().getServerExecutorConf();
       final String tableIdToAssociate = namespace.equals(NAMESPACE_WORKER) ? TRAINING_DATA_TABLE_ID : MODEL_TABLE_ID;
 
       for (final String evalToAdd : evalsToAdd) {
@@ -225,7 +226,7 @@ public final class PlanCompiler {
         dag.addEdge(allocateOp, associateOp);
 
         if (namespace.equals(NAMESPACE_WORKER)) {
-          final StartOp startOp = new StartOp(evalToAdd, etDolphinDriver.getWorkerTaskConf());
+          final StartOp startOp = new StartOp(evalToAdd, etDolphinDriverFuture.get().getWorkerTaskConf());
           startOps.put(evalToAdd, startOp);
           final SubscribeOp subscribeOp = new SubscribeOp(evalToAdd, MODEL_TABLE_ID);
           subscribeOps.put(evalToAdd, subscribeOp);

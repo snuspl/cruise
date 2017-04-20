@@ -206,6 +206,8 @@ public final class MetricManager {
    */
   public void loadMetricValidationInfo(final Map<String, Integer> numBlockForWorker,
                                        final Map<String, Integer> numBlockForServer) {
+    LOG.log(Level.INFO, "Load validation info. Worker-side partition info: {0}, Server-side partition info: {1}",
+        new Object[]{numBlockForWorker, numBlockForServer});
     this.numBlockByEvalIdForWorker = numBlockForWorker;
     this.numBlockByEvalIdForServer = numBlockForServer;
   }
@@ -276,17 +278,17 @@ public final class MetricManager {
     }
 
     /**
-     * Check whether the number of blocks matches with {@link edu.snu.cay.services.em.driver.api.EMMaster}'s view.
-     * @param numDataBlocks the number of blocks that source evaluator is supposed to have.
+     * Check whether the number of blocks matches with master's view.
+     * @param numBlocks the number of blocks that source evaluator is supposed to have.
      * @param evalParams the Metric's information including the number of blocks.
      * @return {@code true} if the number of blocks matches
      */
-    private boolean isValidNumBlocks(final int numDataBlocks, final EvaluatorParameters evalParams) {
-      if (numDataBlocks == evalParams.getDataInfo().getNumBlocks()) {
+    private boolean isValidNumBlocks(final int numBlocks, final EvaluatorParameters evalParams) {
+      if (numBlocks == evalParams.getDataInfo().getNumBlocks()) {
         return true;
       } else {
-        LOG.log(Level.SEVERE, "Inconsistent NumModelBlocks: driver = {0}, {1} = {2}",
-            new Object[] {evalParams.getDataInfo().getNumBlocks(), evalParams.getId(), numDataBlocks});
+        LOG.log(Level.SEVERE, "Inconsistent NumBlocks: driver = {0}, {1} = {2}",
+            new Object[] {evalParams.getDataInfo().getNumBlocks(), evalParams.getId(), numBlocks});
         return false;
       }
     }

@@ -18,6 +18,10 @@ import edu.snu.cay.common.centcomm.CentCommConf;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
+import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
+import edu.snu.cay.dolphin.async.optimizer.parameters.*;
+import edu.snu.cay.services.em.optimizer.api.Optimizer;
+import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
 import edu.snu.cay.services.et.configuration.metric.MetricServiceDriverConf;
 import edu.snu.cay.services.et.configuration.parameters.KeyCodec;
@@ -167,16 +171,29 @@ public final class ETDolphinLauncher {
     return launch(jobName, args, etDolphinConfiguration, Tang.Factory.getTang().newConfigurationBuilder().build());
   }
 
+  @SuppressWarnings("unchecked")
   private static List<Configuration> parseCommandLine(
       final String[] args, final List<Class<? extends Name<?>>> userParamList)
-      throws ParseException, InjectionException, IOException {
+      throws ParseException, InjectionException, IOException, ClassNotFoundException {
 
     final List<Class<? extends Name<?>>> clientParamList = Arrays.asList(
         OnLocal.class, LocalRuntimeMaxNumEvaluators.class, JVMHeapSlack.class, DriverMemory.class, Timeout.class);
 
     final List<Class<? extends Name<?>>> driverParamList = Arrays.asList(
+        // generic params
         NumServers.class, ServerMemSize.class, NumServerCores.class,
         NumWorkers.class, WorkerMemSize.class, NumWorkerCores.class,
+
+        // optimization params
+        DelayAfterOptimizationMs.class, OptimizationIntervalMs.class, OptimizationBenefitThreshold.class,
+
+        // metric processing params
+        MovingAverageWindowSize.class, MetricWeightFactor.class,
+
+        // extra resource params
+        NumExtraResources.class, ExtraResourcesPeriodSec.class,
+
+        // metric collection params
         ServerMetricFlushPeriodMs.class);
 
     // it's empty now
@@ -188,6 +205,7 @@ public final class ETDolphinLauncher {
     final CommandLine cl = new CommandLine();
     clientParamList.forEach(cl::registerShortNameOfClass);
     driverParamList.forEach(cl::registerShortNameOfClass);
+    cl.registerShortNameOfClass(OptimizerClass.class); // handle it separately to bind a corresponding implementation
     serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
     cl.registerShortNameOfClass(InputDir.class); // handle inputPath separately to process it through processInputDir()
@@ -200,8 +218,22 @@ public final class ETDolphinLauncher {
     final Configuration workerConf = extractParameterConf(workerParamList, commandLineConf);
     final Configuration userConf = extractParameterConf(userParamList, commandLineConf);
 
-    final Configuration inputPathConf;
+    // handle special parameters that need to be processed from commandline parameters
     final Injector commandlineParamInjector = Tang.Factory.getTang().newInjector(commandLineConf);
+
+    final Configuration optimizationConf;
+    final int numInitialResources = commandlineParamInjector.getNamedInstance(NumWorkers.class)
+        + commandlineParamInjector.getNamedInstance(NumServers.class);
+
+    final Class<? extends Optimizer> optimizerClass =
+        (Class<? extends Optimizer>) Class.forName(commandlineParamInjector.getNamedInstance(OptimizerClass.class));
+
+    optimizationConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(Optimizer.class, optimizerClass)
+        .bindNamedParameter(NumInitialResources.class, Integer.toString(numInitialResources))
+        .build();
+
+    final Configuration inputPathConf;
     final boolean onLocal = commandlineParamInjector.getNamedInstance(OnLocal.class);
     final String inputPath = commandlineParamInjector.getNamedInstance(InputDir.class);
     final String processedInputPath = processInputDir(inputPath, onLocal);
@@ -209,7 +241,7 @@ public final class ETDolphinLauncher {
         .bindNamedParameter(InputDir.class, processedInputPath)
         .build();
 
-    return Arrays.asList(clientConf, driverConf, serverConf,
+    return Arrays.asList(clientConf, Configurations.merge(driverConf, optimizationConf), serverConf,
         Configurations.merge(workerConf, inputPathConf), userConf);
   }
 
