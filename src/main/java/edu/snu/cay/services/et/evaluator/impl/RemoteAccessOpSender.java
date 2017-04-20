@@ -168,53 +168,15 @@ final class RemoteAccessOpSender {
       LOG.log(Level.FINEST, "Handle op: [OpId: {0}, origId: {1}, table: {2}]]",
           new Object[]{opMetadata.getOpId(), opMetadata.getOrigId(), tableId});
 
-      encodeAndSendRequestMsg(op.getMetadata(), op.getTargetId());
-    }
+      final TableComponents<K, V, U> tableComponents;
 
-    private <K, V, U> void encodeAndSendRequestMsg(final DataOpMetadata<K, V, U> opMetadata,
-                                                   final String targetEvalId) {
       try {
-        final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(opMetadata.getTableId());
-        final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
-        final Codec<V> valueCodec = kvuSerializer.getValueCodec();
-        final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
-
-        // encode data
-        assert opMetadata.getEncodedKey().isPresent();
-        final ByteBuffer encodedKey = ByteBuffer.wrap(opMetadata.getEncodedKey().get().getEncoded());
-
-        final DataValue dataValue;
-        if (opMetadata.getOpType().equals(OpType.PUT) || opMetadata.getOpType().equals(OpType.PUT_IF_ABSENT)) {
-          if (!opMetadata.getValue().isPresent()) {
-            throw new RuntimeException("Data value is empty for PUT");
-          }
-          final ByteBuffer encodedValue = ByteBuffer.wrap(
-              valueCodec.encode(opMetadata.getValue().get()));
-          dataValue = new DataValue(encodedValue);
-        } else if (opMetadata.getOpType().equals(OpType.UPDATE)) {
-          if (!opMetadata.getUpdateValue().isPresent()) {
-            throw new RuntimeException("Data value is empty for PUT");
-          }
-          final ByteBuffer encodedUpdateValue = ByteBuffer.wrap(
-              updateValueCodec.encode(opMetadata.getUpdateValue().get()));
-          // treat UpdateValue same as Value
-          dataValue = new DataValue(encodedUpdateValue);
-        } else  {
-          dataValue = null;
-        }
-
-        // TODO #106: Collect metrics about all remote access operations
-        if (opMetadata.getOpType().equals(OpType.GET)) {
-          networkUsageStatFuture.get().incCountSentGetReq(opMetadata.getTableId());
-        }
-
-        msgSenderFuture.get().sendTableAccessReqMsg(opMetadata.getOrigId(), targetEvalId, opMetadata.getOpId(),
-            opMetadata.getTableId(), opMetadata.getOpType(), opMetadata.isReplyRequired(),
-            new DataKey(encodedKey), dataValue);
-
-      } catch (final TableNotExistException e) {
+        tableComponents = tablesFuture.get().getTableComponents(tableId);
+      } catch (TableNotExistException e) {
         throw new RuntimeException(e);
       }
+
+      encodeAndSendRequestMsg(opMetadata, op.getTargetId(), tableComponents, msgSenderFuture.get());
     }
 
     /**
@@ -233,6 +195,50 @@ final class RemoteAccessOpSender {
         }
       }
     }
+  }
+
+  /**
+   * Encode values and send a request message to a target executor.
+   * @param opMetadata {@link DataOpMetadata}
+   * @param targetId a target executor Id
+   * @param tableComponents {@link TableComponents}
+   * @param msgSender {@link MessageSender}
+   */
+  static <K, V, U> void encodeAndSendRequestMsg(final DataOpMetadata<K, V, U> opMetadata,
+                                                final String targetId,
+                                                final TableComponents<K, V, U> tableComponents,
+                                                final MessageSender msgSender) {
+    final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
+    final Codec<V> valueCodec = kvuSerializer.getValueCodec();
+    final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
+
+    // encode data
+    assert opMetadata.getEncodedKey().isPresent();
+    final ByteBuffer encodedKey = ByteBuffer.wrap(opMetadata.getEncodedKey().get().getEncoded());
+
+    final DataValue dataValue;
+    if (opMetadata.getOpType().equals(OpType.PUT) || opMetadata.getOpType().equals(OpType.PUT_IF_ABSENT)) {
+      if (!opMetadata.getValue().isPresent()) {
+        throw new RuntimeException(String.format("Data value is empty for PUT(%s)", opMetadata.getKey().toString()));
+      }
+      final ByteBuffer encodedValue = ByteBuffer.wrap(
+          valueCodec.encode(opMetadata.getValue().get()));
+      dataValue = new DataValue(encodedValue);
+    } else if (opMetadata.getOpType().equals(OpType.UPDATE)) {
+      if (!opMetadata.getUpdateValue().isPresent()) {
+        throw new RuntimeException(String.format("Data value is empty for UPDATE(%s)", opMetadata.getKey().toString()));
+      }
+      final ByteBuffer encodedUpdateValue = ByteBuffer.wrap(
+          updateValueCodec.encode(opMetadata.getUpdateValue().get()));
+      // treat UpdateValue same as Value
+      dataValue = new DataValue(encodedUpdateValue);
+    } else  {
+      dataValue = null;
+    }
+
+    msgSender.sendTableAccessReqMsg(opMetadata.getOrigId(), targetId, opMetadata.getOpId(),
+        opMetadata.getTableId(), opMetadata.getOpType(), opMetadata.isReplyRequired(),
+        new DataKey(encodedKey), dataValue);
   }
 
   /**

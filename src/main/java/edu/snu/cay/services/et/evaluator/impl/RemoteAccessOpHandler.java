@@ -16,6 +16,7 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.*;
+import edu.snu.cay.services.et.configuration.parameters.HandlerQueueSize;
 import edu.snu.cay.services.et.configuration.parameters.NumRemoteOpsHandlerThreads;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
@@ -41,13 +42,12 @@ import java.util.logging.Logger;
  */
 final class RemoteAccessOpHandler {
   private static final Logger LOG = Logger.getLogger(RemoteAccessOpHandler.class.getName());
-  private static final int QUEUE_SIZE = 1024;
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
   /**
    * A queue for operations requested from remote clients.
    */
-  private final BlockingQueue<DataOpMetadata> operationQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
+  private final BlockingQueue<DataOpMetadata> operationQueue;
 
   private volatile boolean closeFlag = false;
 
@@ -56,8 +56,10 @@ final class RemoteAccessOpHandler {
 
   @Inject
   private RemoteAccessOpHandler(final InjectionFuture<Tables> tablesFuture,
+                                @Parameter(HandlerQueueSize.class) final int queueSize,
                                 @Parameter(NumRemoteOpsHandlerThreads.class) final int numRemoteThreads,
                                 final InjectionFuture<MessageSender> msgSenderFuture) {
+    this.operationQueue = new ArrayBlockingQueue<>(queueSize);
     this.tablesFuture = tablesFuture;
     this.msgSenderFuture = msgSenderFuture;
     initExecutor(numRemoteThreads);
@@ -152,21 +154,14 @@ final class RemoteAccessOpHandler {
             } catch (final BlockNotExistsException e) {
               throw new RuntimeException(e);
             }
+
+            if (operation.isReplyRequired()) {
+              sendResultToOrigin(operation, output, isSuccess);
+            }
+
           } else {
-            LOG.log(Level.WARNING,
-                "Failed to execute operation {0} requested by remote executor {2}." +
-                    " This executor was considered as the owner of block {1} by executor {2}," +
-                    " but the local ownership cache assumes executor {3} is the owner",
-                new Object[]{operation.getOpId(), blockId,
-                    operation.getOrigId(), remoteEvalIdOptional.get()});
-
-            // send the failed result
-            output = null;
-            isSuccess = false;
-          }
-
-          if (operation.isReplyRequired()) {
-            sendResultToOrigin(operation, output, isSuccess);
+            // a case that operation comes to this executor based on wrong or stale ownership info
+            redirect(operation, remoteEvalIdOptional.get());
           }
         } finally {
           final Lock ownershipLock = remoteEvalIdWithLock.getValue();
@@ -175,6 +170,22 @@ final class RemoteAccessOpHandler {
       } catch (final TableNotExistException e) {
         throw new RuntimeException(e);
       }
+    }
+  }
+
+  /**
+   * Redirects an operation to the target executor.
+   */
+  private <K, V, U> void redirect(final DataOpMetadata<K, V, U> opMetadata, final String targetId) {
+    try {
+      final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(opMetadata.getTableId());
+
+      LOG.log(Level.FINE, "Redirect Op for TableId: {0} / key: {1} to {2}",
+          new Object[]{opMetadata.getTableId(), opMetadata.getKey(), targetId});
+      RemoteAccessOpSender.encodeAndSendRequestMsg(opMetadata, targetId, tableComponents, msgSenderFuture.get());
+
+    } catch (TableNotExistException e) {
+      throw new RuntimeException(e);
     }
   }
 
