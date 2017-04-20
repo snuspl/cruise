@@ -40,7 +40,7 @@ public final class LassoET {
         .setInputParserClass(LassoETParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)
         .setInputValueCodecClass(LassoDataCodec.class)
-        .setModelUpdateFunctionClass(LDAETModelUpdateFunction.class)
+        .setModelUpdateFunctionClass(LassoETModelUpdateFunction.class)
         .setModelKeyCodecClass(SerializableCodec.class)
         .setModelValueCodecClass(DenseVectorCodec.class)
         .setModelUpdateValueCodecClass(DenseVectorCodec.class)
