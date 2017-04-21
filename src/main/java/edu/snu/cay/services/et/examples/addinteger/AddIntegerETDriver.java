@@ -179,8 +179,8 @@ public final class AddIntegerETDriver {
             .setNumCores(1)
             .setMemSizeInMB(128)
             .build())
-        .setUserServiceConf(MetricServiceExecutorConf.CONF
-            .set(MetricServiceExecutorConf.METRIC_SENDING_PERIOD_MS, metricFlushPeriodMs)
+        .setMetricServiceConf(MetricServiceExecutorConf.newBuilder()
+            .setMetricFlushPeriodMs(metricFlushPeriodMs)
             .build())
         .build();
   }

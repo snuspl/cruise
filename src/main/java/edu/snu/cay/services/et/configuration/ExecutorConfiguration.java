@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.et.configuration;
 
+import edu.snu.cay.services.et.configuration.metric.MetricServiceExecutorConf;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.util.BuilderUtils;
@@ -24,19 +25,26 @@ import org.apache.reef.util.BuilderUtils;
  */
 public final class ExecutorConfiguration {
   private final ResourceConfiguration resourceConf;
+  private final MetricServiceExecutorConf metricServiceConf;
   private final Configuration userContextConf;
   private final Configuration userServiceConf;
 
   private ExecutorConfiguration(final ResourceConfiguration resourceConf,
+                                final MetricServiceExecutorConf metricServiceConf,
                                 final Configuration userContextConf,
                                 final Configuration userServiceConf) {
     this.resourceConf = resourceConf;
+    this.metricServiceConf = metricServiceConf;
     this.userContextConf = userContextConf;
     this.userServiceConf = userServiceConf;
   }
 
   public ResourceConfiguration getResourceConf() {
     return resourceConf;
+  }
+
+  public Configuration getMetricServiceConf() {
+    return metricServiceConf.getConfiguration();
   }
 
   public Configuration getUserContextConf() {
@@ -63,6 +71,7 @@ public final class ExecutorConfiguration {
     /**
      * Optional parameters.
      */
+    private MetricServiceExecutorConf metricServiceConf = MetricServiceExecutorConf.newBuilder().build(); // default
     private Configuration userContextConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
     private Configuration userServiceConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
 
@@ -71,7 +80,7 @@ public final class ExecutorConfiguration {
 
     /**
      * @param resourceConf resource configuration
-     * @return
+     * @return this
      */
     public Builder setResourceConf(final ResourceConfiguration resourceConf) {
       this.resourceConf = resourceConf;
@@ -79,8 +88,17 @@ public final class ExecutorConfiguration {
     }
 
     /**
+     * @param metricServiceExecutorConf configuration for customizing metric service.
+     * @return this
+     */
+    public Builder setMetricServiceConf(final MetricServiceExecutorConf metricServiceExecutorConf) {
+      this.metricServiceConf = metricServiceExecutorConf;
+      return this;
+    }
+
+    /**
      * @param userContextConf a context configuration specified by user
-     * @return
+     * @return this
      */
     public Builder setUserContextConf(final Configuration userContextConf) {
       this.userContextConf = userContextConf;
@@ -89,7 +107,7 @@ public final class ExecutorConfiguration {
 
     /**
      * @param userServiceConf a service configuration specified by user
-     * @return
+     * @return this
      */
     public Builder setUserServiceConf(final Configuration userServiceConf) {
       this.userServiceConf = userServiceConf;
@@ -100,7 +118,7 @@ public final class ExecutorConfiguration {
     public ExecutorConfiguration build() {
       BuilderUtils.notNull(resourceConf);
 
-      return new ExecutorConfiguration(resourceConf, userContextConf, userServiceConf);
+      return new ExecutorConfiguration(resourceConf, metricServiceConf, userContextConf, userServiceConf);
     }
   }
 }

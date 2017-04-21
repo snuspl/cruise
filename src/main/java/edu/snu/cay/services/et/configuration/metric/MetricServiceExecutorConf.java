@@ -19,20 +19,59 @@ import edu.snu.cay.services.et.configuration.parameters.metric.CustomMetricCodec
 import edu.snu.cay.services.et.configuration.parameters.metric.MetricFlushPeriodMs;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.tang.formats.ConfigurationModule;
-import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
-import org.apache.reef.tang.formats.OptionalParameter;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.ConfigurationBuilder;
+import org.apache.reef.tang.JavaConfigurationBuilder;
+import org.apache.reef.tang.Tang;
 
 /**
  * Assists to build the executor-side configuration for metric collection service.
  */
 @DriverSide
-public final class MetricServiceExecutorConf extends ConfigurationModuleBuilder {
-  public static final OptionalParameter<Codec> CUSTOM_METRIC_CODEC = new OptionalParameter<>();
-  public static final OptionalParameter<Long> METRIC_SENDING_PERIOD_MS = new OptionalParameter<>();
+public final class MetricServiceExecutorConf {
+  /**
+   * A ConfigurationBuilder is maintained internally to bind optional parameters.
+   */
+  private final ConfigurationBuilder confBuilder;
 
-  public static final ConfigurationModule CONF = new MetricServiceExecutorConf()
-      .bindNamedParameter(CustomMetricCodec.class, CUSTOM_METRIC_CODEC)
-      .bindNamedParameter(MetricFlushPeriodMs.class, METRIC_SENDING_PERIOD_MS)
-      .build();
+  private MetricServiceExecutorConf(final ConfigurationBuilder confBuilder) {
+    this.confBuilder = confBuilder;
+  }
+
+  /**
+   * @return a builder object to build configuration.
+   */
+  public static Builder newBuilder() {
+    return new Builder();
+  }
+
+  /**
+   * Get the configuration with the parameters bound.
+   * Note that this method is for internal use only.
+   */
+  public Configuration getConfiguration() {
+    return confBuilder.build();
+  }
+
+  public static final class Builder implements org.apache.reef.util.Builder<MetricServiceExecutorConf> {
+    private final JavaConfigurationBuilder innerBuilder = Tang.Factory.getTang().newConfigurationBuilder();
+
+    private Builder() {
+    }
+
+    public Builder setCustomMetricCodec(final Class<? extends Codec> customMetricCodec) {
+      this.innerBuilder.bindNamedParameter(CustomMetricCodec.class, customMetricCodec);
+      return this;
+    }
+
+    public Builder setMetricFlushPeriodMs(final long metricFlushPeriodMs) {
+      this.innerBuilder.bindNamedParameter(MetricFlushPeriodMs.class, Long.toString(metricFlushPeriodMs));
+      return this;
+    }
+
+    @Override
+    public MetricServiceExecutorConf build() {
+      return new MetricServiceExecutorConf(innerBuilder);
+    }
+  }
 }

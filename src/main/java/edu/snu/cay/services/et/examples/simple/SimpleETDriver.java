@@ -24,7 +24,6 @@ import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
-import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
 import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
@@ -44,6 +43,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.services.et.common.util.TaskUtils.waitAndCheckTaskResult;
 
 /**
  * Driver code for simple example.
@@ -237,20 +238,6 @@ final class SimpleETDriver {
         throw new RuntimeException(e);
       }
     }
-  }
-
-  private void waitAndCheckTaskResult(final List<Future<SubmittedTask>> taskFutureList, final boolean success) {
-    taskFutureList.forEach(taskResultFuture -> {
-      try {
-        final TaskResult taskResult = taskResultFuture.get().getTaskResult();
-        if (taskResult.isSuccess() != success) {
-          final String taskId = taskResult.getFailedTask().get().getId();
-          throw new RuntimeException(String.format("Task %s has been failed", taskId));
-        }
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    });
   }
 
   private void waitAndCheckMigrationResult(final ListenableFuture<MigrationResult> migrationResultFuture) {
