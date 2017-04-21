@@ -194,7 +194,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
 
     try {
       final TableComponents<K, V, ?> tableComponents = tablesFuture.get().getTableComponents(tableId);
-      final BlockStore<K, V> blockStore = tableComponents.getBlockStore();
+      final BlockStore<K, V, ?> blockStore = tableComponents.getBlockStore();
       final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
       final KVUSerializer<K, V, ?> kvuSerializer = tableComponents.getSerializer();
 

@@ -36,54 +36,53 @@ public final class TabletImpl<K, V, U> implements Tablet<K, V, U> {
   /**
    * Local blocks which this executor owns.
    */
-  private final BlockStore<K, V> blockStore;
+  private final BlockStore<K, V, U> blockStore;
 
   /**
    * Local cache for ownership mapping.
    */
   private final OwnershipCache ownershipCache;
 
-  /**
-   * A function for updating values in the table.
-   */
-  private final UpdateFunction<K, V, U> updateFunction;
-
   @Inject
-  private TabletImpl(final BlockStore<K, V> blockStore,
-                     final OwnershipCache ownershipCache,
-                     final UpdateFunction<K, V, U> updateFunction) {
+  private TabletImpl(final BlockStore<K, V, U> blockStore,
+                     final OwnershipCache ownershipCache) {
     this.blockStore = blockStore;
     this.ownershipCache = ownershipCache;
-    this.updateFunction = updateFunction;
   }
 
   @Override
   public V put(final int blockId, final K key, final V value) throws BlockNotExistsException {
-    final Block<K, V> block = blockStore.get(blockId);
+    final Block<K, V, U> block = blockStore.get(blockId);
     return block.put(key, value);
   }
 
   @Override
   public V putIfAbsent(final int blockId, final K key, final V value) throws BlockNotExistsException {
-    final Block<K, V> block = blockStore.get(blockId);
+    final Block<K, V, U> block = blockStore.get(blockId);
     return block.putIfAbsent(key, value);
   }
 
   @Override
   public V get(final int blockId, final K key) throws BlockNotExistsException {
-    final Block<K, V> block = blockStore.get(blockId);
+    final Block<K, V, U> block = blockStore.get(blockId);
     return block.get(key);
   }
 
   @Override
+  public V getOrInit(final int blockId, final K key) throws BlockNotExistsException {
+    final Block<K, V, U> block = blockStore.get(blockId);
+    return block.getOrInit(key);
+  }
+
+  @Override
   public V update(final int blockId, final K key, final U updateValue) throws BlockNotExistsException {
-    final Block<K, V> block = blockStore.get(blockId);
-    return block.update(key, updateValue, updateFunction);
+    final Block<K, V, U> block = blockStore.get(blockId);
+    return block.update(key, updateValue);
   }
 
   @Override
   public V remove(final int blockId, final K key) throws BlockNotExistsException {
-    final Block<K, V> block = blockStore.get(blockId);
+    final Block<K, V, U> block = blockStore.get(blockId);
     return block.remove(key);
   }
 
@@ -103,7 +102,7 @@ public final class TabletImpl<K, V, U> implements Tablet<K, V, U> {
       final Pair<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
       try {
         if (!remoteEvalIdWithLock.getKey().isPresent()) { // scan block if it still remains in local
-          final Block<K, V> block = blockStore.get(blockId);
+          final Block<K, V, U> block = blockStore.get(blockId);
 
           if (result == null) {
             // reuse the first returned map object
@@ -133,7 +132,7 @@ public final class TabletImpl<K, V, U> implements Tablet<K, V, U> {
   @Override
   public synchronized Iterator<Entry<K, V>> getDataIterator() {
     return new Iterator<Entry<K, V>>() {
-      private final Iterator<Block<K, V>> blockIterator = blockStore.iterator();
+      private final Iterator<Block<K, V, U>> blockIterator = blockStore.iterator();
       private Iterator<Entry<K, V>> entryIterator = Iterators.emptyIterator();
 
       private boolean checkNextBlocks() {

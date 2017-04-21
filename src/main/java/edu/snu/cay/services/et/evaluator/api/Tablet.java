@@ -50,12 +50,22 @@ public interface Tablet<K, V, U> {
 
   /**
    * Returns the value to which the specified key is associated,
-   * or {@code null} if this table contains no value for the key.
+   * or {@code null} if this tablet contains no value for the key.
    * @param key the key whose associated value is to be returned
    * @return the value to which the specified key is associated,
    *         or {@code null} if no value is associated with the given key
    */
   V get(int blockId, K key) throws BlockNotExistsException;
+
+  /**
+   * Returns the value to which the specified key is associated.
+   * If this tablet contains no value for the key, it returns a value of {@link UpdateFunction#initValue(K)}
+   * after associating this value with the key.
+   * @param key key with which value is to be associated
+   * @return the value to which the specified key is associated,
+   *         or a value obtained by {@link UpdateFunction#initValue(K)} if there is no mapping for the key
+   */
+  V getOrInit(int blockId, K key) throws BlockNotExistsException;
 
   /**
    * Update a value associated with the specified key using {@link UpdateFunction}.

@@ -29,13 +29,15 @@ import java.util.concurrent.ConcurrentMap;
  * Set of key-value pairs from a table.
  * Data migration between executors takes place with granularity of a block.
  */
-final class BlockImpl<K, V> implements Block<K, V> {
+final class BlockImpl<K, V, U> implements Block<K, V, U> {
+  private final UpdateFunction<K, V, U> updateFunction;
   /**
    * This map serves as a collection of data in a block.
    */
   private final ConcurrentMap<K, V> subDataMap = new ConcurrentHashMap<>();
 
-  BlockImpl() {
+  BlockImpl(final UpdateFunction<K, V, U> updateFunction) {
+    this.updateFunction = updateFunction;
   }
 
   @Override
@@ -54,7 +56,12 @@ final class BlockImpl<K, V> implements Block<K, V> {
   }
 
   @Override
-  public <U> V update(final K key, final U updateValue, final UpdateFunction<K, V, U> updateFunction) {
+  public V getOrInit(final K key) {
+    return subDataMap.compute(key, (k, v) -> (v == null) ? updateFunction.initValue(k) : v);
+  }
+
+  @Override
+  public V update(final K key, final U updateValue) {
     return subDataMap.compute(key, (k, v) -> {
       final V oldValue = (v == null) ? updateFunction.initValue(k) : v;
       return updateFunction.updateValue(key, oldValue, updateValue);

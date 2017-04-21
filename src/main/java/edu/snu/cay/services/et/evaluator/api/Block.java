@@ -24,7 +24,7 @@ import java.util.Map.Entry;
  * Interface for managing multiple key-value pairs with granularity of a block.
  */
 @Private
-public interface Block<K, V> extends Iterable<Entry<K, V>> {
+public interface Block<K, V, U> extends Iterable<Entry<K, V>> {
   /**
    * Associates the specified value with the specified key.
    * @param key key with which value is to be associated
@@ -52,6 +52,16 @@ public interface Block<K, V> extends Iterable<Entry<K, V>> {
   V get(K key);
 
   /**
+   * Returns the value to which the specified key is associated.
+   * If there is no mapping for the key, it returns a value of {@link UpdateFunction#initValue(K)}
+   * after associating this value with the key.
+   * @param key the key whose associated value is to be returned
+   * @return the value to which the specified key is associated,
+   *         or a value obtained by {@link UpdateFunction#initValue(K)} if there is no mapping for the key
+   */
+  V getOrInit(K key);
+
+  /**
    * Update a value associated with the specified key using {@link UpdateFunction}.
    * Specifically, it processes the value associated with key with {@code updateValue} by
    * {@link UpdateFunction#updateValue(K, V, V)}.
@@ -59,10 +69,9 @@ public interface Block<K, V> extends Iterable<Entry<K, V>> {
    *
    * @param key global unique identifier of item
    * @param updateValue update value
-   * @param updateFunction a function for updating value
    * @return the updated value associated with the key
    */
-  <U> V update(K key, U updateValue, UpdateFunction<K, V, U> updateFunction);
+  V update(K key, U updateValue);
 
   /**
    * Removes association for the specified key.

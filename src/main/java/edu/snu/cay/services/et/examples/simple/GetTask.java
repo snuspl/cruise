@@ -58,18 +58,18 @@ final class GetTask implements Task {
     final Table<Long, String, ?> hashedTable = tableAccessor.getTable(HASHED_TABLE_ID);
     final Table<Long, String, ?> orderedTable = tableAccessor.getTable(ORDERED_TABLE_ID);
 
-    final String value00 = hashedTable.get(KEY0).get();
-    final String value01 = hashedTable.get(KEY1).get();
-    final String value10 = orderedTable.get(KEY0).get();
-    final String value11 = orderedTable.get(KEY1).get();
+    final String value00 = hashedTable.getOrInit(KEY0).get();
+    final String value01 = hashedTable.getOrInit(KEY1).get();
+    final String value10 = orderedTable.getOrInit(KEY0).get();
+    final String value11 = orderedTable.getOrInit(KEY1).get();
 
     LOG.log(Level.INFO, "value for key {0} in a hashedTable is {1}", new Object[]{KEY0, value00});
     LOG.log(Level.INFO, "value for key {0} in a hashedTable is {1}", new Object[]{KEY1, value01});
     LOG.log(Level.INFO, "value for key {0} in an orderedTable is {1}", new Object[]{KEY0, value10});
     LOG.log(Level.INFO, "value for key {0} in an orderedTable is {1}", new Object[]{KEY1, value11});
 
-    if (!value00.equals(VALUE0) || value01 != null ||
-        !value11.equals(VALUE1) || value10 != null) {
+    if (!value00.equals(VALUE0) || !value01.equals(SimpleUpdateFunction.getInitValue(KEY1)) ||
+        !value11.equals(VALUE1) || !value10.equals(SimpleUpdateFunction.getInitValue(KEY0))) {
       throw new RuntimeException("The result is different from the expectation");
     }
 

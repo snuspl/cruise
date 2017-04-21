@@ -28,6 +28,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -186,6 +187,35 @@ public final class TableImpl<K, V, U> implements Table<K, V, U> {
     // send operation to remote
     return remoteAccessOpSender.sendOpToRemote(
         OpType.GET, tableId, blockId, encodedKey, null, null,
+        remoteIdOptional.get(), true);
+  }
+
+  @Override
+  public Future<V> getOrInit(final K key) {
+    final EncodedKey<K> encodedKey = new EncodedKey<>(key, keyCodec);
+
+    final int blockId = blockPartitioner.getBlockId(encodedKey);
+    final Optional<String> remoteIdOptional;
+
+    final Pair<Optional<String>, Lock> remoteIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
+    try {
+      remoteIdOptional = remoteIdWithLock.getKey();
+
+      // execute operation in local, holding ownershipLock
+      if (!remoteIdOptional.isPresent()) {
+        final V result = tablet.getOrInit(blockId, key);
+        return new DataOpResult<>(result, true);
+      }
+    } catch (final BlockNotExistsException e) {
+      throw new RuntimeException(e);
+    } finally {
+      final Lock ownershipLock = remoteIdWithLock.getValue();
+      ownershipLock.unlock();
+    }
+
+    // send operation to remote
+    return remoteAccessOpSender.sendOpToRemote(
+        OpType.GET_OR_INIT, tableId, blockId, encodedKey, null, null,
         remoteIdOptional.get(), true);
   }
 

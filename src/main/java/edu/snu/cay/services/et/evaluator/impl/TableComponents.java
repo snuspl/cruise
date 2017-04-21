@@ -33,7 +33,7 @@ final class TableComponents<K, V, U> {
   /**
    * Local blocks which this executor owns.
    */
-  private final BlockStore<K, V> blockStore;
+  private final BlockStore<K, V, U> blockStore;
 
   /**
    * A serializer for both key and value of a table.
@@ -52,7 +52,7 @@ final class TableComponents<K, V, U> {
 
   @Inject
   private TableComponents(final OwnershipCache ownershipCache,
-                          final BlockStore<K, V> blockStore,
+                          final BlockStore<K, V, U> blockStore,
                           final KVUSerializer<K, V, U> kvuSerializer,
                           final UpdateFunction<K, V, U> updateFunction,
                           final BlockPartitioner<K> blockPartitioner) {
@@ -67,7 +67,7 @@ final class TableComponents<K, V, U> {
     return ownershipCache;
   }
 
-  BlockStore<K, V> getBlockStore() {
+  BlockStore<K, V, U> getBlockStore() {
     return blockStore;
   }
 

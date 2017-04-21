@@ -120,7 +120,7 @@ final class RemoteAccessOpHandler {
       try {
         final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
         final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
-        final BlockStore<K, V> blockStore = tableComponents.getBlockStore();
+        final BlockStore<K, V, U> blockStore = tableComponents.getBlockStore();
 
         final Pair<Optional<String>, Lock> remoteEvalIdWithLock = ownershipCache.resolveExecutorWithLock(blockId);
         try {
@@ -131,7 +131,7 @@ final class RemoteAccessOpHandler {
           final boolean isLocal = !remoteEvalIdOptional.isPresent();
           if (isLocal) {
             try {
-              final BlockImpl<K, V> block = (BlockImpl<K, V>) blockStore.get(blockId);
+              final BlockImpl<K, V, U> block = (BlockImpl<K, V, U>) blockStore.get(blockId);
 
               final OpType opType = operation.getOpType();
               switch (opType) {
@@ -144,12 +144,14 @@ final class RemoteAccessOpHandler {
               case GET:
                 output = block.get(operation.getKey());
                 break;
+              case GET_OR_INIT:
+                output = block.getOrInit(operation.getKey());
+                break;
               case REMOVE:
                 output = block.remove(operation.getKey());
                 break;
               case UPDATE:
-                output = block.update(operation.getKey(), operation.getUpdateValue().get(),
-                    tableComponents.getUpdateFunction());
+                output = block.update(operation.getKey(), operation.getUpdateValue().get());
                 break;
               default:
                 LOG.log(Level.WARNING, "Undefined type of operation.");

@@ -79,6 +79,18 @@ public interface Table<K, V, U> {
   Future<V> get(K key);
 
   /**
+   * Retrieves the value to which the specified key is associated.
+   * If this table contains no value for the key, it returns a value of {@link UpdateFunction#initValue(K)}
+   * after associating this value with the key.
+   * It returns a {@link Future} of result, which
+   * allows users to retrieve the result from the object when the request is complete.
+   * @param key key with which value is to be associated
+   * @return {@link Future} that will provide the value to which the specified key is associated,
+   *         or a value obtained by {@link UpdateFunction#initValue(K)} if there is no mapping for the key
+   */
+  Future<V> getOrInit(K key);
+
+  /**
    * Update a value associated with the specified key using {@link UpdateFunction}.
    * Specifically, it processes the value associated with key with {@code updateValue} by
    * {@link UpdateFunction#updateValue(K, V, U)}.

@@ -26,7 +26,6 @@ import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.driver.impl.MigrationResult;
 import edu.snu.cay.services.et.evaluator.impl.DefaultDataParser;
-import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
 import edu.snu.cay.services.et.exceptions.NotAssociatedException;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -88,7 +87,7 @@ final class SimpleETDriver {
         .setKeyCodecClass(SerializableCodec.class)
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateValueCodecClass(SerializableCodec.class)
-        .setUpdateFunctionClass(VoidUpdateFunction.class)
+        .setUpdateFunctionClass(SimpleUpdateFunction.class)
         .setIsOrderedTable(isOrderedTable);
 
     if (!inputPath.equals(SimpleET.TableInputPath.EMPTY)) {

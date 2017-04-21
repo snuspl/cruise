@@ -338,7 +338,8 @@ final class RemoteAccessOpSender {
           valueCodec.decode(remoteOutput.getValue().array()) : null;
 
       // TODO #106: Collect metrics about all remote access operations
-      if (operation.getMetadata().getOpType().equals(OpType.GET)
+      final OpType opType = operation.getMetadata().getOpType();
+      if ((opType.equals(OpType.GET) || opType.equals(OpType.GET_OR_INIT))
           && remoteOutput != null && remoteOutput.getValue() != null) {
         networkUsageStatFuture.get().incBytesReceivedGetResp(tableId, remoteOutput.getValue().array().length);
       }

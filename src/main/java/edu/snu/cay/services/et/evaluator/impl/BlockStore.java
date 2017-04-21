@@ -16,6 +16,7 @@
 package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.evaluator.api.Block;
+import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.exceptions.BlockAlreadyExistsException;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -33,14 +34,17 @@ import java.util.concurrent.ConcurrentMap;
 @EvaluatorSide
 @ThreadSafe
 @Private
-public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
+public final class BlockStore<K, V, U> implements Iterable<Block<K, V, U>> {
+  private final UpdateFunction<K, V, U> updateFunction;
+
   /**
    * A mapping with indices and corresponding blocks.
    */
-  private final ConcurrentMap<Integer, Block<K, V>> blocks = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, Block<K, V, U>> blocks = new ConcurrentHashMap<>();
 
   @Inject
-  private BlockStore() {
+  private BlockStore(final UpdateFunction<K, V, U> updateFunction) {
+    this.updateFunction = updateFunction;
   }
 
   /**
@@ -49,7 +53,7 @@ public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
    * @throws BlockAlreadyExistsException when the specified block already exists
    */
   public void createEmptyBlock(final int blockId) throws BlockAlreadyExistsException {
-    if (blocks.putIfAbsent(blockId, new BlockImpl<>()) != null) {
+    if (blocks.putIfAbsent(blockId, new BlockImpl<>(updateFunction)) != null) {
       throw new BlockAlreadyExistsException(blockId);
     }
   }
@@ -61,7 +65,7 @@ public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
    * @throws BlockAlreadyExistsException when the specified block already exists
    */
   public void putBlock(final int blockId, final Map<K, V> data) throws BlockAlreadyExistsException {
-    final Block<K, V> block = new BlockImpl<>();
+    final Block<K, V, U> block = new BlockImpl<>(updateFunction);
     block.putAll(data);
     if (blocks.putIfAbsent(blockId, block) != null) {
       throw new BlockAlreadyExistsException(blockId);
@@ -74,7 +78,7 @@ public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
    * @throws BlockNotExistsException when the specified block does not exist
    */
   public void removeBlock(final int blockId) throws BlockNotExistsException {
-    final Block<K, V> block = blocks.remove(blockId);
+    final Block<K, V, U> block = blocks.remove(blockId);
     if (block == null) {
       throw new BlockNotExistsException(blockId);
     }
@@ -104,8 +108,8 @@ public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
    * @return block with the specified index
    * @throws BlockNotExistsException when the block does not exist
    */
-  public Block<K, V> get(final int blockId) throws BlockNotExistsException {
-    final Block<K, V> block = blocks.get(blockId);
+  public Block<K, V, U> get(final int blockId) throws BlockNotExistsException {
+    final Block<K, V, U> block = blocks.get(blockId);
     if (block == null) {
       throw new BlockNotExistsException(blockId);
     }
@@ -113,7 +117,7 @@ public final class BlockStore<K, V> implements Iterable<Block<K, V>> {
   }
 
   @Override
-  public Iterator<Block<K, V>> iterator() {
+  public Iterator<Block<K, V, U>> iterator() {
     return blocks.values().iterator();
   }
 }
