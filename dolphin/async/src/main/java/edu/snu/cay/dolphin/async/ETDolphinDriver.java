@@ -75,6 +75,7 @@ public final class ETDolphinDriver {
 
   private final int numWorkers;
   private final int numServers;
+  private final long serverMetricFlushPeriodMs;
 
   private final Configuration workerConf;
 
@@ -86,8 +87,6 @@ public final class ETDolphinDriver {
 
   private final Configuration workerContextConf;
   private final Configuration workerServiceConf;
-
-  private final Configuration serverServiceConf;
 
   private final AtomicInteger taskIdCount = new AtomicInteger(0);
 
@@ -112,6 +111,7 @@ public final class ETDolphinDriver {
     this.workerTaskRunner = workerTaskRunner;
     this.numWorkers = numWorkers;
     this.numServers = numServers;
+    this.serverMetricFlushPeriodMs = serverMetricFlushPeriodMs;
 
     // configuration commonly used in both workers and servers
     final Configuration userParamConf = confSerializer.fromString(serializedParamConf);
@@ -130,16 +130,7 @@ public final class ETDolphinDriver {
 
     // user configuration for worker executors
     this.workerContextConf = centCommConfProvider.getContextConfiguration();
-    this.workerServiceConf = Configurations.merge(
-        centCommConfProvider.getServiceConfWithoutNameResolver(),
-        MetricServiceExecutorConf.CONF
-            .set(MetricServiceExecutorConf.CUSTOM_METRIC_CODEC, ETDolphinMetricMsgCodec.class)
-            .build());
-
-    // user configuration for server executors
-    this.serverServiceConf = MetricServiceExecutorConf.CONF
-        .set(MetricServiceExecutorConf.METRIC_SENDING_PERIOD_MS, serverMetricFlushPeriodMs)
-        .build();
+    this.workerServiceConf = centCommConfProvider.getServiceConfWithoutNameResolver();
 
     optimizationOrchestrator.start();
   }
@@ -200,6 +191,11 @@ public final class ETDolphinDriver {
   public ExecutorConfiguration getWorkerExecutorConf() {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(workerResourceConf)
+        .setMetricServiceConf(
+            MetricServiceExecutorConf.newBuilder()
+                .setCustomMetricCodec(ETDolphinMetricMsgCodec.class)
+                .build()
+        )
         .setUserContextConf(workerContextConf)
         .setUserServiceConf(workerServiceConf)
         .build();
@@ -208,7 +204,11 @@ public final class ETDolphinDriver {
   public ExecutorConfiguration getServerExecutorConf() {
     return ExecutorConfiguration.newBuilder()
         .setResourceConf(serverResourceConf)
-        .setUserServiceConf(serverServiceConf)
+        .setMetricServiceConf(
+            MetricServiceExecutorConf.newBuilder()
+            .setMetricFlushPeriodMs(serverMetricFlushPeriodMs)
+            .build()
+        )
         .build();
   }
 
