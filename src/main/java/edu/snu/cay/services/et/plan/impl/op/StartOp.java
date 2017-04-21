@@ -16,10 +16,12 @@
 package edu.snu.cay.services.et.plan.impl.op;
 
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
+import edu.snu.cay.services.et.plan.impl.OpResult;
 import org.apache.reef.tang.Configuration;
 
 import java.util.Map;
@@ -33,12 +35,13 @@ public final class StartOp extends AbstractOp {
 
   public StartOp(final String executorId,
                  final Configuration taskConf) {
+    super(OpType.START);
     this.executorId = executorId;
     this.taskConf = taskConf;
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+  public ListenableFuture<OpResult> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException {
     final AllocatedExecutor executor;
     try {
@@ -49,7 +52,12 @@ public final class StartOp extends AbstractOp {
       throw new PlanOpExecutionException("Exception while executing " + toString(), e);
     }
 
-    return executor.submitTask(taskConf);
+    final ResultFuture<OpResult> resultFuture = new ResultFuture<>();
+
+    executor.submitTask(taskConf)
+        .addListener(task -> resultFuture.onCompleted(new OpResult.StartOpResult(StartOp.this, task)));
+
+    return resultFuture;
   }
 
   @Override

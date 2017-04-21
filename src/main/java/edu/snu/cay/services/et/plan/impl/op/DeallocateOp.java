@@ -17,9 +17,11 @@ package edu.snu.cay.services.et.plan.impl.op;
 
 import edu.snu.cay.services.et.common.util.concurrent.CompletedFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
+import edu.snu.cay.services.et.plan.impl.OpResult;
 
 import java.util.Map;
 
@@ -30,20 +32,23 @@ public final class DeallocateOp extends AbstractOp {
   private final String executorId;
 
   public DeallocateOp(final String executorId) {
+    super(OpType.DEALLOCATE);
     this.executorId = executorId;
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+  public ListenableFuture<OpResult> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException {
+    final AllocatedExecutor executor;
     try {
-      etMaster.getExecutor(executorId).close();
+      executor = etMaster.getExecutor(executorId);
     } catch (ExecutorNotExistException e) {
       throw new PlanOpExecutionException("Exception while executing " + toString(), e);
     }
 
     // TODO #96: add listener to close
-    return new CompletedFuture<>(null);
+    executor.close();
+    return new CompletedFuture<>(new OpResult.DeallocateOpResult(DeallocateOp.this));
   }
 
   @Override

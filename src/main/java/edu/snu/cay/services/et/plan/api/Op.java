@@ -19,6 +19,7 @@ import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
+import edu.snu.cay.services.et.plan.impl.OpResult;
 
 import java.util.Map;
 
@@ -26,6 +27,28 @@ import java.util.Map;
  * An operation of ET, which composes {@link ETPlan}.
  */
 public interface Op {
+
+  /**
+   * Types of operation.
+   */
+  enum OpType {
+    ALLOCATE,
+    DEALLOCATE,
+    ASSOCIATE,
+    UNASSOCIATE,
+    SUBSCRIBE,
+    UNSUBSCRIBE,
+    MOVE,
+    CREATE,
+    DROP,
+    START,
+    STOP
+  }
+
+  /**
+   * @return a type of operation
+   */
+  OpType getOpType();
 
   /**
    * Executes operation with a given {@link ETMaster}.
@@ -37,6 +60,6 @@ public interface Op {
    * @return a {@link ListenableFuture} that completes when execution is finished
    * @throws PlanOpExecutionException when exception happens while executing a plan
    */
-  ListenableFuture<?> execute(ETMaster etMaster, Map<String, String> virtualIdToActualId)
+  ListenableFuture<OpResult> execute(ETMaster etMaster, Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException;
 }

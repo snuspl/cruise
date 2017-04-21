@@ -22,6 +22,7 @@ import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
+import edu.snu.cay.services.et.plan.impl.OpResult;
 
 import java.util.Map;
 import java.util.Optional;
@@ -33,11 +34,12 @@ public final class StopOp extends AbstractOp {
   private final String executorId;
 
   public StopOp(final String executorId) {
+    super(OpType.STOP);
     this.executorId = executorId;
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+  public ListenableFuture<OpResult> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException {
     final AllocatedExecutor executor;
     try {
@@ -51,8 +53,9 @@ public final class StopOp extends AbstractOp {
       throw new PlanOpExecutionException("No running task on the executor " + executorId);
     }
 
+    // TODO #96: add a listener to stop
     task.get().stop();
-    return new CompletedFuture<>(null);
+    return new CompletedFuture<>(new OpResult.StopOpResult(StopOp.this));
   }
 
   @Override

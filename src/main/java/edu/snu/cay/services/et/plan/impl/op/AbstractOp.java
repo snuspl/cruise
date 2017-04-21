@@ -26,9 +26,16 @@ import java.util.concurrent.atomic.AtomicLong;
 public abstract class AbstractOp implements Op {
   private static final AtomicLong OP_ID_COUNTER = new AtomicLong(0);
   private final long opId;
+  private final OpType opType;
 
-  AbstractOp() {
+  AbstractOp(final OpType opType) {
     this.opId = OP_ID_COUNTER.getAndIncrement();
+    this.opType = opType;
+  }
+
+  @Override
+  public OpType getOpType() {
+    return opType;
   }
 
   @Override
@@ -49,5 +56,4 @@ public abstract class AbstractOp implements Op {
   public int hashCode() {
     return (int) (opId ^ (opId >>> 32));
   }
-
 }

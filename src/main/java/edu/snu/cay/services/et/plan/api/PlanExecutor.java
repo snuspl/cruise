@@ -18,8 +18,10 @@ package edu.snu.cay.services.et.plan.api;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
 import edu.snu.cay.services.et.exceptions.PlanAlreadyExecutingException;
 import edu.snu.cay.services.et.plan.impl.ETPlan;
+import edu.snu.cay.services.et.plan.impl.OpResult;
 import edu.snu.cay.services.et.plan.impl.PlanExecutorImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
+import org.apache.reef.wake.EventHandler;
 
 /**
  * A plan executor interface.
@@ -37,4 +39,10 @@ public interface PlanExecutor {
    * @throws PlanAlreadyExecutingException when it's already executing the other plan
    */
   ListenableFuture<Void> execute(ETPlan plan) throws PlanAlreadyExecutingException;
+
+  /**
+   * Registers a listener to be called on the completion of each operation.
+   * @param callback a callback of {@link OpResult}
+   */
+  void registerListener(EventHandler<OpResult> callback);
 }

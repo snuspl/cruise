@@ -16,10 +16,12 @@
 package edu.snu.cay.services.et.plan.impl.op;
 
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import edu.snu.cay.services.et.plan.impl.OpResult;
 
 import java.util.Map;
 
@@ -32,12 +34,13 @@ public final class UnassociateOp extends AbstractOp {
 
   public UnassociateOp(final String executorId,
                        final String tableId) {
+    super(OpType.UNSUBSCRIBE);
     this.executorId = executorId;
     this.tableId = tableId;
   }
 
   @Override
-  public ListenableFuture<?> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
+  public ListenableFuture<OpResult> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException {
     final AllocatedTable table;
     try {
@@ -46,7 +49,12 @@ public final class UnassociateOp extends AbstractOp {
       throw new PlanOpExecutionException("Exception while executing " + toString(), e);
     }
 
-    return table.unassociate(executorId);
+    final ResultFuture<OpResult> resultFuture = new ResultFuture<>();
+
+    table.unassociate(executorId)
+        .addListener(o -> resultFuture.onCompleted(new OpResult.UnassociateOpResult(UnassociateOp.this)));
+
+    return resultFuture;
   }
 
   @Override

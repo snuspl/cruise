@@ -23,10 +23,10 @@ import edu.snu.cay.services.et.exceptions.PlanAlreadyExecutingException;
 import edu.snu.cay.services.et.exceptions.PlanOpExecutionException;
 import edu.snu.cay.services.et.plan.api.Op;
 import edu.snu.cay.services.et.plan.api.PlanExecutor;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -40,6 +40,11 @@ public final class PlanExecutorImpl implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(PlanExecutorImpl.class.getName());
 
   private final ETMaster etMaster;
+
+  /**
+   * A collection of listeners for the completion of operations.
+   */
+  private final Collection<EventHandler<OpResult>> callbacks = Collections.synchronizedCollection(new LinkedList<>());
 
   /**
    * A queue for sets of operations ready to be executed.
@@ -111,7 +116,7 @@ public final class PlanExecutorImpl implements PlanExecutor {
             try {
               LOG.log(Level.INFO, "Start executing op: {0}", op);
               op.execute(etMaster, virtualIdToActualId)
-                  .addListener(x -> onOpComplete(op));
+                  .addListener(opResult -> onOpComplete(op, opResult));
             } catch (PlanOpExecutionException e) {
               throw new RuntimeException(e);
             }
@@ -129,16 +134,22 @@ public final class PlanExecutorImpl implements PlanExecutor {
     return resultFuture;
   }
 
+  @Override
+  public void registerListener(final EventHandler<OpResult> callback) {
+    callbacks.add(callback);
+  }
+
   /**
    * Mark the operation as complete and make next operations ready.
    * @param op a completed operation
    */
-  private synchronized void onOpComplete(final Op op) {
+  private synchronized void onOpComplete(final Op op, final OpResult opResult) {
     final ExecutingPlan ongoingPlan = executingPlan.get();
     if (ongoingPlan == null) {
       throw new RuntimeException("There's no ongoing plan");
     }
 
+    callbacks.forEach(callback -> callback.onNext(opResult));
     LOG.log(Level.INFO, "Finish executing op: {0}", op);
 
     // enqueue next operations enabled by the completion of this op
