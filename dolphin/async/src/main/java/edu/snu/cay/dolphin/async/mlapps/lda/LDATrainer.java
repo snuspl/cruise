@@ -114,9 +114,6 @@ final class LDATrainer implements Trainer<Document> {
       }
     }
 
-    for (final int wordIdx : topicChanges.getTable().rowKeySet()) {
-      modelAccessor.init(wordIdx, emptyArray);
-    }
     pushAndResetGradients(topicChanges);
   }
 

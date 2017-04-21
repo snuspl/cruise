@@ -179,16 +179,6 @@ final class MLRTrainer implements Trainer<MLRData> {
 
   @Override
   public void initGlobalSettings() {
-    final double[] features = new double[numFeaturesPerPartition];
-    final Random random = new Random();
-
-    for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
-      features[featureIndex] = random.nextGaussian() * modelGaussian;
-    }
-
-    for (final int key : classPartitionIndices) {
-      modelAccessor.init(key, vectorFactory.createDense(features));
-    }
   }
 
   @Override

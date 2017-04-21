@@ -135,14 +135,6 @@ final class LassoTrainer implements Trainer<LassoData> {
 
   @Override
   public void initGlobalSettings() {
-    final Random random = new Random();
-    for (final int modelPartitionIdx : modelPartitionIndices) {
-      final double[] features = new double[numFeaturesPerPartition];
-      for (int featureIdx = 0; featureIdx < numFeaturesPerPartition; featureIdx++) {
-        features[featureIdx] = random.nextGaussian() * modelGaussian;
-      }
-      modelAccessor.init(modelPartitionIdx, vectorFactory.createDense(features));
-    }
   }
 
   /**
