@@ -39,7 +39,6 @@ final class LDATrainer implements Trainer<Document> {
   private final LDAStatCalculator statCalculator;
   private final int numVocabs;
   private final int numTopics;
-  private final int[] emptyArray;
 
   private final List<Integer> vocabList;
 
@@ -86,7 +85,6 @@ final class LDATrainer implements Trainer<Document> {
       vocabList.add(i);
     }
     this.numTopics = numTopics;
-    this.emptyArray = new int[numTopics + 1];
 
     this.modelHolder = modelHolder;
     this.pushTracer = new Tracer();
