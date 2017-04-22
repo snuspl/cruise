@@ -213,13 +213,15 @@ final class RemoteAccessOpSender {
                                                 final TableComponents<K, V, U> tableComponents,
                                                 final MessageSender msgSender) {
     final KVUSerializer<K, V, U> kvuSerializer = tableComponents.getSerializer();
+    final Codec<K> keyCodec = kvuSerializer.getKeyCodec();
     final Codec<V> valueCodec = kvuSerializer.getValueCodec();
     final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
 
-    // encode data
-    assert opMetadata.getEncodedKey().isPresent();
-    final ByteBuffer encodedKey = ByteBuffer.wrap(opMetadata.getEncodedKey().get().getEncoded());
+    final ByteBuffer encodedKey = ByteBuffer.wrap(opMetadata.getEncodedKey().isPresent() ?
+        opMetadata.getEncodedKey().get().getEncoded() :
+        keyCodec.encode(opMetadata.getKey()));
 
+    // encode data
     final DataValue dataValue;
     if (opMetadata.getOpType().equals(OpType.PUT) || opMetadata.getOpType().equals(OpType.PUT_IF_ABSENT)) {
       if (!opMetadata.getValue().isPresent()) {
