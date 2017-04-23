@@ -19,7 +19,7 @@
 # Classification (only real-number features)
 # ./run_gbt_et.sh -num_workers 2 -number_servers 1 -max_num_epochs 50 -mini_batch_size 5000 -features 27 -max_num_eval_local 3 -input sample_gbt_forest -local true -timeout 200000 -init_step_size 0.1 -lambda 0.5 -gamma 0.5 -max_depth_of_tree 8 -leaf_min_size 3 -metadata_path file://$(PWD)/sample_gbt_forest.meta -num_keys 5 -server_metric_flush_period_ms 5000
 # Classification (only categorical features)
-# ./run_gbt_et.sh -num_workers 4 -number_servers -max_num_epochs 50 -mini_batch_size 5000 -features 19 -max_num_eval_local 5 -input sample_gbt_mushroom -local true -timeout 200000 -init_step_size 0.1 -lambda 0.1 -gamma 0.1 -max_depth_of_tree 8 -leaf_min_size 3 -metadata_path file://$(PWD)/sample_gbt_mushroom.meta -num_keys 5 -server_metric_flush_period_ms 5000
+# ./run_gbt_et.sh -num_workers 4 -number_servers 1 -max_num_epochs 50 -mini_batch_size 5000 -features 19 -max_num_eval_local 5 -input sample_gbt_mushroom -local true -timeout 200000 -init_step_size 0.1 -lambda 0.1 -gamma 0.1 -max_depth_of_tree 8 -leaf_min_size 3 -metadata_path file://$(PWD)/sample_gbt_mushroom.meta -num_keys 5 -server_metric_flush_period_ms 5000
 
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
