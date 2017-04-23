@@ -31,7 +31,6 @@ import java.util.logging.Logger;
  * Note that the last (numTopics-th) element of the array represents number of non-zero elements in the array.
  */
 public final class LDAETModelUpdateFunction implements UpdateFunction<Integer, int[], int[]> {
-  private static final Logger LOG = Logger.getLogger(LDAETModelUpdateFunction.class.getName());
   private final int numTopics;
 
   @Inject
@@ -46,9 +45,6 @@ public final class LDAETModelUpdateFunction implements UpdateFunction<Integer, i
 
   @Override
   public int[] updateValue(final Integer integer, final int[] oldValue, final int[] deltaValue) {
-    LOG.log(Level.INFO, "Update value for {0}: from {1} to {2}",
-        new Object[] {integer, Arrays.toString(oldValue), Arrays.toString(deltaValue)});
-
     // deltaValue consists of pairs of a word index and a changed value.
     int i = 0;
     while (i < deltaValue.length) {
@@ -68,8 +64,6 @@ public final class LDAETModelUpdateFunction implements UpdateFunction<Integer, i
         oldValue[numTopics]--;
       }
     }
-
-    LOG.log(Level.INFO, "Updated to {0}", Arrays.toString(oldValue));
     return oldValue;
   }
 }

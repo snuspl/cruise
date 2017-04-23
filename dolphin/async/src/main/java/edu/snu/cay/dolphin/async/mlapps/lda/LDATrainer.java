@@ -46,12 +46,6 @@ final class LDATrainer implements Trainer<Document> {
 
   private final ModelAccessor<Integer, int[], int[]> modelAccessor;
 
-
-  /**
-   * Number of Trainer threads that train concurrently.
-   */
-  private final int numTrainerThreads;
-
   /**
    * Allows to access and update the latest model.
    */
@@ -77,7 +71,6 @@ final class LDATrainer implements Trainer<Document> {
     this.trainingDataProvider = trainingDataProvider;
     this.modelAccessor = modelAccessor;
     this.numVocabs = numVocabs;
-    this.numTrainerThreads = numTrainerThreads;
 
     // key numVocabs is a summary vector of word-topic distribution, in a form of numTopics-dimensional vector
     this.vocabList = new ArrayList<>(numVocabs + 1);
@@ -111,7 +104,6 @@ final class LDATrainer implements Trainer<Document> {
         topicChanges.increment(numVocabs, document.getAssignment(i), 1);
       }
     }
-
     pushAndResetGradients(topicChanges);
   }
 
