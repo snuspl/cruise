@@ -56,7 +56,6 @@ final class LassoTrainer implements Trainer<LassoData> {
   private final int numFeatures;
   private final double lambda;
   private double stepSize;
-  private double modelGaussian;
   private final double decayRate;
   private final int decayPeriod;
 
@@ -72,17 +71,17 @@ final class LassoTrainer implements Trainer<LassoData> {
    * A list from 0 to {@code numPartitions} that will be used during {@link #pullModels()} and {@link #pushGradients()}.
    */
   private List<Integer> modelPartitionIndices;
-  
+
   /**
    * Number of model partitions.
    */
   private final int numPartitions;
-  
+
   /**
    * Number of features of each model partition.
    */
   private final int numFeaturesPerPartition;
-  
+
   /**
    * To collect metric data.
    */
@@ -96,7 +95,6 @@ final class LassoTrainer implements Trainer<LassoData> {
                        @Parameter(Lambda.class) final double lambda,
                        @Parameter(NumFeatures.class) final int numFeatures,
                        @Parameter(StepSize.class) final double stepSize,
-                       @Parameter(ModelGaussian.class) final double modelGaussian,
                        @Parameter(DecayRate.class) final double decayRate,
                        @Parameter(DecayPeriod.class) final int decayPeriod,
                        @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
@@ -106,7 +104,6 @@ final class LassoTrainer implements Trainer<LassoData> {
     this.numFeatures = numFeatures;
     this.lambda = lambda;
     this.stepSize = stepSize;
-    this.modelGaussian = modelGaussian;
     this.decayRate = decayRate;
     if (decayRate <= 0.0 || decayRate > 1.0) {
       throw new IllegalArgumentException("decay_rate must be larger than 0 and less than or equal to 1");
@@ -155,7 +152,6 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     pullModels();
 
-    resetTracer();
     computeTracer.startTimer();
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
     // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into 'preCalculate' vector.
@@ -179,8 +175,7 @@ final class LassoTrainer implements Trainer<LassoData> {
         continue;
       }
       preCalculate.subi(columnVector.scale(newModel.get(featureIdx)));
-      newModel.set(featureIdx,
-          sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
+      newModel.set(featureIdx, sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
       preCalculate.addi(columnVector.scale(newModel.get(featureIdx)));
     }
     computeTracer.recordTime(numInstancesToProcess);
