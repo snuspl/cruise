@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
+import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeCodec;
 import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeListCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
@@ -40,7 +41,7 @@ public final class GBTET {
         .setModelUpdateFunctionClass(GBTETModelUpdateFunction.class)
         .setModelKeyCodecClass(SerializableCodec.class)
         .setModelValueCodecClass(GBTreeListCodec.class)
-        .setModelUpdateValueCodecClass(GBTreeListCodec.class)
+        .setModelUpdateValueCodecClass(GBTreeCodec.class)
         .addParameterClass(NumFeatures.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
