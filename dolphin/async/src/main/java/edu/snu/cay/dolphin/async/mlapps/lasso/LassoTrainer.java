@@ -81,7 +81,7 @@ final class LassoTrainer implements Trainer<LassoData> {
    * Number of features of each model partition.
    */
   private final int numFeaturesPerPartition;
-  
+
   /**
    * To collect metric data.
    */
