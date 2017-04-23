@@ -39,11 +39,6 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   }
 
   @Override
-  public void init(final K key, final V initValue) {
-    modelTable.putIfAbsentNoReply(key, initValue);
-  }
-
-  @Override
   public void push(final K key, final P deltaValue) {
     modelTable.updateNoReply(key, deltaValue);
   }
@@ -66,7 +61,7 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   public List<V> pull(final List<K> keys) {
     final List<Future<V>> resultList = new ArrayList<>(keys.size());
 
-    keys.forEach(key -> resultList.add(modelTable.get(key)));
+    keys.forEach(key -> resultList.add(modelTable.getOrInit(key)));
 
     final List<V> resultValues = new ArrayList<>(keys.size());
     for (final Future<V> opResult : resultList) {
