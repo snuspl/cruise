@@ -29,6 +29,12 @@ public final class EncodedKey<K> {
     this.hash = computeHash(encoded);
   }
 
+  EncodedKey(final byte[] encodedKey, final Codec<K> keyCodec) {
+    this.key = keyCodec.decode(encodedKey);
+    this.encoded = encodedKey;
+    this.hash = computeHash(encoded);
+  }
+
   private int computeHash(final byte[] encodedKey) {
     return Math.abs(MurmurHash.getInstance().hash(encodedKey));
   }

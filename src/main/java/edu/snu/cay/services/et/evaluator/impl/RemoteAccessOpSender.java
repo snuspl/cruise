@@ -104,7 +104,7 @@ final class RemoteAccessOpSender {
   }
 
   /**
-   * Close op sender by terminating all sender threads.
+   * Close this {@link RemoteAccessOpSender} by terminating all sender threads.
    */
   void close() {
     closeFlag = true;
@@ -112,6 +112,7 @@ final class RemoteAccessOpSender {
 
   /**
    * A thread abstraction that sending messages in parallel.
+   * Several threads are initiated at the beginning and run as long-running background services.
    * Each thread takes charge of a disjoint set of key-space (See {@link #getThreadIdx(int)}).
    */
   private final class SenderThread implements Runnable {
@@ -137,11 +138,8 @@ final class RemoteAccessOpSender {
     public void run() {
       try {
         while (!closeFlag) {
-          final RemoteDataOp op;
-
           try {
-            op = opQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-
+            final RemoteDataOp op = opQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (op == null) {
               continue;
             }
@@ -168,7 +166,7 @@ final class RemoteAccessOpSender {
       final DataOpMetadata<K, V, U> opMetadata = op.getMetadata();
       final String tableId = opMetadata.getTableId();
 
-      LOG.log(Level.FINEST, "Handle op: [OpId: {0}, origId: {1}, table: {2}]]",
+      LOG.log(Level.FINEST, "Process op: [OpId: {0}, origId: {1}, table: {2}]]",
           new Object[]{opMetadata.getOpId(), opMetadata.getOrigId(), tableId});
 
       final TableComponents<K, V, U> tableComponents;
@@ -187,7 +185,8 @@ final class RemoteAccessOpSender {
      * The operations will be processed sequentially by this thread.
      */
     void enqueue(final RemoteDataOp op) {
-      LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}", op.getMetadata().getOpId());
+      LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}, origId: {1}",
+          new Object[]{op.getMetadata().getOpId(), op.getMetadata().getOrigId()});
 
       while (true) {
         try {
@@ -312,8 +311,8 @@ final class RemoteAccessOpSender {
     return operation.getDataOpResult();
   }
 
-  private int getThreadIdx(final int hashed) {
-    return hashed % numSenderThreads;
+  private int getThreadIdx(final int hashedKey) {
+    return hashedKey % numSenderThreads;
   }
 
   /**

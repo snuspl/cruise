@@ -32,6 +32,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
@@ -39,17 +41,16 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A class that handles 1) remote access request msgs that other executors sent to this executor
+ * A class that 1) handles remote access request msgs that other executors sent to this executor
  * and 2) sends the result of the operation to the origin.
  */
 final class RemoteAccessOpHandler {
   private static final Logger LOG = Logger.getLogger(RemoteAccessOpHandler.class.getName());
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
-  /**
-   * A queue for operations requested from remote clients.
-   */
-  private final BlockingQueue<DataOpMetadata> operationQueue;
+  private final int numHandlerThreads;
+
+  private final List<HandlerThread> handlerThreads;
 
   private volatile boolean closeFlag = false;
 
@@ -61,61 +62,98 @@ final class RemoteAccessOpHandler {
   private RemoteAccessOpHandler(final InjectionFuture<Tables> tablesFuture,
                                 @Parameter(ExecutorIdentifier.class) final String executorId,
                                 @Parameter(HandlerQueueSize.class) final int queueSize,
-                                @Parameter(NumRemoteOpsHandlerThreads.class) final int numRemoteThreads,
+                                @Parameter(NumRemoteOpsHandlerThreads.class) final int numHandlerThreads,
                                 final InjectionFuture<MessageSender> msgSenderFuture) {
-    this.operationQueue = new ArrayBlockingQueue<>(queueSize);
     this.executorId = executorId;
     this.tablesFuture = tablesFuture;
     this.msgSenderFuture = msgSenderFuture;
-    initExecutor(numRemoteThreads);
+    this.numHandlerThreads = numHandlerThreads;
+    this.handlerThreads = initExecutor(numHandlerThreads, queueSize);
   }
 
   /**
-   * Initialize threads that dequeue and execute operation from the {@code operationQueue}.
+   * Initialize threads that dequeue and execute operation from the {@code opQueue}.
    * That is, these threads serve operations requested from remote clients.
    */
-  private void initExecutor(final int numRemoteThreads) {
-    final ExecutorService executor = Executors.newFixedThreadPool(numRemoteThreads);
-    for (int i = 0; i < numRemoteThreads; i++) {
-      executor.submit(new OperationThread());
+  private List<HandlerThread> initExecutor(final int numThreads, final int queueSize) {
+    LOG.log(Level.INFO, "Initializing {0} Handler threads", numThreads);
+    final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+    final List<HandlerThread> threads = new ArrayList<>(numThreads);
+    for (int i = 0; i < numThreads; i++) {
+      final HandlerThread handlerThread = new HandlerThread(queueSize);
+      threads.add(handlerThread);
+      executor.submit(handlerThread);
     }
+    return threads;
   }
 
+  /**
+   * Close this {@link RemoteAccessOpHandler} by terminating all handler threads.
+   */
   void close() {
     closeFlag = true;
   }
 
   /**
-   * A runnable that dequeues and executes operations requested from remote clients.
+   * A runnable that handles operations requested from remote clients.
    * Several threads are initiated at the beginning and run as long-running background services.
+   * Each thread takes charge of a disjoint set of key-space (See {@link #getThreadIdx(int)}).
    */
-  private final class OperationThread implements Runnable {
+  private final class HandlerThread implements Runnable {
+    private static final int DRAIN_PORTION = 16;
+    private final BlockingQueue<DataOpMetadata> opQueue;
+
+    // Operations drained from the opQueue, and processed locally.
+    private final ArrayList<DataOpMetadata> localOps;
+
+    private final int drainSize;
+
+    /**
+     * @param queueSize a size of a thread queue
+     */
+    HandlerThread(final int queueSize) {
+      this.opQueue = new ArrayBlockingQueue<>(queueSize);
+      this.drainSize = queueSize >= DRAIN_PORTION ? queueSize / DRAIN_PORTION : 1;
+      this.localOps = new ArrayList<>(drainSize);
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public void run() {
-      while (!closeFlag) {
-        // First, poll and execute a single operation.
-        // Poll with a timeout will prevent busy waiting, when the queue is empty.
-        try {
-          final DataOpMetadata operation =
-              operationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-          if (operation == null) {
-            continue;
+      try {
+        while (!closeFlag) {
+          // First, poll and execute a single operation.
+          // Poll with a timeout will prevent busy waiting, when the queue is empty.
+          try {
+            final DataOpMetadata operation = opQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            if (operation == null) {
+              continue;
+            }
+
+            processOp(operation);
+          } catch (final InterruptedException e) {
+            LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
           }
 
-          handleOperation(operation);
-        } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+          opQueue.drainTo(localOps, drainSize);
+          localOps.forEach(this::processOp);
+          localOps.clear();
         }
+
+        // catch and rethrow RuntimeException after leaving a log
+        // otherwise, the thread disappears without any noticeable marks
+      } catch (final RuntimeException e) {
+        LOG.log(Level.SEVERE, "Handler thread has been down due to RuntimeException", e);
+        throw e;
       }
     }
 
-    private <K, V, U> void handleOperation(final DataOpMetadata<K, V, U> operation) {
+    private <K, V, U> void processOp(final DataOpMetadata<K, V, U> operation) {
       final String tableId = operation.getTableId();
       final int blockId = operation.getBlockId();
 
-      LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, block: {2}]]",
-          new Object[]{operation.getOpId(), operation.getOrigId(), blockId});
+      LOG.log(Level.FINEST, "Process op: [OpId: {0}, origId: {1}, tableId: {2}, blockId: {3}]]",
+          new Object[]{operation.getOpId(), operation.getOrigId(), tableId, blockId});
 
       try {
         final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
@@ -178,6 +216,23 @@ final class RemoteAccessOpHandler {
         throw new RuntimeException(e);
       }
     }
+
+    /**
+     * Enqueue operation into a thread's queue.
+     * The operations will be processed sequentially by this thread.
+     */
+    void enqueue(final DataOpMetadata op) {
+      LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}, origId: {1}", new Object[]{op.getOpId(), op.getOrigId()});
+
+      while (true) {
+        try {
+          opQueue.put(op);
+          break;
+        } catch (final InterruptedException e) {
+          LOG.log(Level.SEVERE, "InterruptedException while enqueuing op", e);
+        }
+      }
+    }
   }
 
   /**
@@ -216,8 +271,10 @@ final class RemoteAccessOpHandler {
       final Codec<U> updateValueCodec = kvuSerializer.getUpdateValueCodec();
       final BlockPartitioner<K> blockPartitioner = tableComponents.getBlockPartitioner();
 
+      final EncodedKey<K> encodedKey = new EncodedKey<>(dataKey.getKey().array(), keyCodec);
+
       // decode data keys
-      final K decodedKey = keyCodec.decode(dataKey.getKey().array());
+      final K decodedKey = encodedKey.getKey();
 
       // decode data values
       final V decodedValue = opType.equals(OpType.PUT) || opType.equals(OpType.PUT_IF_ABSENT) ?
@@ -227,19 +284,20 @@ final class RemoteAccessOpHandler {
       final U decodedUpdateValue = opType.equals(OpType.UPDATE) ?
           updateValueCodec.decode(dataValue.getValue().array()) : null;
 
-      final int blockId = blockPartitioner.getBlockId(decodedKey);
+      final int blockId = blockPartitioner.getBlockId(encodedKey);
       final DataOpMetadata<K, V, U> operation = new DataOpMetadata<>(origEvalId,
           opId, opType, replyRequired, tableId, blockId, decodedKey, decodedValue, decodedUpdateValue);
 
-      LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}", operation.getOpId());
-      try {
-        operationQueue.put(operation);
-      } catch (final InterruptedException e) {
-        LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
-      }
+      final int threadIdx = getThreadIdx(encodedKey.getHash());
+      handlerThreads.get(threadIdx).enqueue(operation);
+
     } catch (final TableNotExistException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private int getThreadIdx(final int hashedKey) {
+    return hashedKey % numHandlerThreads;
   }
 
   /**
