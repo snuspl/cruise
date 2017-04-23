@@ -20,9 +20,6 @@ import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Arrays;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Each vector with a word index represents a count vector whose elements are the
