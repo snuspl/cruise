@@ -148,52 +148,48 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   @Override
   public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchData) {
-    try {
-      resetTracer();
+    resetTracer();
 
-      final int numInstancesToProcess = miniBatchData.size();
-      final long miniBatchStartTime = System.currentTimeMillis();
+    final int numInstancesToProcess = miniBatchData.size();
+    final long miniBatchStartTime = System.currentTimeMillis();
 
-      pullModels();
+    pullModels();
 
-      resetTracer();
-      computeTracer.startTimer();
-      // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
-      // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into 'preCalculate' vector.
-      final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchData);
-      final Matrix featureMatrix = featureMatrixAndValues.getLeft();
-      final Vector yValues = featureMatrixAndValues.getRight();
+    resetTracer();
+    computeTracer.startTimer();
+    // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
+    // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into 'preCalculate' vector.
+    final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchData);
+    final Matrix featureMatrix = featureMatrixAndValues.getLeft();
+    final Vector yValues = featureMatrixAndValues.getRight();
 
-      final Vector preCalculate = featureMatrix.mmul(newModel);
+    final Vector preCalculate = featureMatrix.mmul(newModel);
 
-      final Vector columnVector = vectorFactory.createDenseZeros(numInstancesToProcess);
-      // For each dimension, compute the optimal value.
-      for (int featureIdx = 0; featureIdx < numFeatures; featureIdx++) {
-        if (closeToZero(newModel.get(featureIdx))) {
-          continue;
-        }
-        for (int rowIdx = 0; rowIdx < numInstancesToProcess; rowIdx++) {
-          columnVector.set(rowIdx, featureMatrix.get(rowIdx, featureIdx));
-        }
-        final double columnNorm = columnVector.dot(columnVector);
-        if (closeToZero(columnNorm)) {
-          continue;
-        }
-        preCalculate.subi(columnVector.scale(newModel.get(featureIdx)));
-        newModel.set(featureIdx,
-            sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
-        preCalculate.addi(columnVector.scale(newModel.get(featureIdx)));
+    final Vector columnVector = vectorFactory.createDenseZeros(numInstancesToProcess);
+    // For each dimension, compute the optimal value.
+    for (int featureIdx = 0; featureIdx < numFeatures; featureIdx++) {
+      if (closeToZero(newModel.get(featureIdx))) {
+        continue;
       }
-      computeTracer.recordTime(numInstancesToProcess);
-
-      pushGradients();
-
-      final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-
-      return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      for (int rowIdx = 0; rowIdx < numInstancesToProcess; rowIdx++) {
+        columnVector.set(rowIdx, featureMatrix.get(rowIdx, featureIdx));
+      }
+      final double columnNorm = columnVector.dot(columnVector);
+      if (closeToZero(columnNorm)) {
+        continue;
+      }
+      preCalculate.subi(columnVector.scale(newModel.get(featureIdx)));
+      newModel.set(featureIdx,
+          sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
+      preCalculate.addi(columnVector.scale(newModel.get(featureIdx)));
     }
+    computeTracer.recordTime(numInstancesToProcess);
+
+    pushGradients();
+
+    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
+
+    return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
   }
 
   @Override
