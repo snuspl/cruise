@@ -45,7 +45,7 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
   @Override
   public V pull(final K key) {
-    final Future<V> future = modelTable.get(key);
+    final Future<V> future = modelTable.getOrInit(key);
     while (true) {
       try {
         return future.get();
