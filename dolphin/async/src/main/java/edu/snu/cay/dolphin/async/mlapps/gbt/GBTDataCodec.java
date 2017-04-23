@@ -24,7 +24,7 @@ import javax.inject.Inject;
 import java.io.*;
 
 /**
- * Created by yunseong on 4/20/17.
+ * A codec for (de-)serializing data used in GBT application.
  */
 public final class GBTDataCodec implements Codec<GBTData>, StreamingCodec<GBTData> {
   private final DenseVectorCodec denseVectorCodec;

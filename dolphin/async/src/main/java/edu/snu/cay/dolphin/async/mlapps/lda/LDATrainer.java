@@ -91,8 +91,6 @@ final class LDATrainer implements Trainer<Document> {
 
   @Override
   public void initGlobalSettings() {
-    LOG.log(Level.INFO, "Initialize the global settings");
-
     // In LDA, topic counts should be initialized by pushing values before running.
     final TopicChanges topicChanges = new TopicChanges();
     final Map<Long, Document> data = trainingDataProvider.getEpochData();

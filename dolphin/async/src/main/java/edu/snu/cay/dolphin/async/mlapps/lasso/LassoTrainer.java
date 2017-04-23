@@ -149,14 +149,12 @@ final class LassoTrainer implements Trainer<LassoData> {
   @Override
   public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchData) {
     try {
-      LOG.log(Level.INFO, "Starting batch");
       resetTracer();
 
       final int numInstancesToProcess = miniBatchData.size();
       final long miniBatchStartTime = System.currentTimeMillis();
 
       pullModels();
-      LOG.log(Level.INFO, "Model pulled");
 
       resetTracer();
       computeTracer.startTimer();
@@ -188,9 +186,7 @@ final class LassoTrainer implements Trainer<LassoData> {
       }
       computeTracer.recordTime(numInstancesToProcess);
 
-      LOG.log(Level.INFO, "Computed");
       pushGradients();
-      LOG.log(Level.INFO, "Pushed");
 
       final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 

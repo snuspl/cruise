@@ -171,10 +171,10 @@ final class MLRTrainer implements Trainer<MLRData> {
       }
     }
 
-    LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
+    LOG.log(Level.INFO, "Total number of keys = {0}", classPartitionIndices.size());
   }
 
   @Override
