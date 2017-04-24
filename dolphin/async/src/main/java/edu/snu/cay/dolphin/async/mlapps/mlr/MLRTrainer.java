@@ -68,11 +68,6 @@ final class MLRTrainer implements Trainer<MLRData> {
   private final double lambda;
 
   /**
-   * Standard deviation of the gaussian distribution used for initializing model parameters.
-   */
-  private final double modelGaussian;
-
-  /**
    * Object for creating {@link Vector} instances.
    */
   private final VectorFactory vectorFactory;
@@ -124,7 +119,6 @@ final class MLRTrainer implements Trainer<MLRData> {
                      @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                      @Parameter(InitialStepSize.class) final double initStepSize,
                      @Parameter(Lambda.class) final double lambda,
-                     @Parameter(ModelGaussian.class) final double modelGaussian,
                      @Parameter(DecayRate.class) final double decayRate,
                      @Parameter(DecayPeriod.class) final int decayPeriod,
                      @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
@@ -140,7 +134,6 @@ final class MLRTrainer implements Trainer<MLRData> {
     this.numPartitionsPerClass = numFeatures / numFeaturesPerPartition;
     this.stepSize = initStepSize;
     this.lambda = lambda;
-    this.modelGaussian = modelGaussian;
     this.vectorFactory = vectorFactory;
     this.oldParams = new Vector[numClasses];
 
