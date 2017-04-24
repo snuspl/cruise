@@ -49,7 +49,7 @@ public interface MessageSender {
    * Sends a RemoteOpResultMsg that contains the result of the data operation.
    * The operation should be given a unique {@code opId}.
    */
-  void sendTableAccessResMsg(String destId, long opId,
+  void sendTableAccessResMsg(String destId, long opId, String tableId,
                              @Nullable DataValue dataValue, boolean isSuccess) throws NetworkException;
 
   /**

@@ -114,6 +114,7 @@ public class RemoteAccessOpSenderTest {
       final DataValue dataValue = invocation.getArgumentAt(7, DataValue.class);
 
       final TableAccessResMsg tableAccessResMsg = TableAccessResMsg.newBuilder()
+          .setTableId(TABLE_ID)
           .setDataValue(dataValue) // For simplicity, we assume that previous value to be same as input value.
           .setIsSuccess(true)
           .build();

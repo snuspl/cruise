@@ -124,9 +124,9 @@ public final class RemoteAccessOpHandlerTest {
       final Object[] arguments = invocation.getArguments();
       final String destId = (String) arguments[0];
       final long opId = (long) arguments[1];
-      final DataValue dataValue = (DataValue) arguments[2];
+      final DataValue dataValue = (DataValue) arguments[3];
       final Integer value = dataValue == null ? null : valueCodec.decode(dataValue.getValue().array());
-      final boolean isSuccess = (boolean) arguments[3];
+      final boolean isSuccess = (boolean) arguments[4];
 
       if (!isSuccess || !destId.equals(ORIG_EXECUTOR_ID)) {
         fail(String.format("Operation with id %d is failed", opId));
@@ -138,7 +138,7 @@ public final class RemoteAccessOpHandlerTest {
       LOG.log(Level.FINE, "Access result. opId: {0}, value: {1}, destId: {2}",
           new Object[]{opId, value, destId});
       return null;
-    }).when(mockMsgSender).sendTableAccessResMsg(anyString(), anyLong(), anyObject(), anyBoolean());
+    }).when(mockMsgSender).sendTableAccessResMsg(anyString(), anyLong(), anyString(), anyObject(), anyBoolean());
 
     final String key = "key";
     final Integer value = 1;
@@ -222,7 +222,7 @@ public final class RemoteAccessOpHandlerTest {
     assertEquals(null, reply.get());
 
     verify(mockMsgSender, times(7))
-        .sendTableAccessResMsg(anyString(), anyLong(), anyObject(), anyBoolean());
+        .sendTableAccessResMsg(anyString(), anyLong(), anyString(), anyObject(), anyBoolean());
   }
 
   private <K, V> Pair<DataKey, DataValue> getDataPair(final K key, final V value,

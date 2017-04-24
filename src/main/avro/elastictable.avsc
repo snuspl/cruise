@@ -70,6 +70,7 @@
   "fields":
   [
     {"name": "isSuccess", "type": "boolean"},
+    {"name": "tableId", "type": "string"},
     {"name": "dataValue", "type": ["null", "DataValue"]}
   ]
 },

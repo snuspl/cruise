@@ -31,6 +31,7 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -59,7 +60,7 @@ final class RemoteAccessOpSender {
    * A map holding ongoing operations until they finish.
    * It only maintains operations requested from local clients.
    */
-  private final ConcurrentMap<Long, RemoteDataOp> ongoingOp = new ConcurrentHashMap<>();
+  private final Map<String, Map<Long, RemoteDataOp>> tableIdToOngoingOps = new ConcurrentHashMap<>();
 
   /**
    * A boolean flag that becomes true when {@link #close()} is called,
@@ -156,9 +157,9 @@ final class RemoteAccessOpSender {
 
         // catch and rethrow RuntimeException after leaving a log
         // otherwise, the thread disappears without any noticeable marks
-      } catch (final RuntimeException e) {
-        LOG.log(Level.SEVERE, "Sender thread has been down due to RuntimeException", e);
-        throw e;
+      } catch (final Exception e) {
+        LOG.log(Level.SEVERE, "Sender thread has been down due to unexpected exception", e);
+        throw new RuntimeException(e);
       }
     }
 
@@ -178,6 +179,11 @@ final class RemoteAccessOpSender {
       }
 
       encodeAndSendRequestMsg(opMetadata, op.getTargetId(), executorId, tableComponents, msgSenderFuture.get());
+
+      // for operations that require replies, deregister them when receiving the reply
+      if (!opMetadata.isReplyRequired()) {
+        deregisterOp(tableId, opMetadata.getOpId());
+      }
     }
 
     /**
@@ -300,10 +306,7 @@ final class RemoteAccessOpSender {
     LOG.log(Level.FINEST, "Send op to remote. OpId: {0}, OpType: {1}, targetId: {2}",
         new Object[]{opMetadata.getOpId(), opMetadata.getOpType(), targetEvalId});
 
-    if (replyRequired) {
-      // will be deregistered upon {@link onTableAccessResMsg()}
-      registerOp(operation);
-    }
+    registerOp(operation);
 
     final int threadIdx = getThreadIdx(encodedKey.getHash());
     senderThreads.get(threadIdx).enqueue(operation);
@@ -320,16 +323,17 @@ final class RemoteAccessOpSender {
    */
   @SuppressWarnings("unchecked")
   <V> void onTableAccessResMsg(final long opId, final TableAccessResMsg msg) {
+    final String tableId = msg.getTableId();
     final DataValue remoteOutput = msg.getDataValue();
     final boolean isSuccess = msg.getIsSuccess();
 
+    final Map<Long, RemoteDataOp> ongoingOp = tableIdToOngoingOps.get(tableId);
     final RemoteDataOp<?, V, ?> operation = ongoingOp.get(opId);
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", opId);
       return;
     }
 
-    final String tableId = operation.getMetadata().getTableId();
     try {
       final Codec<V> valueCodec = (Codec<V>) tablesFuture.get().getTableComponents(tableId)
           .getSerializer().getValueCodec();
@@ -347,7 +351,7 @@ final class RemoteAccessOpSender {
 
       operation.getDataOpResult().commitResult(decodedValue, isSuccess);
 
-      deregisterOp(opId);
+      deregisterOp(tableId, opId);
       LOG.log(Level.FINEST, "Remote operation is finished. OpId: {0}", opId);
     } catch (final TableNotExistException e) {
       throw new RuntimeException(e);
@@ -355,9 +359,35 @@ final class RemoteAccessOpSender {
   }
 
   /**
+   * Wait all ongoing operations for a given {@code tableId} to be finished.
+   * Operations that require replies are finished after receive the response.
+   * @param tableId a table id
+   */
+  void waitOpsTobeFlushed(final String tableId) {
+    final Map ongoingOps = tableIdToOngoingOps.get(tableId);
+    if (ongoingOps == null) {
+      return;
+    }
+
+    LOG.log(Level.INFO, "Start waiting {0} ops to be flushed", ongoingOps.size());
+    while (!ongoingOps.isEmpty()) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        // ignore interrupt
+      }
+      LOG.log(Level.INFO, "ongoingOps.size(): {0}", ongoingOps.size());
+    }
+    tableIdToOngoingOps.remove(tableId);
+    LOG.log(Level.INFO, "ops for {0} has been flushed out", tableId);
+  }
+
+  /**
    * Registers an operation before sending it to remote executor.
    */
   private void registerOp(final RemoteDataOp operation) {
+    final Map<Long, RemoteDataOp> ongoingOp = tableIdToOngoingOps.computeIfAbsent(
+        operation.getMetadata().getTableId(), key -> new ConcurrentHashMap<>());
     final RemoteDataOp unhandledOperation = ongoingOp.put(operation.getMetadata().getOpId(), operation);
     if (unhandledOperation != null) {
       LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}",
@@ -368,7 +398,10 @@ final class RemoteAccessOpSender {
   /**
    * Deregisters an operation after its remote access is finished.
    */
-  private void deregisterOp(final long operationId) {
-    ongoingOp.remove(operationId);
+  private void deregisterOp(final String tableId, final long operationId) {
+    final Map<Long, RemoteDataOp> ongoingOp = tableIdToOngoingOps.get(tableId);
+    if (ongoingOp == null || ongoingOp.remove(operationId) == null) {
+      LOG.log(Level.WARNING, "No ongoing ops with opId: {0}", operationId);
+    }
   }
 }

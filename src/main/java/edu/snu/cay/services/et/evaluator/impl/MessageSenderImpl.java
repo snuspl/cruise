@@ -78,7 +78,7 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendTableAccessResMsg(final String destId, final long opId,
+  public void sendTableAccessResMsg(final String destId, final long opId, final String tableId,
                                     @Nullable final DataValue dataValue, final boolean isSuccess)
       throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
@@ -90,6 +90,7 @@ public final class MessageSenderImpl implements MessageSender {
                 .setTableAccessResMsg(
                     TableAccessResMsg.newBuilder()
                         .setIsSuccess(isSuccess)
+                        .setTableId(tableId)
                         .setDataValue(dataValue)
                         .build()
                 ).build()

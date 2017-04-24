@@ -31,12 +31,19 @@ import org.apache.reef.tang.formats.ConfigurationSerializer;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * A message handler implementation.
  */
 @EvaluatorSide
 public final class MessageHandlerImpl implements MessageHandler {
+  private static final int NUM_OWNERSHIP_UPDATE_THREADS = 4;
+  private static final int NUM_TABLE_DROP_THREADS = 4;
+
+  private final ExecutorService ownershipUpdateExecutor = Executors.newFixedThreadPool(NUM_OWNERSHIP_UPDATE_THREADS);
+  private final ExecutorService tableDropExecutor = Executors.newFixedThreadPool(NUM_TABLE_DROP_THREADS);
 
   private final InjectionFuture<Tables> tablesFuture;
 
@@ -141,21 +148,30 @@ public final class MessageHandlerImpl implements MessageHandler {
   }
 
   private void onTableDropMsg(final long opId, final TableDropMsg msg) {
-    tablesFuture.get().remove(msg.getTableId());
+    // remove a table after flushing out all operations for the table in sender and handler
+    tableDropExecutor.submit(() -> {
+      final String tableId = msg.getTableId();
+      remoteAccessSenderFuture.get().waitOpsTobeFlushed(tableId);
+      remoteAccessHandlerFuture.get().waitOpsTobeFlushed(tableId);
+      tablesFuture.get().remove(tableId);
 
-    try {
-      msgSenderFuture.get().sendTableDropAckMsg(opId, msg.getTableId());
-    } catch (NetworkException e) {
-      throw new RuntimeException(e);
-    }
+      try {
+        msgSenderFuture.get().sendTableDropAckMsg(opId, tableId);
+      } catch (NetworkException e) {
+        throw new RuntimeException(e);
+      }
+    });
   }
 
   private void onOwnershipUpdateMsg(final OwnershipUpdateMsg msg) {
-    try {
-      final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(msg.getTableId()).getOwnershipCache();
-      ownershipCache.update(msg.getBlockId(), msg.getOldOwnerId(), msg.getNewOwnerId());
-    } catch (final TableNotExistException e) {
-      throw new RuntimeException(e);
-    }
+    ownershipUpdateExecutor.submit(() -> {
+      try {
+        final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(msg.getTableId())
+            .getOwnershipCache();
+        ownershipCache.update(msg.getBlockId(), msg.getOldOwnerId(), msg.getNewOwnerId());
+      } catch (final TableNotExistException e) {
+        throw new RuntimeException(e);
+      }
+    });
   }
 }

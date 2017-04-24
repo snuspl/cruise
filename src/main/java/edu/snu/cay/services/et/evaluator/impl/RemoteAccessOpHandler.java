@@ -32,9 +32,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
@@ -51,6 +49,15 @@ final class RemoteAccessOpHandler {
   private final int numHandlerThreads;
 
   private final List<HandlerThread> handlerThreads;
+
+  /**
+   * A map holding ongoing operations until they finish.
+   * It maintains operations requested from remote clients.
+   * Key is a table Id and value is a set of operation Id and original requester executor Id pair.
+   * Operation should be identified with a pair of operation Id and and origin Id,
+   * because operation Id is only unique within the original executor.
+   */
+  private final Map<String, Set<Pair<Long, String>>> tableIdToQueuedOps = new ConcurrentHashMap<>();
 
   private volatile boolean closeFlag = false;
 
@@ -212,6 +219,9 @@ final class RemoteAccessOpHandler {
           final Lock ownershipLock = remoteEvalIdWithLock.getValue();
           ownershipLock.unlock();
         }
+
+        deregisterOp(tableId, operation.getOpId(), operation.getOrigId());
+
       } catch (final TableNotExistException e) {
         throw new RuntimeException(e);
       }
@@ -235,7 +245,7 @@ final class RemoteAccessOpHandler {
     }
   }
 
-  /**
+ /**
    * Redirects an operation to the target executor.
    */
   private <K, V, U> void redirect(final DataOpMetadata<K, V, U> opMetadata, final String targetId) {
@@ -262,6 +272,8 @@ final class RemoteAccessOpHandler {
     final String tableId = msg.getTableId();
     final DataKey dataKey = msg.getDataKey();
     final DataValue dataValue = msg.getDataValue();
+
+    registerOp(tableId, opId, origEvalId);
 
     try {
       final TableComponents<K, V, U> tableComponents = tablesFuture.get().getTableComponents(tableId);
@@ -325,12 +337,58 @@ final class RemoteAccessOpHandler {
         dataValue = null;
       }
 
-      msgSenderFuture.get().sendTableAccessResMsg(origEvalId, operation.getOpId(), dataValue, isSuccess);
+      msgSenderFuture.get().sendTableAccessResMsg(origEvalId, operation.getOpId(), tableId, dataValue, isSuccess);
 
     } catch (final TableNotExistException e) {
       throw new RuntimeException(e);
     } catch (NetworkException e) {
       LOG.log(Level.INFO, "The origin {0} has been removed, so the message is just discarded", origEvalId);
+    }
+  }
+
+  /**
+   * Wait all ongoing operations for a given {@code tableId} to be finished.
+   * @param tableId a table id
+   */
+  void waitOpsTobeFlushed(final String tableId) {
+    final Set remainingOps = tableIdToQueuedOps.get(tableId);
+    if (remainingOps == null) {
+      return;
+    }
+
+    LOG.log(Level.INFO, "Start waiting {0} ops to be flushed", remainingOps.size());
+    while (!remainingOps.isEmpty()) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        // ignore interrupt
+      }
+      LOG.log(Level.INFO, "remainingOps.size(): {0}", remainingOps.size());
+    }
+    tableIdToQueuedOps.remove(tableId);
+    LOG.log(Level.INFO, "ops for {0} has been flushed out", tableId);
+  }
+
+  /**
+   * Registers an operation before.
+   */
+  private void registerOp(final String tableId, final long opId, final String origId) {
+    tableIdToQueuedOps.compute(tableId, (k, v) -> {
+      final Set<Pair<Long, String>> queuedOps = v == null ?
+          Collections.newSetFromMap(new ConcurrentHashMap<>()) : v;
+
+      queuedOps.add(Pair.of(opId, origId));
+      return queuedOps;
+    });
+  }
+
+  /**
+   * Deregisters an operation after processing it.
+   */
+  private void deregisterOp(final String tableId, final long opId, final String origId) {
+    final Set<Pair<Long, String>> queuedOps = tableIdToQueuedOps.get(tableId);
+    if (queuedOps == null || !queuedOps.remove(Pair.of(opId, origId))) {
+      LOG.log(Level.WARNING, "No existing ops with opId: {0}, origId: {1}", new Object[]{opId, origId});
     }
   }
 }
