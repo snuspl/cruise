@@ -25,18 +25,18 @@ import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.InitialMax;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.InitialMin;
 
 /**
- * Updater for non-negative matrix factorization via SGD.
+ * An update function for non-negative matrix factorization via SGD.
  *
  * Vectors are initialized with random values
  * between {@link InitialMin} and {@link InitialMax} using {@link java.util.Random}.
  */
-public final class NMFModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
+public final class NMFETModelUpdateFunction implements UpdateFunction<Integer, Vector, Vector> {
   private final NMFModelGenerator modelGenerator;
   private final double stepSize;
 
   @Inject
-  private NMFModelUpdateFunction(final NMFModelGenerator modelGenerator,
-                                 @Parameter(NMFParameters.StepSize.class) final double stepSize) {
+  private NMFETModelUpdateFunction(final NMFModelGenerator modelGenerator,
+                                   @Parameter(NMFParameters.StepSize.class) final double stepSize) {
     this.modelGenerator = modelGenerator;
     this.stepSize = stepSize;
   }

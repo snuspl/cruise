@@ -71,17 +71,17 @@ final class LassoTrainer implements Trainer<LassoData> {
    * A list from 0 to {@code numPartitions} that will be used during {@link #pullModels()} and {@link #pushGradients()}.
    */
   private List<Integer> modelPartitionIndices;
-  
+
   /**
    * Number of model partitions.
    */
   private final int numPartitions;
-  
+
   /**
    * Number of features of each model partition.
    */
   private final int numFeaturesPerPartition;
-  
+
   /**
    * To collect metric data.
    */

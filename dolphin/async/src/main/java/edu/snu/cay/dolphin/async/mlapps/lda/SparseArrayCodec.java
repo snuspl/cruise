@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import java.io.*;
  * which represents model in different form between worker and server.
  */
 final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
-
   @Inject
   private SparseArrayCodec() {
   }
@@ -39,7 +38,7 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
       encodeToStream(array, dos);
       return baos.toByteArray();
     } catch (final IOException e) {
-      throw new RuntimeException(e.getCause());
+      throw new RuntimeException(e);
     }
   }
 
@@ -62,7 +61,7 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
         }
       }
     } catch (final IOException e) {
-      throw new RuntimeException(e.getCause());
+      throw new RuntimeException(e);
     }
   }
 
@@ -71,7 +70,7 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
     try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
       return decodeFromStream(dis);
     } catch (final IOException e) {
-      throw new RuntimeException(e.getCause());
+      throw new RuntimeException(e);
     }
   }
 
@@ -94,11 +93,11 @@ final class SparseArrayCodec implements Codec<int[]>, StreamingCodec<int[]> {
       }
       return result;
     } catch (final IOException e) {
-      throw new RuntimeException(e.getCause());
+      throw new RuntimeException(e);
     }
   }
 
-  public int getNumBytes(final int[] array) {
+  int getNumBytes(final int[] array) {
     return Integer.BYTES + 2 * Integer.BYTES * array[array.length - 1];
   }
 }

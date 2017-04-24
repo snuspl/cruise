@@ -13,42 +13,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.async.mlapps.nmf;
+package edu.snu.cay.dolphin.async.mlapps.gbt;
+
 
 import edu.snu.cay.dolphin.async.ETDolphinConfiguration;
 import edu.snu.cay.dolphin.async.ETDolphinLauncher;
-import edu.snu.cay.dolphin.async.mlapps.serialization.DenseVectorCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeCodec;
+import edu.snu.cay.dolphin.async.mlapps.serialization.GBTreeListCodec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
-import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
+import static edu.snu.cay.dolphin.async.mlapps.gbt.GBTParameters.*;
 
 /**
- * Client for non-negative matrix factorization via SGD.
+ * Application launching code for GBTREEF.
  */
-public final class NMFET {
+public final class GBTET {
 
-  /**
-   * Should not be instantiated.
-   */
-  private NMFET() {
+  private GBTET() {
   }
 
   public static void main(final String[] args) {
-    ETDolphinLauncher.launch("MatrixFactorizationET", args, ETDolphinConfiguration.newBuilder()
-        .setTrainerClass(NMFTrainer.class)
-        .setInputParserClass(NMFETDataParser.class)
+    ETDolphinLauncher.launch("GBTET", args, ETDolphinConfiguration.newBuilder()
+        .setTrainerClass(GBTTrainer.class)
+        .setInputParserClass(GBTETDataParser.class)
         .setInputKeyCodecClass(SerializableCodec.class)
-        .setInputValueCodecClass(NMFDataCodec.class)
-        .setModelUpdateFunctionClass(NMFETModelUpdateFunction.class)
+        .setInputValueCodecClass(GBTDataCodec.class)
+        .setModelUpdateFunctionClass(GBTETModelUpdateFunction.class)
         .setModelKeyCodecClass(SerializableCodec.class)
-        .setModelValueCodecClass(DenseVectorCodec.class)
-        .setModelUpdateValueCodecClass(DenseVectorCodec.class)
-        .addParameterClass(Rank.class)
+        .setModelValueCodecClass(GBTreeListCodec.class)
+        .setModelUpdateValueCodecClass(GBTreeCodec.class)
+        .addParameterClass(NumFeatures.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
-        .addParameterClass(PrintMatrices.class)
-        .addParameterClass(DecayPeriod.class)
-        .addParameterClass(DecayRate.class)
+        .addParameterClass(Gamma.class)
+        .addParameterClass(TreeMaxDepth.class)
+        .addParameterClass(LeafMinSize.class)
+        .addParameterClass(MetadataPath.class)
+        .addParameterClass(NumKeys.class)
         .build());
   }
 }
