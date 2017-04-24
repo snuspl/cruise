@@ -25,6 +25,7 @@ import org.apache.reef.task.Task;
 import javax.inject.Inject;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,6 +42,7 @@ final class ETWorkerTask<K, V> implements Task {
 
   private final WorkerGlobalBarrier workerGlobalBarrier;
   private final TrainingDataProvider<K, V> trainingDataProvider;
+  private final TestDataProvider<V> testDataProvider;
   private final Trainer<V> trainer;
   private final MetricCollector<DolphinWorkerMetrics> metricCollector;
 
@@ -55,12 +57,14 @@ final class ETWorkerTask<K, V> implements Task {
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                        final WorkerGlobalBarrier workerGlobalBarrier,
                        final TrainingDataProvider<K, V> trainingDataProvider,
+                       final TestDataProvider<V> testDataProvider,
                        final Trainer<V> trainer,
                        final MetricCollector<DolphinWorkerMetrics> metricCollector) {
     this.taskId = taskId;
     this.maxNumEpochs = maxNumEpochs;
     this.workerGlobalBarrier = workerGlobalBarrier;
     this.trainingDataProvider = trainingDataProvider;
+    this.testDataProvider = testDataProvider;
     this.trainer = trainer;
     this.metricCollector = metricCollector;
   }
@@ -70,6 +74,7 @@ final class ETWorkerTask<K, V> implements Task {
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
     trainingDataProvider.loadData();
+    final List<V> testData = testDataProvider.getTestData();
 
     trainer.initGlobalSettings();
 
@@ -93,7 +98,7 @@ final class ETWorkerTask<K, V> implements Task {
         }
 
         final long miniBatchStartTime = System.currentTimeMillis();
-        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchData);
+        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchData, testData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
         sendBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
@@ -110,7 +115,7 @@ final class ETWorkerTask<K, V> implements Task {
         }
       }
 
-      final EpochResult epochResult = trainer.onEpochFinished(epochData, epochIdx);
+      final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
       final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
       sendEpochMetrics(epochResult, epochIdx, miniBatchIdx,

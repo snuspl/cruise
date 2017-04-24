@@ -133,7 +133,8 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<NMFData> miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection<NMFData> miniBatchData,
+                                      final Collection<NMFData> testData) {
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
     final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchData.size());
@@ -200,7 +201,9 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<NMFData> epochData, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection<NMFData> epochData,
+                                     final Collection<NMFData> testData,
+                                     final int epochIdx) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels(getKeys(epochData));
 
@@ -208,7 +211,8 @@ final class NMFTrainer implements Trainer<NMFData> {
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
-    final double loss = computeLoss(epochData, model);
+    final double trainingError = computeLoss(epochData, model);
+    final double testError = computeLoss(testData, model);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -217,7 +221,7 @@ final class NMFTrainer implements Trainer<NMFData> {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
-    return buildEpochResult(loss);
+    return buildEpochResult(trainingError, testError);
   }
 
   @Override
@@ -433,9 +437,10 @@ final class NMFTrainer implements Trainer<NMFData> {
         .build();
   }
 
-  private EpochResult buildEpochResult(final double loss) {
+  private EpochResult buildEpochResult(final double trainingLoss, final double testError) {
     return EpochResult.newBuilder()
-        .addAppMetric(MetricKeys.LOSS_SUM, loss)
+        .addAppMetric(MetricKeys.LOSS_SUM, trainingLoss)
+        .addAppMetric(MetricKeys.TEST_ERROR, testError)
         .build();
   }
 }

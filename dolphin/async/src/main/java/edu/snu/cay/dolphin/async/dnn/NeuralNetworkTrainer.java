@@ -82,7 +82,8 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<NeuralNetworkData> miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection<NeuralNetworkData> miniBatchData,
+                                      final Collection<NeuralNetworkData> testSet) {
     for (final NeuralNetworkData data : miniBatchData) {
       if (data.isValidation()) {
         continue;
@@ -103,7 +104,9 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<NeuralNetworkData> epochData, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection<NeuralNetworkData> epochData,
+                                     final Collection<NeuralNetworkData> trainingSet,
+                                     final int epochIdx) {
     // update parameters for model validation
     neuralNetwork.updateParameters();
 

@@ -144,10 +144,11 @@ final class LassoTrainer implements Trainer<LassoData> {
    * 3) Push value to server.
    */
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchTrainingSet,
+                                      final Collection<LassoData> testSet) {
     resetTracer();
 
-    final int numInstancesToProcess = miniBatchData.size();
+    final int numInstancesToProcess = miniBatchTrainingSet.size();
     final long miniBatchStartTime = System.currentTimeMillis();
 
     pullModels();
@@ -155,7 +156,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     computeTracer.startTimer();
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
     // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into 'preCalculate' vector.
-    final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchData);
+    final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchTrainingSet);
     final Matrix featureMatrix = featureMatrixAndValues.getLeft();
     final Vector yValues = featureMatrixAndValues.getRight();
 
@@ -188,12 +189,17 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<LassoData> epochData, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection<LassoData> epochTrainingSet,
+                                     final Collection<LassoData> testSet,
+                                     final int epochIdx) {
     // Calculate the loss value.
     pullModels();
 
-    final double sampleLossSum = computeLoss(epochData);
-    LOG.log(Level.INFO, "Loss value: {0}", sampleLossSum);
+    final double sampleLossSum = computeLoss(epochTrainingSet);
+    final double testError = computeLoss(testSet);
+
+    LOG.log(Level.INFO, "Training Loss: {0}, Test Error: {1}", new Object[] {sampleLossSum, testError});
+    
     if ((epochIdx + 1) % PRINT_MODEL_PERIOD == 0) {
       for (int i = 0; i < numFeatures; i++) {
         LOG.log(Level.INFO, "model : {0}", newModel.get(i));

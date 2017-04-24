@@ -71,6 +71,9 @@ final class NMFParameters {
     static final String LOSS_SUM =
         "NMF_TRAINER_LOSS_SUM";
 
+    static final String TEST_ERROR =
+        "NMF_TRAINER_TEST_ERROR";
+
     // The key denoting the number of training data instances processed per unit time.
     static final String DVT =
         "NMF_TRAINER_DVT";

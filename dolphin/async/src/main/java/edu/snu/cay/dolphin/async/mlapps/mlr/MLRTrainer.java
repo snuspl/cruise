@@ -175,7 +175,8 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<MLRData> miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection<MLRData> miniBatchTrainingSet,
+                                      final Collection<MLRData> testSet) {
     resetTracers();
 
     final long miniBatchStartTime = System.currentTimeMillis();
@@ -185,8 +186,8 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-    final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchData.size());
-    instances.addAll(miniBatchData);
+    final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchTrainingSet.size());
+    instances.addAll(miniBatchTrainingSet);
     final int numInstancesToProcess = instances.size();
 
     // collects the results (new models here) computed by multiple threads
@@ -241,7 +242,9 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<MLRData> epochData, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection<MLRData> epochData,
+                                     final Collection<MLRData> testData,
+                                     final int epochIdx) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
 
@@ -250,6 +253,7 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     LOG.log(Level.INFO, "Start computing loss value");
     final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(epochData, model);
+    final Tuple3<Double, Double, Double> testLossRegLossAccuracy = computeLoss(testData, model);
     final double sampleLoss = lossRegLossAccuracy.getFirst();
     final double regLoss = lossRegLossAccuracy.getSecond();
     final double accuracy = lossRegLossAccuracy.getThird();

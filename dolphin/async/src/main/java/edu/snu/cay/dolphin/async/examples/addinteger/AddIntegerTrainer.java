@@ -100,7 +100,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection miniBatchData, final Collection testSet) {
     resetTracers();
 
     // sleep to simulate computation
@@ -128,7 +128,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection epochData, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection epochData, final Collection testSet, final int epochIdx) {
     return EpochResult.EMPTY_RESULT;
   }
 
