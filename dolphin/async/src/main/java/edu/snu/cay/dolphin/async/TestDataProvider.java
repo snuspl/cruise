@@ -15,20 +15,43 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.common.dataloader.*;
+import edu.snu.cay.services.et.evaluator.api.DataParser;
+import org.apache.hadoop.io.Text;
+import org.apache.reef.tang.annotations.Parameter;
+
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
  * Created by yunseong on 4/24/17.
  */
 public final class TestDataProvider<T> {
+  private final String testDataPath;
+  private final DataParser<T> dataParser;
+
   @Inject
-  private TestDataProvider() {
-    // NamedParameter for path
+  private TestDataProvider(@Parameter(DolphinParameters.TestDataPath.class) final String testDataPath,
+                           final DataParser<T> dataParser) {
+    this.testDataPath = testDataPath;
+    this.dataParser = dataParser;
   }
 
-  public List<T> getTestData() {
-    return Collections.emptyList();
+  public List<T> getTestData() throws IOException {
+    if (testDataPath.equals(DolphinParameters.TestDataPath.NONE)) {
+      return Collections.emptyList();
+    }
+
+    final HdfsSplitInfo[] splitInfos = HdfsSplitManager.getSplits(testDataPath, TextInputFormat.class.getName(), 1);
+    final String serializedInfo = HdfsSplitInfoSerializer.serialize(splitInfos[0]);
+    final HdfsDataSet<?, Text> hdfsDataSet = HdfsDataSet.from(serializedInfo);
+
+    final List<String> rawDataList = new LinkedList<>();
+    hdfsDataSet.forEach(pair -> rawDataList.add(pair.getValue().toString()));
+    final List<T> dataList = dataParser.parse(rawDataList);
+    return dataList;
   }
 }
