@@ -34,7 +34,7 @@ public final class UnassociateOp extends AbstractOp {
 
   public UnassociateOp(final String executorId,
                        final String tableId) {
-    super(OpType.UNSUBSCRIBE);
+    super(OpType.UNASSOCIATE);
     this.executorId = executorId;
     this.tableId = tableId;
   }

@@ -80,7 +80,7 @@ public abstract class OpResult {
 
   public static final class UnassociateOpResult extends OpResult {
     public UnassociateOpResult(final UnassociateOp op) {
-      super(OpType.ASSOCIATE, op);
+      super(OpType.UNASSOCIATE, op);
     }
   }
 
