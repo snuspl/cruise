@@ -288,6 +288,9 @@ public final class ETDolphinLauncher {
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.DRIVER_MEMORY, driverMemSize)
         .set(DriverConfiguration.ON_DRIVER_STARTED, ETDolphinDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, ETDolphinDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, ETDolphinDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_FAILED, ETDolphinDriver.FailedTaskHandler.class)
         .build();
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
