@@ -138,6 +138,26 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
+  public void sendOwnershipSyncAckMsg(final long opId, final String tableId,
+                                      final String deletedExecutorId) throws NetworkException {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.TableControlMsg)
+        .setTableControlMsg(
+            TableControlMsg.newBuilder()
+                .setType(TableControlMsgType.OwnershipSyncAckMsg)
+                .setOperationId(opId)
+                .setOwnershipSyncAckMsg(
+                    OwnershipSyncAckMsg.newBuilder()
+                        .setTableId(tableId)
+                        .setDeletedExecutorId(executorId)
+                        .build()
+                ).build()
+        ).build();
+
+    networkConnection.send(driverId, msg);
+  }
+
+  @Override
   public void sendOwnershipMsg(final long opId, final String tableId, final int blockId,
                                final String oldOwnerId, final String newOwnerId) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()

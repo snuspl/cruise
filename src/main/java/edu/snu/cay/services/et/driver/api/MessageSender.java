@@ -55,6 +55,13 @@ public interface MessageSender {
                               String oldOwnerId, String newOwnerId);
 
   /**
+   * Sends a OwnershipSyncMsg that confirms the deletion of {@code deletedExecutorId}
+   * from the ownership cache in an executor of {@code executorId}.
+   */
+  void sendOwnershipSyncMsg(long opId, String executorId,
+                            String tableId, String deletedExecutorId);
+
+  /**
    * Sends a MoveInitMsg that initializes migration process between two executors.
    */
   void sendMoveInitMsg(long opId, String tableId, List<Integer> blockIds,

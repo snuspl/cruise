@@ -47,6 +47,7 @@ final class TableControlAgent {
 
   private final Map<Long, AggregateFuture<Void>> pendingInit = new ConcurrentHashMap<>();
   private final Map<Long, AggregateFuture<Void>> pendingDrop = new ConcurrentHashMap<>();
+  private final Map<Long, AggregateFuture<Void>> pendingSync = new ConcurrentHashMap<>();
 
   @Inject
   private TableControlAgent(final MessageSender msgSender) {
@@ -105,9 +106,12 @@ final class TableControlAgent {
     LOG.log(Level.INFO, "Table {0} in executor {1} is initialized.",
         new Object[]{tableId, executorId});
     final AggregateFuture<Void> resultFuture = pendingInit.get(opId);
-    if (resultFuture == null || resultFuture.isDone()) {
-      throw new RuntimeException("There's no ongoing init for table. opId: " + opId);
+    if (resultFuture == null) {
+      throw new RuntimeException("There's no ongoing init of table. opId: " + opId);
+    } else if (resultFuture.isDone()) {
+      throw new RuntimeException("The init operation was already handled. opId: " + opId);
     }
+
     resultFuture.onCompleted(null);
 
     if (resultFuture.isDone()) {
@@ -143,13 +147,60 @@ final class TableControlAgent {
   synchronized void onTableDropAck(final long opId, final String tableId, final String executorId) {
     LOG.log(Level.INFO, "Table {0} in executor {1} is dropped.", new Object[]{tableId, executorId});
     final AggregateFuture<Void> resultFuture = pendingDrop.get(opId);
-    if (resultFuture == null || resultFuture.isDone()) {
-      throw new RuntimeException("There's no ongoing drop for table. opId: " + opId);
+    if (resultFuture == null) {
+      throw new RuntimeException("There's no ongoing drop of table. opId: " + opId);
+    } else if (resultFuture.isDone()) {
+      throw new RuntimeException("The drop operation was already handled. opId: " + opId);
     }
+
     resultFuture.onCompleted(null);
 
     if (resultFuture.isDone()) {
       pendingDrop.remove(opId);
+    }
+  }
+
+  /**
+   * Synchronize ownership status of executors in {@code executorIdSet}.
+   * Specifically it confirms that they have no entry of {@code deletedExecutorId}.
+   * @param tableId a table id
+   * @param deletedExecutorId a deleted executor id
+   * @param executorIdSet a set of executor ids to sync
+   */
+  ListenableFuture<?> syncOwnership(final String tableId, final String deletedExecutorId,
+                                    final Set<String> executorIdSet) {
+    final long opId = operationIdCounter.getAndIncrement();
+    LOG.log(Level.INFO, "Sync ownership of table {0} in executors: {1}. DeletedExecutorId: {2}, OpId: {3}",
+        new Object[]{tableId, executorIdSet, deletedExecutorId, opId});
+
+    final AggregateFuture<Void> resultFuture = new AggregateFuture<>(executorIdSet.size());
+    pendingSync.put(opId, resultFuture);
+
+    executorIdSet.forEach(executorId -> msgSender.sendOwnershipSyncMsg(opId, executorId, tableId, deletedExecutorId));
+
+    return resultFuture;
+  }
+
+  /**
+   * Marks that a ownership sync started by {@link #syncOwnership} has been done in an executor.
+   * @param opId an operation id
+   * @param tableId a table id
+   * @param executorId an executor id
+   */
+  synchronized void onOwnershipSyncAck(final long opId, final String tableId, final String executorId) {
+    LOG.log(Level.INFO, "Ownership sync of table {0} in {1} is finished. opId: {2}",
+        new Object[]{tableId, executorId, opId});
+    final AggregateFuture<Void> resultFuture = pendingSync.get(opId);
+    if (resultFuture == null) {
+      throw new RuntimeException("There's no ongoing sync of table ownership. opId: " + opId);
+    } else if (resultFuture.isDone()) {
+      throw new RuntimeException("The sync operation was already handled. opId: " + opId);
+    }
+
+    resultFuture.onCompleted(null);
+
+    if (resultFuture.isDone()) {
+      pendingSync.remove(opId);
     }
   }
 }

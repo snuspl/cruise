@@ -33,7 +33,7 @@ import java.util.Set;
  */
 @DriverSide
 public final class MessageHandlerImpl implements MessageHandler {
-  private final InjectionFuture<TableControlAgent> tableInitializerFuture;
+  private final InjectionFuture<TableControlAgent> tableControlAgentFuture;
   private final InjectionFuture<MigrationManager> migrationManagerFuture;
   private final InjectionFuture<MetricReceiver> metricReceiver;
 
@@ -45,11 +45,11 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final Set<Integer> migrationMsgArrivedBlockIds = Collections.synchronizedSet(new HashSet<>());
 
   @Inject
-  private MessageHandlerImpl(final InjectionFuture<TableControlAgent> tableInitializerFuture,
+  private MessageHandlerImpl(final InjectionFuture<TableControlAgent> tableControlAgentFuture,
                              final InjectionFuture<MigrationManager> migrationManagerFuture,
                              final InjectionFuture<MetricReceiver> metricReceiver) {
     this.metricReceiver = metricReceiver;
-    this.tableInitializerFuture = tableInitializerFuture;
+    this.tableControlAgentFuture = tableControlAgentFuture;
     this.migrationManagerFuture = migrationManagerFuture;
   }
 
@@ -87,18 +87,24 @@ public final class MessageHandlerImpl implements MessageHandler {
     case TableDropAckMsg:
       onTableDropAckMsg(opId, msg.getTableDropAckMsg());
       break;
-
+    case OwnershipSyncAckMsg:
+      onOwnershipSyncAckMsg(opId, msg.getOwnershipSyncAckMsg());
+      break;
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
   }
 
   private void onTableInitAckMsg(final long opId, final TableInitAckMsg msg) {
-    tableInitializerFuture.get().onTableInitAck(opId, msg.getTableId(), msg.getExecutorId());
+    tableControlAgentFuture.get().onTableInitAck(opId, msg.getTableId(), msg.getExecutorId());
   }
 
   private void onTableDropAckMsg(final long opId, final TableDropAckMsg msg) {
-    tableInitializerFuture.get().onTableDropAck(opId, msg.getTableId(), msg.getExecutorId());
+    tableControlAgentFuture.get().onTableDropAck(opId, msg.getTableId(), msg.getExecutorId());
+  }
+
+  private void onOwnershipSyncAckMsg(final long opId, final OwnershipSyncAckMsg msg) {
+    tableControlAgentFuture.get().onOwnershipSyncAck(opId, msg.getTableId(), msg.getDeletedExecutorId());
   }
 
   /**

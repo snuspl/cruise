@@ -319,6 +319,12 @@ public final class MigrationManagerTest {
     }
 
     @Override
+    public void sendOwnershipSyncMsg(final long opId, final String executorId,
+                                     final String tableId, final String deletedExecutorId) {
+
+    }
+
+    @Override
     public void sendMoveInitMsg(final long opId, final String tableId, final List<Integer> blockIds,
                                 final String senderId, final String receiverId) {
       for (final int blockId : blockIds) {

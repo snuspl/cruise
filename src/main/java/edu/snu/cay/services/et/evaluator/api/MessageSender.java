@@ -63,6 +63,11 @@ public interface MessageSender {
   void sendTableDropAckMsg(long opId, String tableId) throws NetworkException;
 
   /**
+   * Sends a OwnershipSyncAckMsg that responds to OwnershipSyncMsg.
+   */
+  void sendOwnershipSyncAckMsg(long opId, String tableId, String deletedExecutorId) throws NetworkException;
+
+  /**
    * Sends a message transferring ownership of a block from sender to receiver of migration.
    * The operation should be given a unique {@code opId}.
    */

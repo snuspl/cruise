@@ -17,7 +17,9 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
+import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
 import edu.snu.cay.services.et.driver.impl.BlockManager;
+import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -32,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
 
 /**
  * Tests to check whether OwnershipCache is initialized correctly, and give correct answer to route operations.
@@ -70,9 +73,11 @@ public final class OwnershipCacheTest {
       final Configuration evalConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
           .bindNamedParameter(ExecutorIdentifier.class, executorId)
+          .bindNamedParameter(TableIdentifier.class, "Table")
           .build();
 
       final Injector evalInjector = Tang.Factory.getTang().newInjector(evalConf);
+      evalInjector.bindVolatileInstance(MessageSender.class, mock(MessageSender.class));
 
       final OwnershipCache ownershipCache = evalInjector.getInstance(OwnershipCache.class);
       ownershipCache.init(blockOwners);

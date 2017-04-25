@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.driver.impl;
 
 import edu.snu.cay.services.et.common.util.concurrent.CompletedFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.exceptions.NotAssociatedException;
@@ -168,16 +169,34 @@ public final class AllocatedTable {
   /**
    * Decouples the table from the executor. As a result, the executor will not have any blocks nor receive any updates
    * of ownership information.
+   * Also, it should confirm that ownership cache of other executors does not have entry of the unassociated executor.
    * Note that all blocks of the table should be emptied out first, before this method is called.
    * @param executorId id of the executor to un-associate with the table
    */
   public synchronized ListenableFuture<?> unassociate(final String executorId) {
     stateMachine.checkState(State.INITIALIZED);
 
-    blockManager.deregisterExecutor(executorId);
-    migrationManager.unregisterSubscription(tableConf.getId(), executorId);
+    final ResultFuture<Void> resultFuture = new ResultFuture<>();
 
-    return tableControlAgent.dropTable(tableConf.getId(), Collections.singleton(executorId));
+    // sync ownership caches in all executors that can access the table
+    final Set<String> associators = blockManager.getAssociatorIds();
+    final Set<String> subscribers = migrationManager.getSubscribers(tableConf.getId());
+
+    final Set<String> executorsToSync = new HashSet<>(associators);
+    executorsToSync.addAll(subscribers);
+    executorsToSync.remove(executorId);
+
+    // do actual unassociation after sync
+    tableControlAgent.syncOwnership(tableConf.getId(), executorId, executorsToSync)
+        .addListener(o -> {
+          blockManager.deregisterExecutor(executorId);
+          migrationManager.unregisterSubscription(tableConf.getId(), executorId);
+
+          tableControlAgent.dropTable(tableConf.getId(), Collections.singleton(executorId))
+              .addListener(o1 -> resultFuture.onCompleted(null));
+        });
+
+    return resultFuture;
   }
 
   /**
@@ -253,6 +272,6 @@ public final class AllocatedTable {
    * @return a set of executors associated with the table
    */
   Set<String> getAssociatedExecutorIds() {
-    return blockManager.getPartitionInfo().keySet();
+    return blockManager.getAssociatorIds();
   }
 }

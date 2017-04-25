@@ -121,6 +121,10 @@ public final class MessageHandlerImpl implements MessageHandler {
       onOwnershipUpdateMsg(msg.getOwnershipUpdateMsg());
       break;
 
+    case OwnershipSyncMsg:
+      onOwnershipSyncMsg(opId, msg.getOwnershipSyncMsg());
+      break;
+
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
@@ -173,5 +177,14 @@ public final class MessageHandlerImpl implements MessageHandler {
         throw new RuntimeException(e);
       }
     });
+  }
+
+  private void onOwnershipSyncMsg(final long opId, final OwnershipSyncMsg msg) {
+    try {
+      final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(msg.getTableId()).getOwnershipCache();
+      ownershipCache.syncUnassociation(opId, msg.getDeletedExecutorId());
+    } catch (final TableNotExistException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

@@ -116,6 +116,13 @@ public final class BlockManager {
   }
 
   /**
+   * @return a set of associator ids
+   */
+  synchronized Set<String> getAssociatorIds() {
+    return new HashSet<>(executorIdToBlockIds.keySet());
+  }
+
+  /**
    * Returns a partition information.
    * @return a map between an executor id and a set of block ids
    */

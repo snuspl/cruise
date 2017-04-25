@@ -110,6 +110,14 @@ final class MigrationManager {
   }
 
   /**
+   * @param tableId a table id
+   * @return a set of executor ids that subscribe the table
+   */
+  Set<String> getSubscribers(final String tableId) {
+    return new HashSet<>(subscribersPerTable.get(tableId));
+  }
+
+  /**
    * Starts migration of the blocks with ids of {@code blockIds} within table {@code tableId}
    * from src executor to dst executor. The state of {@link BlockManager} will be updated this by this migration.
    * When the migration is finished callback will be invoked with {@link MigrationResult}.

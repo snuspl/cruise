@@ -170,8 +170,37 @@
 },
 
 /**
+ * An avro message format for master to confirm that an executor is removed from ownership cache.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "OwnershipSyncMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "deletedExecutorId", "type": "string"}
+  ]
+},
+
+/**
+ * An avro message format for executors to send an ack msg for OwnershipSyncMsg.
+ */
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "OwnershipSyncAckMsg",
+  "fields":
+  [
+    {"name": "tableId", "type" : "string"},
+    {"name": "deletedExecutorId", "type" : "string"}
+  ]
+},
+
+/**
  * The message protocol for master to manage tables in executors.
- * TableInitMsg, TableInitAckMsg, TableDropMsg, TableDropAckMsg, and OwnershipUpdateMsg
+ * TableInitMsg, TableInitAckMsg, TableDropMsg, TableDropAckMsg,
+ * OwnershipUpdateMsg, OwnershipSyncMsg, and OwnershipSyncAckMsg
  * are all included as nullable fields, and an enum type indicates which field is not null.
  */
 {
@@ -181,13 +210,16 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "TableControlMsgType",
-        "symbols": ["TableInitMsg", "TableInitAckMsg", "TableDropMsg", "TableDropAckMsg", "OwnershipUpdateMsg"]}},
+        "symbols": ["TableInitMsg", "TableInitAckMsg", "TableDropMsg", "TableDropAckMsg",
+         "OwnershipUpdateMsg", "OwnershipSyncMsg", "OwnershipSyncAckMsg"]}},
     {"name": "operationId", "type": ["null", "long"], "default": null},
     {"name": "tableInitMsg", "type": ["null", "TableInitMsg"], "default": null},
     {"name": "tableInitAckMsg", "type": ["null", "TableInitAckMsg"], "default": null},
     {"name": "tableDropMsg", "type": ["null", "TableDropMsg"], "default": null},
     {"name": "tableDropAckMsg", "type": ["null", "TableDropAckMsg"], "default": null},
-    {"name": "ownershipUpdateMsg", "type": ["null", "OwnershipUpdateMsg"], "default": null}
+    {"name": "ownershipUpdateMsg", "type": ["null", "OwnershipUpdateMsg"], "default": null},
+    {"name": "ownershipSyncMsg", "type": ["null", "OwnershipSyncMsg"], "default": null},
+    {"name": "ownershipSyncAckMsg", "type": ["null", "OwnershipSyncAckMsg"], "default": null}
   ]
 },
 

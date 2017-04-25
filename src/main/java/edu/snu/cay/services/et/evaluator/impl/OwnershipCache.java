@@ -17,9 +17,13 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
 import edu.snu.cay.services.et.configuration.parameters.NumTotalBlocks;
+import edu.snu.cay.services.et.configuration.parameters.TableIdentifier;
+import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -27,6 +31,7 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -35,9 +40,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Maintains block ownership information for a certain table. This enables faster routing for remote operations.
- * Can handle reordered OwnershipUpdate messages. Revision numbers are attached to OwnershipUpdate messages and
- * it makes best effort to provide up-to-date ownership information for lookup requests.
+ * OwnershipCache that maintains ownership info of a table, which is a mapping between blocks and owning executors.
+ * In addition, it locks and unlocks block upon migration, which should be excluded from block access.
+ * It also provides a feature for synchronizing the ownership status about the unassociation of a certain executor.
  */
 @EvaluatorSide
 @ThreadSafe
@@ -51,6 +56,13 @@ public final class OwnershipCache {
    */
   private final AtomicReferenceArray<String> blockOwnerArray;
 
+  private final Map<String, AtomicInteger> executorIdToNumBlocks = new ConcurrentHashMap<>();
+
+  /**
+   * A set of sync requests about the deletion of a certain executor.
+   */
+  private final Map<String, Long> ongoingSyncs = new ConcurrentHashMap<>();
+
   /**
    * A map maintaining incoming blocks in receiver evaluator.
    */
@@ -61,13 +73,20 @@ public final class OwnershipCache {
    */
   private final Map<Integer, ReadWriteLock> ownershipLocks = new HashMap<>();
 
+  private final String tableId;
   private final String localExecutorId;
+
+  private final InjectionFuture<MessageSender> msgSenderFuture;
 
   @Inject
   private OwnershipCache(@Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-                         @Parameter(ExecutorIdentifier.class) final String executorId) {
+                         @Parameter(TableIdentifier.class) final String tableId,
+                         @Parameter(ExecutorIdentifier.class) final String executorId,
+                         final InjectionFuture<MessageSender> msgSenderFuture) {
     this.blockOwnerArray = new AtomicReferenceArray<>(numTotalBlocks);
+    this.tableId = tableId;
     this.localExecutorId = executorId;
+    this.msgSenderFuture = msgSenderFuture;
 
     for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
       this.ownershipLocks.put(blockId, new ReentrantReadWriteLock(true));
@@ -76,11 +95,18 @@ public final class OwnershipCache {
 
   /**
    * Initialize this ownership cache.
+   * This method should be called once before other methods.
    * @param blockOwners ownership mapping
    */
   public void init(final List<String> blockOwners) {
     for (int blockId = 0; blockId < blockOwners.size(); blockId++) {
-      blockOwnerArray.set(blockId, blockOwners.get(blockId));
+      final String owner = blockOwners.get(blockId);
+      blockOwnerArray.set(blockId, owner);
+
+      if (!executorIdToNumBlocks.containsKey(owner)) {
+        executorIdToNumBlocks.put(owner, new AtomicInteger(0));
+      }
+      executorIdToNumBlocks.get(owner).incrementAndGet();
     }
   }
 
@@ -180,6 +206,65 @@ public final class OwnershipCache {
     } finally {
       ownershipLocks.get(blockId).writeLock().unlock();
     }
+
+    // decrement numBlocks in old owner
+    final Long syncOpId;
+    synchronized (executorIdToNumBlocks) {
+      final int remainingBlocks = executorIdToNumBlocks.get(oldOwnerId).decrementAndGet();
+      if (remainingBlocks == 0) {
+        executorIdToNumBlocks.remove(oldOwnerId);
+        syncOpId = ongoingSyncs.remove(oldOwnerId);
+      } else {
+        syncOpId = null;
+      }
+    }
+
+    // increment numBlocks in new owner
+    executorIdToNumBlocks.compute(newOwnerId, (id, numBlocksCounter) -> {
+      if (numBlocksCounter == null) {
+        return new AtomicInteger(1);
+      } else {
+        numBlocksCounter.incrementAndGet();
+        return numBlocksCounter;
+      }
+    });
+
+    // sync complete
+    if (syncOpId != null) {
+      completeSync(syncOpId, oldOwnerId);
+    }
+  }
+
+  /**
+   * Completes sync by sending a response msg to master.
+   */
+  private void completeSync(final long opId, final String deletedExecutorId) {
+    LOG.log(Level.INFO, "Sync completed. opId: {0}, tableId: {1}, deletedExecutorId: {2}",
+        new Object[]{opId, tableId, deletedExecutorId});
+    try {
+      msgSenderFuture.get().sendOwnershipSyncAckMsg(opId, tableId, deletedExecutorId);
+    } catch (NetworkException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Syncs ownership cache by waiting for the unassociation of {@code executorId}.
+   * @param opId an operation id
+   * @param executorId an executor id
+   */
+  public void syncUnassociation(final long opId, final String executorId) {
+    synchronized (executorIdToNumBlocks) {
+      final AtomicInteger numBlocksCounter = executorIdToNumBlocks.get(executorId);
+      if (numBlocksCounter != null && numBlocksCounter.get() > 0) {
+        LOG.log(Level.INFO, "Sync started. opId: {0}, tableId: {1}, deletedExecutorId: {2}",
+            new Object[]{opId, tableId, executorId});
+        ongoingSyncs.put(executorId, opId);
+        return;
+      }
+    }
+
+    completeSync(opId, executorId);
   }
 
   /**
