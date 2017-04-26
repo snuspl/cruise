@@ -35,6 +35,9 @@ import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import org.apache.reef.driver.context.FailedContext;
+import org.apache.reef.driver.evaluator.FailedEvaluator;
+import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -244,6 +247,39 @@ public final class ETDolphinDriver {
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
+    }
+  }
+
+  /**
+   * Handler for FailedContext, which throws RuntimeException to shutdown the entire job.
+   */
+  final class FailedContextHandler implements EventHandler<FailedContext> {
+    @Override
+    public void onNext(final FailedContext failedContext) {
+      // TODO #677: Handle failure from Evaluators properly
+      throw new RuntimeException(failedContext.asError());
+    }
+  }
+
+  /**
+   * Handler for FailedEvaluator, which throws RuntimeException to shutdown the entire job.
+   */
+  final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
+    @Override
+    public void onNext(final FailedEvaluator failedEvaluator) {
+      // TODO #677: Handle failure from Evaluators properly
+      throw new RuntimeException(failedEvaluator.getEvaluatorException());
+    }
+  }
+
+  /**
+   * Handler for FailedTask, which throws RuntimeException to shutdown the entire job.
+   */
+  final class FailedTaskHandler implements EventHandler<FailedTask> {
+    @Override
+    public void onNext(final FailedTask failedTask) {
+      // TODO #677: Handle failure from Evaluators properly
+      throw new RuntimeException(failedTask.asError());
     }
   }
 
