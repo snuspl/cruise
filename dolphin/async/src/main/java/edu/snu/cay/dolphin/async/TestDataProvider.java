@@ -27,7 +27,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Created by yunseong on 4/24/17.
+ * Provides test set for evaluating learned parameters with unobserved dataset.
  */
 public final class TestDataProvider<T> {
   private final String testDataPath;

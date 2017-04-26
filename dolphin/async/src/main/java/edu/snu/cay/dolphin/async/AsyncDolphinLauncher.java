@@ -254,6 +254,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(NumEvaluatorCores.class);
     basicParameterClassList.add(InputDir.class);
+    basicParameterClassList.add(DolphinParameters.TestDataPath.class);
     basicParameterClassList.add(OnLocal.class);
     basicParameterClassList.add(Splits.class);
     basicParameterClassList.add(Timeout.class);
