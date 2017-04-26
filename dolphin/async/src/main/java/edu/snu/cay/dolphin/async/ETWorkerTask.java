@@ -75,6 +75,7 @@ final class ETWorkerTask<K, V> implements Task {
 
     trainingDataProvider.loadData();
     final List<V> testData = testDataProvider.getTestData();
+    LOG.log(Level.INFO, "Test data size: {0}", testData.size());
 
     trainer.initGlobalSettings();
 
