@@ -17,6 +17,7 @@ package edu.snu.cay.services.et.examples.tableaccess;
 
 import edu.snu.cay.common.centcomm.master.CentCommConfProvider;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
+import edu.snu.cay.services.et.configuration.RemoteAccessConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
@@ -83,14 +84,19 @@ final class TableAccessETDriver {
                               final JobMessageObserver jobMessageObserver) {
     this.etMaster = etMaster;
     this.executorConf = ExecutorConfiguration.newBuilder()
-      .setResourceConf(
-          ResourceConfiguration.newBuilder()
-              .setNumCores(1)
-              .setMemSizeInMB(128)
-              .build())
-      .setUserContextConf(centCommConfProvider.getContextConfiguration())
-      .setUserServiceConf(centCommConfProvider.getServiceConfWithoutNameResolver())
-      .build();
+        .setResourceConf(ResourceConfiguration.newBuilder()
+            .setNumCores(1)
+            .setMemSizeInMB(128)
+            .build())
+        .setRemoteAccessConf(RemoteAccessConfiguration.newBuilder()
+            .setHandlerQueueSize(2048)
+            .setNumHandlerThreads(1)
+            .setSenderQueueSize(2048)
+            .setNumSenderThreads(1)
+            .build())
+        .setUserContextConf(centCommConfProvider.getContextConfiguration())
+        .setUserServiceConf(centCommConfProvider.getServiceConfWithoutNameResolver())
+        .build();
     this.jobMessageObserver = jobMessageObserver;
   }
 

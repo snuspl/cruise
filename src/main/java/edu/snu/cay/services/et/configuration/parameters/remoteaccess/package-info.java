@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.configuration.parameters;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "The number of threads for serving remote access.", default_value = "2")
-public final class NumRemoteOpsHandlerThreads implements Name<Integer> {
-}
+/**
+ * Parameters w.r.t. remote access in ET.
+ */
+package edu.snu.cay.services.et.configuration.parameters.remoteaccess;

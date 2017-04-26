@@ -97,6 +97,7 @@ final class ExecutorManager {
    */
   ListenableFuture<List<AllocatedExecutor>> addExecutors(final int num, final ExecutorConfiguration executorConf) {
     final ResourceConfiguration resConf = executorConf.getResourceConf();
+    final Configuration remoteAccessConf = executorConf.getRemoteAccessConf();
     final Configuration metricServiceExecutorConf = executorConf.getMetricServiceConf();
     final Configuration userContextConf = executorConf.getUserContextConf();
     final Configuration userServiceConf = executorConf.getUserServiceConf();
@@ -118,7 +119,9 @@ final class ExecutorManager {
     });
 
     evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores,
-        new AllocatedEvalHandler(metricServiceExecutorConf, userContextConf, userServiceConf), activeCtxHandlers);
+        new AllocatedEvalHandler(userContextConf,
+            Configurations.merge(remoteAccessConf, metricServiceExecutorConf, userServiceConf)),
+        activeCtxHandlers);
 
     return executorListFuture;
   }
@@ -153,21 +156,17 @@ final class ExecutorManager {
    * Submits ET context, including user's configuration, which will setup executor when evaluator is allocated.
    */
   private final class AllocatedEvalHandler implements EventHandler<AllocatedEvaluator> {
-    private final Configuration metricServiceConf;
-    private final Configuration userContextConf;
-    private final Configuration userServiceConf;
+    private final Configuration contextConf;
+    private final Configuration serviceConf;
 
     /**
-     * @param metricServiceConf a configuration for metric service that can be optionally customized by user
-     * @param userContextConf a context configuration specified by user
-     * @param userServiceConf a service configuration specified by user
+     * @param contextConf a context configuration specified by user
+     * @param serviceConf a service configuration specified by user
      */
-    AllocatedEvalHandler(final Configuration metricServiceConf,
-                         final Configuration userContextConf,
-                         final Configuration userServiceConf) {
-      this.metricServiceConf = metricServiceConf;
-      this.userContextConf = userContextConf;
-      this.userServiceConf = userServiceConf;
+    AllocatedEvalHandler(final Configuration contextConf,
+                         final Configuration serviceConf) {
+      this.contextConf = contextConf;
+      this.serviceConf = serviceConf;
     }
 
     @Override
@@ -180,7 +179,7 @@ final class ExecutorManager {
           .set(ContextConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
           .build();
 
-      contextConfiguration = Configurations.merge(baseContextConfiguration, userContextConf);
+      contextConfiguration = Configurations.merge(baseContextConfiguration, contextConf);
 
       // different from context configuration, service configuration will be inherited by upper contexts
       final Configuration serviceConfiguration;
@@ -194,7 +193,7 @@ final class ExecutorManager {
           .set(ExecutorServiceConfiguration.DRIVER_IDENTIFIER, driverIdentifier)
           .build();
 
-      serviceConfiguration = Configurations.merge(executorConfiguration, metricServiceConf, userServiceConf);
+      serviceConfiguration = Configurations.merge(executorConfiguration, serviceConf);
 
       allocatedEvaluator.submitContextAndService(contextConfiguration, serviceConfiguration);
       LOG.log(Level.FINE, "Submitted context to evaluator {0}", allocatedEvaluator.getId());

@@ -17,8 +17,8 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.services.et.configuration.parameters.HandlerQueueSize;
-import edu.snu.cay.services.et.configuration.parameters.NumRemoteOpsHandlerThreads;
+import edu.snu.cay.services.et.configuration.parameters.remoteaccess.HandlerQueueSize;
+import edu.snu.cay.services.et.configuration.parameters.remoteaccess.NumRemoteOpsHandlerThreads;
 import edu.snu.cay.services.et.evaluator.api.BlockPartitioner;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.BlockNotExistsException;
@@ -83,7 +83,8 @@ final class RemoteAccessOpHandler {
    * That is, these threads serve operations requested from remote clients.
    */
   private List<HandlerThread> initExecutor(final int numThreads, final int queueSize) {
-    LOG.log(Level.INFO, "Initializing {0} Handler threads", numThreads);
+    LOG.log(Level.INFO, "Initializing {0} Handler threads with queue size: {1}",
+        new Object[]{numThreads, queueSize});
     final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
     final List<HandlerThread> threads = new ArrayList<>(numThreads);
     for (int i = 0; i < numThreads; i++) {

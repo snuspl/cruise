@@ -18,6 +18,7 @@ package edu.snu.cay.services.et.configuration.metric;
 import edu.snu.cay.services.et.configuration.parameters.metric.CustomMetricCodec;
 import edu.snu.cay.services.et.configuration.parameters.metric.MetricFlushPeriodMs;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.ConfigurationBuilder;
@@ -49,6 +50,7 @@ public final class MetricServiceExecutorConf {
    * Get the configuration with the parameters bound.
    * Note that this method is for internal use only.
    */
+  @Private
   public Configuration getConfiguration() {
     return confBuilder.build();
   }

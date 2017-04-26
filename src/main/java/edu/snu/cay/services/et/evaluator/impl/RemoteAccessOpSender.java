@@ -17,8 +17,8 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.configuration.parameters.ExecutorIdentifier;
-import edu.snu.cay.services.et.configuration.parameters.NumRemoteOpsSenderThreads;
-import edu.snu.cay.services.et.configuration.parameters.SenderQueueSize;
+import edu.snu.cay.services.et.configuration.parameters.remoteaccess.NumRemoteOpsSenderThreads;
+import edu.snu.cay.services.et.configuration.parameters.remoteaccess.SenderQueueSize;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -93,7 +93,8 @@ final class RemoteAccessOpSender {
    * They send remote access request messages to an executor that owns a block that contains a key of an operation.
    */
   private List<SenderThread> initSenderThreads(final int numThreads, final int queueSize) {
-    LOG.log(Level.INFO, "Initializing {0} Sender threads", numThreads);
+    LOG.log(Level.INFO, "Initializing {0} Sender threads with queue size: {1}",
+        new Object[]{numThreads, queueSize});
     final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
     final List<SenderThread> threads = new ArrayList<>(numThreads);
     for (int i = 0; i < numThreads; i++) {

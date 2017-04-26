@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.configuration.parameters;
+package edu.snu.cay.services.et.configuration.parameters.remoteaccess;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Max number of ops that can be queued in op handler", default_value = "1024")
-public final class HandlerQueueSize implements Name<Integer> {
+@NamedParameter(doc = "Max number of ops that can be queued for each sender thread", default_value = "1024")
+public final class SenderQueueSize implements Name<Integer> {
 }
