@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.et.plan.impl.op;
 
-import edu.snu.cay.services.et.common.util.concurrent.CompletedFuture;
 import edu.snu.cay.services.et.common.util.concurrent.ListenableFuture;
+import edu.snu.cay.services.et.common.util.concurrent.ResultFuture;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
@@ -46,9 +46,11 @@ public final class DeallocateOp extends AbstractOp {
       throw new PlanOpExecutionException("Exception while executing " + toString(), e);
     }
 
-    // TODO #96: add listener to close
-    executor.close();
-    return new CompletedFuture<>(new OpResult.DeallocateOpResult(DeallocateOp.this));
+    final ResultFuture<OpResult> opResultFuture = new ResultFuture<>();
+    executor.close()
+        .addListener(aVoid -> opResultFuture.onCompleted(new OpResult.DeallocateOpResult(DeallocateOp.this)));
+
+    return opResultFuture;
   }
 
   @Override

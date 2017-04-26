@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.driver.impl.*;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.CompletedEvaluator;
+import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.parameters.*;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.FailedTask;
@@ -32,6 +34,8 @@ import org.apache.reef.wake.EventHandler;
  */
 public final class ETDriverConfiguration extends ConfigurationModuleBuilder {
   public static final RequiredImpl<EventHandler<AllocatedEvaluator>> ON_EVALUATOR_ALLOCATED = new RequiredImpl<>();
+  public static final RequiredImpl<EventHandler<CompletedEvaluator>> ON_EVALUATOR_COMPLETED = new RequiredImpl<>();
+  public static final RequiredImpl<EventHandler<FailedEvaluator>> ON_EVALUATOR_FAILED = new RequiredImpl<>();
   public static final RequiredImpl<EventHandler<ActiveContext>> ON_CONTEXT_ACTIVE = new RequiredImpl<>();
   public static final RequiredImpl<EventHandler<RunningTask>> ON_TASK_STARTED = new RequiredImpl<>();
   public static final RequiredImpl<EventHandler<CompletedTask>> ON_TASK_COMPLETED = new RequiredImpl<>();
@@ -40,6 +44,8 @@ public final class ETDriverConfiguration extends ConfigurationModuleBuilder {
 
   public static final ConfigurationModule CONF = new ETDriverConfiguration()
       .bindSetEntry(EvaluatorAllocatedHandlers.class, ON_EVALUATOR_ALLOCATED)
+      .bindSetEntry(EvaluatorCompletedHandlers.class, ON_EVALUATOR_COMPLETED)
+      .bindSetEntry(EvaluatorFailedHandlers.class, ON_EVALUATOR_FAILED)
       .bindSetEntry(ContextActiveHandlers.class, ON_CONTEXT_ACTIVE)
       .bindSetEntry(TaskRunningHandlers.class, ON_TASK_STARTED)
       .bindSetEntry(TaskCompletedHandlers.class, ON_TASK_COMPLETED)
@@ -48,6 +54,8 @@ public final class ETDriverConfiguration extends ConfigurationModuleBuilder {
       .bindNamedParameter(ETIdentifier.class, ET_IDENTIFIER)
       .build()
       .set(ON_EVALUATOR_ALLOCATED, EvaluatorAllocatedHandler.class)
+      .set(ON_EVALUATOR_COMPLETED, EvaluatorCompletedHandler.class)
+      .set(ON_EVALUATOR_FAILED, EvaluatorFailedHandler.class)
       .set(ON_CONTEXT_ACTIVE, ContextActiveHandler.class)
       .set(ON_TASK_STARTED, TaskRunningHandler.class)
       .set(ON_TASK_COMPLETED, TaskCompletedHandler.class)

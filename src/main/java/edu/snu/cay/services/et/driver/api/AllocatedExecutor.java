@@ -48,6 +48,7 @@ public interface AllocatedExecutor {
 
   /**
    * Closes the executor.
+   * @return a {@link ListenableFuture} that completes upon executor close
    */
-  void close();
+  ListenableFuture<Void> close();
 }

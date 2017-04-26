@@ -37,6 +37,7 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
   private final ActiveContext etContext;
   private final String identifier;
   private final CallbackRegistry callbackRegistry;
+  private final ResultFuture<Void> closedFuture;
   private volatile SubmittedTask runningTask;
 
   AllocatedExecutorImpl(final ActiveContext etContext,
@@ -44,6 +45,7 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
     this.etContext = etContext;
     this.identifier = etContext.getEvaluatorId();
     this.callbackRegistry = callbackRegistry;
+    this.closedFuture = new ResultFuture<>();
   }
 
   @Override
@@ -85,11 +87,21 @@ final class AllocatedExecutorImpl implements AllocatedExecutor {
     return Optional.ofNullable(runningTask);
   }
 
+  /**
+   * Completes future returned by {@link #close()}.
+   * It should be called upon the completion of closing executor.
+   */
+  void onFinishClose() {
+    closedFuture.onCompleted(null);
+  }
+
   @Override
-  public void close() {
+  public ListenableFuture<Void> close() {
 
     // simply close the et context, which is a root context of evaluator.
     // so evaluator will be released
     etContext.close();
+
+    return closedFuture;
   }
 }

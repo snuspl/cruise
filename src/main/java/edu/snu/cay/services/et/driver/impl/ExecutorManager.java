@@ -135,6 +135,21 @@ final class ExecutorManager {
   }
 
   /**
+   * Removes an executor entry from {@link #executors}.
+   * It should be called upon the completion of closing executor.
+   * @param executorId an executor id
+   */
+  void onClosedExecutor(final String executorId) {
+    final AllocatedExecutor closedExecutor = executors.remove(executorId);
+    if (closedExecutor == null) {
+      throw new RuntimeException(String.format("Executor %s does not exist", executorId));
+    }
+
+    LOG.log(Level.INFO, "Executor {0} has been closed.", executorId);
+    ((AllocatedExecutorImpl) closedExecutor).onFinishClose();
+  }
+
+  /**
    * Submits ET context, including user's configuration, which will setup executor when evaluator is allocated.
    */
   private final class AllocatedEvalHandler implements EventHandler<AllocatedEvaluator> {
