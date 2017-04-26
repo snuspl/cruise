@@ -175,8 +175,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<MLRData> miniBatchTrainingSet,
-                                      final Collection<MLRData> testSet) {
+  public MiniBatchResult runMiniBatch(final Collection<MLRData> miniBatchTrainingSet) {
     resetTracers();
 
     final long miniBatchStartTime = System.currentTimeMillis();

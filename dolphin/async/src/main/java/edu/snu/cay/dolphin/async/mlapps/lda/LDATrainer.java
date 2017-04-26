@@ -106,8 +106,7 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<Document> miniBatchTrainingSet,
-                                      final Collection<Document> testSet) {
+  public MiniBatchResult runMiniBatch(final Collection<Document> miniBatchTrainingSet) {
     resetTracers();
 
     final long miniBatchStartTime = System.currentTimeMillis();

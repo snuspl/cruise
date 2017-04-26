@@ -133,8 +133,7 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<NMFData> miniBatchData,
-                                      final Collection<NMFData> testData) {
+  public MiniBatchResult runMiniBatch(final Collection<NMFData> miniBatchData) {
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
     final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchData.size());
@@ -148,8 +147,6 @@ final class NMFTrainer implements Trainer<NMFData> {
     final List<Integer> keys = getKeys(instances);
     LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
     pullModels(keys);
-    final double testError =
-        computeLoss(testData, modelHolder.getModel().orElseThrow(() -> new RuntimeException("Model is Unavailable")));
 
     final List<Future<NMFModel>> futures = new ArrayList<>(numTrainerThreads);
     try {
@@ -198,7 +195,7 @@ final class NMFTrainer implements Trainer<NMFData> {
 
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
-    return buildMiniBatchResult(numInstancesToProcess, testError, miniBatchElapsedTime);
+    return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
   }
 
   @Override
@@ -428,11 +425,9 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount,
-                                               final double testError,
                                                final double elapsedTime) {
     return MiniBatchResult.newBuilder()
         .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
-        .setAppMetric(MetricKeys.TEST_ERROR, testError)
         .setComputeTime(computeTracer.totalElapsedTime())
         .setTotalPullTime(pullTracer.totalElapsedTime())
         .setTotalPushTime(pushTracer.totalElapsedTime())

@@ -144,8 +144,7 @@ final class LassoTrainer implements Trainer<LassoData> {
    * 3) Push value to server.
    */
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchTrainingSet,
-                                      final Collection<LassoData> testSet) {
+  public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchTrainingSet) {
     resetTracer();
 
     final int numInstancesToProcess = miniBatchTrainingSet.size();

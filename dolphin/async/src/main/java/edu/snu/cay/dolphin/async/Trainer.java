@@ -55,10 +55,9 @@ public interface Trainer<D> {
    * Main method of this trainer, which is called every mini-batch.
    * @param miniBatchData the training data to process in the batch
    *                      (at most {@link edu.snu.cay.dolphin.async.DolphinParameters.MiniBatchSize} instances.
-   * @param testData the test data to evaluate the model computed in the batch
    * @return a result of the mini-batch
    */
-  MiniBatchResult runMiniBatch(Collection<D> miniBatchData, Collection<D> testData);
+  MiniBatchResult runMiniBatch(Collection<D> miniBatchData);
 
   /**
    * EventHandler that is called when an epoch is finished.

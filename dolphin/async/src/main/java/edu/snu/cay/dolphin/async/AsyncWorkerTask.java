@@ -140,7 +140,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         }
 
         final long miniBatchStartTime = System.currentTimeMillis();
-        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchData, testSet);
+        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
         buildAndSendMiniBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,

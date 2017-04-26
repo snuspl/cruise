@@ -166,8 +166,7 @@ final class GBTTrainer implements Trainer<GBTData> {
    * Build tree for this miniBatchTrainingSet based on the trees that are already built before this run iteration.
    */
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<GBTData> miniBatchTrainingSet,
-                                      final Collection<GBTData> testSet) {
+  public MiniBatchResult runMiniBatch(final Collection<GBTData> miniBatchTrainingSet) {
     final List<GBTData> instances = new ArrayList<>(miniBatchTrainingSet);
     
     // Divide into two cases : Regression / Classification

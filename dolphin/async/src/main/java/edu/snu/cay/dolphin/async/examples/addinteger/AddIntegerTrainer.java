@@ -100,7 +100,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection miniBatchData, final Collection testSet) {
+  public MiniBatchResult runMiniBatch(final Collection miniBatchData) {
     resetTracers();
 
     // sleep to simulate computation

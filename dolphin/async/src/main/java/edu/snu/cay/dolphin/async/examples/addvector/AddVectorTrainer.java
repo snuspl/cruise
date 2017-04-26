@@ -107,7 +107,7 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection miniBatchData, final Collection testSet) {
+  public MiniBatchResult runMiniBatch(final Collection miniBatchData) {
     resetTracers();
     final int numDataToProcess = miniBatchData.size();
 

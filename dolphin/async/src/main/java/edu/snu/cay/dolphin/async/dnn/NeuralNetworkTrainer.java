@@ -82,8 +82,7 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<NeuralNetworkData> miniBatchData,
-                                      final Collection<NeuralNetworkData> testSet) {
+  public MiniBatchResult runMiniBatch(final Collection<NeuralNetworkData> miniBatchData) {
     for (final NeuralNetworkData data : miniBatchData) {
       if (data.isValidation()) {
         continue;
