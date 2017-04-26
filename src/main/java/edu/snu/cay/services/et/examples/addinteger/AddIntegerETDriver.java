@@ -40,6 +40,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -135,41 +136,50 @@ public final class AddIntegerETDriver {
   final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
+      final List<AllocatedExecutor> servers;
+      final List<AllocatedExecutor> workers;
       try {
-        final List<AllocatedExecutor> servers = etMaster.addExecutors(numServers, getExecutorConf()).get();
-        final List<AllocatedExecutor> workers = etMaster.addExecutors(numWorkers, getExecutorConf()).get();
-
-        final AllocatedTable modelTable = etMaster.createTable(tableConf, servers).get();
-
-        modelTable.subscribe(workers).get();
-
-        // start update tasks on worker executors
-        final AtomicInteger taskIdCount = new AtomicInteger(0);
-        final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(workers.size());
-        workers.forEach(executor -> taskFutureList.add(executor.submitTask(
-            Configurations.merge(TaskConfiguration.CONF
-                .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-                .set(TaskConfiguration.TASK, UpdaterTask.class)
-                .build(), updaterTaskParamConf))));
-
-        waitAndCheckTaskResult(taskFutureList);
-
-        // start validate tasks on worker executors
-        taskIdCount.set(0);
-        taskFutureList.clear();
-        workers.forEach(executor -> taskFutureList.add(executor.submitTask(
-            Configurations.merge(TaskConfiguration.CONF
-                .set(TaskConfiguration.IDENTIFIER, VALIDATOR_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-                .set(TaskConfiguration.TASK, ValidatorTask.class)
-                .build(), validatorTaskParamConf))));
-
-        waitAndCheckTaskResult(taskFutureList);
-
-        workers.forEach(AllocatedExecutor::close);
-        servers.forEach(AllocatedExecutor::close);
+        servers = etMaster.addExecutors(numServers, getExecutorConf()).get();
+        workers = etMaster.addExecutors(numWorkers, getExecutorConf()).get();
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
+
+      Executors.newSingleThreadExecutor().submit(() -> {
+        try {
+
+          final AllocatedTable modelTable = etMaster.createTable(tableConf, servers).get();
+
+          modelTable.subscribe(workers).get();
+
+          // start update tasks on worker executors
+          final AtomicInteger taskIdCount = new AtomicInteger(0);
+          final List<Future<SubmittedTask>> taskFutureList = new ArrayList<>(workers.size());
+          workers.forEach(executor -> taskFutureList.add(executor.submitTask(
+              Configurations.merge(TaskConfiguration.CONF
+                  .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                  .set(TaskConfiguration.TASK, UpdaterTask.class)
+                  .build(), updaterTaskParamConf))));
+
+          waitAndCheckTaskResult(taskFutureList);
+
+          // start validate tasks on worker executors
+          taskIdCount.set(0);
+          taskFutureList.clear();
+          workers.forEach(executor -> taskFutureList.add(executor.submitTask(
+              Configurations.merge(TaskConfiguration.CONF
+                  .set(TaskConfiguration.IDENTIFIER, VALIDATOR_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+                  .set(TaskConfiguration.TASK, ValidatorTask.class)
+                  .build(), validatorTaskParamConf))));
+
+          waitAndCheckTaskResult(taskFutureList);
+
+          workers.forEach(AllocatedExecutor::close);
+          servers.forEach(AllocatedExecutor::close);
+        } catch (InterruptedException | ExecutionException e) {
+          throw new RuntimeException(e);
+        }
+      });
     }
   }
 
