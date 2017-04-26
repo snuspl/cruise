@@ -209,8 +209,8 @@ final class NMFTrainer implements Trainer<NMFData> {
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
-    final double trainingError = computeLoss(epochData, model);
-    final double testError = computeLoss(testData, model);
+    final double trainingLoss = computeLoss(epochData, model);
+    final double testLoss = computeLoss(testData, model);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -219,7 +219,7 @@ final class NMFTrainer implements Trainer<NMFData> {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
-    return buildEpochResult(trainingError, testError);
+    return buildEpochResult(trainingLoss, testLoss);
   }
 
   @Override
@@ -436,10 +436,10 @@ final class NMFTrainer implements Trainer<NMFData> {
         .build();
   }
 
-  private EpochResult buildEpochResult(final double trainingLoss, final double testError) {
+  private EpochResult buildEpochResult(final double trainingLoss, final double testLoss) {
     return EpochResult.newBuilder()
-        .addAppMetric(MetricKeys.LOSS_SUM, trainingLoss)
-        .addAppMetric(MetricKeys.TEST_ERROR, testError)
+        .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)
+        .addAppMetric(MetricKeys.TEST_LOSS, testLoss)
         .build();
   }
 }

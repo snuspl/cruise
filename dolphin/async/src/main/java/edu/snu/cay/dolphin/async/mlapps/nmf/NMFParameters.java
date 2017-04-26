@@ -68,14 +68,14 @@ final class NMFParameters {
 
   static final class MetricKeys {
     // The key denoting the total loss computed from training data instances.
-    static final String LOSS_SUM =
-        "NMF_TRAINER_LOSS_SUM";
+    static final String TRAINING_LOSS =
+        "NMF_TRAINING_LOSS";
 
-    static final String TEST_ERROR =
-        "NMF_TRAINER_TEST_ERROR";
+    static final String TEST_LOSS =
+        "NMF_TEST_LOSS";
 
     // The key denoting the number of training data instances processed per unit time.
     static final String DVT =
-        "NMF_TRAINER_DVT";
+        "NMF_DVT";
   }
 }

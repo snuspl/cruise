@@ -194,10 +194,10 @@ final class LassoTrainer implements Trainer<LassoData> {
     // Calculate the loss value.
     pullModels();
 
-    final double sampleLossSum = computeLoss(epochTrainingSet);
-    final double testError = computeLoss(testSet);
+    final double trainingLoss = computeLoss(epochTrainingSet);
+    final double testLoss = computeLoss(testSet);
 
-    LOG.log(Level.INFO, "Training Loss: {0}, Test Error: {1}", new Object[] {sampleLossSum, testError});
+    LOG.log(Level.INFO, "Training Loss: {0}, Test Loss: {1}", new Object[] {trainingLoss, testLoss});
     
     if ((epochIdx + 1) % PRINT_MODEL_PERIOD == 0) {
       for (int i = 0; i < numFeatures; i++) {
@@ -212,7 +212,7 @@ final class LassoTrainer implements Trainer<LassoData> {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
-    return buildEpochResult(sampleLossSum);
+    return buildEpochResult(trainingLoss, testLoss);
   }
 
   /**
@@ -318,9 +318,10 @@ final class LassoTrainer implements Trainer<LassoData> {
         .build();
   }
 
-  private EpochResult buildEpochResult(final double loss) {
+  private EpochResult buildEpochResult(final double trainingLoss, final double testLoss) {
     return EpochResult.newBuilder()
-        .addAppMetric(MetricKeys.SAMPLE_LOSS_SUM, loss)
+        .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)
+        .addAppMetric(MetricKeys.TEST_LOSS, testLoss)
         .build();
   }
   /**

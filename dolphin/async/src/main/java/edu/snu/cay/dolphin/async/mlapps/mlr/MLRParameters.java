@@ -66,20 +66,32 @@ final class MLRParameters {
 
   static final class MetricKeys {
 
-    // The key denoting the sum of loss computed from the sample of training data instances.
-    static final String SAMPLE_LOSS_SUM =
-        "MLR_TRAINER_SAMPLE_LOSS_SUM";
+    // The key denoting the sum of loss computed from the training data instances.
+    static final String TRAINING_LOSS =
+        "MLR_TRAINING_LOSS";
+
+    // The key denoting the sum of loss computed from the test data instances.
+    static final String TEST_LOSS =
+        "MLR_TEST_LOSS";
 
     // The key denoting the average of L2-regularized loss computed from the sample of training data instances.
-    static final String REG_LOSS_AVG =
-        "MLR_TRAINER_REG_LOSS_AVG";
+    static final String TRAINING_REG_LOSS_AVG =
+        "MLR_TRAINING_REG_LOSS_AVG";
+
+    // The key denoting the average of L2-regularized loss computed from the test data instances.
+    static final String TEST_REG_LOSS_AVG =
+        "MLR_TEST_REG_LOSS_AVG";
+
+    // The key denoting accuracy (the number of correct inferences by the model / total number of training data inst).
+    static final String TRAINING_ACCURACY =
+        "MLR_TRAINING_ACCURACY";
+
+    // The key denoting accuracy (the number of correct inferences by the model / total number of test data inst).
+    static final String TEST_ACCURACY =
+        "MLR_TEST_ACCURACY";
 
     // The key denoting the number of training data instances processed per unit time.
     static final String DVT =
-        "MLR_TRAINER_DVT";
-
-    // The key denoting accuracy (the number of correct inferences by the model / total number of training data inst).
-    static final String ACCURACY =
-        "MLR_TRAINER_ACCURACY";
+        "MLR_DVT";
   }
 }
