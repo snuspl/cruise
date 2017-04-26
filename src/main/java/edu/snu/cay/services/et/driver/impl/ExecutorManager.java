@@ -110,10 +110,11 @@ final class ExecutorManager {
     final List<EventHandler<ActiveContext>> activeCtxHandlers = new ArrayList<>(1);
     activeCtxHandlers.add(activeContext -> {
       final AllocatedExecutor allocatedExecutor = new AllocatedExecutorImpl(activeContext, callbackRegistry);
-      ((AggregateFuture<AllocatedExecutor>) executorListFuture).onCompleted(allocatedExecutor);
+      executors.put(allocatedExecutor.getId(), allocatedExecutor);
       LOG.log(Level.INFO, "A new Executor {0} is allocated ({1}/{2}).",
           new Object[]{allocatedExecutor.getId(), executorIdxCounter.incrementAndGet(), num});
-      executors.put(allocatedExecutor.getId(), allocatedExecutor);
+
+      ((AggregateFuture<AllocatedExecutor>) executorListFuture).onCompleted(allocatedExecutor);
     });
 
     evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores,
