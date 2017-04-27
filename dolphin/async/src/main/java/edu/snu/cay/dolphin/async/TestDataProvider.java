@@ -40,6 +40,11 @@ public final class TestDataProvider<T> {
     this.dataParser = dataParser;
   }
 
+  /**
+   * Returns a list of test data items by reading and parsing a file.
+   * @return a list of test data items
+   * @throws IOException when fails to read test data
+   */
   public List<T> getTestData() throws IOException {
     if (testDataPath.equals(DolphinParameters.TestDataPath.NONE)) {
       return Collections.emptyList();

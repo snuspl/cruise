@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Seoul National University
+# Copyright (C) 2017 Seoul National University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 # description: syntactic data for lasso regression
 # Formed with model B = [1; 0; -2; 0; 3; 0; -4; 0; 5; 0], Y = X * B
 # this file is training set, composed of 90% (450 instances) of the data
-
 19 0:91 1:19 2:26 3:16 4:28 5:54 6:56 7:56 8:24 9:95
 367 0:62 1:38 2:72 3:43 4:83 5:89 6:60 7:35 8:88 9:30
 403 0:6 1:86 2:3 3:72 4:88 5:39 6:79 7:10 8:91 9:92
