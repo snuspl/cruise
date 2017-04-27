@@ -20,12 +20,14 @@ import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.ProgressProvider;
+import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -34,7 +36,8 @@ import java.util.logging.Logger;
 
 /**
  * A class that tracks epoch progress of running workers, maintaining global minimum epoch progress.
- * It also provides progress info to REEF by implementing {@link ProgressProvider}.
+ * It also provides progress info to REEF by implementing {@link ProgressProvider}
+ * and to a client through {@link JobMessageObserver}.
  */
 @DriverSide
 @ThreadSafe
@@ -45,24 +48,30 @@ public final class ProgressTracker implements ProgressProvider {
 
   private final int maxNumEpochs;
   private final int numWorkers;
+  private volatile int globalMinEpochIdx;
+
+  private final JobMessageObserver jobMessageObserver;
 
   private final StateMachine stateMachine;
 
-  private final Map<String, Integer> workerIdToEpochProgress = new ConcurrentHashMap<>();
+  private final Map<String, Integer> workerIdToEpochIdx = new ConcurrentHashMap<>();
 
   private final NavigableMap<Integer, Set<String>> epochProgressToWorkerIds = new ConcurrentSkipListMap<>();
 
   @Inject
-  private ProgressTracker(@Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+  private ProgressTracker(final JobMessageObserver jobMessageObserver,
+                          @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                           @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
+    this.jobMessageObserver = jobMessageObserver;
     this.maxNumEpochs = maxNumEpochs;
     this.numWorkers = numWorkers;
+    this.globalMinEpochIdx = 0;
     this.stateMachine = initStateMachine();
   }
 
   @Override
   public float getProgress() {
-    return ((float) getGlobalMinimumEpochProgress()) / maxNumEpochs;
+    return ((float) getGlobalMinEpochIdx()) / maxNumEpochs;
   }
 
   private enum State {
@@ -82,15 +91,25 @@ public final class ProgressTracker implements ProgressProvider {
   /**
    * @return a map between worker id and its epoch progress
    */
-  public Map<String, Integer> getGlobalEpochProgress() {
-    return new HashMap<>(workerIdToEpochProgress);
+  public Map<String, Integer> getWorkerIdToEpochIdx() {
+    return new HashMap<>(workerIdToEpochIdx);
   }
 
   /**
    * @return a global minimum epoch progress
    */
-  public int getGlobalMinimumEpochProgress() {
-    return stateMachine.getCurrentState().equals(State.INIT) ? 0 : epochProgressToWorkerIds.firstKey();
+  public int getGlobalMinEpochIdx() {
+    return stateMachine.getCurrentState().equals(State.INIT) ? 0 : globalMinEpochIdx;
+  }
+
+  /**
+   * Updates global minimum epoch index and sends progress info to client.
+   * @param newMinEpochIdx a new epoch index
+   */
+  private void updateGlobalMinEpochIdx(final int newMinEpochIdx) {
+    globalMinEpochIdx = newMinEpochIdx;
+    final String msgToClient = String.format("Epoch progress is [%d / %d]", newMinEpochIdx, maxNumEpochs);
+    jobMessageObserver.sendMessageToClient(msgToClient.getBytes(StandardCharsets.UTF_8));
   }
 
   /**
@@ -112,14 +131,7 @@ public final class ProgressTracker implements ProgressProvider {
       final int epochProgress = progressMsg.getEpochIdx();
       LOG.log(Level.INFO, "Epoch progress reported by {0}: {1}", new Object[]{workerId, epochProgress});
 
-      final Integer prevEpochProgress = workerIdToEpochProgress.put(workerId, epochProgress);
-
-      if (stateMachine.getCurrentState().equals(State.INIT)) {
-        if (workerIdToEpochProgress.size() == numWorkers) {
-          LOG.log(Level.INFO, "State Transition: {0} -> {1}", new Object[]{State.INIT, State.RUN});
-          stateMachine.setState(State.RUN);
-        }
-      }
+      final Integer prevEpochProgress = workerIdToEpochIdx.put(workerId, epochProgress);
 
       if (prevEpochProgress != null) {
         epochProgressToWorkerIds.compute(prevEpochProgress, (k, v) -> {
@@ -133,6 +145,19 @@ public final class ProgressTracker implements ProgressProvider {
         workers.add(workerId);
         return workers;
       });
+
+      if (stateMachine.getCurrentState().equals(State.INIT)) {
+        if (workerIdToEpochIdx.size() == numWorkers) {
+          LOG.log(Level.INFO, "State Transition: {0} -> {1}", new Object[]{State.INIT, State.RUN});
+          stateMachine.setState(State.RUN);
+          updateGlobalMinEpochIdx(0);
+        }
+      }
+
+      final int newMinEpochIdx = epochProgressToWorkerIds.firstKey();
+      if (newMinEpochIdx > globalMinEpochIdx) {
+        updateGlobalMinEpochIdx(newMinEpochIdx);
+      }
     }
   }
 }
