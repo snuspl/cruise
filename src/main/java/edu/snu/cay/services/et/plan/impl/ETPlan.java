@@ -54,7 +54,7 @@ public final class ETPlan {
    * Gets the total number of operations that compose the plan.
    * @return the number of total number of operations
    */
-  int getNumTotalOps() {
+  public int getNumTotalOps() {
     return numTotalOps;
   }
 
@@ -62,7 +62,7 @@ public final class ETPlan {
    * Gets initial operations to start with.
    * @return a set of initial operations
    */
-  synchronized Set<Op> getInitialOps() {
+  public synchronized Set<Op> getInitialOps() {
     return initialOps;
   }
 
@@ -73,7 +73,7 @@ public final class ETPlan {
    * @param completedOp the completed operation
    * @return a set of operations that become ready
    */
-  synchronized Set<Op> onComplete(final Op completedOp) {
+  public synchronized Set<Op> onComplete(final Op completedOp) {
     final Set<Op> candidateOps = dependencyGraph.getNeighbors(completedOp);
     final Set<Op> nextOpsToExecute = new HashSet<>();
     dependencyGraph.removeVertex(completedOp);
