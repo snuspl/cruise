@@ -38,6 +38,7 @@ public final class LassoREEF {
         .setTrainerClass(LassoTrainer.class)
         .setUpdaterClass(LassoUpdater.class)
         .setParserClass(LassoParser.class)
+        .setTestDataParserClass(LassoETParser.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)

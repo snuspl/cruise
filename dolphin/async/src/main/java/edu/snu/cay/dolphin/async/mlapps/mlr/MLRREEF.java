@@ -37,6 +37,7 @@ public final class MLRREEF {
         .setTrainerClass(MLRTrainer.class)
         .setUpdaterClass(MLRUpdater.class)
         .setParserClass(MLRDataParser.class)
+        .setTestDataParserClass(MLRETDataParser.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)

@@ -38,6 +38,7 @@ public final class NMFREEF {
         .setTrainerClass(NMFTrainer.class)
         .setUpdaterClass(NMFUpdater.class)
         .setParserClass(NMFDataParser.class)
+        .setTestDataParserClass(NMFETDataParser.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
         .setServerSerializerClass(DenseVectorSerializer.class)

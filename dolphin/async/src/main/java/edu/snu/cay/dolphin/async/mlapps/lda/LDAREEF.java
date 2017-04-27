@@ -37,6 +37,7 @@ public final class LDAREEF {
         .setTrainerClass(LDATrainer.class)
         .setUpdaterClass(LDAUpdater.class)
         .setParserClass(LDADataParser.class)
+        .setTestDataParserClass(LDAETDataParser.class)
         .setKeyCodecClass(SerializableCodec.class)
         .setPreValueCodecClass(SerializableCodec.class)
         .setValueCodecClass(SparseArrayCodec.class)

@@ -42,6 +42,7 @@ public final class AsyncDolphinConfiguration {
   private final Class<? extends Trainer> trainerClass;
   private final Class<? extends ParameterUpdater> updaterClass;
   private final Class<? extends DataParser> parserClass;
+  private final Class<? extends edu.snu.cay.services.et.evaluator.api.DataParser> testDataParserClass;
   private final Class<? extends Codec> keyCodecClass;
   private final Class<? extends Codec> preValueCodecClass;
   private final Class<? extends Codec> valueCodecClass;
@@ -55,6 +56,8 @@ public final class AsyncDolphinConfiguration {
   private AsyncDolphinConfiguration(final Class<? extends Trainer> trainerClass,
                                     final Class<? extends ParameterUpdater> updaterClass,
                                     final Class<? extends DataParser> parserClass,
+                                    final Class<? extends edu.snu.cay.services.et.evaluator.api.DataParser>
+                                        testDataParserClass,
                                     final Class<? extends Codec> keyCodecClass,
                                     final Class<? extends Codec> preValueCodecClass,
                                     final Class<? extends Codec> valueCodecClass,
@@ -66,6 +69,7 @@ public final class AsyncDolphinConfiguration {
     this.trainerClass = trainerClass;
     this.updaterClass = updaterClass;
     this.parserClass = parserClass;
+    this.testDataParserClass = testDataParserClass;
     this.keyCodecClass = keyCodecClass;
     this.preValueCodecClass = preValueCodecClass;
     this.valueCodecClass = valueCodecClass;
@@ -86,6 +90,10 @@ public final class AsyncDolphinConfiguration {
 
   public Class<? extends DataParser> getParserClass() {
     return parserClass;
+  }
+  
+  public Class<? extends edu.snu.cay.services.et.evaluator.api.DataParser> getTestDataParserClass() {
+    return testDataParserClass;
   }
 
   public Class<? extends Codec> getKeyCodecClass() {
@@ -129,6 +137,7 @@ public final class AsyncDolphinConfiguration {
     private Class<? extends Trainer> trainerClass;
     private Class<? extends ParameterUpdater> updaterClass;
     private Class<? extends DataParser> parserClass;
+    private Class<? extends edu.snu.cay.services.et.evaluator.api.DataParser> testDataParserClass;
     private Class<? extends Codec> keyCodecClass = SerializableCodec.class;
     private Class<? extends Codec> preValueCodecClass = SerializableCodec.class;
     private Class<? extends Codec> valueCodecClass = SerializableCodec.class;
@@ -151,6 +160,13 @@ public final class AsyncDolphinConfiguration {
 
     public Builder setParserClass(final Class<? extends DataParser> parserClass) {
       this.parserClass = parserClass;
+      return this;
+    }
+
+    // TODO #980: We can integrate the data parser if we use the new data loader in Dolphin
+    public Builder setTestDataParserClass(final Class<? extends edu.snu.cay.services.et.evaluator.api.DataParser>
+                                              testDataParserClass) {
+      this.testDataParserClass = testDataParserClass;
       return this;
     }
 
@@ -200,7 +216,7 @@ public final class AsyncDolphinConfiguration {
       BuilderUtils.notNull(updaterClass);
       BuilderUtils.notNull(parserClass);
 
-      return new AsyncDolphinConfiguration(trainerClass, updaterClass, parserClass,
+      return new AsyncDolphinConfiguration(trainerClass, updaterClass, parserClass, testDataParserClass,
           keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList,
           workerSerializerClass, serverSerializerClass, workerConfiguration, serverConfiguration);
     }
