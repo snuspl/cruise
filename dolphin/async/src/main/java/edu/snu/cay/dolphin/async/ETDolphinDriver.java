@@ -75,6 +75,7 @@ public final class ETDolphinDriver {
 
   private final ETMaster etMaster;
   private final WorkerTaskRunner workerTaskRunner;
+  private final ProgressTracker progressTracker;
 
   private final int numWorkers;
   private final int numServers;
@@ -97,6 +98,7 @@ public final class ETDolphinDriver {
   private ETDolphinDriver(final ETMaster etMaster,
                           final ETOptimizationOrchestrator optimizationOrchestrator,
                           final WorkerTaskRunner workerTaskRunner,
+                          final ProgressTracker progressTracker,
                           final ConfigurationSerializer confSerializer,
                           final CentCommConfProvider centCommConfProvider,
                           @Parameter(NumServers.class) final int numServers,
@@ -112,6 +114,7 @@ public final class ETDolphinDriver {
       throws IOException, InjectionException {
     this.etMaster = etMaster;
     this.workerTaskRunner = workerTaskRunner;
+    this.progressTracker = progressTracker;
     this.numWorkers = numWorkers;
     this.numServers = numServers;
     this.serverMetricFlushPeriodMs = serverMetricFlushPeriodMs;
@@ -185,10 +188,14 @@ public final class ETDolphinDriver {
 
   public Configuration getWorkerTaskConf() {
     return Configurations.merge(TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
-        .set(TaskConfiguration.TASK, ETWorkerTask.class)
-        .set(TaskConfiguration.ON_CLOSE, ETTaskCloseHandler.class)
-        .build(), workerConf);
+            .set(TaskConfiguration.IDENTIFIER, TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+            .set(TaskConfiguration.TASK, ETWorkerTask.class)
+            .set(TaskConfiguration.ON_CLOSE, ETTaskCloseHandler.class)
+            .build(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(StartingEpoch.class, Integer.toString(progressTracker.getGlobalMinimumEpochProgress()))
+            .build(),
+        workerConf);
   }
 
   public ExecutorConfiguration getWorkerExecutorConf() {
