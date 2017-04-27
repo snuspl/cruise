@@ -291,6 +291,7 @@ public final class ETDolphinLauncher {
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, ETDolphinDriver.FailedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_FAILED, ETDolphinDriver.FailedContextHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, ETDolphinDriver.FailedTaskHandler.class)
+        .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();

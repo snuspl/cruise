@@ -19,6 +19,7 @@ import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.utils.AvroUtils;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.driver.ProgressProvider;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -32,16 +33,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A class for tracking epoch progress of workers.
- * It also maintains global minimum epoch progress.
+ * A class that tracks epoch progress of running workers, maintaining global minimum epoch progress.
+ * It also provides progress info to REEF by implementing {@link ProgressProvider}.
  */
 @DriverSide
 @ThreadSafe
 @Unit
-public final class ProgressTracker {
+public final class ProgressTracker implements ProgressProvider {
   private static final Logger LOG = Logger.getLogger(ProgressTracker.class.getName());
   static final String CENT_COMM_CLIENT_NAME = ProgressTracker.class.getName();
 
+  private final int maxNumEpochs;
   private final int numWorkers;
 
   private final StateMachine stateMachine;
@@ -51,9 +53,16 @@ public final class ProgressTracker {
   private final NavigableMap<Integer, Set<String>> epochProgressToWorkerIds = new ConcurrentSkipListMap<>();
 
   @Inject
-  private ProgressTracker(@Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
+  private ProgressTracker(@Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                          @Parameter(DolphinParameters.NumWorkers.class) final int numWorkers) {
+    this.maxNumEpochs = maxNumEpochs;
     this.numWorkers = numWorkers;
     this.stateMachine = initStateMachine();
+  }
+
+  @Override
+  public float getProgress() {
+    return ((float) getGlobalMinimumEpochProgress()) / maxNumEpochs;
   }
 
   private enum State {
