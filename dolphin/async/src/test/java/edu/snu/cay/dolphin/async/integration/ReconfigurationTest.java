@@ -68,6 +68,7 @@ public final class ReconfigurationTest {
         "-plan_executor", AsyncDolphinPlanExecutor.class.getName(),
         "-compute_time_ms", Integer.toString(30),
         "-num_training_data", Integer.toString(100),
+        "-num_test_data", Integer.toString(10),
         "-optimization_interval_ms", Integer.toString(3000),
         "-delay_after_optimization_ms", Integer.toString(10000),
         "-worker_log_period_ms", Integer.toString(0),

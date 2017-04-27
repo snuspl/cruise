@@ -39,4 +39,9 @@ public final class ExampleParameters {
       short_name = "num_training_data")
   public final class NumTrainingData implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "The number of test data",
+      short_name = "num_test_data")
+  public final class NumTestData implements Name<Integer> {
+  }
 }
