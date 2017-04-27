@@ -54,7 +54,7 @@ final class ETWorkerTask<K, V> implements Task {
 
   @Inject
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
-                       @Parameter(DolphinParameters.StartingEpoch.class) final int startingEpoch,
+                       @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                        final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,

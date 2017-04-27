@@ -193,7 +193,7 @@ public final class ETDolphinDriver {
             .set(TaskConfiguration.ON_CLOSE, ETTaskCloseHandler.class)
             .build(),
         Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(StartingEpoch.class, Integer.toString(progressTracker.getGlobalMinimumEpochProgress()))
+            .bindNamedParameter(StartingEpochIdx.class, Integer.toString(progressTracker.getGlobalMinEpochIdx()))
             .build(),
         workerConf);
   }
