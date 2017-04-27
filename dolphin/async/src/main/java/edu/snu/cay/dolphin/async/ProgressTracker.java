@@ -85,10 +85,14 @@ public final class ProgressTracker {
   }
 
   /**
-   *
+   * A message handler that handles progress messages from workers.
    */
   public final class MessageHandler implements EventHandler<CentCommMsg> {
 
+    /**
+     * {@link ProgressTracker} is thread-safe, because this method is synchronized
+     * and all mutable states of {@link ProgressTracker} are updated in this method.
+     */
     @Override
     public synchronized void onNext(final CentCommMsg centCommMsg) {
       final byte[] data = centCommMsg.getData().array();
