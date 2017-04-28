@@ -241,8 +241,8 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<MLRData> epochData,
-                                     final Collection<MLRData> testData,
+  public EpochResult onEpochFinished(final Collection<MLRData> epochTrainingSet,
+                                     final Collection<MLRData> testSet,
                                      final int epochIdx) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
@@ -251,8 +251,8 @@ final class MLRTrainer implements Trainer<MLRData> {
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
-    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochData, model);
-    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testData, model);
+    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingSet, model);
+    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testSet, model);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;

@@ -53,20 +53,20 @@ public interface Trainer<D> {
 
   /**
    * Main method of this trainer, which is called every mini-batch.
-   * @param miniBatchData the training data to process in the batch
+   * @param miniBatchTrainingSet the training data to process in the batch
    *                      (at most {@link edu.snu.cay.dolphin.async.DolphinParameters.MiniBatchSize} instances.
    * @return a result of the mini-batch
    */
-  MiniBatchResult runMiniBatch(Collection<D> miniBatchData);
+  MiniBatchResult runMiniBatch(Collection<D> miniBatchTrainingSet);
 
   /**
    * EventHandler that is called when an epoch is finished.
-   * @param epochData the training data that has been processed in the epoch
-   * @param testData the test data to evaluate the model computed in the epoch
+   * @param epochTrainingSet the training data that has been processed in the epoch
+   * @param testSet the test data to evaluate the model computed in the epoch
    * @param epochIdx the index of the epoch
    * @return a result of the epoch
    */
-  EpochResult onEpochFinished(Collection<D> epochData, Collection<D> testData, int epochIdx);
+  EpochResult onEpochFinished(Collection<D> epochTrainingSet, Collection<D> testSet, int epochIdx);
 
   /**
    * Post-run method executed after {@code run} but before task termination, exactly once.

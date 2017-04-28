@@ -100,13 +100,13 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection miniBatchTrainingSet) {
     resetTracers();
 
     // sleep to simulate computation
     computeTracer.startTimer();
     try {
-      Thread.sleep(computeTime * miniBatchData.size());
+      Thread.sleep(computeTime * miniBatchTrainingSet.size());
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     } finally {
@@ -128,7 +128,7 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection epochData, final Collection testSet, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection epochTrainingSet, final Collection testSet, final int epochIdx) {
     return EpochResult.EMPTY_RESULT;
   }
 
