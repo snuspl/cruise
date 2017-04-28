@@ -163,11 +163,11 @@ final class GBTTrainer implements Trainer<GBTData> {
   }
 
   /**
-   * Build tree for this miniBatchTrainingSet based on the trees that are already built before this run iteration.
+   * Build tree for this training data based on the trees that are already built before this run iteration.
    */
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<GBTData> miniBatchTrainingSet) {
-    final List<GBTData> instances = new ArrayList<>(miniBatchTrainingSet);
+  public MiniBatchResult runMiniBatch(final Collection<GBTData> miniBatchTrainingData) {
+    final List<GBTData> instances = new ArrayList<>(miniBatchTrainingData);
     
     // Divide into two cases : Regression / Classification
     if (valueType == FeatureType.CONTINUOUS) {
@@ -184,16 +184,16 @@ final class GBTTrainer implements Trainer<GBTData> {
   }
 
   /**
-   * Print the predicted value or label of each data of epochTrainingSet.
+   * Print the predicted value or label of each data in the epoch.
    *
-   * @param epochTrainingSet the training data that has been processed in the epoch
+   * @param epochTrainingData the training data that has been processed in the epoch
    * @param epochIdx the index of the epoch
    */
   @Override
-  public EpochResult onEpochFinished(final Collection<GBTData> epochTrainingSet,
-                                     final Collection<GBTData> testSet,
+  public EpochResult onEpochFinished(final Collection<GBTData> epochTrainingData,
+                                     final Collection<GBTData> testData,
                                      final int epochIdx) {
-    final List<GBTData> instances = new ArrayList<>(epochTrainingSet);
+    final List<GBTData> instances = new ArrayList<>(epochTrainingData);
     // This is for the test.
     if (epochIdx == (maxNumEpochs - 1)) {
       showPredictedValues(instances);

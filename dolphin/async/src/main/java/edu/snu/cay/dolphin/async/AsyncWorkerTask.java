@@ -110,8 +110,8 @@ final class AsyncWorkerTask<K, V> implements Task {
       trainer.initGlobalSettings();
     }
 
-    final List<V> testSet = testDataProvider.getTestData();
-    LOG.log(Level.INFO, "Test data set size: {0}", testSet.size());
+    final List<V> testData = testDataProvider.getTestData();
+    LOG.log(Level.INFO, "Test data set size: {0}", testData.size());
 
     // synchronize all workers before starting the main iterations
     // to avoid meaningless computation by the workers who started earlier
@@ -132,23 +132,23 @@ final class AsyncWorkerTask<K, V> implements Task {
       trainingDataProvider.prepareDataForEpoch();
       parameterWorker.buildAndResetMetrics(); // Reset Tracers in ParameterWorker
 
-      final Collection<V> epochTrainingSet = new LinkedList<>();
+      final Collection<V> epochTrainingData = new LinkedList<>();
 
       int miniBatchIdx = 0;
       while (true) {
-        final Collection<V> miniBatchTrainingSet = trainingDataProvider.getNextBatchData().values();
-        if (miniBatchTrainingSet.isEmpty()) {
+        final Collection<V> miniBatchTrainingData = trainingDataProvider.getNextBatchData().values();
+        if (miniBatchTrainingData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
         }
 
         final long miniBatchStartTime = System.currentTimeMillis();
-        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchTrainingSet);
+        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchTrainingData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
         buildAndSendMiniBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
-            miniBatchTrainingSet.size(), miniBatchElapsedTime);
+            miniBatchTrainingData.size(), miniBatchElapsedTime);
 
-        epochTrainingSet.addAll(miniBatchTrainingSet);
+        epochTrainingData.addAll(miniBatchTrainingData);
         miniBatchIdx++;
 
         if (abortFlag.get()) {
@@ -159,11 +159,11 @@ final class AsyncWorkerTask<K, V> implements Task {
         }
       }
 
-      final EpochResult epochResult = trainer.onEpochFinished(epochTrainingSet, testSet, epochIdx);
+      final EpochResult epochResult = trainer.onEpochFinished(epochTrainingData, testData, epochIdx);
       final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
       buildAndSendEpochMetrics(epochResult, epochIdx, miniBatchIdx,
-          epochTrainingSet.size(), numEMBlocks, epochElapsedTime);
+          epochTrainingData.size(), numEMBlocks, epochElapsedTime);
 
       // TODO #830: Clock should be a unit of mini-batch instead of epoch
       workerClock.clock();

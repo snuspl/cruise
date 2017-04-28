@@ -175,7 +175,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<MLRData> miniBatchTrainingSet) {
+  public MiniBatchResult runMiniBatch(final Collection<MLRData> miniBatchTrainingData) {
     resetTracers();
 
     final long miniBatchStartTime = System.currentTimeMillis();
@@ -185,8 +185,8 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-    final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchTrainingSet.size());
-    instances.addAll(miniBatchTrainingSet);
+    final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchTrainingData.size());
+    instances.addAll(miniBatchTrainingData);
     final int numInstancesToProcess = instances.size();
 
     // collects the results (new models here) computed by multiple threads
@@ -241,8 +241,8 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<MLRData> epochTrainingSet,
-                                     final Collection<MLRData> testSet,
+  public EpochResult onEpochFinished(final Collection<MLRData> epochTrainingData,
+                                     final Collection<MLRData> testData,
                                      final int epochIdx) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
@@ -251,8 +251,8 @@ final class MLRTrainer implements Trainer<MLRData> {
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
-    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingSet, model);
-    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testSet, model);
+    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingData, model);
+    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testData, model);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;

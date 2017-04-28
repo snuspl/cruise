@@ -144,10 +144,10 @@ final class LassoTrainer implements Trainer<LassoData> {
    * 3) Push value to server.
    */
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchTrainingSet) {
+  public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchTrainingData) {
     resetTracer();
 
-    final int numInstancesToProcess = miniBatchTrainingSet.size();
+    final int numInstancesToProcess = miniBatchTrainingData.size();
     final long miniBatchStartTime = System.currentTimeMillis();
 
     pullModels();
@@ -155,7 +155,7 @@ final class LassoTrainer implements Trainer<LassoData> {
     computeTracer.startTimer();
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
     // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into 'preCalculate' vector.
-    final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchTrainingSet);
+    final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchTrainingData);
     final Matrix featureMatrix = featureMatrixAndValues.getLeft();
     final Vector yValues = featureMatrixAndValues.getRight();
 
@@ -188,14 +188,14 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<LassoData> epochTrainingSet,
-                                     final Collection<LassoData> testSet,
+  public EpochResult onEpochFinished(final Collection<LassoData> epochTrainingData,
+                                     final Collection<LassoData> testData,
                                      final int epochIdx) {
     // Calculate the loss value.
     pullModels();
 
-    final double trainingLoss = computeLoss(epochTrainingSet);
-    final double testLoss = computeLoss(testSet);
+    final double trainingLoss = computeLoss(epochTrainingData);
+    final double testLoss = computeLoss(testData);
 
     LOG.log(Level.INFO, "Training Loss: {0}, Test Loss: {1}", new Object[] {trainingLoss, testLoss});
     

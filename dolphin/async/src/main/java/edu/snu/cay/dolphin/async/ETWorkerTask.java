@@ -80,8 +80,8 @@ final class ETWorkerTask<K, V> implements Task {
     LOG.log(Level.INFO, "{0} starting from epoch {1}", new Object[]{taskId, startingEpoch});
 
     trainingDataProvider.loadData();
-    final List<V> testSet = testDataProvider.getTestData();
-    LOG.log(Level.INFO, "Test data set size: {0}", testSet.size());
+    final List<V> testData = testDataProvider.getTestData();
+    LOG.log(Level.INFO, "Test data set size: {0}", testData.size());
 
     trainer.initGlobalSettings();
 
@@ -124,7 +124,7 @@ final class ETWorkerTask<K, V> implements Task {
         }
       }
 
-      final EpochResult epochResult = trainer.onEpochFinished(epochData, testSet, epochIdx);
+      final EpochResult epochResult = trainer.onEpochFinished(epochData, testData, epochIdx);
       final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
       sendEpochMetrics(epochResult, epochIdx, miniBatchIdx,

@@ -133,11 +133,11 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<NMFData> miniBatchTrainingSet) {
+  public MiniBatchResult runMiniBatch(final Collection<NMFData> miniBatchTrainingData) {
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-    final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchTrainingSet.size());
-    instances.addAll(miniBatchTrainingSet);
+    final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchTrainingData.size());
+    instances.addAll(miniBatchTrainingData);
     final int numInstancesToProcess = instances.size();
 
     resetTracers();
@@ -199,18 +199,18 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<NMFData> epochTrainingSet,
-                                     final Collection<NMFData> testSet,
+  public EpochResult onEpochFinished(final Collection<NMFData> epochTrainingData,
+                                     final Collection<NMFData> testData,
                                      final int epochIdx) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
-    pullModels(getKeys(epochTrainingSet));
+    pullModels(getKeys(epochTrainingData));
 
     final NMFModel model = modelHolder.getModel()
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
-    final double trainingLoss = computeLoss(epochTrainingSet, model);
-    final double testLoss = computeLoss(testSet, model);
+    final double trainingLoss = computeLoss(epochTrainingData, model);
+    final double testLoss = computeLoss(testData, model);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
