@@ -122,7 +122,7 @@ public final class MessageHandlerImpl implements MessageHandler {
       // Handles the OwnershipAckMsg from the sender that reports an update of a block's ownership.
       migrationManagerFuture.get().ownershipMoved(opId, blockId);
 
-      synchronized (this) {
+      synchronized (migrationMsgArrivedBlockIds) {
         if (migrationMsgArrivedBlockIds.contains(blockId)) {
           migrationMsgArrivedBlockIds.remove(blockId);
           ownershipMovedMsgArrivedFirst = false;
@@ -141,7 +141,7 @@ public final class MessageHandlerImpl implements MessageHandler {
     case DataMovedMsg:
       blockId = msg.getDataMovedMsg().getBlockId();
 
-      synchronized (this) {
+      synchronized (migrationMsgArrivedBlockIds) {
         if (migrationMsgArrivedBlockIds.contains(blockId)) {
           migrationMsgArrivedBlockIds.remove(blockId);
           ownershipMovedMsgArrivedFirst = true;
