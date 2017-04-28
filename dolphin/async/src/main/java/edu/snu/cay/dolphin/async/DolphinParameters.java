@@ -22,6 +22,10 @@ import org.apache.reef.tang.annotations.NamedParameter;
  * Dolphin-async specific parameters.
  */
 public final class DolphinParameters {
+  @NamedParameter(doc = "Starting epoch index for each worker")
+  public final class StartingEpochIdx implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "Maximum number of epochs to run before termination",
                   short_name = "max_num_epochs")
   public final class MaxNumEpochs implements Name<Integer> {
