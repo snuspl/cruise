@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.centcomm.CentCommConf;
+import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.dolphin.async.DolphinParameters.*;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
@@ -32,7 +33,6 @@ import edu.snu.cay.services.et.evaluator.api.DataParser;
 import org.apache.commons.cli.ParseException;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
-import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
@@ -291,6 +291,7 @@ public final class ETDolphinLauncher {
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, ETDolphinDriver.FailedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_FAILED, ETDolphinDriver.FailedContextHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, ETDolphinDriver.FailedTaskHandler.class)
+        .set(DriverConfiguration.PROGRESS_PROVIDER, ProgressTracker.class)
         .build();
 
     final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
@@ -303,6 +304,9 @@ public final class ETDolphinLauncher {
         .addCentCommClient(WorkerStateManager.CENT_COMM_CLIENT_NAME,
             WorkerStateManager.MessageHandler.class,
             WorkerGlobalBarrier.MessageHandler.class)
+        .addCentCommClient(ProgressTracker.CENT_COMM_CLIENT_NAME,
+            ProgressTracker.MessageHandler.class,
+            ProgressReporter.DummyMessageHandler.class)
         .build();
 
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
