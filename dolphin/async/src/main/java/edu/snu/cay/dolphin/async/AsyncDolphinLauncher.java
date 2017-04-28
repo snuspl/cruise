@@ -179,6 +179,8 @@ public final class AsyncDolphinLauncher {
               Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.MiniBatchSize.class)))
           .bindNamedParameter(DolphinParameters.NumTrainerThreads.class,
               Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.NumTrainerThreads.class)))
+          .bindNamedParameter(DolphinParameters.TestDataPath.class,
+              basicParameterInjector.getNamedInstance(DolphinParameters.TestDataPath.class))
           .build();
       final Configuration workerConf = Configurations.merge(basicWorkerConf,
           asyncDolphinConfiguration.getWorkerConfiguration());
