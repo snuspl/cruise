@@ -138,7 +138,8 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection epochTrainingData, final Collection testData, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection epochTrainingData, final Collection testData,
+                                     final int epochIdx) {
     return EpochResult.EMPTY_RESULT;
   }
 
