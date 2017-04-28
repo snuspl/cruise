@@ -210,7 +210,6 @@ final class NMFTrainer implements Trainer<NMFData> {
 
     LOG.log(Level.INFO, "Start computing loss value");
     final double trainingLoss = computeLoss(epochTrainingData, model);
-    final double testLoss = computeLoss(testData, model);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -219,7 +218,7 @@ final class NMFTrainer implements Trainer<NMFData> {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
-    return buildEpochResult(trainingLoss, testLoss);
+    return buildEpochResult(trainingLoss);
   }
 
   @Override
@@ -436,10 +435,9 @@ final class NMFTrainer implements Trainer<NMFData> {
         .build();
   }
 
-  private EpochResult buildEpochResult(final double trainingLoss, final double testLoss) {
+  private EpochResult buildEpochResult(final double trainingLoss) {
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)
-        .addAppMetric(MetricKeys.TEST_LOSS, testLoss)
         .build();
   }
 }
