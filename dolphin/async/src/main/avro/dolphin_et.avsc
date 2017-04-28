@@ -15,6 +15,17 @@
  */
 [
 {
+ "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "ProgressMsg",
+  "fields":
+  [
+    {"name": "executorId", "type": "string"},
+    {"name": "epochIdx", "type": "int"}
+  ]
+},
+
+{
   "namespace": "edu.snu.cay.dolphin.async",
   "type": "record",
   "name": "SyncMsg",

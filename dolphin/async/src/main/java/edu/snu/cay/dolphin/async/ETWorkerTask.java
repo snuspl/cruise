@@ -37,8 +37,10 @@ final class ETWorkerTask<K, V> implements Task {
   static final String TASK_ID_PREFIX = "ETWorkerTask";
 
   private final String taskId;
+  private final int startingEpoch;
   private final int maxNumEpochs;
 
+  private final ProgressReporter progressReporter;
   private final WorkerGlobalBarrier workerGlobalBarrier;
   private final TrainingDataProvider<K, V> trainingDataProvider;
   private final Trainer<V> trainer;
@@ -52,13 +54,17 @@ final class ETWorkerTask<K, V> implements Task {
 
   @Inject
   private ETWorkerTask(@Parameter(Identifier.class) final String taskId,
+                       @Parameter(DolphinParameters.StartingEpochIdx.class) final int startingEpoch,
                        @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
+                       final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,
                        final TrainingDataProvider<K, V> trainingDataProvider,
                        final Trainer<V> trainer,
                        final MetricCollector<DolphinWorkerMetrics> metricCollector) {
     this.taskId = taskId;
+    this.startingEpoch = startingEpoch;
     this.maxNumEpochs = maxNumEpochs;
+    this.progressReporter = progressReporter;
     this.workerGlobalBarrier = workerGlobalBarrier;
     this.trainingDataProvider = trainingDataProvider;
     this.trainer = trainer;
@@ -67,7 +73,7 @@ final class ETWorkerTask<K, V> implements Task {
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
-    LOG.log(Level.INFO, "{0} starting...", taskId);
+    LOG.log(Level.INFO, "{0} starting from epoch {1}", new Object[]{taskId, startingEpoch});
 
     trainingDataProvider.loadData();
 
@@ -77,8 +83,10 @@ final class ETWorkerTask<K, V> implements Task {
     // to avoid meaningless computation by the workers who started earlier
     workerGlobalBarrier.await();
 
-    for (int epochIdx = 0; epochIdx < maxNumEpochs; ++epochIdx) {
+    for (int epochIdx = startingEpoch; epochIdx < maxNumEpochs; ++epochIdx) {
       LOG.log(Level.INFO, "Starting epoch {0}", epochIdx);
+      progressReporter.report(epochIdx);
+
       final long epochStartTime = System.currentTimeMillis();
       final PerOpTimeInEpoch perOpTimeInEpoch = new PerOpTimeInEpoch();
       trainingDataProvider.prepareDataForEpoch();
