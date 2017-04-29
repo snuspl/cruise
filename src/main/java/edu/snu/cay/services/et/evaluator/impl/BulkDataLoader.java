@@ -17,57 +17,63 @@ package edu.snu.cay.services.et.evaluator.impl;
 
 import edu.snu.cay.common.dataloader.HdfsDataSet;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
-import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.exceptions.KeyGenerationException;
 import org.apache.hadoop.io.Text;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A class that loads a file into a table.
+ * A class that loads data for table blocks from a file.
  * It only supports tables with {@link Long} key type.
  * Note that this class is only for ordered tables.
  */
 final class BulkDataLoader<V> {
   private static final Logger LOG = Logger.getLogger(BulkDataLoader.class.getName());
 
-  private final Table<Long, V, ?> table;
   private final DataParser<V> dataParser;
   private final LocalKeyGenerator localKeyGenerator;
 
   @Inject
-  private BulkDataLoader(final Table<Long, V, ?> table,
-                         final DataParser<V> dataParser,
+  private BulkDataLoader(final DataParser<V> dataParser,
                          final LocalKeyGenerator localKeyGenerator) {
-    this.table = table;
     this.dataParser = dataParser;
     this.localKeyGenerator = localKeyGenerator;
   }
 
   /**
-   * Load a file specified by {@code serializedHdfsSplitInfo} into the {@code table}.
-   * To put them into local blocks, it utilizes a {@link #localKeyGenerator},
-   * which produces keys that belong to local blocks.
+   * Loads a file specified by {@code serializedHdfsSplitInfo}.
+   * It utilizes a {@link #localKeyGenerator} to obtain keys that belong to local blocks.
    * @param serializedHdfsSplitInfo a serialized hdfs split info
    * @throws IOException when fail to create HdfsDataSet from {@code serializedSplitInfo}
    * @throws KeyGenerationException when fail to generate the enough number of keys
+   * @return a map between block id and a corresponding data map
    */
-  void load(final String serializedHdfsSplitInfo) throws IOException, KeyGenerationException {
+  @SuppressWarnings("unchecked")
+  Map<Integer, Map<Long, V>> loadBlockData(final String serializedHdfsSplitInfo)
+      throws IOException, KeyGenerationException {
     final HdfsDataSet<?, Text> hdfsDataSet = HdfsDataSet.from(serializedHdfsSplitInfo);
 
     final List<String> rawDataList = new LinkedList<>();
     hdfsDataSet.forEach(pair -> rawDataList.add(pair.getValue().toString()));
     final List<V> dataList = dataParser.parse(rawDataList);
+    LOG.log(Level.INFO, "{0} data items have been loaded from Hdfs.", dataList.size());
 
-    final List<Long> keyList = localKeyGenerator.getKeys(dataList.size());
-    LOG.log(Level.INFO, "Load {0} data items into a table", keyList.size());
-    for (int idx = 0; idx < keyList.size(); idx++) {
-      table.put(keyList.get(idx), dataList.get(idx));
-    }
+    final Map<Integer, List<Long>> blockIdToKeyListMap = localKeyGenerator.getBlockToKeys(dataList.size());
+
+    final Iterator<V> dataIterator = dataList.iterator();
+    final Map<Integer, Map<Long, V>> blockIdToDataMap = new HashMap<>();
+    blockIdToKeyListMap.forEach((blockId, keyList) -> {
+      final Map<Long, V> dataMap = new HashMap<>();
+      blockIdToDataMap.put(blockId, dataMap);
+      keyList.forEach(key -> dataMap.put(key, dataIterator.next()));
+    });
+    LOG.log(Level.INFO, "Load {0} data items for {1} blocks.",
+        new Object[]{dataList.size(), blockIdToDataMap.size()});
+
+    return blockIdToDataMap;
   }
 }

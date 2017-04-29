@@ -33,12 +33,15 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A message handler implementation.
  */
 @EvaluatorSide
 public final class MessageHandlerImpl implements MessageHandler {
+  private static final Logger LOG = Logger.getLogger(MessageHandlerImpl.class.getName());
   private static final int NUM_OWNERSHIP_UPDATE_THREADS = 4;
   private static final int NUM_TABLE_DROP_THREADS = 4;
 
@@ -139,6 +142,8 @@ public final class MessageHandlerImpl implements MessageHandler {
       final String tableId = serializedHdfsSplitInfo == null ?
           tablesFuture.get().initTable(tableConf, blockOwners) :
           tablesFuture.get().initTable(tableConf, blockOwners, serializedHdfsSplitInfo);
+
+      LOG.log(Level.INFO, "Table {0} has been initialized. opId: {1}", new Object[]{tableId, opId});
 
       msgSenderFuture.get().sendTableInitAckMsg(opId, tableId);
 

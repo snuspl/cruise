@@ -89,7 +89,12 @@ public final class Tables implements TableAccessor {
     // Initialize a table
     LOG.log(Level.INFO, "Initializing a table. tableId: {0}", tableId);
     final TableComponents tableComponents = tableInjector.getInstance(TableComponents.class);
-    initTableComponents(tableComponents, blockOwners);
+
+    // Initialize ownership cache
+    tableComponents.getOwnershipCache().init(blockOwners);
+
+    // Create local blocks
+    initEmptyBlocks(tableComponents.getBlockStore(), blockOwners);
 
     final TableImpl table = tableInjector.getInstance(TableImpl.class);
     tables.put(tableId, Pair.of(table, tableComponents));
@@ -114,31 +119,27 @@ public final class Tables implements TableAccessor {
       throw new RuntimeException("Table has already been initialized. tableId: " + tableId);
     }
 
+    final String filePath = tableInjector.getNamedInstance(FilePath.class);
     // Initialize a table
-    LOG.log(Level.INFO, "Initializing a table. tableId: {0}", tableId);
+    LOG.log(Level.INFO, "Initializing a table with file data. tableId: {0}, filePath: {1}",
+        new Object[]{tableId, filePath});
     final TableComponents tableComponents = tableInjector.getInstance(TableComponents.class);
 
-    initTableComponents(tableComponents, blockOwners);
+    // Initialize ownership cache
+    tableComponents.getOwnershipCache().init(blockOwners);
 
-    // Load a file into table
-    if (serializedHdfsSplitInfo != null) {
-      final String filePath = tableInjector.getNamedInstance(FilePath.class);
-      LOG.log(Level.INFO, "Load a file split into table. filePath: {0} tableId: {1}",
-          new Object[]{filePath, tableId});
+    final boolean isOrderedTable = tableInjector.getNamedInstance(IsOrderedTable.class);
 
-      final boolean isOrderedTable = tableInjector.getNamedInstance(IsOrderedTable.class);
-      if (isOrderedTable) {
-        final BulkDataLoader bulkDataLoader = tableInjector.getInstance(BulkDataLoader.class);
-        try {
-          bulkDataLoader.load(serializedHdfsSplitInfo);
-        } catch (KeyGenerationException | IOException e) {
-          throw new RuntimeException("Fail to load a file into a table", e);
-        }
+    if (isOrderedTable) {
+      // Load a file into local tablet
+      final BulkDataLoader bulkDataLoader = tableInjector.getInstance(BulkDataLoader.class);
+      initBlocksWithData(tableComponents.getBlockStore(), blockOwners, bulkDataLoader, serializedHdfsSplitInfo);
 
-      } else {
-        // TODO #52: Support bulk data(file) loading for hashed tables
-        LOG.log(Level.WARNING, "File loading is not available for hashed tables. tableId: {0}", tableId);
-      }
+    } else {
+      // TODO #52: Support bulk data(file) loading for hashed tables
+      LOG.log(Level.WARNING, "File loading is not available for hashed tables. tableId: {0}", tableId);
+
+      initEmptyBlocks(tableComponents.getBlockStore(), blockOwners);
     }
 
     final Table table = tableInjector.getInstance(Table.class);
@@ -147,18 +148,47 @@ public final class Tables implements TableAccessor {
   }
 
   /**
-   * Initialize table components such as {@link OwnershipCache} and {@link BlockStore}.
+   * Initialize block store with blocks that contain data loaded from a file.
    */
-  private void initTableComponents(final TableComponents tableComponents,
-                                   final List<String> blockOwners) throws InjectionException {
-    // Initialize ownership cache
-    tableComponents.getOwnershipCache().init(blockOwners);
+  @SuppressWarnings("unchecked")
+  private void initBlocksWithData(final BlockStore blockStore,
+                                  final List<String> blockOwners,
+                                  final BulkDataLoader bulkDataLoader,
+                                  final String serializedHdfsSplitInfo) {
+    try {
+      final Map<Integer, Map> blockIdToDataMap = bulkDataLoader.loadBlockData(serializedHdfsSplitInfo);
+      blockIdToDataMap.forEach((blockId, dataMap) -> {
+        try {
+          blockStore.putBlock(blockId, dataMap);
+        } catch (BlockAlreadyExistsException e) {
+          throw new RuntimeException(e);
+        }
+      });
 
-    // Create local blocks if needed
+      // create empty blocks if not all local blocks have been created from a file
+      for (int blockId = 0; blockId < blockOwners.size(); blockId++) {
+        if (blockOwners.get(blockId).equals(executorId) && !blockIdToDataMap.keySet().contains(blockId)) {
+          blockStore.createEmptyBlock(blockId);
+        }
+      }
+
+    } catch (KeyGenerationException | IOException e) {
+      throw new RuntimeException("Fail to load a file into a table", e);
+    } catch (BlockAlreadyExistsException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Initialize block store with empty local blocks.
+   */
+  private void initEmptyBlocks(final BlockStore blockStore,
+                               final List<String> blockOwners) {
+    // Create local blocks
     try {
       for (int blockId = 0; blockId < blockOwners.size(); blockId++) {
         if (blockOwners.get(blockId).equals(executorId)) {
-          tableComponents.getBlockStore().createEmptyBlock(blockId);
+          blockStore.createEmptyBlock(blockId);
         }
       }
     } catch (BlockAlreadyExistsException e) {

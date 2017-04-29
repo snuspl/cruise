@@ -23,7 +23,7 @@ import java.util.*;
 
 /**
  * A class that generates keys for local blocks. It works only for ordered tables whose key type is {@link Long}.
- * Note that the result of {@link #getKeys(int)} can partially be wrong,
+ * Note that the result of {@link #getBlockToKeys(int)} can partially be wrong,
  * because blocks can move to other executors after return.
  */
 final class LocalKeyGenerator {
@@ -38,15 +38,15 @@ final class LocalKeyGenerator {
   }
 
   /**
-   * Returns a list of keys as many as {@code numKeys} that belong to local blocks.
+   * Retrieves keys as many as {@code numKeys} that belong to local blocks.
    * It distributes keys to blocks as even as possible.
    * Note that this method is stateless, so calling multiple times gives the same result
    * if the entry of local blocks is not changed.
    * @param numKeys the number of keys
-   * @return a list of keys that belong to local blocks
+   * @return a map between block id and a list of keys that belong to this block
    * @throws KeyGenerationException when the number of keys in one block has exceeded its limit
    */
-  List<Long> getKeys(final int numKeys) throws KeyGenerationException {
+  Map<Integer, List<Long>> getBlockToKeys(final int numKeys) throws KeyGenerationException {
     // obtain blockToKeySpace info
     final Map<Integer, Pair<Long, Long>> blockToKeySpace = new HashMap<>();
     final List<Integer> localBlockIds = ownershipCache.getCurrentLocalBlockIds();
@@ -59,9 +59,12 @@ final class LocalKeyGenerator {
     final int numKeysPerBlock = numKeys / numBlocks;
     int numRemainingKeys = numKeys % numBlocks; // remainder after dividing equal amount of keys to all blocks
 
-    final List<Long> keys = new ArrayList<>(numKeys);
+    final Map<Integer, List<Long>> blockIdToKeyListMap = new HashMap<>();
 
     for (final int blockId : blockToKeySpace.keySet()) {
+      final List<Long> keys = new ArrayList<>(numKeysPerBlock);
+      blockIdToKeyListMap.put(blockId, keys);
+
       final Pair<Long, Long> keySpace = blockToKeySpace.get(blockId);
       final long maxKey = keySpace.getRight();
       final long minKey = keySpace.getLeft();
@@ -85,6 +88,6 @@ final class LocalKeyGenerator {
       }
     }
 
-    return keys;
+    return blockIdToKeyListMap;
   }
 }
