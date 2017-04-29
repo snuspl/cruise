@@ -133,11 +133,11 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<NMFData> miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection<NMFData> miniBatchTrainingData) {
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-    final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchData.size());
-    instances.addAll(miniBatchData);
+    final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchTrainingData.size());
+    instances.addAll(miniBatchTrainingData);
     final int numInstancesToProcess = instances.size();
 
     resetTracers();
@@ -196,19 +196,20 @@ final class NMFTrainer implements Trainer<NMFData> {
     final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
     return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
-
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<NMFData> epochData, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection<NMFData> epochTrainingData,
+                                     final Collection<NMFData> testData,
+                                     final int epochIdx) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
-    pullModels(getKeys(epochData));
+    pullModels(getKeys(epochTrainingData));
 
     final NMFModel model = modelHolder.getModel()
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
-    final double loss = computeLoss(epochData, model);
+    final double trainingLoss = computeLoss(epochTrainingData, model);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -217,7 +218,7 @@ final class NMFTrainer implements Trainer<NMFData> {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
-    return buildEpochResult(loss);
+    return buildEpochResult(trainingLoss);
   }
 
   @Override
@@ -422,7 +423,8 @@ final class NMFTrainer implements Trainer<NMFData> {
     computeTracer.resetTrace();
   }
 
-  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
+  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount,
+                                               final double elapsedTime) {
     return MiniBatchResult.newBuilder()
         .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
         .setComputeTime(computeTracer.totalElapsedTime())
@@ -433,9 +435,9 @@ final class NMFTrainer implements Trainer<NMFData> {
         .build();
   }
 
-  private EpochResult buildEpochResult(final double loss) {
+  private EpochResult buildEpochResult(final double trainingLoss) {
     return EpochResult.newBuilder()
-        .addAppMetric(MetricKeys.LOSS_SUM, loss)
+        .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)
         .build();
   }
 }

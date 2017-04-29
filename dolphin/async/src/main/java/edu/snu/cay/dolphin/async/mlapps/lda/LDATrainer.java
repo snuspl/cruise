@@ -106,18 +106,18 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<Document> miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection<Document> miniBatchTrainingData) {
     resetTracers();
 
     final long miniBatchStartTime = System.currentTimeMillis();
 
-    final List<Integer> words = getKeys(miniBatchData);
-    final int numInstancesToProcess = miniBatchData.size();
+    final List<Integer> words = getKeys(miniBatchTrainingData);
+    final int numInstancesToProcess = miniBatchTrainingData.size();
 
     pullModels(words);
 
     computeTracer.startTimer();
-    final List<TopicChanges> results = sampler.sample(miniBatchData);
+    final List<TopicChanges> results = sampler.sample(miniBatchTrainingData);
     computeTracer.recordTime(numInstancesToProcess);
 
     final TopicChanges aggregated = aggregateChanges(results);
@@ -131,7 +131,8 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<Document> epochData,
+  public EpochResult onEpochFinished(final Collection<Document> epochTrainingData,
+                                     final Collection<Document> testData,
                                      final int epochIdx) {
 
     LOG.log(Level.INFO, "Pull model to compute log likelihood");
@@ -139,7 +140,7 @@ final class LDATrainer implements Trainer<Document> {
     final int[] wordTopicCountsSummary = wordTopicCounts.remove(numVocabs);
 
     LOG.log(Level.INFO, "Start computing log likelihood");
-    final double docLLH = statCalculator.computeDocLLH(epochData);
+    final double docLLH = statCalculator.computeDocLLH(epochTrainingData);
     final double wordLLH = statCalculator.computeWordLLH(wordTopicCounts, wordTopicCountsSummary);
 
     return buildEpochResult(docLLH, wordLLH);

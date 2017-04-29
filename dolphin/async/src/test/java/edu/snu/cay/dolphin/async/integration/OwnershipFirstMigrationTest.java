@@ -91,6 +91,7 @@ public final class OwnershipFirstMigrationTest {
         "-max_num_epochs", Integer.toString(10),
         "-mini_batch_size", Integer.toString(10),
         "-num_training_data", Integer.toString(100),
+        "-num_test_data", Integer.toString(10),
         "-delta", Integer.toString(4),
         "-num_keys", Integer.toString(50),
         "-input", ClassLoader.getSystemResource("data").getPath() + "/empty_file",

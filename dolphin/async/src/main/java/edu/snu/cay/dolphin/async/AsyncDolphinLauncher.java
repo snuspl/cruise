@@ -168,6 +168,9 @@ public final class AsyncDolphinLauncher {
       final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Trainer.class, asyncDolphinConfiguration.getTrainerClass())
           .bindImplementation(DataParser.class, asyncDolphinConfiguration.getParserClass())
+          // TODO #980: We can integrate the data parser if we use the new data loader in Dolphin
+          .bindImplementation(edu.snu.cay.services.et.evaluator.api.DataParser.class,
+              asyncDolphinConfiguration.getTestDataParserClass())
           .bindImplementation(TrainingDataProvider.class, EMTrainingDataProvider.class)
           .bindImplementation(ModelAccessor.class, PSModelAccessor.class)
           .bindNamedParameter(DolphinParameters.MaxNumEpochs.class,
@@ -176,6 +179,8 @@ public final class AsyncDolphinLauncher {
               Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.MiniBatchSize.class)))
           .bindNamedParameter(DolphinParameters.NumTrainerThreads.class,
               Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.NumTrainerThreads.class)))
+          .bindNamedParameter(DolphinParameters.TestDataPath.class,
+              basicParameterInjector.getNamedInstance(DolphinParameters.TestDataPath.class))
           .build();
       final Configuration workerConf = Configurations.merge(basicWorkerConf,
           asyncDolphinConfiguration.getWorkerConfiguration());
@@ -254,6 +259,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(NumEvaluatorCores.class);
     basicParameterClassList.add(InputDir.class);
+    basicParameterClassList.add(DolphinParameters.TestDataPath.class);
     basicParameterClassList.add(OnLocal.class);
     basicParameterClassList.add(Splits.class);
     basicParameterClassList.add(Timeout.class);

@@ -35,6 +35,7 @@ public final class GBTREEF {
         .setTrainerClass(GBTTrainer.class)
         .setUpdaterClass(GBTUpdater.class)
         .setParserClass(GBTDataParser.class)
+        .setTestDataParserClass(GBTETDataParser.class)
         .setPreValueCodecClass(GBTreeCodec.class)
         .setValueCodecClass(GBTreeListCodec.class)
         .setServerSerializerClass(GBTreeListSerializer.class)

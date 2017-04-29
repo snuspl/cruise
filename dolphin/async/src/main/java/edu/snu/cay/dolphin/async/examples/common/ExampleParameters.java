@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,5 +38,10 @@ public final class ExampleParameters {
   @NamedParameter(doc = "The number of data instances to assign each worker",
       short_name = "num_training_data")
   public final class NumTrainingData implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "The number of test data",
+      short_name = "num_test_data")
+  public final class NumTestData implements Name<Integer> {
   }
 }

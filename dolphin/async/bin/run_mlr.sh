@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 2016 Seoul National University
+# Copyright (C) 2017 Seoul National University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_mlr.sh -split 4 -num_servers 2 -num_partitions 4 -local true -input sample_mlr -max_num_eval_local 7 -max_num_epochs 20 -mini_batch_size 50 -init_step_size 0.1 -classes 10 -features 784 -features_per_partition 392 -model_gaussian 0.001 -lambda 0.005 -timeout 200000 -decay_period 5 -decay_rate 0.9 -dynamic true -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -server_log_period_ms 0 -server_metrics_window_ms 1000 -num_trainer_threads 1
+# ./run_mlr.sh -split 4 -num_servers 2 -num_partitions 4 -local true -input sample_mlr -test_data_path file://$(PWD)/sample_mlr_test -max_num_eval_local 7 -max_num_epochs 20 -mini_batch_size 50 -init_step_size 0.1 -classes 10 -features 784 -features_per_partition 392 -model_gaussian 0.001 -lambda 0.005 -timeout 200000 -decay_period 5 -decay_rate 0.9 -dynamic true -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.dolphin.async.plan.AsyncDolphinPlanExecutor -optimization_interval_ms 3000 -delay_after_optimization_ms 10000 -server_log_period_ms 0 -server_metrics_window_ms 1000 -num_trainer_threads 1
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

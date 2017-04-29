@@ -175,7 +175,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<MLRData> miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection<MLRData> miniBatchTrainingData) {
     resetTracers();
 
     final long miniBatchStartTime = System.currentTimeMillis();
@@ -185,8 +185,8 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     final CountDownLatch latch = new CountDownLatch(numTrainerThreads);
 
-    final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchData.size());
-    instances.addAll(miniBatchData);
+    final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchTrainingData.size());
+    instances.addAll(miniBatchTrainingData);
     final int numInstancesToProcess = instances.size();
 
     // collects the results (new models here) computed by multiple threads
@@ -241,7 +241,9 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection<MLRData> epochData, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection<MLRData> epochTrainingData,
+                                     final Collection<MLRData> testData,
+                                     final int epochIdx) {
     LOG.log(Level.INFO, "Pull model to compute loss value");
     pullModels();
 
@@ -249,10 +251,8 @@ final class MLRTrainer implements Trainer<MLRData> {
         .orElseThrow(() -> new RuntimeException("Model was not initialized properly"));
 
     LOG.log(Level.INFO, "Start computing loss value");
-    final Tuple3<Double, Double, Double> lossRegLossAccuracy = computeLoss(epochData, model);
-    final double sampleLoss = lossRegLossAccuracy.getFirst();
-    final double regLoss = lossRegLossAccuracy.getSecond();
-    final double accuracy = lossRegLossAccuracy.getThird();
+    final Tuple3<Double, Double, Double> trainingLossRegLossAvgAccuracy = computeLoss(epochTrainingData, model);
+    final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy = computeLoss(testData, model);
 
     if (decayRate != 1 && (epochIdx + 1) % decayPeriod == 0) {
       final double prevStepSize = stepSize;
@@ -261,7 +261,7 @@ final class MLRTrainer implements Trainer<MLRData> {
           new Object[]{decayPeriod, prevStepSize, stepSize});
     }
 
-    return buildEpochResult(sampleLoss, regLoss, accuracy);
+    return buildEpochResult(trainingLossRegLossAvgAccuracy, testLossRegLossAvgAccuracy);
   }
 
   /**
@@ -480,11 +480,15 @@ final class MLRTrainer implements Trainer<MLRData> {
         .build();
   }
 
-  private EpochResult buildEpochResult(final double sampleLoss, final double regLoss, final double accuracy) {
+  private EpochResult buildEpochResult(final Tuple3<Double, Double, Double> traininglossRegLossAvgAccuracy,
+                                       final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy) {
     return EpochResult.newBuilder()
-        .addAppMetric(MetricKeys.SAMPLE_LOSS_SUM, sampleLoss)
-        .addAppMetric(MetricKeys.REG_LOSS_AVG, regLoss)
-        .addAppMetric(MetricKeys.ACCURACY, accuracy)
+        .addAppMetric(MetricKeys.TRAINING_LOSS, traininglossRegLossAvgAccuracy.getFirst())
+        .addAppMetric(MetricKeys.TRAINING_REG_LOSS_AVG, traininglossRegLossAvgAccuracy.getSecond())
+        .addAppMetric(MetricKeys.TRAINING_ACCURACY, traininglossRegLossAvgAccuracy.getThird())
+        .addAppMetric(MetricKeys.TEST_LOSS, testLossRegLossAvgAccuracy.getFirst())
+        .addAppMetric(MetricKeys.TEST_REG_LOSS_AVG, testLossRegLossAvgAccuracy.getSecond())
+        .addAppMetric(MetricKeys.TEST_ACCURACY, testLossRegLossAvgAccuracy.getThird())
         .build();
   }
 }

@@ -107,9 +107,9 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection miniBatchData) {
+  public MiniBatchResult runMiniBatch(final Collection miniBatchTrainingData) {
     resetTracers();
-    final int numDataToProcess = miniBatchData.size();
+    final int numDataToProcess = miniBatchTrainingData.size();
 
     // 1. pull model to compute with
     pullTracer.startTimer();
@@ -138,7 +138,8 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public EpochResult onEpochFinished(final Collection epochData, final int epochIdx) {
+  public EpochResult onEpochFinished(final Collection epochTrainingData, final Collection testData,
+                                     final int epochIdx) {
     return EpochResult.EMPTY_RESULT;
   }
 

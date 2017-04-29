@@ -30,6 +30,7 @@ import org.apache.reef.task.Task;
 import javax.inject.Inject;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,6 +53,7 @@ final class AsyncWorkerTask<K, V> implements Task {
   private final WorkerSynchronizer synchronizer;
   private final ParameterWorker parameterWorker;
   private final TrainingDataProvider<K, V> trainingDataProvider;
+  private final TestDataProvider<V> testDataProvider;
   private final MemoryStore<K> memoryStore;
   private final Trainer<V> trainer;
   private final MetricsMsgSender<WorkerMetrics> metricsMsgSender;
@@ -73,6 +75,7 @@ final class AsyncWorkerTask<K, V> implements Task {
                           final WorkerSynchronizer synchronizer,
                           final ParameterWorker parameterWorker,
                           final TrainingDataProvider<K, V> trainingDataProvider,
+                          final TestDataProvider<V> testDataProvider,
                           final MemoryStore<K> memoryStore,
                           final Trainer<V> trainer,
                           final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
@@ -84,6 +87,7 @@ final class AsyncWorkerTask<K, V> implements Task {
     this.synchronizer = synchronizer;
     this.parameterWorker = parameterWorker;
     this.trainingDataProvider = trainingDataProvider;
+    this.testDataProvider = testDataProvider;
     this.memoryStore = memoryStore;
     this.trainer = trainer;
     this.metricsMsgSender = metricsMsgSender;
@@ -106,6 +110,9 @@ final class AsyncWorkerTask<K, V> implements Task {
       trainer.initGlobalSettings();
     }
 
+    final List<V> testData = testDataProvider.getTestData();
+    LOG.log(Level.INFO, "Test data set size: {0}", testData.size());
+
     // synchronize all workers before starting the main iterations
     // to avoid meaningless computation by the workers who started earlier
     synchronizer.globalBarrier();
@@ -125,23 +132,23 @@ final class AsyncWorkerTask<K, V> implements Task {
       trainingDataProvider.prepareDataForEpoch();
       parameterWorker.buildAndResetMetrics(); // Reset Tracers in ParameterWorker
 
-      final Collection<V> epochData = new LinkedList<>();
+      final Collection<V> epochTrainingData = new LinkedList<>();
 
       int miniBatchIdx = 0;
       while (true) {
-        final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData().values();
-        if (miniBatchData.isEmpty()) {
+        final Collection<V> miniBatchTrainingData = trainingDataProvider.getNextBatchData().values();
+        if (miniBatchTrainingData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
         }
 
         final long miniBatchStartTime = System.currentTimeMillis();
-        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchData);
+        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchTrainingData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
         buildAndSendMiniBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
-            miniBatchData.size(), miniBatchElapsedTime);
+            miniBatchTrainingData.size(), miniBatchElapsedTime);
 
-        epochData.addAll(miniBatchData);
+        epochTrainingData.addAll(miniBatchTrainingData);
         miniBatchIdx++;
 
         if (abortFlag.get()) {
@@ -152,11 +159,11 @@ final class AsyncWorkerTask<K, V> implements Task {
         }
       }
 
-      final EpochResult epochResult = trainer.onEpochFinished(epochData, epochIdx);
+      final EpochResult epochResult = trainer.onEpochFinished(epochTrainingData, testData, epochIdx);
       final double epochElapsedTime = (System.currentTimeMillis() - epochStartTime) / 1000.0D;
 
       buildAndSendEpochMetrics(epochResult, epochIdx, miniBatchIdx,
-          epochData.size(), numEMBlocks, epochElapsedTime);
+          epochTrainingData.size(), numEMBlocks, epochElapsedTime);
 
       // TODO #830: Clock should be a unit of mini-batch instead of epoch
       workerClock.clock();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ public final class LDAREEF {
         .setTrainerClass(LDATrainer.class)
         .setUpdaterClass(LDAUpdater.class)
         .setParserClass(LDADataParser.class)
+        .setTestDataParserClass(LDAETDataParser.class)
         .setKeyCodecClass(SerializableCodec.class)
         .setPreValueCodecClass(SerializableCodec.class)
         .setValueCodecClass(SparseArrayCodec.class)

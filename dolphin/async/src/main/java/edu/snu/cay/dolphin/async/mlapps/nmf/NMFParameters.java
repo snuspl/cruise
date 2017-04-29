@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,11 +68,11 @@ final class NMFParameters {
 
   static final class MetricKeys {
     // The key denoting the total loss computed from training data instances.
-    static final String LOSS_SUM =
-        "NMF_TRAINER_LOSS_SUM";
+    static final String TRAINING_LOSS =
+        "NMF_TRAINING_LOSS";
 
     // The key denoting the number of training data instances processed per unit time.
     static final String DVT =
-        "NMF_TRAINER_DVT";
+        "NMF_DVT";
   }
 }
