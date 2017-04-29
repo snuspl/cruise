@@ -268,7 +268,8 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendDataMovedMsg(final long opId, final String tableId, final int blockId) throws NetworkException {
+  public void sendDataMovedMsg(final long opId, final String tableId, final int blockId,
+                               final boolean moveOwnershipTogether) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MigrationMsg)
         .setMigrationMsg(
@@ -279,6 +280,7 @@ public final class MessageSenderImpl implements MessageSender {
                     DataMovedMsg.newBuilder()
                         .setTableId(tableId)
                         .setBlockId(blockId)
+                        .setMoveOwnershipTogether(moveOwnershipTogether)
                         .build()
                 )
                 .build()

@@ -329,7 +329,7 @@ public final class MigrationManagerTest {
                                 final String senderId, final String receiverId) {
       for (final int blockId : blockIds) {
         migrationManager.get().ownershipMoved(opId, blockId);
-        migrationManager.get().markBlockAsMoved(opId, blockId);
+        migrationManager.get().dataMoved(opId, blockId);
       }
     }
   }

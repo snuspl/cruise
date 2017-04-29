@@ -39,6 +39,7 @@ public final class TableConfiguration {
   private final Class<? extends Codec> valueCodecClass;
   private final Class<? extends Codec> updateValueCodecClass;
   private final Class<? extends UpdateFunction> updateFunctionClass;
+  private final boolean isMutableTable;
   private final boolean isOrderedTable;
   private final int numTotalBlocks;
   private final String filePath;
@@ -51,6 +52,7 @@ public final class TableConfiguration {
                              final Class<? extends Codec> keyCodecClass, final Class<? extends Codec> valueCodecClass,
                              final Class<? extends Codec> updateValueCodecClass,
                              final Class<? extends UpdateFunction> updateFunctionClass,
+                             final boolean isMutableTable,
                              final boolean isOrderedTable,
                              final Integer numTotalBlocks,
                              final String filePath,
@@ -61,6 +63,7 @@ public final class TableConfiguration {
     this.valueCodecClass = valueCodecClass;
     this.updateValueCodecClass = updateValueCodecClass;
     this.updateFunctionClass = updateFunctionClass;
+    this.isMutableTable = isMutableTable;
     this.isOrderedTable = isOrderedTable;
     this.numTotalBlocks = numTotalBlocks;
     this.filePath = filePath;
@@ -101,6 +104,13 @@ public final class TableConfiguration {
    */
   public Class<? extends UpdateFunction> getUpdateFunctionClass() {
     return updateFunctionClass;
+  }
+
+  /**
+   * @return True if it's an mutable table
+   */
+  public boolean isMutableTable() {
+    return isMutableTable;
   }
 
   /**
@@ -157,6 +167,7 @@ public final class TableConfiguration {
               .bindNamedParameter(ValueCodec.class, valueCodecClass)
               .bindNamedParameter(UpdateValueCodec.class, updateValueCodecClass)
               .bindImplementation(UpdateFunction.class, updateFunctionClass)
+              .bindNamedParameter(IsMutableTable.class, Boolean.toString(isMutableTable))
               .bindNamedParameter(IsOrderedTable.class, Boolean.toString(isOrderedTable))
               .bindImplementation(BlockPartitioner.class, blockPartitionerClass)
               .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
@@ -187,6 +198,7 @@ public final class TableConfiguration {
     private Class<? extends Codec> valueCodecClass;
     private Class<? extends Codec> updateValueCodecClass;
     private Class<? extends UpdateFunction> updateFunctionClass;
+    private Boolean isMutableTable;
     private Boolean isOrderedTable;
 
     /**
@@ -225,6 +237,11 @@ public final class TableConfiguration {
       return this;
     }
 
+    public Builder setIsMutableTable(final Boolean isMutableTable) {
+      this.isMutableTable = isMutableTable;
+      return this;
+    }
+
     public Builder setIsOrderedTable(final Boolean isOrderedTable) {
       this.isOrderedTable = isOrderedTable;
       return this;
@@ -257,6 +274,7 @@ public final class TableConfiguration {
       BuilderUtils.notNull(valueCodecClass);
       BuilderUtils.notNull(updateValueCodecClass);
       BuilderUtils.notNull(updateFunctionClass);
+      BuilderUtils.notNull(isMutableTable);
       BuilderUtils.notNull(isOrderedTable);
 
       if (!filePath.equals(FilePath.EMPTY)) {
@@ -266,8 +284,8 @@ public final class TableConfiguration {
         }
       }
 
-      return new TableConfiguration(id, keyCodecClass, valueCodecClass, updateValueCodecClass,
-          updateFunctionClass, isOrderedTable, numTotalBlocks, filePath, dataParserClass, userParamConf);
+      return new TableConfiguration(id, keyCodecClass, valueCodecClass, updateValueCodecClass, updateFunctionClass,
+          isMutableTable, isOrderedTable, numTotalBlocks, filePath, dataParserClass, userParamConf);
     }
   }
 }

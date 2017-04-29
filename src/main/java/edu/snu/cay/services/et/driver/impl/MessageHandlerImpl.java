@@ -119,6 +119,7 @@ public final class MessageHandlerImpl implements MessageHandler {
     switch (msg.getType()) {
     case OwnershipMovedMsg:
       blockId = msg.getOwnershipMovedMsg().getBlockId();
+
       // Handles the OwnershipAckMsg from the sender that reports an update of a block's ownership.
       migrationManagerFuture.get().ownershipMoved(opId, blockId);
 
@@ -134,26 +135,34 @@ public final class MessageHandlerImpl implements MessageHandler {
 
       if (!ownershipMovedMsgArrivedFirst) {
         // Handles DataMovedMsg from the sender that reports data migration for a block has been finished successfully.
-        migrationManagerFuture.get().markBlockAsMoved(opId, blockId);
+        migrationManagerFuture.get().dataMoved(opId, blockId);
       }
       break;
 
     case DataMovedMsg:
       blockId = msg.getDataMovedMsg().getBlockId();
+      final boolean moveDataAndOwnershipTogether = msg.getDataMovedMsg().getMoveOwnershipTogether();
 
-      synchronized (migrationMsgArrivedBlockIds) {
-        if (migrationMsgArrivedBlockIds.contains(blockId)) {
-          migrationMsgArrivedBlockIds.remove(blockId);
-          ownershipMovedMsgArrivedFirst = true;
-        } else {
-          migrationMsgArrivedBlockIds.add(blockId);
-          ownershipMovedMsgArrivedFirst = false;
+      if (moveDataAndOwnershipTogether) {
+        // for immutable tables, ET migrates data and ownership of block together
+        migrationManagerFuture.get().dataAndOwnershipMoved(opId, blockId);
+
+      } else {
+        synchronized (migrationMsgArrivedBlockIds) {
+          if (migrationMsgArrivedBlockIds.contains(blockId)) {
+            migrationMsgArrivedBlockIds.remove(blockId);
+            ownershipMovedMsgArrivedFirst = true;
+          } else {
+            migrationMsgArrivedBlockIds.add(blockId);
+            ownershipMovedMsgArrivedFirst = false;
+          }
         }
-      }
 
-      if (ownershipMovedMsgArrivedFirst) {
-        // Handles DataMovedMsg from the sender that reports data migration for a block has been finished successfully.
-        migrationManagerFuture.get().markBlockAsMoved(opId, blockId);
+        if (ownershipMovedMsgArrivedFirst) {
+          // Handles DataMovedMsg from the sender
+          // that reports data migration for a block has been finished successfully.
+          migrationManagerFuture.get().dataMoved(opId, blockId);
+        }
       }
       break;
 

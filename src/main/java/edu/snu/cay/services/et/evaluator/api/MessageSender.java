@@ -102,10 +102,10 @@ public interface MessageSender {
   void sendDataAckMsg(long opId, String tableId, int blockId,
                       String senderId, String receiverId) throws NetworkException;
   /**
-   * Sends a message to master to notify that the ownership of a block has been migrated successfully.
+   * Sends a message to master to notify that the data of a block has been migrated successfully.
    * The operation should be given a unique {@code opId}.
    */
-  void sendDataMovedMsg(long opId, String tableId, int blockId) throws NetworkException;
+  void sendDataMovedMsg(long opId, String tableId, int blockId, boolean moveOwnershipTogether) throws NetworkException;
 
   /**
    * Sends a message to master, containing the collected metrics in the Executor.

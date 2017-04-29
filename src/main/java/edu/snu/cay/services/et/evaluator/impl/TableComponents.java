@@ -26,6 +26,11 @@ import javax.inject.Inject;
 final class TableComponents<K, V, U> {
 
   /**
+   * A metadata of table.
+   */
+  private final TableMetadata tableMetadata;
+
+  /**
    * Local cache for ownership mapping.
    */
   private final OwnershipCache ownershipCache;
@@ -52,15 +57,21 @@ final class TableComponents<K, V, U> {
 
   @Inject
   private TableComponents(final OwnershipCache ownershipCache,
+                          final TableMetadata tableMetadata,
                           final BlockStore<K, V, U> blockStore,
                           final KVUSerializer<K, V, U> kvuSerializer,
                           final UpdateFunction<K, V, U> updateFunction,
                           final BlockPartitioner<K> blockPartitioner) {
+    this.tableMetadata = tableMetadata;
     this.ownershipCache = ownershipCache;
     this.blockStore = blockStore;
     this.kvuSerializer = kvuSerializer;
     this.updateFunction = updateFunction;
     this.blockPartitioner = blockPartitioner;
+  }
+
+  TableMetadata getTableMetadata() {
+    return tableMetadata;
   }
 
   OwnershipCache getOwnershipCache() {

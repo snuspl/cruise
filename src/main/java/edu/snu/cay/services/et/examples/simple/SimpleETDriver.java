@@ -89,6 +89,7 @@ final class SimpleETDriver {
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(SimpleUpdateFunction.class)
+        .setIsMutableTable(true)
         .setIsOrderedTable(isOrderedTable);
 
     if (!inputPath.equals(SimpleET.TableInputPath.EMPTY)) {

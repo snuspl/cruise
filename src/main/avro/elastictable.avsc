@@ -333,6 +333,8 @@
 /**
  * A message from migration sender to master that indicates that
  * the data migration of a block is completed.
+ * By setting the third field to true, the ownership and data is migrated together,
+ * which is optimized for immutable tables.
  */
 {
   "namespace": "edu.snu.cay.services.et.avro",
@@ -341,7 +343,8 @@
   "fields":
   [
     {"name": "tableId", "type" : "string"},
-    {"name": "blockId", "type": "int"}
+    {"name": "blockId", "type": "int"},
+    {"name": "moveOwnershipTogether", "type": "boolean"}
   ]
 },
 

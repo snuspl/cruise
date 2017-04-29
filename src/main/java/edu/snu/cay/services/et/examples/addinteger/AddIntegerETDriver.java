@@ -126,6 +126,7 @@ public final class AddIntegerETDriver {
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
         .setUserParamConf(userTableParamConf)
+        .setIsMutableTable(true)
         .setIsOrderedTable(false)
         .build();
   }

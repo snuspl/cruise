@@ -103,6 +103,7 @@ final class MetricETDriver {
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
+        .setIsMutableTable(true)
         .setIsOrderedTable(false);
 
     return tableConfBuilder.build();

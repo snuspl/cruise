@@ -159,6 +159,10 @@ final class MigrationManager {
           " or it has already been finished.", opId));
     }
 
+    updateBlockOwnership(migration, opId, blockId);
+  }
+
+  private synchronized void updateBlockOwnership(final Migration migration, final long opId, final int blockId) {
     final Migration.MigrationMetadata migrationMetadata = migration.getMigrationMetadata();
     final String tableId = migrationMetadata.getTableId();
     final String senderId = migrationMetadata.getSenderId();
@@ -183,17 +187,23 @@ final class MigrationManager {
    * @param opId Identifier of {@code move} operation.
    * @param blockId Identifier of the moved block.
    */
-  synchronized void markBlockAsMoved(final long opId, final int blockId) {
+  synchronized void dataMoved(final long opId, final int blockId) {
     final Migration migration = ongoingMigrations.get(opId);
     if (migration == null) {
       throw new RuntimeException(String.format("Migration with ID %d was not registered," +
           " or it has already been finished.", opId));
     }
 
+    LOG.log(Level.FINE, "Data moved. opId: {0}, blockId: {1}", new Object[]{opId, blockId});
+
+    blockMigrationCompleted(migration, opId, blockId);
+  }
+
+  private synchronized void blockMigrationCompleted(final Migration migration, final long opId, final int blockId) {
     migration.markBlockAsMoved(blockId);
     migration.getBlockManager().releaseBlockFromMove(blockId);
-
-    LOG.log(Level.FINE, "Data moved. opId: {0}, blockId: {1}", new Object[]{opId, blockId});
+    LOG.log(Level.INFO, "Block migration has been completed. opId: {0}, tableId: {1}, blockId: {2}",
+        new Object[]{opId, migration.getMigrationMetadata().getTableId(), blockId});
 
     if (migration.isComplete()) {
       ongoingMigrations.remove(opId);
@@ -202,5 +212,21 @@ final class MigrationManager {
       callbackRegistry.onCompleted(MigrationResult.class, Long.toString(opId),
           new MigrationResult(true, msg, migration.getMovedBlocks()));
     }
+  }
+
+  /**
+   * Do all things in each {@link #ownershipMoved} and {@link #dataMoved}.
+   * @param opId an operation id
+   * @param blockId a block id
+   */
+  synchronized void dataAndOwnershipMoved(final long opId, final int blockId) {
+    final Migration migration = ongoingMigrations.get(opId);
+    if (migration == null) {
+      throw new RuntimeException(String.format("Migration with ID %d was not registered," +
+          " or it has already been finished.", opId));
+    }
+
+    updateBlockOwnership(migration, opId, blockId);
+    blockMigrationCompleted(migration, opId, blockId);
   }
 }

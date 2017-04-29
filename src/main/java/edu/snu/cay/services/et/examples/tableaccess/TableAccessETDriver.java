@@ -109,6 +109,7 @@ final class TableAccessETDriver {
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(PrefixUpdateFunction.class)
+        .setIsMutableTable(true)
         .setIsOrderedTable(isOrderedTable);
 
     return tableConfBuilder.build();

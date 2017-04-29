@@ -109,6 +109,9 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final String tableId = msg.getTableId();
     final List<Integer> blockIds = msg.getBlockIds();
 
+    LOG.log(Level.INFO, "OnMoveInitMsg. opId: {0}, tableId: {1}, oldOwnerId: {2}, newOwnerId: {3}, blockIds: {4}",
+        new Object[]{operationId, tableId, senderId, receiverId, blockIds});
+
     try {
       final TableComponents<K, V, ?> tableComponents = tablesFuture.get().getTableComponents(tableId);
 
@@ -131,6 +134,9 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final int blockId = ownershipMsg.getBlockId();
     final String oldOwnerId = ownershipMsg.getOldOwnerId();
     final String newOwnerId = ownershipMsg.getNewOwnerId();
+
+    LOG.log(Level.FINE, "OnOwnershipMsg. opId: {0}, tableId: {1}, blockId: {2}, oldOwnerId: {3}, newOwnerId: {4}",
+        new Object[]{operationId, tableId, blockId, oldOwnerId, newOwnerId});
 
     try {
       final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(tableId).getOwnershipCache();
@@ -158,6 +164,9 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final String newOwnerId = ownershipAckMsg.getNewOwnerId();
     final String tableId = ownershipAckMsg.getTableId();
 
+    LOG.log(Level.FINE, "OnOwnershipAckMsg. opId: {0}, tableId: {1}, blockId: {2}, oldOwnerId: {3}, newOwnerId: {4}",
+        new Object[]{operationId, tableId, blockId, oldOwnerId, newOwnerId});
+
     try {
       final OwnershipCache ownershipCache = tablesFuture.get().getTableComponents(tableId).getOwnershipCache();
       final Migration migration = ongoingMigrations.get(operationId);
@@ -172,7 +181,7 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
         ownershipCache.update(blockId, oldOwnerId, newOwnerId);
 
         // send block data to receiver
-        migration.sendBlockData(blockId);
+        migration.sendDataMsg(blockId);
 
         // send ownershipMoved msg to driver
         try {
@@ -192,11 +201,15 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final String senderId = dataMsg.getSenderId();
     final String receiverId = dataMsg.getReceiverId();
 
+    LOG.log(Level.FINE, "OnDataMsg. opId: {0}, tableId: {1}, blockId: {2}, oldOwnerId: {3}, newOwnerId: {4}",
+        new Object[]{operationId, tableId, blockId, senderId, receiverId});
+
     try {
       final TableComponents<K, V, ?> tableComponents = tablesFuture.get().getTableComponents(tableId);
       final BlockStore<K, V, ?> blockStore = tableComponents.getBlockStore();
       final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
       final KVUSerializer<K, V, ?> kvuSerializer = tableComponents.getSerializer();
+      final boolean moveDataAndOwnershipTogether = !tableComponents.getTableMetadata().isMutableTable();
 
       dataMsgHandlerExecutor.submit(() -> {
         final Map<K, V> dataMap = toDataMap(dataMsg.getKvPairs(), kvuSerializer);
@@ -204,6 +217,10 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
         // should allow access after putting a block
         try {
           blockStore.putBlock(blockId, dataMap);
+
+          if (moveDataAndOwnershipTogether) { // for immutable tables
+            ownershipCache.update(blockId, senderId, receiverId);
+          }
           ownershipCache.allowAccessToBlock(blockId);
           msgSender.sendDataAckMsg(operationId, tableId, blockId, senderId, receiverId);
         } catch (final BlockAlreadyExistsException | NetworkException e) {
@@ -219,6 +236,11 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
   private void onDataAckMsg(final long operationId, final DataAckMsg dataAckMsg) {
     final String tableId = dataAckMsg.getTableId();
     final int blockId = dataAckMsg.getBlockId();
+    final String senderId = dataAckMsg.getSenderId();
+    final String receiverId = dataAckMsg.getReceiverId();
+
+    LOG.log(Level.FINE, "OnDataAckMsg. opId: {0}, tableId: {1}, blockId: {2}, oldOwnerId: {3}, newOwnerId: {4}",
+        new Object[]{operationId, tableId, blockId, senderId, receiverId});
 
     final Migration migration = ongoingMigrations.get(operationId);
     if (migration == null) {
@@ -230,13 +252,19 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     }
 
     try {
-      final BlockStore blockStore = tablesFuture.get().getTableComponents(tableId).getBlockStore();
+      final TableComponents tableComponents = tablesFuture.get().getTableComponents(tableId);
+      final OwnershipCache ownershipCache = tableComponents.getOwnershipCache();
+      final BlockStore blockStore = tableComponents.getBlockStore();
+      final boolean moveDataAndOwnershipTogether = !tableComponents.getTableMetadata().isMutableTable();
 
       dataMsgHandlerExecutor.submit(() -> {
         // After the data is migrated, it's safe to remove the local data block.
         try {
+          if (moveDataAndOwnershipTogether) { // for immutable tables
+            ownershipCache.update(blockId, senderId, receiverId);
+          }
           blockStore.removeBlock(blockId);
-          msgSender.sendDataMovedMsg(operationId, tableId, blockId);
+          msgSender.sendDataMovedMsg(operationId, tableId, blockId, moveDataAndOwnershipTogether);
         } catch (final BlockNotExistsException | NetworkException e) {
           throw new RuntimeException(e);
         }
@@ -260,7 +288,9 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     private final String receiverId;
     private final List<Integer> blockIds;
 
-    private final TableComponents<K, V, ?> tableComponents;
+    private final boolean moveDataAndOwnershipTogether;
+    private final BlockStore<K, V, ?> blockStore;
+    private final KVUSerializer<K, V, ?> kvuSerializer;
 
     // state of migration
     private final AtomicInteger blockIdxCounter = new AtomicInteger(0);
@@ -276,7 +306,9 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
       this.blockIds = blockIds;
       this.senderId = senderId;
       this.receiverId = receiverId;
-      this.tableComponents = tableComponents;
+      this.moveDataAndOwnershipTogether = !tableComponents.getTableMetadata().isMutableTable();
+      this.blockStore = tableComponents.getBlockStore();
+      this.kvuSerializer = tableComponents.getSerializer();
     }
 
     private void startMigratingBlocks() {
@@ -291,20 +323,28 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
                 " senderId: {2}, receiverId: {3}, blockId: {4}",
             new Object[]{blockIds.size(), blockIdxToSend, senderId, receiverId, blockIdToMigrate});
 
-        try {
-          msgSender.sendOwnershipMsg(operationId, tableId, blockIdToMigrate, senderId, receiverId);
-        } catch (NetworkException e) {
-          throw new RuntimeException(e);
+        if (moveDataAndOwnershipTogether) {
+          sendDataMsg(blockIdToMigrate);
+        } else {
+          sendOwnershipMsg(blockIdToMigrate);
         }
 
         blockIdxToSend = blockIdxCounter.getAndIncrement();
       }
     }
 
-    private void sendBlockData(final int blockId) {
+    private void sendOwnershipMsg(final int blockId) {
       try {
-        final Map<K, V> blockData = tableComponents.getBlockStore().getBlock(blockId);
-        final List<KVPair> keyValuePairs = toKeyValuePairs(blockData, tableComponents.getSerializer());
+        msgSender.sendOwnershipMsg(operationId, tableId, blockId, senderId, receiverId);
+      } catch (NetworkException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    private void sendDataMsg(final int blockId) {
+      try {
+        final Map<K, V> blockData = blockStore.getBlock(blockId);
+        final List<KVPair> keyValuePairs = toKeyValuePairs(blockData, kvuSerializer);
         msgSender.sendDataMsg(operationId, tableId, blockId, keyValuePairs, senderId, receiverId);
       } catch (final BlockNotExistsException | NetworkException e) {
         throw new RuntimeException(e);

@@ -104,6 +104,7 @@ public final class RemoteAccessOpHandlerTest {
         .setValueCodecClass(SerializableCodec.class)
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(AddIntegerUpdateFunction.class)
+        .setIsMutableTable(true)
         .setIsOrderedTable(false)
         .build();
   }
