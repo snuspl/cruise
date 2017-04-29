@@ -161,6 +161,7 @@ public final class ETDolphinDriver {
         .setValueCodecClass(valueCodec.getClass())
         .setUpdateValueCodecClass(SerializableCodec.class)
         .setUpdateFunctionClass(VoidUpdateFunction.class)
+        .setIsMutableTable(false)
         .setIsOrderedTable(true)
         .setFilePath(inputPath)
         .setDataParserClass(dataParser.getClass())
@@ -181,6 +182,7 @@ public final class ETDolphinDriver {
         .setValueCodecClass(valueCodec.getClass())
         .setUpdateValueCodecClass(updateValueCodec.getClass())
         .setUpdateFunctionClass(updateFunction.getClass())
+        .setIsMutableTable(true)
         .setIsOrderedTable(false)
         .setUserParamConf(userParamConf)
         .build();
