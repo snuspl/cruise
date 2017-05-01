@@ -66,7 +66,7 @@ final class TableAccessETDriver {
   private static final String ASS_ORD_ONE_TEST = "Associator_Ordered_One_Block_Test";
 
   static final String CENTCOMM_CLIENT_ID = "CENTCOMM_CLIENT_ID";
-  static final int NUM_EXECUTORS = 5; // the number of executors for each associators and subscribers
+  static final int NUM_EXECUTORS = 3; // the number of executors for each associators and subscribers
   static final int NUM_BLOCKS = 1024;
 
   // access patterns
