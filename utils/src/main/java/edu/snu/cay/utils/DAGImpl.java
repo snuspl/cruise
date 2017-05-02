@@ -44,6 +44,11 @@ public final class DAGImpl<V> implements DAG<V> {
    */
   private final Set<V> rootVertices = new HashSet<>();
 
+  /**
+   * The number of vertices.
+   */
+  private int numVertices = 0;
+
   @Override
   public Set<V> getRootVertices() {
     return Collections.unmodifiableSet(rootVertices);
@@ -70,6 +75,7 @@ public final class DAGImpl<V> implements DAG<V> {
       adjacent.put(v, new HashSet<>());
       inDegrees.put(v, 0);
       rootVertices.add(v);
+      numVertices++;
       return true;
     } else {
       LOG.log(Level.WARNING, "The vertex {0} already exists", v);
@@ -92,11 +98,16 @@ public final class DAGImpl<V> implements DAG<V> {
         }
       }
       rootVertices.remove(v);
+      numVertices--;
       return true;
     } else {
       LOG.log(Level.WARNING, "The vertex {0} does exists", v);
       return false;
     }
+  }
+
+  public int getNumVertices() {
+    return numVertices;
   }
 
   @Override
@@ -153,5 +164,12 @@ public final class DAGImpl<V> implements DAG<V> {
       throw new NoSuchElementException("No src vertex " + v);
     }
     return inDegree;
+  }
+
+  @Override
+  public String toString() {
+    return "DAGImpl{" +
+    "rootVertices=" + rootVertices +
+    ", adjacentList=" + adjacent + "}";
   }
 }
