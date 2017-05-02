@@ -46,6 +46,11 @@ public interface Op {
   }
 
   /**
+   * @return an identifier of operation
+   */
+  long getOpId();
+
+  /**
    * @return a type of operation
    */
   OpType getOpType();

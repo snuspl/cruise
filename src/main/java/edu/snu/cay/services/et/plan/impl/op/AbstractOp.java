@@ -34,6 +34,11 @@ public abstract class AbstractOp implements Op {
   }
 
   @Override
+  public long getOpId() {
+    return opId;
+  }
+
+  @Override
   public OpType getOpType() {
     return opType;
   }

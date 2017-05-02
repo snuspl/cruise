@@ -76,6 +76,8 @@ public final class PlanExecutorImpl implements PlanExecutor {
 
     // TODO #97: need to validate plan
 
+    final long planStartTime = System.currentTimeMillis();
+
     executingPlan.set(new ExecutingPlan(plan));
     final Set<Op> ops = plan.getInitialOps();
 
@@ -116,8 +118,13 @@ public final class PlanExecutorImpl implements PlanExecutor {
           nextOps.forEach(op -> {
             try {
               LOG.log(Level.INFO, "Start executing op: {0}", op);
+              final long opStartTime = System.currentTimeMillis();
               op.execute(etMaster, virtualIdToActualId)
-                  .addListener(opResult -> onOpComplete(op, opResult));
+                  .addListener(opResult -> {
+                    LOG.log(Level.INFO, "Op elapsed time (ms): {0}, OpId: {1}, OpType: {2}",
+                        new Object[]{System.currentTimeMillis() - opStartTime, op.getOpId(), op.getOpType()});
+                    onOpComplete(op, opResult);
+                  });
             } catch (PlanOpExecutionException e) {
               throw new RuntimeException(e);
             }
@@ -128,6 +135,7 @@ public final class PlanExecutorImpl implements PlanExecutor {
       }
 
       executingPlan.get().waitPlanCompletion();
+      LOG.log(Level.INFO, "Plan elapsed time (ms): {0}", System.currentTimeMillis() - planStartTime);
       resultFuture.onCompleted(null);
       executingPlan.set(null);
     });

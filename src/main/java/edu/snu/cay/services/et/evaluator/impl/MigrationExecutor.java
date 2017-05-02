@@ -109,8 +109,9 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     final String tableId = msg.getTableId();
     final List<Integer> blockIds = msg.getBlockIds();
 
-    LOG.log(Level.INFO, "OnMoveInitMsg. opId: {0}, tableId: {1}, oldOwnerId: {2}, newOwnerId: {3}, blockIds: {4}",
-        new Object[]{operationId, tableId, senderId, receiverId, blockIds});
+    LOG.log(Level.INFO, "OnMoveInitMsg. opId: {0}, tableId: {1}, oldOwnerId: {2}, newOwnerId: {3}," +
+            " numBlocks: {4}, blockIds: {5}",
+        new Object[]{operationId, tableId, senderId, receiverId, blockIds.size(), blockIds});
 
     try {
       final TableComponents<K, V, ?> tableComponents = tablesFuture.get().getTableComponents(tableId);
@@ -295,6 +296,9 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
     // state of migration
     private final AtomicInteger blockIdxCounter = new AtomicInteger(0);
     private final AtomicInteger migratedBlockCounter = new AtomicInteger(0);
+    private final AtomicInteger numSentKVEntries = new AtomicInteger(0);
+    private final AtomicInteger numSentKeyBytes = new AtomicInteger(0);
+    private final AtomicInteger numSentValueBytes = new AtomicInteger(0);
 
     // semaphore to restrict the number of concurrent block migration
     private final Semaphore semaphore = new Semaphore(MAX_CONCURRENT_MIGRATIONS);
@@ -345,6 +349,11 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
       try {
         final Map<K, V> blockData = blockStore.getBlock(blockId);
         final List<KVPair> keyValuePairs = toKeyValuePairs(blockData, kvuSerializer);
+        numSentKVEntries.getAndAdd(keyValuePairs.size());
+        keyValuePairs.forEach(kvPair -> {
+          numSentKeyBytes.getAndAdd(kvPair.getKey().getKey().array().length);
+          numSentValueBytes.getAndAdd(kvPair.getValue().getValue().array().length);
+        });
         msgSender.sendDataMsg(operationId, tableId, blockId, keyValuePairs, senderId, receiverId);
       } catch (final BlockNotExistsException | NetworkException e) {
         throw new RuntimeException(e);
@@ -357,7 +366,16 @@ public final class MigrationExecutor implements EventHandler<MigrationMsg> {
      */
     private boolean finishMigratingBlock() {
       semaphore.release();
-      return migratedBlockCounter.incrementAndGet() == blockIds.size();
+
+      final boolean allBlocksMoved = migratedBlockCounter.incrementAndGet() == blockIds.size();
+
+      if (allBlocksMoved) {
+        LOG.log(Level.INFO, "OpId: {0}, numSentBlocks: {1}, numSentKVEntries: {2}," +
+                " numSentKeyBytes: {3}, numSentValueBytes: {4}", new Object[]{operationId,
+            blockIds.size(), numSentKVEntries.get(), numSentKeyBytes.get(), numSentValueBytes.get()});
+      }
+
+      return allBlocksMoved;
     }
   }
 
