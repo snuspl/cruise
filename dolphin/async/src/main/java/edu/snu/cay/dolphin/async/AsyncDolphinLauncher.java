@@ -17,6 +17,11 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.common.dataloader.TextInputFormat;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.BatchManager;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.DriverSideSyncMsgHandler;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.MiniBatchBarrier;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.PushBarrier;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.*;
 import edu.snu.cay.dolphin.async.metric.*;
 import edu.snu.cay.dolphin.async.dashboard.DashboardConfProvider;
 import edu.snu.cay.dolphin.async.dashboard.DashboardLauncher;
@@ -163,6 +168,9 @@ public final class AsyncDolphinLauncher {
               confSerializer.toString(asyncDolphinConfiguration.getServerConfiguration()))
           .build();
 
+      final String synchronicity = basicParameterInjector.getNamedInstance(Synchronicity.class);
+      final boolean isAsync = synchronicity.equals("async");
+
       // worker-specific configurations
       // pass the worker class implementation as well as user-defined parameters
       final Configuration basicWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -181,6 +189,8 @@ public final class AsyncDolphinLauncher {
               Integer.toString(basicParameterInjector.getNamedInstance(DolphinParameters.NumTrainerThreads.class)))
           .bindNamedParameter(DolphinParameters.TestDataPath.class,
               basicParameterInjector.getNamedInstance(DolphinParameters.TestDataPath.class))
+          .bindImplementation(PushBarrier.class, isAsync ? NullPushBarrier.class : SyncPushBarrier.class)
+          .bindImplementation(MiniBatchBarrier.class, isAsync ? NullMiniBatchBarrier.class : SyncMiniBatchBarrier.class)
           .build();
       final Configuration workerConf = Configurations.merge(basicWorkerConf,
           asyncDolphinConfiguration.getWorkerConfiguration());
@@ -212,7 +222,7 @@ public final class AsyncDolphinLauncher {
       final Configuration dashboardConf = DashboardConfProvider.getConfiguration(dashboardEnabled);
 
       // driver-side configurations
-      final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
+      final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector, isAsync);
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
 
       final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
@@ -286,6 +296,9 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(Dynamic.class);
     basicParameterClassList.add(ServerMetricsWindowMs.class);
     basicParameterClassList.add(PSTraceProbability.class);
+
+    // add SyncSGD parameters
+    basicParameterClassList.add(Synchronicity.class);
 
     // add SSP parameters
     basicParameterClassList.add(StalenessBound.class);
@@ -364,7 +377,7 @@ public final class AsyncDolphinLauncher {
   }
 
   private static Configuration getDriverConfiguration(
-      final String jobName, final Injector injector) throws InjectionException {
+      final String jobName, final Injector injector, final boolean isAsync) throws InjectionException {
     final ConfigurationModule driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDolphinDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
@@ -391,7 +404,7 @@ public final class AsyncDolphinLauncher {
     final int stalenessBound = injector.getNamedInstance(StalenessBound.class);
     final boolean isSSPModel = stalenessBound >= 0;
     final CentCommConf centCommConf = isSSPModel ?
-        getCentCommConfForSSP() : getDefaultCentCommConf();
+        getCentCommConfForSSP() : getDefaultCentCommConf(isAsync);
     // set up an optimizer configuration
     final Class<? extends Optimizer> optimizerClass;
     final Class<? extends PlanExecutor> executorClass;
@@ -432,12 +445,23 @@ public final class AsyncDolphinLauncher {
             EvalSideMetricsMsgHandlerForServer.class);
   }
 
-  private static CentCommConf getDefaultCentCommConf() {
-    return getCentCommConfDefaultBuilder()
-        .addCentCommClient(ClockManager.CENT_COMM_CLIENT_NAME,
-            ClockManager.MessageHandler.class,
-            AsyncWorkerClock.MessageHandler.class)
-        .build();
+  private static CentCommConf getDefaultCentCommConf(final boolean isAsync) {
+    if (isAsync) {
+      return getCentCommConfDefaultBuilder()
+          .addCentCommClient(ClockManager.CENT_COMM_CLIENT_NAME,
+              ClockManager.MessageHandler.class,
+              AsyncWorkerClock.MessageHandler.class)
+          .build();
+    } else {
+      return getCentCommConfDefaultBuilder()
+          .addCentCommClient(ClockManager.CENT_COMM_CLIENT_NAME,
+              ClockManager.MessageHandler.class,
+              AsyncWorkerClock.MessageHandler.class)
+          .addCentCommClient(BatchManager.CENT_COMM_CLIENT_NAME,
+              DriverSideSyncMsgHandler.class,
+              EvalSideSyncMsgHandler.class)
+          .build();
+    }
   }
 
   private static CentCommConf getCentCommConfForSSP() {

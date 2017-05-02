@@ -1,0 +1,94 @@
+/*
+ * Copyright (C) 2017 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+[
+{
+  // {@code SyncPushBarrier} sends this message to the driver to request {@code PushPermitMsg}.
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "RequestPushPermissionMsg",
+  "fields":
+  [
+    // By using roundNum information, driver can check whether this message is synchronously right request message for
+    // this round. If it is wrong, driver will ignore this message.
+    {"name": "roundNum", "type": "int"}
+  ]
+},
+
+{
+  // {@code SyncPushBarrier} sends this message to the driver to notify that its mini-batch is finished.
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "MiniBatchFinishedMsg",
+  "fields":
+  [
+    // Using EpochIdx information, driver chooses which message to send(StartNextMiniBatchMsg or TerminateLearningMsg).
+    {"name": "epochIdx", "type": "int"}
+  ]
+},
+
+{
+  // {@code BatchManager} sends this message to workers to permit push operation.
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "PermitPushMsg",
+  "fields": []
+},
+
+{
+  // {@code BatchManager} sends this message to workers to make them start next mini-batch.
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "StartNextMiniBatchMsg",
+  "fields":
+  [
+    {"name": "nextRoundNum", "type": "int"}
+  ]
+},
+
+{
+  // {@code BatchManager} sends this message to workers to terminate learning.
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "TerminateLearningMsg",
+  "fields": []
+},
+
+{
+  /**
+   * Messages that are exchanged between worker and driver for synchronous system.
+   * Specifically, {@code SyncPushBarrier}(worker-side component) and {@code BatchManager}(driver-side component) are
+   * classes that exchange these messages.
+   */
+  "namespace": "edu.snu.cay.dolphin.async",
+  "type": "record",
+  "name": "AvroSyncSGDMsg",
+  "fields":
+  [
+    {"name": "type",
+     "type":
+       {"type": "enum",
+        "name": "SyncSGDMsgType",
+        "symbols": ["RequestPushPermissionMsg", "MiniBatchFinishedMsg", "PermitPushMsg",
+         "StartNextMiniBatchMsg", "TerminateLearningMsg"]}},
+    {"name": "requestPushPermissionMsg", "type": ["null", "RequestPushPermissionMsg"], "default": null},
+    {"name": "miniBatchFinishedMsg", "type": ["null", "MiniBatchFinishedMsg"], "default": null},
+    {"name": "permitPushMsg", "type": ["null", "PermitPushMsg"], "default": null},
+    {"name": "startNextMiniBatchMsg", "type": ["null", "StartNextMiniBatchMsg"], "default": null},
+    {"name": "terminateLearningMsg", "type": ["null", "TerminateLearningMsg"], "default": null}
+  ]
+}
+]

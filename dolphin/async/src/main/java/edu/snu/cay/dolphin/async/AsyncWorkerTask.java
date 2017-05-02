@@ -17,12 +17,16 @@ package edu.snu.cay.dolphin.async;
 
 import edu.snu.cay.common.metric.MetricsMsgSender;
 import edu.snu.cay.common.metric.avro.Metrics;
+import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.MiniBatchBarrier;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.LearningState;
 import edu.snu.cay.dolphin.async.metric.avro.WorkerMetrics;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.api.WorkerClock;
 import edu.snu.cay.utils.HostnameResolver;
+import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
@@ -62,6 +66,31 @@ final class AsyncWorkerTask<K, V> implements Task {
   private final String hostname;
 
   /**
+   * Determine whether client wants synchronous or asynchronous workers.
+   * If true, client wants asynchronously working workers.
+   * If false, client wants synchronously working workers.
+   */
+  private final boolean isAsync;
+
+  private final MiniBatchBarrier miniBatchBarrier;
+
+  /**
+   * Three WorkerTask's states. These states are for synchronous worker.
+   */
+  private final StateMachine stateMachine;
+  private enum State {
+    MINI_BATCH_RUNNING,
+    WAITING_NEXT_MINI_BATCH,
+    MINI_BATCH_CLOSING
+  }
+
+  /**
+   * If this worker receive {@code terminateLearningMsg} from driver, this flag is set to true.
+   * If this flag is true, this worker quit learning iteration.
+   */
+  private volatile LearningState learningFlag = LearningState.StartNextMiniBatch;
+
+  /**
    * A boolean flag shared among all trainer threads.
    * Trainer threads end when this flag becomes true by {@link #close()}.
    */
@@ -72,6 +101,7 @@ final class AsyncWorkerTask<K, V> implements Task {
                           @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
                           @Parameter(DolphinParameters.MiniBatchSize.class) final int miniBatchSize,
                           @Parameter(AddedEval.class) final boolean addedEval,
+                          @Parameter(Parameters.Synchronicity.class) final String synchronicity,
                           final WorkerSynchronizer synchronizer,
                           final ParameterWorker parameterWorker,
                           final TrainingDataProvider<K, V> trainingDataProvider,
@@ -79,7 +109,8 @@ final class AsyncWorkerTask<K, V> implements Task {
                           final MemoryStore<K> memoryStore,
                           final Trainer<V> trainer,
                           final MetricsMsgSender<WorkerMetrics> metricsMsgSender,
-                          final WorkerClock workerClock) {
+                          final WorkerClock workerClock,
+                          final MiniBatchBarrier miniBatchBarrier) {
     this.taskId = taskId;
     this.maxNumEpochs = maxNumEpochs;
     this.miniBatchSize = miniBatchSize;
@@ -93,6 +124,26 @@ final class AsyncWorkerTask<K, V> implements Task {
     this.metricsMsgSender = metricsMsgSender;
     this.workerClock = workerClock;
     this.hostname = HostnameResolver.resolve();
+    this.miniBatchBarrier = miniBatchBarrier;
+    this.stateMachine = initStateMachine();
+    this.isAsync = synchronicity.equals("async");
+  }
+
+  private StateMachine initStateMachine() {
+    return StateMachine.newBuilder()
+        .addState(State.MINI_BATCH_RUNNING, "Mini-batch is running now.")
+        .addState(State.WAITING_NEXT_MINI_BATCH, "Mini-batch is finished and waiting for StartNextMiniBatchMsg " +
+            "from driver")
+        .addState(State.MINI_BATCH_CLOSING, "This worker is slow worker. Mini-batch is stopped and being closed" +
+            " after it received StartNextMiniBatchMsg from driver.")
+        .addTransition(State.MINI_BATCH_RUNNING, State.WAITING_NEXT_MINI_BATCH, "Mini-batch is finished.")
+        .addTransition(State.MINI_BATCH_RUNNING, State.MINI_BATCH_CLOSING, "This worker is slow worker. Mini-batch" +
+            " is not finished but should be closed for next mini-batch.")
+        .addTransition(State.WAITING_NEXT_MINI_BATCH, State.MINI_BATCH_RUNNING, "New mini-batch is started.")
+        .addTransition(State.MINI_BATCH_CLOSING, State.MINI_BATCH_RUNNING, "Previous mini-batch is closed " +
+            "successfully. New mini-batch is started.")
+        .setInitialState(State.MINI_BATCH_RUNNING)
+        .build();
   }
 
   @Override
@@ -125,7 +176,10 @@ final class AsyncWorkerTask<K, V> implements Task {
     // By starting epochs from the initial clock, which is dynamically fetched from driver,
     // it prevents workers added by EM from starting from epoch 0 and deferring job completion.
     // More specifically, added workers start from the minimum epoch index of other existing workers.
-    for (int epochIdx = initialClock; epochIdx < maxNumEpochs; ++epochIdx) {
+    for (int epochIdx = initialClock;; ++epochIdx) {
+      if (isAsync && epochIdx == maxNumEpochs) {
+        break;
+      }
       LOG.log(Level.INFO, "Starting epoch {0}", epochIdx);
       final long epochStartTime = System.currentTimeMillis();
       final int numEMBlocks = memoryStore.getNumBlocks();
@@ -145,6 +199,10 @@ final class AsyncWorkerTask<K, V> implements Task {
         final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchTrainingData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
+        stateMachine.setState(State.WAITING_NEXT_MINI_BATCH);
+        learningFlag = miniBatchBarrier.waitMiniBatchControlMsgFromDriver();
+        stateMachine.setState(State.MINI_BATCH_RUNNING);
+
         buildAndSendMiniBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
             miniBatchTrainingData.size(), miniBatchElapsedTime);
 
@@ -157,6 +215,10 @@ final class AsyncWorkerTask<K, V> implements Task {
           workerClock.recordClockNetworkWaitingTime();
           return null;
         }
+
+        if (learningFlag == LearningState.TerminateLearning) {
+          break;
+        }
       }
 
       final EpochResult epochResult = trainer.onEpochFinished(epochTrainingData, testData, epochIdx);
@@ -167,6 +229,9 @@ final class AsyncWorkerTask<K, V> implements Task {
 
       // TODO #830: Clock should be a unit of mini-batch instead of epoch
       workerClock.clock();
+      if (learningFlag == LearningState.TerminateLearning) {
+        break;
+      }
     }
 
     // Synchronize all workers before cleanup for workers

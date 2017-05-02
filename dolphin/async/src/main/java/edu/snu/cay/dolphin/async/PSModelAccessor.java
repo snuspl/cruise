@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.PushBarrier;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 
 import javax.inject.Inject;
@@ -26,14 +27,18 @@ import java.util.List;
 public class PSModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
   private final ParameterWorker<K, P, V> parameterWorker;
+  private final PushBarrier pushBarrier;
 
   @Inject
-  PSModelAccessor(final ParameterWorker<K, P, V> parameterWorker) {
+  PSModelAccessor(final ParameterWorker<K, P, V> parameterWorker,
+                  final PushBarrier pushBarrier) {
     this.parameterWorker = parameterWorker;
+    this.pushBarrier = pushBarrier;
   }
 
   @Override
   public void push(final K key, final P deltaValue) {
+    pushBarrier.requestPushPermission();
     parameterWorker.push(key, deltaValue);
   }
 

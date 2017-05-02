@@ -98,4 +98,10 @@ public final class Parameters {
     private HostToBandwidthFilePath() {
     }
   }
+
+  @NamedParameter(doc = "Whether this parameter server works in synchronous way or asynchronous way.",
+      short_name = "synchronicity",
+      default_value = "async")
+  public final class Synchronicity implements Name<String> {
+  }
 }
