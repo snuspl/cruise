@@ -60,7 +60,8 @@ public final class AssociateOp extends AbstractOp {
     final ResultFuture<OpResult> resultFuture = new ResultFuture<>();
 
     table.associate(Collections.singletonList(executor))
-        .addListener(o -> resultFuture.onCompleted(new OpResult.AssociateOpResult(AssociateOp.this)));
+        .addListener(o -> resultFuture.onCompleted(
+            new OpResult.AssociateOpResult(AssociateOp.this, executor.getId(), tableId)));
 
     return resultFuture;
   }

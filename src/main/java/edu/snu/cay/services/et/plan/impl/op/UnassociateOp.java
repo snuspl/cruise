@@ -52,7 +52,8 @@ public final class UnassociateOp extends AbstractOp {
     final ResultFuture<OpResult> resultFuture = new ResultFuture<>();
 
     table.unassociate(executorId)
-        .addListener(o -> resultFuture.onCompleted(new OpResult.UnassociateOpResult(UnassociateOp.this)));
+        .addListener(o -> resultFuture.onCompleted(new OpResult.UnassociateOpResult(UnassociateOp.this,
+            executorId, tableId)));
 
     return resultFuture;
   }

@@ -36,6 +36,13 @@ public final class DeallocateOp extends AbstractOp {
     this.executorId = executorId;
   }
 
+  /**
+   * @return an identifier of the executor
+   */
+  public String getExecutorId() {
+    return executorId;
+  }
+
   @Override
   public ListenableFuture<OpResult> execute(final ETMaster etMaster, final Map<String, String> virtualIdToActualId)
       throws PlanOpExecutionException {

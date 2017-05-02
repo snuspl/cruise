@@ -73,14 +73,41 @@ public abstract class OpResult {
   }
 
   public static final class AssociateOpResult extends OpResult {
-    public AssociateOpResult(final AssociateOp op) {
+    private final String executorId;
+    private final String tableId;
+
+    public AssociateOpResult(final AssociateOp op, final String executorId, final String tableId) {
       super(OpType.ASSOCIATE, op);
+      this.executorId = executorId;
+      this.tableId = tableId;
+    }
+
+    public String getExecutorId() {
+      return executorId;
+    }
+
+    public String getTableId() {
+      return tableId;
     }
   }
 
   public static final class UnassociateOpResult extends OpResult {
-    public UnassociateOpResult(final UnassociateOp op) {
+
+    private final String executorId;
+    private final String tableId;
+
+    public UnassociateOpResult(final UnassociateOp op, final String executorId, final String tableId) {
       super(OpType.UNASSOCIATE, op);
+      this.executorId = executorId;
+      this.tableId = tableId;
+    }
+
+    public String getExecutorId() {
+      return executorId;
+    }
+
+    public String getTableId() {
+      return tableId;
     }
   }
 

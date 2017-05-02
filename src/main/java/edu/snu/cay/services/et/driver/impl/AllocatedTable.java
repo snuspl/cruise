@@ -262,6 +262,13 @@ public final class AllocatedTable {
   }
 
   /**
+   * @return an identifier of the table
+   */
+  public String getId() {
+    return tableConf.getId();
+  }
+
+  /**
    * @return a configuration of the table
    */
   TableConfiguration getTableConfiguration() {

@@ -42,7 +42,14 @@ public interface PlanExecutor {
 
   /**
    * Registers a listener to be called on the completion of each operation.
+   * @param id an identifier of listener
    * @param callback a callback of {@link OpResult}
    */
-  void registerListener(EventHandler<OpResult> callback);
+  void registerListener(String id, EventHandler<OpResult> callback);
+
+  /**
+   * Unregisters a listener with {@code id}, if it exists.
+   * @param id an identifier of listener
+   */
+  void unregisterListener(String id);
 }

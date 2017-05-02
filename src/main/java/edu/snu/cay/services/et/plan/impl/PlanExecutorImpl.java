@@ -44,7 +44,8 @@ public final class PlanExecutorImpl implements PlanExecutor {
   /**
    * A collection of listeners for the completion of operations.
    */
-  private final Collection<EventHandler<OpResult>> callbacks = Collections.synchronizedCollection(new LinkedList<>());
+  private final Map<String, EventHandler<OpResult>> callbacks =
+      Collections.synchronizedMap(new HashMap<String, EventHandler<OpResult>>());
 
   /**
    * A queue for sets of operations ready to be executed.
@@ -135,8 +136,13 @@ public final class PlanExecutorImpl implements PlanExecutor {
   }
 
   @Override
-  public void registerListener(final EventHandler<OpResult> callback) {
-    callbacks.add(callback);
+  public void registerListener(final String id, final EventHandler<OpResult> callback) {
+    callbacks.put(id, callback);
+  }
+
+  @Override
+  public void unregisterListener(final String id) {
+    callbacks.remove(id);
   }
 
   /**
@@ -149,7 +155,7 @@ public final class PlanExecutorImpl implements PlanExecutor {
       throw new RuntimeException("There's no ongoing plan");
     }
 
-    callbacks.forEach(callback -> callback.onNext(opResult));
+    callbacks.values().forEach(callback -> callback.onNext(opResult));
     LOG.log(Level.INFO, "Finish executing op: {0}", op);
 
     // enqueue next operations enabled by the completion of this op
