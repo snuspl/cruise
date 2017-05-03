@@ -88,7 +88,7 @@ final class AsyncWorkerTask<K, V> implements Task {
    * If this worker receive {@code terminateLearningMsg} from driver, this flag is set to true.
    * If this flag is true, this worker quit learning iteration.
    */
-  private volatile LearningState learningFlag = LearningState.StartNextMiniBatch;
+  private volatile LearningState learningFlag = LearningState.ProgressLearning;
 
   /**
    * A boolean flag shared among all trainer threads.

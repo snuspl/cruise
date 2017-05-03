@@ -20,7 +20,7 @@ import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.EvalSideSyncMsgH
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.LearningState;
 
 /**
- * Before WorkerTask starts next mini-batch, WorkerTask asks to {@code MiniBatchBarrier} whether to start next
+ * Before AsyncWorkerTask starts next mini-batch, AsyncWorkerTask asks to {@code MiniBatchBarrier} whether to start next
  * mini-batch.
  */
 public interface MiniBatchBarrier {
@@ -31,7 +31,7 @@ public interface MiniBatchBarrier {
    * @return If this worker receives TerminateLearningMsg from driver, this method returns
    *         {@code LearningState.TerminateLearning}.
    *         If this worker receives StartNextMiniBatchMsg from driver, this method returns
-   *         {@code LearningState.StartNextMiniBatch}.
+   *         {@code LearningState.ProgressLearning}.
    */
   LearningState waitMiniBatchControlMsgFromDriver();
 

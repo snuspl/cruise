@@ -34,13 +34,13 @@ public final class NullMiniBatchBarrier implements MiniBatchBarrier {
   }
 
   /**
-   * This method does nothing and always returns {@code LearningState.StartNextMiniBatch} because this class is for
+   * This method does nothing and always returns {@code LearningState.ProgressLearning} because this class is for
    * asynchronous system.
    */
   @Override
   public LearningState waitMiniBatchControlMsgFromDriver() {
     LOG.log(Level.INFO, "This is NullMiniBatchBarrier");
-    return LearningState.StartNextMiniBatch;
+    return LearningState.ProgressLearning;
   }
 
   @Override

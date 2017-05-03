@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.BatchManager;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDMsgCodec;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.PushBarrier;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.EvalSideSyncMsgHandler;
@@ -67,7 +68,7 @@ public final class SyncPushBarrierTest {
 
     doAnswer(invocation -> {
       final byte[] data = invocation.getArgumentAt(2, byte[].class);
-      evalSideSyncMsgHandler.onNext(getTestAggregationMessage(data));
+      evalSideSyncMsgHandler.onNext(getTestAggregationMessage("driver", data));
       return null;
     }).when(masterSideCentCommMsgSender).send(anyString(), anyString(), anyObject());
   }
@@ -100,8 +101,10 @@ public final class SyncPushBarrierTest {
     assert syncPushBarrier.getThisRoundNum() == 1;
   }
 
-  private CentCommMsg getTestAggregationMessage(final byte[] data) {
+  private CentCommMsg getTestAggregationMessage(final String driverId, final byte[] data) {
     return CentCommMsg.newBuilder()
+        .setSourceId(driverId)
+        .setClientClassName(BatchManager.CENT_COMM_CLIENT_NAME)
         .setData(ByteBuffer.wrap(data))
         .build();
   }

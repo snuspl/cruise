@@ -19,5 +19,5 @@ package edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl;
  * This state indicates the learning state of WorkerTask.
  */
 public enum LearningState {
-  TerminateLearning, StartNextMiniBatch
+  TerminateLearning, ProgressLearning
 }

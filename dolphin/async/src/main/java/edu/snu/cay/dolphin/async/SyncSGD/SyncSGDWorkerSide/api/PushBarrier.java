@@ -24,9 +24,9 @@ import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.BatchManager;
 public interface PushBarrier {
 
   /**
-   * Send push permission request to the driver.
-   * This method send {@code RequestPushPermissionMsg} to the driver and wait until it receives {@code PermitPushMsg}.
-   * If this worker is slow worker, this method wait until it receives {@code StartNextMiniBatchMsg}.
+   * Request permission for push to the driver.
+   * This method sends {@code RequestPushPermissionMsg} to the driver and waits until it receives {@code PermitPushMsg}.
+   * If this worker is slow worker, this method waits until it receives {@code StartNextMiniBatchMsg}.
    */
   void requestPushPermission();
 
@@ -38,7 +38,7 @@ public interface PushBarrier {
   /**
    * When this worker receives {@code startNextMiniBatchMsg} from driver, PushBarrier prepares for the next mini-batch.
    * There are two things to prepare for the next mini-batch:
-   * 1) set {@code thisRoundNum} value with {@code nextRoundNum}.
+   * 1) Update {@code thisRoundNum} value with {@param nextRoundNum}.
    * 2) reset {@code pushLatch}.
    * @param nextRoundNum driver notify same nextRoundNum integer value to all the workers
    */

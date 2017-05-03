@@ -18,10 +18,15 @@ package edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl;
 import edu.snu.cay.common.centcomm.avro.CentCommMsg;
 import edu.snu.cay.dolphin.async.AvroSyncSGDMsg;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDMsgCodec;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.MiniBatchBarrier;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.PushBarrier;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
+/**
+ * Handles events for {@link PushBarrier} and {@link MiniBatchBarrier}.
+ */
 public final class EvalSideSyncMsgHandler implements EventHandler<CentCommMsg> {
   public static final String AGGREGATION_CLIENT_NAME = EvalSideSyncMsgHandler.class.getName();
   private final SyncPushBarrier syncPushBarrier;
@@ -36,7 +41,18 @@ public final class EvalSideSyncMsgHandler implements EventHandler<CentCommMsg> {
     this.codec = syncSGDMsgCodec;
     this.syncMiniBatchBarrier = syncMiniBatchBarrier;
   }
-
+  
+  /**
+   * Handles three types of messages.
+   * 1) PermitPushMsg
+   * When driver permits this worker's push operation, count down {@code pushLatch} of {@link SyncPushBarrier}.
+   * 2) StartNextMiniBatchMsg
+   * To start next mini-batch, update {@code thisRoundNum} and reset {@code pushLatch} of {@link SyncPushBarrier}.
+   * Then, count down miniBatchLatch in syncMiniBatchBarrier which allows starting next mini-batch.
+   * 3) TerminateLearningMsg
+   * Change the {@code learningState} value in {@link SyncMiniBatchBarrier} to {@code TerminateLearning}.
+   * @param centCommMsg received message from driver.
+   */
   @Override
   public void onNext(final CentCommMsg centCommMsg) {
     final AvroSyncSGDMsg avroSyncSGDMsg = codec.decode(centCommMsg.getData().array());
@@ -46,6 +62,7 @@ public final class EvalSideSyncMsgHandler implements EventHandler<CentCommMsg> {
       break;
     case StartNextMiniBatchMsg:
       final int nextRoundNum = avroSyncSGDMsg.getStartNextMiniBatchMsg().getNextRoundNum();
+      // Update thisRoundNum value(in syncPushBarrier) and reset pushLatch(also in syncPushBarrier).
       syncPushBarrier.prepareNextMiniBatch(nextRoundNum);
       syncMiniBatchBarrier.startNextMiniBatch();
       break;
