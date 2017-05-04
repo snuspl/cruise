@@ -110,10 +110,6 @@ public final class DAGImpl<V> implements DAG<V> {
     }
   }
 
-  public int getNumVertices() {
-    return numVertices;
-  }
-
   @Override
   public boolean addEdge(final V v, final V w) {
     if (!adjacent.containsKey(v)) {
@@ -168,6 +164,10 @@ public final class DAGImpl<V> implements DAG<V> {
       throw new NoSuchElementException("No src vertex " + v);
     }
     return inDegree;
+  }
+
+  public int getNumVertices() {
+    return numVertices;
   }
 
   @Override

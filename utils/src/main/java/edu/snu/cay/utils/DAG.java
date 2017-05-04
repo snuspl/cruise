@@ -89,6 +89,12 @@ public interface DAG<V> {
   int getInDegree(V v);
 
   /**
+   * Gets the current number of vertices in DAG.
+   * @return current number of vertices.
+   */
+  int getNumVertices();
+
+  /**
    * Gets the json string of root vertices and an adjacent list.
    * @return json string of root vertices and an adjacent list.
    */
