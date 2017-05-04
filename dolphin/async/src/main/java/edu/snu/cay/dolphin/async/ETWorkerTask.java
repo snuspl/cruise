@@ -114,7 +114,7 @@ final class ETWorkerTask<K, V> implements Task {
             miniBatchData.size(), miniBatchElapsedTime);
 
         perOpTimeInEpoch.accumulate(miniBatchResult.getComputeTime(),
-            miniBatchResult.getAvgPullTime(), miniBatchResult.getAvgPushTime());
+            miniBatchResult.getTotalPullTime(), miniBatchResult.getTotalPushTime());
         epochData.addAll(miniBatchData);
         miniBatchIdx++;
 
