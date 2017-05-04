@@ -32,16 +32,16 @@ public final class SyncMiniBatchBarrier implements MiniBatchBarrier {
   private static final Logger LOG = Logger.getLogger(SyncMiniBatchBarrier.class.getName());
   private final ResettableCountDownLatch miniBatchLatch;
   private volatile LearningState learningState = LearningState.ProgressLearning;
-  private final SyncWorkerMsgSender msgSender;
+  private final WorkerSideSyncMsgSender msgSender;
 
   @Inject
-  private SyncMiniBatchBarrier(final SyncWorkerMsgSender syncWorkerMsgSender) {
+  private SyncMiniBatchBarrier(final WorkerSideSyncMsgSender workerSideSyncMsgSender) {
     this.miniBatchLatch = new ResettableCountDownLatch(1);
-    this.msgSender = syncWorkerMsgSender;
+    this.msgSender = workerSideSyncMsgSender;
   }
 
   /**
-   * When this worker receives MiniBatchControlMsg from driver, {@link EvalSideSyncMsgHandler} will count down
+   * When this worker receives MiniBatchControlMsg from driver, {@link WorkerSideSyncMsgHandler} will count down
    * {@code miniBatchLatch}.
    * @param epochIdx driver decides whether to progress learning or terminate learning by using this value.
    * @return learning state decided by driver.

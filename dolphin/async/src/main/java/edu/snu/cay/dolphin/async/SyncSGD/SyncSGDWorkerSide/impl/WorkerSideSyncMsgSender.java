@@ -28,13 +28,13 @@ import javax.inject.Inject;
 /**
  * Message sender for SyncSGD.
  */
-final class SyncWorkerMsgSender {
+final class WorkerSideSyncMsgSender {
   private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final SyncSGDMsgCodec codec;
 
   @Inject
-  private SyncWorkerMsgSender(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
-                              final SyncSGDMsgCodec syncSGDMsgCodec) {
+  private WorkerSideSyncMsgSender(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
+                                  final SyncSGDMsgCodec syncSGDMsgCodec) {
     this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.codec = syncSGDMsgCodec;
   }

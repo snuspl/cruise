@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api;
 
 
-import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.EvalSideSyncMsgHandler;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.WorkerSideSyncMsgHandler;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.LearningState;
 
 /**
@@ -37,13 +37,13 @@ public interface MiniBatchBarrier {
   LearningState waitMiniBatchControlMsgFromDriver(int epochIdx);
 
   /**
-   * {@link EvalSideSyncMsgHandler} will call this method when this worker receives
+   * {@link WorkerSideSyncMsgHandler} will call this method when this worker receives
    * {@code StartNextMiniBatchMsg} from driver.
    */
   void startNextMiniBatch();
 
   /**
-   * {@link EvalSideSyncMsgHandler} will call this method when this worker receives
+   * {@link WorkerSideSyncMsgHandler} will call this method when this worker receives
    * {@code TerminateLearningMsg} from driver.
    */
   void terminateLearning();

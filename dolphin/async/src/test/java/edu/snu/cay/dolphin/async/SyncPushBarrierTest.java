@@ -20,7 +20,7 @@ import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.BatchManager;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDMsgCodec;
-import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.EvalSideSyncMsgHandler;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.WorkerSideSyncMsgHandler;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.SyncPushBarrier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.tang.Configuration;
@@ -49,7 +49,7 @@ import static org.mockito.Mockito.mock;
 public final class SyncPushBarrierTest {
   private MasterSideCentCommMsgSender masterSideCentCommMsgSender;
   private SyncPushBarrier syncPushBarrier;
-  private EvalSideSyncMsgHandler evalSideSyncMsgHandler;
+  private WorkerSideSyncMsgHandler workerSideSyncMsgHandler;
   private SyncSGDMsgCodec codec;
 
   @Before
@@ -63,18 +63,18 @@ public final class SyncPushBarrierTest {
     injector.bindVolatileInstance(MasterSideCentCommMsgSender.class, masterSideCentCommMsgSender);
 
     this.syncPushBarrier = injector.getInstance(SyncPushBarrier.class);
-    this.evalSideSyncMsgHandler = injector.getInstance(EvalSideSyncMsgHandler.class);
+    this.workerSideSyncMsgHandler = injector.getInstance(WorkerSideSyncMsgHandler.class);
     this.codec = injector.getInstance(SyncSGDMsgCodec.class);
 
     doAnswer(invocation -> {
       final byte[] data = invocation.getArgumentAt(2, byte[].class);
-      evalSideSyncMsgHandler.onNext(getTestAggregationMessage("driver", data));
+      workerSideSyncMsgHandler.onNext(getTestAggregationMessage("driver", data));
       return null;
     }).when(masterSideCentCommMsgSender).send(anyString(), anyString(), anyObject());
   }
 
   /**
-   * Test {@link EvalSideSyncMsgHandler} handles {@code PermitPushMsg} from driver properly.
+   * Test {@link WorkerSideSyncMsgHandler} handles {@code PermitPushMsg} from driver properly.
    * When worker receives {@code PermitPushMsg}, {@link SyncPushBarrier} should be unblocked.
    */
   @Test
@@ -91,7 +91,7 @@ public final class SyncPushBarrierTest {
   }
 
   /**
-   * Test {@link EvalSideSyncMsgHandler} handles {@code StartNextMiniBatchMsg} from driver properly.
+   * Test {@link WorkerSideSyncMsgHandler} handles {@code StartNextMiniBatchMsg} from driver properly.
    * When worker receives {@code StartNextMiniBatchMsg}, {@code thisRoundNum} value in {@link SyncPushBarrier} should
    * be updated.
    */

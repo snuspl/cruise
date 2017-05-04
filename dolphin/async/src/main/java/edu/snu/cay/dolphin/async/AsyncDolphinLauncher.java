@@ -459,7 +459,7 @@ public final class AsyncDolphinLauncher {
               AsyncWorkerClock.MessageHandler.class)
           .addCentCommClient(BatchManager.CENT_COMM_CLIENT_NAME,
               DriverSideSyncMsgHandler.class,
-              EvalSideSyncMsgHandler.class)
+              WorkerSideSyncMsgHandler.class)
           .build();
     }
   }
