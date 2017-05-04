@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Components for worker side of SyncSGD.
+ * Components for worker-side SyncSGD.
  */
 package edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl;

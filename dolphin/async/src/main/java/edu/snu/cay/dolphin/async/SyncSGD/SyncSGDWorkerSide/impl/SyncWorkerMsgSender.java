@@ -25,6 +25,9 @@ import edu.snu.cay.dolphin.async.SyncSGDMsgType;
 
 import javax.inject.Inject;
 
+/**
+ * Message sender for SyncSGD.
+ */
 final class SyncWorkerMsgSender {
   private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final SyncSGDMsgCodec codec;
@@ -36,6 +39,10 @@ final class SyncWorkerMsgSender {
     this.codec = syncSGDMsgCodec;
   }
 
+  /**
+   * Send {@code RequestPushPermissionMsg} to driver.
+   * @param thisRoundNum driver distinguishes up-to-date msg and deprecated msg by using this value.
+   */
   void sendRequestPushPermissionMsg(final int thisRoundNum) {
     final RequestPushPermissionMsg requestPushPermissionMsg = RequestPushPermissionMsg.newBuilder()
         .setRoundNum(thisRoundNum)
@@ -48,6 +55,10 @@ final class SyncWorkerMsgSender {
     slaveSideCentCommMsgSender.send(DriverSideSyncMsgHandler.AGGREGATION_CLIENT_NAME, data);
   }
 
+  /**
+   * Send {@code MiniBatchFinishedMsg} to driver.
+   * @param epochIdx driver decides whether to progress learning or terminate learning.
+   */
   void sendMiniBatchFinishedMsg(final int epochIdx) {
     final MiniBatchFinishedMsg miniBatchFinishedMsg = MiniBatchFinishedMsg.newBuilder()
         .setEpochIdx(epochIdx)

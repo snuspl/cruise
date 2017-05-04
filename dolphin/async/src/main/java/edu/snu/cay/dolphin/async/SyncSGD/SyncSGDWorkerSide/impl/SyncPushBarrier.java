@@ -17,17 +17,22 @@ package edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl;
 
 
 
+import edu.snu.cay.dolphin.async.ModelAccessor;
 import edu.snu.cay.dolphin.async.SyncSGD.ResettableCountDownLatch;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.PushBarrier;
 
 import javax.inject.Inject;
 
 /**
- * {@link PushBarrier} that is implemented for.
+ * {@link PushBarrier} that is implemented for synchronous system.
+ * {@link ModelAccessor} will be blocked in this barrier until it receives {@code PermitPushMsg} from driver.
  */
 public final class SyncPushBarrier implements PushBarrier {
   private final ResettableCountDownLatch pushLatch;
   private final SyncWorkerMsgSender msgSender;
+
+  // thisRoundNum should be tracked to distinguish between up-to-date RequestPushPermissionMsg and deprecated
+  // RequestPushPermissionMsg.
   private int thisRoundNum = 0;
 
   @Inject
@@ -36,6 +41,9 @@ public final class SyncPushBarrier implements PushBarrier {
     this.msgSender = msgSender;
   }
 
+  /**
+   * Send {@code RequestPushPermissionMsg} to driver and wait until this worker receives {@code PermitPushMsg}.
+   */
   @Override
   public void requestPushPermission() {
     try {
@@ -48,6 +56,10 @@ public final class SyncPushBarrier implements PushBarrier {
     }
   }
 
+  /**
+   * Update thisRoundNum with up-to-date value, {@code nextRoundNum}, and reset {@code pushLatch} for next mini-batch.
+   * @param nextRoundNum driver notify same nextRoundNum integer value to all the workers.
+   */
   @Override
   public void prepareNextMiniBatch(final int nextRoundNum) {
     thisRoundNum = nextRoundNum;

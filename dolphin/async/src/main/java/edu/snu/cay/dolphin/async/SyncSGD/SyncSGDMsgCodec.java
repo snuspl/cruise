@@ -22,7 +22,7 @@ import org.apache.reef.wake.remote.Codec;
 import javax.inject.Inject;
 
 /**
- *
+ * Codec for {@link AvroSyncSGDMsg}.
  */
 public final class SyncSGDMsgCodec implements Codec<AvroSyncSGDMsg> {
   @Inject

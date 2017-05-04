@@ -25,21 +25,32 @@ import java.util.logging.Logger;
 
 /**
  * {@link MiniBatchBarrier} that is implemented for synchronous system.
+ * This worker will be blocked in this barrier until it receives {@code StartNextMiniBatchMsg} or
+ * {@code TerminateLearningMsg} from driver.
  */
 public final class SyncMiniBatchBarrier implements MiniBatchBarrier {
   private static final Logger LOG = Logger.getLogger(SyncMiniBatchBarrier.class.getName());
   private final ResettableCountDownLatch miniBatchLatch;
   private volatile LearningState learningState = LearningState.ProgressLearning;
+  private final SyncWorkerMsgSender msgSender;
 
   @Inject
-  private SyncMiniBatchBarrier() {
-    miniBatchLatch = new ResettableCountDownLatch(1);
+  private SyncMiniBatchBarrier(final SyncWorkerMsgSender syncWorkerMsgSender) {
+    this.miniBatchLatch = new ResettableCountDownLatch(1);
+    this.msgSender = syncWorkerMsgSender;
   }
 
+  /**
+   * When this worker receives MiniBatchControlMsg from driver, {@link EvalSideSyncMsgHandler} will count down
+   * {@code miniBatchLatch}.
+   * @param epochIdx driver decides whether to progress learning or terminate learning by using this value.
+   * @return learning state decided by driver.
+   */
   @Override
-  public LearningState waitMiniBatchControlMsgFromDriver() {
+  public LearningState waitMiniBatchControlMsgFromDriver(final int epochIdx) {
     try {
-      LOG.log(Level.INFO, "This is SyncMiniBatchBarrier");
+      LOG.log(Level.INFO, "Mini-batch is finished. Waiting for MiniBatchControlMsg.");
+      msgSender.sendMiniBatchFinishedMsg(epochIdx);
       miniBatchLatch.await();
       miniBatchLatch.reset(1);
     } catch (InterruptedException e) {

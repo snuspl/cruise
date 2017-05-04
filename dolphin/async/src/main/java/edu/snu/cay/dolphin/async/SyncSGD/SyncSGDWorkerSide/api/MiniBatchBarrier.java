@@ -28,12 +28,13 @@ public interface MiniBatchBarrier {
   /**
    * WorkerTask will wait in this method until this worker receives MiniBatchControlMsg from driver.
    * There are two kinds of MiniBatchControlMsg : TerminateLearningMsg, StartNextMiniBatchMsg.
+   * @param epochIdx driver decides whether to progress learning or terminate learning by using this value.
    * @return If this worker receives TerminateLearningMsg from driver, this method returns
    *         {@code LearningState.TerminateLearning}.
    *         If this worker receives StartNextMiniBatchMsg from driver, this method returns
    *         {@code LearningState.ProgressLearning}.
    */
-  LearningState waitMiniBatchControlMsgFromDriver();
+  LearningState waitMiniBatchControlMsgFromDriver(int epochIdx);
 
   /**
    * {@link EvalSideSyncMsgHandler} will call this method when this worker receives

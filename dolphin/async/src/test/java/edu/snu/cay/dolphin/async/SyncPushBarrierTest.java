@@ -20,7 +20,6 @@ import edu.snu.cay.common.centcomm.master.MasterSideCentCommMsgSender;
 import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.BatchManager;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDMsgCodec;
-import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.PushBarrier;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.EvalSideSyncMsgHandler;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.SyncPushBarrier;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -42,7 +41,8 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
 /**
- * Tests for {@link PushBarrier}.
+ * Tests for {@link SyncPushBarrier}.
+ * It tests whether {@link SyncPushBarrier} works properly regarding to messages from driver.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({MasterSideCentCommMsgSender.class, SlaveSideCentCommMsgSender.class})
@@ -73,6 +73,10 @@ public final class SyncPushBarrierTest {
     }).when(masterSideCentCommMsgSender).send(anyString(), anyString(), anyObject());
   }
 
+  /**
+   * Test {@link EvalSideSyncMsgHandler} handles {@code PermitPushMsg} from driver properly.
+   * When worker receives {@code PermitPushMsg}, {@link SyncPushBarrier} should be unblocked.
+   */
   @Test
   public void testPermitPush() throws InjectionException, NetworkException {
     assert syncPushBarrier.getLatchCount() == 1;
@@ -86,6 +90,11 @@ public final class SyncPushBarrierTest {
     assert syncPushBarrier.getLatchCount() == 0;
   }
 
+  /**
+   * Test {@link EvalSideSyncMsgHandler} handles {@code StartNextMiniBatchMsg} from driver properly.
+   * When worker receives {@code StartNextMiniBatchMsg}, {@code thisRoundNum} value in {@link SyncPushBarrier} should
+   * be updated.
+   */
   @Test
   public void testStartNextMiniBatch() throws InjectionException, NetworkException {
     assert syncPushBarrier.getThisRoundNum() == 0;

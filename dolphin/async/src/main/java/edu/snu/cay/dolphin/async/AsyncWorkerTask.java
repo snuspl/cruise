@@ -72,6 +72,9 @@ final class AsyncWorkerTask<K, V> implements Task {
    */
   private final boolean isAsync;
 
+  /**
+   * MiniBatchBarrier helps all the workers to start next mini-batch synchronously in synchronous system.
+   */
   private final MiniBatchBarrier miniBatchBarrier;
 
   /**
@@ -85,8 +88,9 @@ final class AsyncWorkerTask<K, V> implements Task {
   }
 
   /**
-   * If this worker receive {@code terminateLearningMsg} from driver, this flag is set to true.
-   * If this flag is true, this worker quit learning iteration.
+   * Flag which indicates learning state of this worker in synchronous system.
+   * When this worker receive {@code terminateLearningMsg} from driver, this flag will be changed to
+   * {@code LearningState.TerminateLearning}.
    */
   private volatile LearningState learningFlag = LearningState.ProgressLearning;
 
@@ -135,7 +139,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         .addState(State.WAITING_NEXT_MINI_BATCH, "Mini-batch is finished and waiting for StartNextMiniBatchMsg " +
             "from driver")
         .addState(State.MINI_BATCH_CLOSING, "This worker is slow worker. Mini-batch is stopped and being closed" +
-            " after it received StartNextMiniBatchMsg from driver.")
+            " after it had received StartNextMiniBatchMsg from driver.")
         .addTransition(State.MINI_BATCH_RUNNING, State.WAITING_NEXT_MINI_BATCH, "Mini-batch is finished.")
         .addTransition(State.MINI_BATCH_RUNNING, State.MINI_BATCH_CLOSING, "This worker is slow worker. Mini-batch" +
             " is not finished but should be closed for next mini-batch.")
@@ -177,6 +181,7 @@ final class AsyncWorkerTask<K, V> implements Task {
     // it prevents workers added by EM from starting from epoch 0 and deferring job completion.
     // More specifically, added workers start from the minimum epoch index of other existing workers.
     for (int epochIdx = initialClock;; ++epochIdx) {
+      // If asynchronous system is chosen, learning is terminated when epochIdx == maxNumEpochs.
       if (isAsync && epochIdx == maxNumEpochs) {
         break;
       }
@@ -200,7 +205,7 @@ final class AsyncWorkerTask<K, V> implements Task {
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
         stateMachine.setState(State.WAITING_NEXT_MINI_BATCH);
-        learningFlag = miniBatchBarrier.waitMiniBatchControlMsgFromDriver();
+        learningFlag = miniBatchBarrier.waitMiniBatchControlMsgFromDriver(epochIdx);
         stateMachine.setState(State.MINI_BATCH_RUNNING);
 
         buildAndSendMiniBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,

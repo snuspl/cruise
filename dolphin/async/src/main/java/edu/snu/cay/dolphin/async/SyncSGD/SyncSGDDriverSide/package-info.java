@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Components for driver side of SyncSGD.
+ * Components for driver-side SyncSGD.
  */
 package edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide;

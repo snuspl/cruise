@@ -15,6 +15,9 @@
  */
 package edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide;
 
+/**
+ * TODO #940: Should be implemented to manage workers' mini-batch.
+ */
 public final class BatchManager {
   public static final String CENT_COMM_CLIENT_NAME = BatchManager.class.getName();
 

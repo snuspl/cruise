@@ -22,6 +22,10 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
+/**
+ * TODO #940: This handler should be implemented for {@link BatchManager}.
+ * Handles messages related to SyncSGD from workers.
+ */
 public final class DriverSideSyncMsgHandler implements EventHandler<CentCommMsg> {
   public static final String AGGREGATION_CLIENT_NAME = DriverSideSyncMsgHandler.class.getName();
   private SyncSGDMsgCodec codec;

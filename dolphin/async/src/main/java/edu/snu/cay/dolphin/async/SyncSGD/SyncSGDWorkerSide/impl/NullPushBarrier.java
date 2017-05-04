@@ -20,6 +20,9 @@ import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.PushBarrier;
 
 import javax.inject.Inject;
 
+/**
+ * This implementation is for an asynchronous system.
+ */
 public final class NullPushBarrier implements PushBarrier {
   @Inject
   private NullPushBarrier() {

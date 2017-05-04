@@ -23,8 +23,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * {@link MiniBatchBarrier} that always permit push without asking the driver. This implementation is for an
- * asynchronous system.
+ * This implementation is for an asynchronous system.
+ * {@link MiniBatchBarrier} that always permit push without asking the driver.
  */
 public final class NullMiniBatchBarrier implements MiniBatchBarrier {
   private static final Logger LOG = Logger.getLogger(NullMiniBatchBarrier.class.getName());
@@ -38,7 +38,7 @@ public final class NullMiniBatchBarrier implements MiniBatchBarrier {
    * asynchronous system.
    */
   @Override
-  public LearningState waitMiniBatchControlMsgFromDriver() {
+  public LearningState waitMiniBatchControlMsgFromDriver(final int epochIdx) {
     LOG.log(Level.INFO, "This is NullMiniBatchBarrier");
     return LearningState.ProgressLearning;
   }
