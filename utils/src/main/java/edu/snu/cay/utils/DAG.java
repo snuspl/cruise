@@ -87,4 +87,10 @@ public interface DAG<V> {
    * @throws java.util.NoSuchElementException if the vertex v does not exist.
    */
   int getInDegree(V v);
+
+  /**
+   * Gets the json string of root vertices and an adjacent list.
+   * @return json string of root vertices and an adjacent list.
+   */
+  String toJSON();
 }

@@ -15,10 +15,13 @@
  */
 package edu.snu.cay.utils;
 
+import com.google.gson.Gson;
+
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * This implements DAG with adjacent list.
@@ -45,7 +48,7 @@ public final class DAGImpl<V> implements DAG<V> {
   private final Set<V> rootVertices = new HashSet<>();
 
   /**
-   * The number of vertices.
+   * The current number of vertices.
    */
   private int numVertices = 0;
 
@@ -169,7 +172,21 @@ public final class DAGImpl<V> implements DAG<V> {
   @Override
   public String toString() {
     return "DAGImpl{" +
-    "rootVertices=" + rootVertices +
-    ", adjacentList=" + adjacent + "}";
+      "rootVertices=" + rootVertices +
+      ", adjacentList=" + adjacent + "}";
+  }
+
+  public String toJSON() {
+    final Gson gson = new Gson();
+    final Set<String> rootVerticesOfString = rootVertices.stream().map(Object::toString).collect(Collectors.toSet());
+    final Map<String, Set<String>> adjacentOfString = new HashMap<>();
+    adjacent.entrySet().forEach(v -> {
+      final String keyString = v.getKey().toString();
+      final Set<String> setString = v.getValue().stream().map(Object::toString).collect(Collectors.toSet());
+      adjacentOfString.put(keyString, setString);
+    });
+
+    return "{" + "\"rootVertices\":" + gson.toJson(rootVerticesOfString) +
+        ",\"adjacent\":" + gson.toJson(adjacentOfString) + "}";
   }
 }
