@@ -16,6 +16,7 @@
 package edu.snu.cay.utils;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
@@ -177,7 +178,7 @@ public final class DAGImpl<V> implements DAG<V> {
   }
 
   public String toJSON() {
-    final Gson gson = new Gson();
+    final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
     final Set<String> rootVerticesOfString = rootVertices.stream().map(Object::toString).collect(Collectors.toSet());
     final Map<String, Set<String>> adjacentOfString = new HashMap<>();
     adjacent.entrySet().forEach(v -> {
