@@ -26,12 +26,12 @@ import javax.inject.Inject;
  * TODO #940: This handler should be implemented for {@link BatchManager}.
  * Handles messages related to SyncSGD from workers.
  */
-public final class DriverSideSyncMsgHandler implements EventHandler<CentCommMsg> {
-  public static final String AGGREGATION_CLIENT_NAME = DriverSideSyncMsgHandler.class.getName();
+public final class DriverSideSyncSGDMsgHandler implements EventHandler<CentCommMsg> {
+  public static final String AGGREGATION_CLIENT_NAME = DriverSideSyncSGDMsgHandler.class.getName();
   private SyncSGDMsgCodec codec;
 
   @Inject
-  private DriverSideSyncMsgHandler(final SyncSGDMsgCodec syncSGDMsgCodec) {
+  private DriverSideSyncSGDMsgHandler(final SyncSGDMsgCodec syncSGDMsgCodec) {
     this.codec = syncSGDMsgCodec;
   }
 

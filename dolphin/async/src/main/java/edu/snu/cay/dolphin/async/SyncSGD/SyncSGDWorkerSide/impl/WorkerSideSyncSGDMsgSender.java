@@ -19,7 +19,7 @@ import edu.snu.cay.common.centcomm.slave.SlaveSideCentCommMsgSender;
 import edu.snu.cay.dolphin.async.AvroSyncSGDMsg;
 import edu.snu.cay.dolphin.async.MiniBatchFinishedMsg;
 import edu.snu.cay.dolphin.async.RequestPushPermissionMsg;
-import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.DriverSideSyncMsgHandler;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.DriverSideSyncSGDMsgHandler;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDMsgCodec;
 import edu.snu.cay.dolphin.async.SyncSGDMsgType;
 
@@ -28,13 +28,13 @@ import javax.inject.Inject;
 /**
  * Message sender for SyncSGD.
  */
-final class WorkerSideSyncMsgSender {
+final class WorkerSideSyncSGDMsgSender {
   private final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender;
   private final SyncSGDMsgCodec codec;
 
   @Inject
-  private WorkerSideSyncMsgSender(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
-                                  final SyncSGDMsgCodec syncSGDMsgCodec) {
+  private WorkerSideSyncSGDMsgSender(final SlaveSideCentCommMsgSender slaveSideCentCommMsgSender,
+                                     final SyncSGDMsgCodec syncSGDMsgCodec) {
     this.slaveSideCentCommMsgSender = slaveSideCentCommMsgSender;
     this.codec = syncSGDMsgCodec;
   }
@@ -52,7 +52,7 @@ final class WorkerSideSyncMsgSender {
         .setRequestPushPermissionMsg(requestPushPermissionMsg)
         .build();
     final byte[] data = codec.encode(avroSyncSGDMsg);
-    slaveSideCentCommMsgSender.send(DriverSideSyncMsgHandler.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(DriverSideSyncSGDMsgHandler.AGGREGATION_CLIENT_NAME, data);
   }
 
   /**
@@ -68,6 +68,6 @@ final class WorkerSideSyncMsgSender {
         .setMiniBatchFinishedMsg(miniBatchFinishedMsg)
         .build();
     final byte[] data = codec.encode(avroSyncSGDMsg);
-    slaveSideCentCommMsgSender.send(DriverSideSyncMsgHandler.AGGREGATION_CLIENT_NAME, data);
+    slaveSideCentCommMsgSender.send(DriverSideSyncSGDMsgHandler.AGGREGATION_CLIENT_NAME, data);
   }
 }

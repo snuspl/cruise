@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.common.client.DriverLauncher;
 import edu.snu.cay.common.dataloader.TextInputFormat;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.BatchManager;
-import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.DriverSideSyncMsgHandler;
+import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDDriverSide.DriverSideSyncSGDMsgHandler;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.MiniBatchBarrier;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.api.PushBarrier;
 import edu.snu.cay.dolphin.async.SyncSGD.SyncSGDWorkerSide.impl.*;
@@ -458,8 +458,8 @@ public final class AsyncDolphinLauncher {
               ClockManager.MessageHandler.class,
               AsyncWorkerClock.MessageHandler.class)
           .addCentCommClient(BatchManager.CENT_COMM_CLIENT_NAME,
-              DriverSideSyncMsgHandler.class,
-              WorkerSideSyncMsgHandler.class)
+              DriverSideSyncSGDMsgHandler.class,
+              WorkerSideSyncSGDMsgHandler.class)
           .build();
     }
   }

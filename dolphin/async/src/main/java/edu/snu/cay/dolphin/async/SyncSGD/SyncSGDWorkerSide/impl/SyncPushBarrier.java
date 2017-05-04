@@ -29,14 +29,14 @@ import javax.inject.Inject;
  */
 public final class SyncPushBarrier implements PushBarrier {
   private final ResettableCountDownLatch pushLatch;
-  private final WorkerSideSyncMsgSender msgSender;
+  private final WorkerSideSyncSGDMsgSender msgSender;
 
   // thisRoundNum should be tracked to distinguish between up-to-date RequestPushPermissionMsg and deprecated
   // RequestPushPermissionMsg.
   private int thisRoundNum = 0;
 
   @Inject
-  private SyncPushBarrier(final WorkerSideSyncMsgSender msgSender) {
+  private SyncPushBarrier(final WorkerSideSyncSGDMsgSender msgSender) {
     this.pushLatch = new ResettableCountDownLatch(1);
     this.msgSender = msgSender;
   }

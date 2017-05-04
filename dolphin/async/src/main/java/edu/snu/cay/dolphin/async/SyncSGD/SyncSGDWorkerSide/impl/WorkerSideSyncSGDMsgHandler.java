@@ -27,16 +27,16 @@ import javax.inject.Inject;
 /**
  * Handles events for {@link PushBarrier} and {@link MiniBatchBarrier}.
  */
-public final class WorkerSideSyncMsgHandler implements EventHandler<CentCommMsg> {
-  public static final String AGGREGATION_CLIENT_NAME = WorkerSideSyncMsgHandler.class.getName();
+public final class WorkerSideSyncSGDMsgHandler implements EventHandler<CentCommMsg> {
+  public static final String AGGREGATION_CLIENT_NAME = WorkerSideSyncSGDMsgHandler.class.getName();
   private final SyncPushBarrier syncPushBarrier;
   private final SyncSGDMsgCodec codec;
   private final SyncMiniBatchBarrier syncMiniBatchBarrier;
 
   @Inject
-  private WorkerSideSyncMsgHandler(final SyncPushBarrier syncPushBarrier,
-                                   final SyncSGDMsgCodec syncSGDMsgCodec,
-                                   final SyncMiniBatchBarrier syncMiniBatchBarrier) {
+  private WorkerSideSyncSGDMsgHandler(final SyncPushBarrier syncPushBarrier,
+                                      final SyncSGDMsgCodec syncSGDMsgCodec,
+                                      final SyncMiniBatchBarrier syncMiniBatchBarrier) {
     this.syncPushBarrier = syncPushBarrier;
     this.codec = syncSGDMsgCodec;
     this.syncMiniBatchBarrier = syncMiniBatchBarrier;
