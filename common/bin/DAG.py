@@ -54,3 +54,4 @@ for line in searchfile:
 		print line[start_index : end_index]
 		print line[end_index:]
 		showDAG(line[start_index : end_index], json.loads(line[end_index:]))
+
