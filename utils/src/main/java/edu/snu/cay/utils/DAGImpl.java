@@ -166,6 +166,7 @@ public final class DAGImpl<V> implements DAG<V> {
     return inDegree;
   }
 
+  @Override
   public int getNumVertices() {
     return numVertices;
   }
@@ -177,6 +178,7 @@ public final class DAGImpl<V> implements DAG<V> {
       ", adjacentList=" + adjacent + "}";
   }
 
+  @Override
   public String toJSON() {
     final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
     final Set<String> rootVerticesOfString = rootVertices.stream().map(Object::toString).collect(Collectors.toSet());
