@@ -92,7 +92,7 @@ final class AsyncWorkerTask<K, V> implements Task {
    * When this worker receive {@code terminateLearningMsg} from driver, this flag will be changed to
    * {@code LearningState.TerminateLearning}.
    */
-  private volatile LearningState learningFlag = LearningState.ProgressLearning;
+  private LearningState learningFlag = LearningState.ProgressLearning;
 
   /**
    * A boolean flag shared among all trainer threads.

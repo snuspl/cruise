@@ -31,7 +31,7 @@ import java.util.logging.Logger;
 public final class SyncMiniBatchBarrier implements MiniBatchBarrier {
   private static final Logger LOG = Logger.getLogger(SyncMiniBatchBarrier.class.getName());
   private final ResettableCountDownLatch miniBatchLatch;
-  private volatile LearningState learningState = LearningState.ProgressLearning;
+  private LearningState learningState = LearningState.ProgressLearning;
   private final WorkerSideSyncSGDMsgSender msgSender;
 
   @Inject
