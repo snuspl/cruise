@@ -30,6 +30,8 @@ import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
+import edu.snu.cay.services.et.plan.api.PlanExecutor;
+import edu.snu.cay.services.et.plan.impl.LoggingPlanExecutor;
 import org.apache.commons.cli.ParseException;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
@@ -230,6 +232,7 @@ public final class ETDolphinLauncher {
 
     optimizationConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(Optimizer.class, optimizerClass)
+        .bindImplementation(PlanExecutor.class, LoggingPlanExecutor.class)
         .bindNamedParameter(NumInitialResources.class, Integer.toString(numInitialResources))
         .build();
 
