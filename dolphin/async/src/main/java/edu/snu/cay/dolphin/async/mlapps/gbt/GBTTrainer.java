@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.async.mlapps.gbt;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.*;
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.mlapps.gbt.tree.*;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.commons.lang3.tuple.Pair;
@@ -120,10 +121,14 @@ final class GBTTrainer implements Trainer<GBTData> {
   private final int treeSize;
 
   private final Random random;
-
+  
+  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+  private final Tracer pushTracer;
+  private final Tracer pullTracer;
+  private final Tracer computeTracer;
+  
   @Inject
-  private GBTTrainer(
-                     final ModelAccessor<Integer, GBTree, List<GBTree>> modelAccessor,
+  private GBTTrainer(final ModelAccessor<Integer, GBTree, List<GBTree>> modelAccessor,
                      @Parameter(NumFeatures.class) final int numFeatures,
                      @Parameter(StepSize.class) final double stepSize,
                      @Parameter(Lambda.class) final double lambda,
@@ -152,6 +157,10 @@ final class GBTTrainer implements Trainer<GBTData> {
     } else {  // if valueTypeNum != 0, value's type is categorical(FeatureType.CATEGORICAL).
       this.valueType = FeatureType.CATEGORICAL;
     }
+    
+    this.pushTracer = new Tracer();
+    this.pullTracer = new Tracer();
+    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -167,7 +176,13 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   @Override
   public MiniBatchResult runMiniBatch(final Collection<GBTData> miniBatchTrainingData) {
+    final int numInstancesToProcess = miniBatchTrainingData.size();
+    resetTracers();
+    final long miniBatchStartTime = System.currentTimeMillis();
+    
+    computeTracer.startTimer();
     final List<GBTData> instances = new ArrayList<>(miniBatchTrainingData);
+    computeTracer.recordTime(numInstancesToProcess);
     
     // Divide into two cases : Regression / Classification
     if (valueType == FeatureType.CONTINUOUS) {
@@ -179,10 +194,12 @@ final class GBTTrainer implements Trainer<GBTData> {
     } else {
       throw new IllegalArgumentException("valueType must be either numerical type or categorical type.");
     }
+    
+    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
-    return MiniBatchResult.EMPTY_RESULT;
+    return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
   }
-
+  
   /**
    * Print the predicted value or label of each data in the epoch.
    *
@@ -231,6 +248,8 @@ final class GBTTrainer implements Trainer<GBTData> {
 
     final List<GBTree> forest = pullAllTrees(label);
 
+    computeTracer.startTimer();
+    
     // Calculate residual values for each data in this worker using all the trees for this label.
     // residual = (real y-value) - (predicted y-value).
     // Predicted y-value is calculated by using all the trees that are built.
@@ -253,6 +272,8 @@ final class GBTTrainer implements Trainer<GBTData> {
     // Build tree model using preprocessed data.
     final int miniBatchDataSize = instances.size();
     buildTree(gbTree, sortedTreeList, groupedTreeList, labelList, gValues, miniBatchDataSize);
+    
+    computeTracer.recordTime(0);
 
     // Push a tree that is built in this run iteration to the server.
     pushTree(gbTree, label);
@@ -710,7 +731,9 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private void pushTree(final GBTree gbTree, final int label) {
     final int chosenKey = random.nextInt(numKeys);
+    pushTracer.startTimer();
     modelAccessor.push(label * numKeys + chosenKey, gbTree);
+    pushTracer.recordTime(1);
   }
 
   /**
@@ -718,9 +741,11 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   private List<GBTree> pullAllTrees(final int label) {
     final List<GBTree> forest = new LinkedList<>();
+    pullTracer.startTimer();
     for (int i = 0; i < numKeys; i++) {
       forest.addAll(modelAccessor.pull(label * numKeys + i));
     }
+    pullTracer.recordTime(numKeys);
     return forest;
   }
 
@@ -898,5 +923,22 @@ final class GBTTrainer implements Trainer<GBTData> {
 
   public enum ChildPosition {
     LEFT_CHILD, RIGHT_CHILD
+  }
+  
+  private void resetTracers() {
+    computeTracer.resetTrace();
+    pushTracer.resetTrace();
+    pullTracer.resetTrace();
+  }
+  
+  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
+    return MiniBatchResult.newBuilder()
+        .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
+        .setComputeTime(computeTracer.totalElapsedTime())
+        .setTotalPullTime(pullTracer.totalElapsedTime())
+        .setTotalPushTime(pushTracer.totalElapsedTime())
+        .setAvgPullTime(pullTracer.avgTimePerElem())
+        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .build();
   }
 }
