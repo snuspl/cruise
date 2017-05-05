@@ -60,6 +60,6 @@ final class GBTParameters {
     
     // The key denoting the number of training data instances processed per unit time.
     static final String DVT =
-        "MLR_DVT";
+        "GBT_DVT";
   }
 }
