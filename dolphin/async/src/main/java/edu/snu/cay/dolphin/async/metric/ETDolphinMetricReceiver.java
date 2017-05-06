@@ -99,7 +99,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
         throw new RuntimeException("Unknown message type");
       }
 
-      LOG.log(Level.INFO, "Received a worker metric from {0}: {1}", new Object[] {workerMetrics, srcId});
+      LOG.log(Level.INFO, "Received a worker metric from {0}: {1}", new Object[] {srcId, workerMetrics});
     }
   }
 
