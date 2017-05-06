@@ -86,8 +86,6 @@ final class LassoTrainer implements Trainer<LassoData> {
    * To collect metric data.
    */
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer pushTracer;
-  private final Tracer pullTracer;
   private final Tracer computeTracer;
 
   @Inject
@@ -125,8 +123,6 @@ final class LassoTrainer implements Trainer<LassoData> {
       modelPartitionIndices.add(partitionIdx);
     }
 
-    this.pullTracer = new Tracer();
-    this.pushTracer = new Tracer();
     this.computeTracer = new Tracer();
   }
 
@@ -239,9 +235,7 @@ final class LassoTrainer implements Trainer<LassoData> {
    * Pull up-to-date model parameters from server.
    */
   private void pullModels() {
-    pullTracer.startTimer();
     final List<Vector> partialModels = modelAccessor.pull(modelPartitionIndices);
-    pullTracer.recordTime(numPartitions);
     computeTracer.startTimer();
     oldModel = vectorFactory.concatDense(partialModels);
     newModel = oldModel.copy();
@@ -255,14 +249,12 @@ final class LassoTrainer implements Trainer<LassoData> {
     computeTracer.startTimer();
     final Vector gradient = newModel.sub(oldModel);
     computeTracer.recordTime(0);
-    pushTracer.startTimer();
     for (int partitionIndex = 0; partitionIndex < numPartitions; ++partitionIndex) {
       final int partitionStart = partitionIndex * numFeaturesPerPartition;
       final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
       modelAccessor.push(partitionIndex, vectorFactory.createDenseZeros(numFeaturesPerPartition)
           .axpy(stepSize, gradient.slice(partitionStart, partitionEnd)));
     }
-    pushTracer.recordTime(numPartitions);
   }
 
   /**
@@ -302,19 +294,20 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   private void resetTracer() {
-    pullTracer.resetTrace();
-    pushTracer.resetTrace();
     computeTracer.resetTrace();
   }
 
   private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
+    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
+    
     return MiniBatchResult.newBuilder()
         .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
         .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
-        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .setTotalPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC))
+        .setTotalPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC))
+        .setAvgPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
+        .setAvgPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
         .build();
   }
 

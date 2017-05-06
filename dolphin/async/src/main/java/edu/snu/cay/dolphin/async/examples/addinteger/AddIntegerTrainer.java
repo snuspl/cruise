@@ -22,6 +22,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -66,8 +67,6 @@ final class AddIntegerTrainer implements Trainer {
   private final int expectedResult;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer pushTracer;
-  private final Tracer pullTracer;
   private final Tracer computeTracer;
 
   @Inject
@@ -90,8 +89,6 @@ final class AddIntegerTrainer implements Trainer {
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, numMiniBatches:{4}",
         new Object[]{delta, numberOfWorkers, maxNumEpochs, numTrainingData, numMiniBatches});
 
-    this.pushTracer = new Tracer();
-    this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
   }
 
@@ -114,13 +111,9 @@ final class AddIntegerTrainer implements Trainer {
     }
 
     for (int key = 0; key < numberOfKeys; key++) {
-      pushTracer.startTimer();
       modelAccessor.push(key, delta);
-      pushTracer.recordTime(1);
 
-      pullTracer.startTimer();
       final Integer value = modelAccessor.pull(key);
-      pullTracer.recordTime(1);
       LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{key, value});
     }
 
@@ -134,12 +127,15 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   private MiniBatchResult buildMiniBatchResult() {
+    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
+
     return MiniBatchResult.newBuilder()
         .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
-        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .setTotalPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC))
+        .setTotalPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC))
+        .setAvgPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
+        .setAvgPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
         .build();
   }
 
@@ -184,8 +180,6 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   private void resetTracers() {
-    pushTracer.resetTrace();
-    pullTracer.resetTrace();
     computeTracer.resetTrace();
   }
 }
