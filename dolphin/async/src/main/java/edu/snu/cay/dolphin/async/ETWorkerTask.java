@@ -106,6 +106,8 @@ final class ETWorkerTask<K, V> implements Task {
           break; // Finish the epoch when there are no more data to process
         }
 
+        LOG.log(Level.INFO, "Starting batch {0} in epoch {1}", new Object[] {miniBatchIdx, epochIdx});
+
         final long miniBatchStartTime = System.currentTimeMillis();
         final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
@@ -166,8 +168,6 @@ final class ETWorkerTask<K, V> implements Task {
 
     metricCollector.addCustomMetric(encapsulatedMetrics);
     metricCollector.flush();
-
-    LOG.log(Level.INFO, "MiniBatchMetrics {0}", batchMetrics);
   }
 
   /**
@@ -208,8 +208,6 @@ final class ETWorkerTask<K, V> implements Task {
 
     metricCollector.addCustomMetric(encapsulatedMetrics);
     metricCollector.flush();
-
-    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetrics);
   }
 
   /**
