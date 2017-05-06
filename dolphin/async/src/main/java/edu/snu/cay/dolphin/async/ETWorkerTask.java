@@ -166,8 +166,6 @@ final class ETWorkerTask<K, V> implements Task {
 
     metricCollector.addCustomMetric(encapsulatedMetrics);
     metricCollector.flush();
-
-    LOG.log(Level.INFO, "MiniBatchMetrics {0}", batchMetrics);
   }
 
   /**
@@ -208,8 +206,6 @@ final class ETWorkerTask<K, V> implements Task {
 
     metricCollector.addCustomMetric(encapsulatedMetrics);
     metricCollector.flush();
-
-    LOG.log(Level.INFO, "EpochMetrics {0}", epochMetrics);
   }
 
   /**

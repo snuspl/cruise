@@ -25,6 +25,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static edu.snu.cay.dolphin.async.ETModelAccessor.MODEL_TABLE_ID;
 import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TABLE_ID;
@@ -33,6 +35,8 @@ import static edu.snu.cay.dolphin.async.ETTrainingDataProvider.TRAINING_DATA_TAB
  * Implementation of Metric receiver for Dolphin on ET.
  */
 public final class ETDolphinMetricReceiver implements MetricReceiver {
+  private static final Logger LOG = Logger.getLogger(ETDolphinMetricReceiver.class.getName());
+
   private final ETDolphinMetricMsgCodec metricMsgCodec;
 
   private final MetricManager metricManager;
@@ -94,6 +98,8 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
       default:
         throw new RuntimeException("Unknown message type");
       }
+
+      LOG.log(Level.INFO, "Received a worker metric from {0}: {1}", new Object[] {workerMetrics, srcId});
     }
   }
 
@@ -169,5 +175,7 @@ public final class ETDolphinMetricReceiver implements MetricReceiver {
         .setHostname(hostname)
         .build();
     metricManager.storeServerMetrics(srcId, serverMetrics);
+    
+    LOG.log(Level.INFO, "Received a server metric from {0}: {1}", new Object[] {srcId, serverMetrics});
   }
 }
