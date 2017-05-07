@@ -96,7 +96,7 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
       resultValues.add(result);
     }
 
-    pullTracer.recordTime(resultValues.size());
+    pullTracer.recordTime(keys.size());
     return resultValues;
   }
 
