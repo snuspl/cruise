@@ -99,6 +99,10 @@ final class LDATrainer implements Trainer<Document> {
       }
     }
     pushAndResetGradients(topicChanges);
+    
+    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+    // The main purpose of this invocation is to reset ModelAccessor's tracers for the next round.
+    modelAccessor.getAndResetMetrics();
   }
 
   @Override
