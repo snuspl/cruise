@@ -436,6 +436,10 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   private EpochResult buildEpochResult(final double trainingLoss) {
+    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+    // The main purpose of this invocation is to reset ModelAccessor's tracers for the next round.
+    modelAccessor.getAndResetMetrics();
+    
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)
         .build();
