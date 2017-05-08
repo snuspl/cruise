@@ -108,8 +108,8 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   public Map<String, Double> getAndResetMetrics() {
     final Map<String, Double> metrics = new HashMap<>();
     metrics.put(METRIC_TOTAL_PULL_TIME_SEC, pullTracer.totalElapsedTime());
-    metrics.put(METRIC_AVG_PULL_TIME_SEC, pullTracer.avgTimePerElem());
     metrics.put(METRIC_TOTAL_PUSH_TIME_SEC, pushTracer.totalElapsedTime());
+    metrics.put(METRIC_AVG_PULL_TIME_SEC, pullTracer.avgTimePerElem());
     metrics.put(METRIC_AVG_PUSH_TIME_SEC, pushTracer.avgTimePerElem());
 
     pullTracer.resetTrace();
