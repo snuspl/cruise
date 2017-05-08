@@ -20,6 +20,7 @@ import edu.snu.cay.services.et.evaluator.api.Table;
 import edu.snu.cay.services.et.evaluator.api.TableAccessor;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,8 +30,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
- * An {@link ModelAccessor} implementation based on ET.
+ * An implementation of {@link ModelAccessor} that handles push/pull requests using Elastic Tables (ET).
+ * This component is responsible for collecting metrics, and is not thread-safe because the tracing components are not
+ * thread-safe at the moment.
  */
+@NotThreadSafe
 public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   public static final String MODEL_TABLE_ID = "model_table";
 
@@ -101,7 +105,7 @@ public final class ETModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
   }
 
   @Override
-  public synchronized Map<String, Double> getAndResetMetrics() {
+  public Map<String, Double> getAndResetMetrics() {
     final Map<String, Double> metrics = new HashMap<>();
     metrics.put(METRIC_TOTAL_PULL_TIME_SEC, pullTracer.totalElapsedTime());
     metrics.put(METRIC_AVG_PULL_TIME_SEC, pullTracer.avgTimePerElem());

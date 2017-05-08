@@ -18,14 +18,18 @@ package edu.snu.cay.dolphin.async;
 import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * An {@link ModelAccessor} implementation based on PS.
+ * An implementation of {@link ModelAccessor} that handles push/pull requests using ParameterServer (PS).
+ * This component is responsible for collecting metrics, and is not thread-safe because the tracing components are not
+ * thread-safe at the moment.
  */
+@NotThreadSafe
 public class PSModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
   private final ParameterWorker<K, P, V> parameterWorker;

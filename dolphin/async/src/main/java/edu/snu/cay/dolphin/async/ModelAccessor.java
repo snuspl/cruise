@@ -20,6 +20,8 @@ import java.util.Map;
 
 /**
  * A class for accessing global model shared by multiple workers.
+ * The implementing classes are responsible for collecting metrics in push/pull operations.
+ *
  * @param <K> type of keys
  * @param <P> type of delta values
  * @param <V> type of values
