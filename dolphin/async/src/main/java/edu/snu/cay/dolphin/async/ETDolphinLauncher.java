@@ -21,6 +21,7 @@ import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.async.metric.ETDolphinMetricReceiver;
 import edu.snu.cay.dolphin.async.metric.parameters.ServerMetricFlushPeriodMs;
 import edu.snu.cay.dolphin.async.optimizer.parameters.*;
+import edu.snu.cay.dolphin.async.plan.ETPlanExecutorClass;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
@@ -30,6 +31,7 @@ import edu.snu.cay.services.et.configuration.parameters.UpdateValueCodec;
 import edu.snu.cay.services.et.configuration.parameters.ValueCodec;
 import edu.snu.cay.services.et.evaluator.api.UpdateFunction;
 import edu.snu.cay.services.et.evaluator.api.DataParser;
+import edu.snu.cay.services.et.plan.api.PlanExecutor;
 import org.apache.commons.cli.ParseException;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
@@ -206,6 +208,7 @@ public final class ETDolphinLauncher {
     clientParamList.forEach(cl::registerShortNameOfClass);
     driverParamList.forEach(cl::registerShortNameOfClass);
     cl.registerShortNameOfClass(OptimizerClass.class); // handle it separately to bind a corresponding implementation
+    cl.registerShortNameOfClass(ETPlanExecutorClass.class); // handle it separately similar to OptimizerClass
     serverParamList.forEach(cl::registerShortNameOfClass);
     workerParamList.forEach(cl::registerShortNameOfClass);
     cl.registerShortNameOfClass(InputDir.class); // handle inputPath separately to process it through processInputDir()
@@ -228,8 +231,12 @@ public final class ETDolphinLauncher {
     final Class<? extends Optimizer> optimizerClass =
         (Class<? extends Optimizer>) Class.forName(commandlineParamInjector.getNamedInstance(OptimizerClass.class));
 
+    final Class<? extends PlanExecutor> planExecutorClass = (Class<? extends PlanExecutor>)
+        Class.forName(commandlineParamInjector.getNamedInstance(ETPlanExecutorClass.class));
+
     optimizationConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(Optimizer.class, optimizerClass)
+        .bindImplementation(PlanExecutor.class, planExecutorClass)
         .bindNamedParameter(NumInitialResources.class, Integer.toString(numInitialResources))
         .build();
 
