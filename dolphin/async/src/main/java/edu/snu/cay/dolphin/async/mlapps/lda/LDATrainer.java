@@ -52,8 +52,6 @@ final class LDATrainer implements Trainer<Document> {
   private final ModelHolder<LDAModel> modelHolder;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer pushTracer;
-  private final Tracer pullTracer;
   private final Tracer computeTracer;
 
   @Inject
@@ -80,8 +78,6 @@ final class LDATrainer implements Trainer<Document> {
     this.numTopics = numTopics;
 
     this.modelHolder = modelHolder;
-    this.pushTracer = new Tracer();
-    this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
 
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
@@ -147,9 +143,7 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   private void pullModels(final List<Integer> words) {
-    pullTracer.startTimer();
     final List<int[]> topicVectors = modelAccessor.pull(words);
-    pullTracer.recordTime(words.size());
 
     final int[] sparseTopicSummaryVector = topicVectors.remove(words.size() - 1);
     // i-th element of topicSummaryVector represents total number of assignments of i-th topic
@@ -207,9 +201,7 @@ final class LDATrainer implements Trainer<Document> {
       }
       computeTracer.recordTime(0);
 
-      pushTracer.startTimer();
       modelAccessor.push(changedWord, parameters);
-      pushTracer.recordTime(1);
     }
     changedTopicCount.clear();
   }
@@ -238,18 +230,19 @@ final class LDATrainer implements Trainer<Document> {
 
   private void resetTracers() {
     computeTracer.resetTrace();
-    pushTracer.resetTrace();
-    pullTracer.resetTrace();
+    modelAccessor.getAndResetMetrics();
   }
 
   private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
+    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
     return MiniBatchResult.newBuilder()
         .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
         .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
-        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .setTotalPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC))
+        .setTotalPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC))
+        .setAvgPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
+        .setAvgPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PUSH_TIME_SEC))
         .build();
   }
 

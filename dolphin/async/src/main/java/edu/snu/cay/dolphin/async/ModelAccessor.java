@@ -16,14 +16,37 @@
 package edu.snu.cay.dolphin.async;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * A class for accessing global model shared by multiple workers.
+ * The implementing classes are responsible for collecting metrics in push/pull operations.
+ *
  * @param <K> type of keys
  * @param <P> type of delta values
  * @param <V> type of values
  */
 public interface ModelAccessor<K, P, V> {
+  /**
+   * The key denoting the sum of elapsed time for pull (in sec).
+   */
+  String METRIC_TOTAL_PULL_TIME_SEC = "totalPullTimeSec";
+
+  /**
+   * The key denoting the sum of elapsed time for push (in sec).
+   */
+  String METRIC_TOTAL_PUSH_TIME_SEC = "totalPushTimeSec";
+
+  /**
+   * The key denoting the average of elapsed time for push (in sec).
+   */
+  String METRIC_AVG_PULL_TIME_SEC = "avgPullTimeSec";
+
+  /**
+   * The key denoting the average of elapsed time for push (in sec).
+   */
+  String METRIC_AVG_PUSH_TIME_SEC = "avgPushTimeSec";
+
   /**
    * Updates a value associated with a {@code key} using a {@code deltaValue}.
    * @param key key of model parameter
@@ -45,4 +68,10 @@ public interface ModelAccessor<K, P, V> {
    *        Some positions in the list can be {@code null}, if the key has no associated value
    */
   List<V> pull(List<K> keys);
+
+  /**
+   * Fetches the collected metrics and reset the tracers for collecting metrics in the next round.
+   * @return the metrics that are identified by the keys in this interface.
+   */
+  Map<String, Double> getAndResetMetrics();
 }
