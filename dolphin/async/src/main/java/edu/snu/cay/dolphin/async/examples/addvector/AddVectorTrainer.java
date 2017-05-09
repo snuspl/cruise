@@ -196,5 +196,6 @@ final class AddVectorTrainer implements Trainer {
 
   private void resetTracers() {
     computeTracer.resetTrace();
+    modelAccessor.getAndResetMetrics();
   }
 }

@@ -181,5 +181,6 @@ final class AddIntegerTrainer implements Trainer {
 
   private void resetTracers() {
     computeTracer.resetTrace();
+    modelAccessor.getAndResetMetrics();
   }
 }

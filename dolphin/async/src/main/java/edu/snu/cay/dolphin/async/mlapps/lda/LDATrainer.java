@@ -99,10 +99,6 @@ final class LDATrainer implements Trainer<Document> {
       }
     }
     pushAndResetGradients(topicChanges);
-    
-    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-    // The main purpose of this invocation is to reset ModelAccessor's tracers for the next round.
-    modelAccessor.getAndResetMetrics();
   }
 
   @Override
@@ -234,6 +230,7 @@ final class LDATrainer implements Trainer<Document> {
 
   private void resetTracers() {
     computeTracer.resetTrace();
+    modelAccessor.getAndResetMetrics();
   }
 
   private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
@@ -250,10 +247,6 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   private EpochResult buildEpochResult(final double docLLH, final double wordLLH) {
-    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-    // The main purpose of this invocation is to reset ModelAccessor's tracers for the next round.
-    modelAccessor.getAndResetMetrics();
-    
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.DOC_LLH, docLLH)
         .addAppMetric(MetricKeys.WORD_LLH, wordLLH)

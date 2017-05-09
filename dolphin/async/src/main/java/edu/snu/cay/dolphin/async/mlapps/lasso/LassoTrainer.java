@@ -295,6 +295,7 @@ final class LassoTrainer implements Trainer<LassoData> {
 
   private void resetTracer() {
     computeTracer.resetTrace();
+    modelAccessor.getAndResetMetrics();
   }
 
   private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
@@ -312,10 +313,6 @@ final class LassoTrainer implements Trainer<LassoData> {
   }
 
   private EpochResult buildEpochResult(final double trainingLoss, final double testLoss) {
-    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-    // The main purpose of this invocation is to reset ModelAccessor's tracers for the next round.
-    modelAccessor.getAndResetMetrics();
-    
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)
         .addAppMetric(MetricKeys.TEST_LOSS, testLoss)

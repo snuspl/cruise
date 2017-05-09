@@ -457,6 +457,7 @@ final class MLRTrainer implements Trainer<MLRData> {
 
   private void resetTracers() {
     computeTracer.resetTrace();
+    modelAccessor.getAndResetMetrics();
   }
 
   private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
@@ -474,10 +475,6 @@ final class MLRTrainer implements Trainer<MLRData> {
 
   private EpochResult buildEpochResult(final Tuple3<Double, Double, Double> traininglossRegLossAvgAccuracy,
                                        final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy) {
-    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-    // The main purpose of this invocation is to reset ModelAccessor's tracers for the next round.
-    modelAccessor.getAndResetMetrics();
-
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.TRAINING_LOSS, traininglossRegLossAvgAccuracy.getFirst())
         .addAppMetric(MetricKeys.TRAINING_REG_LOSS_AVG, traininglossRegLossAvgAccuracy.getSecond())
