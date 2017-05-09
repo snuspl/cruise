@@ -15,17 +15,27 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * An {@link ModelAccessor} implementation based on PS.
+ * An implementation of {@link ModelAccessor} that handles push/pull requests using ParameterServer (PS).
+ * This component is responsible for collecting metrics, and is not thread-safe because the tracing components are not
+ * thread-safe at the moment.
  */
+@NotThreadSafe
 public class PSModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
   private final ParameterWorker<K, P, V> parameterWorker;
+
+  private final Tracer pushTracer = new Tracer();
+  private final Tracer pullTracer = new Tracer();
 
   @Inject
   PSModelAccessor(final ParameterWorker<K, P, V> parameterWorker) {
@@ -34,16 +44,40 @@ public class PSModelAccessor<K, P, V> implements ModelAccessor<K, P, V> {
 
   @Override
   public void push(final K key, final P deltaValue) {
+    pushTracer.startTimer();
     parameterWorker.push(key, deltaValue);
+    pushTracer.recordTime(1);
   }
 
   @Override
   public V pull(final K key) {
-    return parameterWorker.pull(key);
+    pullTracer.startTimer();
+    final V result = parameterWorker.pull(key);
+
+    pullTracer.recordTime(1);
+    return result;
   }
 
   @Override
   public List<V> pull(final List<K> keys) {
-    return parameterWorker.pull(keys);
+    pullTracer.startTimer();
+    final List<V> resultValues = parameterWorker.pull(keys);
+    
+    pullTracer.recordTime(keys.size());
+    return resultValues;
+  }
+
+  @Override
+  public Map<String, Double> getAndResetMetrics() {
+    final Map<String, Double> metrics = new HashMap<>();
+    metrics.put(METRIC_TOTAL_PULL_TIME_SEC, pullTracer.totalElapsedTime());
+    metrics.put(METRIC_TOTAL_PUSH_TIME_SEC, pushTracer.totalElapsedTime());
+    metrics.put(METRIC_AVG_PULL_TIME_SEC, pullTracer.avgTimePerElem());
+    metrics.put(METRIC_AVG_PUSH_TIME_SEC, pushTracer.avgTimePerElem());
+
+    pullTracer.resetTrace();
+    pushTracer.resetTrace();
+
+    return metrics;
   }
 }

@@ -25,6 +25,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -69,8 +70,6 @@ final class AddVectorTrainer implements Trainer {
   private final int expectedResult;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer pushTracer;
-  private final Tracer pullTracer;
   private final Tracer computeTracer;
 
   @Inject
@@ -97,8 +96,6 @@ final class AddVectorTrainer implements Trainer {
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, miniBatchSize:{4}",
         new Object[]{delta, numberOfWorkers, maxNumEpochs, numTrainingData, miniBatchSize});
 
-    this.pushTracer = new Tracer();
-    this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
   }
 
@@ -112,9 +109,7 @@ final class AddVectorTrainer implements Trainer {
     final int numDataToProcess = miniBatchTrainingData.size();
 
     // 1. pull model to compute with
-    pullTracer.startTimer();
     final List<Vector> valueList = modelAccessor.pull(keyList);
-    pullTracer.recordTime(valueList.size());
     LOG.log(Level.FINE, "Current values associated with keys {0} is {1}", new Object[]{keyList, valueList});
 
     // 2. sleep to simulate computation
@@ -128,11 +123,9 @@ final class AddVectorTrainer implements Trainer {
     }
 
     // 3. push computed model
-    pushTracer.startTimer();
     for (final int key : keyList) {
       modelAccessor.push(key, delta);
     }
-    pushTracer.recordTime(keyList.size());
 
     return buildMiniBatchResult();
   }
@@ -144,12 +137,15 @@ final class AddVectorTrainer implements Trainer {
   }
 
   private MiniBatchResult buildMiniBatchResult() {
+    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
+    
     return MiniBatchResult.newBuilder()
         .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
-        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .setTotalPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC))
+        .setTotalPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC))
+        .setAvgPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
+        .setAvgPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PUSH_TIME_SEC))
         .build();
   }
 
@@ -199,8 +195,7 @@ final class AddVectorTrainer implements Trainer {
   }
 
   private void resetTracers() {
-    pushTracer.resetTrace();
-    pullTracer.resetTrace();
     computeTracer.resetTrace();
+    modelAccessor.getAndResetMetrics();
   }
 }

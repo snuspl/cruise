@@ -80,8 +80,6 @@ final class NMFTrainer implements Trainer<NMFData> {
   private final TrainingDataProvider<Long, NMFData> trainingDataProvider;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer pushTracer;
-  private final Tracer pullTracer;
   private final Tracer computeTracer;
 
   @Inject
@@ -119,8 +117,6 @@ final class NMFTrainer implements Trainer<NMFData> {
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
 
-    this.pushTracer = new Tracer();
-    this.pullTracer = new Tracer();
     this.computeTracer = new Tracer();
 
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
@@ -264,7 +260,6 @@ final class NMFTrainer implements Trainer<NMFData> {
    * @param keys Column indices with which server stores the model parameters.
    */
   private void pullModels(final List<Integer> keys) {
-    pullTracer.startTimer();
     final Map<Integer, Vector> rMatrix = new HashMap<>(keys.size());
     final List<Vector> vectors = modelAccessor.pull(keys);
     for (int i = 0; i < keys.size(); ++i) {
@@ -272,7 +267,6 @@ final class NMFTrainer implements Trainer<NMFData> {
     }
 
     modelHolder.resetModel(new NMFModel(rMatrix));
-    pullTracer.recordTime(keys.size());
   }
 
   /**
@@ -341,11 +335,9 @@ final class NMFTrainer implements Trainer<NMFData> {
    */
   private void pushAndResetGradients(final Map<Integer, Vector> gradients) {
     // push gradients
-    pushTracer.startTimer();
     for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
       modelAccessor.push(entry.getKey(), entry.getValue());
     }
-    pushTracer.recordTime(gradients.size());
     // clear gradients
     gradients.clear();
   }
@@ -418,20 +410,22 @@ final class NMFTrainer implements Trainer<NMFData> {
   }
 
   private void resetTracers() {
-    pushTracer.resetTrace();
-    pullTracer.resetTrace();
     computeTracer.resetTrace();
+    modelAccessor.getAndResetMetrics();
   }
 
   private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount,
                                                final double elapsedTime) {
+    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
+    
     return MiniBatchResult.newBuilder()
         .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
         .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
-        .setAvgPushTime(pushTracer.avgTimePerElem())
+        .setTotalPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC))
+        .setTotalPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC))
+        .setAvgPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
+        .setAvgPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PUSH_TIME_SEC))
         .build();
   }
 
