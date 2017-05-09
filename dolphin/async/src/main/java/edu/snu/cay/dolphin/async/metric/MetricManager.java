@@ -278,7 +278,7 @@ public final class MetricManager {
     }
 
     /**
-     * Check whether the number of blocks matches with master's view.
+     * Check whether the number of blocks matches with comm's view.
      * @param numBlocks the number of blocks that source evaluator is supposed to have.
      * @param evalParams the Metric's information including the number of blocks.
      * @return {@code true} if the number of blocks matches
