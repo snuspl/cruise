@@ -55,4 +55,11 @@ final class GBTParameters {
       short_name = "num_keys")
   static final class NumKeys implements Name<Integer> {
   }
+  
+  static final class MetricKeys {
+    
+    // The key denoting the number of training data instances processed per unit time.
+    static final String DVT =
+        "GBT_DVT";
+  }
 }
