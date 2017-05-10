@@ -13,7 +13,8 @@
 # limitations under the License.
 
 # DESCRIPTION
-# Show DAG immediately and save the pdf file to ./ouput-dag
+# A script to visualize a json formatted DAG of edu.snu.cay.utils.DAGImpl
+# It outputs a pdf file to ./output-dag/
 
 # EXAMPLE_USAGE
 # python printDAG.py [filename] json_string
