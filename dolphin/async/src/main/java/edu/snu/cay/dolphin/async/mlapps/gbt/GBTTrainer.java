@@ -166,7 +166,8 @@ final class GBTTrainer implements Trainer<GBTData> {
    * Build tree for this training data based on the trees that are already built before this run iteration.
    */
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<GBTData> miniBatchTrainingData) {
+  public void runMiniBatch(final Collection<GBTData> miniBatchTrainingData) {
+    resetTracers();
     final List<GBTData> instances = new ArrayList<>(miniBatchTrainingData);
     
     // Divide into two cases : Regression / Classification
@@ -179,8 +180,6 @@ final class GBTTrainer implements Trainer<GBTData> {
     } else {
       throw new IllegalArgumentException("valueType must be either numerical type or categorical type.");
     }
-
-    return MiniBatchResult.EMPTY_RESULT;
   }
 
   /**
@@ -898,5 +897,9 @@ final class GBTTrainer implements Trainer<GBTData> {
 
   public enum ChildPosition {
     LEFT_CHILD, RIGHT_CHILD
+  }
+
+  private void resetTracers() {
+    modelAccessor.getAndResetMetrics();
   }
 }

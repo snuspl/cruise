@@ -31,6 +31,7 @@ import javax.inject.Inject;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,7 +39,7 @@ import java.util.logging.Logger;
 /**
  * REEF Task for a trainer thread of {@code dolphin-async} applications.
  */
-final class AsyncWorkerTask<K, V> implements Task {
+final class AsyncWorkerTask<K, P, V> implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
 
@@ -53,6 +54,7 @@ final class AsyncWorkerTask<K, V> implements Task {
   private final WorkerSynchronizer synchronizer;
   private final ParameterWorker parameterWorker;
   private final TrainingDataProvider<K, V> trainingDataProvider;
+  private final ModelAccessor<K, P, V> modelAccessor;
   private final TestDataProvider<V> testDataProvider;
   private final MemoryStore<K> memoryStore;
   private final Trainer<V> trainer;
@@ -75,6 +77,7 @@ final class AsyncWorkerTask<K, V> implements Task {
                           final WorkerSynchronizer synchronizer,
                           final ParameterWorker parameterWorker,
                           final TrainingDataProvider<K, V> trainingDataProvider,
+                          final ModelAccessor<K, P, V> modelAccessor,
                           final TestDataProvider<V> testDataProvider,
                           final MemoryStore<K> memoryStore,
                           final Trainer<V> trainer,
@@ -87,6 +90,7 @@ final class AsyncWorkerTask<K, V> implements Task {
     this.synchronizer = synchronizer;
     this.parameterWorker = parameterWorker;
     this.trainingDataProvider = trainingDataProvider;
+    this.modelAccessor = modelAccessor;
     this.testDataProvider = testDataProvider;
     this.memoryStore = memoryStore;
     this.trainer = trainer;
@@ -145,8 +149,8 @@ final class AsyncWorkerTask<K, V> implements Task {
         final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchTrainingData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
-        buildAndSendMiniBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
-            miniBatchTrainingData.size(), miniBatchElapsedTime);
+        buildAndSendMiniBatchMetrics(miniBatchResult,
+            epochIdx, miniBatchIdx, miniBatchTrainingData.size(), miniBatchElapsedTime);
 
         epochTrainingData.addAll(miniBatchTrainingData);
         miniBatchIdx++;
@@ -183,6 +187,13 @@ final class AsyncWorkerTask<K, V> implements Task {
                                             final int epochIdx, final int miniBatchIdx,
                                             final int processedDataItemCount,
                                             final double miniBatchElapsedTime) {
+    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
+    final double batchPullTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC);
+    final double batchPushTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC);
+    final double batchCompTime = miniBatchElapsedTime - batchPullTime - batchPushTime;
+    final double avgPullTime = modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC);
+    final double avgPushTime = modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PUSH_TIME_SEC);
+
     final WorkerMetrics miniBatchMetric = WorkerMetrics.newBuilder()
         .setMetrics(Metrics.newBuilder().setData(miniBatchResult.getAppMetrics()).build())
         .setEpochIdx(epochIdx)
@@ -190,11 +201,11 @@ final class AsyncWorkerTask<K, V> implements Task {
         .setMiniBatchSize(miniBatchSize)
         .setProcessedDataItemCount(processedDataItemCount)
         .setTotalTime(miniBatchElapsedTime)
-        .setTotalCompTime(miniBatchResult.getComputeTime())
-        .setTotalPullTime(miniBatchResult.getTotalPullTime())
-        .setTotalPushTime(miniBatchResult.getTotalPushTime())
-        .setAvgPullTime(miniBatchResult.getAvgPullTime())
-        .setAvgPushTime(miniBatchResult.getAvgPushTime())
+        .setTotalCompTime(batchCompTime)
+        .setTotalPullTime(batchPullTime)
+        .setTotalPushTime(batchPushTime)
+        .setAvgPullTime(avgPullTime)
+        .setAvgPushTime(avgPushTime)
         .setParameterWorkerMetrics(parameterWorker.buildAndResetMetrics())
         .setHostname(hostname)
         .build();

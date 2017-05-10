@@ -26,6 +26,7 @@ import javax.inject.Inject;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,7 +34,7 @@ import java.util.logging.Logger;
 /**
  * REEF Task for running Dolphin trainers on ET.
  */
-final class ETWorkerTask<K, V> implements Task {
+final class ETWorkerTask<K, P, V> implements Task {
   private static final Logger LOG = Logger.getLogger(ETWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "ETWorkerTask";
 
@@ -44,6 +45,7 @@ final class ETWorkerTask<K, V> implements Task {
   private final ProgressReporter progressReporter;
   private final WorkerGlobalBarrier workerGlobalBarrier;
   private final TrainingDataProvider<K, V> trainingDataProvider;
+  private final ModelAccessor<K, P, V> modelAccessor;
   private final TestDataProvider<V> testDataProvider;
   private final Trainer<V> trainer;
   private final MetricCollector<DolphinWorkerMetrics> metricCollector;
@@ -61,6 +63,7 @@ final class ETWorkerTask<K, V> implements Task {
                        final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,
                        final TrainingDataProvider<K, V> trainingDataProvider,
+                       final ModelAccessor<K, P, V> modelAccessor,
                        final TestDataProvider<V> testDataProvider,
                        final Trainer<V> trainer,
                        final MetricCollector<DolphinWorkerMetrics> metricCollector) {
@@ -70,6 +73,7 @@ final class ETWorkerTask<K, V> implements Task {
     this.progressReporter = progressReporter;
     this.workerGlobalBarrier = workerGlobalBarrier;
     this.trainingDataProvider = trainingDataProvider;
+    this.modelAccessor = modelAccessor;
     this.testDataProvider = testDataProvider;
     this.trainer = trainer;
     this.metricCollector = metricCollector;
@@ -101,6 +105,7 @@ final class ETWorkerTask<K, V> implements Task {
 
       int miniBatchIdx = 0;
       while (true) {
+        modelAccessor.getAndResetMetrics();
         final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData().values();
         if (miniBatchData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
@@ -109,14 +114,14 @@ final class ETWorkerTask<K, V> implements Task {
         LOG.log(Level.INFO, "Starting batch {0} in epoch {1}", new Object[] {miniBatchIdx, epochIdx});
 
         final long miniBatchStartTime = System.currentTimeMillis();
-        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchData);
+        trainer.runMiniBatch(miniBatchData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
-        sendBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
+        final MiniBatchResult miniBatchResult = buildMiniBatchResult();
+
+        updatePerOpTimeInEpochAndSendBatchMetrics(perOpTimeInEpoch, miniBatchResult, epochIdx, miniBatchIdx,
             miniBatchData.size(), miniBatchElapsedTime);
 
-        perOpTimeInEpoch.accumulate(miniBatchResult.getComputeTime(),
-            miniBatchResult.getTotalPullTime(), miniBatchResult.getTotalPushTime());
         epochData.addAll(miniBatchData);
         miniBatchIdx++;
 
@@ -141,10 +146,26 @@ final class ETWorkerTask<K, V> implements Task {
     return null;
   }
 
-  private void sendBatchMetrics(final MiniBatchResult miniBatchResult,
-                                final int epochIdx, final int miniBatchIdx,
-                                final int processedDataItemCount,
-                                final double miniBatchElapsedTime) {
+  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount,
+                                               final double elapsedTime) {
+    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
+    return MiniBatchResult.newBuilder()
+        .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
+        .build();
+  }
+
+  private void updatePerOpTimeInEpochAndSendBatchMetrics(final PerOpTimeInEpoch perOpTimeInEpoch,
+                                                         final MiniBatchResult miniBatchResult,
+                                                         final int epochIdx, final int miniBatchIdx,
+                                                         final int processedDataItemCount,
+                                                         final double miniBatchElapsedTime) {
+    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
+    final double batchPullTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC);
+    final double batchPushTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC);
+    final double batchCompTime = miniBatchElapsedTime - batchPullTime - batchPushTime;
+
+    perOpTimeInEpoch.accumulate(batchCompTime, batchPullTime, batchPushTime);
+
     // Build metrics in the batch
     final BatchMetrics batchMetrics = BatchMetrics.newBuilder()
                 .setBatchTimeSec(miniBatchElapsedTime)
@@ -155,9 +176,9 @@ final class ETWorkerTask<K, V> implements Task {
                 .setNumBatchDataInstances(processedDataItemCount)
                 .setBatchIdx(miniBatchIdx)
                 .setEpochIdx(epochIdx)
-                .setBatchPushTimeSec(miniBatchResult.getTotalPushTime())
-                .setBatchPullTimeSec(miniBatchResult.getTotalPullTime())
-                .setBatchCompTimeSec(miniBatchResult.getComputeTime())
+                .setBatchPushTimeSec(batchPushTime)
+                .setBatchPullTimeSec(batchPullTime)
+                .setBatchCompTimeSec(batchCompTime)
                 .build();
 
     // Encapsulate the metrics for ET
