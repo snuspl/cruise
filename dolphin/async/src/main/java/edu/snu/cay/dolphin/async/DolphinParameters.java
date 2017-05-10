@@ -76,7 +76,7 @@ public final class DolphinParameters {
                   default_value = "1")
   public final class NumServerCores implements Name<Integer> {
   }
-
+  
   @NamedParameter(doc = "The path of test data",
                   short_name = "test_data_path",
                   default_value = TestDataPath.NONE)
@@ -84,5 +84,10 @@ public final class DolphinParameters {
     public static final String NONE = "";
     private TestDataPath() {
     }
+  }
+  
+  static final class MetricKeys {
+    // The key denoting the number of training data instances processed per unit time.
+    static final String DVT = "DVT";
   }
 }

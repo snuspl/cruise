@@ -132,8 +132,6 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   @Override
   public void runMiniBatch(final Collection<LassoData> miniBatchTrainingData) {
-    resetTracers();
-
     final int numInstancesToProcess = miniBatchTrainingData.size();
 
     pullModels();
@@ -272,11 +270,7 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     return squaredErrorSum;
   }
-
-  private void resetTracers() {
-    modelAccessor.getAndResetMetrics();
-  }
-
+  
   private EpochResult buildEpochResult(final double trainingLoss, final double testLoss) {
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)

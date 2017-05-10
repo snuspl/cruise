@@ -98,8 +98,6 @@ final class LDATrainer implements Trainer<Document> {
 
   @Override
   public void runMiniBatch(final Collection<Document> miniBatchTrainingData) {
-    resetTracers();
-
     final List<Integer> words = getKeys(miniBatchTrainingData);
 
     pullModels(words);
@@ -207,11 +205,7 @@ final class LDATrainer implements Trainer<Document> {
 
     return result;
   }
-
-  private void resetTracers() {
-    modelAccessor.getAndResetMetrics();
-  }
-
+  
   private EpochResult buildEpochResult(final double docLLH, final double wordLLH) {
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.DOC_LLH, docLLH)

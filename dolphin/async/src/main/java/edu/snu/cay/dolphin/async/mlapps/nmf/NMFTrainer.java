@@ -128,9 +128,7 @@ final class NMFTrainer implements Trainer<NMFData> {
 
     final BlockingQueue<NMFData> instances = new ArrayBlockingQueue<>(miniBatchTrainingData.size());
     instances.addAll(miniBatchTrainingData);
-
-    resetTracers();
-
+    
     // pull data when mini-batch is started
     final List<Integer> keys = getKeys(instances);
     LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
@@ -391,11 +389,7 @@ final class NMFTrainer implements Trainer<NMFData> {
       grad.addi(newGrad);
     }
   }
-
-  private void resetTracers() {
-    modelAccessor.getAndResetMetrics();
-  }
-
+  
   private EpochResult buildEpochResult(final double trainingLoss) {
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)

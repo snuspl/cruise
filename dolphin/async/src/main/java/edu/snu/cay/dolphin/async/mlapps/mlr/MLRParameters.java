@@ -89,9 +89,5 @@ final class MLRParameters {
     // The key denoting accuracy (the number of correct inferences by the model / total number of test data inst).
     static final String TEST_ACCURACY =
         "MLR_TEST_ACCURACY";
-
-    // The key denoting the number of training data instances processed per unit time.
-    static final String DVT =
-        "MLR_DVT";
   }
 }

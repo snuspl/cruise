@@ -167,7 +167,6 @@ final class GBTTrainer implements Trainer<GBTData> {
    */
   @Override
   public void runMiniBatch(final Collection<GBTData> miniBatchTrainingData) {
-    resetTracers();
     final List<GBTData> instances = new ArrayList<>(miniBatchTrainingData);
     
     // Divide into two cases : Regression / Classification
@@ -897,9 +896,5 @@ final class GBTTrainer implements Trainer<GBTData> {
 
   public enum ChildPosition {
     LEFT_CHILD, RIGHT_CHILD
-  }
-
-  private void resetTracers() {
-    modelAccessor.getAndResetMetrics();
   }
 }

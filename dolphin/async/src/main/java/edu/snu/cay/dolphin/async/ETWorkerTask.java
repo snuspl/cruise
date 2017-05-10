@@ -23,10 +23,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -105,23 +102,21 @@ final class ETWorkerTask<K, P, V> implements Task {
 
       int miniBatchIdx = 0;
       while (true) {
-        modelAccessor.getAndResetMetrics();
         final Collection<V> miniBatchData = trainingDataProvider.getNextBatchData().values();
         if (miniBatchData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
         }
 
         LOG.log(Level.INFO, "Starting batch {0} in epoch {1}", new Object[] {miniBatchIdx, epochIdx});
-
+        
+        modelAccessor.getAndResetMetrics();
         final long miniBatchStartTime = System.currentTimeMillis();
         trainer.runMiniBatch(miniBatchData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-
-        final MiniBatchResult miniBatchResult = buildMiniBatchResult();
-
-        updatePerOpTimeInEpochAndSendBatchMetrics(perOpTimeInEpoch, miniBatchResult, epochIdx, miniBatchIdx,
-            miniBatchData.size(), miniBatchElapsedTime);
-
+        
+        updateEpochOpTimeAndSendMiniBatchMetrics(perOpTimeInEpoch,
+            epochIdx, miniBatchIdx, miniBatchData.size(), miniBatchElapsedTime);
+        
         epochData.addAll(miniBatchData);
         miniBatchIdx++;
 
@@ -145,33 +140,37 @@ final class ETWorkerTask<K, P, V> implements Task {
     trainer.cleanup();
     return null;
   }
-
-  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount,
-                                               final double elapsedTime) {
-    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-    return MiniBatchResult.newBuilder()
-        .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
-        .build();
-  }
-
-  private void updatePerOpTimeInEpochAndSendBatchMetrics(final PerOpTimeInEpoch perOpTimeInEpoch,
-                                                         final MiniBatchResult miniBatchResult,
-                                                         final int epochIdx, final int miniBatchIdx,
-                                                         final int processedDataItemCount,
-                                                         final double miniBatchElapsedTime) {
+  
+  /**
+   * Update {@code perOpTimeInEpoch} and send batch metrics.
+   * @param perOpTimeInEpoch Update with metrics collected from this mini-batch round
+   * @param epochIdx Index of the epoch
+   * @param miniBatchIdx Index of the mini-batch
+   * @param processedDataItemCount The number of items processed in the epoch
+   * @param miniBatchElapsedTime Total elapsed time in this mini-batch round
+   */
+  private void updateEpochOpTimeAndSendMiniBatchMetrics(final PerOpTimeInEpoch perOpTimeInEpoch, final int epochIdx,
+                                                        final int miniBatchIdx, final int processedDataItemCount,
+                                                        final double miniBatchElapsedTime) {
+    // Calculate mini-batch computation time by using metrics collected from ModelAccessor
     final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
     final double batchPullTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC);
     final double batchPushTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC);
     final double batchCompTime = miniBatchElapsedTime - batchPullTime - batchPushTime;
-
+    
+    // Build appMetrics map
+    final Map<CharSequence, Double> appMetrics = new HashMap<>();
+    appMetrics.put(DolphinParameters.MetricKeys.DVT, processedDataItemCount / miniBatchElapsedTime);
+    
+    // Update epoch operation time with metrics collected from this mini-batch round
     perOpTimeInEpoch.accumulate(batchCompTime, batchPullTime, batchPushTime);
-
+    
     // Build metrics in the batch
     final BatchMetrics batchMetrics = BatchMetrics.newBuilder()
                 .setBatchTimeSec(miniBatchElapsedTime)
                 .setBatchCustomMetrics(
                     Metrics.newBuilder()
-                        .setData(miniBatchResult.getAppMetrics())
+                        .setData(appMetrics)
                         .build())
                 .setNumBatchDataInstances(processedDataItemCount)
                 .setBatchIdx(miniBatchIdx)

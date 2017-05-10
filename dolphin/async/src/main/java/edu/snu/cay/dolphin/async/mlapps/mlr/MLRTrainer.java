@@ -166,8 +166,6 @@ final class MLRTrainer implements Trainer<MLRData> {
 
   @Override
   public void runMiniBatch(final Collection<MLRData> miniBatchTrainingData) {
-    resetTracers();
-
     // pull data when mini-batch is started
     pullModels();
 
@@ -434,11 +432,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     }
     return new Pair<>(maxIndex, maxValue);
   }
-
-  private void resetTracers() {
-    modelAccessor.getAndResetMetrics();
-  }
-
+  
   private EpochResult buildEpochResult(final Tuple3<Double, Double, Double> traininglossRegLossAvgAccuracy,
                                        final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy) {
     return EpochResult.newBuilder()

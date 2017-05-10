@@ -18,14 +18,12 @@ package edu.snu.cay.dolphin.async.examples.addvector;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
-import edu.snu.cay.dolphin.async.metric.Tracer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -69,9 +67,6 @@ final class AddVectorTrainer implements Trainer {
    */
   private final int expectedResult;
 
-  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer computeTracer;
-
   @Inject
   private AddVectorTrainer(final ModelAccessor<Integer, Integer, Vector> modelAccessor,
                            @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
@@ -95,8 +90,6 @@ final class AddVectorTrainer implements Trainer {
     this.expectedResult = delta * numberOfWorkers * maxNumEpochs * numMiniBatches;
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, miniBatchSize:{4}",
         new Object[]{delta, numberOfWorkers, maxNumEpochs, numTrainingData, miniBatchSize});
-
-    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -104,8 +97,7 @@ final class AddVectorTrainer implements Trainer {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection miniBatchTrainingData) {
-    resetTracers();
+  public void runMiniBatch(final Collection miniBatchTrainingData) {
     final int numDataToProcess = miniBatchTrainingData.size();
 
     // 1. pull model to compute with
@@ -114,39 +106,21 @@ final class AddVectorTrainer implements Trainer {
 
     // 2. sleep to simulate computation
     try {
-      computeTracer.startTimer();
       Thread.sleep(computeTime * numDataToProcess);
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
-    } finally {
-      computeTracer.recordTime(numDataToProcess);
     }
 
     // 3. push computed model
     for (final int key : keyList) {
       modelAccessor.push(key, delta);
     }
-
-    return buildMiniBatchResult();
   }
 
   @Override
   public EpochResult onEpochFinished(final Collection epochTrainingData, final Collection testData,
                                      final int epochIdx) {
     return EpochResult.EMPTY_RESULT;
-  }
-
-  private MiniBatchResult buildMiniBatchResult() {
-    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
-    
-    return MiniBatchResult.newBuilder()
-        .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC))
-        .setTotalPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC))
-        .setAvgPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
-        .setAvgPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PUSH_TIME_SEC))
-        .build();
   }
 
   @Override
@@ -192,10 +166,5 @@ final class AddVectorTrainer implements Trainer {
       }
     }
     return isSuccess;
-  }
-
-  private void resetTracers() {
-    computeTracer.resetTrace();
-    modelAccessor.getAndResetMetrics();
   }
 }
