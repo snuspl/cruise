@@ -15,10 +15,14 @@
  */
 package edu.snu.cay.utils;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * This implements DAG with adjacent list.
@@ -43,6 +47,11 @@ public final class DAGImpl<V> implements DAG<V> {
    * A set of root vertices.
    */
   private final Set<V> rootVertices = new HashSet<>();
+
+  /**
+   * The current number of vertices.
+   */
+  private int numVertices = 0;
 
   @Override
   public Set<V> getRootVertices() {
@@ -70,6 +79,7 @@ public final class DAGImpl<V> implements DAG<V> {
       adjacent.put(v, new HashSet<>());
       inDegrees.put(v, 0);
       rootVertices.add(v);
+      numVertices++;
       return true;
     } else {
       LOG.log(Level.WARNING, "The vertex {0} already exists", v);
@@ -92,6 +102,7 @@ public final class DAGImpl<V> implements DAG<V> {
         }
       }
       rootVertices.remove(v);
+      numVertices--;
       return true;
     } else {
       LOG.log(Level.WARNING, "The vertex {0} does exists", v);
@@ -153,5 +164,32 @@ public final class DAGImpl<V> implements DAG<V> {
       throw new NoSuchElementException("No src vertex " + v);
     }
     return inDegree;
+  }
+
+  @Override
+  public int getNumVertices() {
+    return numVertices;
+  }
+
+  @Override
+  public String toString() {
+    return "DAGImpl{" +
+      "rootVertices=" + rootVertices +
+      ", adjacentList=" + adjacent + "}";
+  }
+
+  @Override
+  public String toJSON() {
+    final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+    final Set<String> rootVerticesOfString = rootVertices.stream().map(Object::toString).collect(Collectors.toSet());
+    final Map<String, Set<String>> adjacentOfString = new HashMap<>();
+    adjacent.entrySet().forEach(v -> {
+      final String keyString = v.getKey().toString();
+      final Set<String> setString = v.getValue().stream().map(Object::toString).collect(Collectors.toSet());
+      adjacentOfString.put(keyString, setString);
+    });
+
+    return "{" + "\"rootVertices\":" + gson.toJson(rootVerticesOfString) +
+        ",\"adjacent\":" + gson.toJson(adjacentOfString) + "}";
   }
 }
