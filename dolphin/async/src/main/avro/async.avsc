@@ -32,6 +32,9 @@
     {"name": "parameterWorkerMetrics", "type": ["null", "edu.snu.cay.dolphin.async.metric.avro.ParameterWorkerMetrics"],
      "default":null},
 
+    // number of data processed in unit time
+    {"name": "dataProcessingRate", "type": ["null", "double"], "default": null},
+
     // epoch index
     {"name": "epochIdx", "type": "int", "default": 0},
 

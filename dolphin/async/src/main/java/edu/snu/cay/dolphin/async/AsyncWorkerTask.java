@@ -36,7 +36,7 @@ import java.util.logging.Logger;
 /**
  * REEF Task for a trainer thread of {@code dolphin-async} applications.
  */
-final class AsyncWorkerTask<K, P, V> implements Task {
+final class AsyncWorkerTask<K, V> implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
 
@@ -51,7 +51,7 @@ final class AsyncWorkerTask<K, P, V> implements Task {
   private final WorkerSynchronizer synchronizer;
   private final ParameterWorker parameterWorker;
   private final TrainingDataProvider<K, V> trainingDataProvider;
-  private final ModelAccessor<K, P, V> modelAccessor;
+  private final ModelAccessor modelAccessor;
   private final TestDataProvider<V> testDataProvider;
   private final MemoryStore<K> memoryStore;
   private final Trainer<V> trainer;
@@ -74,7 +74,7 @@ final class AsyncWorkerTask<K, P, V> implements Task {
                           final WorkerSynchronizer synchronizer,
                           final ParameterWorker parameterWorker,
                           final TrainingDataProvider<K, V> trainingDataProvider,
-                          final ModelAccessor<K, P, V> modelAccessor,
+                          final ModelAccessor modelAccessor,
                           final TestDataProvider<V> testDataProvider,
                           final MemoryStore<K> memoryStore,
                           final Trainer<V> trainer,
@@ -197,13 +197,10 @@ final class AsyncWorkerTask<K, P, V> implements Task {
     final double batchCompTime = miniBatchElapsedTime - batchPullTime - batchPushTime;
     final double avgPullTime = modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC);
     final double avgPushTime = modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PUSH_TIME_SEC);
-  
-    // Build appMetrics map
-    final Map<CharSequence, Double> appMetrics = new HashMap<>();
-    appMetrics.put(DolphinParameters.MetricKeys.DVT, processedDataItemCount / miniBatchElapsedTime);
+    final double dataProcessingRate = processedDataItemCount / miniBatchElapsedTime;
   
     final WorkerMetrics miniBatchMetric = WorkerMetrics.newBuilder()
-        .setMetrics(Metrics.newBuilder().setData(appMetrics).build())
+        .setDataProcessingRate(dataProcessingRate)
         .setEpochIdx(epochIdx)
         .setMiniBatchIdx(miniBatchIdx)
         .setMiniBatchSize(miniBatchSize)

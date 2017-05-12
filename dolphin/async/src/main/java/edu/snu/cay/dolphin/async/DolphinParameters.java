@@ -85,9 +85,4 @@ public final class DolphinParameters {
     private TestDataPath() {
     }
   }
-  
-  static final class MetricKeys {
-    // The key denoting the number of training data instances processed per unit time.
-    static final String DVT = "DVT";
-  }
 }

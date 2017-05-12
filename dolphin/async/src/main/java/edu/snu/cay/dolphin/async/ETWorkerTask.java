@@ -31,7 +31,7 @@ import java.util.logging.Logger;
 /**
  * REEF Task for running Dolphin trainers on ET.
  */
-final class ETWorkerTask<K, P, V> implements Task {
+final class ETWorkerTask<K, V> implements Task {
   private static final Logger LOG = Logger.getLogger(ETWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "ETWorkerTask";
 
@@ -42,7 +42,7 @@ final class ETWorkerTask<K, P, V> implements Task {
   private final ProgressReporter progressReporter;
   private final WorkerGlobalBarrier workerGlobalBarrier;
   private final TrainingDataProvider<K, V> trainingDataProvider;
-  private final ModelAccessor<K, P, V> modelAccessor;
+  private final ModelAccessor modelAccessor;
   private final TestDataProvider<V> testDataProvider;
   private final Trainer<V> trainer;
   private final MetricCollector<DolphinWorkerMetrics> metricCollector;
@@ -60,7 +60,7 @@ final class ETWorkerTask<K, P, V> implements Task {
                        final ProgressReporter progressReporter,
                        final WorkerGlobalBarrier workerGlobalBarrier,
                        final TrainingDataProvider<K, V> trainingDataProvider,
-                       final ModelAccessor<K, P, V> modelAccessor,
+                       final ModelAccessor modelAccessor,
                        final TestDataProvider<V> testDataProvider,
                        final Trainer<V> trainer,
                        final MetricCollector<DolphinWorkerMetrics> metricCollector) {
@@ -114,7 +114,7 @@ final class ETWorkerTask<K, P, V> implements Task {
         trainer.runMiniBatch(miniBatchData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
         
-        updateEpochOpTimeAndSendMiniBatchMetrics(perOpTimeInEpoch,
+        sendMiniBatchMetricsAndUpdateEpochOpTime(perOpTimeInEpoch,
             epochIdx, miniBatchIdx, miniBatchData.size(), miniBatchElapsedTime);
         
         epochData.addAll(miniBatchData);
@@ -149,7 +149,7 @@ final class ETWorkerTask<K, P, V> implements Task {
    * @param processedDataItemCount The number of items processed in the epoch
    * @param miniBatchElapsedTime Total elapsed time in this mini-batch round
    */
-  private void updateEpochOpTimeAndSendMiniBatchMetrics(final PerOpTimeInEpoch perOpTimeInEpoch, final int epochIdx,
+  private void sendMiniBatchMetricsAndUpdateEpochOpTime(final PerOpTimeInEpoch perOpTimeInEpoch, final int epochIdx,
                                                         final int miniBatchIdx, final int processedDataItemCount,
                                                         final double miniBatchElapsedTime) {
     // Calculate mini-batch computation time by using metrics collected from ModelAccessor
@@ -157,10 +157,7 @@ final class ETWorkerTask<K, P, V> implements Task {
     final double batchPullTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC);
     final double batchPushTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC);
     final double batchCompTime = miniBatchElapsedTime - batchPullTime - batchPushTime;
-    
-    // Build appMetrics map
-    final Map<CharSequence, Double> appMetrics = new HashMap<>();
-    appMetrics.put(DolphinParameters.MetricKeys.DVT, processedDataItemCount / miniBatchElapsedTime);
+    final double dataProcessingRate = processedDataItemCount / miniBatchElapsedTime;
     
     // Update epoch operation time with metrics collected from this mini-batch round
     perOpTimeInEpoch.accumulate(batchCompTime, batchPullTime, batchPushTime);
@@ -168,10 +165,7 @@ final class ETWorkerTask<K, P, V> implements Task {
     // Build metrics in the batch
     final BatchMetrics batchMetrics = BatchMetrics.newBuilder()
                 .setBatchTimeSec(miniBatchElapsedTime)
-                .setBatchCustomMetrics(
-                    Metrics.newBuilder()
-                        .setData(appMetrics)
-                        .build())
+                .setDataProcessingRate(dataProcessingRate)
                 .setNumBatchDataInstances(processedDataItemCount)
                 .setBatchIdx(miniBatchIdx)
                 .setEpochIdx(epochIdx)

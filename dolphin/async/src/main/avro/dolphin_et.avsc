@@ -42,6 +42,9 @@
   "name": "BatchMetrics",
   "fields":
   [
+    // number of data processed in unit time
+    {"name": "dataProcessingRate", "type": ["null", "double"], "default": null},
+
     // epoch index
     {"name": "epochIdx", "type": "int"},
 
