@@ -181,11 +181,11 @@ final class AsyncWorkerTask<K, V> implements Task {
   }
   
   /**
-   * Send batch metrics.
+   * Send mini-batch metrics.
    * @param epochIdx Index of the epoch
    * @param miniBatchIdx Index of the mini-batch
-   * @param processedDataItemCount The number of items processed in the epoch
-   * @param miniBatchElapsedTime Total elapsed time in this mini-batch round
+   * @param processedDataItemCount The number of items processed in the mini-batch
+   * @param miniBatchElapsedTime Total elapsed time in the mini-batch
    */
   private void sendMiniBatchMetrics(final int epochIdx, final int miniBatchIdx,
                                     final int processedDataItemCount,
