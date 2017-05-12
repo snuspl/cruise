@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.pregel.comm;
 
 /**
- * Created by cmslab on 5/8/17.
+ * API of graph related objects.
  */
-public class PregelDriver {
-}
+package edu.snu.cay.pregel.graph.impl;

@@ -17,10 +17,16 @@ package edu.snu.cay.pregel.comm;
 
 
 import org.apache.reef.client.DriverConfiguration;
+import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.util.EnvironmentUtils;
+
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Launcher for Pregel application.
@@ -28,38 +34,34 @@ import org.apache.reef.util.EnvironmentUtils;
 
 public final class PregelLauncher {
 
+  private static final Logger LOG = Logger.getLogger(PregelLauncher.class.getName());
+
   private static final int JOB_TIMEOUT = 300000;
-  private static final int MAX_NUMBER_OF_EVALUATORS = 10;
+  private static final int MAX_NUMBER_OF_EVALUATORS = 2;
+  private static final String DRIVER_IDENTIFIER = "Pregel";
 
   private PregelLauncher() {
 
   }
 
-  public static LauncherStatus launch() {
+  public static void main(final String[] args) throws InjectionException, IOException {
+    final LauncherStatus status = launch();
+    LOG.log(Level.INFO, "Pregel job completed: {0}", status);
+  }
+
+  public static LauncherStatus launch() throws InjectionException {
     final Configuration runtimeConfiguration = LocalRuntimeConfiguration.CONF
         .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, MAX_NUMBER_OF_EVALUATORS)
         .build();
 
-    /*
     final Configuration driverConfiguration = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(PregelDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(PregelMaster.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, DRIVER_IDENTIFIER)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, PlanETDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, PregelMaster.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, PregelMaster.EvaluatorAllocatedHandler.class)
         .build();
 
-    final Configuration etMasterConfiguration = ETDriverConfiguration.CONF.build();
-    final Configuration nameServerConfiguration = NameServerConfiguration.CONF.build();
-    final Configuration nameClientConfiguration = LocalNameResolverConfiguration.CONF.build();
-    final Configuration implConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-        .build();
-
-    return DriverLauncher.getLauncher(runtimeConfiguration)
-        .run(Configurations.merge(driverConfiguration,
-            etMasterConfiguration, nameServerConfiguration, nameClientConfiguration,
-            implConfiguration), JOB_TIMEOUT);
-            */
-    return LauncherStatus.COMPLETED;
+    return DriverLauncher.getLauncher(runtimeConfiguration).run(driverConfiguration, JOB_TIMEOUT);
   }
 
 }
