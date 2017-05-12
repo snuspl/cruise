@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.mlapps.lda;
 
 import com.google.common.collect.Table;
 import edu.snu.cay.dolphin.async.*;
-import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.mlapps.lda.LDAParameters.*;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -51,9 +50,6 @@ final class LDATrainer implements Trainer<Document> {
    */
   private final ModelHolder<LDAModel> modelHolder;
 
-  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer computeTracer;
-
   @Inject
   private LDATrainer(final SparseLDASampler sampler,
                      final LDAStatCalculator statCalculator,
@@ -78,7 +74,6 @@ final class LDATrainer implements Trainer<Document> {
     this.numTopics = numTopics;
 
     this.modelHolder = modelHolder;
-    this.computeTracer = new Tracer();
 
     LOG.log(Level.INFO, "Number of Trainer threads = {0}", numTrainerThreads);
     LOG.log(Level.INFO, "Number of instances per mini-batch = {0}", miniBatchSize);
@@ -102,28 +97,17 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<Document> miniBatchTrainingData) {
-    resetTracers();
-
-    final long miniBatchStartTime = System.currentTimeMillis();
-
+  public void runMiniBatch(final Collection<Document> miniBatchTrainingData) {
     final List<Integer> words = getKeys(miniBatchTrainingData);
-    final int numInstancesToProcess = miniBatchTrainingData.size();
 
     pullModels(words);
 
-    computeTracer.startTimer();
     final List<TopicChanges> results = sampler.sample(miniBatchTrainingData);
-    computeTracer.recordTime(numInstancesToProcess);
 
     final TopicChanges aggregated = aggregateChanges(results);
 
     // push gradients
     pushAndResetGradients(aggregated);
-
-    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-
-    return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
   }
 
   @Override
@@ -186,7 +170,6 @@ final class LDATrainer implements Trainer<Document> {
   private void pushAndResetGradients(final TopicChanges topicChanges) {
     final Table<Integer, Integer, Integer> changedTopicCount = topicChanges.getTable();
     for (final int changedWord : changedTopicCount.rowKeySet()) {
-      computeTracer.startTimer();
       final Map<Integer, Integer> changedTopicCountsForWord = changedTopicCount.row(changedWord);
       final int numChangedTopics = changedTopicCountsForWord.size();
 
@@ -199,7 +182,6 @@ final class LDATrainer implements Trainer<Document> {
         parameters[2 * i + 1] = entry.getValue();
         i++;
       }
-      computeTracer.recordTime(0);
 
       modelAccessor.push(changedWord, parameters);
     }
@@ -211,8 +193,6 @@ final class LDATrainer implements Trainer<Document> {
   }
 
   private List<Integer> getKeys(final Collection<Document> documents) {
-    computeTracer.startTimer();
-
     final Set<Integer> keys = new TreeSet<>();
     for (final Document document : documents) {
       keys.addAll(document.getWords());
@@ -223,29 +203,9 @@ final class LDATrainer implements Trainer<Document> {
     // numVocabs-th row represents the total word-topic assignment count vector
     result.add(numVocabs);
 
-    computeTracer.recordTime(0);
-
     return result;
   }
-
-  private void resetTracers() {
-    computeTracer.resetTrace();
-    modelAccessor.getAndResetMetrics();
-  }
-
-  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
-    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
-    return MiniBatchResult.newBuilder()
-        .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
-        .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC))
-        .setTotalPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC))
-        .setAvgPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
-        .setAvgPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PUSH_TIME_SEC))
-        .build();
-  }
-
+  
   private EpochResult buildEpochResult(final double docLLH, final double wordLLH) {
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.DOC_LLH, docLLH)

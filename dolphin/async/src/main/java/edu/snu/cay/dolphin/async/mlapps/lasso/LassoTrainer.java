@@ -20,7 +20,6 @@ import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.dolphin.async.mlapps.lasso.LassoParameters.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -82,12 +81,6 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   private final int numFeaturesPerPartition;
 
-  /**
-   * To collect metric data.
-   */
-  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer computeTracer;
-
   @Inject
   private LassoTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
                        @Parameter(Lambda.class) final double lambda,
@@ -122,8 +115,6 @@ final class LassoTrainer implements Trainer<LassoData> {
     for (int partitionIdx = 0; partitionIdx < numPartitions; partitionIdx++) {
       modelPartitionIndices.add(partitionIdx);
     }
-
-    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -140,15 +131,11 @@ final class LassoTrainer implements Trainer<LassoData> {
    * 3) Push value to server.
    */
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<LassoData> miniBatchTrainingData) {
-    resetTracer();
-
+  public void runMiniBatch(final Collection<LassoData> miniBatchTrainingData) {
     final int numInstancesToProcess = miniBatchTrainingData.size();
-    final long miniBatchStartTime = System.currentTimeMillis();
 
     pullModels();
 
-    computeTracer.startTimer();
     // After get feature vectors from each instances, make it concatenate them into matrix for the faster calculation.
     // Pre-calculate sigma_{all j} x_j * model(j) and assign the value into 'preCalculate' vector.
     final Pair<Matrix, Vector> featureMatrixAndValues = convertToFeaturesAndValues(miniBatchTrainingData);
@@ -174,13 +161,8 @@ final class LassoTrainer implements Trainer<LassoData> {
       newModel.set(featureIdx, sthresh((columnVector.dot(yValues.sub(preCalculate))) / columnNorm, lambda, columnNorm));
       preCalculate.addi(columnVector.scale(newModel.get(featureIdx)));
     }
-    computeTracer.recordTime(numInstancesToProcess);
 
     pushGradients();
-
-    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-
-    return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
   }
 
   @Override
@@ -236,19 +218,15 @@ final class LassoTrainer implements Trainer<LassoData> {
    */
   private void pullModels() {
     final List<Vector> partialModels = modelAccessor.pull(modelPartitionIndices);
-    computeTracer.startTimer();
     oldModel = vectorFactory.concatDense(partialModels);
     newModel = oldModel.copy();
-    computeTracer.recordTime(0);
   }
 
   /**
    * Push the gradients to parameter server.
    */
   private void pushGradients() {
-    computeTracer.startTimer();
     final Vector gradient = newModel.sub(oldModel);
-    computeTracer.recordTime(0);
     for (int partitionIndex = 0; partitionIndex < numPartitions; ++partitionIndex) {
       final int partitionStart = partitionIndex * numFeaturesPerPartition;
       final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
@@ -292,26 +270,7 @@ final class LassoTrainer implements Trainer<LassoData> {
 
     return squaredErrorSum;
   }
-
-  private void resetTracer() {
-    computeTracer.resetTrace();
-    modelAccessor.getAndResetMetrics();
-  }
-
-  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
-    // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
-    
-    return MiniBatchResult.newBuilder()
-        .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
-        .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC))
-        .setTotalPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC))
-        .setAvgPullTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC))
-        .setAvgPushTime(modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PUSH_TIME_SEC))
-        .build();
-  }
-
+  
   private EpochResult buildEpochResult(final double trainingLoss, final double testLoss) {
     return EpochResult.newBuilder()
         .addAppMetric(MetricKeys.TRAINING_LOSS, trainingLoss)

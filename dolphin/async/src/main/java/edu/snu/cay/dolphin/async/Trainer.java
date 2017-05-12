@@ -57,7 +57,7 @@ public interface Trainer<D> {
    *                      (at most {@link edu.snu.cay.dolphin.async.DolphinParameters.MiniBatchSize} instances.
    * @return a result of the mini-batch
    */
-  MiniBatchResult runMiniBatch(Collection<D> miniBatchTrainingData);
+  void runMiniBatch(Collection<D> miniBatchTrainingData);
 
   /**
    * EventHandler that is called when an epoch is finished.

@@ -28,9 +28,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,6 +51,7 @@ final class AsyncWorkerTask<K, V> implements Task {
   private final WorkerSynchronizer synchronizer;
   private final ParameterWorker parameterWorker;
   private final TrainingDataProvider<K, V> trainingDataProvider;
+  private final ModelAccessor modelAccessor;
   private final TestDataProvider<V> testDataProvider;
   private final MemoryStore<K> memoryStore;
   private final Trainer<V> trainer;
@@ -75,6 +74,7 @@ final class AsyncWorkerTask<K, V> implements Task {
                           final WorkerSynchronizer synchronizer,
                           final ParameterWorker parameterWorker,
                           final TrainingDataProvider<K, V> trainingDataProvider,
+                          final ModelAccessor modelAccessor,
                           final TestDataProvider<V> testDataProvider,
                           final MemoryStore<K> memoryStore,
                           final Trainer<V> trainer,
@@ -87,6 +87,7 @@ final class AsyncWorkerTask<K, V> implements Task {
     this.synchronizer = synchronizer;
     this.parameterWorker = parameterWorker;
     this.trainingDataProvider = trainingDataProvider;
+    this.modelAccessor = modelAccessor;
     this.testDataProvider = testDataProvider;
     this.memoryStore = memoryStore;
     this.trainer = trainer;
@@ -140,13 +141,13 @@ final class AsyncWorkerTask<K, V> implements Task {
         if (miniBatchTrainingData.isEmpty()) {
           break; // Finish the epoch when there are no more data to process
         }
-
+        
+        modelAccessor.getAndResetMetrics();
         final long miniBatchStartTime = System.currentTimeMillis();
-        final MiniBatchResult miniBatchResult = trainer.runMiniBatch(miniBatchTrainingData);
+        trainer.runMiniBatch(miniBatchTrainingData);
         final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
 
-        buildAndSendMiniBatchMetrics(miniBatchResult, epochIdx, miniBatchIdx,
-            miniBatchTrainingData.size(), miniBatchElapsedTime);
+        sendMiniBatchMetrics(epochIdx, miniBatchIdx, miniBatchTrainingData.size(), miniBatchElapsedTime);
 
         epochTrainingData.addAll(miniBatchTrainingData);
         miniBatchIdx++;
@@ -178,23 +179,38 @@ final class AsyncWorkerTask<K, V> implements Task {
     workerClock.recordClockNetworkWaitingTime();
     return null;
   }
-
-  private void buildAndSendMiniBatchMetrics(final MiniBatchResult miniBatchResult,
-                                            final int epochIdx, final int miniBatchIdx,
-                                            final int processedDataItemCount,
-                                            final double miniBatchElapsedTime) {
+  
+  /**
+   * Send mini-batch metrics.
+   * @param epochIdx Index of the epoch
+   * @param miniBatchIdx Index of the mini-batch
+   * @param processedDataItemCount The number of items processed in the mini-batch
+   * @param miniBatchElapsedTime Total elapsed time in the mini-batch
+   */
+  private void sendMiniBatchMetrics(final int epochIdx, final int miniBatchIdx,
+                                    final int processedDataItemCount,
+                                    final double miniBatchElapsedTime) {
+    // Calculate mini-batch computation time by using metrics collected from ModelAccessor
+    final Map<String, Double> modelAccessorMetrics = modelAccessor.getAndResetMetrics();
+    final double batchPullTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PULL_TIME_SEC);
+    final double batchPushTime = modelAccessorMetrics.get(ModelAccessor.METRIC_TOTAL_PUSH_TIME_SEC);
+    final double batchCompTime = miniBatchElapsedTime - batchPullTime - batchPushTime;
+    final double avgPullTime = modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PULL_TIME_SEC);
+    final double avgPushTime = modelAccessorMetrics.get(ModelAccessor.METRIC_AVG_PUSH_TIME_SEC);
+    final double dataProcessingRate = processedDataItemCount / miniBatchElapsedTime;
+  
     final WorkerMetrics miniBatchMetric = WorkerMetrics.newBuilder()
-        .setMetrics(Metrics.newBuilder().setData(miniBatchResult.getAppMetrics()).build())
+        .setDataProcessingRate(dataProcessingRate)
         .setEpochIdx(epochIdx)
         .setMiniBatchIdx(miniBatchIdx)
         .setMiniBatchSize(miniBatchSize)
         .setProcessedDataItemCount(processedDataItemCount)
         .setTotalTime(miniBatchElapsedTime)
-        .setTotalCompTime(miniBatchResult.getComputeTime())
-        .setTotalPullTime(miniBatchResult.getTotalPullTime())
-        .setTotalPushTime(miniBatchResult.getTotalPushTime())
-        .setAvgPullTime(miniBatchResult.getAvgPullTime())
-        .setAvgPushTime(miniBatchResult.getAvgPushTime())
+        .setTotalCompTime(batchCompTime)
+        .setTotalPullTime(batchPullTime)
+        .setTotalPushTime(batchPushTime)
+        .setAvgPullTime(avgPullTime)
+        .setAvgPushTime(avgPushTime)
         .setParameterWorkerMetrics(parameterWorker.buildAndResetMetrics())
         .setHostname(hostname)
         .build();
