@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.mlapps.mlr;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.dolphin.async.*;
-import edu.snu.cay.dolphin.async.metric.Tracer;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
@@ -107,11 +106,6 @@ final class MLRTrainer implements Trainer<MLRData> {
    */
   private final ModelHolder<MLRModel> modelHolder;
 
-  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer pushTracer;
-  private final Tracer pullTracer;
-  private final Tracer computeTracer;
-
   @Inject
   private MLRTrainer(final ModelAccessor<Integer, Vector, Vector> modelAccessor,
                      @Parameter(NumClasses.class) final int numClasses,
@@ -150,10 +144,6 @@ final class MLRTrainer implements Trainer<MLRData> {
     this.numTrainerThreads = numTrainerThreads;
     this.executor = Executors.newFixedThreadPool(numTrainerThreads);
 
-    this.pushTracer = new Tracer();
-    this.pullTracer = new Tracer();
-    this.computeTracer = new Tracer();
-
     this.classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
@@ -175,11 +165,7 @@ final class MLRTrainer implements Trainer<MLRData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<MLRData> miniBatchTrainingData) {
-    resetTracers();
-
-    final long miniBatchStartTime = System.currentTimeMillis();
-
+  public void runMiniBatch(final Collection<MLRData> miniBatchTrainingData) {
     // pull data when mini-batch is started
     pullModels();
 
@@ -187,13 +173,10 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     final BlockingQueue<MLRData> instances = new ArrayBlockingQueue<>(miniBatchTrainingData.size());
     instances.addAll(miniBatchTrainingData);
-    final int numInstancesToProcess = instances.size();
 
     // collects the results (new models here) computed by multiple threads
     final List<Future<MLRModel>> futures = new ArrayList<>(numTrainerThreads);
     try {
-      computeTracer.startTimer();
-
       // Threads drain multiple instances from shared queue, as many as nInstances / (nThreads)^2.
       // This way we can mitigate the slowdown from straggler threads.
       final int drainSize = Math.min(instances.size() / numTrainerThreads / numTrainerThreads, 1);
@@ -223,7 +206,6 @@ final class MLRTrainer implements Trainer<MLRData> {
         futures.add(future);
       }
       latch.await();
-      computeTracer.recordTime(numInstancesToProcess);
     } catch (final InterruptedException e) {
       LOG.log(Level.SEVERE, "Exception occurred.", e);
       throw new RuntimeException(e);
@@ -234,10 +216,6 @@ final class MLRTrainer implements Trainer<MLRData> {
 
     // push gradients
     pushAndResetGradients(gradients);
-
-    final double miniBatchElapsedTime = (System.currentTimeMillis() - miniBatchStartTime) / 1000.0D;
-
-    return buildMiniBatchResult(numInstancesToProcess, miniBatchElapsedTime);
   }
 
   @Override
@@ -276,11 +254,8 @@ final class MLRTrainer implements Trainer<MLRData> {
    * Pull up-to-date model parameters from server, which become accessible via {@link ModelHolder#getModel()}.
    */
   private void pullModels() {
-    pullTracer.startTimer();
     final List<Vector> partitions = modelAccessor.pull(classPartitionIndices);
-    pullTracer.recordTime(partitions.size());
 
-    computeTracer.startTimer();
     final Vector[] newParams = new Vector[numClasses];
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       // 0 ~ (numPartitionsPerClass - 1) is for class 0
@@ -295,7 +270,6 @@ final class MLRTrainer implements Trainer<MLRData> {
     }
 
     modelHolder.resetModel(new MLRModel(newParams));
-    computeTracer.recordTime(0);
   }
 
   /**
@@ -360,18 +334,14 @@ final class MLRTrainer implements Trainer<MLRData> {
    */
   private void pushAndResetGradients(final Vector[] gradients) {
     for (int classIndex = 0; classIndex < numClasses; classIndex++) {
-      computeTracer.startTimer();
       final Vector gradient = gradients[classIndex];
-      computeTracer.recordTime(0);
 
-      pushTracer.startTimer();
       for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
         final int partitionStart = partitionIndex * numFeaturesPerPartition;
         final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
         modelAccessor.push(classIndex * numPartitionsPerClass + partitionIndex,
             gradient.slice(partitionStart, partitionEnd));
       }
-      pushTracer.recordTime(numPartitionsPerClass);
     }
   }
 
@@ -462,24 +432,7 @@ final class MLRTrainer implements Trainer<MLRData> {
     }
     return new Pair<>(maxIndex, maxValue);
   }
-
-  private void resetTracers() {
-    pushTracer.resetTrace();
-    pullTracer.resetTrace();
-    computeTracer.resetTrace();
-  }
-
-  private MiniBatchResult buildMiniBatchResult(final int numProcessedDataItemCount, final double elapsedTime) {
-    return MiniBatchResult.newBuilder()
-        .setAppMetric(MetricKeys.DVT, numProcessedDataItemCount / elapsedTime)
-        .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
-        .setAvgPushTime(pushTracer.avgTimePerElem())
-        .build();
-  }
-
+  
   private EpochResult buildEpochResult(final Tuple3<Double, Double, Double> traininglossRegLossAvgAccuracy,
                                        final Tuple3<Double, Double, Double> testLossRegLossAvgAccuracy) {
     return EpochResult.newBuilder()

@@ -76,7 +76,7 @@ public final class DolphinParameters {
                   default_value = "1")
   public final class NumServerCores implements Name<Integer> {
   }
-
+  
   @NamedParameter(doc = "The path of test data",
                   short_name = "test_data_path",
                   default_value = TestDataPath.NONE)

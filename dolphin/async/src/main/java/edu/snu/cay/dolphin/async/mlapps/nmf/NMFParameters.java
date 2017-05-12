@@ -70,9 +70,5 @@ final class NMFParameters {
     // The key denoting the total loss computed from training data instances.
     static final String TRAINING_LOSS =
         "NMF_TRAINING_LOSS";
-
-    // The key denoting the number of training data instances processed per unit time.
-    static final String DVT =
-        "NMF_DVT";
   }
 }

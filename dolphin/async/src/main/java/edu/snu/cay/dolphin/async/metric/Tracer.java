@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 /**
  * This class allows timestamps to be taken at different points of a job's progress.
  *
@@ -22,6 +24,7 @@ package edu.snu.cay.dolphin.async.metric;
  * It also tracks the total number of measurements taken as well as the number of elements processed
  * during time intervals.
  */
+@NotThreadSafe
 public class Tracer {
   private long begin;
   private long sum = 0;

@@ -82,7 +82,7 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection<NeuralNetworkData> miniBatchTrainingData) {
+  public void runMiniBatch(final Collection<NeuralNetworkData> miniBatchTrainingData) {
     for (final NeuralNetworkData data : miniBatchTrainingData) {
       if (data.isValidation()) {
         continue;
@@ -98,8 +98,6 @@ final class NeuralNetworkTrainer implements Trainer<NeuralNetworkData> {
       neuralNetwork.train(input, labels);
       MatrixUtils.free(input);
     }
-
-    return MiniBatchResult.EMPTY_RESULT;
   }
 
   @Override

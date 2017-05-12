@@ -68,9 +68,5 @@ final class LassoParameters {
     // The key denoting the sum of loss computed from the test data instances.
     static final String TEST_LOSS =
         "LASSO_TEST_LOSS";
-
-    // The key denoting the number of training data instances processed per unit time.
-    static final String DVT =
-        "LASSO_DVT";
   }
 }

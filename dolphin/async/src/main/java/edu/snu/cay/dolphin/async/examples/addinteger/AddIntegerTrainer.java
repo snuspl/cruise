@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.dolphin.async.*;
 import edu.snu.cay.dolphin.async.examples.common.ExampleParameters;
-import edu.snu.cay.dolphin.async.metric.Tracer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -65,11 +64,6 @@ final class AddIntegerTrainer implements Trainer {
    */
   private final int expectedResult;
 
-  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
-  private final Tracer pushTracer;
-  private final Tracer pullTracer;
-  private final Tracer computeTracer;
-
   @Inject
   private AddIntegerTrainer(final ModelAccessor<Integer, Integer, Integer> modelAccessor,
                             @Parameter(DolphinParameters.MaxNumEpochs.class) final int maxNumEpochs,
@@ -89,10 +83,6 @@ final class AddIntegerTrainer implements Trainer {
     this.expectedResult = delta * numberOfWorkers * maxNumEpochs * numMiniBatches;
     LOG.log(Level.INFO, "delta:{0}, numWorkers:{1}, maxNumEpochs:{2}, numTrainingData:{3}, numMiniBatches:{4}",
         new Object[]{delta, numberOfWorkers, maxNumEpochs, numTrainingData, numMiniBatches});
-
-    this.pushTracer = new Tracer();
-    this.pullTracer = new Tracer();
-    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -100,47 +90,25 @@ final class AddIntegerTrainer implements Trainer {
   }
 
   @Override
-  public MiniBatchResult runMiniBatch(final Collection miniBatchTrainingData) {
-    resetTracers();
-
-    // sleep to simulate computation
-    computeTracer.startTimer();
+  public void runMiniBatch(final Collection miniBatchTrainingData) {
     try {
       Thread.sleep(computeTime * miniBatchTrainingData.size());
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
-    } finally {
-      computeTracer.recordTime(1);
     }
 
     for (int key = 0; key < numberOfKeys; key++) {
-      pushTracer.startTimer();
       modelAccessor.push(key, delta);
-      pushTracer.recordTime(1);
 
-      pullTracer.startTimer();
       final Integer value = modelAccessor.pull(key);
-      pullTracer.recordTime(1);
       LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{key, value});
     }
-
-    return buildMiniBatchResult();
   }
 
   @Override
   public EpochResult onEpochFinished(final Collection epochTrainingData, final Collection testData,
                                      final int epochIdx) {
     return EpochResult.EMPTY_RESULT;
-  }
-
-  private MiniBatchResult buildMiniBatchResult() {
-    return MiniBatchResult.newBuilder()
-        .setComputeTime(computeTracer.totalElapsedTime())
-        .setTotalPullTime(pullTracer.totalElapsedTime())
-        .setTotalPushTime(pushTracer.totalElapsedTime())
-        .setAvgPullTime(pullTracer.avgTimePerElem())
-        .setAvgPushTime(pushTracer.avgTimePerElem())
-        .build();
   }
 
   @Override
@@ -181,11 +149,5 @@ final class AddIntegerTrainer implements Trainer {
       }
     }
     return isSuccess;
-  }
-
-  private void resetTracers() {
-    pushTracer.resetTrace();
-    pullTracer.resetTrace();
-    computeTracer.resetTrace();
   }
 }
