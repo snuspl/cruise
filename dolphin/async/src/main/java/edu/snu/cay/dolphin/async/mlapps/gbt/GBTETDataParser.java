@@ -52,21 +52,24 @@ final class GBTETDataParser implements DataParser<GBTData> {
   @Override
   public List<GBTData> parse(final Collection<String> rawData) {
     final List<GBTData> retList = new LinkedList<>();
-    for (final String value : rawData) {
-      final String line = value.trim();
+    for (final String datum : rawData) {
+      final String line = datum.trim();
       if (line.startsWith("#") || line.length() == 0) {
         // comments and empty lines
         continue;
       }
 
-      final String[] split = line.split("\\s+");
-      assert (split.length == numFeatures + 1);  // split array is composed of feature, and y-value.
-      final Vector feature =  vectorFactory.createDenseZeros(numFeatures);
-      for (int index = 0; index < numFeatures; index++) {
-        feature.set(index, Double.parseDouble(split[index]));
+      final String[] split = line.split("\\s+|:");
+      final double value = Integer.parseInt(split[0]);
+
+      final int[] indices = new int[split.length / 2];
+      final double[] data = new double[split.length / 2];
+      for (int index = 0; index < split.length / 2; ++index) {
+        indices[index] = Integer.parseInt(split[2 * index + 1]);
+        data[index] = Double.parseDouble(split[2 * index + 2]);
       }
-      final double yValue = Double.parseDouble(split[numFeatures]);
-      retList.add(new GBTData(feature, yValue));
+      final Vector feature = vectorFactory.createSparse(indices, data, numFeatures);
+      retList.add(new GBTData(feature, value));
     }
 
     return retList;
