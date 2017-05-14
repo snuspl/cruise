@@ -17,20 +17,15 @@ package edu.snu.cay.pregel.worker;
 
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.impl.*;
-import edu.snu.cay.pregel.graph.parameters.NumPartition;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -45,7 +40,11 @@ public final class PregelWorkerTask implements Task {
   private static final Logger LOG = Logger.getLogger(PregelWorkerTask.class.getName());
 
 
-  static final List<String> INPUT = Arrays.asList("1 2 3 4", "2 3", "3 1 2 4", "4 2");
+  static final List<String> INPUT = Arrays.asList(
+      "1 2 3 4",
+      "2 3",
+      "3 1 2 4",
+      "4 2");
 
   /**
    * A state machine representing the state of task.
@@ -71,10 +70,11 @@ public final class PregelWorkerTask implements Task {
   private final AtomicInteger numActiveVertices = new AtomicInteger(INPUT.size());
 
   @Inject
-  private PregelWorkerTask(@Parameter(NumPartition.class) final int numPartitions) {
+  private PregelWorkerTask(final GraphPartitioner graphPartitioner,
+                           final MessageManager messageManager) {
     this.stateMachine = initStateMachine();
-    this.graphPartitioner = new GraphPartitioner(numPartitions);
-    this.messageManager = new MessageManager<>(graphPartitioner);
+    this.graphPartitioner = graphPartitioner;
+    this.messageManager = messageManager;
   }
 
   private enum State {
@@ -111,39 +111,48 @@ public final class PregelWorkerTask implements Task {
 
     final AtomicInteger superStepCounter = new AtomicInteger(0);
 
+    // run until all vertices halt
     while (!isAllVerticesHalt()) {
+      // INIT -> START or RUN_FINISHING -> START
       stateMachine.setState(State.START);
       messageManager.prepareForNextSuperstep();
-      stateMachine.compareAndSetState(State.START, State.RUN);
+
+      // START -> RUN
+      stateMachine.setState(State.RUN);
       final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
       final Computation<Double, Double, Double> computation =
           new PagerankComputation(superStepCounter.get(), messageManager);
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
+
       for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
-        futureList.add(executorService.submit(new ComputationCallable<Double, Double, Double>(computation,
-            partitionStore.getPartition(threadIdx), messageManager.getCurrentMessageStore())));
+        final Callable<Integer> computationCallable =
+            new ComputationCallable<>(computation, partitionStore.getPartition(threadIdx),
+                messageManager.getCurrentMessageStore());
+        futureList.add(executorService.submit(computationCallable));
       }
 
+      numActiveVertices.set(0);
       futureList.forEach(future -> {
         try {
-          numActiveVertices.set(0);
           numActiveVertices.getAndAdd(future.get());
         } catch (InterruptedException | ExecutionException e) {
           throw new RuntimeException(e);
         }
       });
 
-      stateMachine.compareAndSetState(State.RUN, State.RUN_FINISHING);
+      // RUN -> RUN_FINISHING
+      stateMachine.setState(State.RUN_FINISHING);
       messageManager.processBackUpMessageStore();
 
       LOG.log(Level.INFO, "Superstep {0} is finished", superStepCounter.get());
       superStepCounter.getAndIncrement();
     }
 
-    stateMachine.compareAndSetState(State.RUN_FINISHING, State.COMPLETE);
+    // RUN_FINISHING -> COMPLETE
+    stateMachine.setState(State.COMPLETE);
 
     for (int partitionIdx = 0; partitionIdx < partitionStore.getNumPartitions(); partitionIdx++) {
-      partitionStore.getPartition(partitionIdx).iterator().forEachRemaining(vertex ->
+      partitionStore.getPartition(partitionIdx).forEach(vertex ->
           LOG.log(Level.INFO, "Vertex id : {0}, rank : {1}", new Object[]{vertex.getId(), vertex.getValue()})
       );
     }
@@ -158,5 +167,4 @@ public final class PregelWorkerTask implements Task {
   private boolean isAllVerticesHalt() {
     return numActiveVertices.get() == 0;
   }
-
 }

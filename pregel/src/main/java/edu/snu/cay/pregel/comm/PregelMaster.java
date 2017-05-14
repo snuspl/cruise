@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.pregel.comm;
 
-import edu.snu.cay.pregel.graph.parameters.NumPartition;
+import edu.snu.cay.pregel.graph.parameters.NumPartitions;
 import edu.snu.cay.pregel.worker.PregelWorkerTask;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
@@ -55,7 +55,7 @@ public final class PregelMaster {
 
     @Override
     public void onNext(final StartTime startTime) {
-      PregelMaster.this.evaluatorRequestor.newRequest()
+      evaluatorRequestor.newRequest()
           .setNumber(1)
           .setMemory(64)
           .setNumberOfCores(1)
@@ -75,7 +75,7 @@ public final class PregelMaster {
           .build();
 
       final Configuration partitionNumberConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(NumPartition.class, String.valueOf(NUM_PARTITIONS))
+          .bindNamedParameter(NumPartitions.class, String.valueOf(NUM_PARTITIONS))
           .build();
       allocatedEvaluator.submitTask(Configurations.merge(taskConfiguration, partitionNumberConf));
 

@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @param <MI> incoming message value
  * @param <MO> outgoing message value
  */
-public class ComputationCallable<V, MI, MO> implements Callable {
+public class ComputationCallable<V, MI, MO> implements Callable<Integer> {
 
   private final Computation<V, MI, MO> computation;
   private final Partition<V> partition;
@@ -49,14 +49,12 @@ public class ComputationCallable<V, MI, MO> implements Callable {
    * @return the number of active vertices in this partition
    */
   @Override
-  public Object call() throws Exception {
-
-    partition.iterator().forEachRemaining(vertex -> {
-      computation.compute(vertex, currMessageStore.getVertexMessages(vertex.getId()));
-    });
+  public Integer call() throws Exception {
 
     final AtomicInteger numActiveVertices = new AtomicInteger(0);
-    partition.iterator().forEachRemaining(vertex -> {
+
+    partition.forEach(vertex -> {
+      computation.compute(vertex, currMessageStore.getVertexMessages(vertex.getId()));
       if (!vertex.isHalted()) {
         numActiveVertices.getAndIncrement();
       }

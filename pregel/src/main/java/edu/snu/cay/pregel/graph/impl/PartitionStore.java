@@ -46,7 +46,6 @@ public class PartitionStore<V> {
       final int partitionIdx = vertexId % graphPartitioner.getNumPartitions();
       partitions.putIfAbsent(partitionIdx, new Partition<>());
       partitions.get(partitionIdx).putVertex(vertex);
-
     });
   }
 

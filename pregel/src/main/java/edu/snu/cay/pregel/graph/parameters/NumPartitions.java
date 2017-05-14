@@ -22,5 +22,5 @@ import org.apache.reef.tang.annotations.NamedParameter;
  * The number of graph partition in each worker.
  */
 @NamedParameter(doc = "the number of graph partition in each worker")
-public final class NumPartition implements Name<Integer> {
+public final class NumPartitions implements Name<Integer> {
 }

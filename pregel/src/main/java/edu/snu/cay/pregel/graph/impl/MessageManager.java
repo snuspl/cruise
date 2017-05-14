@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.pregel.graph.impl;
 
+import javax.inject.Inject;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -23,7 +24,7 @@ import java.util.logging.Logger;
  * Manage message stores which are used to computation in one superstep.
  * Determine the incoming message store depending on the state of a worker.
  */
-public class MessageManager<V> {
+public final class MessageManager<V> {
 
   private static final Logger LOG = Logger.getLogger(MessageManager.class.getName());
 
@@ -44,7 +45,8 @@ public class MessageManager<V> {
    */
   private MessageStore<V> backUpMessageStore;
 
-  public MessageManager(final GraphPartitioner graphPartitioner) {
+  @Inject
+  private MessageManager(final GraphPartitioner graphPartitioner) {
     this.graphPartitioner = graphPartitioner;
     currMessageStore = new MessageStore<>(graphPartitioner);
     nextMessageStore = new MessageStore<>(graphPartitioner);

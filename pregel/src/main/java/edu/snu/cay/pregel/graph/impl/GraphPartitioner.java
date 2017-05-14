@@ -15,15 +15,21 @@
  */
 package edu.snu.cay.pregel.graph.impl;
 
+import edu.snu.cay.pregel.graph.parameters.NumPartitions;
+import org.apache.reef.tang.annotations.Parameter;
+
+import javax.inject.Inject;
+
 /**
  * Initialize the {@link PartitionStore} by using this.
  * It also maps the vertex id to graph partition index.
  */
-public class GraphPartitioner {
+public final class GraphPartitioner {
 
   private final int numPartitions;
 
-  public GraphPartitioner(final int numPartitions) {
+  @Inject
+  private GraphPartitioner(@Parameter(NumPartitions.class) final int numPartitions) {
     this.numPartitions = numPartitions;
   }
 
