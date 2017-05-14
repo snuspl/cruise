@@ -16,8 +16,6 @@
 package edu.snu.cay.pregel.graph.impl;
 
 import javax.inject.Inject;
-import java.util.Map;
-import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -40,17 +38,11 @@ public final class MessageManager<V> {
    */
   private MessageStore<V> nextMessageStore;
 
-  /**
-   * Message store which stores message in temporary until {@link #prepareForNextSuperstep()} is called.
-   */
-  private MessageStore<V> backUpMessageStore;
-
   @Inject
   private MessageManager(final GraphPartitioner graphPartitioner) {
     this.graphPartitioner = graphPartitioner;
     currMessageStore = new MessageStore<>(graphPartitioner);
     nextMessageStore = new MessageStore<>(graphPartitioner);
-    backUpMessageStore = new MessageStore<>(graphPartitioner);
   }
 
   public void prepareForNextSuperstep() {
@@ -58,19 +50,12 @@ public final class MessageManager<V> {
     nextMessageStore = new MessageStore<>(graphPartitioner);
   }
 
-  public void processBackUpMessageStore() {
-    final Map<Integer, Set<V>> messageMap = backUpMessageStore.getAllMessages();
-    messageMap.entrySet().forEach(entry -> entry.getValue().forEach(message ->
-        nextMessageStore.writeMessage(entry.getKey(), message)));
-    backUpMessageStore = new MessageStore<>(graphPartitioner);
-  }
-
   public MessageStore<V> getCurrentMessageStore() {
     return currMessageStore;
   }
 
-  public void writeMessage(final Integer vertexId, final V message) {
-    nextMessageStore.writeMessage(vertexId, message);
+  public MessageStore<V> getNextMessageStore() {
+    return nextMessageStore;
   }
 }
 

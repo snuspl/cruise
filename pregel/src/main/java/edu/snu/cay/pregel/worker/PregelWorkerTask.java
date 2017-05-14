@@ -112,7 +112,7 @@ public final class PregelWorkerTask implements Task {
     final AtomicInteger superStepCounter = new AtomicInteger(0);
 
     // run until all vertices halt
-    while (!isAllVerticesHalt()) {
+    while (true) {
       // INIT -> START or RUN_FINISHING -> START
       stateMachine.setState(State.START);
       messageManager.prepareForNextSuperstep();
@@ -121,7 +121,7 @@ public final class PregelWorkerTask implements Task {
       stateMachine.setState(State.RUN);
       final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
       final Computation<Double, Double, Double> computation =
-          new PagerankComputation(superStepCounter.get(), messageManager);
+          new PagerankComputation(superStepCounter.get(), messageManager.getNextMessageStore());
       final List<Future<Integer>> futureList = new ArrayList<>(numThreads);
 
       for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
@@ -142,9 +142,14 @@ public final class PregelWorkerTask implements Task {
 
       // RUN -> RUN_FINISHING
       stateMachine.setState(State.RUN_FINISHING);
-      messageManager.processBackUpMessageStore();
 
       LOG.log(Level.INFO, "Superstep {0} is finished", superStepCounter.get());
+
+      if (isAllVerticesHalt()) {
+        break;
+      }
+
+      messageManager.prepareForNextSuperstep();
       superStepCounter.getAndIncrement();
     }
 

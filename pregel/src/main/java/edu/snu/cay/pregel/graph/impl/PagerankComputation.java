@@ -32,13 +32,13 @@ public class PagerankComputation implements Computation<Double, Double, Double> 
 
   private final Integer superstep;
 
-  private final MessageManager<Double> messageManager;
+  private final MessageStore<Double> messageStore;
 
   public PagerankComputation(final Integer superstep,
-                             final MessageManager<Double> messageManager) {
+                             final MessageStore<Double> messageStore) {
 
     this.superstep = superstep;
-    this.messageManager = messageManager;
+    this.messageStore = messageStore;
   }
 
   @Override
@@ -64,11 +64,11 @@ public class PagerankComputation implements Computation<Double, Double, Double> 
 
   @Override
   public void sendMessage(final Integer id, final Double message) {
-    messageManager.writeMessage(id, message);
+    messageStore.writeMessage(id, message);
   }
 
   @Override
   public void sendMessagesToAdjacents(final Vertex<Double> vertex, final Double message) {
-    vertex.getEdges().forEach(edge -> messageManager.writeMessage(edge.getTargetVertexId(), message));
+    vertex.getEdges().forEach(edge -> messageStore.writeMessage(edge.getTargetVertexId(), message));
   }
 }
