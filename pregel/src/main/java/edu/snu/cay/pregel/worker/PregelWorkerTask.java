@@ -17,7 +17,6 @@ package edu.snu.cay.pregel.worker;
 
 import edu.snu.cay.pregel.graph.api.Computation;
 import edu.snu.cay.pregel.graph.impl.*;
-import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.task.Task;
 
@@ -47,12 +46,6 @@ public final class PregelWorkerTask implements Task {
       "4 2");
 
   /**
-   * A state machine representing the state of task.
-   * It is initialized by {@link #initStateMachine()}.
-   */
-  private final StateMachine stateMachine;
-
-  /**
    * Graph partitioner for this worker.
    */
   private final GraphPartitioner graphPartitioner;
@@ -72,33 +65,8 @@ public final class PregelWorkerTask implements Task {
   @Inject
   private PregelWorkerTask(final GraphPartitioner graphPartitioner,
                            final MessageManager messageManager) {
-    this.stateMachine = initStateMachine();
     this.graphPartitioner = graphPartitioner;
     this.messageManager = messageManager;
-  }
-
-  private enum State {
-    INIT,
-    START,
-    RUN,
-    RUN_FINISHING,
-    COMPLETE
-  }
-
-  private static StateMachine initStateMachine() {
-    return StateMachine.newBuilder()
-        .addState(State.INIT, "Workers initialize graph partitions for computation.")
-        .addState(State.START, "Workers prepare for next superstep.")
-        .addState(State.RUN, "Computation is running during current superstep.")
-        .addState(State.RUN_FINISHING, "Computation in current superstep is finished, from now wait for other workers.")
-        .addState(State.COMPLETE, "The task execution is finished. Time to clean up the task.")
-        .addTransition(State.INIT, State.START, "Finish initializing the graph partitions.")
-        .addTransition(State.START, State.RUN, "Finish preparing for the next superstep.")
-        .addTransition(State.RUN, State.RUN_FINISHING, "Finish computation in current superstep")
-        .addTransition(State.RUN_FINISHING, State.START, "All vertices don't halt")
-        .addTransition(State.RUN_FINISHING, State.COMPLETE, "All vertices halt")
-        .setInitialState(State.INIT)
-        .build();
   }
 
   @Override
@@ -113,12 +81,6 @@ public final class PregelWorkerTask implements Task {
 
     // run until all vertices halt
     while (true) {
-      // INIT -> START or RUN_FINISHING -> START
-      stateMachine.setState(State.START);
-      messageManager.prepareForNextSuperstep();
-
-      // START -> RUN
-      stateMachine.setState(State.RUN);
       final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
       final Computation<Double, Double, Double> computation =
           new PagerankComputation(superStepCounter.get(), messageManager.getNextMessageStore());
@@ -140,9 +102,6 @@ public final class PregelWorkerTask implements Task {
         }
       });
 
-      // RUN -> RUN_FINISHING
-      stateMachine.setState(State.RUN_FINISHING);
-
       LOG.log(Level.INFO, "Superstep {0} is finished", superStepCounter.get());
 
       if (isAllVerticesHalt()) {
@@ -152,9 +111,6 @@ public final class PregelWorkerTask implements Task {
       messageManager.prepareForNextSuperstep();
       superStepCounter.getAndIncrement();
     }
-
-    // RUN_FINISHING -> COMPLETE
-    stateMachine.setState(State.COMPLETE);
 
     for (int partitionIdx = 0; partitionIdx < partitionStore.getNumPartitions(); partitionIdx++) {
       partitionStore.getPartition(partitionIdx).forEach(vertex ->
