@@ -13,13 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.configuration.parameters.metric;
-
-import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "A codec for custom metrics", default_class = SerializableCodec.class)
-public final class CustomMetricCodec implements Name<Codec> {
-}
+/**
+ * Classes for configuration of metric service.
+ */
+package edu.snu.cay.services.et.metric.configuration;

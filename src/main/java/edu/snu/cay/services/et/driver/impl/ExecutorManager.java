@@ -24,7 +24,6 @@ import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.parameters.ETIdentifier;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.evaluator.impl.ContextStartHandler;
-import edu.snu.cay.services.et.evaluator.impl.ContextStopHandler;
 import edu.snu.cay.services.et.exceptions.ExecutorNotExistException;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -98,7 +97,6 @@ final class ExecutorManager {
   ListenableFuture<List<AllocatedExecutor>> addExecutors(final int num, final ExecutorConfiguration executorConf) {
     final ResourceConfiguration resConf = executorConf.getResourceConf();
     final Configuration remoteAccessConf = executorConf.getRemoteAccessConf();
-    final Configuration metricServiceExecutorConf = executorConf.getMetricServiceConf();
     final Configuration userContextConf = executorConf.getUserContextConf();
     final Configuration userServiceConf = executorConf.getUserServiceConf();
 
@@ -120,7 +118,7 @@ final class ExecutorManager {
 
     evaluatorManager.allocateEvaluators(num, memSizeInMB, numCores,
         new AllocatedEvalHandler(userContextConf,
-            Configurations.merge(remoteAccessConf, metricServiceExecutorConf, userServiceConf)),
+            Configurations.merge(remoteAccessConf, userServiceConf)),
         activeCtxHandlers);
 
     return executorListFuture;
@@ -176,7 +174,6 @@ final class ExecutorManager {
       final Configuration baseContextConfiguration = ContextConfiguration.CONF
           .set(ContextConfiguration.IDENTIFIER, CONTEXT_PREFIX + contextIdCounter.getAndIncrement())
           .set(ContextConfiguration.ON_CONTEXT_STARTED, ContextStartHandler.class)
-          .set(ContextConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
           .build();
 
       contextConfiguration = Configurations.merge(baseContextConfiguration, contextConf);

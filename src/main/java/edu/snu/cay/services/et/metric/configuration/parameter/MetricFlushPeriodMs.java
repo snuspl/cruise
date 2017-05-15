@@ -13,7 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Classes for configuration of metric service.
- */
-package edu.snu.cay.services.et.configuration.metric;
+package edu.snu.cay.services.et.metric.configuration.parameter;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(
+    doc = "The period (in seconds) to flush metrics to Master." +
+    "By passing zero, metrics are transferred only manually.",
+    default_value = "0")
+public final class MetricFlushPeriodMs implements Name<Long> {
+}

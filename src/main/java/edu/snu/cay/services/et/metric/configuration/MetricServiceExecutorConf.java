@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.configuration.metric;
+package edu.snu.cay.services.et.metric.configuration;
 
-import edu.snu.cay.services.et.configuration.parameters.metric.CustomMetricCodec;
-import edu.snu.cay.services.et.configuration.parameters.metric.MetricFlushPeriodMs;
+import edu.snu.cay.services.et.metric.configuration.parameter.CustomMetricCodec;
+import edu.snu.cay.services.et.metric.configuration.parameter.MetricFlushPeriodMs;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.serialization.Codec;

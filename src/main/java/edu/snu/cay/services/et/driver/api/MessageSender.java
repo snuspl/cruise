@@ -70,6 +70,16 @@ public interface MessageSender {
                        String senderId, String receiverId);
 
   /**
+   * Sends a message for starting metric collection with a given configuration at an executor.
+   */
+  void sendMetricStartMsg(String executorId, String serializedMetricConf);
+
+  /**
+   * Sends a message for stopping metric collection at an executor.
+   */
+  void sendMetricStopMsg(String executorId);
+
+  /**
    * Sends a TableAccessReqMsg, which redirects the failed access request to the up-to-date owner if possible.
    */
   void sendTableAccessReqMsg(String destId, long opId, TableAccessReqMsg tableAccessReqMsg) throws NetworkException;

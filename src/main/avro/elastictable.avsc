@@ -373,6 +373,32 @@
   ]
 },
 
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "MetricControlMsg",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "MetricControlType",
+        "symbols": ["Start", "Stop"]}},
+    {"name": "serializedMetricConf", "type": ["null", "string"], "default": null}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.et.avro",
+  "type": "record",
+  "name": "MetricReportMsg",
+  "fields":
+  [
+    {"name": "tableToNumBlocks", "type": {"type": "map", "values": "int"}},
+    {"name": "countSentGetReq", "type": {"type": "map", "values": "int"}},
+    {"name": "bytesReceivedGetResp", "type": {"type": "map", "values": "long"}},
+    {"name": "hostname", "type": "string", "default": ""},
+    {"name": "customMetrics", "type": {"type": "array", "items": "bytes"}}
+  ]
+},
+
 /**
  * The message protocol used for collecting metrics.
  * Custom metrics can be defined and plugged in as a byte array.
@@ -383,11 +409,10 @@
   "name": "MetricMsg",
   "fields":
   [
-    {"name": "tableToNumBlocks", "type": {"type": "map", "values": "int"}},
-    {"name": "countSentGetReq", "type": {"type": "map", "values": "int"}},
-    {"name": "bytesReceivedGetResp", "type": {"type": "map", "values": "long"}},
-    {"name": "hostname", "type": "string", "default": ""},
-    {"name": "customMetrics", "type": {"type": "array", "items": "bytes"}}
+    {"name": "type", "type": {"type": "enum", "name": "MetricMsgType",
+        "symbols": ["MetricControlMsg", "MetricReportMsg"]}},
+    {"name": "metricControlMsg", "type": ["null", "MetricControlMsg"], "default": null},
+    {"name": "metricReportMsg", "type": ["null", "MetricReportMsg"], "default": null}
   ]
 },
 

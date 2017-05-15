@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.et.examples.metric;
 
-import edu.snu.cay.services.et.evaluator.impl.MetricCollector;
+import edu.snu.cay.services.et.metric.MetricCollector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
@@ -40,13 +40,13 @@ final class MetricTask implements Task {
 
   private final long taskDurationMs;
 
-  private final MetricCollector<Long> metricCollector;
+  private final MetricCollector metricCollector;
 
   @Inject
   private MetricTask(@Parameter(MetricET.MetricManualFlushPeriodMs.class) final long metricManualFlushPeriodMs,
                      @Parameter(MetricET.CustomMetricRecordPeriodMs.class) final long customMetricRecordPeriodMs,
                      @Parameter(MetricET.TaskDurationMs.class) final long taskDurationMs,
-                     final MetricCollector<Long> metricCollector) {
+                     final MetricCollector metricCollector) {
     this.metricManualFlushPeriodMs = metricManualFlushPeriodMs;
     this.customMetricRecordPeriodMs = customMetricRecordPeriodMs;
     this.taskDurationMs = taskDurationMs;
@@ -55,7 +55,7 @@ final class MetricTask implements Task {
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
-    LOG.log(Level.INFO, "Hello, I will record timestamp every {0} ms and flush the metrics every {1} ms manually " +
+    LOG.log(Level.INFO, "Hello, I will record timestamp every {0} ms and flush the metrics manually every {1} ms," +
         " in addition to those are sent by MetricCollector automatically",
         new Object[] {customMetricRecordPeriodMs, metricManualFlushPeriodMs});
 

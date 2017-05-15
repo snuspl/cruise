@@ -19,11 +19,12 @@ import edu.snu.cay.services.et.common.util.TaskUtils;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
-import edu.snu.cay.services.et.configuration.metric.MetricServiceExecutorConf;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.evaluator.impl.VoidUpdateFunction;
+import edu.snu.cay.services.et.metric.MetricManager;
+import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.JavaConfigurationBuilder;
@@ -51,8 +52,9 @@ final class MetricETDriver {
   private static final String METRIC_TASK_ID_PREFIX = "Metric-task-";
   static final int NUM_ASSOCIATORS = 2; // should be at least 2
   private static final String TABLE_ID = "Dummy-table";
-  private final long metricManualFlushPeriodMs;
+
   private final long metricAutomaticFlushPeriodMs;
+  private final long metricManualFlushPeriodMs;
   private final long customMetricRecordPeriodMs;
   private final long taskDurationMs;
 
@@ -62,11 +64,6 @@ final class MetricETDriver {
             ResourceConfiguration.newBuilder()
                 .setNumCores(1)
                 .setMemSizeInMB(128)
-                .build())
-        .setMetricServiceConf(
-            MetricServiceExecutorConf.newBuilder()
-                .setCustomMetricCodec(SerializableCodec.class)
-                .setMetricFlushPeriodMs(metricAutomaticFlushPeriodMs)
                 .build())
         .setUserContextConf(
             EMPTY_CONF_BUILDER
@@ -80,20 +77,22 @@ final class MetricETDriver {
   }
 
   private final ETMaster etMaster;
+  private final MetricManager metricManager;
 
   @Inject
   private MetricETDriver(final ETMaster etMaster,
+                         final MetricManager metricManager,
                          @Parameter(MetricET.MetricManualFlushPeriodMs.class) final long metricManualFlushPeriodMs,
                          @Parameter(MetricET.MetricAutomaticFlushPeriodMs.class)
                          final long metricAutomaticFlushPeriodMs,
                          @Parameter(MetricET.CustomMetricRecordPeriodMs.class) final long customMetricRecordPeriodMs,
                          @Parameter(MetricET.TaskDurationMs.class) final long taskDurationMs) {
     this.etMaster = etMaster;
-    this.metricManualFlushPeriodMs = metricManualFlushPeriodMs;
+    this.metricManager = metricManager;
     this.metricAutomaticFlushPeriodMs = metricAutomaticFlushPeriodMs;
+    this.metricManualFlushPeriodMs = metricManualFlushPeriodMs;
     this.customMetricRecordPeriodMs = customMetricRecordPeriodMs;
     this.taskDurationMs = taskDurationMs;
-
   }
 
   private TableConfiguration buildTableConf(final String tableId) {
@@ -129,6 +128,25 @@ final class MetricETDriver {
 
           // Simply create a hash-based table.
           etMaster.createTable(buildTableConf(TABLE_ID), associators).get();
+
+          // Round 1. start collecting metrics only by manual flush
+          associators.forEach(associator -> metricManager.startMetricCollection(associator.getId(),
+              MetricServiceExecutorConf.newBuilder()
+                  .build()));
+
+          // Run tasks
+          associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF
+              .set(TaskConfiguration.IDENTIFIER, METRIC_TASK_ID_PREFIX + taskIdCount.getAndIncrement())
+              .set(TaskConfiguration.TASK, MetricTask.class)
+              .build())));
+
+          TaskUtils.waitAndCheckTaskResult(taskFutureList, true);
+
+          // Round 2. start collecting metrics with automatic periodic flush
+          associators.forEach(associator -> metricManager.startMetricCollection(associator.getId(),
+              MetricServiceExecutorConf.newBuilder()
+                  .setMetricFlushPeriodMs(metricAutomaticFlushPeriodMs)
+                  .build()));
 
           // Run tasks
           associators.forEach(executor -> taskFutureList.add(executor.submitTask(TaskConfiguration.CONF

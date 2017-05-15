@@ -291,22 +291,28 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void sendMetricMsg(final Map<String, Integer> tableToNumBlocks,
-                            final Map<String, Long> bytesReceivedGetResp,
-                            final Map<String, Integer> countSentGetReq,
-                            final List<ByteBuffer> encodedCustomMetrics) throws NetworkException {
+  public void sendMetricReportMsg(final Map<String, Integer> tableToNumBlocks,
+                                  final Map<String, Long> bytesReceivedGetResp,
+                                  final Map<String, Integer> countSentGetReq,
+                                  final List<ByteBuffer> encodedCustomMetrics) throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()
         .setType(ETMsgType.MetricMsg)
         .setMetricMsg(
             MetricMsg.newBuilder()
-                .setTableToNumBlocks(tableToNumBlocks)
-                .setBytesReceivedGetResp(bytesReceivedGetResp)
-                .setCountSentGetReq(countSentGetReq)
-                .setHostname(HostnameResolver.resolve())
-                .setCustomMetrics(encodedCustomMetrics)
+                .setType(MetricMsgType.MetricReportMsg)
+                .setMetricReportMsg(
+                    MetricReportMsg.newBuilder()
+                        .setTableToNumBlocks(tableToNumBlocks)
+                        .setBytesReceivedGetResp(bytesReceivedGetResp)
+                        .setCountSentGetReq(countSentGetReq)
+                        .setHostname(HostnameResolver.resolve())
+                        .setCustomMetrics(encodedCustomMetrics)
+                        .build()
+                )
                 .build()
         )
         .build();
+
     networkConnection.send(driverId, msg);
   }
 }

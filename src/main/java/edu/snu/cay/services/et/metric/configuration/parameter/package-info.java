@@ -16,4 +16,4 @@
 /**
  * Parameters w.r.t. metric collection in ET.
  */
-package edu.snu.cay.services.et.configuration.parameters.metric;
+package edu.snu.cay.services.et.metric.configuration.parameter;

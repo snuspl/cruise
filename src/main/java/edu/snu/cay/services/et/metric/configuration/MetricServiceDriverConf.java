@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.configuration.metric;
+package edu.snu.cay.services.et.metric.configuration;
 
 import edu.snu.cay.services.et.driver.api.MetricReceiver;
 import org.apache.reef.annotations.audience.ClientSide;

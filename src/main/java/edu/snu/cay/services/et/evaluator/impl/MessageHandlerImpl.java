@@ -19,12 +19,18 @@ import edu.snu.cay.services.et.avro.*;
 import edu.snu.cay.services.et.common.api.MessageHandler;
 import edu.snu.cay.services.et.evaluator.api.MessageSender;
 import edu.snu.cay.services.et.exceptions.TableNotExistException;
+import edu.snu.cay.services.et.metric.MetricCollector;
+import edu.snu.cay.services.et.metric.configuration.parameter.CustomMetricCodec;
+import edu.snu.cay.services.et.metric.configuration.parameter.MetricFlushPeriodMs;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
@@ -55,6 +61,7 @@ public final class MessageHandlerImpl implements MessageHandler {
   private final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture;
   private final InjectionFuture<RemoteAccessOpSender> remoteAccessSenderFuture;
   private final InjectionFuture<MigrationExecutor> migrationExecutorFuture;
+  private final InjectionFuture<MetricCollector> metricCollectorFuture;
 
   @Inject
   private MessageHandlerImpl(final InjectionFuture<Tables> tablesFuture,
@@ -62,13 +69,15 @@ public final class MessageHandlerImpl implements MessageHandler {
                              final InjectionFuture<MessageSender> msgSenderFuture,
                              final InjectionFuture<RemoteAccessOpHandler> remoteAccessHandlerFuture,
                              final InjectionFuture<RemoteAccessOpSender> remoteAccessSenderFuture,
-                             final InjectionFuture<MigrationExecutor> migrationExecutorFuture) {
+                             final InjectionFuture<MigrationExecutor> migrationExecutorFuture,
+                             final InjectionFuture<MetricCollector> metricCollectorFuture) {
     this.tablesFuture = tablesFuture;
     this.confSerializer = confSerializer;
     this.msgSenderFuture = msgSenderFuture;
     this.remoteAccessHandlerFuture = remoteAccessHandlerFuture;
     this.remoteAccessSenderFuture = remoteAccessSenderFuture;
     this.migrationExecutorFuture = migrationExecutorFuture;
+    this.metricCollectorFuture = metricCollectorFuture;
   }
 
   @Override
@@ -86,6 +95,10 @@ public final class MessageHandlerImpl implements MessageHandler {
 
     case MigrationMsg:
       migrationExecutorFuture.get().onNext(innerMsg.getMigrationMsg());
+      break;
+
+    case MetricMsg:
+      onMetricMsg(innerMsg.getMetricMsg());
       break;
 
     default:
@@ -190,6 +203,34 @@ public final class MessageHandlerImpl implements MessageHandler {
       ownershipCache.syncUnassociation(opId, msg.getDeletedExecutorId());
     } catch (final TableNotExistException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  private void onMetricMsg(final MetricMsg msg) {
+    if (msg.getType().equals(MetricMsgType.MetricControlMsg)) {
+      final MetricControlMsg controlMsg = msg.getMetricControlMsg();
+
+      if (controlMsg.getType().equals(MetricControlType.Start)) {
+        final long metricSendingPeriodMs;
+        final Codec metricCodec;
+
+        try {
+          final Configuration metricConf = confSerializer.fromString(controlMsg.getSerializedMetricConf());
+          final Injector injector = Tang.Factory.getTang().newInjector(metricConf);
+
+          metricSendingPeriodMs = injector.getNamedInstance(MetricFlushPeriodMs.class);
+          metricCodec = injector.getNamedInstance(CustomMetricCodec.class);
+        } catch (IOException | InjectionException e) {
+          throw new RuntimeException("Exception while processing a given serialized metric conf", e);
+        }
+
+        metricCollectorFuture.get().start(metricSendingPeriodMs, metricCodec);
+
+      } else { // MetricControlType.Stop
+        metricCollectorFuture.get().stop();
+      }
+    } else {
+      throw new RuntimeException("Unexpected msg type");
     }
   }
 }

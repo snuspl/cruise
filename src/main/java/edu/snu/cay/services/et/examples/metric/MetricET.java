@@ -16,7 +16,7 @@
 package edu.snu.cay.services.et.examples.metric;
 
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
-import edu.snu.cay.services.et.configuration.metric.MetricServiceDriverConf;
+import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
 import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -48,7 +48,7 @@ import static edu.snu.cay.services.et.examples.metric.MetricETDriver.NUM_ASSOCIA
 public final class MetricET {
   private static final Logger LOG = Logger.getLogger(MetricET.class.getName());
   private static final String DRIVER_IDENTIFIER = "MetricET";
-  private static final int JOB_TIMEOUT = 30000; // 30 sec.
+  private static final int JOB_TIMEOUT = 100000; // 100 sec.
 
   /**
    * Should not be instantiated.

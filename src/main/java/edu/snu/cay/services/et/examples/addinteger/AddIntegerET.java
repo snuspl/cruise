@@ -17,7 +17,7 @@ package edu.snu.cay.services.et.examples.addinteger;
 
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.et.configuration.ETDriverConfiguration;
-import edu.snu.cay.services.et.configuration.metric.MetricServiceDriverConf;
+import edu.snu.cay.services.et.metric.configuration.MetricServiceDriverConf;
 import edu.snu.cay.services.et.driver.impl.LoggingMetricReceiver;
 import edu.snu.cay.services.et.examples.addinteger.parameters.*;
 import org.apache.reef.client.DriverConfiguration;

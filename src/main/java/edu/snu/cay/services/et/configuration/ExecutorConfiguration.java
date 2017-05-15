@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.et.configuration;
 
-import edu.snu.cay.services.et.configuration.metric.MetricServiceExecutorConf;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.util.BuilderUtils;
@@ -25,18 +24,15 @@ import org.apache.reef.util.BuilderUtils;
  */
 public final class ExecutorConfiguration {
   private final ResourceConfiguration resourceConf;
-  private final MetricServiceExecutorConf metricServiceConf;
   private final RemoteAccessConfiguration remoteAccessConf;
   private final Configuration userContextConf;
   private final Configuration userServiceConf;
 
   private ExecutorConfiguration(final ResourceConfiguration resourceConf,
-                                final MetricServiceExecutorConf metricServiceConf,
                                 final RemoteAccessConfiguration remoteAccessConf,
                                 final Configuration userContextConf,
                                 final Configuration userServiceConf) {
     this.resourceConf = resourceConf;
-    this.metricServiceConf = metricServiceConf;
     this.remoteAccessConf = remoteAccessConf;
     this.userContextConf = userContextConf;
     this.userServiceConf = userServiceConf;
@@ -44,10 +40,6 @@ public final class ExecutorConfiguration {
 
   public ResourceConfiguration getResourceConf() {
     return resourceConf;
-  }
-
-  public Configuration getMetricServiceConf() {
-    return metricServiceConf.getConfiguration();
   }
 
   public Configuration getUserContextConf() {
@@ -78,7 +70,6 @@ public final class ExecutorConfiguration {
     /**
      * Optional parameters.
      */
-    private MetricServiceExecutorConf metricServiceConf = MetricServiceExecutorConf.newBuilder().build(); // default
     private RemoteAccessConfiguration remoteAccessConf = RemoteAccessConfiguration.newBuilder().build(); //default
     private Configuration userContextConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
     private Configuration userServiceConf = Tang.Factory.getTang().newConfigurationBuilder().build(); // empty conf
@@ -92,15 +83,6 @@ public final class ExecutorConfiguration {
      */
     public Builder setResourceConf(final ResourceConfiguration resourceConf) {
       this.resourceConf = resourceConf;
-      return this;
-    }
-
-    /**
-     * @param metricServiceExecutorConf configuration for customizing metric service.
-     * @return this
-     */
-    public Builder setMetricServiceConf(final MetricServiceExecutorConf metricServiceExecutorConf) {
-      this.metricServiceConf = metricServiceExecutorConf;
       return this;
     }
 
@@ -135,7 +117,7 @@ public final class ExecutorConfiguration {
     public ExecutorConfiguration build() {
       BuilderUtils.notNull(resourceConf);
 
-      return new ExecutorConfiguration(resourceConf, metricServiceConf, remoteAccessConf,
+      return new ExecutorConfiguration(resourceConf, remoteAccessConf,
           userContextConf, userServiceConf);
     }
   }

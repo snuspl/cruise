@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_addinteger.sh -num_servers 2 -num_workers 2 -num_updates 128 -num_keys 8 -start_key 0 -delta_value 1 -coefficient 1 -timeout 15000
+# ./run_addinteger.sh -num_servers 2 -num_workers 2 -num_updates 128 -num_keys 8 -start_key 0 -delta_value 1 -coefficient 1 -metric_flush_period_ms 100 -timeout 15000
 
 # RUNTIME
 SELF_JAR=`echo ../target/elastic-tables-*-SNAPSHOT-shaded.jar`

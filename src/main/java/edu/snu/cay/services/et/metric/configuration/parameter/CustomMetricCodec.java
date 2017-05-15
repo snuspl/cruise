@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.configuration.parameters.metric;
+package edu.snu.cay.services.et.metric.configuration.parameter;
 
+import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(
-    doc = "The period (in seconds) to flush metrics to Master." +
-    "By passing zero, metrics are transferred only manually.",
-    default_value = "0")
-public final class MetricFlushPeriodMs implements Name<Long> {
+@NamedParameter(doc = "A codec for custom metrics", default_class = SerializableCodec.class)
+public final class CustomMetricCodec implements Name<Codec> {
 }

@@ -336,6 +336,16 @@ public final class MigrationManagerTest {
     }
 
     @Override
+    public void sendMetricStartMsg(final String executorId, final String serializedMetricConf) {
+
+    }
+
+    @Override
+    public void sendMetricStopMsg(final String executorId) {
+
+    }
+
+    @Override
     public void sendTableAccessReqMsg(final String destId, final long opId, final TableAccessReqMsg tableAccessReqMsg)
         throws NetworkException {
 

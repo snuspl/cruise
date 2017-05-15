@@ -18,8 +18,9 @@ package edu.snu.cay.services.et.examples.addinteger.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "A period that metrics are flushed in AddInteger application",
-                default_value = "0",
-                short_name = "metric_flush_period_ms")
+@NamedParameter(doc = "A period that metrics are flushed in AddInteger application." +
+    "By passing zero, metrics are transferred only manually.",
+    default_value = "0",
+    short_name = "metric_flush_period_ms")
 public final class MetricFlushPeriodMs implements Name<Integer> {
 }

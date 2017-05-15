@@ -13,27 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.et.evaluator.impl;
-
-import org.apache.reef.evaluator.context.events.ContextStop;
-import org.apache.reef.wake.EventHandler;
-
-import javax.inject.Inject;
-
 /**
- * Handles termination of Context.
+ * A package for metric collection in ET.
  */
-public final class ContextStopHandler implements EventHandler<ContextStop> {
-
-  private final MetricCollector metricCollector;
-
-  @Inject
-  private ContextStopHandler(final MetricCollector metricCollector) {
-    this.metricCollector = metricCollector;
-  }
-
-  @Override
-  public void onNext(final ContextStop contextStop) {
-    metricCollector.stop();
-  }
-}
+package edu.snu.cay.services.et.metric;

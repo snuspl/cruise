@@ -171,6 +171,49 @@ public final class MessageSenderImpl implements MessageSender {
   }
 
   @Override
+  public void sendMetricStartMsg(final String executorId, final String serializedMetricConf) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MetricMsg)
+        .setMetricMsg(
+            MetricMsg.newBuilder()
+                .setType(MetricMsgType.MetricControlMsg)
+                .setMetricControlMsg(
+                    MetricControlMsg.newBuilder()
+                        .setType(MetricControlType.Start)
+                        .setSerializedMetricConf(serializedMetricConf)
+                        .build()
+                ).build()
+        ).build();
+
+    try {
+      networkConnection.send(executorId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending MetricStart message", e);
+    }
+  }
+
+  @Override
+  public void sendMetricStopMsg(final String executorId) {
+    final ETMsg msg = ETMsg.newBuilder()
+        .setType(ETMsgType.MetricMsg)
+        .setMetricMsg(
+            MetricMsg.newBuilder()
+                .setType(MetricMsgType.MetricControlMsg)
+                .setMetricControlMsg(
+                    MetricControlMsg.newBuilder()
+                        .setType(MetricControlType.Stop)
+                        .build()
+                ).build()
+        ).build();
+
+    try {
+      networkConnection.send(executorId, msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException while sending MetricStop message", e);
+    }
+  }
+
+  @Override
   public void sendTableAccessReqMsg(final String destId, final long opId, final TableAccessReqMsg tableAccessReqMsg)
       throws NetworkException {
     final ETMsg msg = ETMsg.newBuilder()

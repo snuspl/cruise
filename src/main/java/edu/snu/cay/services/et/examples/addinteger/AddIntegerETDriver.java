@@ -18,13 +18,14 @@ package edu.snu.cay.services.et.examples.addinteger;
 import edu.snu.cay.services.et.configuration.ExecutorConfiguration;
 import edu.snu.cay.services.et.configuration.ResourceConfiguration;
 import edu.snu.cay.services.et.configuration.TableConfiguration;
-import edu.snu.cay.services.et.configuration.metric.MetricServiceExecutorConf;
 import edu.snu.cay.services.et.driver.api.AllocatedExecutor;
 import edu.snu.cay.services.et.driver.api.ETMaster;
 import edu.snu.cay.services.et.driver.impl.AllocatedTable;
 import edu.snu.cay.services.et.driver.impl.SubmittedTask;
 import edu.snu.cay.services.et.driver.impl.TaskResult;
 import edu.snu.cay.services.et.examples.addinteger.parameters.*;
+import edu.snu.cay.services.et.metric.MetricManager;
+import edu.snu.cay.services.et.metric.configuration.MetricServiceExecutorConf;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -78,10 +79,12 @@ public final class AddIntegerETDriver {
    */
   private final Configuration validatorTaskParamConf;
 
-  private final long metricFlushPeriodMs;
+  private final MetricServiceExecutorConf metricConf;
+  private final MetricManager metricManager;
 
   @Inject
   private AddIntegerETDriver(final ETMaster etMaster,
+                             final MetricManager metricManager,
                              @Parameter(NumServers.class) final int numServers,
                              @Parameter(NumWorkers.class) final int numWorkers,
                              @Parameter(NumUpdates.class) final int numUpdates,
@@ -115,7 +118,10 @@ public final class AddIntegerETDriver {
     this.numServers = numServers;
     this.numWorkers = numWorkers;
 
-    this.metricFlushPeriodMs = metricFlushPeriodMs;
+    this.metricManager = metricManager;
+    this.metricConf = MetricServiceExecutorConf.newBuilder()
+        .setMetricFlushPeriodMs(metricFlushPeriodMs)
+        .build();
   }
 
   private TableConfiguration buildTableConf(final String tableId, final Configuration userTableParamConf) {
@@ -150,6 +156,9 @@ public final class AddIntegerETDriver {
         try {
 
           final AllocatedTable modelTable = etMaster.createTable(tableConf, servers).get();
+
+          // start collecting metrics from servers
+          servers.forEach(server -> metricManager.startMetricCollection(server.getId(), metricConf));
 
           modelTable.subscribe(workers).get();
 
@@ -189,9 +198,6 @@ public final class AddIntegerETDriver {
         .setResourceConf(ResourceConfiguration.newBuilder()
             .setNumCores(1)
             .setMemSizeInMB(128)
-            .build())
-        .setMetricServiceConf(MetricServiceExecutorConf.newBuilder()
-            .setMetricFlushPeriodMs(metricFlushPeriodMs)
             .build())
         .build();
   }
